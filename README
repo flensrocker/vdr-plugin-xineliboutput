@@ -1,0 +1,233 @@
+This is a "plugin" for the Video Disk Recorder (VDR).
+
+Written by:                  Petri Hintukainen <Petri.Hintukainen@hut.fi>
+
+Project's homepage:          http://www.hut.fi/u/phintuka/vdr/
+
+Latest version available at: http://www.hut.fi/u/phintuka/vdr/
+
+See the file COPYING for license information.
+
+
+Description
+
+  Simple framebuffer and/or X11 front-end for VDR.
+  (displays OSD and video in raw X/Xv/XvMC window or 
+  Linux framebuffer/DirectFB).
+
+  Support for local and remote frontends.
+
+  Built-in image and media player supports playback of most known media
+  files (avi/mp3/divx/jpeg/...) and network radio/video streams
+  (http, rtsp, ...) directly from VDR.
+
+
+Requirements
+
+  - vdr-1.3.42 or later
+  - xine-lib 1.1.1 or later 
+    (not required for server in network-only usage)
+  - Enough CPU power and memory to decode streams 
+    (PII 400Mhz + 64M should be enough with Xv or DirectFB)
+
+WARNING
+
+  Remote (network) mode should be used only in firewalled 
+  environment; it gives anyone full control to VDR !
+  Full access is allowed to all hosts listed in svdrphosts.conf.
+
+  Multicast streaming can flood your internet connection and/or
+  wireless LAN. If there is no router (or intelligent switch ?)
+  all multicast packets will be broadcasted to all network links.
+  This will flood slow network links:
+    - Internet connection if outgoing bandwith is < 10 Mbit/s
+    - Wireless LAN (11 or 54 Mbit/s).
+  By default multicast TTL is set to 1 so multicast packets should
+  be stopped to first router regardless of network configuration.
+
+
+Buildtime options
+
+  X11 and xine-lib are detected by Makefile.
+  It is possible to override auto-detection by adding
+  following definitions to VDR's Make.config:
+
+    enable/disable building of X11 frontends:
+      XINELIBOUTPUT_X11 = 1
+      XINELIBOUTPUT_X11 = 0
+
+    enable/disable framebuffer frontends:
+      XINELIBOUTPUT_FB = 1
+      XINELIBOUTPUT_FB = 0
+
+    enable/disable xine (input)plugin:
+      XINELIBOUTPUT_XINEPLUGIN = 1
+      XINELIBOUTPUT_XINEPLUGIN = 0
+
+  or changing corresponding lines in plugin's Makefile.
+
+  xineplug_inp_vdr.so is automatically copied to xine's plugin directory.
+  Writing to xine's plugin directory usually requires root permissions.
+
+  It is possible to compile only remote frontends with command 
+  "make frontends".
+
+
+Usage examples (VDR plugin)
+
+  If no arguments are given, both X11 and framebuffer frontends are tried.
+  First working frontend is used with best available video driver.
+  Complete list of available command-line arguments can be obtained
+  with "vdr --help".
+
+  Only local frontend, X11/Xv video, alsa audio:
+    vdr -P"xineliboutput --local=sxfe --video=xv --audio=alsa --noremote"
+
+  Only local frontend, (slow) X11 video, oss audio:
+    vdr -P"xineliboutput --local=sxfe --video=x11 --audio=oss --noremote"
+
+  Only local frontend, DirectFB: 
+    vdr -P"xineliboutput --local=fbfe --video=DirectFB --noremote"
+
+  Only remote frontend(s):
+    vdr -P"xineliboutput --local=none --remote=37890"
+
+  Local and remote frontends:
+    vdr -P"xineliboutput --local=sxfe --remote=37890"
+  or
+    vdr -P"xineliboutput --local=fbfe --remote=37890"
+
+
+Using remote frontends
+
+  Two remote frontends are included, vdr-fbfe for framebuffer and 
+  vdr-sxfe for X11.
+  Complete list of available command-line arguments can be obtained
+  with "vdr-??fe --help".
+
+  Frontend should find server automatically (from local subnet) 
+  and negoate best available transport. If frontend does not
+  find server (or specific transport should be used), mrl must 
+  be given on command line.
+
+  Examples:
+
+    Search for VDR (xineliboutput) server, connect to it and
+    negoatite best available transport. Use best available audio 
+    and video driver.
+      vdr-fbfe
+    or
+      vdr-sxfe
+
+    Connect to 192.168.1.3 default port and negoate best available transport
+       vdr-fbfe xvdr://192.168.1.3
+
+    Connect to 192.168.2.100, port 12550 and use TCP transport
+       vdr-fbfe xvdr:tcp://192.168.2.100:12550
+
+    Automatically search for VDR server and use UDP transport
+        vdr-fbfe xvdr:udp:
+
+  Available transports for video/audio 
+      pipe  Use local pipe; server and front-end must be running in 
+            same machine
+      rtp   Use RTP/UDP multicast for data and TCP for control. 
+            Multiple frontends can receive same stream.
+      udp   Use UDP unicast for data and TCP for control.
+      tcp   Use TCP protocol for control and data. Both channels 
+            use same server port and are opened by client.
+
+  Forwarding lirc keys to server
+     Use option --lirc with optional lircd socket name to
+     forward LIRC commands from client to server.
+
+  Audio driver
+    Use alsa:
+     vdr-fbfe --audio alsa
+    Use alsa (and specific card/sub-device):
+     vdr-fbfe --audio alsa:plughw:1,1
+
+  Video driver (and display / device):
+    With X11 frontend (vdr-sxfe):
+        vdr-sxfe --video x11 | xshm | xv | xvmc | xxmc [:display]
+      Examples:
+        --video xv
+        --video xvmc:127.0.0.1:1.0
+
+    With framebuffer frontend (vdr-fbfe):
+      --video [fb | DirectFB] [:fb_device]
+      examples:
+      --video DirectFB
+      --video fb:/dev/fb/1
+
+  De-interlacing
+    De-interlacing can be switched on with command-line option
+      --post tvtime
+    Examples:
+      vdr-sxfe --post tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1
+      vdr -P"xineliboutput --post=tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
+
+
+Using with xine-ui (xine, fbxine, gxine, ...)
+
+  Examples:
+    xine "xvdr://127.0.0.1#nocache;demux:mpeg_block"
+    xine "xvdr:tcp://127.0.0.1:37890#nocache;demux:mpeg_block"
+    xine "xvdr:udp://127.0.0.1:37890#nocache;demux:mpeg_block"
+
+  "#nocache;demux:mpeg_block" should always be appended to end of mrl.
+
+  Remote mode must be enabled in VDR plugin.
+ 
+
+Image viewer key bindings
+
+  Up/Down         Next/previous image
+  Left/Right      Jump 5 images forward/backward
+  Yellow          Delete current image
+  Back            Return to image list
+  Stop/Blue       Exit image viewer
+  Play            Start slide show
+  Pause           Stop slide show
+  FastFF/FastRew  Start slide show; Increase/decrease slide show speed; 
+                  Change slideshow direction
+  Ok              Toggle replay display mode
+
+
+Media player key bindings
+
+  Back       Return to file list
+  Red        Jump to beginning of file
+  Green      Jump 1 min back
+  Yellow     Jump 1 min forward
+  Stop/Blue  Stop replay
+  1, User8   Jump 20 s back  
+  3, User9   Jump 20 s forward
+  2          Move subtitles up
+  5          Move subtitles down
+  Pause      Pause replay
+  Play       Play
+  Ok         Toggle replay display mode
+
+
+Aspect ratio setting
+
+  There are 4 possible aspect ratio settings for display:
+
+    default  Aspect ratio is calculated from display resolution.
+
+    4:3      4:3 video is scaled to fill whole window; 
+             16:9 video has black bars at top and bottom
+
+    16:9     16:9 video is scaled to fill whole window; 
+             4:3 video has black bars at left and right.
+
+    auto     4:3 and 16:9 are displayed as is; 
+             wider than 16:9 is displayed as 16:9.
+             (useful with 16:9 TV if TV can switch between 
+             16:9 and 4:3 -> 16:9 smart scaling)
+
+
+Notes
+
+  Current xine-lib does not support unscaled overlays with DirectFB.
