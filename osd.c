@@ -1,0 +1,349 @@
+/*
+ * osd.c: Xinelib On Screen Display control
+ *
+ * See the main source file 'xineliboutput.c' for copyright information and
+ * how to reach the author.
+ *
+ * $Id: osd.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ *
+ */
+
+#include <vdr/config.h>
+
+#include "logdefs.h"
+#include "device.h"
+#include "osd.h"
+#include "config.h"
+
+#define LIMIT_OSD_REFRESH_RATE
+
+#include "xine_osd_command.h"
+
+//extern "C" {
+//#include "xine_frontend.h"
+//} // extern "C"
+
+static inline void CmdSize(cXinelibDevice *Device, int wnd, int w=0, int h=0)
+{
+  TRACEF("xinelib_osd.c:CmdSize");
+
+  if(Device) {
+    osd_command_t osdcmd;
+    memset(&osdcmd,0,sizeof(osdcmd));
+
+    osdcmd.cmd = OSD_Size;
+    osdcmd.wnd = wnd;
+    osdcmd.w = w;
+    osdcmd.h = h;
+
+    Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+static inline void CmdClose(cXinelibDevice *Device, int wnd)
+{
+  TRACEF("xinelib_osd.c:CmdClose");
+
+  if(Device) {
+    osd_command_t osdcmd;
+    memset(&osdcmd,0,sizeof(osdcmd));
+    
+    osdcmd.cmd = OSD_Close;
+    osdcmd.wnd = wnd;
+
+    Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+static inline void RleCmd(cXinelibDevice *Device, int wnd,
+                int x0, int y0, int w, int h, unsigned char *data,
+                int colors, unsigned int *palette)
+{
+  TRACEF("xinelib_osd.c:RleCmd");
+
+  if(Device) {
+
+    xine_rle_elem_t rle, *rle_p=0;
+
+    osd_command_t osdcmd;
+    int x, y, num_rle=0, rle_size=0;
+    uint8_t *c;
+    xine_clut_t clut[256];
+
+    memset(&osdcmd, 0, sizeof(osdcmd));
+    osdcmd.cmd = OSD_Set_RLE;
+    osdcmd.wnd = wnd;
+    osdcmd.x = x0;
+    osdcmd.y = y0;
+    osdcmd.w = w;
+    osdcmd.h = h;
+
+    /* apply alpha layer correction and convert ARGB -> AYCrCb */
+    if (colors) {
+      for(int c=0; c<colors; c++) {
+	int alpha = (palette[c] & 0xff000000)>>24;
+	alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
+	float R  = (float)((palette[c] & 0x00ff0000)>>16);
+	float G  = (float)((palette[c] & 0x0000ff00)>>8);
+	float B  = (float)((palette[c] & 0x000000ff));
+	float Y  = + (0.2578125 * R) + (0.50390625 * G) + (0.09765625 * B) + 16.0;
+	float CR = + (0.4375000 * R) - (0.36718750 * G) - (0.07031250 * B) + 128.0;
+	float CB = - (0.1484375 * R) - (0.28906250 * G) + (0.43750000 * B) + 128.0;
+	int y  = (int)Y;
+	int cr = (int)CR;
+	int cb = (int)CB;
+	clut[c].y  = y<0?0 : y>0xff?0xff : y;
+	clut[c].cb = cb<0?0 : cb>0xff?0xff : cb;
+	clut[c].cr = cr<0?0 : cr>0xff?0xff : cr;
+	clut[c].alpha = alpha<0?0 : alpha>0xff?0xff : alpha;
+      }
+    }
+
+    osdcmd.colors = colors;
+    osdcmd.palette = clut;
+
+    /* RLE compression */
+ 
+    rle_size = 8128;
+    rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
+    osdcmd.data = rle_p;
+
+    for( y = 0; y < h; y++ ) {
+      rle.len = 0;
+      rle.color = 0;
+      c = data + y * w;
+      for( x = 0; x < w; x++, c++ ) {
+	if( rle.color != *c ) {
+	  if( rle.len ) {
+	    if( (num_rle + h-y+1) > rle_size ) {
+	      rle_size *= 2;
+	      rle_p = (xine_rle_elem_t*)realloc( osdcmd.data, 4*rle_size);
+	      osdcmd.data = rle_p;
+	      rle_p += num_rle;
+	    }
+	    *rle_p++ = rle;
+	    num_rle++;
+	  }
+	  rle.color = *c;
+	  rle.len = 1;
+	} else {
+	  rle.len++;
+	}
+      }
+      *rle_p++ = rle;
+      num_rle++;
+    }
+    osdcmd.datalen = 4 * num_rle;
+    
+    TRACE("xinelib_osd.c:RleCmd uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
+    
+    Device->OsdCmd((void*)&osdcmd);
+
+    if(osdcmd.data)
+      free(osdcmd.data);
+  }
+}
+
+cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y)
+    : cOsd(x, y), m_IsVisible(true)
+{
+  TRACEF("cXinelibOsd::cXinelibOsd");
+  m_Device = Device;
+  m_Shown = false;
+  CmdSize(m_Device, 0, 720, 576);
+}
+
+cXinelibOsd::~cXinelibOsd()
+{
+  TRACEF("cXinelibOsd::~cXinelibOsd");
+
+  cXinelibOsdProvider::OsdClosing(this);
+  m_Lock.Lock();
+  if(m_IsVisible)
+    Hide();
+  m_Lock.Unlock();
+  cXinelibOsdProvider::OsdClosed(this);
+}
+
+eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
+{
+  TRACEF("cXinelibOsd::SetAreas");
+  cMutexLock ml(&m_Lock);
+
+  eOsdError Result = cOsd::SetAreas(Areas, NumAreas);
+  if(Result == oeOk) 
+    m_Shown = false;
+  
+  return Result;
+}
+
+eOsdError cXinelibOsd::CanHandleAreas(const tArea *Areas, int NumAreas)
+{
+  TRACEF("cXinelibOsd::CanHandleAreas");
+
+  m_Shown = false;
+  eOsdError Result = cOsd::CanHandleAreas(Areas, NumAreas);
+  if (Result == oeOk) {
+    if (NumAreas > MAX_OSD_OBJECT)
+      return oeTooManyAreas;
+    for (int i = 0; i < NumAreas; i++) {
+      if (Areas[i].bpp != 1 && Areas[i].bpp != 2 && 
+	  Areas[i].bpp != 4 && Areas[i].bpp != 8)
+        return oeBppNotSupported;
+    }
+  }
+  return Result;
+}
+
+void cXinelibOsd::Flush(void)
+{
+  TRACEF("cXinelibOsd::Flush");
+
+  cMutexLock ml(&m_Lock);
+
+  cBitmap *Bitmap;
+
+  if(!m_IsVisible) 
+    return;
+
+  int SendDone = 0;
+  for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
+    int x1 = 0, y1 = 0, x2 = Bitmap->Width()-1, y2 = Bitmap->Height()-1;
+    if (!m_Shown || Bitmap->Dirty(x1, y1, x2, y2)) {
+
+      /* XXX what if only palette has been changed ? */
+      int NumColors;
+      const tColor *Colors = Bitmap->Colors(NumColors);
+      RleCmd(m_Device, i,
+             Left() + Bitmap->X0(), Top() + Bitmap->Y0(),
+             Bitmap->Width(), Bitmap->Height(),
+             (unsigned char *)Bitmap->Data(0,0),
+             NumColors, (unsigned int *)Colors);
+      SendDone++;
+    }
+    Bitmap->Clean();
+  }
+
+#ifdef LIMIT_OSD_REFRESH_RATE
+  if(SendDone) {
+    static int64_t last_refresh = 0LL;
+    int64_t now = cTimeMs::Now();
+    if(now - last_refresh < 100LL) {
+      /* too fast refresh rate, delay ... */
+      cCondWait::SleepMs(100);
+#if 0
+      LOGDBG("cXinelibOsd::Flush: OSD refreshing too fast ! (>10Hz) -> Sleeping 100ms");
+#endif
+    }
+    last_refresh = cTimeMs::Now();
+  }
+#endif
+
+#ifdef YAEPG_PATCH
+  // yaepg
+  if(!m_Shown && vidWin.bpp != 0) {
+    LOGDBG("yaepg vidWin %d %d %d %d\n", 
+	   vidWin.x1, vidWin.y1, vidWin.x2, vidWin.y2);
+    fflush(stdout);
+  }
+#endif
+
+  m_Shown = true;
+}
+
+void cXinelibOsd::Refresh(void)
+{
+  TRACEF("cXinelibOsd::Refresh");
+
+  cMutexLock ml(&m_Lock);
+
+  m_Shown = false;
+  Flush();
+}
+
+void cXinelibOsd::Show(void)
+{
+  TRACEF("cXinelibOsd::Show");
+
+  cMutexLock ml(&m_Lock);
+
+  m_IsVisible = true;
+  Refresh();
+}
+
+void cXinelibOsd::Hide(void)
+{
+  TRACEF("cXinelibOsd::Hide");
+
+  cMutexLock ml(&m_Lock);
+
+  if(m_IsVisible) {
+    cBitmap *Bitmap;
+    m_IsVisible = false;
+    for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++)
+      CmdClose(m_Device, i);
+  }
+}
+
+
+cList<cXinelibOsd> cXinelibOsdProvider::m_OsdStack;
+cMutex             cXinelibOsdProvider::m_Lock;
+
+cXinelibOsdProvider::cXinelibOsdProvider(cXinelibDevice *Device)
+  : m_Device(Device)
+{
+}
+
+cXinelibOsdProvider::~cXinelibOsdProvider()
+{
+  if(m_OsdStack.First())
+    LOGMSG("cXinelibOsdProvider: OSD open while OSD provider shutting down !");
+}
+
+cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top)
+{
+  TRACEF("cXinelibOsdProvider::CreateOsd");
+
+  cMutexLock ml(&m_Lock);
+
+  if(m_OsdStack.First())
+    LOGDBG("cXinelibOsdProvider::CreateOsd - OSD already open !");
+
+  cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top);
+
+  if(m_OsdStack.First())
+    m_OsdStack.First()->Hide();
+
+  m_OsdStack.Ins(m_OsdInstance);
+
+  return m_OsdInstance;
+}
+
+void cXinelibOsdProvider::OsdClosed(cXinelibOsd *Osd)
+{
+  TRACEF("cXinelibOsdProvider::OsdClosed");
+//  m_Lock.Lock();   Atomic with OsdClosing
+  if(m_OsdStack.First())
+    m_OsdStack.First()->Show();
+  m_Lock.Unlock();
+}
+
+void cXinelibOsdProvider::OsdClosing(cXinelibOsd *Osd)
+{
+  TRACEF("cXinelibOsdProvider::OsdClosing");
+  m_Lock.Lock();
+  m_OsdStack.Del(Osd,false);
+//  m_Lock.Unlock();  Atomic with OsdClosed
+}
+
+void cXinelibOsdProvider::RefreshOsd(void)
+{
+  TRACEF("cXinelibOsdProvider::RefreshOsd");
+  cMutexLock ml(&m_Lock);
+
+  if(m_OsdStack.First())
+    m_OsdStack.First()->Refresh();
+}
+
+
+
