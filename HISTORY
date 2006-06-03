@@ -1,0 +1,138 @@
+VDR Plugin 'xineliboutput' Revision History
+--------------------------------
+
+2006-06-03: Version 0.99rc4
+- Fixed missing audio after trick speed modes (thanks to Tero Saarni)
+- Fixed fullscreen size detection with frame buffer / DirectFB
+- Added unscaled OSD capability check for framebuffer / DirectFB
+
+2006-06-02: Version 0.99rc3
+
+- OSD is scaled to display resolution instead of video resolution 
+  when using unscaled OSD
+- OSD is re-centered when resolution is slighty different from 720x576
+- Added configuration options for multicast parameters (address, port, TTL)
+- Added option to set multicast transmission always on for third-party 
+  clients (vlc, ...)
+- Some new x64 fixes
+- Several configuration menu fixes
+- Fixed compilation problem with xine-lib < 1.1.2
+- Fixed missing audio after trick speed modes (thanks to Tero Saarni)
+
+2006-05-18: Version 0.99rc2
+
+- Fixed control input deadlock when using xine-ui
+- Experimental automatic primary device mode included
+- Fixed remote frontend keyboard handling for escape sequences
+- Added several new command-line options to stand-alone frontends
+- Adapted for vdr 1.4.0
+- Fixed automatic server discovery
+- Fixed fullscreen mode when screen resolution != 720x576
+- Fixed --local=none option (reported by Ulf Betlehem)
+- Faster channel switching
+- Fixed --post option
+- Fixed several endian problems and byte ordering in network modes 
+  (reported by Carsten Rietzschel)
+- Fixed segmentation fault when frontend was executed from path 
+  (reported by Carsten Rietzschel)
+- Fixed amd64 compilation problems (reported by Voitto Tuomainen)
+- Many finnish menu texts updated (patch provided by Rolf Ahrenberg)
+- Socket option SO_REUSEADDR added to several places to speed 
+  up VDR restart
+
+2006-04-08: Version 0.99rc
+
+- Fixed compilation problems with gcc 3.4.5 (timer.h, osd.c). 
+  (reported by Gavin Hamill and Voitto Tuomainen)
+- Suspend mode removed (it is now implemented only as separate plugin)
+- Fixed X11 keyboard input handling
+- Faster seeks and channel switches in udp and rtp streaming modes
+- Fixed disconnection when playing to end of avi file
+- Fixed multi-speed modes (reported by Vladimir Monchenko)
+- Updated russian translations (thanks to Vladimir Monchenko)
+- Pipe transport fixed
+
+2006-03-28: Version 0.99pre
+
+- Russian translations (thanks to Vladimir Monchenko)
+- New de-interlacing methods and options
+- Updated for vdr 1.3.43
+- Support for xine post-processing plugins
+- Stand-alone frontends can now automatically find 
+  vdr (xineliboutput) server from network.
+- Makefile modified to auto-detect vdr.
+  If vdr is not installed, only stand-alone frontends and 
+  xine plugin are compiled. 
+  (use "make frontends" in plugin source directory)
+- Xine plugin is automatically copied to xine's plugin directory
+  instead of statically linking it to frontends.
+  -> any xine frontend can be used.
+- All logging goes to syslog and honors vdr's logging level
+
+2005-22-11: Version 0.4
+- Updated for xine-lib 1.1.0 and 1.1.1
+- Framebuffer and DirectFB frontend is now tested and working.
+- Remote frontends tested and working (TCP/UDP/RTP).
+- README updated.
+- Frontend is now loaded dynamically if needed.
+  VDR part of plugin is not anymore linked against xine-lib and X11.
+  -> plugin itself can be compiled and used without installing xine
+     and/or X11 to VDR machine.
+  Frontends still need X11 and/or xine-lib.
+- Makefile modified to auto-detect xine-lib and X11.
+  If X11 is not installed, only framebuffer frontend is compiled.
+  If xine-lib is not installed, frontends are not compiled (-> only
+  remote frontends can be used).
+- Updated for vdr 1.3.34 
+- Stand-alone frontends (sxfe and fbfe) can now forward lirc keys to VDR.
+- New command-line parameters: frontend type, video driver and audio driver.
+- Command-line parameters now override saved configuration parameters.
+
+- Updated for xine-lib 1.0.1
+
+2005-17-02: Version 0.3
+- Updated for vdr 1.3.19 and xine-lib 1.0
+- Direct playback of all xine-supported media types
+  (+ automatic loading of external .srt/.sub subtitles)
+- Support for http/rtsp network streams
+- Image viewer
+- New configuration options
+- Improved OSD support for low-resolution video
+- OSD performance optimizations
+- Improved X server detection
+- Support for xxmc output driver
+- Support for DVB radio streams
+- Support for audio visualization plugins
+
+2004-19-08: Version 0.2
+- Tested with VDR versions 1.2.6, 1.3.7 and 1.3.12
+- Modified to compile with xine-lib 1.0.0 (rc4)
+- New configuration options
+- Decoder can be stopped manually or using inactivity timer
+- Support for image grabbing
+- Support for localization (i18n)
+
+2003-12-20: Version 0.1
+
+- Modified to compile with xine-lib 1.0.0 (rc2)
+- Support for Xshm, Xv and XvMC.
+- Audio driver and port can be selected (alsa,oss,...)
+- X11 display location configurable (in setup.conf, 
+  OSD menu or usind DISPLAY environment variable)
+- Support for unscaled OSD (requires XShape X server extension)
+- Support for deinterlacing
+- Multiple bug fixes
+- Many new configuration options
+- Support for DVD plugin (GetSTC)
+- Support for VDR Make.config
+
+2003-09-10
+
+- C Compilation problems fixed
+- OSD scaling fixed
+
+2003-05-23: Version 0.0.0
+
+- Initial revision.
+
+
