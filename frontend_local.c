@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: frontend_local.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -203,7 +203,7 @@ int cXinelibLocal::Xine_Control(const char *cmd)
 //
 
 extern "C" {
-  static void keypress_handler(char *keymap, char *key)
+  static void keypress_handler(const char *keymap, const char *key)
   {
     if(!xc.use_x_keyboard || !key) {
       /* Only X11 key events came this way in local mode.

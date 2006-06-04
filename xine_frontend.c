@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.1 2006-06-03 10:01:18 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -82,7 +82,7 @@ static int find_input(fe_t *this)
   return 1;
 }
 
-static void *fe_control(void *fe_handle, char *cmd);
+static void *fe_control(void *fe_handle, const char *cmd);
 
 /*
  * xine callbacks
@@ -266,9 +266,10 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
  * initialize xine engine, load audio and video ports, setup stream
  */
 
-static int fe_xine_init(frontend_t *this_gen, char *audio_driver, char *audio_port, 
-			char *video_driver, int pes_buffers, int priority,
-			char *static_post_plugins)
+static int fe_xine_init(frontend_t *this_gen, const char *audio_driver, 
+			const char *audio_port, const char *video_driver, 
+			int pes_buffers, int priority, 
+			const char *static_post_plugins)
 {
   fe_t *this = (fe_t*)this_gen;
   post_plugins_t *posts = NULL;
@@ -465,7 +466,7 @@ static int fe_xine_init(frontend_t *this_gen, char *audio_driver, char *audio_po
  * open xine stream
  */
 
-static int fe_xine_open(frontend_t *this_gen, char *mrl)
+static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 {
   fe_t *this = (fe_t*)this_gen;
   int result = 0;
@@ -550,7 +551,7 @@ static void fe_post_unload(fe_t *this)
   applugin_unload_post(this->postplugins, NULL);
 }
 
-static int fe_post_close(fe_t *this, char *name, int which)
+static int fe_post_close(fe_t *this, const char *name, int which)
 {
   post_plugins_t *posts = this->postplugins;
   int result = 0;
@@ -632,7 +633,7 @@ static int fe_post_close(fe_t *this, char *name, int which)
   return result;
 }
 
-static int fe_post_open(fe_t *this, char *name, char *args)
+static int fe_post_open(fe_t *this, const char *name, const char *args)
 {
   post_plugins_t *posts = this->postplugins;
   char initstr[1024];
@@ -835,7 +836,7 @@ static int fe_is_finished(frontend_t *this_gen)
 
 #ifndef FE_STANDALONE
 
-static int xine_control(frontend_t *this_gen, char *cmd)
+static int xine_control(frontend_t *this_gen, const char *cmd)
 {
   fe_t *this = (fe_t*)this_gen;
   vdr_input_plugin_t *input_vdr;
@@ -858,7 +859,7 @@ static int xine_osd_command(frontend_t *this_gen, struct osd_command_s *cmd) {
   return input_vdr->f.push_input_osd(this->input, cmd);
 }
 
-static int xine_queue_pes_packet(frontend_t *this_gen, char *data, int len)
+static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len)
 {
   fe_t *this = (fe_t*)this_gen;
   vdr_input_plugin_t *input_vdr;
@@ -889,7 +890,8 @@ static int xine_queue_pes_packet(frontend_t *this_gen, char *data, int len)
 
 #else /* #ifndef FE_STANDALONE */
 
-static void process_xine_keypress(input_plugin_t *input, char *map, char *key,
+static void process_xine_keypress(input_plugin_t *input, 
+				  const char *map, const char *key,
 				  int repeat, int release)
 {
   /* from UI --> input plugin --> vdr */
@@ -912,7 +914,7 @@ static void process_xine_keypress(input_plugin_t *input, char *map, char *key,
 /*
  *  Control messages from input plugin
  */
-static void *fe_control(void *fe_handle, char *cmd)
+static void *fe_control(void *fe_handle, const char *cmd)
 {
   fe_t *this = (fe_t*)fe_handle;
   post_plugins_t *posts = this->postplugins;

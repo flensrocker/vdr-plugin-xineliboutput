@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: dummy_player.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: dummy_player.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -19,12 +19,12 @@
 // cDummyPlayerControl
 //
 
-extern unsigned char v_mpg_vdrlogo[]; // vdrlogo_720x576.mpg.c
-extern int v_mpg_vdrlogo_length;      // vdrlogo_720x576.mpg.c
-//extern unsigned char v_mpg_nosignal[];// nosignal_720x576.mpg.c
-//extern int v_mpg_nosignal_length;     // nosignal_720x576.mpg.c
-//extern unsigned char v_mpg_black[];   // black_720x576.mpg.c
-//extern int v_mpg_black_length;        // black_720x576.mpg.c
+extern const unsigned char v_mpg_vdrlogo[]; // vdrlogo_720x576.mpg.c
+extern const int v_mpg_vdrlogo_length;      // vdrlogo_720x576.mpg.c
+//extern const unsigned char v_mpg_nosignal[];// nosignal_720x576.mpg.c
+//extern const int v_mpg_nosignal_length;     // nosignal_720x576.mpg.c
+//extern const unsigned char v_mpg_black[];   // black_720x576.mpg.c
+//extern const int v_mpg_black_length;        // black_720x576.mpg.c
 
 class cDummyPlayer : public cPlayer {
   protected:

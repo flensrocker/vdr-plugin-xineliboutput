@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.1 2006-06-03 10:01:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -791,7 +791,8 @@ static void create_timeout_time(struct timespec *abstime, int timeout_ms)
   abstime->tv_nsec = now.tv_usec * 1000;
 }
 
-void timed_wait(int ms) 
+#if 0
+static void timed_wait(int ms) 
 {
   static pthread_cond_t  cond;
   static pthread_mutex_t mutex;
@@ -805,10 +806,12 @@ void timed_wait(int ms)
   }
 
   create_timeout_time(&abstime, ms);
+#warning lock first ?
   pthread_cond_timedwait (&cond, &mutex, &abstime);
 
   /* or, use select(0, NULL, NULL, NULL, &abstime); */
 }
+#endif
 
 static int io_select_rd (int fd) 
 {
@@ -849,6 +852,34 @@ static int io_select_rd (int fd)
   return XIO_ABORTED;
   */
   return XIO_TIMEOUT;
+}
+
+static void write_control(vdr_input_plugin_t *this, const char *str)
+{
+  size_t len = (size_t)strlen(str);
+  size_t ret;
+
+  do {
+    errno = 0;
+    if(len != (ret = write(this->fd_control, str, len))) {
+      if(ret <= 0 && (errno == EINTR || errno == EAGAIN))
+	continue;
+
+      LOGERR("write_control failed (%d)", ret);
+      close(this->fd_control);
+      this->fd_control = -1;
+    }
+  } while(0);
+}
+
+static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
+{
+  va_list argp;
+  char buf[512];
+  va_start(argp, fmt);
+  vsnprintf(buf, 512, fmt, argp);
+  write_control(this, buf);
+  va_end(argp);
 }
 
 static char *FindSubFile(const char *fname)
@@ -1140,7 +1171,7 @@ static int update_video_size(vdr_input_plugin_t *this)
 
 /* re-scale compressed RLE image */
 static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
-				   int new_w, int new_h)
+					int new_w, int new_h)
 {
   #define FACTORBASE      0x100
   #define FACTOR2PIXEL(f) ((f)>>8)
@@ -1733,18 +1764,18 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
   }
 }
 
-static int set_deinterlace_method(vdr_input_plugin_t *this, char *method_name)
+static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_name)
 {
   int method = 0;
-  if(!strncmp(method_name,"bob",3)) {                 method = 1;
-  } else if(!strncmp(method_name,"weave",5)) {        method = 2;
-  } else if(!strncmp(method_name,"greedy",6)) {       method = 3;
-  } else if(!strncmp(method_name,"onefield",8)) {     method = 4;
-  } else if(!strncmp(method_name,"onefield_xv",11)) { method = 5;
-  } else if(!strncmp(method_name,"linearblend",11)) { method = 6;
-  } else if(!strncmp(method_name,"none",4)) {         method = 0;
+  if(!strncasecmp(method_name,"bob",3)) {                 method = 1;
+  } else if(!strncasecmp(method_name,"weave",5)) {        method = 2;
+  } else if(!strncasecmp(method_name,"greedy",6)) {       method = 3;
+  } else if(!strncasecmp(method_name,"onefield",8)) {     method = 4;
+  } else if(!strncasecmp(method_name,"onefield_xv",11)) { method = 5;
+  } else if(!strncasecmp(method_name,"linearblend",11)) { method = 6;
+  } else if(!strncasecmp(method_name,"none",4)) {         method = 0;
   } else if(!*method_name) {                          method = 0;
-  } else if(!strncmp(method_name,"tvtime",6)) {       method = 0; 
+  } else if(!strncasecmp(method_name,"tvtime",6)) {       method = 0; 
   /* old deinterlacing system must be switched off.
      tvtime will be configured as all other post plugins with 
      "POST tvtime ..." control message  */
@@ -1883,9 +1914,10 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
 
 static void vdr_event_cb (void *user_data, const xine_event_t *event);
 
-static int handle_control_playfile(vdr_input_plugin_t *this, char *cmd)
+static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
-  char filename[1024]="", *pt = cmd + 9, *subs = NULL;
+  const char *pt = cmd + 9;
+  char filename[1024]="", *subs = NULL;
   int loop = 0, pos = 0, err = 0;
 
   while(*pt==' ') pt++;
@@ -1964,7 +1996,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, char *cmd)
   return err ? CONTROL_PARAM_ERROR : CONTROL_OK;
 }
 
-static int handle_control_substream(vdr_input_plugin_t *this, char *cmd)
+static int handle_control_substream(vdr_input_plugin_t *this, const char *cmd)
 {
   unsigned int pid;
   if(1 == sscanf(cmd, "SUBSTREAM 0x%x", &pid)) {
@@ -1998,7 +2030,7 @@ LOGMSG("  pip stream created");
   return CONTROL_PARAM_ERROR;
 }
 
-static int handle_control_osdscaling(vdr_input_plugin_t *this, char *cmd)
+static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
 {
   int err = CONTROL_OK;
   pthread_mutex_lock(&this->lock);
@@ -2014,9 +2046,9 @@ static int handle_control_osdscaling(vdr_input_plugin_t *this, char *cmd)
 }
 
 static int control_read_data(vdr_input_plugin_t *this, 
-			     unsigned char *buf, int len);
+			     uint8_t *buf, int len);
 
-static int handle_control_osdcmd(vdr_input_plugin_t *this, char *cmd)
+static int handle_control_osdcmd(vdr_input_plugin_t *this /*, const char *cmd*/)
 {
   osd_command_t osdcmd;
   int err = CONTROL_OK;
@@ -2158,7 +2190,7 @@ LOGMSG("return -1");
 
 
 static int control_read_data(vdr_input_plugin_t *this, 
-			     unsigned char *buf, int len)
+			     uint8_t *buf, int len)
 {
   int num_bytes, total_bytes = 0;
 #if 0
@@ -2207,7 +2239,6 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms);
 static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uint64_t offset)
 {
   int r;
-  char buf[64];
   buf_element_t *bufelem;
 
   pthread_mutex_lock(&this->lock);
@@ -2240,8 +2271,7 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uin
   }
 
   r = vdr_plugin_flush(this, timeout_ms);
-  sprintf(buf, "RESULT %d %d\r\n", this->token, r);
-  write(this->fd_control, buf, strlen(buf));
+  printf_control(this, "RESULT %d %d\r\n", this->token, r);
 
   xine_usec_sleep(20*1000);
   /*#warning test sleep*/
@@ -2260,7 +2290,7 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uin
   return CONTROL_OK;
 }
 
-static int vdr_plugin_parse_control(input_plugin_t *this_gen, char *cmd)
+static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   int err = CONTROL_OK, i, j;
@@ -2268,7 +2298,6 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, char *cmd)
   int64_t tmp64 = 0LL;
   xine_stream_t *stream = this->stream;
   static const char *str_poll = "POLL";
-  char buf[128];
 
   pthread_mutex_lock(&this->vdr_entry_lock);
 
@@ -2282,8 +2311,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, char *cmd)
     tmp32 = atoi(cmd+5);
     if(tmp32 >= 0 && tmp32 < 1000) {
       if(this->fd_control >= 0) {
-	sprintf(buf, "POLL %d\r\n", vdr_plugin_poll(this, tmp32));
-	write(this->fd_control, buf, strlen(buf));
+	printf_control(this, "POLL %d\r\n", vdr_plugin_poll(this, tmp32));
       } else {
 	err = vdr_plugin_poll(this, tmp32);
       }
@@ -2295,7 +2323,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, char *cmd)
     err = handle_control_osdscaling(this, cmd);
 
   } else if(!strncasecmp(cmd, "OSDCMD", 6)) {
-    err = handle_control_osdcmd(this, cmd);
+    err = handle_control_osdcmd(this);
 
   } else if(!strncasecmp(cmd, "VIDEO_PROPERTIES ", 17)) {
     int hue, saturation, brightness, contrast;
@@ -2455,15 +2483,14 @@ LOGDBG("SPU channel selected: %d", tmp32);
 
   } else if(!strncasecmp(cmd, "SYNC ", 5)) {
     if(this->fd_control >= 0)
-      write(this->fd_control, cmd, strlen(cmd));
+      write_control(this, cmd);
 
   } else if(!strncasecmp(cmd, "GETSTC", 6)) {
     int64_t pts = xine_get_current_vpts(stream) -
                   stream->metronom->get_option(stream->metronom, 
 					       METRONOM_VPTS_OFFSET);
     if(this->fd_control >= 0) {
-      sprintf(buf, "STC %lld\r\n", pts);
-      write(this->fd_control, buf, strlen(buf));
+      printf_control(this, "STC %lld\r\n", pts);
     } else {
       *((int64_t *)cmd) = pts;
     }
@@ -2496,8 +2523,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
   } else if(!strncasecmp(cmd, "PLAYFILE ", 9)) {
     err = handle_control_playfile(this, cmd);
     if(this->fd_control >= 0) {
-      sprintf(buf, "RESULT %d %d\r\n", this->token, err);
-      write(this->fd_control, buf, strlen(buf));
+      printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
     }
     
@@ -2522,8 +2548,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
     xine_get_pos_length(stream, &pos_stream, &pos_time, &length_time);
     err = length_time/1000;
     if(this->fd_control >= 0) {
-      sprintf(buf, "RESULT %d %d\r\n", this->token, err);
-      write(this->fd_control, buf, strlen(buf));
+      printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
     }
 
@@ -2532,8 +2557,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
     xine_get_pos_length(stream, &pos_stream, &pos_time, &length_time);
     err = pos_time/1000;
     if(this->fd_control >= 0) {
-      sprintf(buf, "RESULT %d %d\r\n", this->token, err);
-      write(this->fd_control, buf, strlen(buf));
+      printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
     }
 
@@ -2576,14 +2600,14 @@ static void *vdr_control_thread(void *this_gen)
     counter--;
   } 
 
-  write(this->fd_control, "CONFIG\r\n", 8);
+  write_control(this, "CONFIG\r\n");
   
-  while(this->control_running) {
-    
+  while(this->control_running && this->fd_control >= 0) {
+
     /* read next command */
     line[0] = 0;
     pthread_testcancel();
-    if((err=control_read_cmd(this, line+strlen(line), sizeof(line)-1)) <= 0) {
+    if((err=control_read_cmd(this, line, sizeof(line)-1)) <= 0) {
       if(err < 0) {
 	LOGERR("control stream read error");
 	break;
@@ -2773,7 +2797,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       } else if(event->stream == this->slave_stream) {
 	LOGMSG("XINE_EVENT_UI_PLAYBACK_FINISHED (slave stream)");
 	if(this->fd_control >= 0) {
-	  write(this->fd_control, "ENDOFSTREAM\r\n", 13);
+	  write_control(this, "ENDOFSTREAM\r\n");
 	} else {
 	  /* forward to vdr-fe (listening only VDR stream events) */
 	  xine_event_t event;
@@ -3085,12 +3109,12 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       if(!udp->queue_full_signaled && 
 	 num_free < UDP_SIGNAL_FULL_TRESHOLD) {	
 	LOGUDP("send fifo buffer almost full signal ON");
-	write(this->fd_control, "UDP FULL 1\r\n", 12);
+	write_control(this, "UDP FULL 1\r\n");
 	udp->queue_full_signaled = 1;
       } else if(udp->queue_full_signaled && 
 		num_free > UDP_SIGNAL_NOT_FULL_TRESHOLD) {
 	LOGUDP("send fifo buffer almost full signal OFF");
-	write(this->fd_control, "UDP FULL 0\r\n", 12);
+	write_control(this, "UDP FULL 0\r\n");
 	udp->queue_full_signaled = 0;
       }
 
@@ -3179,7 +3203,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     if(pkt->seq == (uint16_t)(-1) /*0xffff*/) {
       if(pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
 	pkt_data[64] = 0;
-	if(!strncmp(pkt_data, "UDP MISSING", 11)) {
+	if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
 	  /* Re-send failed */ 
 	  int seq1 = 0, seq2 = 0;
 	  uint64_t rpos = 0ULL;
@@ -3294,18 +3318,16 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     if(NEXTSEQ(current_seq) != udp->next_seq  &&  udp->queued) {
 
       if(!udp->resend_requested) {
-	char msg[128];
 	int max_req = 20;
 
 	while(!udp->queue[current_seq] && --max_req > 0) 
 	  INCSEQ(current_seq);
-
-	sprintf(msg, "UDP RESEND %d-%d %lld\r\n", 
-		udp->next_seq, PREVSEQ(current_seq), udp->queue_input_pos);
-	write(this->fd_control, msg, strlen(msg));
+	
+	printf_control(this, "UDP RESEND %d-%d %lld\r\n", 
+			udp->next_seq, PREVSEQ(current_seq), udp->queue_input_pos);
 	udp->resend_requested = 
-	   (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
-
+	  (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
+	
 	LOGUDP("%d-%d missing, requested re-send for %d frames",
 	       udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
       }
@@ -3338,7 +3360,7 @@ static void *vdr_data_thread(void *this_gen)
 
   LOGDBG("Data thread started");
 
-  nice(-1);
+  (void)nice(-1);
 
   if(this->udp||this->rtp) {
     while(this->control_running) {
@@ -3371,7 +3393,7 @@ static void *vdr_data_thread(void *this_gen)
 }
 
 
-static int vdr_plugin_write(input_plugin_t *this_gen, char *data, int len)
+static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf = NULL;
@@ -3499,20 +3521,18 @@ LOGMSG("  pip substream: no stream !");
   return len;
 }
 
-static int vdr_plugin_keypress(input_plugin_t *this_gen, char *map, char *key,
+static int vdr_plugin_keypress(input_plugin_t *this_gen, 
+			       const char *map, const char *key,
 			       int repeat, int release)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   pthread_mutex_lock(&this->lock);
   if(key && this->fd_control >= 0) {
-    char buf[128];
     if(map)
-      sprintf(buf, "KEY %s %s %s %s\r\n", map, key, 
-	      repeat?"Repeat":"", release?"Release":"");
+      printf_control(this, "KEY %s %s %s %s\r\n", map, key, 
+		      repeat?"Repeat":"", release?"Release":"");
     else
-      sprintf(buf, "KEY %s\r\n", key);
-    if(strlen(buf) != write(this->fd_control, buf, strlen(buf)))
-      return -1;
+      printf_control(this, "KEY %s\r\n", key);
   }
   pthread_mutex_unlock(&this->lock);
   return 0;
@@ -3573,7 +3593,7 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 					     fifo_buffer_t *fifo, off_t todo) 
 {
-  static unsigned char padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
+  static const uint8_t padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf  = NULL;
 
@@ -3980,7 +4000,7 @@ static int alloc_udp_data_socket(int firstport, int trycount, int *port)
   return fd;
 }
 
-static int connect_control_stream(vdr_input_plugin_t *this, char *host, 
+static int connect_control_stream(vdr_input_plugin_t *this, const char *host, 
 				  int port, int *client_id)
 {
   char tmpbuf[256];
@@ -4048,15 +4068,14 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
   /* request RTP data transport from server */
 
   LOGDBG("Requesting RTP transport");
-  sprintf(cmd, "RTP\r\n");
-  if(_x_io_tcp_write(this->stream, this->fd_control, cmd, strlen(cmd)) < 0) {
+  if(_x_io_tcp_write(this->stream, this->fd_control, "RTP\r\n", 5) < 0) {
     LOGERR("Control stream write error");
     return -1;
   }
 
   cmd[0] = 0;
   if(control_read_cmd(this, cmd, 256) < 8 ||
-     strncmp(cmd,"RTP ", 4)) {
+     strncmp(cmd, "RTP ", 4)) {
     LOGMSG("Server does not support RTP ? (%s)", cmd);
     return -1;
   }
@@ -4115,7 +4134,11 @@ retry_select:
     LOGDBG("Requesting RTP transport: RTP poll timeout");
     if(++retries < 10) {
       LOGDBG("Requesting RTP transport");
-      write(this->fd_control, "RTP\r\n", 5);
+      if(_x_io_tcp_write(this->stream, this->fd_control, "RTP\r\n", 5) < 0) {
+	LOGERR("Control stream write error");
+	close(fd);
+	return -1;
+      }
       goto retry_select;
     }
     LOGMSG("Data stream connection timed out (RTP)");
@@ -4256,7 +4279,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     int one = 1;
     if(port) *port++ = 0;
     iport = port ? atoi(port) : DEFAULT_VDR_PORT;
-    strncpy(host,phost,254);
+    strncpy(host, phost, 254);
     free(phost);
     /* TODO: use multiple input plugins - tcp/udp/file */
 
@@ -4282,13 +4305,13 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
       _x_io_tcp_write(this->stream, this->fd_control, "PIPE\r\n", 6);
       *tmpbuf=0;
       if(control_read_cmd(this, tmpbuf, 256) >5 &&
-	 !strncmp(tmpbuf,"PIPE ", 5) &&
-	 strncmp(tmpbuf,"PIPE NONE", 9)) {
+	 !strncmp(tmpbuf, "PIPE ", 5) &&
+	 strncmp(tmpbuf, "PIPE NONE", 9)) {
 	LOGMSG("PIPE: %s", tmpbuf);
 	if((this->fd_data = open(tmpbuf+5, O_RDONLY|O_NONBLOCK)) >= 0) {
 	  _x_io_tcp_write(this->stream, this->fd_control, "PIPE OPEN\r\n", 11);
 	  if(control_read_cmd(this, tmpbuf, 256) >6 &&
-	     !strncmp(tmpbuf,"PIPE OK",7)) {
+	     !strncmp(tmpbuf, "PIPE OK", 7)) {
 	    fcntl (this->fd_data, F_SETFL, 
 		   fcntl (this->fd_data, F_GETFL) | O_NONBLOCK);
 	    this->tcp = this->udp = this->tcp = 0;
@@ -4354,10 +4377,10 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 	while(0 < read(this->fd_control, tmpbuf, 255)) ;
 	 
 	sprintf(tmpbuf, "DATA %d\r\n", this->client_id);
-	write(this->fd_data, tmpbuf, strlen(tmpbuf));
-
-	if( XIO_READY != _x_io_select(this->stream, this->fd_data, 
-				      XIO_READ_READY, 1000)) {
+	if(write(this->fd_data, tmpbuf, strlen(tmpbuf)) != (ssize_t)strlen(tmpbuf)) {
+	  LOGERR("Data stream connection failed (TCP, write)");
+	} else if( XIO_READY != _x_io_select(this->stream, this->fd_data, 
+					     XIO_READ_READY, 1000)) {
 	  LOGERR("Data stream connection failed (TCP, select)");
 	} else if(read(this->fd_data, tmpbuf, 6) != 6) {
 	  LOGERR("Data stream connection failed (TCP, read)");
@@ -4365,7 +4388,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 	  LOGMSG("Data stream connection failed (TCP, token)");
 	} else {
 	  this->tcp = 1;
-	}	
+	}
       }
       if(this->tcp) {
 	/* succeed */

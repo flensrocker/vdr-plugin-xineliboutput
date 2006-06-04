@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: frontend.h,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -97,7 +97,7 @@ class cXinelibThread : public cThread, public cListObject
     virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality, 
 			     int SizeX, int SizeY) { return NULL; }
 
-    static void KeypressHandler(char *keymap, char *key, 
+    static void KeypressHandler(const char *keymap, const char *key, 
 				bool repeat, bool release);
 
   //

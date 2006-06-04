@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.1 2006-06-03 10:04:27 phintuka Exp $
+ * $Id: cxsocket.h,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -88,10 +88,10 @@ static inline int sock_connect(int fd_control, int port, int type)
   return s;
 }
 
-static inline int timed_write(int fd, const void *buffer, size_t size, 
-			      int timeout_ms)
+static inline ssize_t timed_write(int fd, const void *buffer, size_t size, 
+				  int timeout_ms)
 {
-  int written = size;
+  ssize_t written = (ssize_t)size;
   const unsigned char *ptr = (const unsigned char *)buffer;
   cPoller poller(fd, true);
 
@@ -103,7 +103,7 @@ static inline int timed_write(int fd, const void *buffer, size_t size,
     }
 
     errno = 0;
-    int p = write(fd, ptr, size);
+    ssize_t p = write(fd, ptr, size);
 
     if (p <= 0) {
       if (errno == EINTR || errno == EAGAIN) {
@@ -129,31 +129,31 @@ static inline int write_osd_command(int fd, osd_command_t *cmd)
     LOGDBG("write_osd_command: write (command) failed");
     return 0;
   }
-  if(sizeof(osd_command_t) != 
+  if((ssize_t)sizeof(osd_command_t) != 
      timed_write(fd, cmd, sizeof(osd_command_t), 200)) {
     LOGDBG("write_osd_command: write (data) failed");
     return 0;
   }
   if(cmd->palette && cmd->colors &&
-     (int)(sizeof(xine_clut_t)*ntohl(cmd->colors)) != 
+     (ssize_t)(sizeof(xine_clut_t)*ntohl(cmd->colors)) != 
      timed_write(fd, cmd->palette, (int)(sizeof(xine_clut_t)*ntohl(cmd->colors)), 200)) {
     LOGDBG("write_osd_command: write (palette) failed");
     return 0;
   }
   if(cmd->data && cmd->datalen &&
-     (int)ntohl(cmd->datalen) != timed_write(fd, cmd->data, ntohl(cmd->datalen), 1000)) {
+     (ssize_t)ntohl(cmd->datalen) != timed_write(fd, cmd->data, ntohl(cmd->datalen), 1000)) {
     LOGDBG("write_osd_command: write (bitmap) failed");
     return 0;
   }
   return 1;
 }
 
-static inline int write_str(int fd, const char *str, int timeout_ms=-1)
+static inline ssize_t write_str(int fd, const char *str, int timeout_ms=-1)
 {
   return timed_write(fd, str, strlen(str), timeout_ms);
 }
 
-static inline int write_cmd(int fd, const char *str)
+static inline ssize_t write_cmd(int fd, const char *str)
 {
   return write_str(fd, str, 10);
 }

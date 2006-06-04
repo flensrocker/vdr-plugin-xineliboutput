@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: frontend.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -42,7 +42,7 @@
 //
 
 /*static*/
-void cXinelibThread::KeypressHandler(char *keymap, char *key, 
+void cXinelibThread::KeypressHandler(const char *keymap, const char *key, 
 				     bool repeat, bool release)
 {
 #ifdef XINELIBOUTPUT_LOG_KEYS
@@ -426,8 +426,8 @@ bool cXinelibThread::QueueBlankDisplay(void)
 {
   TRACEF("cXinelibThread::BlankDisplay");
 
-  extern unsigned char v_mpg_black[];     // black_720x576.c
-  extern int v_mpg_black_length;
+  extern const unsigned char v_mpg_black[];     // black_720x576.c
+  extern const int v_mpg_black_length;
 
   return Play_Mpeg2_ES(v_mpg_black, v_mpg_black_length, VIDEO_STREAM);
 }
@@ -446,8 +446,8 @@ bool cXinelibThread::LogoDisplay(void)
 {
   TRACEF("cXinelibThread::LogoDisplay");
 
-  extern unsigned char v_mpg_vdrlogo[];     // vdrlogo_720x576.c
-  extern int v_mpg_vdrlogo_length;
+  extern const unsigned char v_mpg_vdrlogo[];     // vdrlogo_720x576.c
+  extern const int v_mpg_vdrlogo_length;
 
   bool r = Play_Mpeg2_ES(v_mpg_vdrlogo, v_mpg_vdrlogo_length, VIDEO_STREAM);
   for(int i=0; i<5 && !Flush(100); i++)
@@ -459,8 +459,8 @@ bool cXinelibThread::NoSignalDisplay(void)
 {
   TRACEF("cXinelibThread::NoSignalDisplay");
 
-  extern unsigned char v_mpg_nosignal[];     // nosignal_720x576.c
-  extern int v_mpg_nosignal_length;
+  extern const unsigned char v_mpg_nosignal[];     // nosignal_720x576.c
+  extern const int v_mpg_nosignal_length;
 
   bool r = Play_Mpeg2_ES(v_mpg_nosignal, v_mpg_nosignal_length, VIDEO_STREAM);
   for(int i=0; i<5 && !Flush(100); i++)

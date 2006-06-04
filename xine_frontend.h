@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.2 2006-06-04 08:18:18 phintuka Exp $
  *
  */
 
@@ -18,7 +18,7 @@ extern "C" {
 #define FE_VERSION_STR  "0.9.9"
 #define FE_VERSION      0x99 /*(((0)<<16) | ((9)<<8) | ((9)))*/
 
-typedef void (*fe_keypress_f)(char *keymap, char *name);
+typedef void (*fe_keypress_f)(const char *keymap, const char *name);
 
 typedef struct frontend_config_s frontend_config_t;
 typedef struct frontend_s frontend_t;
@@ -63,10 +63,13 @@ struct frontend_s {
   void (*fe_display_close)(frontend_t*);
 
   /* Xine engine */
-  int  (*xine_init)(frontend_t*, char *audio_driver, char *audio_port, 
-		    char *video_driver, int pes_buffers, 
-		    int priority, char *static_post);
-  int  (*xine_open)(frontend_t*, char *mrl);
+  int  (*xine_init)(frontend_t*, 
+		    const char *audio_driver, 
+		    const char *audio_port, 
+		    const char *video_driver, 
+		    int pes_buffers, int priority, 
+		    const char *static_post);
+  int  (*xine_open)(frontend_t*, const char *mrl);
   int  (*xine_play)(frontend_t*);
   int  (*xine_stop)(frontend_t*);
   void (*xine_close)(frontend_t*);
@@ -80,8 +83,8 @@ struct frontend_s {
   /* Data transfer */
   int  (*xine_is_finished)(frontend_t*);
   int  (*xine_osd_command)(frontend_t*, struct osd_command_s *cmd);
-  int  (*xine_control)(frontend_t*, char *cmd);
-  int  (*xine_queue_pes_packet)(frontend_t*, char *data, int len);
+  int  (*xine_control)(frontend_t*, const char *cmd);
+  int  (*xine_queue_pes_packet)(frontend_t*, const char *data, int len);
 
   char *(*grab)(frontend_t*, int *size, int jpeg, int quality,
 		int width, int height);
