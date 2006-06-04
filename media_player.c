@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: media_player.c,v 1.2 2006-06-04 05:45:37 phintuka Exp $
  *
  */
 
@@ -89,18 +89,21 @@ void cXinelibPlayer::Activate(bool On)
   int pos = 0, fd=-1;
   if(On) {
     if(0 <= (fd = open(m_ResumeFile,O_RDONLY))) {
-      read(fd, &pos, sizeof(int));
+      if(read(fd, &pos, sizeof(int)) != sizeof(int))
+	 pos = 0;
       close(fd);
     }
     cXinelibDevice::Instance().PlayFile(m_File, pos);
   } else {
     pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
     if(pos>=0 && strcasecmp(m_File+strlen(m_File)-4,".ram")) {
-      if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
-	write(fd, &pos, sizeof(int));
+      if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
+	if(write(fd, &pos, sizeof(int)) != sizeof(int))
+	  Skins.QueueMessage(mtInfo, "Error writing resume position !", 5, 30);
 	close(fd);
       } else {
-	Skins.QueueMessage(mtInfo, "Error writing resume position !", 5, 30);
+	Skins.QueueMessage(mtInfo, "Error creating resume file !", 5, 30);
       }
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
