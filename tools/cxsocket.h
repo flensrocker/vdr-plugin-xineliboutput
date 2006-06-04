@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: cxsocket.h,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ static inline int write_osd_command(int fd, osd_command_t *cmd)
   }
   if(cmd->palette && cmd->colors &&
      (ssize_t)(sizeof(xine_clut_t)*ntohl(cmd->colors)) != 
-     timed_write(fd, cmd->palette, (int)(sizeof(xine_clut_t)*ntohl(cmd->colors)), 200)) {
+     timed_write(fd, cmd->palette, sizeof(xine_clut_t)*ntohl(cmd->colors), 200)) {
     LOGDBG("write_osd_command: write (palette) failed");
     return 0;
   }

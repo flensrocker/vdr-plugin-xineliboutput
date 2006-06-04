@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: frontend_local.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -118,8 +118,8 @@ void cXinelibLocal::OsdCmd(void *cmd)
 }
 
 uchar *cXinelibLocal::GrabImage(int &Size, bool Jpeg, 
-				 int Quality, int SizeX, 
-				 int SizeY)
+				int Quality, int SizeX, 
+				int SizeY)
 {
   uchar *data;
   LOCK_FE;
@@ -151,7 +151,7 @@ int64_t cXinelibLocal::GetSTC()
 //
 
 void cXinelibLocal::ConfigureWindow(int fullscreen, int width, int height, 
-				    int modeswitch, char *modeline, 
+				    int modeswitch, const char *modeline, 
 				    int aspect, int scale_video, 
 				    int field_order) 
 {

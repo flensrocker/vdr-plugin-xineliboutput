@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: device.h,v 1.2 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -94,14 +94,17 @@ class cXinelibDevice : public cDevice
 
     // Configuration
     void ConfigureOSD(bool prescale_osd, bool unscaled_osd);
-    void ConfigurePostprocessing(char *deinterlace_method, int audio_delay,
-				 int audio_compression, int *audio_equalizer,
+    void ConfigurePostprocessing(const char *deinterlace_method, 
+				 int audio_delay,
+				 int audio_compression, 
+				 const int *audio_equalizer,
 				 int audio_surround);
-    void ConfigurePostprocessing(char *name, bool on=true, char *args=NULL);
+    void ConfigurePostprocessing(const char *name, bool on=true, 
+				 const char *args=NULL);
     void ConfigureVideo(int hue, int saturation, int brightness, int contrast);
     // local mode:
     void ConfigureWindow(int fullscreen, int width, int height, 
-			 int modeswitch, char *modeline, 
+			 int modeswitch, const char *modeline, 
 			 int aspect, int scale_video, int field_order);
     void ConfigureDecoder(int pes_buffers, int priority);
     // remote mode:

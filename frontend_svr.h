@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.2 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -68,14 +68,14 @@ protected:
     void Handle_ClientConnected(int fd);
 
     void Read_Control(int cli);
-    void Handle_Control(int cli, char *cmd);
+    void Handle_Control(int cli, const char *cmd);
 
-    void Handle_Control_PIPE(int cli, char *arg);
-    void Handle_Control_RTP(int cli, char *arg);
-    void Handle_Control_UDP(int cli, char *arg);
-    void Handle_Control_DATA(int cli, char *arg);
-    void Handle_Control_KEY(int cli, char *arg);
-    void Handle_Control_UDP_RESEND(int cli, char *arg);
+    void Handle_Control_PIPE(int cli, const char *arg);
+    void Handle_Control_RTP(int cli, const char *arg);
+    void Handle_Control_UDP(int cli, const char *arg);
+    void Handle_Control_DATA(int cli, const char *arg);
+    void Handle_Control_KEY(int cli, const char *arg);
+    void Handle_Control_UDP_RESEND(int cli, const char *arg);
     void Handle_Control_CONFIG(int cli);
 
     void CloseConnection(int cli);

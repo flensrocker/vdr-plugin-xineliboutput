@@ -4,9 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: device.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
  *
  */
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include <vdr/config.h>
 #include <vdr/thread.h>
@@ -374,7 +377,11 @@ void cXinelibDevice::ConfigureOSD(bool prescale_osd, bool unscaled_osd)
     m_server->ConfigureOSD(prescale_osd, unscaled_osd);
 }
 
-void cXinelibDevice::ConfigurePostprocessing(char *deinterlace_method, int audio_delay, int audio_compression, int *audio_equalizer, int audio_surround)
+void cXinelibDevice::ConfigurePostprocessing(const char *deinterlace_method, 
+					     int audio_delay, 
+					     int audio_compression, 
+					     const int *audio_equalizer, 
+					     int audio_surround)
 {
   TRACEF("cXinelibDevice::ConfigurePostprocessing");
 
@@ -389,7 +396,8 @@ void cXinelibDevice::ConfigurePostprocessing(char *deinterlace_method, int audio
 				      audio_surround);
 }
 
-void cXinelibDevice::ConfigurePostprocessing(char *name, bool on, char *args)
+void cXinelibDevice::ConfigurePostprocessing(const char *name, bool on, 
+					     const char *args)
 {
   TRACEF("cXinelibDevice::ConfigurePostprocessing");
 
@@ -425,8 +433,9 @@ void cXinelibDevice::ConfigureDecoder(int pes_buffers, int priority)
 }
 
 void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height, 
-				     int modeswitch, char *modeline, 
-				     int aspect, int scale_video, int field_order)
+				     int modeswitch, const char *modeline, 
+				     int aspect, int scale_video, 
+				     int field_order)
 {
   TRACEF("cXinelibDevice::ConfigureWindow");
 
@@ -839,15 +848,15 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
 	  m_TrickSpeedPts = pts;
 	  if(ScanVideoPacket(buf, length, PictureType) > 0)
 	    ;
-	  LOGMSG("TrickSpeed: VIDEO PTS %lld (%s)", pts,
+	  LOGMSG("TrickSpeed: VIDEO PTS %" PRId64 " (%s)", pts,
 		 PictureTypeStr(PictureType));
 	}
       } else if(Audio) {
-	LOGMSG("TrickSpeed: AUDIO PTS %lld", pts);
+	LOGMSG("TrickSpeed: AUDIO PTS %" PRId64, pts);
       } else if(pts > 0LL) {
 	if(ScanVideoPacket(buf, length, PictureType) > 0)
 	  ;
-	LOGMSG("TrickSpeed: VIDEO PTS DIFF %lld (%s)", pts - m_TrickSpeedPts,
+	LOGMSG("TrickSpeed: VIDEO PTS DIFF %" PRId64 " (%s)", pts - m_TrickSpeedPts,
 	       PictureTypeStr(PictureType));
 	//m_TrickSpeedPts += (int64_t)(40*90 * m_TrickSpeed); /* 40ms * 90kHz */
 	//pes_change_pts((uchar *)buf, length);
@@ -910,11 +919,13 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
       if(!switchingIframe) {
 	int64_t now = cTimeMs::Now();
 	switchingIframe = true;
-	LOGMSG("Channel switch: off -> on %lld ms, on -> 1. I-frame %lld ms",
+	LOGMSG("Channel switch: off -> on %" PRId64 " ms, "
+	       "on -> 1. I-frame %" PRId64 " ms",
 	       switchtimeOn-switchtimeOff, now-switchtimeOn);
       } else {
 	int64_t now = cTimeMs::Now();
-	LOGMSG("Channel switch: on -> 2. I-frame %lld ms, Total %lld ms",
+	LOGMSG("Channel switch: on -> 2. I-frame %" PRId64 " ms, "
+	       "Total %" PRId64 " ms",
 	       now-switchtimeOn, now-switchtimeOff);
 	switchtimeOff = 0LL;
 	switchtimeOn = 0LL;

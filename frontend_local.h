@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: frontend_local.h,v 1.2 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -47,7 +47,7 @@ class cXinelibLocal : public cXinelibThread
 
     // Configuration
     virtual void ConfigureWindow(int fullscreen, int width, int height, 
-				 int modeswitch, char *modeline, 
+				 int modeswitch, const char *modeline, 
 				 int aspect, int scale_video, int field_order);
     virtual void ConfigureDecoder(int pes_buffers, int priority);
 

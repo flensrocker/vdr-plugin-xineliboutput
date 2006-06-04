@@ -4,9 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.2 2006-06-04 05:54:50 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -195,31 +198,42 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 #endif
 
     /* -> network order */
-    if(0x12345678 != htonl(0x12345678)) {
-      cmd->cmd = htonl(cmd->cmd);
-      cmd->wnd = htonl(cmd->wnd);
-      cmd->pts = htonll(cmd->pts);
-      cmd->delay_ms = htonl(cmd->delay_ms);
-      cmd->x = htons(cmd->x);
-      cmd->y = htons(cmd->y);
-      cmd->w = htons(cmd->w);
-      cmd->h = htons(cmd->h);
-      if(cmd->data) {
-	for(unsigned int i=0; i<cmd->datalen/4; i++) {
-	  cmd->data[i].len   = htons(cmd->data[i].len);
-	  cmd->data[i].color = htons(cmd->data[i].color);
-	}
-      }
-      cmd->datalen = htonl(cmd->datalen);
-      cmd->colors  = htonl(cmd->colors);
-    }
+    osd_command_t cmdnet;
 
+    if(ntohl(0x12345678) != 0x12345678) {
+      cmdnet.cmd = htonl(cmd->cmd);
+      cmdnet.wnd = htonl(cmd->wnd);
+      cmdnet.pts = htonll(cmd->pts);
+      cmdnet.delay_ms = htonl(cmd->delay_ms);
+      cmdnet.x = htons(cmd->x);
+      cmdnet.y = htons(cmd->y);
+      cmdnet.w = htons(cmd->w);
+      cmdnet.h = htons(cmd->h);
+      cmdnet.datalen = htonl(cmd->datalen);
+      cmdnet.colors = htonl(cmd->colors);
+      if(cmd->data) {
+	cmdnet.data = (xine_rle_elem_t*)malloc(cmd->datalen);
+	for(unsigned int i=0; i<cmd->datalen/4; i++) {
+	  cmdnet.data[i].len   = htons(cmd->data[i].len);
+	  cmdnet.data[i].color = htons(cmd->data[i].color);
+	}
+      } else {
+	cmdnet.data = NULL;
+      }
+      cmdnet.palette = cmd->palette;
+    } else {
+      memcpy(&cmdnet, cmd, sizeof(osd_command_t));
+    }
+    
     for(i=0; i<MAXCLIENTS; i++)
       if(fd_control[i] >= 0 && 
-	 !write_osd_command(fd_control[i], (osd_command_t*)cmd_gen)) {
+	 !write_osd_command(fd_control[i], &cmdnet)) {
 	LOGMSG("Send OSD command failed");
         CloseConnection(i);
       }
+
+    if(ntohl(0x12345678) != 0x12345678 && cmdnet.data) 
+      free(cmdnet.data);
   }
 }
 
@@ -397,7 +411,7 @@ bool cXinelibServer::Flush(int TimeoutMs)
 
   if(result) {
     char tmp[64];
-    sprintf(tmp, "FLUSH %d %lld", TimeoutMs, m_StreamPos);
+    sprintf(tmp, "FLUSH %d %" PRIu64, TimeoutMs, m_StreamPos);
     result = (PlayFileCtrl(tmp)) <= 0 && result;
   }
   return result;
@@ -663,7 +677,7 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
     delete m_Writer[cli]; \
   m_Writer[cli] = new cBackgroundWriter(fd); 
 
-void cXinelibServer::Handle_Control_PIPE(int cli, char *arg)
+void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 {
   char buf[256];
   LOGDBG("Trying PIPE connection ...");
@@ -726,7 +740,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, char *arg)
 }
 
 
-void cXinelibServer::Handle_Control_DATA(int cli, char *arg)
+void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 {
   LOGDBG("Data connection (TCP) requested");
 
@@ -762,7 +776,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, char *arg)
   CloseConnection(cli);
 }
 
-void cXinelibServer::Handle_Control_RTP(int cli, char *arg)
+void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 {
   if(xc.remote_usertp && fd_multicast>=0) {
     char buf[256];
@@ -802,7 +816,7 @@ void cXinelibServer::Handle_Control_RTP(int cli, char *arg)
   }
 }
 
-void cXinelibServer::Handle_Control_UDP(int cli, char *arg)
+void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
 {
   LOGDBG("Trying UDP connection ...");
 
@@ -835,7 +849,7 @@ void cXinelibServer::Handle_Control_UDP(int cli, char *arg)
   m_Scheduler->AddHandle(fd);
 }
 
-void cXinelibServer::Handle_Control_KEY(int cli, char *arg)
+void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
 {
   char buf[256], buf2[256];
   bool repeat=false, release=false;
@@ -905,7 +919,7 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   }
 }
 
-void cXinelibServer::Handle_Control_UDP_RESEND(int cli, char *arg)
+void cXinelibServer::Handle_Control_UDP_RESEND(int cli, const char *arg)
 {
   unsigned int seq1, seq2;
   uint64_t pos;
@@ -916,7 +930,7 @@ void cXinelibServer::Handle_Control_UDP_RESEND(int cli, char *arg)
     return;
   }
 
-  if(3 == sscanf(arg, "%d-%d %lld", &seq1, &seq2, &pos)) {
+  if(3 == sscanf(arg, "%d-%d %" PRIu64, &seq1, &seq2, &pos)) {
     
     if(seq1 <= UDP_SEQ_MASK && seq2 <= UDP_SEQ_MASK && pos <= m_StreamPos) {
 
@@ -925,15 +939,17 @@ void cXinelibServer::Handle_Control_UDP_RESEND(int cli, char *arg)
       else
 	m_Scheduler->ReSend(fd_multicast, pos, seq1, seq2);
     } else {
-      LOGMSG("Invalid re-send request: %s (send pos=%lld)", arg, m_StreamPos);
+      LOGMSG("Invalid re-send request: %s (send pos=%" PRIu64 ")", 
+	     arg, m_StreamPos);
     }
   } else {
-    LOGMSG("Invalid re-send request: %s (send pos=%lld)", arg, m_StreamPos);
+    LOGMSG("Invalid re-send request: %s (send pos=%" PRIu64 ")", 
+	   arg, m_StreamPos);
   }
 }
 
 
-void cXinelibServer::Handle_Control(int cli, char *cmd)
+void cXinelibServer::Handle_Control(int cli, const char *cmd)
 {
   TRACEF("cXinelibServer::Handle_Control");
 
@@ -979,7 +995,7 @@ void cXinelibServer::Handle_Control(int cli, char *cmd)
 
   } else if(!strncasecmp(cmd, "STC ", 4)) {
     int64_t pts = -1;
-    if(1 == sscanf(cmd, "STC %lld", &pts))
+    if(1 == sscanf(cmd, "STC %" PRId64, &pts))
       m_StcFuture->Set(pts);
 
   } else if(!strncasecmp(cmd, "ENDOFSTREAM", 11)) {

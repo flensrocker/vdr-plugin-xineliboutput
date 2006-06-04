@@ -4,9 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: frontend.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -482,11 +485,11 @@ int cXinelibThread::Xine_Control(const char *cmd, int p1)
 int cXinelibThread::Xine_Control(const char *cmd, int64_t p1)
 {
   char buf[128];
-  sprintf(buf, "%s %lld", cmd, p1);
+  sprintf(buf, "%s %" PRId64, cmd, p1);
   return Xine_Control(buf);
 }
 
-int cXinelibThread::Xine_Control(const char *cmd, char *p1)
+int cXinelibThread::Xine_Control(const char *cmd, const char *p1)
 {
   char buf[128];
   sprintf(buf, "%s %s", cmd, p1);
@@ -536,8 +539,10 @@ int cXinelibThread::ConfigureOSD(bool prescale_osd, bool unscaled_osd)
   return Xine_Control(s);
 }
 
-int cXinelibThread::ConfigurePostprocessing(char *deinterlace_method, int audio_delay, 
-					    int audio_compression, int *audio_equalizer,
+int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method, 
+					    int audio_delay, 
+					    int audio_compression, 
+					    const int *audio_equalizer,
 					    int audio_surround) 
 {
   char tmp[255];
@@ -572,7 +577,7 @@ int cXinelibThread::ConfigurePostprocessing(char *deinterlace_method, int audio_
   return r;
 }
 
-int cXinelibThread::ConfigurePostprocessing(char *name, bool on, char *args)
+int cXinelibThread::ConfigurePostprocessing(const char *name, bool on, const char *args)
 {
   char tmp[1024];  
   if(!name) name = "0";

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -922,8 +922,8 @@ static void *fe_control(void *fe_handle, const char *cmd)
   /*LOGDBG("fe_control(\"%s\")", cmd);*/
 
   if(!strncmp(cmd, "SLAVE 0x", 8)) {
-    unsigned int pt;
-    if(1 == sscanf(cmd, "SLAVE 0x%x", &pt)) {
+    unsigned long pt;
+    if(1 == sscanf(cmd, "SLAVE 0x%lx", &pt)) {
       xine_stream_t *slave_stream = (xine_stream_t*)pt;
       if(posts->slave_stream != slave_stream) {
 	fe_post_unwire(this);
@@ -943,7 +943,8 @@ static void *fe_control(void *fe_handle, const char *cmd)
 					    this->video_port);
       LOGMSG("  PIP %d: %dx%d @ (%d,%d)", pid & 0xf0, w, h, x, y);
       LOGMSG("create pip stream done");
-      sprintf(mrl, "xvdr:slave:0x%x#nocache;demux:mpeg_block",(int)this);
+      sprintf(mrl, "xvdr:slave:0x%lx#nocache;demux:mpeg_block",
+	      (unsigned long int)this);
       if(!xine_open(posts->pip_stream, mrl) ||
 	 !xine_play(posts->pip_stream, 0, 0)) {
 	LOGERR("  pip stream open/play failed");

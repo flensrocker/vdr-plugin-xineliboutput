@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.1 2006-06-03 10:01:18 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -167,8 +167,8 @@ static void fe_dest_size_cb (void *data,
  */
 
 static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen,
-			     int modeswitch, char *modeline, int aspect,
-			     fe_keypress_f keyfunc, char *video_port,
+			     int modeswitch, const char *modeline, int aspect,
+			     fe_keypress_f keyfunc, const char *video_port,
 			     int scale_video, int field_order) 
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
@@ -364,7 +364,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
  */
 static int sxfe_display_config(frontend_t *this_gen, 
 			       int width, int height, int fullscreen, 
-			       int modeswitch, char *modeline, 
+			       int modeswitch, const char *modeline, 
 			       int aspect, int scale_video, 
 			       int field_order) 
 {

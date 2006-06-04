@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.1 2006-06-03 10:01:18 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -75,7 +75,7 @@ void *kbd_receiver_thread(void *fe)
 	  break;
 	} //else {
 	
-	snprintf(str, sizeof(str), "%016LX", code);
+	snprintf(str, sizeof(str), "%016" PRIX64, code);
 	if(find_input((fe_t*)fe))
 	  process_xine_keypress(((fe_t*)fe)->input, "KBD", str, 0, 0);
       }

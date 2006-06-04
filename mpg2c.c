@@ -6,7 +6,7 @@
  *
  * mpg2.c: 
  *
- * $Id: mpg2c.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: mpg2c.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     printf("Error opening files\n");
     return -1;
   }
-  fprintf(fo, "const unsigned char v_mpg_%s[] = \n   \"", argv[1]);
+  fprintf(fo, "extern const unsigned char v_mpg_%s[] = \n   \"", argv[1]);
   while(EOF != (ch = fgetc(fi))) {
     fprintf(fo, "\\x%02x", ch);
     if(pos++ > LINELEN) {
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
       pos=1;
     }
   }
-  fprintf(fo, "\";\n\nconst int v_mpg_%s_length = sizeof(v_mpg_%s);\n\n", 
+  fprintf(fo, "\";\n\nextern const int v_mpg_%s_length = sizeof(v_mpg_%s);\n\n", 
 	  argv[1], argv[1]);
 
   fclose(fi);

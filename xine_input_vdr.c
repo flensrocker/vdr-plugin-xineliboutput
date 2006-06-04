@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
  *
  */
 
@@ -207,11 +207,11 @@ typedef struct vdr_input_plugin_s {
   fifo_buffer_t      *block_buffer;  /* blocks to be demuxed */
   fifo_buffer_t      *buffer_pool;   /* stream's video fifo */
   fifo_buffer_t      *big_buffer;    /* for jumbo PES */
-  off_t               discard_index; /* index of next byte to feed to demux; 
+  uint64_t            discard_index; /* index of next byte to feed to demux; 
 					all data before this offset will 
 					be discarded */
-  off_t               guard_index;   /* data before this offset will not be discarded */
-  off_t               curpos;        /* current position (demux side) */
+  uint64_t            guard_index;   /* data before this offset will not be discarded */
+  uint64_t            curpos;        /* current position (demux side) */
   int                 max_buffers;   /* max no. of non-demuxed buffers */
   int                 read_delay;    /* usec to wait at next read call */
 
@@ -1113,11 +1113,11 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
 						const char *data) 
 {
   fifo_input_plugin_t *slave = (fifo_input_plugin_t *) xine_xmalloc (sizeof(fifo_input_plugin_t));
-  unsigned int imaster;
+  unsigned long int imaster;
   vdr_input_plugin_t *master;
   LOGDBG("fifo_class_get_instance");
 
-  sscanf(data+4+1+5+1, "%x", &imaster);
+  sscanf(data+4+1+5+1, "%lx", &imaster);
   master = (vdr_input_plugin_t*)imaster;
 
   memset(slave, 0, sizeof(fifo_input_plugin_t));
@@ -1650,7 +1650,8 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
   if(this->curpos > this->discard_index) {
 #if 0
 #warning Check this
-    LOGMSG("Possibly flushing too much !!! (diff=%lld bytes, guard @%lld)", 
+    LOGMSG("Possibly flushing too much !!! (diff=%"PRIu64" bytes, "
+	   "guard @%" PRIu64 ")", 
 	   this->curpos - this->discard_index, this->guard_index);
 #endif
     if(this->curpos < this->guard_index) {
@@ -1968,8 +1969,8 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       set_playback_speed(this, 1);
       if(this->funcs.fe_control) {
 	char tmp[128];
-	sprintf(tmp, "SLAVE 0x%x\r\n", (int)this->slave_stream);
-	(*(this->funcs.fe_control))(this->funcs.fe_handle, tmp);
+	sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
+	this->funcs.fe_control(this->funcs.fe_handle, tmp);
       }
     } else {
       LOGMSG("Error playing file ! (File not found ? Unknown format ?)");
@@ -1985,7 +1986,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	this->slave_event_queue = NULL;
       }
       if(this->funcs.fe_control) 
-	(*(this->funcs.fe_control))(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
       xine_stop(this->slave_stream);
       xine_close(this->slave_stream);
       xine_dispose(this->slave_stream);
@@ -2009,7 +2010,7 @@ static int handle_control_substream(vdr_input_plugin_t *this, const char *cmd)
       if(!this->pip_stream) {
 LOGMSG("create pip stream %s", cmd);
         this->pip_stream = 
-	  (*(this->funcs.fe_control))(this->funcs.fe_handle, cmd);
+	  this->funcs.fe_control(this->funcs.fe_handle, cmd);
 LOGMSG("  pip stream created");
       }
     } else {
@@ -2018,7 +2019,7 @@ LOGMSG("  pip stream created");
 	LOGMSG("close pip stream");
  
 	this->pip_stream = NULL;
-	(*(this->funcs.fe_control))(this->funcs.fe_handle, cmd);
+	this->funcs.fe_control(this->funcs.fe_handle, cmd);
 	/* xine_stop(this->pip_stream); */
 	/* xine_close(this->pip_stream); */
 	/* xine_dispose(this->pip_stream); */
@@ -2250,7 +2251,7 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uin
   pthread_mutex_unlock(&this->lock);
 
   while(this->curpos < offset && timeout_ms > 0) {
-    LOGDBG("FLUSH: wait position (%lld ; need %lld)", 
+    LOGDBG("FLUSH: wait position (%" PRIu64 " ; need %" PRIu64 ")", 
 	   this->curpos, offset);
     xine_usec_sleep(3*1000);
     timeout_ms -= 3;
@@ -2294,8 +2295,8 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   int err = CONTROL_OK, i, j;
-  int32_t tmp32 = 0;
-  int64_t tmp64 = 0LL;
+  int /*int32_t*/ tmp32 = 0;
+  uint64_t tmp64 = 0ULL;
   xine_stream_t *stream = this->stream;
   static const char *str_poll = "POLL";
 
@@ -2355,7 +2356,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     signal_buffer_pool_not_empty(this);
 
   } else if(!strncasecmp(cmd, "DISCARD ", 8)) {
-    if(1 == sscanf(cmd, "DISCARD %lld", &tmp64)) {
+    if(1 == sscanf(cmd, "DISCARD %" PRIu64, &tmp64)) {
       pthread_mutex_lock(&this->lock);
       this->discard_index = tmp64;
       vdr_flush_engine(this);
@@ -2365,7 +2366,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "STREAMPOS ", 10)) {
-    if(1 == sscanf(cmd, "STREAMPOS %lld", &tmp64)) {
+    if(1 == sscanf(cmd, "STREAMPOS %" PRIu64, &tmp64)) {
       pthread_mutex_lock(&this->lock);
       vdr_flush_engine(this);
       this->curpos = tmp64;
@@ -2490,7 +2491,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
                   stream->metronom->get_option(stream->metronom, 
 					       METRONOM_VPTS_OFFSET);
     if(this->fd_control >= 0) {
-      printf_control(this, "STC %lld\r\n", pts);
+      printf_control(this, "STC %" PRId64 "\r\n", pts);
     } else {
       *((int64_t *)cmd) = pts;
     }
@@ -2500,7 +2501,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
       if(this->fd_control >= 0) {
 	tmp64 = 0ULL; 
 	tmp32 = 0;
-	sscanf(cmd, "FLUSH %d %lld", &tmp32, &tmp64);
+	sscanf(cmd, "FLUSH %d %" PRIu64, &tmp32, &tmp64);
 	err = vdr_plugin_flush_remote(this, tmp32, tmp64);
       } else {
 	err = vdr_plugin_flush(this, tmp32);
@@ -2518,7 +2519,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
     if(!this->funcs.fe_control)
       LOGERR("ERROR - no fe_control set ! (%s failed)", cmd);
     else
-      err = (int) (*(this->funcs.fe_control))(this->funcs.fe_handle, cmd);
+      this->funcs.fe_control(this->funcs.fe_handle, cmd);
 
   } else if(!strncasecmp(cmd, "PLAYFILE ", 9)) {
     err = handle_control_playfile(this, cmd);
@@ -2566,7 +2567,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
       int vpos = 0;
       if(1 == sscanf(cmd, "SUBTITLES %d", &vpos))
 	stream->xine->config->update_num(stream->xine->config,
-		          "subtitles.separate.vertical_offset",vpos);
+		          "subtitles.separate.vertical_offset", vpos);
       else
 	err = CONTROL_PARAM_ERROR;
     }
@@ -2867,7 +2868,8 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
     pthread_mutex_unlock(&this->vdr_entry_lock);
     pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
     while(result <= 5) {
-      TRACE("vdr_plugin_poll waiting (max %d ms), %d bufs free (rd pos=%lld)",
+      TRACE("vdr_plugin_poll waiting (max %d ms), "
+	    "%d bufs free (rd pos=%" PRIu64 ")",
 	    timeout_ms, this->buffer_pool->buffer_pool_num_free, this->curpos);      
       if(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
 				 &this->buffer_pool->buffer_pool_mutex, 
@@ -2956,7 +2958,7 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
   pthread_mutex_lock(&pool->buffer_pool_mutex);
   while(result > 0 && waitresult != ETIMEDOUT) {
     TRACE("vdr_plugin_flush waiting (max %d ms), %d+%d buffers used, "
-	  "%d frames (rd pos=%lld)\n", timeout_ms,
+	  "%d frames (rd pos=%" PRIu64 ")\n", timeout_ms,
 	  pool->fifo_size, this->block_buffer->fifo_size,
 	  (int)this->stream->video_out->get_property(this->stream->video_out, 
 						     VO_PROP_BUFS_IN_FIFO),
@@ -3207,7 +3209,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  /* Re-send failed */ 
 	  int seq1 = 0, seq2 = 0;
 	  uint64_t rpos = 0ULL;
-	  sscanf((char*)pkt_data, "UDP MISSING %d-%d %llu", 
+	  sscanf((char*)pkt_data, "UDP MISSING %d-%d %" PRIu64, 
 		 &seq1, &seq2, &rpos);
 	  read_buffer->size = sizeof(stream_udp_header_t);
 	  read_buffer->type = BUF_MAJOR_MASK;
@@ -3323,7 +3325,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	while(!udp->queue[current_seq] && --max_req > 0) 
 	  INCSEQ(current_seq);
 	
-	printf_control(this, "UDP RESEND %d-%d %lld\r\n", 
+	printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n", 
 			udp->next_seq, PREVSEQ(current_seq), udp->queue_input_pos);
 	udp->resend_requested = 
 	  (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
@@ -3486,7 +3488,7 @@ LOGMSG("  pip substream: no stream !");
       LOGMSG("vdr_plugin_write: jumbo PES (%d bytes), "
 	     "not enough free buffers !", len);
     LOGMSG("vdr_plugin_write: buffer overflow ! "
-	   "(rd pos=%lld) block_buffer=%du/%df,buffer_pool=%du/%df", 
+	   "(rd pos=%" PRIu64 ") block_buffer=%du/%df,buffer_pool=%du/%df", 
 	   this->curpos, this->block_buffer->size(this->block_buffer), 
 	   this->block_buffer->num_free(this->block_buffer), 
 	   this->buffer_pool->size(this->buffer_pool), 
@@ -3552,7 +3554,7 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
     return 0;
   }
 
-  TRACE("vdr_plugin_read: reading %lld bytes...", len);
+  TRACE("vdr_plugin_read: reading %" PRIu64 " bytes...", (uint64_t)len);
 
   while (total<len) {
 
@@ -3581,11 +3583,11 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
     }
     pthread_mutex_unlock(&this->lock);
 
-    TRACE("vdr_plugin_read: got %lld bytes (%lld/%lld bytes read)", 
-	  n, total, len);
+    TRACE("vdr_plugin_read: got %" PRIu64 " bytes (%" PRIu64 "/%" PRIu64 " bytes read)", 
+	  (uint64_t)n, (uint64_t)total, (uint64_t)len);
   }
 
-  TRACE("vdr_plugin_read returns %lld bytes",total);
+  TRACE("vdr_plugin_read returns %" PRIu64 " bytes", (uint64_t)total);
 
   return total;
 }
@@ -3687,15 +3689,17 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     this->curpos += buf->size;
     if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
       pthread_mutex_unlock(&this->lock);
-      TRACE("DISCARD: curpos=%lld, discard_index=%lld",
-	    this->curpos,this->discard_index);
+      TRACE("DISCARD: curpos=%" PRIu64 ", discard_index=%" PRIu64,
+	    this->curpos, this->discard_index);
       buf->free_buffer(buf);
       buf = NULL;
     } else {
 #if 0
-if(this->guard_index >= this->curpos) 
-  LOGMSG("guard index: %lld, discard index: %lld, pos: %lld, diff: %d", 
-	 this->discard_index, this->guard_index, this->curpos, this->discard_index-this->guard_index);
+      if(this->guard_index >= this->curpos) 
+	LOGMSG("guard index: %" PRIu64 ", discard index: %" PRIu64 ", "
+	       "pos: %" PRIu64" , diff: %" PRIu64, 
+	       this->discard_index, this->guard_index, 
+	       this->curpos, this->discard_index-this->guard_index);
 #endif
       if(this->stream_start)
 	this->send_pts = 1;
@@ -3744,7 +3748,7 @@ if(this->guard_index >= this->curpos)
   }
 #endif
 
-  TRACE("vdr_plugin_read_block: return data, pos end = %lld", this->curpos);
+  TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
   buf->type = BUF_DEMUX_BLOCK;
   return buf;
 }
@@ -3755,7 +3759,7 @@ static off_t vdr_plugin_seek (input_plugin_t *this_gen, off_t offset,
 #if 0
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
 
-  TRACE("Seek %lld bytes, origin %d", offset, origin); 
+  TRACE("Seek %" PRIu64 " bytes, origin %d", (uint64_t)offset, origin); 
 
   /* only relative forward-seeking is implemented */
   pthread_mutex_lock(&this->lock);
@@ -3828,7 +3832,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   if (this->slave_stream) {
     if(this->funcs.fe_control) 
-      (*(this->funcs.fe_control))(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+      this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
     xine_stop(this->slave_stream);
     xine_close(this->slave_stream);
     xine_dispose(this->slave_stream);
