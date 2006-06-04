@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.2 2006-06-04 05:54:50 phintuka Exp $
  *
  */
 
@@ -621,7 +621,6 @@ bool cXinelibServer::Listen(int listen_port)
       struct sockaddr_in sin;
       sin.sin_family = sin.sin_family = AF_INET;
       sin.sin_port = sin.sin_port = htons(xc.remote_rtp_port);
-      //sin.sin_addr.s_addr = htonl(0xe0000109); //inet_addr(sAddr);
       sin.sin_addr.s_addr = inet_addr(xc.remote_rtp_addr);
 
       if(connect(fd_multicast, (struct sockaddr *)&sin, sizeof(sin))==-1 && 
@@ -749,8 +748,8 @@ void cXinelibServer::Handle_Control_DATA(int cli, char *arg)
     m_iUdpFlowMask &= ~(1<<clientId);
     m_iMulticastMask &= ~(1<<clientId);
     cli = clientId;
-    
-    write(fd, "DATA\r\n", 6);
+       
+    write_cmd(fd, "DATA\r\n");
     
     CREATE_NEW_WRITER;   
 
@@ -771,20 +770,17 @@ void cXinelibServer::Handle_Control_RTP(int cli, char *arg)
 
     CloseDataConnection(cli);
 
-    // TODO: rtp address & port -> config
-    //sprintf(buf, "RTP 224.0.1.9:%d\r\n", m_Port);
     sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
-    write(fd_control[cli], buf, strlen(buf));
-
+    write_cmd(fd_control[cli], buf);
 
     stream_udp_header_t nullhdr;
     nullhdr.pos = m_StreamPos;
     nullhdr.seq = 0xffff;//-1;//m_UdpSeqNo;
-    //strcpy(buf, "RTP 224.0.1.9:" );
+
     struct sockaddr_in sin;
     sin.sin_family = sin.sin_family = AF_INET;
-    sin.sin_port = sin.sin_port = htons(m_Port);
-    sin.sin_addr.s_addr = htonl(0xe0000109); //inet_addr(sAddr);
+    sin.sin_port = sin.sin_port = htons(xc.remote_rtp_port);
+    sin.sin_addr.s_addr = inet_addr(xc.remote_rtp_addr);
 
     if(sizeof(nullhdr) != 
        sendto(fd_multicast, &nullhdr, sizeof(nullhdr), 0, 
@@ -801,8 +797,8 @@ void cXinelibServer::Handle_Control_RTP(int cli, char *arg)
     m_iMulticastMask |= (1<<cli);
     
   } else {
-    write(fd_control[cli], "RTP NONE\r\n", 10);
     LOGMSG("RTP transports disabled");
+    write_cmd(fd_control[cli], "RTP NONE\r\n");
   }
 }
 
