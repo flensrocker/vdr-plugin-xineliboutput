@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.3 2006-06-04 11:40:58 phintuka Exp $
  *
  */
 
@@ -231,7 +231,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   }
   if (!this->display) {
     LOGERR("sxfe_display_open: failed to connect to X server");
-    free(this);
+    /*free(this);*/
     return 0;
   }
 
