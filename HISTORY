@@ -1,6 +1,9 @@
 VDR Plugin 'xineliboutput' Revision History
 --------------------------------
 
+- OSD endian problems fixed
+- More x64 fixes
+
 2006-06-03: Version 0.99rc4
 - Fixed missing audio after trick speed modes (thanks to Tero Saarni)
 - Fixed fullscreen size detection with frame buffer / DirectFB
