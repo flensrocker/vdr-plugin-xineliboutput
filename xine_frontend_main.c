@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.3 2006-06-06 07:57:41 phintuka Exp $
  *
  */
 
@@ -39,11 +39,75 @@ pthread_t kbd_thread;
 struct termios tm, saved_tm;
 volatile int terminate_key_pressed = 0;
 
-void *kbd_receiver_thread(void *fe) 
+static int read_key(void)
 {
+  /* from vdr, remote.c */
   struct pollfd pfd;
-  char ch;
-  int err;
+  pfd.fd = STDIN_FILENO;
+  pfd.events = POLLIN;
+  if(poll(&pfd, 1, 50) == 1) {
+    unsigned char ch = 0;
+    int r = read(STDIN_FILENO, &ch, 1);
+    if (r == 1)
+      return (int)ch;
+    if (r < 0) {
+      LOGERR("read_key: read failed");
+      return -2;
+    }
+  }
+  return -1;
+}
+
+static uint64_t read_key_seq(void)
+{
+  /* from vdr, remote.c */
+  uint64_t k = 0;
+  int key1;
+  
+  if ((key1 = read_key()) >= 0) {
+    k = key1;
+    if (key1 == 0x1B) {
+      // Start of escape sequence
+      if ((key1 = read_key()) >= 0) {
+	k <<= 8;
+	k |= key1 & 0xFF;
+	switch (key1) {
+	  case 0x4F: // 3-byte sequence
+	    if ((key1 = read_key()) >= 0) {
+	      k <<= 8;
+	      k |= key1 & 0xFF;
+	    }
+	    break;
+	  case 0x5B: // 3- or more-byte sequence
+	    if ((key1 = read_key()) >= 0) {
+	      k <<= 8;
+	      k |= key1 & 0xFF;
+	      switch (key1) {
+	        case 0x31 ... 0x3F: // more-byte sequence
+	        case 0x5B: // strange, may apparently occur
+		  do {
+		    if ((key1 = read_key()) < 0)
+		      break; // Sequence ends here
+		    k <<= 8;
+		    k |= key1 & 0xFF;
+		  } while (key1 != 0x7E);
+		  break;
+	      }
+	    }
+	    break;
+	}
+      }
+    }
+  }
+  if(key1==-2)
+    return 0xffff;
+  return k;
+}
+
+static void *kbd_receiver_thread(void *fe) 
+{
+  uint64_t code = 0;
+  char str[64];
 
   terminate_key_pressed = 0;
 
@@ -58,31 +122,23 @@ void *kbd_receiver_thread(void *fe)
   }
 
   do {
-    errno = 0;
-    pfd.fd = STDIN_FILENO;
-    pfd.events = POLLIN;
-    err = poll(&pfd, 1, 250);
-    if(err==1) {
-      if(1 == read(STDIN_FILENO, &ch, 1)) {
-	/* forward keyboard input to server */
-	uint64_t code = ch;
-	char str[64];
-	while(poll(&pfd,1,0) == 1 && read(STDIN_FILENO,&ch,1) == 1)
-	  code = (code<<8) | (ch & 0xff);
-
-	if(code == 27) { //ch == 'q' || ch == 'Q' /*|| ch == 27*/) {
-	  terminate_key_pressed = 1;
-	  break;
-	} //else {
-	
-	snprintf(str, sizeof(str), "%016" PRIX64, code);
-	if(find_input((fe_t*)fe))
-	  process_xine_keypress(((fe_t*)fe)->input, "KBD", str, 0, 0);
-      }
+    errno = 0;    
+    code = read_key_seq();
+    if(code == 0)
+      continue;
+    if(code == 27) {
+      terminate_key_pressed = 1;
+      break;
     }
-    
-  } while(err >= 0 || errno == EINTR);
+    if(code == 0xffff) 
+      break;
 
+    snprintf(str, sizeof(str), "%016" PRIX64, code);
+    if(find_input((fe_t*)fe))
+      process_xine_keypress(((fe_t*)fe)->input, "KBD", str, 0, 0);
+
+  } while(!terminate_key_pressed && code != 0xffff);
+  
   LOGMSG("Keyboard thread terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
   pthread_exit(NULL);

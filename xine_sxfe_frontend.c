@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.3 2006-06-04 11:40:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.4 2006-06-06 07:57:41 phintuka Exp $
  *
  */
 
@@ -465,20 +465,21 @@ static int sxfe_run(frontend_t *this_gen)
     struct pollfd pfd[2];
     pfd[0].fd = ConnectionNumber(this->display);
     pfd[0].events = POLLIN;
-    if(poll(pfd, 1, 500) < 1 || !(pfd[0].revents & POLLIN)) {
+    if(poll(pfd, 1, 50) < 1 || !(pfd[0].revents & POLLIN)) {
       return 1;
     }
   }
-  
-  XNextEvent (this->display, &event);
 
-  switch (event.type) {
-    case Expose:
-      if (event.xexpose.count == 0)
-	xine_gui_send_vo_data (this->stream, XINE_GUI_SEND_EXPOSE_EVENT, &event);
-      break;
-
-    case ConfigureNotify:
+  while(keep_going && XPending(this->display) > 0) {
+    XNextEvent (this->display, &event);
+    
+    switch (event.type) {
+      case Expose:
+	if (event.xexpose.count == 0)
+	  xine_gui_send_vo_data (this->stream, XINE_GUI_SEND_EXPOSE_EVENT, &event);
+	break;
+	
+      case ConfigureNotify:
       {
 	XConfigureEvent *cev = (XConfigureEvent *) &event;
 	Window tmp_win;
@@ -499,8 +500,8 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
       }
 
-    case KeyPress:
-    case KeyRelease:
+      case KeyPress:
+      case KeyRelease:
       {
 	XKeyEvent *kevent = (XKeyEvent *) &event;
 	KeySym          ks;
@@ -525,7 +526,7 @@ static int sxfe_run(frontend_t *this_gen)
       }
       break;
       
-    case ClientMessage:
+      case ClientMessage:
       {
 	XClientMessageEvent *cmessage = (XClientMessageEvent *) &event;	
 	if ( cmessage->message_type == this->sxfe_interrupt )
@@ -535,10 +536,11 @@ static int sxfe_run(frontend_t *this_gen)
 	  /* we got a window deletion message from out window manager.*/
 	  keep_going=0;
       }
+    }
+    
+    if (event.type == this->completion_event)
+      xine_gui_send_vo_data (this->stream, XINE_GUI_SEND_COMPLETION_EVENT, &event);
   }
-
-  if (event.type == this->completion_event)
-    xine_gui_send_vo_data (this->stream, XINE_GUI_SEND_COMPLETION_EVENT, &event);
 
   return keep_going;
 }
