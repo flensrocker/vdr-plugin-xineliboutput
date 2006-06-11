@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: device.c,v 1.3 2006-06-11 19:08:05 phintuka Exp $
  *
  */
 
@@ -133,25 +133,7 @@ void cXinelibStatusMonitor::Replaying(const cControl *Control,
 
 //----------------------------- device ----------------------------------------
 
-#ifdef USENOPPLAYER
-class cNopControl : public cControl {
-public:
-  cNopControl() : cControl(new cPlayer()) 
-    { LOGMSG("cNopControl created"); }
-  ~cNopControl() 
-    { LOGMSG("cNopControl destroyed"); }
-  virtual void Hide(void) {};
-
-  static int NopPlayerActivated;
-};
-
-int cNopControl::NopPlayerActivated = 0;
-#endif
-
-//
 // Singleton
-//
-
 cXinelibDevice* cXinelibDevice::m_pInstance = NULL;
 
 cXinelibDevice& cXinelibDevice::Instance(void) 
@@ -256,14 +238,6 @@ bool cXinelibDevice::StartDevice()
   CreateTimerEvent(this, &cXinelibDevice::CheckInactivityTimer, 60*1000, false);
 #endif
 
-#ifdef USENOPPLAYER
-  if(!m_local) {
-    LOGMSG("No clients, activating cNopControl");
-    cControl::Launch(new cNopControl);
-    cNopControl::NopPlayerActivated = true;
-  }
-#endif
-
   LOGDBG("cXinelibDevice::StartDevice(): Device started");
   return true;
 }
@@ -308,13 +282,6 @@ void cXinelibDevice::ForcePrimaryDevice(bool On)
 
   if(On) {
     Counter++;
-#ifdef USENOPPLAYER
-    if(cNopControl::NopPlayerActivated) {
-      LOGMSG("First client, stopping cNopControl");
-      cControl::Shutdown();
-      cNopControl::NopPlayerActivated = false;
-    }
-#endif
     if(xc.force_primary_device) {
       if(cDevice::PrimaryDevice() && this != cDevice::PrimaryDevice()) {
 	/* TODO: may need to use vdr main thread for this */
@@ -335,7 +302,7 @@ void cXinelibDevice::ForcePrimaryDevice(bool On)
   } else /* Off */ {
     Counter--;
     if(Counter<0)
-      LOGMSG("Internal error (ForcePrimaryDevice < 0)");
+      LOGMSG("ForcePrimaryDevice: Internal error (ForcePrimaryDevice < 0)");
     if(!Counter) {
       if(Original) {
 	LOGMSG("Restoring original primary device %d", Original);
@@ -350,13 +317,6 @@ void cXinelibDevice::ForcePrimaryDevice(bool On)
 	cDevice::SetPrimaryDevice(Original);
 	Original = 0;
       }
-#ifdef USENOPPLAYER
-      if(!m_local && !cControl::Control()) {
-	LOGMSG("No clients, activating cNopControl");
-	cControl::Launch(new cNopControl);
-	cNopControl::NopPlayerActivated = true;
-      }
-#endif
     }
   }
 }

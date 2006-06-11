@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: frontend_local.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
  *
  */
 
@@ -246,11 +246,11 @@ frontend_t *cXinelibLocal::load_frontend(const char *fe_name)
   if(strrchr(libname, '/')) 
     *(strrchr(libname, '/')+1) = 0;
   
-  LOGMSG("Searching frontend %s from %s", xc.s_frontends[fe_ind], libname);
+  LOGDBG("Searching frontend %s from %s", xc.s_frontends[fe_ind], libname);
 
   do {
     strcat(libname, xc.s_frontend_files[fe_ind]);
-    LOGMSG("Probing %s", libname);
+    LOGDBG("Probing %s", libname);
 
     if (stat(libname, &statbuffer)) {
       LOGERR("load_frontend: can't stat %s",libname);
@@ -272,7 +272,7 @@ frontend_t *cXinelibLocal::load_frontend(const char *fe_name)
 	  dlclose(h_fe_lib);
 	h_fe_lib = lib;
 
-	LOGMSG("Using frontend %s (%s) from %s", 
+	LOGDBG("Using frontend %s (%s) from %s", 
 	       xc.s_frontends[fe_ind], xc.s_frontendNames[fe_ind], 
 	       xc.s_frontend_files[fe_ind]);
 	
@@ -437,7 +437,7 @@ void cXinelibLocal::Action(void)
       fe = NULL;
     }
 
-    LOGMSG("cXinelibLocal::Action - Xine closed");
+    LOGMSG("cXinelibLocal::Action: Xine closed");
   }
 
   if(curr_fe) {
@@ -447,6 +447,6 @@ void cXinelibLocal::Action(void)
   }
 
   m_bIsFinished = true;
-  LOGMSG("cXinelibLocal::Action - finished");
+  LOGMSG("cXinelibLocal::Action: thread finished");
 }
 

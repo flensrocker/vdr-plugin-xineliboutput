@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.5 2006-06-11 15:44:40 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.6 2006-06-11 19:08:05 phintuka Exp $
  *
  */
 
@@ -2172,10 +2172,8 @@ static int control_read_cmd(vdr_input_plugin_t *this, char *buf, int maxlen)
     if (num_bytes <= 0) {
       LOGERR("control_read_cmd read error at [%d]", num_bytes);
       if(num_bytes < 0 && errno == EINTR && this->fd_control >= 0) {
-LOGMSG("EINTR - continue");
 	continue;
       }
-LOGMSG("return -1");
       return -1;
     }
       
@@ -3144,7 +3142,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	 Waiting for free buffers just makes things worse ... */
       if(num_free < 5) {
 	if(!this->is_paused) {
-	  LOGMSG("UDP Fifo buffer full !");
+	  LOGDBG("UDP Fifo buffer full !");
 
 	  if(this->scr && !udp->scr_jump_done) {
 	    pvrscr_skip_frame (this->scr);
@@ -3834,7 +3832,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   if(!this_gen)
     return;
 
-  LOGMSG("vdr_plugin_dispose");
+  LOGDBG("vdr_plugin_dispose");
 
   if (this->slave_event_queue) 
     xine_event_dispose_queue (this->slave_event_queue);

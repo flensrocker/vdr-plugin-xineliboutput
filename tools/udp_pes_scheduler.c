@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.3 2006-06-11 15:50:47 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
  *
  */
 
@@ -516,7 +516,7 @@ void cUdpScheduler::Action(void)
 #endif
 	    {
 	      if(m_QueuePending > (MAX_QUEUE_SIZE-5))
-		LOGMSG("cUdpScheduler: kernel transmit queue > ~30kb ! (master=%d ; Queue=%d)", 
+		LOGDBG("cUdpScheduler: kernel transmit queue > ~30kb ! (master=%d ; Queue=%d)", 
 		       m_Master, m_QueuePending);
 	      CondWait.Wait(2);
 	    }

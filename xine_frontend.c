@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
  *
  */
 
@@ -570,7 +570,7 @@ static int fe_post_close(fe_t *this, const char *name, int which)
 
   /* by name */
   if(name) {
-    LOGMSG("closing post plugin: %s", name);
+    LOGDBG("closing post plugin: %s", name);
     if(applugin_unload_post(posts, name)) {
       /*LOGDBG("  * rewiring audio");*/
       applugin_rewire_posts(posts);
@@ -589,7 +589,7 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     if(posts->post_vis_elements_num && 
        posts->post_vis_elements &&   
        posts->post_vis_elements[0]) {
-      LOGMSG("Closing audio visualization post plugins");
+      LOGDBG("Closing audio visualization post plugins");
       if(applugin_unload_post(posts, posts->post_vis_elements[0]->name)) {
 	/*LOGDBG("  * rewiring audio");*/
 	applugin_rewire_posts(posts);
@@ -599,7 +599,7 @@ static int fe_post_close(fe_t *this, const char *name, int which)
   }
 
   if(which == POST_AUDIO || which < 0) { /* audio effect(s) */
-    LOGMSG("Closing audio post plugins");
+    LOGDBG("Closing audio post plugins");
     if(applugin_disable_post(posts, NULL)) {
       /*LOGDBG("  * rewiring audio");*/
       applugin_rewire_posts(posts);
@@ -607,7 +607,7 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     }
   }
   if(which == POST_VIDEO || which < 0) { /* video effect(s) */
-    LOGMSG("Closing video post plugins");
+    LOGDBG("Closing video post plugins");
     if(vpplugin_unload_post(posts, NULL)) {
       /*LOGDBG("  * rewiring video");*/
       vpplugin_rewire_posts(posts);
@@ -619,7 +619,7 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     if(posts->post_pip_elements_num && 
        posts->post_pip_elements &&   
        posts->post_pip_elements[0]) {
-      LOGMSG("Closing PIP (mosaico) post plugins");
+      LOGDBG("Closing PIP (mosaico) post plugins");
       if(vpplugin_unload_post(posts, "mosaico")) {
 	/*LOGDBG("  * rewiring video");*/
 	vpplugin_rewire_posts(posts);
@@ -1081,7 +1081,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   if(!this->input && !find_input(this))
     return 0;
 
-  LOGMSG("fe_grab: grabbing %s %d %dx%d", 
+  LOGDBG("fe_grab: grabbing %s %d %dx%d", 
 	 jpeg ? "JPEG" : "PNM", quality, width, height);
 
   if (quality < 0 || quality > 100)
