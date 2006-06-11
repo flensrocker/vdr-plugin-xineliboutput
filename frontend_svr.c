@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.5 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.6 2006-06-11 21:02:54 phintuka Exp $
  *
  */
 
@@ -414,6 +414,7 @@ bool cXinelibServer::Flush(int TimeoutMs)
     sprintf(tmp, "FLUSH %d %" PRIu64, TimeoutMs, m_StreamPos);
     result = (PlayFileCtrl(tmp)) <= 0 && result;
   }
+
   return result;
 }
 

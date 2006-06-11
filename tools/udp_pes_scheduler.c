@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.5 2006-06-11 21:02:54 phintuka Exp $
  *
  */
 
@@ -220,8 +220,8 @@ void cUdpScheduler::Clear(void)
   cMutexLock ml(&m_Lock);
 
   m_BackLog->Clear(m_QueuePending);
+
   m_QueuePending = 0;
-  
   m_Cond.Broadcast();
 }
 
@@ -414,9 +414,11 @@ void cUdpScheduler::Action(void)
 	static unsigned char padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
 	int prevseq = (m_QueueNextSeq + UDP_BUFFER_SIZE - 1) & UDP_BUFFER_MASK;
 	stream_udp_header_t *frame = m_BackLog->Get(prevseq);
-	if(frame)
-	  m_BackLog->MakeFrame(ntohll(frame->pos), padding, 8);
-	else
+	if(frame) {
+	  int prevlen = m_BackLog->PayloadSize(prevseq);
+	  uint64_t pos = ntohll(frame->pos) + prevlen - 8;
+	  m_BackLog->MakeFrame(pos, padding, 8);
+	} else
 	  m_BackLog->MakeFrame(0, padding, 8);
 	m_QueuePending++;
       }

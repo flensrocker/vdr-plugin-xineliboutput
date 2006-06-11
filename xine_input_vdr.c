@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.6 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.7 2006-06-11 21:02:54 phintuka Exp $
  *
  */
 
@@ -2248,7 +2248,6 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms);
 static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uint64_t offset)
 {
   int r;
-  buf_element_t *bufelem;
 
   pthread_mutex_lock(&this->lock);
   this->live_mode = 0; /* --> 1 again when data arrives ... */
@@ -2259,8 +2258,8 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uin
   pthread_mutex_unlock(&this->lock);
 
   while(this->curpos < offset && timeout_ms > 0) {
-    LOGDBG("FLUSH: wait position (%" PRIu64 " ; need %" PRIu64 ")", 
-	   this->curpos, offset);
+    TRACE("FLUSH: wait position (%" PRIu64 " ; need %" PRIu64 ")", 
+	  this->curpos, offset);
     xine_usec_sleep(3*1000);
     timeout_ms -= 3;
   }
@@ -2273,17 +2272,10 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uin
   }
   pthread_mutex_unlock(&this->lock);
 
-  bufelem = this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
-  if(bufelem) {
-    bufelem->type = BUF_CONTROL_FLUSH_DECODER;
-    this->block_buffer->put(this->block_buffer, bufelem);
-  }
-
-  r = vdr_plugin_flush(this, timeout_ms);
+  r = vdr_plugin_flush(this, MAX(5, timeout_ms));
   printf_control(this, "RESULT %d %d\r\n", this->token, r);
 
   xine_usec_sleep(20*1000);
-  /*#warning test sleep*/
 
   this->live_mode = 1;
 
@@ -2973,23 +2965,23 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 
   create_timeout_time(&abstime, timeout_ms);
 
-  pthread_mutex_lock(&pool->buffer_pool_mutex);
   while(result > 0 && waitresult != ETIMEDOUT) {
     TRACE("vdr_plugin_flush waiting (max %d ms), %d+%d buffers used, "
 	  "%d frames (rd pos=%" PRIu64 ")\n", timeout_ms,
-	  pool->fifo_size, this->block_buffer->fifo_size,
+	  pool->size(pool), this->block_buffer->size(this->block_buffer),
 	  (int)this->stream->video_out->get_property(this->stream->video_out, 
 						     VO_PROP_BUFS_IN_FIFO),
 	  this->curpos);
 
+    pthread_mutex_lock(&pool->buffer_pool_mutex);
     waitresult = pthread_cond_timedwait (&pool->buffer_pool_cond_not_empty, 
 					 &pool->buffer_pool_mutex, &abstime);
-    result = MAX(0, pool->fifo_size) +
-             MAX(0, this->block_buffer->fifo_size) +
+    pthread_mutex_unlock(&pool->buffer_pool_mutex);
+    result = MAX(0, pool->size(pool)) +
+             MAX(0, this->block_buffer->size(this->block_buffer)) +
              this->stream->video_out->get_property(this->stream->video_out, 
 						   VO_PROP_BUFS_IN_FIFO);
   }
-  pthread_mutex_unlock(&pool->buffer_pool_mutex);
 
   TRACE("vdr_plugin_flush returns %d (%d+%d used, %d frames)\n", result,
 	pool->size(pool), 
@@ -3683,6 +3675,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       continue;
     loops=0;
 
+    pthread_mutex_lock(&this->lock);
     if(buf->type == BUF_MAJOR_MASK) {
       /* Strip network headers */
       if(this->udp||this->rtp) {
@@ -3700,10 +3693,10 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     /* control buffers go always to demuxer */
     if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE) {
+      pthread_mutex_unlock(&this->lock);
       return buf;
     }
-
-    pthread_mutex_lock(&this->lock);
+    
     this->curpos += buf->size;
     if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
       pthread_mutex_unlock(&this->lock);
