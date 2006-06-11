@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: osd.c,v 1.2 2006-06-11 10:21:43 phintuka Exp $
  *
  */
 
@@ -55,6 +55,11 @@ static inline void CmdClose(cXinelibDevice *Device, int wnd)
   }
 }
 
+static inline int saturate(int x, int min, int max)
+{
+  return x < min ? min : (x > max ? max : x);
+}
+
 static inline void RleCmd(cXinelibDevice *Device, int wnd,
                 int x0, int y0, int w, int h, unsigned char *data,
                 int colors, unsigned int *palette)
@@ -71,6 +76,7 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
     xine_clut_t clut[256];
 
     memset(&osdcmd, 0, sizeof(osdcmd));
+    memset(&clut, 0, sizeof(clut));
     osdcmd.cmd = OSD_Set_RLE;
     osdcmd.wnd = wnd;
     osdcmd.x = x0;
@@ -79,10 +85,12 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
     osdcmd.h = h;
 
     /* apply alpha layer correction and convert ARGB -> AYCrCb */
+
     if (colors) {
       for(int c=0; c<colors; c++) {
 	int alpha = (palette[c] & 0xff000000)>>24;
 	alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
+#if 0 // FLOAT_COLORSPACE_CONVERSION
 	float R  = (float)((palette[c] & 0x00ff0000)>>16);
 	float G  = (float)((palette[c] & 0x0000ff00)>>8);
 	float B  = (float)((palette[c] & 0x000000ff));
@@ -96,6 +104,18 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
 	clut[c].cb = cb<0?0 : cb>0xff?0xff : cb;
 	clut[c].cr = cr<0?0 : cr>0xff?0xff : cr;
 	clut[c].alpha = alpha<0?0 : alpha>0xff?0xff : alpha;
+#else
+	int R     = ((palette[c] & 0x00ff0000) >> 16);
+	int G     = ((palette[c] & 0x0000ff00) >>  8);
+	int B     = ((palette[c] & 0x000000ff));
+	int Y     = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
+	int CR    = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
+	int CB    = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
+	clut[c].y     = saturate(    Y, 16, 235);
+	clut[c].cb    = saturate(   CB, 16, 240);
+	clut[c].cr    = saturate(   CR, 16, 240);
+	clut[c].alpha = saturate(alpha,  0, 255);
+#endif
       }
     }
 
@@ -136,7 +156,7 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
     osdcmd.datalen = 4 * num_rle;
     
     TRACE("xinelib_osd.c:RleCmd uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
-    
+
     Device->OsdCmd((void*)&osdcmd);
 
     if(osdcmd.data)
