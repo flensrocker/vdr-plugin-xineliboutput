@@ -1,8 +1,12 @@
 VDR Plugin 'xineliboutput' Revision History
 --------------------------------
 
+2006-06-11: Version 0.99rc5
 - OSD endian problems fixed
-- More x64 fixes
+- More x64 fixes (Thanks to Anssi Hannula)
+- Better TCP and PIPE disconnection detection
+- Fixed possible race conditions in xine input plugin
+- Fixed image player (reported by Petri Helin)
 
 2006-06-03: Version 0.99rc4
 - Fixed missing audio after trick speed modes (thanks to Tero Saarni)
