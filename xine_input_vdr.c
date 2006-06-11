@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.4 2006-06-11 10:18:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.5 2006-06-11 15:44:40 phintuka Exp $
  *
  */
 
@@ -169,6 +169,7 @@ typedef struct vdr_input_plugin_s {
   xine_stream_t      *pip_stream;
   xine_stream_t      *slave_stream;
   xine_event_queue_t *slave_event_queue;
+  int                 loop_play;
 
   /* Sync */
   pthread_mutex_t     lock;
@@ -1936,6 +1937,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   while(*pt == ' ') pt++;
 
   strncpy(filename, pt, 1023);
+  filename[1023] = 0;
   if(strchr(filename,'\r'))
     *strchr(filename,'\r') = 0;
   if(strchr(filename,'\n'))
@@ -1945,6 +1947,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	 loop, pos, *filename ? filename : "<STOP>" );
 
   if(*filename) {
+    this->loop_play = 0;
+    if(this->slave_stream) {
+      handle_control_playfile(this, "PLAYFILE 0");
+    }
     subs = FindSubFile(filename);
     if(subs) {
       LOGMSG("Found subtitles: %s", subs);
@@ -1963,8 +1969,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 				       vdr_event_cb, this);
 
     err = !xine_open(this->slave_stream, filename);
-    if(!err)
+    if(!err) {
+      this->loop_play = loop;
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
+    }
     if(!err) {
       set_live_mode(this, 0);
       set_playback_speed(this, 1);
@@ -1981,6 +1989,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 
   if(!*filename) {
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
+    this->loop_play = 0;
     if(this->slave_stream) {
       if (this->slave_event_queue) {
 	xine_event_dispose_queue (this->slave_event_queue);
@@ -2804,11 +2813,18 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	if(this->fd_control >= 0) {
 	  write_control(this, "ENDOFSTREAM\r\n");
 	} else {
-	  /* forward to vdr-fe (listening only VDR stream events) */
-	  xine_event_t event;
-	  event.data_length = 0;
-	  event.type        = XINE_EVENT_UI_PLAYBACK_FINISHED;
-	  xine_event_send (this->stream, &event);
+	  if(!this->loop_play) {
+	    /* forward to vdr-fe (listening only VDR stream events) */
+	    xine_event_t event;
+	    event.data_length = 0;
+	    event.type        = XINE_EVENT_UI_PLAYBACK_FINISHED;
+	    xine_event_send (this->stream, &event);
+	  } else {
+#if 0
+	    xine_usec_sleep(500*1000);
+	    xine_play(this->slave_stream, 0, 0);
+#endif
+	  }
 	}
       }
       break;
