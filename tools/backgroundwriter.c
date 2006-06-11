@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.1 2006-06-03 10:04:27 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.2 2006-06-11 10:19:50 phintuka Exp $
  *
  */
 
@@ -21,6 +21,7 @@
 //#define DISABLE_DISCARD
 //#define LOG_DISCARDS
 
+#define MAX_OVERFLOWS_BEFORE_DISCONNECT 500 // ~ 1 second
 
 cBackgroundWriter::cBackgroundWriter(int fd, int Size) 
   : m_RingBuffer(Size, sizeof(stream_tcp_header_t))
@@ -32,6 +33,8 @@ cBackgroundWriter::cBackgroundWriter(int fd, int Size)
   m_PutPos = 0;
   m_DiscardStart = 0;
   m_DiscardEnd   = 0;
+
+  m_BufferOverflows = 0;
 
   LOGDBG("cBackgroundWriter initialized (buffer %d kb)", Size/1024);
 
@@ -196,12 +199,19 @@ int cBackgroundWriter::Put(const uchar *Header, int HeaderCount,
     LOCK_THREAD;  
     
     if(m_RingBuffer.Free() < HeaderCount+DataCount) {
-      LOGMSG("cXinelibServer: TCP buffer overflow !");
+      //LOGMSG("cXinelibServer: TCP buffer overflow !");
+      if(m_BufferOverflows++ > MAX_OVERFLOWS_BEFORE_DISCONNECT) {
+	LOGMSG("cXinelibServer: Too many TCP buffer overflows, dropping client");
+	m_RingBuffer.Clear();
+	m_Active = false;
+	return 0;
+      }
       return -HeaderCount-DataCount;
     }
     int n = m_RingBuffer.Put(Header, HeaderCount) +
             m_RingBuffer.Put(Data, DataCount);
     if(n == HeaderCount+DataCount) {
+      m_BufferOverflows = 0;
       m_PutPos += n;
       return n;
     }
