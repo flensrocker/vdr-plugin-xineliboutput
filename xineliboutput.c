@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.1 2006-06-03 09:44:41 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.2 2006-06-11 15:50:47 phintuka Exp $
  *
  */
 
@@ -43,7 +43,7 @@
 
 //---------------------------------plugin-------------------------------------
 
-static const char *VERSION        = "0.99rc4";
+static const char *VERSION        = "0.99rc5";
 static const char *DESCRIPTION    = "X11/xine-lib output plugin";
 static const char *MAINMENUENTRY  = "Xine-lib";
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.3 2006-06-11 15:50:47 phintuka Exp $
  *
  */
 
@@ -77,6 +77,13 @@ const int64_t INITIAL_BURST_TIME  = (int64_t)(45000); // pts units (90kHz)
 
 // assume seek when when pts difference between two frames exceeds this (1.5 seconds)
 const int64_t JUMP_LIMIT_TIME = (int64_t)(3*90000/2); // pts units (90kHz)
+
+typedef enum {
+  eScrDetect,
+  eScrFromAudio,
+  eScrFromPS1,
+  eScrFromVideo
+} ScrSource_t;
 
 cUdpScheduler::cUdpScheduler()
 {
@@ -299,8 +306,8 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 
 #ifdef LOG_SCR
   if(elapsed > 0)
-    LOGMSG("PTS: %lld  (%s) elapsed %d ms", 
-	   pts, Video?"Video":Audio?"Audio":"?", elapsed/90);
+    LOGMSG("PTS: %lld  (%s) elapsed %d ms (PID %02x)", 
+	   pts, Video?"Video":Audio?"Audio":"?", elapsed/90, Data[3]);
 #endif
 
   if(elapsed > 0 && Audio/*Video*/) {
