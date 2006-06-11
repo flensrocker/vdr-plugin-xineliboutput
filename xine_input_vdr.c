@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.4 2006-06-11 10:18:37 phintuka Exp $
  *
  */
 
@@ -651,7 +651,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    -> illusion of faster channel switches
    - Clock must still be paused, but stream can be in PLAYING state
    (if clock is not paused we will got a lot of discarded frames 
-   as those are decoded too late accoording to running SCR)
+   as those are decoded too late according to running SCR)
 */
     int num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
 							  VO_PROP_BUFS_IN_FIFO);
@@ -685,8 +685,9 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    - First I-frame can be delivered as soon as it is decoded 
    -> illusion of faster channel switches
 */
-	|| pause_bufs > 200 || (pause_bufs>100 && pause_start + 400 < monotonic_time_ms())
-	||  num_vbufs > 5
+	|| pause_bufs > 200
+        || (pause_bufs>100 && pause_start + 400 < monotonic_time_ms())
+	|| num_vbufs > 5
 	|| this->still_mode
 	) {
 
@@ -2382,6 +2383,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       CONTROL_PARAM_ERROR;    
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
+    pthread_mutex_lock(&this->lock);
     if(this->fd_control >= 0) {
       /*set_live_mode(this, 1);*/
       if(cmd[6] == '0') 
@@ -2392,18 +2394,21 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       }
       this->stream_start = 1;
     }
+    pthread_mutex_unlock(&this->lock);
     
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
-    this->still_mode = 0;
 #if 1
     if(this->fd_control >= 0) {
       set_live_mode(this, 1);
+      pthread_mutex_lock(&this->lock);
+      this->still_mode = 0;
       if(cmd[5] == '0') {
 	LOGSCR("reset scr tunning by LIVE 0");
 	reset_scr_tunning(this, this->speed_before_pause);
       } else {
 	/* */
       }
+      pthread_mutex_unlock(&this->lock);
     } else
 #endif
       err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ? 
@@ -2517,7 +2522,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
 
   } else if(!strncasecmp(cmd, "POST ", 5)) {
     if(!this->funcs.fe_control)
-      LOGERR("ERROR - no fe_control set ! (%s failed)", cmd);
+      LOGMSG("No fe_control function! %s failed.", cmd);
     else
       this->funcs.fe_control(this->funcs.fe_handle, cmd);
 
@@ -2788,8 +2793,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	    const char * const * lines = xine_get_log(xine, i);
 	    if(lines[0]) {
 	      printf("\nLOG: %s\n",names[i]);
-	      j=-1;
-	      while(lines[++j] && *lines[++j] )
+	      for(j=0; lines[j] && *lines[j]; j++)
 		printf("  %2d: %s", j, lines[j]);
 	    }
 	  }

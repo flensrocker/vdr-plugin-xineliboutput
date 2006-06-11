@@ -178,7 +178,14 @@ Using with xine-ui (xine, fbxine, gxine, ...)
   "#nocache;demux:mpeg_block" should always be appended to end of mrl.
 
   Remote mode must be enabled in VDR plugin.
- 
+
+
+Controlling VDR
+
+  With local frontend:
+  With remote frontends:
+  With xine-ui:
+
 
 Image viewer key bindings
 
