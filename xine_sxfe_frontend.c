@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.4 2006-06-06 07:57:41 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.5 2006-06-12 11:57:30 phintuka Exp $
  *
  */
 
@@ -133,6 +133,7 @@ typedef struct sxfe_s {
 
   int                      xpos, ypos;
   int                      width, height;
+  int                      origwidth, origheight;
 
   Atom                     wm_del_win;
   Atom                     sxfe_interrupt;
@@ -142,6 +143,8 @@ typedef struct sxfe_s {
 
 /* Common (non-X11/FB) frontend functions */
 #include "xine_frontend.c"
+
+#define DOUBLECLICK_TIME   500  // ms
 
 
 static void fe_dest_size_cb (void *data,
@@ -173,7 +176,9 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
 
-  Atom       prop;
+  Atom       atom_prop;
+  Atom       atom_state, atom_state_above, atom_state_fullscreen, atom_state_on_top;
+  XEvent     event;
   MWMHints   mwmhints;
   XSizeHints hint;
   double     res_h, res_v, aspect_diff;
@@ -191,6 +196,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->ypos            = 0;
   this->width           = width;
   this->height          = height;
+  this->origwidth       = width>0 ? width : 720;
+  this->origheight      = height>0 ? height : 576;
 
   this->fullscreen      = fullscreen;
   this->vmode_switch    = modeswitch;
@@ -270,22 +277,47 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   hint.height = DisplayHeight(this->display, this->screen);
   XSetNormalHints(this->display, this->window[1], &hint);
 
+#if 1
+  atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
+  atom_state_above      = XInternAtom(this->display, "_NET_WM_STATE_ABOVE", False);
+  atom_state_fullscreen = XInternAtom(this->display, "_NET_WM_STATE_FULLSCREEN", False);
+  atom_state_on_top     = XInternAtom(this->display, "_NET_WM_STATE_STAYS_ON_TOP", False);
+
+  memset(&event,0,sizeof(event));
+
+  event.xclient.type = ClientMessage;
+  event.xclient.message_type = atom_state;
+  event.xclient.display = this->display;
+  event.xclient.window = this->window[1];
+  event.xclient.format = 32;
+  event.xclient.data.l[0] = 1;
+  if (atom_state_above != None)
+    event.xclient.data.l[1] = atom_state_above;
+  else if (atom_state_fullscreen != None)
+    event.xclient.data.l[1] = atom_state_fullscreen;
+  else
+    event.xclient.data.l[1] = atom_state_on_top;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, SubstructureRedirectMask, &event);
+#endif
+
   /* no border in fullscreen window */
-  prop = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
+  atom_prop = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
   mwmhints.flags = MWM_HINTS_DECORATIONS;
   mwmhints.decorations = 0;
-  XChangeProperty(this->display, this->window[1], prop, prop, 32,
+  XChangeProperty(this->display, this->window[1], atom_prop, atom_prop, 32,
 		  PropModeReplace, (unsigned char *) &mwmhints,
 		  PROP_MWM_HINTS_ELEMENTS);
 
   XSelectInput (this->display, this->window[0],
 		StructureNotifyMask |
 		ExposureMask |
-		KeyPressMask );
+		KeyPressMask | 
+		ButtonPressMask);
   XSelectInput (this->display, this->window[1],
 		StructureNotifyMask |
 		ExposureMask |
-		KeyPressMask );
+		KeyPressMask | 
+		ButtonPressMask);
   
   XMapRaised (this->display, this->window[this->fullscreen]);
   
@@ -373,7 +405,7 @@ static int sxfe_display_config(frontend_t *this_gen,
   if(this->width != width || this->height != height) {
     this->width      = width;
     this->height     = height;
-    this->fullscreen = fullscreen;
+    /*this->fullscreen = fullscreen;*/
 
     if(!fullscreen) {    
       XLockDisplay(this->display);
@@ -500,6 +532,22 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
       }
 
+      case ButtonPress:
+      {
+	static Time prev_time = 0;
+	XButtonEvent *bev = (XButtonEvent *) &event;
+	if(bev->time - prev_time < DOUBLECLICK_TIME) {
+	  /* Toggle fullscreen */
+	  LOGDBG("Toggle fullscreen mode (DoubleClick)");
+	  sxfe_display_config(this_gen, this->origwidth, this->origheight, 
+			      this->fullscreen ? 0 : 1, 
+			      this->vmode_switch, this->modeline, 
+			      this->aspect, this->scale_video, this->field_order);
+	}
+	prev_time = bev->time;
+	break;
+      }
+
       case KeyPress:
       case KeyRelease:
       {
@@ -513,6 +561,14 @@ static int sxfe_run(frontend_t *this_gen)
 	if(kevent->keycode) {
 	  XLookupString(kevent, buffer, buf_len, &ks, &status);
 	  ksname = XKeysymToString(ks);
+#ifdef XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN
+	  if(ks == XK_f || ks == XK_F)
+	    sxfe_display_config(this_gen, this->origwidth, this->origheight, 
+				this->fullscreen ? 0 : 1, 
+				this->vmode_switch, this->modeline, 
+				this->aspect, this->scale_video, this->field_order);
+	  else
+#endif
 #ifdef FE_STANDALONE
 	  if(/*ks == XK_q || ks == XK_Q ||*/ ks == XK_Escape)
 	    keep_going = 0;
