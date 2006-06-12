@@ -25,10 +25,11 @@ Description
 Requirements
 
   - vdr-1.3.42 or later
-  - xine-lib 1.1.1 or later 
-    (not required for server in network-only usage)
+  - xine-lib 1.1.1 or later
+    (xine-lib is not required for server in network-only usage)
   - Enough CPU power and memory to decode streams 
     (PII 400Mhz + 64M should be enough with Xv or DirectFB)
+
 
 WARNING
 
@@ -44,6 +45,12 @@ WARNING
     - Wireless LAN (11 or 54 Mbit/s).
   By default multicast TTL is set to 1 so multicast packets should
   be stopped to first router regardless of network configuration.
+
+
+Public CVS
+
+  Latest fixes are available from sourceforge.net public CVS
+  (http://sourceforge.net/cvs/?group_id=160063)
 
 
 Buildtime options
@@ -182,9 +189,27 @@ Using with xine-ui (xine, fbxine, gxine, ...)
 
 Controlling VDR
 
-  With local frontend:
-  With remote frontends:
+  With local frontend, vdr-sxfe and vdr-fbfe:
+
+    Keyboard input from console is mapped to VDR keyboard input. 
+    If VDR was compiled or configured without keyboard support, 
+    console keyboard input does not work.
+
+    Keyboard input from X11 window is mapped to XKeySym remote.
+    Keys are mapped to VDR keys in remote.conf file. Simple example
+    of X11 key mappings is included in examples directory.
+
+    It should be possible to use VDR's remote controller learning 
+    mode by pressing some key just after VDR has been started.
+    
+    Keyboard input can be disabled in configuration menu. There
+    are separate entries for local and remote frontends.
+
   With xine-ui:
+
+    Keyboard shortcuts and remote events from menus are automatically 
+    forwarded to VDR and translated to VDR keys. 
+    Translation to VDR keys is static and defined in xine_input_vdr.c.
 
 
 Image viewer key bindings
