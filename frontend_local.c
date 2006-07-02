@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: frontend_local.c,v 1.5 2006-07-02 17:06:06 phintuka Exp $
  *
  */
 
@@ -438,6 +438,12 @@ void cXinelibLocal::Action(void)
     }
 
     LOGMSG("cXinelibLocal::Action: Xine closed");
+
+    if(!m_bReconfigRequest && xc.exit_on_close) {
+      LOGMSG("Shutting down VDR");
+      cThread::EmergencyExit(true);
+      break;
+    }
   }
 
   if(curr_fe) {
