@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.2 2006-07-02 16:45:24 phintuka Exp $
  *
  */
 
@@ -31,7 +31,7 @@ typedef struct xine_clut_s {
   uint8_t cb    : 8;
   uint8_t cr    : 8;
   uint8_t y     : 8;
-  uint8_t alpha/*foo*/ : 8;
+  uint8_t alpha : 8;
 } __attribute__((packed)) xine_clut_t; /* from xine, alphablend.h */
 
 typedef struct xine_rle_elem_s {
@@ -52,11 +52,16 @@ typedef struct osd_command_s {
   uint16_t w;         /* window width */
   uint16_t h;         /* window height */
 
-  uint32_t         datalen; /* size of image data, in bytes */
-  xine_rle_elem_t *data;    /* RLE compressed image */
-
-  uint32_t     colors;      /* palette size */
-  xine_clut_t *palette;     /* palette (YCrCb) */
+  uint32_t datalen;        /* size of image data, in bytes */
+  union {
+    xine_rle_elem_t *data; /* RLE compressed image */
+    uint64_t dummy01;
+  };
+  uint32_t colors;         /* palette size */
+  union {
+    xine_clut_t *palette;  /* palette (YCrCb) */
+    uint64_t dummy02;
+  };
 
 } __attribute__((packed)) osd_command_t;
 
