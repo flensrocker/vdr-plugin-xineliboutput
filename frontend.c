@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.3 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: frontend.c,v 1.4 2006-07-02 17:11:06 phintuka Exp $
  *
  */
 
@@ -86,6 +86,7 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_bNoVideo = true;
   m_bLiveMode = false;
   m_StreamPos = 0;
+  m_Frames = 0;
   m_bEndOfStreamReached = false;
   m_bPlayingFile = false;
   m_FileName = NULL;
@@ -214,15 +215,15 @@ void cXinelibThread::AudioStreamChanged(bool ac3, int StreamId)
 {
   TRACEF("cXinelibThread::AudioStreamChanged");
   if(ac3)
-    Xine_Control("NEWAUDIOSTREAM AC3");
+    Xine_Control("AUDIOSTREAM AC3", StreamId);
   else
-    Xine_Control("NEWAUDIOSTREAM", StreamId);
+    Xine_Control("AUDIOSTREAM", StreamId);
 }
 
 void cXinelibThread::SpuStreamChanged(int StreamId)
 {
   TRACEF("cXinelibThread::SpuStreamChanged");
-  Xine_Control("NEWSPUSTREAM", StreamId);
+  Xine_Control("SPUSTREAM", StreamId);
 }
 
 void cXinelibThread::Clear(void)
@@ -230,9 +231,16 @@ void cXinelibThread::Clear(void)
   TRACEF("cXinelibThread::Clear");
 
   Lock();
-  int64_t tmp = m_StreamPos;
+  int64_t  tmp1 = m_StreamPos;
+  uint32_t tmp2 = m_Frames;
   Unlock();
+#if 0
   Xine_Control("DISCARD", tmp);
+#else
+  char buf[128];
+  sprintf(buf, "DISCARD %" PRId64 " %d", cmd, tmp1, tmp2);
+  Xine_Control(buf);
+#endif
 }
 
 bool cXinelibThread::Flush(int TimeoutMs) 
@@ -262,6 +270,7 @@ int cXinelibThread::Play_PES(const uchar *data, int len)
 {
   Lock();
   m_StreamPos += len;
+  m_Frames++;
   /*m_bEndOfStreamReached = false;*/
   Unlock();
   return len;
