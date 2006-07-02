@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.4 2006-07-02 17:11:06 phintuka Exp $
+ * $Id: frontend.c,v 1.5 2006-07-02 18:10:03 phintuka Exp $
  *
  */
 
@@ -238,7 +238,7 @@ void cXinelibThread::Clear(void)
   Xine_Control("DISCARD", tmp);
 #else
   char buf[128];
-  sprintf(buf, "DISCARD %" PRId64 " %d", cmd, tmp1, tmp2);
+  sprintf(buf, "DISCARD %" PRId64 " %d", tmp1, tmp2);
   Xine_Control(buf);
 #endif
 }
