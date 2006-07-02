@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.5 2006-06-12 11:57:30 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.6 2006-07-02 16:59:27 phintuka Exp $
  *
  */
 
@@ -28,6 +28,7 @@
 #include <linux/unistd.h> /* gettid() */
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/keysym.h>
 #include <X11/extensions/XShm.h>
 #include <X11/Xutil.h>
@@ -129,20 +130,28 @@ typedef struct sxfe_s {
   int                    XF86_modelines_count;
 #endif
 
-  int                      completion_event;
+  int     completion_event;
 
-  int                      xpos, ypos;
-  int                      width, height;
-  int                      origwidth, origheight;
+  int     xpos, ypos;
+  int     width, height;
+  int     origwidth, origheight;
+  int     stay_above;
+  int     no_border;
 
-  Atom                     wm_del_win;
-  Atom                     sxfe_interrupt;
+  Atom    wm_del_win;
+  Atom    sxfe_interrupt;
+
+  Atom    atom_wm_hints, atom_layer;
+  Atom    atom_state_add, atom_state_del;
+  Atom    atom_state, atom_state_above, atom_state_fullscreen, atom_state_on_top;
 
 } fe_t, sxfe_t;
 
 
 /* Common (non-X11/FB) frontend functions */
 #include "xine_frontend.c"
+
+#include "vdrlogo_32x32.c"
 
 #define DOUBLECLICK_TIME   500  // ms
 
@@ -163,6 +172,157 @@ static void fe_dest_size_cb (void *data,
 					    video_width, video_height);
 }
 
+static void set_fullscreen_props(sxfe_t *this)
+{
+  XEvent ev;
+  if(this->atom_state == None) {
+    this->atom_layer            = XInternAtom(this->display, "_WIN_LAYER", False);
+    this->atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
+    this->atom_state_add        = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
+    this->atom_state_del        = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
+    this->atom_state_above      = XInternAtom(this->display, "_NET_WM_STATE_ABOVE", False);
+    this->atom_state_fullscreen = XInternAtom(this->display, "_NET_WM_STATE_FULLSCREEN", False);
+    this->atom_state_on_top     = XInternAtom(this->display, "_NET_WM_STATE_STAYS_ON_TOP", False);
+  }
+
+  memset(&ev, 0, sizeof(ev));
+  ev.type                 = ClientMessage;
+  ev.xclient.type         = ClientMessage;
+  ev.xclient.message_type = this->atom_state;
+  ev.xclient.display      = this->display;
+  ev.xclient.window       = this->window[1];
+  ev.xclient.format       = 32;
+  ev.xclient.data.l[0]    = 1 /*this->atom_state_add*/;
+
+  XLockDisplay(this->display);
+  ev.xclient.data.l[1] = this->atom_state_fullscreen;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+
+  XLockDisplay(this->display);
+  ev.xclient.data.l[1] = this->atom_state_above;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+
+  XLockDisplay(this->display);
+  ev.xclient.data.l[1] = this->atom_state_on_top;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+}
+
+static void set_border(sxfe_t *this, int border)
+{
+  MWMHints   mwmhints;
+
+  this->no_border = border ? 0 : 1;
+
+  /* Set/remove border */
+  this->atom_wm_hints = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
+  mwmhints.flags = MWM_HINTS_DECORATIONS;
+  mwmhints.decorations = this->no_border ? 0 : 1;
+  XChangeProperty(this->display, this->window[0], this->atom_wm_hints, this->atom_wm_hints, 32,
+		  PropModeReplace, (unsigned char *) &mwmhints,
+		  PROP_MWM_HINTS_ELEMENTS);
+}
+
+static void set_above(sxfe_t *this, int stay_above)
+{
+  XEvent ev;
+  long propvalue[1];
+
+  this->stay_above = stay_above;
+
+  XStoreName(this->display, this->window[0], stay_above ? "VDR (top)" : "VDR");
+
+  memset(&ev, 0, sizeof(ev));
+  ev.type                 = ClientMessage;
+  ev.xclient.type         = ClientMessage;
+  ev.xclient.message_type = this->atom_state;
+  ev.xclient.display      = this->display;
+  ev.xclient.window       = this->window[0];
+  ev.xclient.format       = 32;
+  ev.xclient.data.l[0]    = stay_above ? 1:0; /*this->atom_state_add : this->atom_state_del;*/
+
+  /* _NET_WM_STATE_ABOVE */
+  XLockDisplay(this->display);
+  ev.xclient.data.l[1] = this->atom_state_above;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+
+  /* _NET_WM_STATE_ON_TOP */
+  XLockDisplay(this->display);
+  ev.xclient.data.l[1] = this->atom_state_on_top;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+
+  /* _NET_WM_STATE_STICKY */
+  XLockDisplay(this->display);
+  ev.xclient.data.l[1] = XInternAtom(this->display, "_NET_WM_STATE_STICKY", False);
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+
+  /* _WIN_LAYER */
+  propvalue[0] = stay_above ? 10 : 6;
+  XLockDisplay(this->display);
+  XChangeProperty(this->display, this->window[0], XInternAtom(this->display, "_WIN_LAYER", False),
+		  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)propvalue,
+		  1);
+  XUnlockDisplay(this->display);
+
+#if 0
+  /* sticky */
+  memset(&ev, 0, sizeof(ev));
+  ev.xclient.type         = ClientMessage;
+  ev.xclient.message_type = XInternAtom(this->display, "_WIN_STATE", False);
+  ev.xclient.display      = this->display;
+  ev.xclient.window       = this->window[0];
+  ev.xclient.format       = 32;
+  ev.xclient.data.l[0] = (1<<0);
+  ev.xclient.data.l[1] = (stay_above?(1<<0):0);
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+#endif
+#if 0
+  /* on top */
+  memset(&ev, 0, sizeof(ev));
+  ev.xclient.type         = ClientMessage;
+  ev.xclient.message_type = XInternAtom(this->display, "_WIN_LAYER", False);
+  ev.xclient.display      = this->display;
+  ev.xclient.window       = this->window[0];
+  ev.xclient.format       = 32;
+  ev.xclient.data.l[0] = (stay_above?10:6);
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+#endif
+#if 0
+  /* layer */
+  XClientMessageEvent xev;
+
+  memset(&xev, 0, sizeof(xev));
+  xev.type = ClientMessage;
+  xev.display = this->display;
+  xev.window = this->window[0];
+  xev.message_type = this->atom_layer;
+  xev.format = 32;
+  xev.data.l[0] = 10;
+  xev.data.l[1] = CurrentTime;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
+	     SubstructureNotifyMask, (XEvent *) & xev);
+
+  XMapRaised(this->display, this->window[0]);
+#endif
+#if 0
+  xine_gui_send_vo_data(this->stream, XINE_GUI_SEND_DRAWABLE_CHANGED,
+			(void*) this->window[this->fullscreen]);
+#endif
+}
+
 /*
  * sxfe_display_open
  *
@@ -176,9 +336,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
 
-  Atom       atom_prop;
-  Atom       atom_state, atom_state_above, atom_state_fullscreen, atom_state_on_top;
-  XEvent     event;
   MWMHints   mwmhints;
   XSizeHints hint;
   double     res_h, res_v, aspect_diff;
@@ -277,48 +434,43 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   hint.height = DisplayHeight(this->display, this->screen);
   XSetNormalHints(this->display, this->window[1], &hint);
 
-#if 1
-  atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
-  atom_state_above      = XInternAtom(this->display, "_NET_WM_STATE_ABOVE", False);
-  atom_state_fullscreen = XInternAtom(this->display, "_NET_WM_STATE_FULLSCREEN", False);
-  atom_state_on_top     = XInternAtom(this->display, "_NET_WM_STATE_STAYS_ON_TOP", False);
-
-  memset(&event,0,sizeof(event));
-
-  event.xclient.type = ClientMessage;
-  event.xclient.message_type = atom_state;
-  event.xclient.display = this->display;
-  event.xclient.window = this->window[1];
-  event.xclient.format = 32;
-  event.xclient.data.l[0] = 1;
-  if (atom_state_above != None)
-    event.xclient.data.l[1] = atom_state_above;
-  else if (atom_state_fullscreen != None)
-    event.xclient.data.l[1] = atom_state_fullscreen;
-  else
-    event.xclient.data.l[1] = atom_state_on_top;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, SubstructureRedirectMask, &event);
-#endif
+  /* full-screen window */
+  set_fullscreen_props(this);
 
   /* no border in fullscreen window */
-  atom_prop = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
+  this->atom_wm_hints = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
   mwmhints.flags = MWM_HINTS_DECORATIONS;
   mwmhints.decorations = 0;
-  XChangeProperty(this->display, this->window[1], atom_prop, atom_prop, 32,
+  XChangeProperty(this->display, this->window[1], this->atom_wm_hints, this->atom_wm_hints, 32,
 		  PropModeReplace, (unsigned char *) &mwmhints,
 		  PROP_MWM_HINTS_ELEMENTS);
 
+  /* Select input */
   XSelectInput (this->display, this->window[0],
 		StructureNotifyMask |
 		ExposureMask |
 		KeyPressMask | 
-		ButtonPressMask);
+		ButtonPressMask | ButtonReleaseMask | ButtonMotionMask);
   XSelectInput (this->display, this->window[1],
 		StructureNotifyMask |
 		ExposureMask |
 		KeyPressMask | 
 		ButtonPressMask);
-  
+
+  /* Window name */
+  XStoreName(this->display, this->window[0], "VDR");
+  XStoreName(this->display, this->window[1], "VDR");
+
+  /* Icon */
+  {
+    XChangeProperty(this->display, this->window[0],
+		    XInternAtom(this->display, "_NET_WM_ICON", False),
+		    XA_CARDINAL, 32, PropModeReplace,
+		    (unsigned char *) &vdrlogo_32x32, 
+		    2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+  }
+
+  /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen]);
   
   /* determine display aspect ratio */
@@ -343,12 +495,12 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   /* we want to get notified if user closes the window */
   this->wm_del_win = XInternAtom(this->display, "WM_DELETE_WINDOW", False);
-  this->sxfe_interrupt = XInternAtom(this->display, "SXFE_INTERRUPT", False);
-
   XSetWMProtocols(this->display, this->window[fullscreen], &(this->wm_del_win), 1);
 
   /* no cursor */
+#if 0
   XDefineCursor(this->display, this->window[0], None);
+#endif
   XDefineCursor(this->display, this->window[1], None);
   {
     static char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
@@ -359,7 +511,9 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     XAllocNamedColor(this->display, DefaultColormapOfScreen(DefaultScreenOfDisplay(this->display)), 
 		     "black", &black, &dummy);
     no_ptr = XCreatePixmapCursor(this->display, bm_no, bm_no, &black, &black, 0, 0);
+#if 0
     XDefineCursor(this->display, this->window[0], no_ptr);
+#endif
     XDefineCursor(this->display, this->window[1], no_ptr);
   }
 
@@ -385,6 +539,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->vis.dest_size_cb     = fe_dest_size_cb;
   this->vis.frame_output_cb  = fe_frame_output_cb;
   this->vis.user_data        = this;
+
+  this->sxfe_interrupt       = XInternAtom(this->display, "SXFE_INTERRUPT", False);
 
   return 1;
 }
@@ -427,9 +583,15 @@ static int sxfe_display_config(frontend_t *this_gen,
     XLockDisplay(this->display);
     XUnmapWindow(this->display, this->window[this->fullscreen]);
     this->fullscreen = fullscreen;
+    if(fullscreen)
+      set_fullscreen_props(this);
+    else
+      set_above(this, this->stay_above);
     XMapRaised(this->display, this->window[this->fullscreen]);
-    if(!fullscreen)
+    if(!fullscreen) {
       XResizeWindow(this->display, this->window[0], this->width, this->height);    
+      set_above(this, this->stay_above);
+    }
     XSync(this->display, False);
     XTranslateCoordinates(this->display, this->window[this->fullscreen],
 			  DefaultRootWindow(this->display),
@@ -485,6 +647,7 @@ static void sxfe_interrupt(frontend_t *this_gen)
 static int sxfe_run(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
+  static int dragging = 0, drx = 0, dry = 0;
 
   int keep_going = 1;
   XEvent event;
@@ -503,7 +666,8 @@ static int sxfe_run(frontend_t *this_gen)
   }
 
   while(keep_going && XPending(this->display) > 0) {
-    XNextEvent (this->display, &event);
+
+    XNextEvent (this->display, &event);   
     
     switch (event.type) {
       case Expose:
@@ -521,30 +685,85 @@ static int sxfe_run(frontend_t *this_gen)
 	
 	if ((cev->x == 0) && (cev->y == 0)) {
 	  XLockDisplay(cev->display);
-	  XTranslateCoordinates(cev->display, cev->window,
-				DefaultRootWindow(cev->display),
-				0, 0, &this->xpos, &this->ypos, &tmp_win);
+	  if(!this->fullscreen) 
+	    XTranslateCoordinates(cev->display, cev->window,
+				  DefaultRootWindow(cev->display),
+				  0, 0, &this->xpos, &this->ypos, &tmp_win);
 	  XUnlockDisplay(cev->display);
 	} else {
-	  this->xpos = cev->x;
-	  this->ypos = cev->y;
+	  if(!this->fullscreen) {
+	    this->xpos = cev->x;
+	    this->ypos = cev->y;
+	  }
+	}
+	break;
+      }
+
+      case ButtonRelease:
+      {
+	dragging = 0;
+	break;
+      }
+
+      case MotionNotify:
+      {
+	XMotionEvent *mev = (XMotionEvent *) &event;
+	if(dragging) {
+	  Window tmp_win;
+	  int xpos, ypos;
+
+	  XLockDisplay(this->display);
+
+	  while(XCheckMaskEvent(this->display, ButtonMotionMask, &event));
+
+	  XTranslateCoordinates(this->display, this->window[0],
+				DefaultRootWindow(this->display),
+				0, 0, &xpos, &ypos, &tmp_win);
+
+	  this->xpos = (xpos += mev->x_root - drx);
+	  this->ypos = (ypos += mev->y_root - dry);
+	  drx = mev->x_root;
+	  dry = mev->y_root;
+
+	  XMoveWindow(this->display, this->window[0], xpos, ypos);
+
+	  XUnlockDisplay(this->display);
 	}
 	break;
       }
 
       case ButtonPress:
       {
-	static Time prev_time = 0;
 	XButtonEvent *bev = (XButtonEvent *) &event;
-	if(bev->time - prev_time < DOUBLECLICK_TIME) {
-	  /* Toggle fullscreen */
-	  LOGDBG("Toggle fullscreen mode (DoubleClick)");
-	  sxfe_display_config(this_gen, this->origwidth, this->origheight, 
-			      this->fullscreen ? 0 : 1, 
-			      this->vmode_switch, this->modeline, 
-			      this->aspect, this->scale_video, this->field_order);
+	if(bev->button == Button1) {
+	  static Time prev_time = 0;
+	  if(bev->time - prev_time < DOUBLECLICK_TIME) {
+	    /* Toggle fullscreen */
+	    sxfe_display_config(this_gen, this->origwidth, this->origheight, 
+				this->fullscreen ? 0 : 1, 
+				this->vmode_switch, this->modeline, 
+				this->aspect, this->scale_video, this->field_order);
+	    prev_time = 0; /* don't react to third click ... */
+	  } else {
+	    prev_time = bev->time;
+	    if(!this->fullscreen && this->no_border && !dragging) {
+	      dragging = 1;
+	      drx = bev->x_root;
+	      dry = bev->y_root;
+	    }
+	  }
+	} else if(bev->button == Button3) {
+	  if(!this->fullscreen) {
+	    if(!this->stay_above) {
+	      set_above(this, 1);
+	    } else if(!this->no_border) {
+	      set_border(this, 0);
+	    } else {
+	      set_border(this, 1);
+	      set_above(this, 0);
+	    }
+	  }
 	}
-	prev_time = bev->time;
 	break;
       }
 
