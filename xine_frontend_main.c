@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.5 2006-07-02 16:44:11 phintuka Exp $
  *
  */
 
@@ -325,9 +325,10 @@ int main(int argc, char *argv[])
       } else
 	asprintf(&mrl, "xvdr://%s:%d", address, port);
     } else {
-      printf("WARNING:\n"
-	     "   MRL not given and server not found from local network.\n"
-	     "   Trying to connect to default port on local host.\n");
+      printf("---------------------------------------------------------------\n"
+	     "WARNING: MRL not given and server not found from local network.\n"
+	     "         Trying to connect to default port on local host.\n"
+	     "---------------------------------------------------------------\n");
       mrl = strdup("xvdr://127.0.0.1");
     }
   }
