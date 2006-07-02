@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: device.h,v 1.3 2006-07-02 17:09:04 phintuka Exp $
  *
  */
 
@@ -61,7 +61,8 @@ class cXinelibDevice : public cDevice
 
     // Audio facilities
   private:
-    int m_AudioChannel;
+    eTrackType m_LastTrack;
+    int        m_AudioChannel;
   protected:
     virtual int  GetAudioChannelDevice(void) {return m_AudioChannel;}
     virtual void SetAudioChannelDevice(int AudioChannel);

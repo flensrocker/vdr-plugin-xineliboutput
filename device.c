@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.3 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: device.c,v 1.4 2006-07-02 17:09:04 phintuka Exp $
  *
  */
 
@@ -1016,14 +1016,16 @@ void cXinelibDevice::SetAudioTrackDevice(eTrackType Type)
   TRACEF("cXinelibDevice::SetAudioTrackDevice");
 
   LOGDBG("SetAudioTrackDevice(%d)", (int)Type);
+#if 0
   if(IS_DOLBY_TRACK(Type))
     ForEach(m_clients, &cXinelibThread::AudioStreamChanged, 
 	    true, (int)(Type - ttDolbyFirst));
   if(IS_AUDIO_TRACK(Type))
-    ForEach(m_clients, &cXinelibThread::AudioStreamChanged, 
+    ForEach(m_clients, &cXinelibThread::AudioStreamChanged,
 	    false, AUDIO_STREAM + (int)(Type - ttAudioFirst));
+#endif
 }
- 
+
 void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
 {
   TRACEF("cXinelibDevice::SetAudioChannelDevice");
@@ -1040,11 +1042,25 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
 void cXinelibDevice::SetDigitalAudioDevice(bool On)
 {
   TRACEF("cXinelibDevice::SetDigitalAudioDevice");
-
   LOGDBG("SeDigitalAudioDevice(%s)", On ? "on" : "off");
-  //
-  // should we do something here ???
-  //
+
+  eTrackType CurrTrack = GetCurrentAudioTrack();
+  if(m_LastTrack != CurrTrack) {
+    bool ac3   = IS_DOLBY_TRACK(CurrTrack);
+    int  index = CurrTrack - (ac3 ? ttDolbyFirst : ttAudioFirst);
+    m_LastTrack = CurrTrack;
+#if 0
+    LOGDBG("    Switching audio track -> %d (%02x:%s:%d)", m_LastTrack, 
+	   ac3 ? PRIVATE_STREAM1 : (index+AUDIO_STREAM), 
+	   ac3 ? "AC3" : "MPEG", index);
+#endif
+    if(ac3) 
+      ForEach(m_clients, &cXinelibThread::AudioStreamChanged, true, 
+	      (PRIVATE_STREAM1 << 8) | index);
+    else 
+      ForEach(m_clients, &cXinelibThread::AudioStreamChanged, false, 
+	      (index + AUDIO_STREAM) << 8);
+  }
 }
 
 void cXinelibDevice::SetVideoFormat(bool VideoFormat16_9) 
