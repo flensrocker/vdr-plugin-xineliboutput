@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.3 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: cxsocket.h,v 1.4 2006-07-02 18:12:21 phintuka Exp $
  *
  */
 
@@ -12,6 +12,67 @@
 #define __CXSOCKET_H
 
 #define CLOSESOCKET(fd) do { if(fd>=0) { close(fd); fd=-1; } } while(0)
+
+//
+// Set socket buffers
+//
+static inline void set_socket_buffers(int s, int txbuf, int rxbuf)
+{
+  int max_buf = txbuf;
+  /*while(max_buf) {*/
+    errno = 0;
+    if(setsockopt(s, SOL_SOCKET, SO_SNDBUF, &max_buf, sizeof(int))) {
+      LOGERR("setsockopt(SO_SNDBUF,%d) failed", max_buf);
+      /*max_buf >>= 1;*/
+    }
+    /*else {*/
+      int tmp = 0;
+      int len = sizeof(int);
+      errno = 0;
+      if(getsockopt(s, SOL_SOCKET, SO_SNDBUF, &tmp, (socklen_t*)&len)) {
+	LOGERR("getsockopt(SO_SNDBUF,%d) failed", max_buf);
+	/*break;*/
+      } else if(tmp != max_buf) {
+	LOGDBG("setsockopt(SO_SNDBUF): got %d bytes", tmp);
+	/*max_buf >>= 1;*/
+	/*continue;*/
+      }
+    /*}*/
+  /*}*/
+
+  max_buf = rxbuf;
+  setsockopt(s, SOL_SOCKET, SO_RCVBUF, &max_buf, sizeof(int));
+}
+
+//
+// Set multicast options
+//
+static inline int set_multicast_options(int fd_multicast, int ttl)
+{
+  int iReuse = 1, iLoop = 1, iTtl = xc.remote_rtp_ttl;
+
+  errno = 0;
+
+  if(setsockopt(fd_multicast, SOL_SOCKET, SO_REUSEADDR, 
+		&iReuse, sizeof(int)) < 0) {
+    LOGERR("setsockopt(SO_REUSEADDR) failed");
+    return -1;
+  }  
+
+  if(setsockopt(fd_multicast, IPPROTO_IP, IP_MULTICAST_TTL, 
+		&iTtl, sizeof(int))) {
+    LOGERR("setsockopt(IP_MULTICAST_TTL) failed");
+    return -1;
+  }
+      
+  if(setsockopt(fd_multicast, IPPROTO_IP, IP_MULTICAST_LOOP,
+		&iLoop, sizeof(int))) {
+    LOGERR("setsockopt(IP_MULTICAST_LOOP) failed");
+    return -1;
+  }
+
+  return 0;
+}
 
 //
 // Connect data socket to client (take address from fd_control)
@@ -44,31 +105,8 @@ static inline int sock_connect(int fd_control, int port, int type)
     return -1;
   }
 
-#if 1
   // Set socket buffers: large send buffer, small receive buffer
-  {
-    int max_buf = KILOBYTE(128);
-    //while(max_buf) {
-    errno = 0;
-    if(setsockopt(s, SOL_SOCKET, SO_SNDBUF, &max_buf, sizeof(int))) {
-      LOGERR("setsockopt(SO_SNDBUF,%d) failed", max_buf);
-      max_buf >>= 1;
-    } else {
-      int tmp = 0;
-      int len = sizeof(int);
-      errno = 0;
-      if(getsockopt(s, SOL_SOCKET, SO_SNDBUF, &tmp, (socklen_t*)&len)) {
-	LOGERR("getsockopt(SO_SNDBUF,%d) failed", max_buf);
-	max_buf >>= 1;
-      } else if(tmp != max_buf) {
-	LOGDBG("setsockopt(SO_SNDBUF): got %d bytes", tmp);
-	max_buf >>= 1;
-      }
-    }
-    max_buf = 1024;
-    setsockopt(s, SOL_SOCKET, SO_RCVBUF, &max_buf, sizeof(int));
-  }
-#endif
+  set_socket_buffers(s, KILOBYTE(256), 2048);
 
   sin.sin_family = AF_INET;
   sin.sin_port   = htons(port);
