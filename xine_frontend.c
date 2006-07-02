@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.4 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.5 2006-07-02 16:47:13 phintuka Exp $
  *
  */
 
@@ -252,10 +252,12 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
     /* in local mode: vdr stream / slave stream ; in remote mode: vdr stream only */
     case XINE_EVENT_UI_PLAYBACK_FINISHED:
       LOGMSG("xine_event_cb: XINE_EVENT_UI_PLAYBACK_FINISHED");
-      if(this)
-	this->playback_finished = 1;
-      else
+      if(this) {
+	if(event->stream == this->stream)
+	  this->playback_finished = 1;
+      } else {
 	LOGMSG("xine_event_cb: NO USER DATA !");
+      }
       break;
   }
 }
