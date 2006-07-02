@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: config.h,v 1.2 2006-07-02 17:03:26 phintuka Exp $
  *
  */
 
@@ -175,6 +175,7 @@ class config_t {
     int  scale_video;
     int  field_order;
     int  autocrop;
+    int  exit_on_close;
     
     int  remote_mode;
     int  listen_port;

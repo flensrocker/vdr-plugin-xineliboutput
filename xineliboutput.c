@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.2 2006-06-11 15:50:47 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.3 2006-07-02 17:03:26 phintuka Exp $
  *
  */
 
@@ -43,7 +43,7 @@
 
 //---------------------------------plugin-------------------------------------
 
-static const char *VERSION        = "0.99rc5";
+static const char *VERSION        = "0.99rc6";
 static const char *DESCRIPTION    = "X11/xine-lib output plugin";
 static const char *MAINMENUENTRY  = "Xine-lib";
 
@@ -119,6 +119,7 @@ const char cmdLineHelp[] =
 //"                           will be initialized."
 "  -p        --primary      Force xineliboutput to be primary device when\n"
 "                           there are active frontend(s)\n"
+"  -c        --exit-on-close  Exit vdr when local frontend window is closed\n"
 ;
 
 const char *cPluginXinelibOutput::CommandLineHelp(void)
