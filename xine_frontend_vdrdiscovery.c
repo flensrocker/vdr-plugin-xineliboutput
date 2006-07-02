@@ -6,7 +6,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_vdrdiscovery.c,v 1.1 2006-06-03 10:01:18 phintuka Exp $
+ * $Id: xine_frontend_vdrdiscovery.c,v 1.2 2006-07-02 16:43:30 phintuka Exp $
  *
  */
 
@@ -34,6 +34,9 @@ static int search_vdr_server(int *port, char *address)
     if(setsockopt(fd_broadcast, SOL_SOCKET, SO_BROADCAST, 
 		  &dummy, sizeof(int)) < 0)
       LOGERR("setsockopt(SO_BROADCAST) failed");
+    if(setsockopt(fd_broadcast, SOL_SOCKET, SO_REUSEADDR, 
+		  &dummy, sizeof(int)) < 0)
+      LOGERR("setsockopt(SO_REUSEADDR) failed");
 
     sin.sin_family = AF_INET;
     sin.sin_port   = htons(DISCOVERY_PORT);
