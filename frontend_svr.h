@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.3 2006-07-04 02:06:16 phintuka Exp $
  *
  */
 
@@ -35,6 +35,8 @@ class cXinelibServer : public cXinelibThread
 
   protected:
     virtual void Action(void);
+
+    void Handle_RTCP(void);
 
   public:
     // Data transfer
@@ -88,6 +90,7 @@ protected:
 
     int  fd_listen;
     int  fd_multicast;
+    int  fd_rtcp;
     int  fd_discovery;
     int  fd_control[MAXCLIENTS];
     int  fd_data[MAXCLIENTS];

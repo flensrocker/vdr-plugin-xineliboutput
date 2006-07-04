@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.1 2006-06-03 10:04:28 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.2 2006-07-04 02:08:27 phintuka Exp $
  *
  */
 
@@ -55,6 +55,8 @@ class cUdpScheduler : public cThread
     void Clear(void);
     bool Flush(int TimeoutMs);
 
+    void Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets);
+
   protected:
 
     // Data for payload handling & buffering
@@ -73,13 +75,17 @@ class cUdpScheduler : public cThread
 
     // Data for scheduling algorithm
 
-    cTimePts  RtpScr;      // 90 kHz monotonic time source for RTP packets
     cTimePts  MasterClock; // Current MPEG PTS (synchronized with current stream)
     cCondWait CondWait;
 
     int64_t  current_audio_vtime;
     int64_t  current_video_vtime;
-    
+
+    // RTP
+    uint32_t  m_ssrc;   // RTP synchronization source id
+    cTimePts  RtpScr;   // 90 kHz monotonic time source for RTP timestamps
+    uint64_t  m_LastRtcpTime;
+
 #if 0
     int data_sent;   /* in current time interval, bytes */
     int frames_sent; /* in current time interval */

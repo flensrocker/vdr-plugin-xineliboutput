@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.5 2006-06-11 21:02:54 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.6 2006-07-04 02:09:39 phintuka Exp $
  *
  */
 
@@ -12,6 +12,7 @@
 #include <inttypes.h>
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -28,6 +29,13 @@
 #include "udp_pes_scheduler.h"
 
 #include "../xine_input_vdr_net.h" // frame headers
+#include "../config.h"             // rtp address & port
+
+
+#include <sys/types.h>
+#include <linux/unistd.h>
+#include <errno.h>
+_syscall0(pid_t, gettid)
 
 
 //----------------------- cTimePts ------------------------------------------
@@ -78,6 +86,8 @@ const int64_t INITIAL_BURST_TIME  = (int64_t)(45000); // pts units (90kHz)
 // assume seek when when pts difference between two frames exceeds this (1.5 seconds)
 const int64_t JUMP_LIMIT_TIME = (int64_t)(3*90000/2); // pts units (90kHz)
 
+const int RTCP_MIN_INTERVAL = 90000; // max. once in second
+
 typedef enum {
   eScrDetect,
   eScrFromAudio,
@@ -101,6 +111,11 @@ cUdpScheduler::cUdpScheduler()
 #endif
 
   last_delay_time = 0;
+
+  srandom(time(NULL) ^ gettid());
+  m_ssrc = random();
+  LOGDBG("RTP SSRC: 0x%08x", m_ssrc);
+  m_LastRtcpTime = 0;
 
   // queuing
 
@@ -296,6 +311,52 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
 #endif
   
   return (int) diff;
+}
+
+void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
+{
+  uint64_t scr = RtpScr.Now();
+
+  if(scr > (m_LastRtcpTime + RTCP_MIN_INTERVAL)) {
+    uint8_t frame[2048], *content = frame;
+    rtcp_packet_t  *msg = (rtcp_packet_t *)content;
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+
+    // SR (Sender report)
+    msg->hdr.raw[0] = 0x81;     // RTP version = 2, Report count = 1 */
+    msg->hdr.ptype  = RTCP_SR;
+    msg->hdr.length = htons(6); // length 6 dwords
+
+    msg->sr.ssrc     = htonl(m_ssrc);
+    msg->sr.ntp_sec  = htonl(tv.tv_sec + 0x83AA7E80);
+    msg->sr.ntp_frac = htonl((uint32_t)((double)tv.tv_usec*(double)(1LL<<32)*1.0e-6));
+    msg->sr.rtp_ts   = htonl((uint32_t)(scr    & 0xffffffff));
+    msg->sr.psent    = htonl((uint32_t)(Frames & 0xffffffff));
+    msg->sr.osent    = htonl((uint32_t)(Octets & 0xffffffff));
+
+    content += sizeof(rtcp_common_t) + sizeof(rtcp_sr_t);
+    msg = (rtcp_packet_t *)content;
+
+    // SDES
+    msg->hdr.raw[0] = 0x81;       // RTP version = 2, Report count = 1 */
+    msg->hdr.ptype  = RTCP_SDES;  
+    msg->hdr.count  = 1;
+
+    msg->sdes.ssrc   = m_ssrc;
+    msg->sdes.item[0].type   = RTCP_SDES_CNAME;
+    sprintf(msg->sdes.item[0].data, "VDR@%s:%d%c%c%c", xc.remote_rtp_addr, xc.remote_rtp_port, 0, 0, 0);
+    msg->sdes.item[0].length = strlen(msg->sdes.item[0].data);
+
+    msg->hdr.length = htons(1 + ((msg->sdes.item[0].length - 2) + 3) / 4); 
+    
+    content += sizeof(rtcp_common_t) + 4*ntohs(msg->hdr.length);
+    msg = (rtcp_packet_t *)content;
+
+    // Send
+    int err = send(fd_rtcp, frame, content - frame, 0);
+    //LOGMSG("RTCP send (%d)", err);
+  }
 }
 
 void cUdpScheduler::Schedule(const uchar *Data, int Length)
