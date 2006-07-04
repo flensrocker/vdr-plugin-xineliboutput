@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.6 2006-07-04 02:09:39 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.7 2006-07-04 02:34:07 phintuka Exp $
  *
  */
 
@@ -348,14 +348,28 @@ void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
     sprintf(msg->sdes.item[0].data, "VDR@%s:%d%c%c%c", xc.remote_rtp_addr, xc.remote_rtp_port, 0, 0, 0);
     msg->sdes.item[0].length = strlen(msg->sdes.item[0].data);
 
-    msg->hdr.length = htons(1 + ((msg->sdes.item[0].length - 2) + 3) / 4); 
+    msg->hdr.length = htons(1 + 1 + ((msg->sdes.item[0].length - 2) + 3) / 4); 
     
     content += sizeof(rtcp_common_t) + 4*ntohs(msg->hdr.length);
     msg = (rtcp_packet_t *)content;
 
     // Send
     int err = send(fd_rtcp, frame, content - frame, 0);
-    //LOGMSG("RTCP send (%d)", err);
+#ifdef LOG_RTCP
+    LOGMSG("RTCP send (%d)", err);
+    for(int i=0; i<content-frame; i+=16) 
+      LOGMSG("%02X %02X %02X %02X %02X %02X %02X %02X  "
+	     "%02X %02X %02X %02X %02X %02X %02X %02X  "
+	     "  %c%c%c%c%c%c%c%c %c%c%c%c%c%c%c%c",
+	     frame[i+0],frame[i+1],frame[i+2],frame[i+3],
+	     frame[i+4],frame[i+5],frame[i+6],frame[i+7],
+	     frame[i+8],frame[i+9],frame[i+10],frame[i+11],
+	     frame[i+12],frame[i+13],frame[i+14],frame[i+15],
+	     frame[i+0],frame[i+1],frame[i+2],frame[i+3],
+	     frame[i+4],frame[i+5],frame[i+6],frame[i+7],
+	     frame[i+8],frame[i+9],frame[i+10],frame[i+11],
+	     frame[i+12],frame[i+13],frame[i+14],frame[i+15]);
+#endif
   }
 }
 
