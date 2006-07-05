@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.9 2006-07-05 01:39:55 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.10 2006-07-05 01:50:38 phintuka Exp $
  *
  */
 
@@ -4025,13 +4025,50 @@ static off_t vdr_plugin_get_current_pos (input_plugin_t *this_gen)
 static void vdr_plugin_dispose (input_plugin_t *this_gen) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int i;
+  int i, local;
 
   if(!this_gen)
     return;
 
   LOGDBG("vdr_plugin_dispose");
 
+  local = this->funcs.push_input_write ? 1 : 0;
+  memset(&this->funcs, 0, sizeof(this->funcs));
+
+  /* sockets */
+  if(!local) {
+    if(this->fd_control >= 0)
+      shutdown(this->fd_control, SHUT_RDWR);
+    if(this->fd_data >= 0)
+      shutdown(this->fd_data, SHUT_RDWR);
+    if(this->fd_data >= 0)
+      if(close(this->fd_data))
+	LOGERR("close(fd_data) failed");
+    if(this->fd_control >= 0)
+      if(close(this->fd_control))
+	LOGERR("close(fd_control) failed");
+    this->fd_data = this->fd_control = -1;
+  }
+
+  /* destroy mutexes (keep VDR out) */
+  this->control_running = 0;
+  while(pthread_mutex_destroy(&this->vdr_entry_lock) == EBUSY) {
+    LOGMSG("vdr_entry_lock busy ...");
+    pthread_mutex_lock(&this->vdr_entry_lock);
+    pthread_mutex_unlock(&this->vdr_entry_lock);
+  }
+  while(pthread_mutex_destroy(&this->osd_lock) == EBUSY) {
+    LOGMSG("osd_lock busy ...");
+    pthread_mutex_lock(&this->osd_lock);
+    pthread_mutex_unlock(&this->osd_lock);
+  }
+  while(pthread_mutex_destroy(&this->lock) == EBUSY) {
+    LOGMSG("lock busy ...");
+    pthread_mutex_lock(&this->lock);
+    pthread_mutex_unlock(&this->lock);
+  }
+
+  /* event queue(s) */
   if (this->slave_event_queue) 
     xine_event_dispose_queue (this->slave_event_queue);
   this->slave_event_queue = NULL;
@@ -4039,13 +4076,16 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     xine_event_dispose_queue (this->event_queue);
   this->event_queue = NULL;
 
-  pthread_mutex_lock(&this->vdr_entry_lock);
+  /* threads */
+  if(!local) {
+    void *p;
+    pthread_cancel(this->control_thread);
+    pthread_join (this->control_thread, &p);
+    pthread_cancel(this->data_thread);
+    pthread_join (this->data_thread, &p);   
+  }
 
-  if(this->video_properties_saved)
-    set_video_properties(this, -1,-1,-1,-1); /* restore defaults */
-
-  pthread_mutex_lock(&this->lock);
-
+  /* slave stream */
   if (this->slave_stream) {
     if(this->funcs.fe_control) 
       this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
@@ -4055,40 +4095,25 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     this->slave_stream = NULL;
   }
 
+  /* OSD */
   for(i=0; i<MAX_OSD_OBJECT; i++) {
     if(this->osdhandle[i] != -1) {
       osd_command_t cmd;
       memset(&cmd,0,sizeof(cmd));
       cmd.cmd = OSD_Close;
       cmd.wnd = i;
-      vdr_plugin_exec_osd_command(this_gen, &cmd);
+      exec_osd_command(this, &cmd);
     }
   }
-  pthread_mutex_destroy (&this->osd_lock);
 
-  shutdown(this->fd_control, SHUT_RDWR);
-  shutdown(this->fd_data, SHUT_RDWR);
-  if(this->fd_data >= 0)
-    if(close(this->fd_data))
-      LOGERR("close(fd_data) failed");
-  if(this->fd_control >= 0)
-    if(close(this->fd_control))
-      LOGERR("close(fd_control) failed");
-  this->fd_data = this->fd_control = -1;
+  /* restore video properties */
+  if(this->video_properties_saved)
+    set_video_properties(this, -1,-1,-1,-1); /* restore defaults */
 
   signal_buffer_pool_not_empty(this);
   signal_buffer_not_empty(this);
-  pthread_mutex_unlock(&this->lock);
 
-  if(this->control_running) {
-    void *p;
-    this->control_running = 0;
-    pthread_cancel(this->control_thread);
-    pthread_join (this->control_thread, &p);
-    pthread_cancel(this->data_thread);
-    pthread_join (this->data_thread, &p);
-  }
-
+  /* SCR */
   if (this->scr) {
     this->stream->xine->clock->unregister_scr(this->stream->xine->clock, 
 					      &this->scr->scr);
@@ -4100,21 +4125,31 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   if(this->udp_data)
     free_udp_data(this->udp_data);
 
+  /* fifos */
+
+  /* need to get all buffer elements back before disposing own buffers ... */
+  if(this->read_buffer)
+    this->read_buffer->free_buffer(this->read_buffer);
   if(this->stream && this->stream->audio_fifo)
-    this->stream->audio_fifo->clear(this->stream->audio_fifo); /* need to get all buf elements back before disposing own bufs ... */
+    this->stream->audio_fifo->clear(this->stream->audio_fifo);
   if(this->stream && this->stream->video_fifo)
     this->stream->video_fifo->clear(this->stream->video_fifo);
+
   if(this->block_buffer)
     this->block_buffer->clear(this->block_buffer);
-  if(this->big_buffer) {
+  if(this->big_buffer) 
     this->big_buffer->clear(this->big_buffer);
+  if(this->hd_buffer)
+    this->hd_buffer->clear(this->hd_buffer);
+
+  if(this->big_buffer) 
     this->big_buffer->dispose(this->big_buffer);
-  }
   if(this->block_buffer)
     this->block_buffer->dispose(this->block_buffer);
+  if(this->hd_buffer)
+    this->hd_buffer->dispose(this->hd_buffer);
 
-  pthread_mutex_destroy(&this->vdr_entry_lock);
-  pthread_mutex_destroy (&this->lock);
+  memset(this, 0, sizeof(this));
 
   free (this);
 }
