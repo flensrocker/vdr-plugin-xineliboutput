@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.2 2006-07-04 01:53:23 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.3 2006-07-05 01:21:36 phintuka Exp $
  *
  */
 
@@ -169,7 +169,7 @@ typedef struct {
     };
     uint8_t raw[4];
   };
-} rtcp_common_t;
+} __attribute__ ((packed)) rtcp_common_t;
 
 /* RTCP RR (Reception report) */
 typedef struct {
@@ -180,8 +180,8 @@ typedef struct {
   uint32_t jitter;          /* interarrival jitter */
   uint32_t lsr;             /* last SR packet from this source */
   uint32_t dlsr;            /* delay since last SR packet */
-} rtcp_rr_t;
-  
+} __attribute__ ((packed)) rtcp_rr_t;
+
 /* RTCP SR (Sender report) */
 typedef struct {
   uint32_t ssrc;
@@ -191,14 +191,14 @@ typedef struct {
   uint32_t psent;    /* packets sent */
   uint32_t osent;    /* octets sent */
   rtcp_rr_t rr[0];   /* variable-length list */
-} rtcp_sr_t;
+} __attribute__ ((packed)) rtcp_sr_t;
 
 /* RTCP SDES item */
 typedef struct {
   uint8_t type;             /* type of item (rtcp_sdes_type_t) */
   uint8_t length;           /* length of item (in octets) */
   char    data[0];          /* text, not null-terminated */
-} rtcp_sdes_item_t;
+} __attribute__ ((packed)) rtcp_sdes_item_t;
 
 /* RTCP packet */
 typedef struct {
@@ -218,7 +218,7 @@ typedef struct {
       /* can't express trailing text for reason */
     } bye;
   };
-} rtcp_packet_t;
+} __attribute__ ((packed)) rtcp_packet_t;
 
 
 #if defined __cplusplus
