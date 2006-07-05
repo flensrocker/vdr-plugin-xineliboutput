@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.7 2006-06-11 21:02:54 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.8 2006-07-05 01:26:53 phintuka Exp $
  *
  */
 
@@ -12,16 +12,6 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
-/*#define LOG_UDP*/
-/*#define LOG_OSD*/
-/*#define LOG_CMD*/
-/*#define LOG_SCR*/
-/*#define LOG_TRACE*/
-
-#define ADJUST_SCR_SPEED        1
-#define INITIAL_READ_DELAY      (16*(40*1000))  /* us. 16 frames, 40ms / frame */
-#define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 
 #define XINE_ENGINE_INTERNAL
 #define METRONOM_CLOCK_INTERNAL
@@ -56,14 +46,30 @@
 #include "xine_input_vdr_net.h"
 #include "xine_osd_command.h"
 
+/***************************** DEFINES *********************************/
+
+/*#define LOG_UDP*/
+/*#define LOG_OSD*/
+/*#define LOG_CMD*/
+/*#define LOG_SCR*/
+/*#define LOG_TRACE*/
+
+#define ADJUST_SCR_SPEED        1
+#define INITIAL_READ_DELAY      (16*(40*1000))  /* us. 16 frames, 40ms / frame */
+#define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
+
+#define HD_BUF_NUM_BUFS   (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
+#define HD_BUF_ELEM_SIZE  (2048+64)
+
+
 /******************************* LOG ***********************************/
 
 #define LOG_MODULENAME "[input_vdr] "
 #define SysLogLevel iSysLogLevel
 #include "logdefs.h"
 
-int iSysLogLevel = 1;
-int bLogToSysLog = 0;
+int iSysLogLevel  = 1;
+int bLogToSysLog  = 0;
 int bSymbolsFound = 0;
 
 #if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
@@ -88,7 +94,7 @@ static void syslog_with_tid(int level, const char *fmt, ...)
 }
 #endif
 
-static void SetupLogLevel()
+static void SetupLogLevel(void)
 {
   void *lib = NULL;
   if( !(lib = dlopen (NULL, RTLD_LAZY | RTLD_GLOBAL))) {
@@ -169,7 +175,6 @@ typedef struct vdr_input_plugin_s {
   xine_stream_t      *pip_stream;
   xine_stream_t      *slave_stream;
   xine_event_queue_t *slave_event_queue;
-  int                 loop_play;
 
   /* Sync */
   pthread_mutex_t     lock;
@@ -182,6 +187,12 @@ typedef struct vdr_input_plugin_s {
   int                 playback_finished;
   int                 stream_start;
   int                 send_pts;
+  int                 loop_play;
+  int                 hd_stream;  /* true if current stream is HD */
+
+  int                 audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
+  int                 reset_audio_cnt;
+  int                 prev_audio_stream_id;
 
   /* SCR */
   pvrscr_t           *scr;
@@ -189,7 +200,9 @@ typedef struct vdr_input_plugin_s {
   int                 speed_before_pause;
   int                 is_paused;
 
-  int                 I_frames;  /* amount of I-frames passed to demux */
+  int                 I_frames;   /* amount of I-frames passed to demux */
+  int                 B_frames;
+  int                 P_frames;
 
   /* Network */
   pthread_t           control_thread;
@@ -208,11 +221,15 @@ typedef struct vdr_input_plugin_s {
   fifo_buffer_t      *block_buffer;  /* blocks to be demuxed */
   fifo_buffer_t      *buffer_pool;   /* stream's video fifo */
   fifo_buffer_t      *big_buffer;    /* for jumbo PES */
+  fifo_buffer_t      *hd_buffer;     /* more buffer for HD streams */
   uint64_t            discard_index; /* index of next byte to feed to demux; 
 					all data before this offset will 
 					be discarded */
+  int                 discard_frame;
   uint64_t            guard_index;   /* data before this offset will not be discarded */
+  int                 guard_frame;
   uint64_t            curpos;        /* current position (demux side) */
+  int                 curframe;      
   int                 max_buffers;   /* max no. of non-demuxed buffers */
   int                 read_delay;    /* usec to wait at next read call */
 
@@ -540,13 +557,6 @@ static inline const char *scr_tunning_str(int value)
     default: break;
   }
   return "ERROR";
-#if 0
-  return (value ? (value < 0 ? (value == -1 ? 
-				"SCR -0.5%" : 
-				"SCR PAUSED")
-		   : "SCR +0.5%") 
-	  : "SCR +0.0%");
-#endif
 }
 #endif
 
@@ -558,13 +568,9 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this)
       pvrscr_speed_tunning(this->scr, 1.0);
     
     this->speed_before_pause = _x_get_fine_speed(this->stream);
-#if 1
+
     if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE)
       _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
-#else
-#warning no pause
-    pvrscr_set_fine_speed(this->scr, 1);
-#endif
   }
 }
 
@@ -607,8 +613,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   /* Grab current buffer usage */
   int num_used = this->buffer_pool->size(this->buffer_pool) + 
                  this->block_buffer->size(this->block_buffer);
-  int num_free = this->buffer_pool->num_free(this->buffer_pool) + 
-                 this->block_buffer->num_free(this->block_buffer);
+  int num_free = this->buffer_pool->num_free(this->buffer_pool);
   int scr_tunning = this->scr_tunning;
   
   static int64_t pause_start = -1LL; /* TODO: -> this... */
@@ -769,16 +774,38 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this,
 
 /******************************* TOOLS ***********************************/
 
-#define LOCKED(x) \
-do { \
-  if(!pthread_mutex_lock(&this->lock)) { \
-    x  \
-  } else { \
-    LOGERR("pthread_mutex_lock failed"); \
-    abort(); \
-  } \
-  pthread_mutex_unlock(&this->lock);  \
-} while(0) 
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define MAX(a,b) ((a)>(b)?(a):(b))
+
+static int64_t pts_from_pes(const uint8_t *buf, int size)
+{
+  int64_t pts = -1;
+  if(size>14 && buf[7] & 0x80) { /* pts avail */
+    pts  = ((int64_t)( buf[ 9] & 0x0E)) << 29;
+    pts |=  (int64_t)( buf[10]         << 22 );
+    pts |=  (int64_t)((buf[11] & 0xFE) << 14 );
+    pts |=  (int64_t)( buf[12]         <<  7 );
+    pts |=  (int64_t)((buf[13] & 0xFE) >>  1 );
+  }
+  return pts;
+}
+
+static void clear_pts_from_pes(uint8_t *buf, int size)
+{
+  if(size>14 && buf[7] & 0x80) { /* pts avail */
+#if 0
+#warning setting to 0 instead of removing
+    buf[ 9] &= ~0x0E;
+    buf[10] = 0;
+    buf[11] &= ~0xFE;
+    buf[12] = 0;
+    buf[13] &= ~0xFE;
+#else
+    buf[7] &= 0x7f; /* clear pts avail */
+    memcpy(buf+9, buf+14, size-14);
+#endif
+  }
+}
 
 static void create_timeout_time(struct timespec *abstime, int timeout_ms)
 {
@@ -792,28 +819,6 @@ static void create_timeout_time(struct timespec *abstime, int timeout_ms)
   abstime->tv_sec = now.tv_sec;
   abstime->tv_nsec = now.tv_usec * 1000;
 }
-
-#if 0
-static void timed_wait(int ms) 
-{
-  static pthread_cond_t  cond;
-  static pthread_mutex_t mutex;
-  static int initialized = 0;
-  struct timespec abstime;
-
-  if(!initialized) {
-    initialized ++;
-    pthread_mutex_init (&mutex, NULL);
-    pthread_cond_init (&cond, NULL);
-  }
-
-  create_timeout_time(&abstime, ms);
-#warning lock first ?
-  pthread_cond_timedwait (&cond, &mutex, &abstime);
-
-  /* or, use select(0, NULL, NULL, NULL, &abstime); */
-}
-#endif
 
 static int io_select_rd (int fd) 
 {
@@ -884,6 +889,100 @@ static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
   va_end(argp);
 }
 
+static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
+{
+  int num_bytes = 0, total_bytes = 0, err;
+
+  *buf = 0;
+  while(total_bytes < maxlen-1 ) {
+
+    pthread_testcancel();
+    err = io_select_rd(this->fd_control);
+    pthread_testcancel();
+
+    if(this->fd_control < 0)
+      return -1;
+
+    if(err == XIO_TIMEOUT) 
+      continue;   
+    if(err == XIO_ABORTED) {
+      LOGERR("readline_control: XIO_ABORTED at [%d]", num_bytes);
+      continue;
+    }
+    if(err != XIO_READY /* == XIO_ERROR */) {
+      LOGERR("readline_control: read error at [%d]", num_bytes);
+      return -1;
+    }
+
+    num_bytes = read (this->fd_control, buf + total_bytes, 1);
+    pthread_testcancel();
+
+    if (num_bytes <= 0) {
+      LOGERR("readline_control: read error at [%d]", num_bytes);
+      if(num_bytes < 0 && errno == EINTR && this->fd_control >= 0) {
+	continue;
+      }
+      return -1;
+    }
+      
+    if(buf[total_bytes]) {
+      if(buf[total_bytes] == '\r') {
+	buf[total_bytes] = 0;
+      } else if(buf[total_bytes] == '\n') {
+	buf[total_bytes] = 0;
+	break;
+      } else {
+	total_bytes ++;
+	buf[total_bytes] = 0;
+      }
+    }
+    TRACE("readline_control: %d bytes ... %s\n", 
+	  total_bytes, buf);
+  }
+
+  TRACE("readline_control: %d bytes (max %d)\n", total_bytes, maxlen);
+
+  return total_bytes;
+}
+
+
+static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
+{
+  int num_bytes, total_bytes = 0, err;
+
+  while(total_bytes < len) {
+    pthread_testcancel();
+    err = io_select_rd(this->fd_control);
+    pthread_testcancel();
+
+    if(this->fd_control < 0)
+      return -1;
+
+    if(err == XIO_TIMEOUT) {
+      continue;
+    }
+    if(err == XIO_ABORTED) {
+      LOGERR("read_control: XIO_ABORTED");
+      continue;
+    }
+    if(err == XIO_ERROR) {
+      LOGERR("read_control: poll error");
+      return -1;
+    }
+
+    num_bytes = read (this->fd_control, buf + total_bytes, len - total_bytes);
+    pthread_testcancel();
+
+    if (num_bytes <= 0) {
+      LOGERR("read_control read() error"); 
+      return -1;
+    }
+    total_bytes += num_bytes;
+  }
+
+  return total_bytes;
+}
+
 static char *FindSubFile(const char *fname)
 {
   char *subfile = (char*)malloc(strlen(fname)+4), *dot;
@@ -906,6 +1005,25 @@ static char *FindSubFile(const char *fname)
   }
   free(subfile);
   return NULL;
+}
+
+static void queue_nosignal(vdr_input_plugin_t *this)
+{
+#define extern static
+#include "nosignal_720x576.c"
+#undef extern
+  buf_element_t *buf;
+  int pos = 0;
+  while(pos < v_mpg_nosignal_length) {
+    buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+    buf->content = buf->mem;
+    buf->size = MIN(v_mpg_nosignal_length - pos, buf->max_size);
+    buf->type = BUF_VIDEO_MPEG;
+    xine_fast_memcpy(buf->content, &v_mpg_nosignal[pos], buf->size);
+    pos += buf->size;
+    LOGMSG("p");
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+  }
 }
 
 /************************** BUFFER HANDLING ******************************/
@@ -1040,6 +1158,105 @@ static void signal_buffer_not_empty(vdr_input_plugin_t *this)
   }
 }
 
+static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int force)
+{
+  buf_element_t *buf = NULL;
+
+  /* HD buffer */
+  if(this->hd_stream) {
+    if(!this->hd_buffer)
+      this->hd_buffer = _x_fifo_buffer_new(HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
+
+    if(size <= HD_BUF_ELEM_SIZE && this->hd_buffer && this->hd_stream)
+      buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
+  } else {
+    if(this->hd_buffer) {
+      LOGMSG("hd_buffer still exists ...");
+      if(this->hd_buffer->num_free(this->hd_buffer) == this->hd_buffer->buffer_pool_capacity) {
+	LOGMSG("disposing hd_buffer ...");
+	this->hd_buffer->dispose(this->hd_buffer);
+	this->hd_buffer = NULL;
+      }
+    }
+  }
+
+  /* limit max. buffered data */
+  if(!force) {
+    int buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
+    if(this->buffer_pool->buffer_pool_num_free <= buffer_limit) 
+      return NULL;
+  }
+
+  /* get smallest possible buffer */
+  if(!buf) {
+    if(size < 8000)
+      buf = this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
+    else if(size < 0xffff) {
+      buf = this->block_buffer->buffer_pool_try_alloc(this->block_buffer);
+      LOGDBG("vdr_plugin_write: big PES (%d bytes) !", size);
+    }
+    else { /* len>64k */
+      if(!this->big_buffer)
+	this->big_buffer = _x_fifo_buffer_new(4,512*1024);
+      buf = this->big_buffer->buffer_pool_try_alloc(this->big_buffer);
+      LOGDBG("vdr_plugin_write: jumbo PES (%d bytes) !", size);
+    }
+  }
+
+  buf->content = buf->mem;
+  buf->size = 0;
+  buf->type = BUF_DEMUX_BLOCK;
+
+  buf->free_buffer = buffer_pool_free;
+
+  return buf;
+}
+
+static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+  if(buf->type == BUF_MAJOR_MASK) {
+    if(this->udp||this->rtp) {
+      stream_udp_header_t *header = (stream_udp_header_t *)buf->content;
+      this->curpos = header->pos;
+      buf->content += sizeof(stream_udp_header_t);
+      buf->size -= sizeof(stream_udp_header_t);
+    } else {
+      stream_tcp_header_t *header = (stream_tcp_header_t *)buf->content;
+      this->curpos = header->pos;
+      buf->content += sizeof(stream_tcp_header_t);
+      buf->size -= sizeof(stream_tcp_header_t);
+    }
+  }
+}
+
+static buf_element_t *make_padding_frame(vdr_input_plugin_t *this)
+{
+  static const uint8_t padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
+  buf_element_t *buf;
+
+  buf = get_buf_element(this, 8, 1);
+  if(!buf)
+    buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
+
+  if(buf) {
+    buf->size = 8;
+    buf->type = BUF_DEMUX_BLOCK;
+    memcpy(buf->content, padding, 8);
+  }
+
+  return buf;
+}
+
+void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
+{
+  buf_element_t *buf = pool->buffer_pool_try_alloc(pool);
+  if(buf) {
+    buf->type = cmd;
+    buffer->put(buffer, buf);
+  }
+}
+
+
 /*************************** slave input (PIP stream) ********************/
 
 typedef struct fifo_input_plugin_s {
@@ -1145,9 +1362,6 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
 
 
 /******************************** OSD ************************************/
-
-#define MIN(a,b) ((a)<(b)?(a):(b))
-#define MAX(a,b) ((a)>(b)?(a):(b))
 
 static int update_video_size(vdr_input_plugin_t *this)
 {
@@ -1513,7 +1727,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       int win_height = this->stream->video_out->get_property(this->stream->video_out, 
 							     VO_PROP_WINDOW_HEIGHT);
       if(this->rescale_osd) {
-	// it is not nice to have subs in _middle_ of display when using 1440x900 etc...
+	/* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
 	
 	if(win_width > 240 && win_height > 196) {
 	  if(this->rescale_osd) {
@@ -1623,7 +1837,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	}
       pthread_mutex_unlock(&this->osd_lock);
     } else {
-LOGMSG("    vdr_scale_osds lock failed");
+      LOGMSG("vdr_scale_osds: pthread_mutex_lock failed");
     }
   }
 }
@@ -1651,7 +1865,6 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
 
   if(this->curpos > this->discard_index) {
 #if 0
-#warning Check this
     LOGMSG("Possibly flushing too much !!! (diff=%"PRIu64" bytes, "
 	   "guard @%" PRIu64 ")", 
 	   this->curpos - this->discard_index, this->guard_index);
@@ -1681,6 +1894,8 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
   buf = stream->audio_fifo->buffer_pool_alloc (stream->audio_fifo);
   buf->type = BUF_CONTROL_RESET_DECODER;
   stream->audio_fifo->put (stream->audio_fifo, buf);
+
+  this->prev_audio_stream_id = 0;
 
   /* on seeking we must wait decoder fifos to process before doing flush.
    * otherwise we flush too early (before the old data has left decoders)
@@ -1752,7 +1967,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
       this->curr_buffer = NULL;
     }
 #endif
-
+    
     vdr_x_demux_flush_engine (this->stream, this);
 
 #if 0
@@ -2275,7 +2490,7 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uin
   r = vdr_plugin_flush(this, MAX(5, timeout_ms));
   printf_control(this, "RESULT %d %d\r\n", this->token, r);
 
-  xine_usec_sleep(20*1000);
+  /*xine_usec_sleep(20*1000);*/
 
   this->live_mode = 1;
 
@@ -2356,11 +2571,12 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     signal_buffer_pool_not_empty(this);
 
   } else if(!strncasecmp(cmd, "DISCARD ", 8)) {
-    if(1 == sscanf(cmd, "DISCARD %" PRIu64, &tmp64)) {
+    if(2 == sscanf(cmd, "DISCARD %" PRIu64 " %d", &tmp64, &tmp32)) {
       pthread_mutex_lock(&this->lock);
       this->discard_index = tmp64;
+      this->discard_frame = tmp32;
       vdr_flush_engine(this);
-      this->I_frames = 0;
+      this->I_frames = this->B_frames = this->P_frames = 0;
       pthread_mutex_unlock(&this->lock);
     } else 
       err = CONTROL_PARAM_ERROR;
@@ -2396,7 +2612,6 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     pthread_mutex_unlock(&this->lock);
     
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
-#if 1
     if(this->fd_control >= 0) {
       set_live_mode(this, 1);
       pthread_mutex_lock(&this->lock);
@@ -2409,7 +2624,6 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       }
       pthread_mutex_unlock(&this->lock);
     } else
-#endif
       err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ? 
 	set_live_mode(this, tmp32) : -2 ;    
 
@@ -2440,32 +2654,23 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     for(i=XINE_PARAM_EQ_30HZ,j=0; i<=XINE_PARAM_EQ_16000HZ; i++,j++)
       xine_set_param(stream, i, eqs[j]);
 
-  } else if(!strncasecmp(cmd, "NEWAUDIOSTREAM AC3", 18)) {
-#if 0
-    vdr_flush_engine(this);
-    vdr_x_demux_flush_engine(stream,this);
-    _x_demux_control_start(stream);
-#endif
-
-  } else if(!strncasecmp(cmd, "NEWAUDIOSTREAM ", 15)) {
+  } else if(!strncasecmp(cmd, "AUDIOSTREAM ", 12)) {
     if(!this->slave_stream) {
-      if(1 == sscanf(cmd, "NEWAUDIOSTREAM %d", &tmp32)) {
-	buf_element_t *buf_elem = 
-	  stream->audio_fifo->buffer_pool_try_alloc (stream->audio_fifo);
-	tmp32 &= 0x1f;
-	if(buf_elem) {
-	  /* syslog(LOG_INFO, "xineliboutput: %d",tmp32); */
-	  buf_elem->type = BUF_CONTROL_AUDIO_CHANNEL;
-	  buf_elem->decoder_info[0] = tmp32;
-	  this->block_buffer->put(this->block_buffer, buf_elem);
-	}
+      int ac3 = strncmp(cmd+12, "AC3", 3) ? 0 : 1;
+      if(1 == sscanf(cmd+12 + 4*ac3, "%d", &tmp32)) {
+	pthread_mutex_lock(&this->lock);
+	if(this->reset_audio_cnt < 0)
+	  this->reset_audio_cnt = 0;
+	this->reset_audio_cnt++; 
+	this->audio_stream_id = tmp32;
+	pthread_mutex_unlock(&this->lock);
       } else {
 	err = CONTROL_PARAM_ERROR;
       }
     }
 
-  } else if(!strncasecmp(cmd, "NEWSPUSTREAM ", 13)) {
-    if(1 == sscanf(cmd, "NEWSPUSTREAM %d", &tmp32)) {
+  } else if(!strncasecmp(cmd, "SPUSTREAM ", 13)) {
+    if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
       buf_element_t *buf_elem = 
 	stream->video_fifo->buffer_pool_try_alloc (stream->video_fifo);
       tmp32 &= 0x1f;
@@ -2597,7 +2802,7 @@ static void *vdr_control_thread(void *this_gen)
 
   LOGDBG("Control thread started\n");
 
-  /* nice(-1); */
+  /*(void)nice(-1);*/
 
   /* wait until state changes from open to play */
   while(bSymbolsFound && counter>0 && ! this->funcs.fe_control) {
@@ -2612,18 +2817,17 @@ static void *vdr_control_thread(void *this_gen)
     /* read next command */
     line[0] = 0;
     pthread_testcancel();
-    if((err=control_read_cmd(this, line, sizeof(line)-1)) <= 0) {
+    if((err=readline_control(this, line, sizeof(line)-1)) <= 0) {
       if(err < 0) {
 	LOGERR("control stream read error");
 	break;
       }
-      /*LOGERR("control stream read timeout %s", strerror(errno));*/
       continue;
     }
     LOGCMD("Received command %s\n",line);
     pthread_testcancel();
     
-    if(!this->control_running) 
+    if(!this->control_running || this->fd_control < 0) 
       break;
 
     /* parse */
@@ -2769,6 +2973,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	  vdr_scale_osds(this, frame_change->width, frame_change->height);
       }
       break;
+
     case XINE_EVENT_UI_PLAYBACK_FINISHED:
       if(event->stream == this->stream) {
 	LOGMSG("XINE_EVENT_UI_PLAYBACK_FINISHED");
@@ -3045,7 +3250,9 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     }
 
     cnt += n;
+
     if(cnt == sizeof(stream_tcp_header_t)) {
+      /* Header complete */
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
       hdr->len = ntohl(hdr->len);
       hdr->pos = ntohull(hdr->pos);
@@ -3173,7 +3380,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     n = recvfrom(this->fd_data, read_buffer->mem, 
 		 read_buffer->max_size, MSG_TRUNC,
 		 &server_address, &address_len);
-    if(n<=0) {
+    if(n <= 0) {
       LOGERR("read_net_udp recv() error");
       if(!n || errno != EINTR)
 	result = XIO_ERROR;
@@ -3409,15 +3616,12 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf = NULL;
-  int                buffer_limit;
-#ifdef BLOCKING_VDR_PLUGIN_WRITE
-  struct timespec    abstime;
-  int                trycount = 10;
-#endif
+  int buffer_limit;
 
   if(this->slave_stream)
     return len;
 
+#if 0
   /* slave */
   if(((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) {
     if(!this->pip_stream) {
@@ -3453,6 +3657,7 @@ LOGMSG("  pip substream: no stream !");
     }
     return len;
   }
+#endif
 
   TRACE("vdr_plugin_write (%d bytes)", len); 
 
@@ -3546,12 +3751,83 @@ static int vdr_plugin_keypress(input_plugin_t *this_gen,
     else
       printf_control(this, "KEY %s\r\n", key);
   }
+
   pthread_mutex_unlock(&this->lock);
   return 0;
 }
 
 
 /******************************* Plugin **********************************/
+
+static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+  /* track audio stream changes */
+  int audio_changed = 0;
+  int first_audio = ! this->prev_audio_stream_id;
+  if(buf->content[3] >= 0xc0 && buf->content[3] < 0xe0) {
+    /* audio */
+    if(this->prev_audio_stream_id != (buf->content[3] << 8)) {
+      LOGMSG("Audio changed -> %d (%02X)", buf->content[3] - 0xc0, buf->content[3]);
+      this->prev_audio_stream_id = buf->content[3] << 8;
+      audio_changed = 1;
+    }
+  }
+  else if(buf->content[3] == 0xbd) {
+    /* PS1 */
+    int PayloadOffset  = buf->content[8] + 9;
+    int SubStreamId    = buf->content[PayloadOffset];
+    int SubStreamType  = SubStreamId & 0xF0;
+    int SubStreamIndex = SubStreamId & 0x1F;
+    switch (SubStreamType) {
+      case 0x20: // SPU
+      case 0x30: // SPU
+	LOGMSG("SPU %d", SubStreamId);
+        break;
+      case 0x80: // AC3 & DTS
+	if(this->prev_audio_stream_id != ((0xbd<<8) | SubStreamId)) {
+	  LOGMSG("Audio changed -> AC3 %d (BD:%02X)", SubStreamIndex, SubStreamId);
+	  this->prev_audio_stream_id = ((0xbd<<8) | SubStreamId);
+	  audio_changed = 1;
+	}
+	break;
+      case 0xA0: // LPCM
+	if(this->prev_audio_stream_id != ((0xbd<<8) | SubStreamId)) {
+	  LOGMSG("Audio changed -> LPCM %d (BD:%02X)", SubStreamIndex, SubStreamId);
+	  this->prev_audio_stream_id = ((0xbd<<8) | SubStreamId);
+	  audio_changed = 1;
+	}
+	break;
+      default:
+	/*LOGMSG("Unknown PS1 substream %d", SubStreamId);*/
+	break;
+    }
+  } else {
+    /* no audio */
+    return;
+  }
+
+  if(audio_changed && !first_audio) {
+    buf_element_t *buf_elem = 
+      this->stream->audio_fifo->buffer_pool_try_alloc (this->stream->audio_fifo);
+#if 1
+    LOGMSG("VDR-Given stream: %04x", this->audio_stream_id);
+    if(this->reset_audio_cnt < 1)
+      LOGMSG("audio changed, reset cnt still < 1");
+    this->reset_audio_cnt --;
+    if(this->reset_audio_cnt > 0)
+      LOGMSG("audio resetted, reset cnt still > 0");
+#endif
+    if(buf_elem) {
+      buf_elem->type = BUF_CONTROL_RESET_TRACK_MAP;
+      this->stream->audio_fifo->put(this->stream->audio_fifo, buf_elem);
+    }
+  }
+}
+
+static int get_video_frame_type(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+  return -1;
+}
 
 static off_t vdr_plugin_read (input_plugin_t *this_gen,
 			      char *buf, off_t len) 
@@ -3605,7 +3881,6 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 					     fifo_buffer_t *fifo, off_t todo) 
 {
-  static const uint8_t padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf  = NULL;
 
@@ -3618,16 +3893,17 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   }
 
 #ifdef ADJUST_SCR_SPEED
-  /* pthread_mutex_lock(&this->lock); */
-  LOCKED (
-    if( !this->live_mode ) {
-      if(this->scr_tunning)
-	reset_scr_tunning(this, this->speed_before_pause);
-    } else {
-      vdr_adjust_realtime_speed(this);
-    }
-  );
-  /* pthread_mutex_unlock(&this->lock); */
+  if(pthread_mutex_lock(&this->lock)) {
+    LOGERR("read_block: pthread_mutex_lock failed");
+    return NULL;
+  }
+  if( !this->live_mode ) {
+    if(this->scr_tunning)
+      reset_scr_tunning(this, this->speed_before_pause);
+  } else {
+    vdr_adjust_realtime_speed(this);
+  }
+  pthread_mutex_unlock(&this->lock); 
 #endif
 
   do {
@@ -3649,21 +3925,11 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	if(loops>1)
 	  TRACE("vdr_plugin_read_block - wait end %d",loops);
 
-        if((loops>1 && this->block_buffer->fifo_size <= 0) || /*&&*/ 
+        if((loops>1 && this->block_buffer->fifo_size <= 0) ||
 	   this->stream->demux_action_pending) {
 	  pthread_mutex_unlock(&this->block_buffer->mutex);
-          buf = this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
-
-          if(!buf)
-            buf = this->block_buffer->buffer_pool_try_alloc(this->block_buffer);
-	  if(buf) {
-	    buf->content = buf->mem;
-	    buf->size = 8;
-	    buf->type = BUF_DEMUX_BLOCK;
-            memcpy(buf->content,padding,8);
-            pthread_yield();
+	  if(NULL != (buf = make_padding_frame(this)))
 	    return buf;
-	  }
 	  /* no free buffers ... */
 	  pthread_mutex_lock(&this->block_buffer->mutex);
         }
@@ -3676,20 +3942,8 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     loops=0;
 
     pthread_mutex_lock(&this->lock);
-    if(buf->type == BUF_MAJOR_MASK) {
-      /* Strip network headers */
-      if(this->udp||this->rtp) {
-        stream_udp_header_t *header = (stream_udp_header_t *)buf->content;
-        this->curpos = header->pos;
-        buf->content += sizeof(stream_udp_header_t);
-        buf->size -= sizeof(stream_udp_header_t);
-      } else {
-        stream_tcp_header_t *header = (stream_tcp_header_t *)buf->content;
-        this->curpos = header->pos;
-        buf->content += sizeof(stream_tcp_header_t);
-        buf->size -= sizeof(stream_tcp_header_t);
-      }
-    }
+
+    strip_network_headers(this, buf);
 
     /* control buffers go always to demuxer */
     if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE) {
@@ -3712,51 +3966,26 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	       this->discard_index, this->guard_index, 
 	       this->curpos, this->discard_index-this->guard_index);
 #endif
+
+      /* Send current PTS ? */
       if(this->stream_start)
 	this->send_pts = 1;
-      if(this->send_pts)
-	if((buf->size>14) && (buf->content[7] & 0x80)) { /* pts avail */
-	  int64_t pts;
-	  pts  = ((int64_t)(buf->content[ 9] & 0x0E)) << 29 ;
-	  pts |=  buf->content[10]         << 22 ;
-	  pts |= (buf->content[11] & 0xFE) << 14 ;
-	  pts |=  buf->content[12]         <<  7 ;
-	  pts |= (buf->content[13] & 0xFE) >>  1 ;
-	  if(pts > 0LL) {
-	    vdr_x_demux_control_newpts(this->stream,pts,0);
-	    this->send_pts=0;
-	  }
-	}
-      
       this->stream_start = 0;
-      pthread_mutex_unlock(&this->lock);
-    }
- } while(!buf);
 
-#if 0
-  /* ei toimi ? */
-  if(buf->content[3] == 0xe0 && buf->size > 32) {
-    uint8_t *Data = buf->content;
-    int i = 8;        /* the minimum length of the video packet header */
-    i += Data[i] + 1; /* possible additional header bytes */
-    if (Data[i] == 0 && Data[i + 1] == 0 && Data[i + 2] == 1) {
-      if(Data[i + 3] == 0x00) {
-	uint8_t PictureType = (Data[i + 5] >> 3) & 0x07;
-	switch(PictureType) {
-	  case 1: 
-	    this->I_frames++;
-	    printf("I"); 
-	    break;
-	  case 2: 
-	    printf("B");
-	    break;
-	  case 3: 
-	    printf("P");
-	    break;
+      if(this->send_pts) {
+	int64_t pts = pts_from_pes(buf->content, buf->size);
+	if(pts > 0) {
+	  vdr_x_demux_control_newpts(this->stream, pts, 0);
+	  this->send_pts = 0;
 	}
       }
+
+      pthread_mutex_unlock(&this->lock);
     }
-  }
+  } while(!buf);
+
+#if 1
+  track_audio_stream_change(this, buf);
 #endif
 
   TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
@@ -3767,23 +3996,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 static off_t vdr_plugin_seek (input_plugin_t *this_gen, off_t offset,
 			      int origin) 
 {
-#if 0
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-
-  TRACE("Seek %" PRIu64 " bytes, origin %d", (uint64_t)offset, origin); 
-
-  /* only relative forward-seeking is implemented */
-  pthread_mutex_lock(&this->lock);
-  if (!this->live_mode && (origin == SEEK_CUR) && (offset >= 0)) {
-    this->discard_index = offset;
-  } else {
-    offset = this->curpos;
-  }
-  pthread_mutex_unlock(&this->lock);
-  return offset;
-#else
-  return -1;
-#endif
+  return -1; /*this->curpos;*/
 }
 
 static off_t vdr_plugin_get_length (input_plugin_t *this_gen) 
@@ -4022,6 +4235,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
   int fd_control;
   int saved_fd = this->fd_control;
 
+  /* Connect to server */
   this->fd_control = fd_control = _x_io_tcp_connect(this->stream, host, port);
 
   if(fd_control < 0 || 
@@ -4033,16 +4247,36 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
     return -1;
   }
 
-  if(control_read_cmd(this, tmpbuf, 256) > 0) {
-    LOGMSG("Server greeting: %s", tmpbuf);
-  } else {
+  /* Check server greeting */
+  if(readline_control(this, tmpbuf, 256) <= 0) {
     LOGMSG("Server not replying");
     close(fd_control);
     this->fd_control = saved_fd;
     return -1;
   }
+  LOGMSG("Server greeting: %s", tmpbuf);
+  if(!strncmp(tmpbuf, "Access denied", 13)) {
+    LOGMSG("Maybe host address is missing from server-side svdrp.conf ?");
+    close(fd_control);
+    this->fd_control = saved_fd;
+    return -1;
+  }
+  if(!strstr(tmpbuf, "VDR-") || !strstr(tmpbuf, "xineliboutput-") || !strstr(tmpbuf, "READY")) {
+    LOGMSG("Unregonized greeting !");
+    close(fd_control);
+    this->fd_control = saved_fd;
+    return -1;
+  }
+  /* Check server xineliboutput version */
+  if(!strstr(tmpbuf, "xineliboutput-" XINELIBOUTPUT_VERSION)) {
+    LOGMSG("-----------------------------------------------------------------");
+    LOGMSG("WARNING: Client and server versions of xinelibout are different !");
+    LOGMSG("         Client version (xine_input_vdr.so) is " XINELIBOUTPUT_VERSION);
+    LOGMSG("-----------------------------------------------------------------");
+  }
 
-  if(control_read_cmd(this, tmpbuf, 256) > 0 &&
+  /* Store our client-id */
+  if(readline_control(this, tmpbuf, 256) > 0 &&
      !strncmp(tmpbuf, "CLIENT-ID ", 10)) {
     LOGMSG("Got Client-ID: %s", tmpbuf+10);
     if(client_id)
@@ -4054,7 +4288,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
       *client_id = -1;
   }
 
-  /* set to non-blocking mode */
+  /* set socket to non-blocking mode */
   fcntl (fd_control, F_SETFL, fcntl (fd_control, F_GETFL) | O_NONBLOCK);
 
   this->fd_control = saved_fd;
@@ -4089,7 +4323,7 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
   }
 
   cmd[0] = 0;
-  if(control_read_cmd(this, cmd, 256) < 8 ||
+  if(readline_control(this, cmd, 256) < 8 ||
      strncmp(cmd, "RTP ", 4)) {
     LOGMSG("Server does not support RTP ? (%s)", cmd);
     return -1;
@@ -4319,13 +4553,13 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
       LOGMSG("Trying pipe (data) ...");
       _x_io_tcp_write(this->stream, this->fd_control, "PIPE\r\n", 6);
       *tmpbuf=0;
-      if(control_read_cmd(this, tmpbuf, 256) >5 &&
+      if(readline_control(this, tmpbuf, 256) >5 &&
 	 !strncmp(tmpbuf, "PIPE ", 5) &&
 	 strncmp(tmpbuf, "PIPE NONE", 9)) {
 	LOGMSG("PIPE: %s", tmpbuf);
 	if((this->fd_data = open(tmpbuf+5, O_RDONLY|O_NONBLOCK)) >= 0) {
 	  _x_io_tcp_write(this->stream, this->fd_control, "PIPE OPEN\r\n", 11);
-	  if(control_read_cmd(this, tmpbuf, 256) >6 &&
+	  if(readline_control(this, tmpbuf, 256) >6 &&
 	     !strncmp(tmpbuf, "PIPE OK", 7)) {
 	    fcntl (this->fd_data, F_SETFL, 
 		   fcntl (this->fd_data, F_GETFL) | O_NONBLOCK);
@@ -4426,16 +4660,18 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
   if(!vdr_plugin_open(this_gen))
     return 0;
 
+  queue_nosignal(this);
+
   this->control_running = 1;
   if ((err = pthread_create (&this->control_thread,
 			     NULL, vdr_control_thread, (void*)this)) != 0) {
     LOGERR("Can't create new thread");
-    abort();
+    return 0;
   }
   if ((err = pthread_create (&this->data_thread,
 			     NULL, vdr_data_thread, (void*)this)) != 0) {
     LOGERR("Can't create new thread");
-    abort();
+    return 0;
   }
 
   return 1;
@@ -4536,8 +4772,11 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->mrl          = strdup(mrl);
 
   /* buffer */
-  this->block_buffer = _x_fifo_buffer_new(4,0xffff+0xff); /* dummy buf to be used before first read and for big PES frames */
+  this->block_buffer = _x_fifo_buffer_new(4,0x10000+64); /* dummy buf to be used before first read and for big PES frames */
   this->big_buffer = NULL;   /* dummy buf to be used for jumbo PES frames */
+  this->hd_buffer = NULL;
+
+  /* sync */
   pthread_mutex_init (&this->lock, NULL);
   pthread_mutex_init (&this->osd_lock, NULL);
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
