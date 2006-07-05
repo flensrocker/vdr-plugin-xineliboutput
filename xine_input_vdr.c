@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.8 2006-07-05 01:26:53 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.9 2006-07-05 01:39:55 phintuka Exp $
  *
  */
 
@@ -826,39 +826,32 @@ static int io_select_rd (int fd)
   int ret;
   struct timeval select_timeout;
 
-  if(fd<0)
+  if(fd < 0)
     return XIO_ERROR;
 
-  while(1) {
-    FD_ZERO (&fdset);
-    FD_ZERO (&eset);
-    FD_SET  (fd, &fdset);
-    FD_SET  (fd, &eset);
+  FD_ZERO (&fdset);
+  FD_ZERO (&eset);
+  FD_SET  (fd, &fdset);
+  FD_SET  (fd, &eset);
     
-    select_timeout.tv_sec  = 0; /*timeout_ms/1000;*/
-    select_timeout.tv_usec = 500*1000; /*(timeout_ms%1000)*1000;*/
-    ret = select (fd + 1, &fdset, NULL, &eset, &select_timeout);
+  select_timeout.tv_sec  = 0;
+  select_timeout.tv_usec = 500*1000; /* 500 ms */
+  errno = 0;
+  ret = select (fd + 1, &fdset, NULL, &eset, &select_timeout);
 
-    /*ret = select (fd + 1, &fdset, NULL, &eset, NULL);*/
-
-    if (ret == 0) {
+  if (ret == 0)
+    return XIO_TIMEOUT;
+  if (ret < 0) {
+    if(errno == EINTR || errno == EAGAIN)
       return XIO_TIMEOUT;
-    } else if (ret < 0) {
-      if(errno == EINTR)
-        return XIO_TIMEOUT;
-      return XIO_ERROR;
-    } else if (ret >= 1) {
-      if(FD_ISSET(fd,&eset))
-	return XIO_ERROR;
-      if(FD_ISSET(fd,&fdset))
-	return XIO_READY;
-    }
+    return XIO_ERROR;
   }
-  /*
-  if (stream && stream->demux_action_pending)
-  return XIO_ABORTED;
-  */
-  return XIO_TIMEOUT;
+  if(FD_ISSET(fd,&eset))
+    return XIO_ERROR;
+  if(FD_ISSET(fd,&fdset))
+    return XIO_READY;
+
+  return XIO_TIMEOUT; /* newer reached ... */
 }
 
 static void write_control(vdr_input_plugin_t *this, const char *str)
@@ -867,12 +860,17 @@ static void write_control(vdr_input_plugin_t *this, const char *str)
   size_t ret;
 
   do {
+    if(this->fd_control < 0)
+      return;
     errno = 0;
     if(len != (ret = write(this->fd_control, str, len))) {
-      if(ret <= 0 && (errno == EINTR || errno == EAGAIN))
+      /*if(ret <= 0 && (errno == EINTR || errno == EAGAIN))*/
+      if(ret <= 0 && errno == EAGAIN)
 	continue;
-
-      LOGERR("write_control failed (%d)", ret);
+      if(ret <= 0 && errno == EINTR)
+	LOGERR("write_control failed (%d) EINTR", ret);
+      else
+	LOGERR("write_control failed (%d)", ret);
       close(this->fd_control);
       this->fd_control = -1;
     }
@@ -2259,7 +2257,7 @@ LOGMSG("  pip stream created");
 static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
 {
   int err = CONTROL_OK;
-  pthread_mutex_lock(&this->lock);
+  pthread_mutex_lock(&this->osd_lock);
   if(1 == sscanf(cmd, "OSDSCALING %d", &this->rescale_osd)) {
     this->rescale_osd_downscale = strstr(cmd, "NoDownscale") ? 0 : 1;
     this->unscaled_osd = strstr(cmd, "UnscaledAlways") ? 1 : 0;
@@ -2267,14 +2265,11 @@ static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
     this->unscaled_osd_lowresvideo = strstr(cmd, "UnscaledLowRes") ? 1 : 0;
   } else
     err = CONTROL_PARAM_ERROR;
-  pthread_mutex_unlock(&this->lock);
+  pthread_mutex_unlock(&this->osd_lock);
   return err;
 }
 
-static int control_read_data(vdr_input_plugin_t *this, 
-			     uint8_t *buf, int len);
-
-static int handle_control_osdcmd(vdr_input_plugin_t *this /*, const char *cmd*/)
+static int handle_control_osdcmd(vdr_input_plugin_t *this)
 {
   osd_command_t osdcmd;
   int err = CONTROL_OK;
@@ -2282,7 +2277,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this /*, const char *cmd*/)
   if(this->fd_control < 0)
     return CONTROL_DISCONNECTED;
 
-  if(control_read_data(this, (unsigned char*)&osdcmd, sizeof(osd_command_t))
+  if(read_control(this, (unsigned char*)&osdcmd, sizeof(osd_command_t))
      != sizeof(osd_command_t)) {
     LOGMSG("control: error reading OSDCMD data");
     return CONTROL_DISCONNECTED;
@@ -2305,7 +2300,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this /*, const char *cmd*/)
   if(osdcmd.palette && osdcmd.colors>0) {
     int bytes = sizeof(xine_clut_t)*(osdcmd.colors);
     osdcmd.palette = malloc(bytes);
-    if(control_read_data(this, (unsigned char *)osdcmd.palette, bytes)
+    if(read_control(this, (unsigned char *)osdcmd.palette, bytes)
        != bytes) {
       LOGMSG("control: error reading OSDCMD palette");
       err = CONTROL_DISCONNECTED;
@@ -2316,7 +2311,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this /*, const char *cmd*/)
 
   if(err == CONTROL_OK && osdcmd.data && osdcmd.datalen>0) {
     osdcmd.data = (xine_rle_elem_t*)malloc(osdcmd.datalen);
-    if(control_read_data(this, (unsigned char *)osdcmd.data, osdcmd.datalen)
+    if(read_control(this, (unsigned char *)osdcmd.data, osdcmd.datalen)
        != osdcmd.datalen) {
       LOGMSG("control: error reading OSDCMD bitmap");
       err = CONTROL_DISCONNECTED;
@@ -2332,12 +2327,9 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this /*, const char *cmd*/)
   } else {
     osdcmd.data = NULL;
   }
-  
-  if(err == CONTROL_OK) {
-    /*pthread_mutex_lock (&this->osd_lock);*/ /* done in exec_osd_command */
+
+  if(err == CONTROL_OK) 
     err = vdr_plugin_exec_osd_command((input_plugin_t*)this, &osdcmd);
-    /* pthread_mutex_unlock (&this->osd_lock); */
-  }
 
   if(osdcmd.data)
     free(osdcmd.data);
@@ -4379,7 +4371,7 @@ retry_select:
 
   /* wait until server sends first RTP packet */
 
-  if( XIO_READY != _x_io_select(this->stream, fd, XIO_READ_READY, 500)) {
+  if( XIO_READY != io_select_rd(fd)) {
     LOGDBG("Requesting RTP transport: RTP poll timeout");
     if(++retries < 10) {
       LOGDBG("Requesting RTP transport");
@@ -4470,7 +4462,7 @@ retry_select:
 
   /* wait until server sends first UDP packet */
 
-  if( XIO_READY != _x_io_select(this->stream, fd, XIO_READ_READY, 500)) {
+  if( XIO_READY != io_select_rd(fd)) {
     LOGDBG("Requesting UDP transport: UDP poll timeout");
     if(++retries < 4)
       goto retry_request;
@@ -4628,8 +4620,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 	sprintf(tmpbuf, "DATA %d\r\n", this->client_id);
 	if(write(this->fd_data, tmpbuf, strlen(tmpbuf)) != (ssize_t)strlen(tmpbuf)) {
 	  LOGERR("Data stream connection failed (TCP, write)");
-	} else if( XIO_READY != _x_io_select(this->stream, this->fd_data, 
-					     XIO_READ_READY, 1000)) {
+	} else if( XIO_READY != io_select_rd(this->fd_data)) {
 	  LOGERR("Data stream connection failed (TCP, select)");
 	} else if(read(this->fd_data, tmpbuf, 6) != 6) {
 	  LOGERR("Data stream connection failed (TCP, read)");
