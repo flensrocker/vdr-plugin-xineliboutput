@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.11 2006-07-05 03:06:03 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.12 2006-07-05 03:14:45 phintuka Exp $
  *
  */
 
@@ -1793,11 +1793,14 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
 				       osd_command_t *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int result;
+  int result = -3;
 
-  pthread_mutex_lock (&this->osd_lock);
-  result = exec_osd_command(this, cmd);
-  pthread_mutex_unlock (&this->osd_lock);
+  if(!pthread_mutex_lock (&this->osd_lock)) {
+    result = exec_osd_command(this, cmd);
+    pthread_mutex_unlock (&this->osd_lock);
+  } else {
+    LOGMSG("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
+  }
 
   return result;
 }
@@ -2341,10 +2344,182 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
 /************************** Control from VDR ******************************/
 
-static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms);
-static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms);
+#define VDR_ENTRY_LOCK(ret...) \
+  do { \
+    if(pthread_mutex_lock(&this->vdr_entry_lock)) { \
+      LOGERR("%s:%d: pthread_mutex_lock failed", __PRETTY_FUNCTION__, __LINE__); \
+      return ret ; \
+    } \
+  } while(0)
 
-static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, uint64_t offset)
+#define VDR_ENTRY_UNLOCK() \
+  do { \
+    if(pthread_mutex_unlock(&this->vdr_entry_lock)) { \
+      LOGERR("%s:%d: pthread_mutex_unlock failed", __PRETTY_FUNCTION__, __LINE__); \
+    } \
+  } while(0)
+
+static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
+{
+  static int timeouts = 0;
+  struct timespec abstime;
+  int result = 0;
+
+  /* Caller must have locked this->vdr_entry_lock ! */
+
+  if(this->slave_stream) {
+    LOGDBG("vdr_plugin_poll: called while playing slave stream !");
+    return 1;
+  }
+
+  TRACE("vdr_plugin_poll (%d ms), buffer_pool: blocks=%d, bytes=%d", 
+	timeout_ms, this->buffer_pool->size(this->buffer_pool), 
+	this->buffer_pool->data_size(this->buffer_pool));
+
+  if(this->is_paused) {
+    VDR_ENTRY_UNLOCK();
+
+    create_timeout_time(&abstime, timeout_ms);
+    pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
+    while(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
+				  &this->buffer_pool->buffer_pool_mutex, 
+				  &abstime) != ETIMEDOUT)
+      ;
+    pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
+    timeout_ms = 0;
+
+    VDR_ENTRY_LOCK(0);
+  }
+
+  pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
+  result = this->buffer_pool->buffer_pool_num_free - 
+           (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
+  pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
+
+  if(timeout_ms > 0 && result <= 0) {
+    create_timeout_time(&abstime, timeout_ms);
+
+    pthread_mutex_lock(&this->lock);
+    if(this->scr_tunning == SCR_TUNNING_PAUSED) {
+      LOGSCR("scr tunning reset by POLL");
+      reset_scr_tunning(this,this->speed_before_pause);
+    }
+    pthread_mutex_unlock(&this->lock);
+
+    signal_buffer_not_empty(this);
+
+    VDR_ENTRY_UNLOCK();
+
+    pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
+    while(result <= 5) {
+      TRACE("vdr_plugin_poll waiting (max %d ms), "
+	    "%d bufs free (rd pos=%" PRIu64 ")",
+	    timeout_ms, this->buffer_pool->buffer_pool_num_free, this->curpos);      
+      if(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
+				 &this->buffer_pool->buffer_pool_mutex, 
+				 &abstime) == ETIMEDOUT) {
+
+	if(this->live_mode) {
+	  if(timeouts>2 && timeouts<6) {
+	    timeout_ms=200;
+	    create_timeout_time(&abstime, timeout_ms);
+	    continue;
+	  }
+	}
+
+	break;
+      }
+      result = this->buffer_pool->buffer_pool_num_free - 
+	       (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
+    }
+    pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
+
+    VDR_ENTRY_LOCK(0);
+  }
+
+  TRACE("vdr_plugin_poll returns, %d free (%d used, %d bytes)\n", result, 
+	this->buffer_pool->size(this->buffer_pool), 
+	this->buffer_pool->data_size(this->buffer_pool));
+
+ /* handle priority problem in paused mode when 
+    data source has higher priority than control source */
+  if(result <= 0) {
+    result = 0;
+    pthread_yield();
+    xine_usec_sleep(3*1000);
+  } else {
+    timeouts = 0;
+  }
+
+  return result;
+}
+
+/*
+ * Flush returns 0 if there is no data or frames in stream buffers 
+ */
+static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
+{
+  struct timespec abstime;
+  fifo_buffer_t *pool   = this->buffer_pool;
+  fifo_buffer_t *buffer = this->block_buffer;
+  int result = 0, waitresult=0;
+
+  /* Caller must have locked this->vdr_entry_lock ! */
+
+  if(this->slave_stream) {
+    LOGDBG("vdr_plugin_flush: called while playing slave stream !");
+    return 0;
+  }
+
+  TRACE("vdr_plugin_flush (%d ms) blocks=%d+%d, frames=%d", timeout_ms,
+	buffer->size(buffer), pool->size(pool),
+	this->stream->video_out->get_property(this->stream->video_out, 
+					      VO_PROP_BUFS_IN_FIFO));
+
+  if(this->live_mode && this->fd_control < 0) {
+    sched_yield();
+    return 1;
+  }
+
+  result = MAX(0, pool->size(pool)) + 
+           MAX(0, buffer->size(buffer)) +
+           this->stream->video_out->get_property(this->stream->video_out, 
+						 VO_PROP_BUFS_IN_FIFO);
+  if(result>0) {
+    put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
+    put_control_buf(buffer, pool, BUF_CONTROL_NOP);
+  }
+
+  create_timeout_time(&abstime, timeout_ms);
+
+  while(result > 0 && waitresult != ETIMEDOUT) {
+    TRACE("vdr_plugin_flush waiting (max %d ms), %d+%d buffers used, "
+	  "%d frames (rd pos=%" PRIu64 ")\n", timeout_ms,
+	  pool->size(pool), buffer->size(buffer),
+	  (int)this->stream->video_out->get_property(this->stream->video_out, 
+						     VO_PROP_BUFS_IN_FIFO),
+	  this->curpos);
+
+    pthread_mutex_lock(&pool->buffer_pool_mutex);
+    waitresult = pthread_cond_timedwait (&pool->buffer_pool_cond_not_empty, 
+					 &pool->buffer_pool_mutex, &abstime);
+    pthread_mutex_unlock(&pool->buffer_pool_mutex);
+    result = MAX(0, pool->size(pool)) +
+             MAX(0, buffer->size(buffer)) +
+             this->stream->video_out->get_property(this->stream->video_out, 
+						   VO_PROP_BUFS_IN_FIFO);
+  }
+
+  TRACE("vdr_plugin_flush returns %d (%d+%d used, %d frames)\n", result,
+	pool->size(pool), buffer->size(buffer),
+	(int)this->stream->video_out->get_property(this->stream->video_out, 
+						   VO_PROP_BUFS_IN_FIFO));
+  
+  return result;
+}
+
+static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, 
+				   uint64_t offset, int frame)
 {
   int r;
 
@@ -2399,7 +2574,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   xine_stream_t *stream = this->stream;
   static const char *str_poll = "POLL";
 
-  pthread_mutex_lock(&this->vdr_entry_lock);
+  VDR_ENTRY_LOCK(CONTROL_DISCONNECTED);
 
   LOGCMD("vdr_plugin_parse_control: %s", cmd); 
 
@@ -2592,10 +2767,11 @@ LOGDBG("SPU channel selected: %d", tmp32);
   } else if(!strncasecmp(cmd, "FLUSH ", 6)) {
     if(1 == sscanf(cmd, "FLUSH %d", &tmp32)) {
       if(this->fd_control >= 0) {
+	uint32_t frame = 0;
 	tmp64 = 0ULL; 
 	tmp32 = 0;
-	sscanf(cmd, "FLUSH %d %" PRIu64, &tmp32, &tmp64);
-	err = vdr_plugin_flush_remote(this, tmp32, tmp64);
+	sscanf(cmd, "FLUSH %d %" PRIu64 " %d", &tmp32, &tmp64, &frame);
+	err = vdr_plugin_flush_remote(this, tmp32, tmp64, frame);
       } else {
 	err = vdr_plugin_flush(this, tmp32);
       }
@@ -2672,7 +2848,7 @@ LOGDBG("SPU channel selected: %d", tmp32);
 
   LOGCMD("vdr_plugin_parse_control: DONE (%d): %s", err, cmd);
 
-  pthread_mutex_unlock(&this->vdr_entry_lock);
+  VDR_ENTRY_UNLOCK();
 
   return err;
 }
@@ -2916,175 +3092,10 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
 /**************************** Data Stream *********************************/
 
-static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
-{
-  static int timeouts = 0;
-  struct timespec abstime;
-  int result = 0;
-
-  /* Caller must have locked this->vdr_entry_lock ! */
-
-  if(this->slave_stream) {
-    LOGDBG("vdr_plugin_poll: called while playing slave stream !");
-    return 1;
-  }
-
-  TRACE("vdr_plugin_poll (%d ms), buffer_pool: blocks=%d, bytes=%d", 
-	timeout_ms, this->buffer_pool->size(this->buffer_pool), 
-	this->buffer_pool->data_size(this->buffer_pool));
-
-  if(this->is_paused) {
-    if(pthread_mutex_unlock(&this->vdr_entry_lock))
-      LOGERR("poll: mutex_unlock(vdr_entry_lock) failed !");
-    create_timeout_time(&abstime, timeout_ms);
-    pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
-    while(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
-				  &this->buffer_pool->buffer_pool_mutex, 
-				  &abstime) != ETIMEDOUT)
-      ;
-    pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
-    timeout_ms = 0;
-    pthread_mutex_lock(&this->vdr_entry_lock);
-  }
-
-  pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
-  result = this->buffer_pool->buffer_pool_num_free - 
-           (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
-  pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
-
-  if(timeout_ms > 0 && result <= 0) {
-    create_timeout_time(&abstime, timeout_ms);
-
-    pthread_mutex_lock(&this->lock);
-    if(this->scr_tunning == SCR_TUNNING_PAUSED) {
-      LOGSCR("scr tunning reset by POLL");
-      reset_scr_tunning(this,this->speed_before_pause);
-    }
-    pthread_mutex_unlock(&this->lock);
-
-    signal_buffer_not_empty(this);
-
-    pthread_mutex_unlock(&this->vdr_entry_lock);
-    pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
-    while(result <= 5) {
-      TRACE("vdr_plugin_poll waiting (max %d ms), "
-	    "%d bufs free (rd pos=%" PRIu64 ")",
-	    timeout_ms, this->buffer_pool->buffer_pool_num_free, this->curpos);      
-      if(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
-				 &this->buffer_pool->buffer_pool_mutex, 
-				 &abstime) == ETIMEDOUT) {
-
-	if(this->live_mode) {
-	  if(timeouts>2 && timeouts<6) {
-	    timeout_ms=200;
-	    create_timeout_time(&abstime, timeout_ms);
-	    continue;
-	  }
-	}
-
-	break;
-      }
-      result = this->buffer_pool->buffer_pool_num_free - 
-	       (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
-    }
-    pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
-    pthread_mutex_lock(&this->vdr_entry_lock);
-  }
-  if(result>0) timeouts=0;
-
-  TRACE("vdr_plugin_poll returns, %d free (%d used, %d bytes)\n", result, 
-	this->buffer_pool->size(this->buffer_pool), 
-	this->buffer_pool->data_size(this->buffer_pool));
-
- /* handle priority problem in paused mode when 
-    data source has higher priority than control source */
-  if(result <= 0) {
-    result = 0;
-    xine_usec_sleep(3*1000);
-  }
-
-  return result;
-}
-
-
-/*
- * Flush returns 0 if there is no data or frames in stream buffers 
- */
-static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
-{
-  struct timespec abstime;
-  buf_element_t *buf;
-  fifo_buffer_t *pool = this->buffer_pool;
-  int result = 0, waitresult=0;
-
-  /* Caller must have locked this->vdr_entry_lock ! */
-
-  if(this->slave_stream) {
-    LOGDBG("vdr_plugin_flush: called while playing slave stream !");
-    return 0;
-  }
-
-  TRACE("vdr_plugin_flush (%d ms) blocks=%d+%d, frames=%d", timeout_ms,
-	this->block_buffer->size(this->block_buffer), 
-	pool->size(pool),
-	this->stream->video_out->get_property(this->stream->video_out, 
-					      VO_PROP_BUFS_IN_FIFO));
-
-  if(this->live_mode && this->fd_control < 0) {
-    sched_yield();
-    return 1;
-  }
-
-  result = MAX(0, pool->size(pool)) +
-           MAX(0, this->block_buffer->size(this->block_buffer)) +
-           this->stream->video_out->get_property(this->stream->video_out, 
-						 VO_PROP_BUFS_IN_FIFO);
-  if(result>0) {
-    buf = pool->buffer_pool_try_alloc(pool);
-    if(buf) {
-      buf->type = BUF_CONTROL_FLUSH_DECODER;
-      this->block_buffer->put(this->block_buffer, buf);
-    }
-    buf = pool->buffer_pool_try_alloc(pool);
-    if(buf) {
-      buf->type = BUF_CONTROL_NOP;
-      this->block_buffer->put(this->block_buffer, buf);
-    }
-  }
-
-  create_timeout_time(&abstime, timeout_ms);
-
-  while(result > 0 && waitresult != ETIMEDOUT) {
-    TRACE("vdr_plugin_flush waiting (max %d ms), %d+%d buffers used, "
-	  "%d frames (rd pos=%" PRIu64 ")\n", timeout_ms,
-	  pool->size(pool), this->block_buffer->size(this->block_buffer),
-	  (int)this->stream->video_out->get_property(this->stream->video_out, 
-						     VO_PROP_BUFS_IN_FIFO),
-	  this->curpos);
-
-    pthread_mutex_lock(&pool->buffer_pool_mutex);
-    waitresult = pthread_cond_timedwait (&pool->buffer_pool_cond_not_empty, 
-					 &pool->buffer_pool_mutex, &abstime);
-    pthread_mutex_unlock(&pool->buffer_pool_mutex);
-    result = MAX(0, pool->size(pool)) +
-             MAX(0, this->block_buffer->size(this->block_buffer)) +
-             this->stream->video_out->get_property(this->stream->video_out, 
-						   VO_PROP_BUFS_IN_FIFO);
-  }
-
-  TRACE("vdr_plugin_flush returns %d (%d+%d used, %d frames)\n", result,
-	pool->size(pool), 
-	this->block_buffer->size(this->block_buffer),
-	(int)this->stream->video_out->get_property(this->stream->video_out, 
-						   VO_PROP_BUFS_IN_FIFO));
-  
-  return result;
-}
-
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
-  int cnt = 0, todo = 0, n, result, num_free;
+  int cnt = 0, todo = 0, n, result;
 
   while(XIO_READY == (result = io_select_rd(this->fd_data))) {
 
@@ -3092,31 +3103,22 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     if(!read_buffer) {
 
       pthread_testcancel();
-      
-      num_free = this->buffer_pool->num_free(this->buffer_pool) + 
-	         this->block_buffer->num_free(this->block_buffer);
 
-      if(num_free < 5) {
-	pthread_mutex_lock(&this->vdr_entry_lock);
-	if(!vdr_plugin_poll(this, 100)) {
-	  pthread_mutex_unlock(&this->vdr_entry_lock);
+      read_buffer = get_buf_element(this, 0, 0);
+      if(!read_buffer) {
+	VDR_ENTRY_LOCK(XIO_ERROR);
+	vdr_plugin_poll(this, 100);
+	VDR_ENTRY_UNLOCK();
+
+	read_buffer = get_buf_element(this, 0, 0);
+	if(!read_buffer) {
 	  if(!this->is_paused)
 	    LOGDBG("TCP: fifo buffer full");
 	  xine_usec_sleep(3*1000);
 	  continue; /*  must call select to check fd for errors / closing */
 	}
-	pthread_mutex_unlock(&this->vdr_entry_lock);
       }
 
-      read_buffer = 
-	this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
-
-      if(!read_buffer) {
-	LOGMSG("TCP: fifo buffer alloc failed");
-        continue; /* must call select to check errors / closing */
-      }
-      read_buffer->content = read_buffer->mem;
-      read_buffer->size = 0;
       todo = sizeof(stream_tcp_header_t);
       cnt = 0;
     }
@@ -3148,12 +3150,28 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 	todo = read_buffer->max_size - cnt - 1;
       }
     }
+
     if(cnt >= todo) {
-      /* frame ready */
-      read_buffer->size = cnt;
-      read_buffer->type = BUF_MAJOR_MASK;
-      this->block_buffer->put(this->block_buffer, read_buffer);
-      read_buffer = NULL;
+      /* Buffer complete */
+      stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
+      if(hdr->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
+	/* control data */
+	char *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
+	pkt_data[64] = 0;
+LOGMSG("CTRL: %s", (char*)pkt_data);
+	//if(!strncmp((char*)pkt_data, "????", 11)) {
+	//}
+	todo = sizeof(stream_tcp_header_t);
+	cnt = 0;
+	
+      } else {
+      
+	/* frame ready */
+	read_buffer->size = cnt;
+	read_buffer->type = BUF_MAJOR_MASK;
+	this->block_buffer->put(this->block_buffer, read_buffer);
+	read_buffer = NULL;
+      }
     }
   }
 
@@ -3178,23 +3196,22 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
   udp_data_t *udp = this->udp_data;
   stream_udp_header_t *pkt;
   uint8_t *pkt_data;
-  int result=XIO_ERROR, n, current_seq, num_free, timeouts = 0;
+  int result = XIO_ERROR, n, current_seq, timeouts = 0;
   buf_element_t *read_buffer = NULL;
 
   while(this->fd_data >= 0) {
 
     result = _x_io_select(this->stream, this->fd_data,
 			  XIO_READ_READY, 20);
-    if(result == XIO_TIMEOUT) {
-      if(timeouts++ > 25)
-	return XIO_TIMEOUT;
-      /*#warning fall thru for missing frame detection ... ?*/
-      /* -- use resend wait timer (monotonic_time_ms) --- max wait 40 ms ? */
-      continue;
-    }
-    if(result != XIO_READY)
-      return result;
 
+    if(result != XIO_READY) {
+      if(result == XIO_TIMEOUT) {
+	if(timeouts++ > 25)
+	  return XIO_TIMEOUT;
+	continue;
+      }
+      return result;
+    }
     timeouts = 0;
 
     /* 
@@ -3205,59 +3222,35 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       
       pthread_testcancel();
 
-      num_free = this->buffer_pool->num_free(this->buffer_pool) + 
-	         this->block_buffer->num_free(this->block_buffer);
-
-      /* signal queue status to server */
-      if(!udp->queue_full_signaled && 
-	 num_free < UDP_SIGNAL_FULL_TRESHOLD) {	
-	LOGUDP("send fifo buffer almost full signal ON");
-	write_control(this, "UDP FULL 1\r\n");
-	udp->queue_full_signaled = 1;
-      } else if(udp->queue_full_signaled && 
-		num_free > UDP_SIGNAL_NOT_FULL_TRESHOLD) {
-	LOGUDP("send fifo buffer almost full signal OFF");
-	write_control(this, "UDP FULL 0\r\n");
-	udp->queue_full_signaled = 0;
-      }
-
-      /* if queue is full, skip frame. 
-	 Waiting for free buffers just makes things worse ... */
-      if(num_free < 5) {
+      read_buffer = get_buf_element(this, 0, 0);
+      if(!read_buffer) {
+	/* if queue is full, skip (video) frame. 
+	   Waiting longer for free buffers just makes things worse ... */
 	if(!this->is_paused) {
 	  LOGDBG("UDP Fifo buffer full !");
-
 	  if(this->scr && !udp->scr_jump_done) {
 	    pvrscr_skip_frame (this->scr);
-	    LOGMSG("SCR jump: +40 ms" );
-	    udp->scr_jump_done=1;
+	    LOGMSG("SCR jump: +40 ms");
+	    udp->scr_jump_done = 50;
+	    xine_usec_sleep(5*1000);
 	  }
 	}
 
-	pthread_mutex_lock(&this->vdr_entry_lock);
-	if(!vdr_plugin_poll(this, 100)) {
-	  pthread_mutex_unlock(&this->vdr_entry_lock);
+	VDR_ENTRY_LOCK(XIO_ERROR);
+	vdr_plugin_poll(this, 100);
+	VDR_ENTRY_UNLOCK();
+
+	read_buffer = get_buf_element(this, 0, 0);
+	if(!read_buffer) {
 	  if(!this->is_paused)
 	    LOGMSG("Fifo buffer still full after poll !");
 	  xine_usec_sleep(5*1000);
 	  return result;
 	}
-	pthread_mutex_unlock(&this->vdr_entry_lock);
       }
 
-      if(num_free>30)
-	udp->scr_jump_done=0;
-
-      /* allocate new buffer */
-      read_buffer = 
-	this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
-
-      if(!read_buffer) {
-	LOGERR("UDP Fifo buffer alloc failed !");
-	break;
-      }
-      read_buffer->content = read_buffer->mem;
-      read_buffer->size = 0;
+      if(udp->scr_jump_done)
+	udp->scr_jump_done --;
     }
 
     /* Receive frame from socket and check for errors */
@@ -3306,6 +3299,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     if(pkt->seq == (uint16_t)(-1) /*0xffff*/) {
       if(pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
 	pkt_data[64] = 0;
+LOGMSG("CTRL: %s", (char*)pkt_data);
 	if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
 	  /* Re-send failed */ 
 	  int seq1 = 0, seq2 = 0;
@@ -3318,13 +3312,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  pkt->pos = rpos;
 	  udp->missed_frames++;
 	  /* -> drop frame thru as empty ; it will trigger queue to continue */
-	} else {
-	  /* unknown control message */
-	  continue;
 	}
-      } else {
-	/* invalid header or dummy keep-alive frame */
-	continue;
       }
       continue;
     }
@@ -3500,7 +3488,6 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf = NULL;
-  int buffer_limit;
 
   if(this->slave_stream)
     return len;
@@ -3545,57 +3532,14 @@ LOGMSG("  pip substream: no stream !");
 
   TRACE("vdr_plugin_write (%d bytes)", len); 
 
-  pthread_mutex_lock(&this->vdr_entry_lock);
+  VDR_ENTRY_LOCK(0);
 
-  buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
-#ifdef BLOCKING_VDR_PLUGIN_WRITE
-  pthread_mutex_lock(&this->buffer_pool->buffer_pool_mutex);
-  while( (this->buffer_pool->buffer_pool_num_free <= buffer_limit)
-        && trycount>0 /*&& !this->is_paused*/) {
-    create_timeout_time(&abstime, 100); /* no infinite waits if player is stopped and fifo full ... */
-    if(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty, 
-			       &this->buffer_pool->buffer_pool_mutex, &abstime) == ETIMEDOUT) {
-      trycount--;
-      if(this->is_paused)
-        trycount=0;
-    }
-    buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
-  }
-  pthread_mutex_unlock(&this->buffer_pool->buffer_pool_mutex);
-#else
-  if(this->buffer_pool->buffer_pool_num_free <= buffer_limit) {
-    pthread_mutex_unlock(&this->vdr_entry_lock);
-    return 0/*EAGAIN*/;
-  }
-#endif
-
-  if(len<8000)
-    buf = this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
-  else if(len<0xffff) {
-    buf = this->block_buffer->buffer_pool_try_alloc(this->block_buffer);
-    LOGDBG("vdr_plugin_write: big PES (%d bytes) !", len);
-  } else { /* len>64k */
-    if(!this->big_buffer)
-      this->big_buffer = _x_fifo_buffer_new(4,512*1024);
-    buf = this->big_buffer->buffer_pool_try_alloc(this->big_buffer);
-    LOGDBG("vdr_plugin_write: jumbo PES (%d bytes) !", len);
-  }
-
+  buf = get_buf_element(this, len, 0);
   if(!buf) {
-    int cnt;
-    if(len>=8000)
-      LOGMSG("vdr_plugin_write: jumbo PES (%d bytes), "
-	     "not enough free buffers !", len);
-    LOGMSG("vdr_plugin_write: buffer overflow ! "
-	   "(rd pos=%" PRIu64 ") block_buffer=%du/%df,buffer_pool=%du/%df", 
-	   this->curpos, this->block_buffer->size(this->block_buffer), 
-	   this->block_buffer->num_free(this->block_buffer), 
-	   this->buffer_pool->size(this->buffer_pool), 
-	   this->buffer_pool->num_free(this->buffer_pool));
-    pthread_mutex_unlock(&this->vdr_entry_lock);
-    for(cnt=0; cnt<10; cnt++)
-      pthread_yield();
-    return 0;
+    LOGMSG("vdr_plugin_write: buffer overflow !");
+    VDR_ENTRY_UNLOCK();
+    xine_usec_sleep(5*1000);
+    return 0; /* EAGAIN */
   }
 
   if(len > buf->max_size) {
@@ -3603,19 +3547,15 @@ LOGMSG("  pip substream: no stream !");
 	   "%d bytes), data ignored !\n", len, buf->max_size);
     buf->free_buffer(buf);
 /* curr_pos will be invalid when this point is reached ! */
-    pthread_mutex_unlock(&this->vdr_entry_lock);
+    VDR_ENTRY_UNLOCK();
     return len;
   }
 
-  buf->free_buffer = buffer_pool_free;
-  buf->content = buf->mem;
   buf->size = len;
-  buf->type = BUF_DEMUX_BLOCK;
   xine_fast_memcpy(buf->content, data, len);
-
   this->block_buffer->put(this->block_buffer, buf);
 
-  pthread_mutex_unlock(&this->vdr_entry_lock);
+  VDR_ENTRY_UNLOCK();
 
   TRACE("vdr_plugin_write returns %d", len);
 
@@ -3627,7 +3567,11 @@ static int vdr_plugin_keypress(input_plugin_t *this_gen,
 			       int repeat, int release)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  pthread_mutex_lock(&this->lock);
+  if(pthread_mutex_lock(&this->lock)) {
+    LOGMSG("vdr_plugin_keypress: pthread_mutex_lock failed");
+    return -1;
+  }
+
   if(key && this->fd_control >= 0) {
     if(map)
       printf_control(this, "KEY %s %s %s %s\r\n", map, key, 
