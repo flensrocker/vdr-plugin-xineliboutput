@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.10 2006-07-05 01:50:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.11 2006-07-05 03:06:03 phintuka Exp $
  *
  */
 
@@ -2340,114 +2340,6 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 }
 
 /************************** Control from VDR ******************************/
-
-static int control_read_cmd(vdr_input_plugin_t *this, char *buf, int maxlen)
-{
-  /* read next command */
-  int num_bytes=0, total_bytes=0, err /*, timeouts=0*/;
-
-  *buf=0;
-  while(total_bytes < maxlen-1 ) {
-    /* err = _x_io_select(NULL, fd, XIO_READ_READY, 1000); */
-    err = io_select_rd(this->fd_control);
-
-    if(this->fd_control < 0)
-      return -1;
-
-    if(err == XIO_TIMEOUT) 
-      continue;  
-  
-#if 0
-    if(err == XIO_TIMEOUT) {
-      if(!*buf || timeouts++>2)
-	return 0;
-      continue;
-    }
-#endif
-    if(err == XIO_ABORTED) {
-      LOGERR("control_read_cmd XIO_ABORTED at [%d]", num_bytes);
-      continue;
-      /* return 0; */
-    }
-    if(err != XIO_READY /* == XIO_ERROR */) {
-      LOGERR("control_read_cmd read error at [%d]", num_bytes);
-      return -1;
-    }
-
-    /* num_bytes = _x_io_tcp_read (NULL, fd, buf + total_bytes, 1); */
-    num_bytes = read (this->fd_control, buf + total_bytes, 1);
-    if (num_bytes <= 0) {
-      LOGERR("control_read_cmd read error at [%d]", num_bytes);
-      if(num_bytes < 0 && errno == EINTR && this->fd_control >= 0) {
-	continue;
-      }
-      return -1;
-    }
-      
-    if(buf[total_bytes]) {
-      if(buf[total_bytes] == '\r') {
-	buf[total_bytes] = 0;
-      } else if(buf[total_bytes] == '\n') {
-	buf[total_bytes] = 0;
-	break;
-      } else {
-	total_bytes ++;
-	buf[total_bytes] = 0;
-      }
-    }
-    TRACE("input_vdr: control_read_cmd: %d bytes ... %s\n", 
-	  total_bytes, buf);
-  }
-
-  TRACE("control_read_cmd: %d bytes (max %d)\n", total_bytes, maxlen);
-
-  return total_bytes;
-}
-
-
-static int control_read_data(vdr_input_plugin_t *this, 
-			     uint8_t *buf, int len)
-{
-  int num_bytes, total_bytes = 0;
-#if 0
-  int timeouts = 0;
-#endif
-
-  while(total_bytes < len) {
-    /*int err = _x_io_select(NULL, fd, XIO_READ_READY, 1000);*/
-    int err = io_select_rd(this->fd_control);
-
-    if(err == XIO_TIMEOUT) 
-      continue;
-#if 0
-    if(err == XIO_TIMEOUT) {
-      LOGMSG("control_read_data timeout");
-      if(++timeouts >= 2)
-	return -1;
-      continue;
-    }
-#endif
-    if(err == XIO_ABORTED) {
-      LOGERR("control_read_data XIO_ABORTED");
-      continue;
-    }
-    if(err == XIO_ERROR) {
-      LOGERR("control_read_data poll error");
-      return -1;
-    }
-
-    /* num_bytes = _x_io_tcp_read (NULL, fd, buf + total_bytes, len - total_bytes); */
-    num_bytes = read (this->fd_control, buf + total_bytes, len - total_bytes);
-    if (num_bytes <= 0) {
-      LOGERR("control_read_data read() error"); 
-      return -1;
-    }
-    total_bytes += num_bytes;
-  }
-
-  return total_bytes;
-}
-
 
 static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms);
 static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms);
