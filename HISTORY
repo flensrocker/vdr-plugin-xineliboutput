@@ -1,6 +1,13 @@
 VDR Plugin 'xineliboutput' Revision History
 --------------------------------
 
+2006-07-05: Version 0.99
+
+- Finished implementing audio stream switching
+- Improved VDR server detection and refused connection handling
+- Added option to close VDR when local frontend window is closed
+- Added always-on-top mode, window title and icon to vdr-sxfe
+
 2006-06-12: Version 0.99rc5
 - OSD endian problems fixed
 - More x64 fixes (Thanks to Anssi Hannula)
