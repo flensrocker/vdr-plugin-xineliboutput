@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.2 2006-07-02 16:45:24 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.3 2006-07-06 02:57:59 phintuka Exp $
  *
  */
 
@@ -17,14 +17,14 @@
 extern "C" {
 #endif
 
-typedef enum {
-  OSD_Nop        = 0,    /* Do nothing ; used to initialize delay_ms counter */
-  OSD_Size       = 1,    /* Set size of VDR OSD area (usually 720x576) */
-  OSD_Set_RLE    = 2,    /* Create/update OSD window. Data is rle-compressed. */
-  OSD_SetPalette = 3,    /* Modify palette of already created OSD window */ 
-  OSD_Move       = 4,    /* Change x/y position of already created OSD window */ 
-  OSD_Close      = 5,    /* Close OSD window */
-  OSD_Set_YUV    = 6     /* Create/update OSD window. Data is in YUV420 format. */
+typedef enum  {
+  OSD_Nop         = 0,    /* Do nothing ; used to initialize delay_ms counter */
+  OSD_Size        = 1,    /* Set size of VDR OSD area (usually 720x576) */
+  OSD_Set_RLE     = 2,    /* Create/update OSD window. Data is rle-compressed. */
+  OSD_SetPalette  = 3,    /* Modify palette of already created OSD window */ 
+  OSD_Move        = 4,    /* Change x/y position of already created OSD window */ 
+  OSD_Close       = 5,    /* Close OSD window */
+  OSD_Set_YUV     = 6     /* Create/update OSD window. Data is in YUV420 format. */
 } osd_command_id_t;
 
 typedef struct xine_clut_s {
@@ -52,15 +52,17 @@ typedef struct osd_command_s {
   uint16_t w;         /* window width */
   uint16_t h;         /* window height */
 
-  uint32_t datalen;        /* size of image data, in bytes */
+  uint32_t datalen;   /* size of image data, in bytes */
+  uint32_t num_rle;
   union {
     xine_rle_elem_t *data; /* RLE compressed image */
-    uint64_t dummy01;
+    uint8_t         *raw_data;
+    uint64_t         dummy01;
   };
   uint32_t colors;         /* palette size */
   union {
-    xine_clut_t *palette;  /* palette (YCrCb) */
-    uint64_t dummy02;
+    xine_clut_t     *palette;  /* palette (YCrCb) */
+    uint64_t         dummy02;
   };
 
 } __attribute__((packed)) osd_command_t;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.12 2006-07-05 03:14:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.13 2006-07-06 02:57:59 phintuka Exp $
  *
  */
 
@@ -1383,6 +1383,23 @@ static int update_video_size(vdr_input_plugin_t *this)
   return 0;
 }
 
+static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
+{
+  xine_rle_elem_t *data = (xine_rle_elem_t*)malloc(elems*sizeof(xine_rle_elem_t));
+  int i;
+
+  for(i=0; i<elems; i++) {
+    if((*raw) & 0x80) {
+      data[i].len = ((*(raw++)) & 0x7f) << 8;
+      data[i].len |= *(raw++);
+    } else
+      data[i].len = *(raw++);
+    data[i].color = *(raw++);
+  }
+
+  return data;
+}
+
 /* re-scale compressed RLE image */
 static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
 					int new_w, int new_h)
@@ -2286,7 +2303,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
     return CONTROL_DISCONNECTED;
   }
 
-  /*if(0x12345678 != ntohl(0x12345678)) {*/
+#if __BYTE_ORDER == __LITTLE_ENDIAN
   /* -> host order */
   osdcmd.cmd = ntohl(osdcmd.cmd);
   osdcmd.wnd = ntohl(osdcmd.wnd);
@@ -2297,8 +2314,12 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   osdcmd.w = ntohs(osdcmd.w);
   osdcmd.h = ntohs(osdcmd.h);
   osdcmd.datalen = ntohl(osdcmd.datalen);
+  osdcmd.num_rle = ntohl(osdcmd.num_rle);
   osdcmd.colors  = ntohl(osdcmd.colors);
-  /*}*/
+#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
+#  error __BYTE_ORDER undefined !
+#endif
 
   if(osdcmd.palette && osdcmd.colors>0) {
     int bytes = sizeof(xine_clut_t)*(osdcmd.colors);
@@ -2319,13 +2340,10 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
       LOGMSG("control: error reading OSDCMD bitmap");
       err = CONTROL_DISCONNECTED;
     } else {
-      if(0x1234 != ntohs(0x1234)) {
-	int i;
-	for(i=0; i<osdcmd.datalen/4; i++) {
-	  osdcmd.data[i].len   = ntohs(osdcmd.data[i].len);
-	  osdcmd.data[i].color = ntohs(osdcmd.data[i].color);
-	}
-      }
+      uint8_t *raw = osdcmd.raw_data;
+      osdcmd.data = uncompress_osd_net(raw, osdcmd.num_rle, osdcmd.datalen);
+      osdcmd.datalen = osdcmd.num_rle*4;
+      free(raw);
     }
   } else {
     osdcmd.data = NULL;

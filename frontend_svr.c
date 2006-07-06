@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.7 2006-07-04 02:06:31 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.8 2006-07-06 02:57:59 phintuka Exp $
  *
  */
 
@@ -42,7 +42,7 @@
 #include "frontend_svr.h"
 #include "device.h"
 
-#define LOG_OSD_BANDWIDTH (128*1024)
+#define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
 class cStcFuture : public cFuture<int64_t> {};
 class cReplyFuture : public cFuture<int>, public cListObject {};
@@ -164,6 +164,23 @@ void cXinelibServer::CloseConnection(int cli)
   }
 }
 
+static int recompress_osd_net(uint8_t *raw, xine_rle_elem_t *data, int elems)
+{
+  uint8_t *raw0 = raw;
+  for(int i=0; i<elems; i++) {
+    uint16_t len = data[i].len;
+    uint16_t color = data[i].color;
+    if(len >= 0x80) {
+      *(raw++) = (len>>8) | 0x80;
+      *(raw++) = (len & 0xff);
+    } else {
+      *(raw++) = (len & 0x7f);
+    }
+    *(raw++) = color;
+  }
+  return (raw-raw0);
+}
+
 void cXinelibServer::OsdCmd(void *cmd_gen)
 {
   TRACEF("cXinelibServer::OsdCmd");
@@ -180,6 +197,44 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 
   if(cmd_gen) {
     osd_command_t *cmd = (osd_command_t*)cmd_gen;
+    osd_command_t cmdnet;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    /* -> network order */
+    cmdnet.cmd = htonl(cmd->cmd);
+    cmdnet.wnd = htonl(cmd->wnd);
+    cmdnet.pts = htonll(cmd->pts);
+    cmdnet.delay_ms = htonl(cmd->delay_ms);
+    cmdnet.x = htons(cmd->x);
+    cmdnet.y = htons(cmd->y);
+    cmdnet.w = htons(cmd->w);
+    cmdnet.h = htons(cmd->h);
+    cmdnet.datalen = htonl(cmd->datalen);
+    cmdnet.num_rle = htonl(cmd->num_rle);
+    cmdnet.colors  = htonl(cmd->colors);
+    if(cmd->data) {
+      cmdnet.raw_data = (uint8_t*)malloc(cmd->datalen);
+      cmdnet.datalen = htonl( recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle));
+    } else {
+      cmdnet.data = NULL;
+    }
+    cmdnet.palette = cmd->palette;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    memcpy(&cmdnet, cmd, sizeof(osd_command_t));
+    cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
+    cmdnet.datalen = recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
+#else
+#  error __BYTE_ORDER not defined !
+#endif
+    
+    for(i=0; i<MAXCLIENTS; i++)
+      if(fd_control[i] >= 0 && 
+	 !write_osd_command(fd_control[i], &cmdnet)) {
+	LOGMSG("Send OSD command failed");
+        CloseConnection(i);
+      }
+
+    free(cmdnet.data);
+
 #ifdef LOG_OSD_BANDWIDTH
     {
       static int64_t timer = 0LL;
@@ -196,47 +251,9 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 	timer = now;
 	bytes = 0;
       }
-      bytes += cmd->datalen;
+      bytes += sizeof(osd_command_t) + ntohl(cmdnet.datalen);
     }
 #endif
-
-    /* -> network order */
-    osd_command_t cmdnet;
-
-    if(ntohl(0x12345678) != 0x12345678) {
-      cmdnet.cmd = htonl(cmd->cmd);
-      cmdnet.wnd = htonl(cmd->wnd);
-      cmdnet.pts = htonll(cmd->pts);
-      cmdnet.delay_ms = htonl(cmd->delay_ms);
-      cmdnet.x = htons(cmd->x);
-      cmdnet.y = htons(cmd->y);
-      cmdnet.w = htons(cmd->w);
-      cmdnet.h = htons(cmd->h);
-      cmdnet.datalen = htonl(cmd->datalen);
-      cmdnet.colors = htonl(cmd->colors);
-      if(cmd->data) {
-	cmdnet.data = (xine_rle_elem_t*)malloc(cmd->datalen);
-	for(unsigned int i=0; i<cmd->datalen/4; i++) {
-	  cmdnet.data[i].len   = htons(cmd->data[i].len);
-	  cmdnet.data[i].color = htons(cmd->data[i].color);
-	}
-      } else {
-	cmdnet.data = NULL;
-      }
-      cmdnet.palette = cmd->palette;
-    } else {
-      memcpy(&cmdnet, cmd, sizeof(osd_command_t));
-    }
-    
-    for(i=0; i<MAXCLIENTS; i++)
-      if(fd_control[i] >= 0 && 
-	 !write_osd_command(fd_control[i], &cmdnet)) {
-	LOGMSG("Send OSD command failed");
-        CloseConnection(i);
-      }
-
-    if(ntohl(0x12345678) != 0x12345678 && cmdnet.data) 
-      free(cmdnet.data);
   }
 }
 

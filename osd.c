@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.2 2006-06-11 10:21:43 phintuka Exp $
+ * $Id: osd.c,v 1.3 2006-07-06 02:57:59 phintuka Exp $
  *
  */
 
@@ -90,21 +90,6 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
       for(int c=0; c<colors; c++) {
 	int alpha = (palette[c] & 0xff000000)>>24;
 	alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
-#if 0 // FLOAT_COLORSPACE_CONVERSION
-	float R  = (float)((palette[c] & 0x00ff0000)>>16);
-	float G  = (float)((palette[c] & 0x0000ff00)>>8);
-	float B  = (float)((palette[c] & 0x000000ff));
-	float Y  = + (0.2578125 * R) + (0.50390625 * G) + (0.09765625 * B) + 16.0;
-	float CR = + (0.4375000 * R) - (0.36718750 * G) - (0.07031250 * B) + 128.0;
-	float CB = - (0.1484375 * R) - (0.28906250 * G) + (0.43750000 * B) + 128.0;
-	int y  = (int)Y;
-	int cr = (int)CR;
-	int cb = (int)CB;
-	clut[c].y  = y<0?0 : y>0xff?0xff : y;
-	clut[c].cb = cb<0?0 : cb>0xff?0xff : cb;
-	clut[c].cr = cr<0?0 : cr>0xff?0xff : cr;
-	clut[c].alpha = alpha<0?0 : alpha>0xff?0xff : alpha;
-#else
 	int R     = ((palette[c] & 0x00ff0000) >> 16);
 	int G     = ((palette[c] & 0x0000ff00) >>  8);
 	int B     = ((palette[c] & 0x000000ff));
@@ -115,7 +100,6 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
 	clut[c].cb    = saturate(   CB, 16, 240);
 	clut[c].cr    = saturate(   CR, 16, 240);
 	clut[c].alpha = saturate(alpha,  0, 255);
-#endif
       }
     }
 
@@ -154,6 +138,7 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
       num_rle++;
     }
     osdcmd.datalen = 4 * num_rle;
+    osdcmd.num_rle = num_rle;
     
     TRACE("xinelib_osd.c:RleCmd uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
 
@@ -248,14 +233,14 @@ void cXinelibOsd::Flush(void)
   if(SendDone) {
     static int64_t last_refresh = 0LL;
     int64_t now = cTimeMs::Now();
-    if(now - last_refresh < 100LL) {
+    if(now - last_refresh < 100) {
       /* too fast refresh rate, delay ... */
-      cCondWait::SleepMs(100);
+      cCondWait::SleepMs(40); /* Can't update faster anyway ... */
 #if 0
-      LOGDBG("cXinelibOsd::Flush: OSD refreshing too fast ! (>10Hz) -> Sleeping 100ms");
+      LOGDBG("cXinelibOsd::Flush: OSD refreshing too fast ! (>10Hz) -> Sleeping 50ms");
 #endif
     }
-    last_refresh = cTimeMs::Now();
+    last_refresh = now;
   }
 #endif
 
