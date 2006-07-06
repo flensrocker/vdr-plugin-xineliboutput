@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.5 2006-07-02 18:10:03 phintuka Exp $
+ * $Id: frontend.c,v 1.6 2006-07-06 02:46:03 phintuka Exp $
  *
  */
 
@@ -405,25 +405,8 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
     static uchar seqend[] = {0x00,0x00,0x01,0xe0, 0x00,0x07,0x80,0x00,
 			     0x00,
 			     0x00,0x00,0x01,0xB7}; /* mpeg2 */
-#if 0
-    frame[0] = 0x00;
-    frame[1] = 0x00;
-    frame[2] = 0x01;
-    frame[3] = (uchar)streamID;
-    frame[4]  = 0x00;
-    frame[5]  = 0x07;
-    frame[6]  = 0x80;
-    frame[7]  = 0x00;
-    frame[8]  = 0x00;
-    frame[9]  = 0x00;
-    frame[10] = 0x00;
-    frame[11] = 0x01;
-    frame[12] = 0xB7;
-    Play_PES(frame, 13);
-#else
     seqend[3] = (uchar)streamID;
     Play_PES(seqend, 13);
-#endif
   }
 
   delete frame;

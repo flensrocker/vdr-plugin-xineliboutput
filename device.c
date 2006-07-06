@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.4 2006-07-02 17:09:04 phintuka Exp $
+ * $Id: device.c,v 1.5 2006-07-06 02:45:05 phintuka Exp $
  *
  */
 
@@ -938,14 +938,6 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	  Data, 0, VIDEO_STREAM,
 	  &mand<bool>, true);
 
-#if 0
-  if(m_server)
-    for(i=0; i<5; i++)
-      if(m_server->Flush(50))
-	break;
-      else
-	LOGMSG("cXinelibDevice::StillPicture: retry server flush (%d)", i+1);
-#endif
   m_TrickSpeed = 0;
   m_SkipAudio = 0;
 }
