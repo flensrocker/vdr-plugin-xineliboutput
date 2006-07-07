@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.13 2006-07-06 02:57:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.14 2006-07-07 14:09:05 phintuka Exp $
  *
  */
 
@@ -55,12 +55,12 @@
 /*#define LOG_TRACE*/
 
 #define ADJUST_SCR_SPEED        1
-#define INITIAL_READ_DELAY      (16*(40*1000))  /* us. 16 frames, 40ms / frame */
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 
 #define HD_BUF_NUM_BUFS   (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
 #define HD_BUF_ELEM_SIZE  (2048+64)
 
+#define RADIO_MAX_BUFFERS  10
 
 /******************************* LOG ***********************************/
 
@@ -204,6 +204,9 @@ typedef struct vdr_input_plugin_s {
   int                 B_frames;
   int                 P_frames;
 
+  int64_t             pause_start;
+  int                 paused_frames;
+
   /* Network */
   pthread_t           control_thread;
   pthread_t           data_thread;
@@ -222,6 +225,8 @@ typedef struct vdr_input_plugin_s {
   fifo_buffer_t      *buffer_pool;   /* stream's video fifo */
   fifo_buffer_t      *big_buffer;    /* for jumbo PES */
   fifo_buffer_t      *hd_buffer;     /* more buffer for HD streams */
+  fifo_buffer_t      *iframe_buffer; /* buffer for cached I-frame */
+  int                 saving_iframe;
   uint64_t            discard_index; /* index of next byte to feed to demux; 
 					all data before this offset will 
 					be discarded */
@@ -231,7 +236,6 @@ typedef struct vdr_input_plugin_s {
   uint64_t            curpos;        /* current position (demux side) */
   int                 curframe;      
   int                 max_buffers;   /* max no. of non-demuxed buffers */
-  int                 read_delay;    /* usec to wait at next read call */
 
   /* saved video properties */
   int   video_properties_saved;
@@ -560,36 +564,6 @@ static inline const char *scr_tunning_str(int value)
 }
 #endif
 
-static void scr_tunning_set_paused(vdr_input_plugin_t *this)
-{
-  if(this->scr_tunning != SCR_TUNNING_PAUSED) {
-    this->scr_tunning = SCR_TUNNING_PAUSED;  /* marked as paused */
-    if(this->scr)
-      pvrscr_speed_tunning(this->scr, 1.0);
-    
-    this->speed_before_pause = _x_get_fine_speed(this->stream);
-
-    if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE)
-      _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
-  }
-}
-
-static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
-{
-  if(this->scr_tunning != SCR_TUNNING_OFF) {
-    this->scr_tunning = SCR_TUNNING_OFF; /* marked as normal */
-    if(this->scr) 
-      pvrscr_speed_tunning(this->scr, 1.0);
-
-    if(new_speed >= 0) {
-      if(_x_get_fine_speed(this->stream) != new_speed) {
-	_x_set_fine_speed(this->stream, XINE_FINE_SPEED_NORMAL);
-      }
-pvrscr_set_fine_speed((scr_plugin_t*)this->scr, XINE_FINE_SPEED_NORMAL);
-    }
-  }
-}
-
 static int64_t monotonic_time_ms (void) 
 {
   static struct timeval tv_0;
@@ -608,6 +582,42 @@ static int64_t monotonic_time_ms (void)
   return ms;
 }
 
+static void scr_tunning_set_paused(vdr_input_plugin_t *this)
+{
+  if(this->scr_tunning != SCR_TUNNING_PAUSED) {
+    this->scr_tunning = SCR_TUNNING_PAUSED;  /* marked as paused */
+    if(this->scr)
+      pvrscr_speed_tunning(this->scr, 1.0);
+    
+    this->speed_before_pause = _x_get_fine_speed(this->stream);
+
+#if 0
+    if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE)
+      _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
+#else
+    _x_set_fine_speed(this->stream, 1000000 / 1000); //-> speed to 0.1% 
+#endif
+    this->pause_start = monotonic_time_ms(); 
+    this->paused_frames = 0;
+  }
+}
+
+static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
+{
+  if(this->scr_tunning != SCR_TUNNING_OFF) {
+    this->scr_tunning = SCR_TUNNING_OFF; /* marked as normal */
+    if(this->scr) 
+      pvrscr_speed_tunning(this->scr, 1.0);
+
+    if(new_speed >= 0) {
+      if(_x_get_fine_speed(this->stream) != new_speed) {
+	_x_set_fine_speed(this->stream, XINE_FINE_SPEED_NORMAL);
+      }
+      pvrscr_set_fine_speed((scr_plugin_t*)this->scr, XINE_FINE_SPEED_NORMAL);
+    }
+  }
+}
+
 static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this) 
 {
   /* Grab current buffer usage */
@@ -615,9 +625,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
                  this->block_buffer->size(this->block_buffer);
   int num_free = this->buffer_pool->num_free(this->buffer_pool);
   int scr_tunning = this->scr_tunning;
-  
-  static int64_t pause_start = -1LL; /* TODO: -> this... */
-  static int pause_bufs = -1;
 
   if(this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
@@ -629,11 +636,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     if(!((fcnt++)%2500) || 
        (this->scr_tunning==SCR_TUNNING_PAUSED && !(fcnt%10)) ||
        (this->no_video        && !(fcnt%50))) {
-      LOGSCR("Buffer %2d%% (%3d/%3d) %s %s", 
+      LOGSCR("Buffer %2d%% (%3d/%3d) %s", 
 	     100*num_used/(num_used+num_free), 
 	     num_used, num_used+num_free, 
-	     scr_tunning_str(this->scr_tunning),
-	     this->live_mode?"LIVE":"PLAY");
+	     scr_tunning_str(this->scr_tunning));
     }
   }
 
@@ -650,9 +656,9 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   /* If buffer is (almost) empty. pause it for a while */
   if( num_used < 1 && 
       scr_tunning != SCR_TUNNING_PAUSED && 
-      this->live_mode && !this->no_video && !this->still_mode) {
+      !this->no_video && !this->still_mode) {
 /* 
-   TODO:
+   #warning TODO:
    - First I-frame can be delivered as soon as it is decoded 
    -> illusion of faster channel switches
    - Clock must still be paused, but stream can be in PLAYING state
@@ -662,8 +668,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     int num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
 							  VO_PROP_BUFS_IN_FIFO);
     if(num_vbufs < 3) {
-      pause_start = monotonic_time_ms(); 
-      pause_bufs = 0;
       LOGSCR("SCR paused by adjust_speed (vbufs=%d)", num_vbufs);
       scr_tunning_set_paused(this);
     } else {
@@ -672,54 +676,50 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 
   /* If currently paused, revert to normal if buffer > 50% */
   } else if( scr_tunning == SCR_TUNNING_PAUSED) {
-
-    if(pause_bufs < 0) { 
-      pause_start = monotonic_time_ms(); 
-      pause_bufs = 0;
-    }
-    pause_bufs++;
-
-    int num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
-							  VO_PROP_BUFS_IN_FIFO);
-
-    if( num_used/2 > num_free || (this->no_video && num_used>5) || !this->live_mode 
 /* 
-   TODO:
+   #warning TODO:
    - Using amount of buffers is not good trigger as it depends on channel bitrate
    - Wait time is not not good trigger as it depends on tuner lock time
    -> maybe keep track of PTSes or wait until decoder has complete IBBBP frame sequence ? 
    - First I-frame can be delivered as soon as it is decoded 
    -> illusion of faster channel switches
 */
-	|| pause_bufs > 200
-        || (pause_bufs>100 && pause_start + 400 < monotonic_time_ms())
+    int num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
+							  VO_PROP_BUFS_IN_FIFO);
+    this->paused_frames++;
+
+    if( num_used/2 > num_free 
+	|| (this->no_video && num_used > 5)
+	|| this->paused_frames > 200
+        || (this->paused_frames > 100 
+	    && this->pause_start + 400 < monotonic_time_ms())
 	|| num_vbufs > 5
 	|| this->still_mode
 	) {
 
       LOGSCR("SCR tunning resetted by adjust_speed, "
 	     "vbufs=%d (SCR was paused for %d bufs/%d ms)",
-	     num_vbufs, pause_bufs, monotonic_time_ms()-pause_start);
+	     num_vbufs, this->paused_frames, 
+	     monotonic_time_ms() - this->pause_start);
 
-      pause_bufs = -1; 
-      pause_start = -1LL;
+      this->paused_frames = 0; 
+      this->pause_start = 0;
       reset_scr_tunning(this, this->speed_before_pause);
     }
 
   /* when playing realtime, adjust the scr to make xine buffers half full */
-  } else if( _x_get_fine_speed(this->stream) == XINE_FINE_SPEED_NORMAL && 
-	     this->live_mode ) {
+  } else if( _x_get_fine_speed(this->stream) == XINE_FINE_SPEED_NORMAL) {
 
     if(this->no_video) {  /* radio stream ? */
-      if( num_used > 10 )
+      if( num_used >= (RADIO_MAX_BUFFERS-1))
         scr_tunning = +1; /* play faster */
-      else if( num_used < 5 )
+      else if( num_used <= (RADIO_MAX_BUFFERS/3))
         scr_tunning = -1; /* play slower */
       else
         scr_tunning = SCR_TUNNING_OFF;
     } else {
       if( num_used > 4*num_free )
-        scr_tunning = +1; /* play .5% faster */
+        scr_tunning = +2; /* play 1% faster */
       else if( num_used > 2*num_free )
         scr_tunning = +1; /* play .5% faster */
       else if( num_free > 4*num_used ) /* <20% */
@@ -793,17 +793,8 @@ static int64_t pts_from_pes(const uint8_t *buf, int size)
 static void clear_pts_from_pes(uint8_t *buf, int size)
 {
   if(size>14 && buf[7] & 0x80) { /* pts avail */
-#if 0
-#warning setting to 0 instead of removing
-    buf[ 9] &= ~0x0E;
-    buf[10] = 0;
-    buf[11] &= ~0xFE;
-    buf[12] = 0;
-    buf[13] &= ~0xFE;
-#else
     buf[7] &= 0x7f; /* clear pts avail */
     memcpy(buf+9, buf+14, size-14);
-#endif
   }
 }
 
@@ -1019,7 +1010,6 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     buf->type = BUF_VIDEO_MPEG;
     xine_fast_memcpy(buf->content, &v_mpg_nosignal[pos], buf->size);
     pos += buf->size;
-    LOGMSG("p");
     this->stream->video_fifo->put(this->stream->video_fifo, buf);
   }
 }
@@ -1224,6 +1214,7 @@ static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
       buf->content += sizeof(stream_tcp_header_t);
       buf->size -= sizeof(stream_tcp_header_t);
     }
+    buf->type = BUF_DEMUX_BLOCK;
   }
 }
 
@@ -1970,22 +1961,6 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
 
     reset_scr_tunning(this, this->speed_before_pause);
 
-#if 0
-/* net mode: may already have important data received as data and control are not synchronized.
-   So, do discard in read_block.
-   Another possibility is to flush up to discard_index.
-
-   * buffer size can't be added to curpos (network headers ; possible missing packets).
-   * local mode: size must be added if flushed ...
-*/
-    this->curpos += (uint64_t)fifo_buffer_clear(this->block_buffer);
-    if(this->curr_buffer) {  /* safe, but only now, as we know demuxer can't be in middle of PES frame now */
-      this->curpos += (uint64_t)this->curr_buffer->size;
-      this->curr_buffer->free_buffer(this->curr_buffer);
-      this->curr_buffer = NULL;
-    }
-#endif
-    
     vdr_x_demux_flush_engine (this->stream, this);
 
 #if 0
@@ -2069,41 +2044,42 @@ static int set_video_properties(vdr_input_plugin_t *this,
 static int set_live_mode(vdr_input_plugin_t *this, int onoff)
 {
   pthread_mutex_lock(&this->lock);
+
   if(this->live_mode != onoff) {
     config_values_t *config = this->stream->xine->config;
     this->live_mode = onoff;
-    if(!this->live_mode) {      
+
+    this->stream->metronom->set_option(this->stream->metronom, 
+				       METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
+
+    if(!this->live_mode || this->fd_control > 0) {
       config->update_num(this->stream->xine->config,
-			 "audio.synchronization.av_sync_method",0);
-      this->max_buffers = (this->buffer_pool->buffer_pool_capacity >> 1) - 10;
-      if(this->scr_tunning != SCR_TUNNING_OFF) {
-	LOGSCR("reset scr tunning by set_live_mode");
-	reset_scr_tunning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
-      }
+			 "audio.synchronization.av_sync_method", 1);
     } else {
       config->update_num(this->stream->xine->config,
-			 "audio.synchronization.av_sync_method",1);
-#ifdef INITIAL_READ_DELAY
-      this->read_delay = INITIAL_READ_DELAY;
-#endif
-      this->max_buffers = this->buffer_pool->buffer_pool_capacity - 10;
-      this->stream->metronom->set_option(this->stream->metronom, 
-					 METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
-      if(this->scr_tunning != SCR_TUNNING_PAUSED) {
-	LOGSCR("pause scr tunning by set_live_mode");
-	scr_tunning_set_paused(this);
-      }
+			 "audio.synchronization.av_sync_method", 0);
     }
   }
 
-#if 1
-  if(this->live_mode) {      
-    if(this->scr_tunning != SCR_TUNNING_PAUSED) {
-      LOGSCR("pause scr tunning by set_live_mode");
-      scr_tunning_set_paused(this);
-    }
+  /* set buffer usage limits */
+  this->max_buffers = this->buffer_pool->buffer_pool_capacity;
+  if(this->live_mode && this->fd_control < 0) 
+    this->max_buffers >>= 1;
+  this->max_buffers -= 10;
+
+  if(this->no_video) 
+    this->max_buffers = RADIO_MAX_BUFFERS;
+
+  /* SCR tunning */
+  if(this->live_mode) {
+    LOGSCR("pause scr tunning by set_live_mode");
+    scr_tunning_set_paused(this);
+  } else {
+    LOGSCR("reset scr tunning by set_live_mode");
+    reset_scr_tunning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
   }
-#endif
+
+  this->still_mode = 0;
 
   pthread_mutex_unlock(&this->lock);
 
@@ -2379,21 +2355,20 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
 static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 {
-  static int timeouts = 0;
   struct timespec abstime;
   int result = 0;
 
   /* Caller must have locked this->vdr_entry_lock ! */
 
   if(this->slave_stream) {
-    LOGDBG("vdr_plugin_poll: called while playing slave stream !");
+    LOGMSG("vdr_plugin_poll: called while playing slave stream !");
     return 1;
   }
 
   TRACE("vdr_plugin_poll (%d ms), buffer_pool: blocks=%d, bytes=%d", 
 	timeout_ms, this->buffer_pool->size(this->buffer_pool), 
 	this->buffer_pool->data_size(this->buffer_pool));
-
+#if 0
   if(this->is_paused) {
     VDR_ENTRY_UNLOCK();
 
@@ -2408,7 +2383,7 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 
     VDR_ENTRY_LOCK(0);
   }
-
+#endif
   pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
   result = this->buffer_pool->buffer_pool_num_free - 
            (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
@@ -2430,23 +2405,10 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 
     pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
     while(result <= 5) {
-      TRACE("vdr_plugin_poll waiting (max %d ms), "
-	    "%d bufs free (rd pos=%" PRIu64 ")",
-	    timeout_ms, this->buffer_pool->buffer_pool_num_free, this->curpos);      
       if(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
 				 &this->buffer_pool->buffer_pool_mutex, 
-				 &abstime) == ETIMEDOUT) {
-
-	if(this->live_mode) {
-	  if(timeouts>2 && timeouts<6) {
-	    timeout_ms=200;
-	    create_timeout_time(&abstime, timeout_ms);
-	    continue;
-	  }
-	}
-
-	break;
-      }
+				 &abstime) == ETIMEDOUT)
+	break;      
       result = this->buffer_pool->buffer_pool_num_free - 
 	       (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
     }
@@ -2465,8 +2427,6 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
     result = 0;
     pthread_yield();
     xine_usec_sleep(3*1000);
-  } else {
-    timeouts = 0;
   }
 
   return result;
@@ -2494,7 +2454,8 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 	this->stream->video_out->get_property(this->stream->video_out, 
 					      VO_PROP_BUFS_IN_FIFO));
 
-  if(this->live_mode && this->fd_control < 0) {
+  if(this->live_mode /*&& this->fd_control < 0*/) {
+    /* No flush in live mode */
     sched_yield();
     return 1;
   }
@@ -2539,45 +2500,42 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, 
 				   uint64_t offset, int frame)
 {
-  int r;
+  int r, live_mode;
 
   pthread_mutex_lock(&this->lock);
-  this->live_mode = 0; /* --> 1 again when data arrives ... */
-  if(this->scr_tunning) {
-    /*LOGMSG("reset scr tunning by flush");*/
-    reset_scr_tunning(this, this->speed_before_pause);
-  }
-  pthread_mutex_unlock(&this->lock);
 
+  live_mode = this->live_mode;
+  this->live_mode = 0; /* --> 1 again when data arrives ... */
+
+  LOGSCR("reset scr tunning by flush_remote");
+  reset_scr_tunning(this, this->speed_before_pause);
+
+  /* wait until all data has been received */
   while(this->curpos < offset && timeout_ms > 0) {
     TRACE("FLUSH: wait position (%" PRIu64 " ; need %" PRIu64 ")", 
 	  this->curpos, offset);
+    pthread_mutex_unlock(&this->lock);
     xine_usec_sleep(3*1000);
+    pthread_mutex_lock(&this->lock);
     timeout_ms -= 3;
   }
 
-  pthread_mutex_lock(&this->lock);
-  this->live_mode = 0;
-  if(this->scr_tunning) {
-    /*LOGMSG("reset scr tunning by flush");*/
-    reset_scr_tunning(this, this->speed_before_pause);
-  }
+  LOGSCR("reset scr tunning by flush_remote");
+  reset_scr_tunning(this, this->speed_before_pause);
+
   pthread_mutex_unlock(&this->lock);
 
   r = vdr_plugin_flush(this, MAX(5, timeout_ms));
   printf_control(this, "RESULT %d %d\r\n", this->token, r);
 
-  /*xine_usec_sleep(20*1000);*/
+  pthread_mutex_lock(&this->lock);
 
-  this->live_mode = 1;
-
+  this->live_mode = live_mode;
   this->stream->metronom->set_option(this->stream->metronom, 
 				     METRONOM_PREBUFFER, 
 				     METRONOM_PREBUFFER_VAL);
-  pthread_mutex_lock(&this->lock);
-  /*#warning no pause*/
-  /*  scr_tunning_set_paused(this);*/
   this->guard_index = offset;
+
   pthread_mutex_unlock(&this->lock);
 
   return CONTROL_OK;
@@ -2635,10 +2593,11 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       pthread_mutex_lock(&this->lock);
       this->no_video = tmp32;
       if(this->no_video) {
-        this->max_buffers = 6;
+        this->max_buffers = RADIO_MAX_BUFFERS;
       } else {
         this->max_buffers = this->buffer_pool->buffer_pool_capacity;
-        if(!this->live_mode) this->max_buffers >>= 1;
+        if(!this->live_mode && this->fd_control < 0) 
+	  this->max_buffers >>= 1;
         this->max_buffers -= 10;
       }
       pthread_mutex_unlock(&this->lock);
@@ -2676,33 +2635,21 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
     pthread_mutex_lock(&this->lock);
-    if(this->fd_control >= 0) {
-      /*set_live_mode(this, 1);*/
-      if(cmd[6] == '0') 
-	this->still_mode = 0;
-      if(cmd[6] == '1') {
-	this->still_mode = 1;
-	reset_scr_tunning(this, this->speed_before_pause);
-      }
-      this->stream_start = 1;
-    }
+    /*if(this->fd_control >= 0) {*/
+      if(1 == sscanf(cmd, "STILL %d", &tmp32)) {
+	this->still_mode = tmp32;
+	if(this->still_mode)
+	  reset_scr_tunning(this, this->speed_before_pause);
+	this->stream_start = 1;
+      } else
+	err = CONTROL_PARAM_ERROR;
+    /*}*/
     pthread_mutex_unlock(&this->lock);
-    
+
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
-    if(this->fd_control >= 0) {
-      set_live_mode(this, 1);
-      pthread_mutex_lock(&this->lock);
       this->still_mode = 0;
-      if(cmd[5] == '0') {
-	LOGSCR("reset scr tunning by LIVE 0");
-	reset_scr_tunning(this, this->speed_before_pause);
-      } else {
-	/* */
-      }
-      pthread_mutex_unlock(&this->lock);
-    } else
-      err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ? 
-	set_live_mode(this, tmp32) : -2 ;    
+      err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ?
+	set_live_mode(this, tmp32) : -2 ;
 
   } else if(!strncasecmp(cmd, "VOLUME ", 7)) {
     if(1 == sscanf(cmd, "VOLUME %d", &tmp32)) {
@@ -3092,6 +3039,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	    event.data_length = 0;
 	    event.type        = XINE_EVENT_UI_PLAYBACK_FINISHED;
 	    xine_event_send (this->stream, &event);
+LOGMSG("No loop play, playback of slave stream finished");
 	  } else {
 #if 0
 	    xine_usec_sleep(500*1000);
@@ -3175,25 +3123,27 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       if(hdr->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
 	/* control data */
 	char *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
-	pkt_data[64] = 0;
-LOGMSG("CTRL: %s", (char*)pkt_data);
-	//if(!strncmp((char*)pkt_data, "????", 11)) {
-	//}
-	todo = sizeof(stream_tcp_header_t);
-	cnt = 0;
-	
-      } else {
-      
-	/* frame ready */
-	read_buffer->size = cnt;
-	read_buffer->type = BUF_MAJOR_MASK;
-	this->block_buffer->put(this->block_buffer, read_buffer);
-	read_buffer = NULL;
+	if(pkt_data[0]) { /* -> can't be pes frame */
+	  pkt_data[64] = 0;
+	  LOGMSG("Control message in data stream: %s", (char*)pkt_data);
+	  vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
+
+	  /* read next block */
+	  todo = sizeof(stream_tcp_header_t);
+	  cnt = 0;
+	  continue;
+	}
       }
+ 
+      /* frame ready */
+      read_buffer->size = cnt;
+      read_buffer->type = BUF_MAJOR_MASK;
+      this->block_buffer->put(this->block_buffer, read_buffer);
+      read_buffer = NULL;
     }
   }
 
-  if(read_buffer) {    
+  if(read_buffer) {
     read_buffer->free_buffer(read_buffer);
     if(cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
       LOGMSG("TCP: Delay too long, disconnecting");
@@ -3248,7 +3198,9 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  LOGDBG("UDP Fifo buffer full !");
 	  if(this->scr && !udp->scr_jump_done) {
 	    pvrscr_skip_frame (this->scr);
-	    LOGMSG("SCR jump: +40 ms");
+	    LOGMSG("SCR jump: +40 ms (live=%d, tunning=%d) time %ds", 
+		   this->live_mode, this->scr_tunning, 
+		   (int)(monotonic_time_ms()/1000));
 	    udp->scr_jump_done = 50;
 	    xine_usec_sleep(5*1000);
 	  }
@@ -3316,23 +3268,27 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     /* Check for control messages */
     if(pkt->seq == (uint16_t)(-1) /*0xffff*/) {
       if(pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
-	pkt_data[64] = 0;
-LOGMSG("CTRL: %s", (char*)pkt_data);
-	if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
-	  /* Re-send failed */ 
-	  int seq1 = 0, seq2 = 0;
-	  uint64_t rpos = 0ULL;
-	  sscanf((char*)pkt_data, "UDP MISSING %d-%d %" PRIu64, 
-		 &seq1, &seq2, &rpos);
-	  read_buffer->size = sizeof(stream_udp_header_t);
-	  read_buffer->type = BUF_MAJOR_MASK;
-	  pkt->seq = seq1;
-	  pkt->pos = rpos;
-	  udp->missed_frames++;
-	  /* -> drop frame thru as empty ; it will trigger queue to continue */
-	}
+	if(pkt_data[0]) { /* -> can't be PES frame */
+	  pkt_data[64] = 0;
+	  LOGMSG("Control message in data stream: %s", (char*)pkt_data);
+	  if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
+	    /* Re-send failed */ 
+	    int seq1 = 0, seq2 = 0;
+	    uint64_t rpos = 0ULL;
+	    sscanf((char*)pkt_data, "UDP MISSING %d-%d %" PRIu64, 
+		   &seq1, &seq2, &rpos);
+	    read_buffer->size = sizeof(stream_udp_header_t);
+	    read_buffer->type = BUF_MAJOR_MASK;
+	    pkt->seq = seq1;
+	    pkt->pos = rpos;
+	    udp->missed_frames++;
+	    /* -> drop frame thru as empty ; it will trigger queue to continue */
+	  } else {
+	    vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
+	  }
+	  continue;
+	} /* if(pkt_data[0] */
       }
-      continue;
     }
 
     /* Check if header is valid */
@@ -3501,6 +3457,50 @@ static void *vdr_data_thread(void *this_gen)
   pthread_exit(NULL);
 }
 
+static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int len)
+{
+#if 0
+  fifo_input_plugin_t *slave;
+  buf_element_t *buf;
+
+  TRACE("write_slave_stream (%d bytes)", len); 
+
+  if(!this->pip_stream) {
+    LOGMSG("Detected new video stream");
+    LOGMSG("  no xine stream yet, trying to create ...");
+    vdr_plugin_parse_control(this_gen, "SUBSTREAM 0xE1 50 50 288 196");
+  }
+  if(!this->pip_stream) {
+    LOGMSG("  pip substream: no stream !");
+    return -1;
+  }
+  LOGMSG("  pip substream open, queuing data");
+
+  slave = (fifo_input_plugin_t*)this->pip_stream->input_plugin;  
+  if(!slave) {
+    LOGMSG("  pip substream: no input plugin !");
+    return len;
+  }
+
+  buf_element_t *buf = slave->buffer_pool->buffer_pool_try_alloc(slave->buffer_pool);
+  if(!buf) {
+    LOGMSG("  pip substream: fifo full !");
+    return 0;
+  }
+  if(len > buf->max_size) {
+    LOGMSG("  pip substream: buf too small");
+    buf->free_buffer(buf);
+    return len;
+  }
+
+  buf->content = buf->mem;
+  buf->size = len;
+  buf->type = BUF_DEMUX_BLOCK;
+  xine_fast_memcpy(buf->content, data, len);
+  slave->buffer->put(slave->buffer, buf);
+#endif
+  return len;
+}
 
 static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 {
@@ -3510,43 +3510,9 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
   if(this->slave_stream)
     return len;
 
-#if 0
   /* slave */
-  if(((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) {
-    if(!this->pip_stream) {
-      LOGMSG("Detected new video stream");
-      LOGMSG("  no xine stream yet, trying to create ...");
-      vdr_plugin_parse_control(this_gen, "SUBSTREAM 0xE1 50 50 288 196");
-      LOGMSG("  substream up and running ?");
-    }
-    if(this->pip_stream) {
-      fifo_input_plugin_t *slave = (fifo_input_plugin_t*)this->pip_stream->input_plugin;  
-      /* LOGMSG("  input already open, queuing data"); */
-      if(slave) {
-	buf = slave->buffer_pool->buffer_pool_try_alloc(slave->buffer_pool);
-	if(buf) {
-	  if(len < buf->max_size) {
-	    /* buf->free_buffer = buffer_pool_free; */
-	    buf->content = buf->mem;
-	    buf->size = len;
-	    buf->type = BUF_DEMUX_BLOCK;
-	    xine_fast_memcpy(buf->content, data, len);
-	    slave->buffer->put(slave->buffer, buf);
-	  } else {
-LOGMSG("  pip substream: buf too small");
-	    buf->free_buffer(buf);
-	  }
-	} else {
-LOGMSG("  pip substream: fifo full !");
-	}
-	return len;
-      }
-    } else {
-LOGMSG("  pip substream: no stream !");
-    }
-    return len;
-  }
-#endif
+  if(((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) 
+    return write_slave_stream(this, data, len);
 
   TRACE("vdr_plugin_write (%d bytes)", len); 
 
@@ -3613,7 +3579,7 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   if(buf->content[3] >= 0xc0 && buf->content[3] < 0xe0) {
     /* audio */
     if(this->prev_audio_stream_id != (buf->content[3] << 8)) {
-      LOGMSG("Audio changed -> %d (%02X)", buf->content[3] - 0xc0, buf->content[3]);
+      LOGDBG("Audio changed -> %d (%02X)", buf->content[3] - 0xc0, buf->content[3]);
       this->prev_audio_stream_id = buf->content[3] << 8;
       audio_changed = 1;
     }
@@ -3625,20 +3591,20 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
     int SubStreamType  = SubStreamId & 0xF0;
     int SubStreamIndex = SubStreamId & 0x1F;
     switch (SubStreamType) {
-      case 0x20: // SPU
-      case 0x30: // SPU
-	LOGMSG("SPU %d", SubStreamId);
+      case 0x20: /* SPU */
+      case 0x30: /* SPU */
+	/*LOGMSG("SPU %d", SubStreamId);*/
         break;
-      case 0x80: // AC3 & DTS
+      case 0x80: /* AC3 & DTS */
 	if(this->prev_audio_stream_id != ((0xbd<<8) | SubStreamId)) {
-	  LOGMSG("Audio changed -> AC3 %d (BD:%02X)", SubStreamIndex, SubStreamId);
+	  LOGDBG("Audio changed -> AC3 %d (BD:%02X)", SubStreamIndex, SubStreamId);
 	  this->prev_audio_stream_id = ((0xbd<<8) | SubStreamId);
 	  audio_changed = 1;
 	}
 	break;
-      case 0xA0: // LPCM
+      case 0xA0: /* LPCM */
 	if(this->prev_audio_stream_id != ((0xbd<<8) | SubStreamId)) {
-	  LOGMSG("Audio changed -> LPCM %d (BD:%02X)", SubStreamIndex, SubStreamId);
+	  LOGDBG("Audio changed -> LPCM %d (BD:%02X)", SubStreamIndex, SubStreamId);
 	  this->prev_audio_stream_id = ((0xbd<<8) | SubStreamId);
 	  audio_changed = 1;
 	}
@@ -3655,7 +3621,7 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   if(audio_changed && !first_audio) {
     buf_element_t *buf_elem = 
       this->stream->audio_fifo->buffer_pool_try_alloc (this->stream->audio_fifo);
-#if 1
+#if 0
     LOGMSG("VDR-Given stream: %04x", this->audio_stream_id);
     if(this->reset_audio_cnt < 1)
       LOGMSG("audio changed, reset cnt still < 1");
@@ -3668,11 +3634,6 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
       this->stream->audio_fifo->put(this->stream->audio_fifo, buf_elem);
     }
   }
-}
-
-static int get_video_frame_type(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  return -1;
 }
 
 static off_t vdr_plugin_read (input_plugin_t *this_gen,
@@ -3738,12 +3699,17 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     return NULL; /* disconnected ? */
   }
 
+#ifdef CACHE_FIRST_IFRAME
+  if(NULL != (buf = get_cached_iframe(this)))
+    return buf;
+#endif
+
 #ifdef ADJUST_SCR_SPEED
   if(pthread_mutex_lock(&this->lock)) {
     LOGERR("read_block: pthread_mutex_lock failed");
     return NULL;
   }
-  if( !this->live_mode ) {
+  if( !this->live_mode && this->fd_control < 0) {
     if(this->scr_tunning)
       reset_scr_tunning(this, this->speed_before_pause);
   } else {
@@ -3753,89 +3719,67 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #endif
 
   do {
-    int loops=0;
-    pthread_mutex_lock(&this->block_buffer->mutex);
-    if(this->block_buffer->fifo_size <= 0) {
-      struct timespec    abstime;
-      create_timeout_time(&abstime, 250); /* no infinite waits if player is stopped and fifo full ... */
-      while(this->block_buffer->fifo_size <= 0) {
-	if(loops>0)
-	  TRACE("vdr_plugin_read_block - wait ... %d",loops);
-        if(pthread_cond_timedwait (&this->block_buffer->not_empty, 
-				   &this->block_buffer->mutex, &abstime)
-	   == ETIMEDOUT) {
-          loops++;
-          create_timeout_time(&abstime, 250);
-
-        }
-	if(loops>1)
-	  TRACE("vdr_plugin_read_block - wait end %d",loops);
-
-        if((loops>1 && this->block_buffer->fifo_size <= 0) ||
-	   this->stream->demux_action_pending) {
-	  pthread_mutex_unlock(&this->block_buffer->mutex);
-	  if(NULL != (buf = make_padding_frame(this)))
-	    return buf;
-	  /* no free buffers ... */
-	  pthread_mutex_lock(&this->block_buffer->mutex);
-        }
-      } /* while(this->block_buffer->fifo_size <= 0) */
-    } /* if(this->block_buffer->fifo_size <= 0) */
-    pthread_mutex_unlock(&this->block_buffer->mutex);
-
-    if(!(buf = fifo_buffer_try_get(this->block_buffer)))
+    buf = fifo_buffer_try_get(this->block_buffer);
+    if(!buf) {
+      struct timespec abstime;
+      create_timeout_time(&abstime, 500);
+      pthread_mutex_lock(&this->block_buffer->mutex);
+      if(this->block_buffer->fifo_size <= 0)
+	pthread_cond_timedwait (&this->block_buffer->not_empty, 
+				&this->block_buffer->mutex, &abstime);
+      pthread_mutex_unlock(&this->block_buffer->mutex);
+      if(this->block_buffer->fifo_size <= 0)
+	if(NULL != (buf = make_padding_frame(this)))
+	  return buf;
       continue;
-    loops=0;
+    }
+
+    /* control buffers go always to demuxer */
+    if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
+      return buf;
 
     pthread_mutex_lock(&this->lock);
 
+    /* Update stream position and remove network headers */
     strip_network_headers(this, buf);
 
-    /* control buffers go always to demuxer */
-    if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE) {
-      pthread_mutex_unlock(&this->lock);
-      return buf;
-    }
-    
+    /* Update stream position */
     this->curpos += buf->size;
+
+    /* Handle discard */
     if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
       pthread_mutex_unlock(&this->lock);
-      TRACE("DISCARD: curpos=%" PRIu64 ", discard_index=%" PRIu64,
-	    this->curpos, this->discard_index);
       buf->free_buffer(buf);
       buf = NULL;
-    } else {
-#if 0
-      if(this->guard_index >= this->curpos) 
-	LOGMSG("guard index: %" PRIu64 ", discard index: %" PRIu64 ", "
-	       "pos: %" PRIu64" , diff: %" PRIu64, 
-	       this->discard_index, this->guard_index, 
-	       this->curpos, this->discard_index-this->guard_index);
-#endif
-
-      /* Send current PTS ? */
-      if(this->stream_start)
-	this->send_pts = 1;
-      this->stream_start = 0;
-
-      if(this->send_pts) {
-	int64_t pts = pts_from_pes(buf->content, buf->size);
-	if(pts > 0) {
-	  vdr_x_demux_control_newpts(this->stream, pts, 0);
-	  this->send_pts = 0;
-	}
-      }
-
-      pthread_mutex_unlock(&this->lock);
+      continue;
     }
+
+    /* Send current PTS ? */
+    if(this->stream_start) {
+      this->send_pts = 1;
+      this->stream_start = 0;
+    }
+
+    pthread_mutex_unlock(&this->lock);
+
   } while(!buf);
 
-#if 1
-  track_audio_stream_change(this, buf);
+#ifdef CACHE_FIRST_IFRAME
+  cache_iframe(this, buf);
 #endif
 
+  track_audio_stream_change(this, buf);
+
+  /* Send current PTS ? */
+  if(this->send_pts) {
+    int64_t pts = pts_from_pes(buf->content, buf->size);
+    if(pts > 0) {
+      vdr_x_demux_control_newpts(this->stream, pts, 0);
+      this->send_pts = 0;
+    }
+  }
+
   TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
-  buf->type = BUF_DEMUX_BLOCK;
   return buf;
 }
 
@@ -3989,6 +3933,8 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   if(this->stream && this->stream->video_fifo)
     this->stream->video_fifo->clear(this->stream->video_fifo);
 
+  if(this->iframe_buffer)
+    this->iframe_buffer->clear(this->iframe_buffer);
   if(this->block_buffer)
     this->block_buffer->clear(this->block_buffer);
   if(this->big_buffer) 
@@ -3996,6 +3942,8 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   if(this->hd_buffer)
     this->hd_buffer->clear(this->hd_buffer);
 
+  if(this->iframe_buffer)
+    this->iframe_buffer->dispose(this->iframe_buffer);
   if(this->big_buffer) 
     this->big_buffer->dispose(this->big_buffer);
   if(this->block_buffer)
@@ -4057,7 +4005,6 @@ static int vdr_plugin_open_local (input_plugin_t *this_gen)
 
 static void set_recv_buffer_size(int fd, int max_buf)
 {
-#if 1
   /* try to have larger receiving buffer */
 
   /*while(max_buf) {*/
@@ -4078,7 +4025,6 @@ static void set_recv_buffer_size(int fd, int max_buf)
   max_buf = 256;
   /* not going to send anything, so shrink send buffer ... */
   setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &max_buf, sizeof(int));
-#endif    
 }
 
 static int alloc_udp_data_socket(int firstport, int trycount, int *port)
@@ -4217,6 +4163,8 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
     return -1;
   }
   
+  LOGMSG("Connecting (data) to rtp://%u.%u.%u.%u:%u ...", 
+	 ip0, ip1, ip2, ip3, port);
   multicastAddress.sin_family = AF_INET;
   multicastAddress.sin_port   = htons(port);
   multicastAddress.sin_addr.s_addr = htonl((ip0<<24)|(ip1<<16)|(ip2<<8)|ip3);
@@ -4437,7 +4385,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
       if(readline_control(this, tmpbuf, 256) >5 &&
 	 !strncmp(tmpbuf, "PIPE ", 5) &&
 	 strncmp(tmpbuf, "PIPE NONE", 9)) {
-	LOGMSG("PIPE: %s", tmpbuf);
+	LOGMSG("Connecting (data) to pipe://%s", tmpbuf+5);
 	if((this->fd_data = open(tmpbuf+5, O_RDONLY|O_NONBLOCK)) >= 0) {
 	  _x_io_tcp_write(this->stream, this->fd_control, "PIPE OPEN\r\n", 11);
 	  if(readline_control(this, tmpbuf, 256) >6 &&
@@ -4462,7 +4410,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     /* try RTP ? */
 
     if(this->fd_data < 0 && !this->udp && !this->tcp) {
-      LOGMSG("Connecting (data) to rtp://%s ...", host);
+      /*LOGMSG("Trying RTP connection ...");*/
       /* flush control buffer (if PIPE was tried first) */
       while(0 < read(this->fd_control, tmpbuf, 255)) ;
       if((this->fd_data = connect_rtp_data_stream(this)) < 0) {
@@ -4478,6 +4426,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     /* try UDP ? */
 
     if(this->fd_data < 0 && !this->tcp) {
+      /*LOGMSG("Trying UDP connection ...", host);*/
       LOGMSG("Connecting (data) to udp://%s ...", host);
       /* flush control buffer (if RTP was tried first) */
       while(0 < read(this->fd_control, tmpbuf, 255)) ;
@@ -4554,6 +4503,10 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     return 0;
   }
 
+  if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
+       VO_CAP_UNSCALED_OVERLAY))
+    LOGMSG("WARNING: Video output driver reports it does not support unscaled overlays !");
+
   return 1;
 }
 
@@ -4595,7 +4548,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->discard_index= 0;
   this->guard_index  = 0;
   this->curpos       = 0;
-  this->read_delay   = 0;
   this->max_buffers  = 10;
 
   this->scr          = NULL;
@@ -4607,7 +4559,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->still_mode   = 0;
   this->playback_finished = 0;
   this->stream_start = 1;
-  this->send_pts     = 1;
+  this->send_pts     = 0;
 
   this->rescale_osd  = 0;
   this->unscaled_osd = 0;
@@ -4639,7 +4591,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->input_plugin.get_length        = vdr_plugin_get_length;
   this->input_plugin.get_blocksize     = vdr_plugin_get_blocksize;
   this->input_plugin.get_optional_data = vdr_plugin_get_optional_data;
-
+  
   if(local_mode) {
     this->funcs.push_input_write  = vdr_plugin_write;
     this->funcs.push_input_control= vdr_plugin_parse_control;
@@ -4648,14 +4600,14 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   } else {
     this->funcs.input_control     = vdr_plugin_keypress;
   }
-
+  
   this->mrl          = strdup(mrl);
-
+  
   /* buffer */
   this->block_buffer = _x_fifo_buffer_new(4,0x10000+64); /* dummy buf to be used before first read and for big PES frames */
   this->big_buffer = NULL;   /* dummy buf to be used for jumbo PES frames */
   this->hd_buffer = NULL;
-
+  
   /* sync */
   pthread_mutex_init (&this->lock, NULL);
   pthread_mutex_init (&this->osd_lock, NULL);
