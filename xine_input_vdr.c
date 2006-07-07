@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.14 2006-07-07 14:09:05 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.15 2006-07-07 18:56:07 phintuka Exp $
  *
  */
 
@@ -104,9 +104,9 @@ static void SetupLogLevel(void)
     int *pSysLogLevel = (int*)dlsym(lib, "SysLogLevel");
     bLogToSysLog = pLogToSyslog && *pLogToSyslog;
     iSysLogLevel = pSysLogLevel ? (*pSysLogLevel) : 2;
-    LOGDBG("Symbol SysLogLevel %s : %d", 
+    LOGDBG("Symbol SysLogLevel %s : value %d", 
 	   pSysLogLevel ? "found" : "not found", iSysLogLevel);
-    LOGDBG("Symbol LogToSysLog %s : %s", 
+    LOGDBG("Symbol LogToSysLog %s : value %s", 
 	   pLogToSyslog ? "found" : "not found", bLogToSysLog ? "yes" : "no");
     bSymbolsFound = pSysLogLevel && pLogToSyslog;
     dlclose(lib);
