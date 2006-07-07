@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.4 2006-07-02 17:11:06 phintuka Exp $
+ * $Id: frontend.h,v 1.5 2006-07-07 05:32:14 phintuka Exp $
  *
  */
 
@@ -48,7 +48,7 @@ class cXinelibThread : public cThread, public cListObject
   public:
     void PauseOutput(void)  { TrickSpeed(0); }
     void ResumeOutput(void) { TrickSpeed(1); }
-    void TrickSpeed(int Speed);
+    virtual void TrickSpeed(int Speed);
     void SetVolume(int NewVolume);
     void SetLiveMode(bool);
     void SetStillMode(bool);

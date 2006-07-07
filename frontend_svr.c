@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.8 2006-07-06 02:57:59 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.9 2006-07-07 05:32:14 phintuka Exp $
  *
  */
 
@@ -457,6 +457,16 @@ int cXinelibServer::Xine_Control(const char *cmd)
   return 1;
 }
 
+void cXinelibServer::TrickSpeed(int Speed)
+{
+  if(Speed == 0)
+    m_Scheduler->Pause(true);
+  else
+    m_Scheduler->Pause(false);
+
+  cXinelibThread::TrickSpeed(Speed);
+}
+
 bool cXinelibServer::EndOfStreamReached(void)
 {
   LOCK_THREAD;
@@ -577,7 +587,7 @@ bool cXinelibServer::Listen(int listen_port)
 
   // set listen for discovery messages
   CLOSESOCKET(fd_discovery);
-  if(xc.remote_usebcast && fd_discovery<0) {
+  if(xc.remote_usebcast) {
     struct sockaddr_in sin;
     if ((fd_discovery = socket(PF_INET, SOCK_DGRAM, 0/*IPPROTO_TCP*/)) < 0) {
       LOGERR("socket() failed (UDP discovery)");
@@ -608,7 +618,7 @@ bool cXinelibServer::Listen(int listen_port)
   CLOSESOCKET(fd_multicast);
   CLOSESOCKET(fd_rtcp);
 
-  if(xc.remote_usertp && fd_multicast < 0) {
+  if(xc.remote_usertp) {
     //
     // RTP
     //
@@ -671,7 +681,7 @@ bool cXinelibServer::Listen(int listen_port)
       if(xc.remote_rtp_always_on)
 	LOGMSG("WARNING: RTP Configuration: transmission is always on !");
       if(xc.remote_rtp_always_on || m_iMulticastMask)
-	m_Scheduler->AddHandle(fd_multicast);
+	m_Scheduler->AddHandle(fd_multicast, fd_rtcp);
     }
   }
 
@@ -687,7 +697,6 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
   //
   return NULL;
 }
-
 
 //
 // (Client) Control message handling
@@ -826,7 +835,7 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
     }
 
     if(!m_iMulticastMask)
-      m_Scheduler->AddHandle(fd_multicast); 
+      m_Scheduler->AddHandle(fd_multicast, fd_rtcp); 
 
     m_bMulticast[cli] = true;
     m_iMulticastMask |= (1<<cli);
@@ -1170,16 +1179,6 @@ void cXinelibServer::Handle_Discovery_Broadcast()
   }
 }
 
-void cXinelibServer::Handle_RTCP(void)
-{
-  // Called locked !
-  if(fd_rtcp >= 0 && (xc.remote_rtp_always_on || m_iMulticastMask)) {
-    if(m_Scheduler) {
-      m_Scheduler->Send_RTCP(fd_rtcp, m_Frames, m_StreamPos);
-    }
-  }
-}
-
 void cXinelibServer::Action(void) 
 {
 
@@ -1307,8 +1306,6 @@ void cXinelibServer::Action(void)
 	  } /* Check ready for reading */
 
         } /* for(fds) */
-
-	Handle_RTCP();
 
         Unlock();
       } /* Check poll result */

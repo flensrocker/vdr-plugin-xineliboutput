@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.2 2006-07-04 02:08:27 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.3 2006-07-07 05:32:14 phintuka Exp $
  *
  */
 
@@ -23,12 +23,16 @@ class cTimePts
   private:
     int64_t begin;
     struct timeval tbegin;
+    bool m_Paused;
 
   public:
     cTimePts(void);
 
     int64_t Now(void);
     void    Set(int64_t Pts = 0LL);
+
+    void Pause(void);
+    void Resume(void);
 };
 
 //----------------------- cUdpPesScheduler ----------------------------------
@@ -45,7 +49,7 @@ class cUdpScheduler : public cThread
     virtual ~cUdpScheduler();
 
     // fd should be binded & connected to IP:PORT (local+remote) pair !
-    bool AddHandle(int fd);
+    bool AddHandle(int fd, int fd_rtcp=-1);
     void RemoveHandle(int fd);
 
     bool Poll(int TimeoutMs, bool Master);
@@ -55,7 +59,7 @@ class cUdpScheduler : public cThread
     void Clear(void);
     bool Flush(int TimeoutMs);
 
-    void Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets);
+    void Pause(bool On);
 
   protected:
 
@@ -67,6 +71,7 @@ class cUdpScheduler : public cThread
 
     // Clients
     int       m_Handles[MAX_UDP_HANDLES];
+    int       m_fd_rtp, m_fd_rtcp;
 
     // Queue
     int m_QueueNextSeq;      /* next outgoing */
@@ -85,6 +90,8 @@ class cUdpScheduler : public cThread
     uint32_t  m_ssrc;   // RTP synchronization source id
     cTimePts  RtpScr;   // 90 kHz monotonic time source for RTP timestamps
     uint64_t  m_LastRtcpTime;
+    uint32_t  m_Frames;
+    uint32_t  m_Octets;
 
 #if 0
     int data_sent;   /* in current time interval, bytes */
@@ -104,6 +111,8 @@ class cUdpScheduler : public cThread
 
     bool m_Running;
     virtual void Action(void);
+
+    void Send_RTCP(void);
 };
 
 #endif

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.3 2006-07-04 02:06:16 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.4 2006-07-07 05:32:14 phintuka Exp $
  *
  */
 
@@ -36,9 +36,10 @@ class cXinelibServer : public cXinelibThread
   protected:
     virtual void Action(void);
 
-    void Handle_RTCP(void);
-
   public:
+    // Playback control
+    virtual void TrickSpeed(int Speed);
+
     // Data transfer
     virtual bool Poll(cPoller &Poller, int TimeoutMs);
     virtual bool Flush(int TimeoutMs);

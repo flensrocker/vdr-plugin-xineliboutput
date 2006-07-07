@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.7 2006-07-04 02:34:07 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.8 2006-07-07 05:32:14 phintuka Exp $
  *
  */
 
@@ -42,11 +42,15 @@ _syscall0(pid_t, gettid)
 
 cTimePts::cTimePts(void)
 {
+  m_Paused = false;
   Set();
 }
 
 int64_t cTimePts::Now(void)
 {
+  if(m_Paused)
+    return begin;
+
   struct timeval t;
 
   if (gettimeofday(&t, NULL) == 0) {
@@ -71,6 +75,17 @@ void cTimePts::Set(int64_t Pts)
   begin = Pts;
 }
 
+void cTimePts::Pause(void)
+{
+  Set(Now());
+  m_Paused = true;
+}
+
+void cTimePts::Resume(void)
+{
+  m_Paused = false;
+}
+
 //----------------------- cUdpScheduler -------------------------------------
 
 //#define LOG_RESEND
@@ -86,7 +101,7 @@ const int64_t INITIAL_BURST_TIME  = (int64_t)(45000); // pts units (90kHz)
 // assume seek when when pts difference between two frames exceeds this (1.5 seconds)
 const int64_t JUMP_LIMIT_TIME = (int64_t)(3*90000/2); // pts units (90kHz)
 
-const int RTCP_MIN_INTERVAL = 90000; // max. once in second
+const int RTCP_MIN_INTERVAL = 45000; // max. twice in second
 
 typedef enum {
   eScrDetect,
@@ -116,12 +131,15 @@ cUdpScheduler::cUdpScheduler()
   m_ssrc = random();
   LOGDBG("RTP SSRC: 0x%08x", m_ssrc);
   m_LastRtcpTime = 0;
+  m_Frames = 0;
+  m_Octets = 0;
 
   // queuing
 
   int i;
   for(i=0; i<MAX_UDP_HANDLES; i++)
     m_Handles[i] = -1;
+  m_fd_rtp = m_fd_rtcp = -1;
 
   m_BackLog = new cUdpBackLog;
 
@@ -147,7 +165,7 @@ cUdpScheduler::~cUdpScheduler()
   delete m_BackLog;
 }
 
-bool cUdpScheduler::AddHandle(int fd) 
+bool cUdpScheduler::AddHandle(int fd, int fd_rtcp) 
 {
   cMutexLock ml(&m_Lock);
 
@@ -158,6 +176,11 @@ bool cUdpScheduler::AddHandle(int fd)
       m_Handles[i] = fd;
       return true;
     }
+
+  if(fd_rtcp >=0 ) {
+    m_fd_rtp = fd;
+    m_fd_rtcp = fd_rtcp;
+  }
 
   return false;
 }
@@ -176,6 +199,9 @@ void cUdpScheduler::RemoveHandle(int fd)
 
   m_Handles[MAX_UDP_HANDLES-1] = -1;
 
+  if(fd == m_fd_rtp)
+    m_fd_rtp = m_fd_rtcp = -1;
+
   if(m_Handles[0] < 0) {
     // No clients left ...
 
@@ -184,6 +210,9 @@ void cUdpScheduler::RemoveHandle(int fd)
     m_QueuePending = 0;
     delete m_BackLog; 
     m_BackLog = new cUdpBackLog;
+
+    m_Frames = 0;
+    m_Octets = 0;
   }
 }
 
@@ -238,6 +267,16 @@ void cUdpScheduler::Clear(void)
 
   m_QueuePending = 0;
   m_Cond.Broadcast();
+}
+
+void cUdpScheduler::Pause(bool On)
+{
+  cMutexLock ml(&m_Lock);
+
+  if(On)
+    MasterClock.Pause();
+  else
+    MasterClock.Resume();
 }
 
 bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length) 
@@ -313,15 +352,20 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
   return (int) diff;
 }
 
-void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
+void cUdpScheduler::Send_RTCP(void)
 {
+  if(m_fd_rtcp < 0)
+    return;
+
   uint64_t scr = RtpScr.Now();
 
   if(scr > (m_LastRtcpTime + RTCP_MIN_INTERVAL)) {
     uint8_t frame[2048], *content = frame;
+    char hostname[64] = "";
     rtcp_packet_t  *msg = (rtcp_packet_t *)content;
     struct timeval tv;
-    gettimeofday(&tv,NULL);
+    gettimeofday(&tv, NULL);
+    gethostname(hostname, 63);
 
     // SR (Sender report)
     msg->hdr.raw[0] = 0x81;     // RTP version = 2, Report count = 1 */
@@ -332,8 +376,8 @@ void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
     msg->sr.ntp_sec  = htonl(tv.tv_sec + 0x83AA7E80);
     msg->sr.ntp_frac = htonl((uint32_t)((double)tv.tv_usec*(double)(1LL<<32)*1.0e-6));
     msg->sr.rtp_ts   = htonl((uint32_t)(scr    & 0xffffffff));
-    msg->sr.psent    = htonl((uint32_t)(Frames & 0xffffffff));
-    msg->sr.osent    = htonl((uint32_t)(Octets & 0xffffffff));
+    msg->sr.psent    = htonl((uint32_t)(m_Frames & 0xffffffff));
+    msg->sr.osent    = htonl((uint32_t)(m_Octets & 0xffffffff));
 
     content += sizeof(rtcp_common_t) + sizeof(rtcp_sr_t);
     msg = (rtcp_packet_t *)content;
@@ -345,7 +389,9 @@ void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
 
     msg->sdes.ssrc   = m_ssrc;
     msg->sdes.item[0].type   = RTCP_SDES_CNAME;
-    sprintf(msg->sdes.item[0].data, "VDR@%s:%d%c%c%c", xc.remote_rtp_addr, xc.remote_rtp_port, 0, 0, 0);
+    sprintf(msg->sdes.item[0].data, "VDR@%s:%d%c%c%c", 
+	    hostname[0] ? hostname : xc.remote_rtp_addr,
+	    xc.remote_rtp_port, 0, 0, 0);
     msg->sdes.item[0].length = strlen(msg->sdes.item[0].data);
 
     msg->hdr.length = htons(1 + 1 + ((msg->sdes.item[0].length - 2) + 3) / 4); 
@@ -354,7 +400,7 @@ void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
     msg = (rtcp_packet_t *)content;
 
     // Send
-    int err = send(fd_rtcp, frame, content - frame, 0);
+    (void) send(m_fd_rtcp, frame, content - frame, 0);
 #ifdef LOG_RTCP
     LOGMSG("RTCP send (%d)", err);
     for(int i=0; i<content-frame; i+=16) 
@@ -370,6 +416,8 @@ void cUdpScheduler::Send_RTCP(int fd_rtcp, uint32_t Frames, uint64_t Octets)
 	     frame[i+8],frame[i+9],frame[i+10],frame[i+11],
 	     frame[i+12],frame[i+13],frame[i+14],frame[i+15]);
 #endif
+
+    m_LastRtcpTime = scr;
   }
 }
 
@@ -462,16 +510,13 @@ void cUdpScheduler::Action(void)
 	     sched_get_priority_min(SCHED_RR),
 	     sched_get_priority_max(SCHED_RR));
     }
-
-    /* UDP Scheduler needs high priority */
-    SetPriority(0);  
-    SetPriority(-1); 
-    SetPriority(-2);
-    SetPriority(-3);
-    SetPriority(-4);
-    SetPriority(-5);
   }
 #endif
+
+  /* UDP Scheduler needs high priority */
+  SetPriority(-5);
+  (void)nice(-5);
+  errno = 0;
 
   m_Lock.Lock();
 
@@ -486,6 +531,9 @@ void cUdpScheduler::Action(void)
     if(m_QueuePending <= 0) {
       m_Cond.TimedWait(m_Lock, 100); 
       if(m_QueuePending <= 0) {
+	// Still nothing...
+	// Send padding frame once in 100ms so clients can detect 
+	// possible missing frames and server shutdown
 	static unsigned char padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
 	int prevseq = (m_QueueNextSeq + UDP_BUFFER_SIZE - 1) & UDP_BUFFER_MASK;
 	stream_udp_header_t *frame = m_BackLog->Get(prevseq);
@@ -605,6 +653,10 @@ void cUdpScheduler::Action(void)
     }
 
     m_Lock.Lock();
+    m_Frames ++;
+    m_Octets += PayloadSize;
+    if((m_Frames & 0xff) == 1) // every 256th frame
+      Send_RTCP();
   }
   
   m_Lock.Unlock();
