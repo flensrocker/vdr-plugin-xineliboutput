@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.5 2006-07-02 16:44:11 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.6 2006-07-15 21:49:23 phintuka Exp $
  *
  */
 
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0;
   int fullscreen = 0, width = 720, height = 576;
-  int scale_video = 1, aspect = 1;
+  int scale_video = 1, aspect = 1, nokbd = 0;
   char *video_port = NULL;
   int xmajor, xminor, xsub;
   int i, err;
@@ -207,6 +207,7 @@ int main(int argc, char *argv[])
 	     "   --verbose                    \n"
 	     "   --silent                     \n"
 	     "   --syslog                     \n"
+	     "   --nokbd                      \n"
 	     "   --tcp                        \n"
 	     "   --udp                        \n"
 	     "   --rtp                        \n"
@@ -228,6 +229,9 @@ int main(int argc, char *argv[])
     } else if(!strncmp(argv[i], "--noscaling", 11)) {
       scale_video = 0;
       printf("Video scaling disabled\n");
+    } else if(!strncmp(argv[i], "--nokbd", 7)) {
+      nokbd = 1;
+      printf("Keyboard input disabled\n");
     } else if(!strncmp(argv[i], "--tcp", 5)) {
       ftcp = 1;
       printf("Protocol: TCP\n");
@@ -398,11 +402,12 @@ int main(int argc, char *argv[])
   }
 
   /* Start keyboard listener thread */
-  if ((err = pthread_create (&kbd_thread,
-			     NULL, kbd_receiver_thread, 
-			     (void*)fe)) != 0) {
-    fprintf(stderr, "can't create new thread for lirc (%s)\n", 
-	    strerror(err));
+  if(!nokbd)
+    if ((err = pthread_create (&kbd_thread,
+  			       NULL, kbd_receiver_thread, 
+			       (void*)fe)) != 0) {
+      fprintf(stderr, "can't create new thread for keyboard (%s)\n", 
+	      strerror(err));
   }
    
   /* Main loop */
@@ -426,8 +431,10 @@ int main(int argc, char *argv[])
     pthread_join (lirc_thread, &p);
   }
 
-  pthread_cancel (kbd_thread);
-  pthread_join (kbd_thread, &p);
+  if(!nokbd) {
+    pthread_cancel (kbd_thread);
+    pthread_join (kbd_thread, &p);
+  }
 
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
 
