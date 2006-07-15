@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.6 2006-07-06 02:46:03 phintuka Exp $
+ * $Id: frontend.c,v 1.7 2006-07-15 21:46:45 phintuka Exp $
  *
  */
 
@@ -546,7 +546,7 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
   r = Xine_Control("DEINTERLACE", deinterlace_method) && r;
   r = Xine_Control("AUDIODELAY", audio_delay) && r;
   r = Xine_Control("AUDIOCOMPRESSION", audio_compression) && r;
-  r = Xine_Control("AUDIOSURROUND", audio_compression) && r;
+  r = Xine_Control("AUDIOSURROUND", audio_surround) && r;
   sprintf(tmp,"EQUALIZER %d %d %d %d %d %d %d %d %d %d",
 	  audio_equalizer[0],audio_equalizer[1],
 	  audio_equalizer[2],audio_equalizer[3],

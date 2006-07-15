@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: setup_menu.c,v 1.2 2006-07-15 21:46:45 phintuka Exp $
  *
  */
 
@@ -168,7 +168,7 @@ void cMenuSetupAudio::Set(void)
 			    &newconfig.audio_upmix));
   Add(audio_ctrl_surround =
       new cMenuEditBoolItem(tr("Downmix AC3 to surround"), 
-			    &newconfig.audio_upmix));
+			    &newconfig.audio_surround));
 #ifdef ENABLE_TEST_POSTPLUGINS
   Add(audio_ctrl_headphone =
       new cMenuEditBoolItem(tr("Mix to headphones"), 
