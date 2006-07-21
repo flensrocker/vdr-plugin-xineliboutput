@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: media_player.h,v 1.2 2006-07-21 22:49:33 phintuka Exp $
  *
  */
 
@@ -26,8 +26,11 @@ class cXinelibPlayerControl : public cControl
 
     static cXinelibPlayer *OpenPlayer(const char *file);
 
-    cSkinDisplayReplay *m_DisplayReplay;
     char *m_File;
+
+ protected:
+    cSkinDisplayReplay *m_DisplayReplay;
+
     int   m_Speed;
     bool  m_ShowModeOnly;
 
@@ -46,7 +49,26 @@ class cXinelibPlayerControl : public cControl
 };
 
 
-// --- Media player ---------------------------------------------------------
+// --- DVD player -----------------------------------------------------------
+
+class cDvdMenu;
+class cXinelibDvdPlayerControl : public cXinelibPlayerControl
+{
+  private:
+    cDvdMenu *Menu;
+
+  public:
+    cXinelibDvdPlayerControl(const char *file) : 
+      cXinelibPlayerControl(file), Menu(NULL)
+      {}
+    virtual ~cXinelibDvdPlayerControl();
+ 
+    virtual void Show(void);
+    virtual void Hide(void);
+    virtual eOSState ProcessKey(eKeys Key);
+};
+
+// --- Image player ---------------------------------------------------------
 
 class cXinelibImagePlayer;
 
