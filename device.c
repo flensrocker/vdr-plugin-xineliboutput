@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.5 2006-07-06 02:45:05 phintuka Exp $
+ * $Id: device.c,v 1.6 2006-07-21 22:47:12 phintuka Exp $
  *
  */
 
@@ -176,6 +176,7 @@ cXinelibDevice::cXinelibDevice()
 
   m_ac3Present  = false;
   m_spuPresent  = false;
+  ClrAvailableDvdSpuTracks();
 #ifdef ENABLE_SUSPEND
   m_suspended   = false;
   ACTIVITY
@@ -580,6 +581,7 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
 
   m_ac3Present = false;
   m_spuPresent = false;
+  ClrAvailableDvdSpuTracks();
   playMode = PlayMode;
 
   TrickSpeed(-1);
@@ -982,13 +984,17 @@ int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id)
       TRACE("cXinelibDevice::PlaySpu first DVD SPU frame");
       Skins.QueueMessage(mtInfo,"DVD SPU");
       m_spuPresent = true;
+
+      ForEach(m_clients, &cXinelibThread::SpuStreamChanged, (int)Id);
     }
+
+    if(Id != m_CurrentDvdSpuTrack)
+      return length;
   }
+printf("SPU %d\n", Id);
 
   //
   // TODO: channel must be selectable
-  //
-  // use: cXinelibThread::SpuStreamChanged(int StreamId);
   //
 
   return PlayAny(buf, length);
@@ -1313,7 +1319,7 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 #endif
 
 
-#if 0
+#if 1
 // override cDevice to get DVD SPUs
 int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length, 
 				  bool VideoOnly)
@@ -1328,6 +1334,7 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
       switch (SubStreamType) {
         case 0x20: // SPU
         case 0x30: // SPU
+	  SetAvailableDvdSpuTrack(SubStreamIndex);
 	  return PlaySpu(Data, Length, SubStreamIndex);
 	  break;
         default:
@@ -1340,4 +1347,48 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
 #endif
   return cDevice::PlayPesPacket(Data, Length, VideoOnly);
 }
+
+bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type)
+{
+  if(Type == -1 || 
+     (Type >= 0 && 
+      Type < 64 &&
+      m_DvdSpuTrack[Type])) {
+    m_CurrentDvdSpuTrack = Type;
+    ForEach(m_clients, &cXinelibThread::SpuStreamChanged, Type);
+    return true;
+  }
+  return false;
+}
+
+void cXinelibDevice::ClrAvailableDvdSpuTracks(void)
+{
+  m_DvdSpuTracks = 0;
+  for(int i=0; i<64; i++)
+    m_DvdSpuTrack[i] = false;
+  if(m_CurrentDvdSpuTrack >=0 ) {
+    m_CurrentDvdSpuTrack = -1;
+    ForEach(m_clients, &cXinelibThread::SpuStreamChanged, -1);
+  }
+}
+
+bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type)
+{
+  if(Type >= 0 && Type < 64 &&
+     ! m_DvdSpuTrack[Type]) {
+    m_DvdSpuTrack[Type] = true;
+    m_DvdSpuTracks++;
+    return true;
+  }
+  return false;
+}
+
+bool cXinelibDevice::HasDvdSpuTrack(int Type) const 
+{
+  if(Type >= 0 && Type < 64 &&
+     m_DvdSpuTrack[Type])
+    return true;
+  return false;
+}
+
 #endif
