@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.5 2006-07-07 05:28:04 phintuka Exp $
+ * $Id: cxsocket.h,v 1.6 2006-07-21 22:53:47 phintuka Exp $
  *
  */
 
@@ -81,7 +81,7 @@ static inline int sock_connect(int fd_control, int port, int type)
 {
   struct sockaddr_in sin;
   socklen_t len = sizeof(sin);
-  int             s;
+  int             s, one = 1;
 
   if(getpeername(fd_control, (struct sockaddr *)&sin, &len)) {
     LOGERR("sock_connect: getpeername failed");
@@ -107,6 +107,9 @@ static inline int sock_connect(int fd_control, int port, int type)
 
   // Set socket buffers: large send buffer, small receive buffer
   set_socket_buffers(s, KILOBYTE(256), 2048);
+
+  if(setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int)) < 0)
+    LOGERR("sock_connect: setsockopt(SO_REUSEADDR) failed");
 
   sin.sin_family = AF_INET;
   sin.sin_port   = htons(port);
