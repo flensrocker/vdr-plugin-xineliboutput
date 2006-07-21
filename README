@@ -262,6 +262,20 @@ Media player key bindings
   Play       Play
   Ok         Toggle replay display mode
 
+DVD player key bindings
+
+  Up/Down/Left/Right/Ok/Back  DVD menu navigation
+  Red        DVD menu(s)
+  Green      Jump 1 min back
+  Yellow     Jump 1 min forward
+  Blue       Stop replay
+  Pause      Pause replay
+  Play       Play
+  Stop       Stop replay
+  Next
+  Prev
+  Info
+
 
 Aspect ratio setting
 
