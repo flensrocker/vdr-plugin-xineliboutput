@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.8 2006-07-07 05:32:14 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.9 2006-07-21 22:52:50 phintuka Exp $
  *
  */
 
@@ -664,6 +664,10 @@ void cUdpScheduler::Action(void)
 
 void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2) 
 {
+  char udp_ctrl[64] = {0};
+  ((stream_udp_header_t *)udp_ctrl)->seq = (uint16_t)(-1);
+  ((stream_udp_header_t *)udp_ctrl)->pos = (uint64_t)(-1);
+
   cMutexLock ml(&m_Lock); // keeps also scheduler thread suspended ...
 
   // Handle buffer wrap
@@ -673,6 +677,11 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
   if(Seq2-Seq1 > 64) {
     LOGDBG("cUdpScheduler::ReSend: requested range too large (%d-%d)",
 	   Seq1, Seq2);
+
+    sprintf((udp_ctrl+sizeof(stream_udp_header_t)),
+	    "UDP MISSING %d-%d %" PRIu64,
+	    Seq1, Seq2, Pos);
+    send(fd, udp_ctrl, 64, 0);
     return;
   }
 
@@ -690,7 +699,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     stream_udp_header_t *frame = m_BackLog->Get(Seq1);
       
     if(frame) {
-      if(ntohull(frame->pos) == Pos) {
+      if(ntohull(frame->pos) - Pos < 100000) {
 	send(fd, 
 	     frame, 
 	     m_BackLog->PayloadSize(Seq1) + sizeof(stream_udp_header_t), 
@@ -699,7 +708,8 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 	LOGDBG("cUdpScheduler::ReSend: %d (%d bytes) @%lld sent", 
 	       Seq1, m_BackLog->PayloadSize(Seq1), Pos);
 #endif
-	Pos += m_BackLog->PayloadSize(Seq1);
+	//Pos += m_BackLog->PayloadSize(Seq1);
+	Pos = ntohull(frame->pos) + m_BackLog->PayloadSize(Seq1);
 	continue;
       } else {
 	// buffer has been lost long time ago...
@@ -713,22 +723,27 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
       LOGDBG("cUdpScheduler::ReSend: %d @%lld missing", Seq1, Pos);
 #endif
     }
-    // buffer has been lost
-    // send packet missing info
-    char udp_ctrl[64];
-    ((stream_udp_header_t *)udp_ctrl)->seq = (uint16_t)(-1);
-    ((stream_udp_header_t *)udp_ctrl)->pos = (uint64_t)(-1);
-    
+
+    // buffer has been lost - send packet missing info
+
 #ifdef LOG_RESEND
     LOGDBG("cUdpScheduler::ReSend: missing %d-%d @%d (hdr 0x%llx 0x%x)",
 	   Seq1, Seq1, Pos,
 	   ((stream_udp_header_t *)udp_ctrl)->pos,
 	   ((stream_udp_header_t *)udp_ctrl)->seq);
 #endif
+
+    int Seq0 = Seq1;
+    for(; Seq1 <= Seq2; Seq1++) {
+      stream_udp_header_t *frame = m_BackLog->Get(Seq1+1);
+      if(frame && (ntohull(frame->pos) - Pos < 100000))
+	break;
+    }
+
     sprintf((udp_ctrl+sizeof(stream_udp_header_t)),
 	    "UDP MISSING %d-%d %" PRIu64,
-	    Seq1, Seq1, Pos);
-    
+	    Seq0, (Seq1 & UDP_BUFFER_MASK), Pos);
+
     send(fd, udp_ctrl, 64, 0);
   }
 }
