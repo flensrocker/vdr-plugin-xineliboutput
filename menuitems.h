@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: menuitems.h,v 1.2 2006-07-21 22:50:58 phintuka Exp $
  *
  */
 
@@ -51,17 +51,21 @@ class cFileListItem : public cOsdItem
   private:
     char *m_Name;
     bool  m_IsDir, m_HasResume, m_HasSubs, m_ShowFlags, m_Up;
+    bool  m_IsDvd;
 
   protected:
     virtual void Set(void);
 
   public:
-    cFileListItem(const char *name, bool isDir, bool HasResume, bool HasSubs);
+    cFileListItem(const char *name, bool isDir, 
+		  bool HasResume, bool HasSubs,
+		  bool IsDvd = false);
     cFileListItem(const char *name, bool isDir);
     ~cFileListItem();
 
-    const char *Name() { return m_Name; }
-    bool IsDir()       { return m_IsDir; }
+    const char *Name(void) { return m_Name; }
+    bool IsDir(void)       { return m_IsDir; }
+    bool IsDvd(void)       { return m_IsDvd; }
 
     virtual bool operator< (const cListObject &ListObject);
     virtual int Compare(const cListObject &ListObject) const;
