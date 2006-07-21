@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.7 2006-07-15 21:46:45 phintuka Exp $
+ * $Id: frontend.c,v 1.8 2006-07-21 22:55:01 phintuka Exp $
  *
  */
 
@@ -502,7 +502,10 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     m_bPlayingFile = false;
     if(m_FileName)
       free(m_FileName);
+    m_FileName = NULL;
   } else { 
+    if(m_FileName)
+      free(m_FileName);
     m_FileName = strdup(FileName);
     m_bPlayingFile = true; 
   }
