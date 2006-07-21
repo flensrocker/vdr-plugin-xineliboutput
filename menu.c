@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.1 2006-06-03 10:01:17 phintuka Exp $
+ * $Id: menu.c,v 1.2 2006-07-21 23:01:55 phintuka Exp $
  *
  */
 
@@ -38,7 +38,7 @@ class cMenuBrowseFiles : public cOsdMenu
     char *m_ConfigLastDir;
 
     virtual bool ScanDir(const char *DirName);
-    virtual eOSState Open(bool Parent=false);
+    virtual eOSState Open(bool ForceOpen = false, bool Parent = false);
     virtual eOSState Delete(void);
     virtual eOSState Info(void);
     virtual void Set(void);
@@ -57,10 +57,11 @@ static char *ParentDir(const char *dir)
 {
   char *result = strdup(dir);
   char *pt = strrchr(result, '/');
-  if(pt)
+  if(pt) {
     *(pt+1)=0;
-  if(pt != result)
-    *pt = 0;
+    if(pt != result)
+      *pt = 0;
+  }
   return result;
 }
 
@@ -94,6 +95,11 @@ void cMenuBrowseFiles::Set(void)
 
   if(!m_CurrentDir) 
     m_CurrentDir = strdup(m_ConfigLastDir);
+
+  if(m_CurrentDir[0] != '/') {
+    free(m_CurrentDir);
+    m_CurrentDir = strdup("/video");
+  }
 
   // find deepest accessible directory from path
   while(!ScanDir(m_CurrentDir) && strlen(m_CurrentDir) > 1) {
@@ -142,9 +148,12 @@ void cMenuBrowseFiles::StoreConfig(void)
 
 void cMenuBrowseFiles::SetHelpButtons(void)
 {
-  bool isDir = !GetCurrent() || GetCurrent()->IsDir(); 
-  SetHelp(tr("Button$Select"), strlen(m_CurrentDir) > 1 ? "[..]" : NULL, 
-	  isDir ? NULL : tr("Button$Delete"), isDir ? NULL : tr("Button$Info"));
+  bool isDir = !GetCurrent() || GetCurrent()->IsDir();
+  bool isDvd = GetCurrent() && GetCurrent()->IsDvd();
+  SetHelp(isDvd ? tr("Button$Open") : tr("Button$Play"),
+	  strlen(m_CurrentDir) > 1 ? "[..]" : NULL,
+	  (isDir && !isDvd) ? NULL : tr("Button$Delete"),
+	  isDir ? NULL : tr("Button$Info"));
   Display();
 }
 
@@ -176,7 +185,7 @@ eOSState cMenuBrowseFiles::Delete(void)
   return osContinue;
 }
 
-eOSState cMenuBrowseFiles::Open(bool Parent)
+eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
 {
   if(!GetCurrent()) {
     return osContinue;
@@ -192,6 +201,15 @@ eOSState cMenuBrowseFiles::Open(bool Parent)
 
   /* directory */
   } else if (GetCurrent()->IsDir()) {
+
+    if(!ForceOpen && GetCurrent()->IsDvd()) {
+      /* play dvd */
+      char *f = NULL;
+      asprintf(&f, "dvd://%s/%s", m_CurrentDir, GetCurrent()->Name());
+      cControl::Launch(new cXinelibDvdPlayerControl(f));
+      free(f);
+      return osEnd;
+    }
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
     asprintf(&buffer, "%s/%s", m_CurrentDir, d);
@@ -199,7 +217,7 @@ eOSState cMenuBrowseFiles::Open(bool Parent)
     m_CurrentDir = buffer;
     Set();
     return osContinue;
-
+    
   /* regular file */
   } else {
     char *f = NULL;
@@ -296,7 +314,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
     struct dirent *e;
     while ((e = readdir(d)) != NULL) {
       if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) {
-        char *buffer;
+        char *buffer = NULL;
         asprintf(&buffer, "%s/%s", DirName, e->d_name);
         struct stat st;
         if (stat(buffer, &st) == 0) {
@@ -316,9 +334,24 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	  // folders
           if (S_ISDIR(st.st_mode)) {
 	    if(m_Images)
-	      Add(new cFileListItem(e->d_name,true));
-	    else
-	      Add(new cFileListItem(e->d_name,true,false,false));
+	      Add(new cFileListItem(e->d_name, true));
+	    else {
+	      // check if DVD
+              bool dvd = false;
+              free(buffer);
+              buffer = NULL;
+              asprintf(&buffer, "%s/%s/VIDEO_TS/VIDEO_TS.IFO", DirName, e->d_name);
+              if (stat(buffer, &st) == 0)
+                dvd = true;
+	      else {
+		free(buffer);
+		buffer = NULL;
+		asprintf(&buffer, "%s/%s/video_ts/video_ts.ifo", DirName, e->d_name);
+		if (stat(buffer, &st) == 0)
+		  dvd = true;
+	      }
+	      Add(new cFileListItem(e->d_name, true, false, false, dvd));
+	    }
 
           // regular files
           } else {
@@ -360,10 +393,10 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 
   if (state == osUnknown) {
      switch (Key) {
-       case kPlay:   if(!GetCurrent()->IsDir()) return Open();
-       case kOk:
-       case kRed:    return Open();
-       case kGreen:  return Open(true);
+       case kPlay:   
+       case kOk:     return Open();
+       case kRed:    return Open(true);
+       case kGreen:  return Open(false, true);
        case kYellow: return Delete();
        case kBlue:   return Info();
        default: break;
@@ -555,6 +588,54 @@ eOSState cTestBitmap::ProcessKey(eKeys key)
   return state;
 }
 
+//-------------------------- cDvdSpuTrackSelect ------------------------------
+
+class cDvdSpuTrackSelect : public cOsdMenu
+{
+  public:
+    cDvdSpuTrackSelect(void);
+    virtual eOSState ProcessKey(eKeys Key);
+};
+
+cDvdSpuTrackSelect::cDvdSpuTrackSelect(void) : 
+      cOsdMenu(tr("Select DVD SPU Track")) 
+{
+  int count = cXinelibDevice::Instance().NumDvdSpuTracks();
+  int id = 0;
+  int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
+  Add(new cOsdItem("None", osUser1));
+  while(count && id < 64) {
+    if(cXinelibDevice::Instance().HasDvdSpuTrack(id)) {
+      char name[64];
+      sprintf(name, "Track %d", id);
+      Add(new cOsdItem(name, osUser1));
+      count--;
+      if(id == current)
+	SetCurrent(Get(Count()-1));
+    }
+    id++;
+  }
+}
+
+eOSState cDvdSpuTrackSelect::ProcessKey(eKeys Key)
+{
+  eOSState state = cOsdMenu::ProcessKey(Key);
+
+  switch(state) {
+    case osUser1: 
+      {
+	const char *txt = Get(Current())->Text();
+	int id = -1; /* -> DVD SPU off */
+	sscanf(txt, "Track %d", &id);
+	cXinelibDevice::Instance().SetCurrentDvdSpuTrack(id);
+	AddSubMenu(new cMenuBrowseFiles(tr("Play file")));
+	return osEnd;
+      }
+    default: break;
+  }
+  return state;
+}
+
 //----------------------------- cMenuXinelib ---------------------------------
 
 static cOsdItem *NewTitle(const char *s)
@@ -583,8 +664,10 @@ cMenuXinelib::cMenuXinelib()
 
   Add(new cOsdItem(tr("Play file >>"), osUser1));
   Add(new cOsdItem(tr("View images >>"), osUser2));
-#if 0
   Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
+#if 1
+  if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
+    Add(new cOsdItem(tr("Select DVD SPU Track >>"), osUser5));
 #endif
 #ifdef ENABLE_TEST_POSTPLUGINS
 #warning Experimental post plugins enabled !
@@ -667,8 +750,11 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       }
       state = osContinue;
     case osUser4:
-      cControl::Launch(new cXinelibPlayerControl("dvd://"));
+      cControl::Launch(new cXinelibDvdPlayerControl("dvd://"));
       return osEnd;
+    case osUser5:
+      AddSubMenu(new cDvdSpuTrackSelect());
+      return osContinue;
     case osUser8:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cTestGrayscale();
