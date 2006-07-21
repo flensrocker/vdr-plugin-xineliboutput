@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.9 2006-07-07 05:32:14 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.10 2006-07-21 22:56:41 phintuka Exp $
  *
  */
 
@@ -523,11 +523,14 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
       
       cXinelibThread::PlayFileCtrl(Cmd);
 
-      if(! future.Wait(250)) {
+      int timeout = 250;
+      if(!strncmp(Cmd, "PLAYFILE", 8))
+	timeout = 5000;
+      if(! future.Wait(timeout)) {
 	Lock();
 	m_Futures->Del(&future, token);
 	Unlock();
-	LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , 250ms)", Cmd);
+	LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms)", Cmd, timeout);
 	return -1;
       }
 
@@ -931,10 +934,11 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 			  xc.audio_compression, xc.audio_equalizer,
                           xc.audio_surround);
   ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast);
-
   ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
+#ifdef ENABLE_TEST_POSTPLUGINS
   ConfigurePostprocessing("autocrop",  xc.autocrop    ? true : false, NULL);
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
+#endif
 
   if(m_bPlayingFile) {
     char buf[2048];
