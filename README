@@ -277,6 +277,36 @@ DVD player key bindings
   Info
 
 
+DVD playback
+
+  DVD images
+
+  Media player supports playing DVDs directly from hard disk.
+  Found DVD folders are marked with 'D' in media player 
+  file list.
+  Plugin detects folders as DVDs if there is file 
+  Name_Of_DVD/VIDEO_TS/VIDEO_TS.IFO.
+
+  It is also possible to replay DVD as VDR recording by 
+  creating empty recording directory and renaming or
+  symlinking .VOBs of selected title to 00?.vdr files.
+  DVD menus (VTS_??_0.VOB) should _not_ be copied.
+  Audio can be selected from main menu just as with normal 
+  VDR recordings.
+  Subtitle track can be selected from xineliboutput plugin 
+  menu.
+  For seeking it is necessarily to create index.vdr file
+  with genindex or similar tool.
+
+  DVD discs
+
+  "Real" DVD discs (accessible from /dev/dvd) can be played 
+  from xineliboutput plugin menu.
+
+  In case of remote frontend (vdr-sxfe/vdr-fbfe) DVD drive 
+  of _remote client_ is used.
+
+
 Aspect ratio setting
 
   There are 4 possible aspect ratio settings for display:

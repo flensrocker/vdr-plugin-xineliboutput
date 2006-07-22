@@ -1,5 +1,14 @@
 VDR Plugin 'xineliboutput' Revision History
---------------------------------
+-------------------------------------------
+
+2006-07-23: Verson 1.0.0pre1
+
+- Added DVD playback and navigation support to media player
+- Added support for DVD subtitles in VDR recordings
+- Fixed audio surround mode
+- Added option to disable keyboard input in vdr-fbfe and vdr-sxfe
+  (required when running as daemon)
+- Fixed OSD updating, closing and re-scaling under high system load
 
 2006-07-05: Version 0.99
 
@@ -18,6 +27,7 @@ VDR Plugin 'xineliboutput' Revision History
 - X11 fullscreen mode can be toggled by double-clicking window
 
 2006-06-03: Version 0.99rc4
+
 - Fixed missing audio after trick speed modes (thanks to Tero Saarni)
 - Fixed fullscreen size detection with frame buffer / DirectFB
 - Added unscaled OSD capability check for framebuffer / DirectFB
@@ -85,7 +95,8 @@ VDR Plugin 'xineliboutput' Revision History
   -> any xine frontend can be used.
 - All logging goes to syslog and honors vdr's logging level
 
-2005-22-11: Version 0.4
+2005-11-22: Version 0.4
+
 - Updated for xine-lib 1.1.0 and 1.1.1
 - Framebuffer and DirectFB frontend is now tested and working.
 - Remote frontends tested and working (TCP/UDP/RTP).
@@ -106,7 +117,8 @@ VDR Plugin 'xineliboutput' Revision History
 
 - Updated for xine-lib 1.0.1
 
-2005-17-02: Version 0.3
+2005-02-17: Version 0.3
+
 - Updated for vdr 1.3.19 and xine-lib 1.0
 - Direct playback of all xine-supported media types
   (+ automatic loading of external .srt/.sub subtitles)
@@ -120,7 +132,8 @@ VDR Plugin 'xineliboutput' Revision History
 - Support for DVB radio streams
 - Support for audio visualization plugins
 
-2004-19-08: Version 0.2
+2004-08-19: Version 0.2
+
 - Tested with VDR versions 1.2.6, 1.3.7 and 1.3.12
 - Modified to compile with xine-lib 1.0.0 (rc4)
 - New configuration options
