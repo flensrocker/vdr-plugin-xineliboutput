@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.17 2006-07-23 21:23:47 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.18 2006-07-23 21:25:59 phintuka Exp $
  *
  */
 
@@ -585,7 +585,8 @@ static int64_t monotonic_time_ms (void)
 
 static void scr_tunning_set_paused(vdr_input_plugin_t *this)
 {
-  if(this->scr_tunning != SCR_TUNNING_PAUSED) {
+  if(this->scr_tunning != SCR_TUNNING_PAUSED &&
+     !this->slave_stream ) {
     this->scr_tunning = SCR_TUNNING_PAUSED;  /* marked as paused */
     if(this->scr)
       pvrscr_speed_tunning(this->scr, 1.0);
@@ -596,7 +597,7 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this)
     if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE)
       _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
 #else
-    _x_set_fine_speed(this->stream, 1000000 / 1000); //-> speed to 0.1% 
+    _x_set_fine_speed(this->stream, 1000000 / 1000); /* -> speed to 0.1%  */
 #endif
     this->pause_start = monotonic_time_ms(); 
     this->paused_frames = 0;
@@ -900,7 +901,7 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
       continue;
     }
     if(err != XIO_READY /* == XIO_ERROR */) {
-      LOGERR("readline_control: read error at [%d]", num_bytes);
+      LOGERR("readline_control: poll error at [%d]", num_bytes);
       return -1;
     }
 
@@ -909,7 +910,9 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
 
     if (num_bytes <= 0) {
       LOGERR("readline_control: read error at [%d]", num_bytes);
-      if(num_bytes < 0 && errno == EINTR && this->fd_control >= 0) {
+      if(num_bytes < 0 && 
+	 (errno == EINTR || errno==EAGAIN) && 
+	 this->fd_control >= 0) {
 	continue;
       }
       return -1;
@@ -2086,7 +2089,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
     this->stream->metronom->set_option(this->stream->metronom, 
 				       METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
 
-    if(!this->live_mode || this->fd_control > 0) {
+    if(!this->live_mode || (this->fd_control > 0 && !this->slave_stream)) {
       config->update_num(this->stream->xine->config,
 			 "audio.synchronization.av_sync_method", 1);
     } else {
@@ -2217,8 +2220,14 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
     }
     if(!err) {
+      set_playback_speed(this, 1);
+      this->live_mode = 1;
       set_live_mode(this, 0);
       set_playback_speed(this, 1);
+      reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
+      this->stream->metronom->set_option(this->stream->metronom, 
+					 METRONOM_PREBUFFER, 90000);
+
       if(this->funcs.fe_control) {
 	char tmp[128];
 	sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
@@ -2386,6 +2395,21 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
       LOGERR("%s:%d: pthread_mutex_unlock failed", __PRETTY_FUNCTION__, __LINE__); \
     } \
   } while(0)
+
+static const struct { int type; char *name; } eventmap[] = {
+  {XINE_EVENT_INPUT_UP,      "XINE_EVENT_INPUT_UP"},
+  {XINE_EVENT_INPUT_DOWN,    "XINE_EVENT_INPUT_DOWN"},
+  {XINE_EVENT_INPUT_LEFT,    "XINE_EVENT_INPUT_LEFT"},
+  {XINE_EVENT_INPUT_RIGHT,   "XINE_EVENT_INPUT_RIGHT"},
+  {XINE_EVENT_INPUT_SELECT,  "XINE_EVENT_INPUT_SELECT"},
+  {XINE_EVENT_INPUT_MENU1,   "XINE_EVENT_INPUT_MENU1"},
+  {XINE_EVENT_INPUT_MENU2,   "XINE_EVENT_INPUT_MENU2"},
+  {XINE_EVENT_INPUT_MENU3,   "XINE_EVENT_INPUT_MENU3"},
+  {XINE_EVENT_INPUT_MENU4,   "XINE_EVENT_INPUT_MENU4"},
+  {XINE_EVENT_INPUT_MENU5,   "XINE_EVENT_INPUT_MENU5"},
+  {XINE_EVENT_INPUT_NEXT,    "XINE_EVENT_INPUT_NEXT"},
+  {XINE_EVENT_INPUT_PREVIOUS,"XINE_EVENT_INPUT_PREVIOUS"},
+  {-1, NULL}};
 
 static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 {
@@ -2622,6 +2646,25 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     if(this->fd_control < 0)
       err = set_deinterlace_method(this, cmd+12);
 
+  } else if(!strncasecmp(cmd, "EVENT ", 6)) {
+    int i=0;
+    char *pt = strchr(cmd, '\n');
+    if(pt) *pt=0;
+    while(eventmap[i].name)
+      if(!strcmp(cmd+6, eventmap[i].name)) {
+	xine_event_t ev;
+	ev.type = eventmap[i].type;
+	ev.stream = this->slave_stream ? this->slave_stream : this->stream;
+	/* tag event to prevent circular input events 
+	   (vdr -> here -> event_listener -> vdr -> ...) */
+	ev.data = "VDR"; 
+	ev.data_length = 4;
+	xine_event_send(ev.stream, &ev);
+	break;
+      } else {
+	i++;
+      }
+
   } else if(!strncasecmp(cmd, "NOVIDEO ", 8)) {
     if(1 == sscanf(cmd, "NOVIDEO %d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
@@ -2727,13 +2770,14 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       }
     }
 
-  } else if(!strncasecmp(cmd, "SPUSTREAM ", 13)) {
+  } else if(!strncasecmp(cmd, "SPUSTREAM ", 10)) {
     if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
       buf_element_t *buf_elem = 
 	stream->video_fifo->buffer_pool_try_alloc (stream->video_fifo);
-      tmp32 &= 0x1f;
+      /*if(tmp32<0) LOGMSG("SPU off (-1)");*/
       if(buf_elem) {
-LOGDBG("SPU channel selected: %d", tmp32);
+	/*LOGDBG("SPU channel selected: %d", tmp32);*/
+	tmp32 &= 0x1f;
 	buf_elem->type = BUF_CONTROL_SPU_CHANNEL;
 	buf_elem->decoder_info[0] = tmp32;  /* widescreen / auto stream id */
 	buf_elem->decoder_info[1] = tmp32;  /* letterbox stream id */
@@ -3001,12 +3045,16 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
   vdr_input_plugin_t *this = (vdr_input_plugin_t *)user_data;
   int i = 0;
 
-  /*LOGCMD("Got xine event %08x\n", event->type);*/
-
   while(vdr_keymap[i].name) {
     if(event->type == vdr_keymap[i].event) {
-      LOGDBG("XINE_EVENT (input) %d --> %s", event->type, vdr_keymap[i].name);
-      /*pthread_mutex_lock(&this->lock);*/
+      if(event->data && event->data_length == 4 && 
+	 !strncmp(event->data, "VDR", 4)) {
+	/*LOGMSG("Input event created by self, ignoring");*/
+	return;
+      }
+      LOGDBG("XINE_EVENT (input) %d --> %s", 
+	     event->type, vdr_keymap[i].name);
+
       if(this->funcs.input_control) {
 	this->funcs.input_control((input_plugin_t *)this, 
 				  NULL, vdr_keymap[i].name, 0, 0);
@@ -3014,7 +3062,6 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       if(this->funcs.xine_input_event) {
 	this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
       }
-      /*pthread_mutex_unlock(&this->lock);*/
       return;
     }
     i++;
@@ -3304,7 +3351,6 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       if(pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
 	if(pkt_data[0]) { /* -> can't be PES frame */
 	  pkt_data[64] = 0;
-	  LOGMSG("Control message in data stream: %s", (char*)pkt_data);
 	  if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
 	    /* Re-send failed */ 
 	    int seq1 = 0, seq2 = 0;
@@ -3743,7 +3789,8 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     LOGERR("read_block: pthread_mutex_lock failed");
     return NULL;
   }
-  if( !this->live_mode && this->fd_control < 0) {
+  if( (!this->live_mode && this->fd_control < 0) ||
+      this->slave_stream) {
     if(this->scr_tunning)
       reset_scr_tunning(this, this->speed_before_pause);
   } else {
