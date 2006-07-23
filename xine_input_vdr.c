@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.18 2006-07-23 21:25:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.19 2006-07-23 21:35:54 phintuka Exp $
  *
  */
 
@@ -1356,6 +1356,7 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
 
 /******************************** OSD ************************************/
 
+#if 0
 static int update_video_size(vdr_input_plugin_t *this)
 {
   int w = 0, h = 0;
@@ -1377,6 +1378,7 @@ static int update_video_size(vdr_input_plugin_t *this)
   }
   return 0;
 }
+#endif
 
 static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
 {
@@ -1592,7 +1594,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     ov_event.event_type = OVERLAY_EVENT_FREE_HANDLE;
     ov_event.object.handle = handle;
     this->osdhandle[cmd->wnd] = -1;
-
     if(this->osddata[cmd->wnd].data) {
       free(this->osddata[cmd->wnd].data);
       this->osddata[cmd->wnd].data = NULL;
@@ -1845,8 +1846,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
   if(! pthread_mutex_lock(&this->osd_lock)) {
 
     if((this->video_width  != video_width ||
-	this->video_height != video_height ||
-	this->video_size_changed) &&
+	this->video_height != video_height) &&
        video_width > 0 && video_height > 0) {
       int i, ticket = 0;
 
@@ -1856,7 +1856,6 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 
       this->video_width = video_width;
       this->video_height = video_height;
-      this->video_size_changed = 0;
 
       /* just call exec_osd_command for all stored osd's.
          scaling is done automatically if required. */
@@ -3655,7 +3654,6 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
 {
   /* track audio stream changes */
   int audio_changed = 0;
-  int first_audio = ! this->prev_audio_stream_id;
   if(buf->content[3] >= 0xc0 && buf->content[3] < 0xe0) {
     /* audio */
     if(this->prev_audio_stream_id != (buf->content[3] << 8)) {
@@ -3698,9 +3696,18 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
     return;
   }
 
-  if(audio_changed && !first_audio) {
-    buf_element_t *buf_elem = 
-      this->stream->audio_fifo->buffer_pool_try_alloc (this->stream->audio_fifo);
+  if(audio_changed) {
+    put_control_buf(this->stream->audio_fifo,
+		    this->stream->audio_fifo,
+		    BUF_CONTROL_RESET_TRACK_MAP);
+#if 0
+    put_control_buf(this->stream->audio_fifo,
+		    this->stream->audio_fifo,
+		    BUF_CONTROL_RESET_DECODER);
+    put_control_buf(this->stream->audio_fifo,
+		    this->stream->audio_fifo,
+		    BUF_CONTROL_START);
+#endif
 #if 0
     LOGMSG("VDR-Given stream: %04x", this->audio_stream_id);
     if(this->reset_audio_cnt < 1)
@@ -3709,10 +3716,6 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
     if(this->reset_audio_cnt > 0)
       LOGMSG("audio resetted, reset cnt still > 0");
 #endif
-    if(buf_elem) {
-      buf_elem->type = BUF_CONTROL_RESET_TRACK_MAP;
-      this->stream->audio_fifo->put(this->stream->audio_fifo, buf_elem);
-    }
   }
 }
 
