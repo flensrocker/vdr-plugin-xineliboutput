@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.16 2006-07-23 21:05:20 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.17 2006-07-23 21:23:47 phintuka Exp $
  *
  */
 
@@ -1599,9 +1599,22 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       this->osddata[cmd->wnd].palette = NULL;
     }
 
-    ovl_manager->add_event(ovl_manager, (void *)&ov_event);
+    do {
+      int r = ovl_manager->add_event(ovl_manager, (void *)&ov_event);
+      if(r<0) {
+	LOGDBG("OSD_Close(%d): overlay manager queue full !", cmd->wnd);
+	ovl_manager->flush_events(ovl_manager);
+	continue;
+      }
+    } while(0);
 
     this->last_changed_vpts[cmd->wnd] = 0;
+
+    if((cmd->wnd==0 || this->osdhandle[cmd->wnd-1]<0) &&
+       (cmd->wnd==MAX_OSD_OBJECT || this->osdhandle[cmd->wnd+1]<0)) {
+      /*LOGMSG("OSD_Close(%d): last, flush ovl manager");*/
+      ovl_manager->flush_events(ovl_manager);
+    }
 
   } else if(cmd->cmd == OSD_Set_RLE) {
 
@@ -1650,21 +1663,19 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       use_unscaled = 1;
 
     /* store osd for later rescaling (done if video size changes) */
-    if(!use_unscaled && this->rescale_osd) {
-      if(this->osddata[cmd->wnd].data) {
-	free(this->osddata[cmd->wnd].data);
-	this->osddata[cmd->wnd].data = NULL;
-      }
-      if(this->osddata[cmd->wnd].palette) {
-	free(this->osddata[cmd->wnd].palette);
-	this->osddata[cmd->wnd].palette = NULL;
-      }
-      memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
-      if(cmd->palette) {
-	this->osddata[cmd->wnd].palette = malloc(4*cmd->colors);
-	memcpy(this->osddata[cmd->wnd].palette, cmd->palette, 4*cmd->colors);
-      }      
+    if(this->osddata[cmd->wnd].data) {
+      free(this->osddata[cmd->wnd].data);
       this->osddata[cmd->wnd].data = NULL;
+    }
+    if(this->osddata[cmd->wnd].palette) {
+      free(this->osddata[cmd->wnd].palette);
+      this->osddata[cmd->wnd].palette = NULL;
+    }
+    memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
+    this->osddata[cmd->wnd].data = NULL;
+    if(cmd->palette) {
+      this->osddata[cmd->wnd].palette = malloc(4*cmd->colors);
+      memcpy(this->osddata[cmd->wnd].palette, cmd->palette, 4*cmd->colors);
     }
 
     /* if video size differs from expected (VDR osd is designed for 720x576),
@@ -1676,10 +1687,12 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       int h_hi = this->vdr_osd_height * 1100 / 1000;
       int h_lo = this->vdr_osd_height *  950 / 1000;
       int width_diff = 0, height_diff = 0;
-
-      update_video_size(this);
-      LOGOSD("video size %dx%d, margins %d..%dx%d..%d", 
-	     this->video_width, this->video_height, w_lo, w_hi, h_lo, h_hi);
+#if 0
+      int video_changed = update_video_size(this);
+      LOGOSD("video size %dx%d, margins %d..%dx%d..%d (changed: %s)", 
+	     this->video_width, this->video_height, w_lo, w_hi, h_lo, h_hi
+	     video_changed ? "yes" : "no");
+#endif
       if(this->video_width  < w_lo)  width_diff  = -1;
       else if(this->video_width  > w_hi)  width_diff  =  1;
       if(this->video_height < h_lo) height_diff = -1;
@@ -1774,10 +1787,10 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     ov_event.object.overlay->rle = (rle_elem_t*)cmd->data;
     ov_event.object.overlay->num_rle = cmd->datalen/4; /* two uint_16's in one element */
     ov_event.object.overlay->data_size = cmd->datalen;
-    
+
     /* store rle for later scaling (done if video size changes) */
-    if(!use_unscaled && this->rescale_osd &&
-       !this->osddata[cmd->wnd].data &&
+    if(/*!use_unscaled &&*/ /*this->rescale_osd && */
+       /*!this->osddata[cmd->wnd].data && */
        !rle_scaled /*if scaled, we already have a copy (original data)*/ ) {
       this->osddata[cmd->wnd].data = malloc(cmd->datalen);
       memcpy(this->osddata[cmd->wnd].data, cmd->data, cmd->datalen);
@@ -1785,7 +1798,14 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     cmd->data = NULL;/* we 'consume' data (ownership goes for osd manager) */
 
     /* send event to overlay manager */
-    ovl_manager->add_event(ovl_manager, (void *)&ov_event);
+    do {
+      int r = ovl_manager->add_event(ovl_manager, (void *)&ov_event);
+      if(r<0) {
+	LOGDBG("OSD_Set_RLE(%d): overlay manager queue full !", cmd->wnd);
+	ovl_manager->flush_events(ovl_manager);
+	continue;
+      }
+    } while(0);
 
     this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(this->stream);
 
@@ -1805,10 +1825,12 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
   int result = -3;
 
   if(!pthread_mutex_lock (&this->osd_lock)) {
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
     result = exec_osd_command(this, cmd);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);	  
     pthread_mutex_unlock (&this->osd_lock);
   } else {
-    LOGMSG("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
+    LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
   }
 
   return result;
@@ -1816,19 +1838,23 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
 
 static void vdr_scale_osds(vdr_input_plugin_t *this, 
 			   int video_width, int video_height)
-{
-  if(this->video_width  != video_width || 
-     this->video_height != video_height) {    
-    LOGOSD("New video size (%dx%d->%dx%d)",
-	   this->video_width, this->video_height, 
-	   video_width, video_height);
-    
-    this->video_width = video_width;
-    this->video_height = video_height;
+{  
+  if(! pthread_mutex_lock(&this->osd_lock)) {
 
-    if(! pthread_mutex_lock(&this->osd_lock))
-    {
-      int i;
+    if((this->video_width  != video_width ||
+	this->video_height != video_height ||
+	this->video_size_changed) &&
+       video_width > 0 && video_height > 0) {
+      int i, ticket = 0;
+
+      LOGOSD("New video size (%dx%d->%dx%d)",
+	     this->video_width, this->video_height, 
+	     video_width, video_height);
+
+      this->video_width = video_width;
+      this->video_height = video_height;
+      this->video_size_changed = 0;
+
       /* just call exec_osd_command for all stored osd's.
          scaling is done automatically if required. */
       for(i=0; i<MAX_OSD_OBJECT; i++)
@@ -1838,6 +1864,10 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	  memcpy(&tmp, &this->osddata[i], sizeof(osd_command_t));
 	  memset(&this->osddata[i], 0, sizeof(osd_command_t));
 
+	  if(!ticket) {
+	    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+	    ticket++;
+	  }
 	  exec_osd_command(this, &tmp);
 
 	  if(tmp.palette)
@@ -1845,10 +1875,13 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	  if(tmp.data)
 	    free(tmp.data);
 	}
-      pthread_mutex_unlock(&this->osd_lock);
-    } else {
-      LOGMSG("vdr_scale_osds: pthread_mutex_lock failed");
+      if(ticket)
+	this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
     }
+    pthread_mutex_unlock(&this->osd_lock);
+
+  } else {
+    LOGERR("vdr_scale_osds: pthread_mutex_lock failed");
   }
 }
 
