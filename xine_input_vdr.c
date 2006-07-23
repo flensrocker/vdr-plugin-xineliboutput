@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.15 2006-07-07 18:56:07 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.16 2006-07-23 21:05:20 phintuka Exp $
  *
  */
 
@@ -210,6 +210,7 @@ typedef struct vdr_input_plugin_s {
   /* Network */
   pthread_t           control_thread;
   pthread_t           data_thread;
+  int                 threads_initialized;
   volatile int        control_running;
   volatile int        fd_data;
   volatile int        fd_control;
@@ -3552,7 +3553,7 @@ static int vdr_plugin_keypress(input_plugin_t *this_gen,
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   if(pthread_mutex_lock(&this->lock)) {
-    LOGMSG("vdr_plugin_keypress: pthread_mutex_lock failed");
+    LOGERR("vdr_plugin_keypress: pthread_mutex_lock failed");
     return -1;
   }
 
@@ -3875,7 +3876,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   this->event_queue = NULL;
 
   /* threads */
-  if(!local) {
+  if(!local && this->threads_initialized) {
     void *p;
     pthread_cancel(this->control_thread);
     pthread_join (this->control_thread, &p);
@@ -4029,7 +4030,7 @@ static void set_recv_buffer_size(int fd, int max_buf)
 
 static int alloc_udp_data_socket(int firstport, int trycount, int *port)
 {
-  int fd;
+  int fd, one = 1;
   struct sockaddr_in name;
 
   name.sin_family = AF_INET;
@@ -4039,6 +4040,9 @@ static int alloc_udp_data_socket(int firstport, int trycount, int *port)
   fd = socket(PF_INET, SOCK_DGRAM, 0/*IPPROTO_UDP*/);
 
   set_recv_buffer_size(fd, KILOBYTE(512));
+
+  if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int)) < 0)
+    LOGERR("UDP data stream: setsockopt(SO_REUSEADDR) failed");
 
   while(bind(fd, (struct sockaddr *)&name, sizeof(name)) < 0) {
     if(!--trycount) {
@@ -4095,7 +4099,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
     return -1;
   }
   /* Check server xineliboutput version */
-  if(!strstr(tmpbuf, "xineliboutput-" XINELIBOUTPUT_VERSION)) {
+  if(!strstr(tmpbuf, "xineliboutput-" XINELIBOUTPUT_VERSION " ")) {
     LOGMSG("-----------------------------------------------------------------");
     LOGMSG("WARNING: Client and server versions of xinelibout are different !");
     LOGMSG("         Client version (xine_input_vdr.so) is " XINELIBOUTPUT_VERSION);
@@ -4506,6 +4510,8 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
   if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
        VO_CAP_UNSCALED_OVERLAY))
     LOGMSG("WARNING: Video output driver reports it does not support unscaled overlays !");
+
+  this->threads_initialized = 1;
 
   return 1;
 }
