@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.19 2006-07-23 21:35:54 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.20 2006-07-24 01:05:25 phintuka Exp $
  *
  */
 
@@ -3346,27 +3346,46 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     pkt->pos = ntohull(pkt->pos);
 
     /* Check for control messages */
-    if(pkt->seq == (uint16_t)(-1) /*0xffff*/) {
-      if(pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
-	if(pkt_data[0]) { /* -> can't be PES frame */
-	  pkt_data[64] = 0;
-	  if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
-	    /* Re-send failed */ 
-	    int seq1 = 0, seq2 = 0;
-	    uint64_t rpos = 0ULL;
-	    sscanf((char*)pkt_data, "UDP MISSING %d-%d %" PRIu64, 
-		   &seq1, &seq2, &rpos);
-	    read_buffer->size = sizeof(stream_udp_header_t);
-	    read_buffer->type = BUF_MAJOR_MASK;
-	    pkt->seq = seq1;
-	    pkt->pos = rpos;
-	    udp->missed_frames++;
-	    /* -> drop frame thru as empty ; it will trigger queue to continue */
-	  } else {
-	    vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
-	  }
+    if(pkt->seq == (uint16_t)(-1) /*0xffff*/ && 
+       pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/ &&
+       pkt_data[0]) { /* -> can't be PES frame */
+      pkt_data[64] = 0;
+      if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
+	/* Re-send failed */ 
+	int seq1 = 0, seq2 = 0;
+	uint64_t rpos = 0ULL;
+	sscanf((char*)pkt_data, "UDP MISSING %d-%d %" PRIu64, 
+	       &seq1, &seq2, &rpos);
+	read_buffer->size = sizeof(stream_udp_header_t);
+	read_buffer->type = BUF_MAJOR_MASK;
+	pkt->pos = rpos;
+	LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
+	if(seq1 == udp->next_seq) {
+	  /* this is the one we are expecting ... */
+	  int n = ADDSEQ(seq2 + 1, -seq1);
+	  ADDSEQ(udp->next_seq, n);
+	  udp->missed_frames += n;
+	  seq2 &= UDP_SEQ_MASK;
+	  pkt->seq = seq2;
+	  udp->next_seq = seq2;
+	  LOGDP("  accepted: now currseq %d", udp->next_seq);
+	  /* -> drop frame thru as empty ; it will trigger queue to continue */
+	} else {
+	  LOGUDP("  rejected: not expected seq ???");
 	  continue;
-	} /* if(pkt_data[0] */
+	}
+      } else {
+	LOGMSG("Control message in data stream: %s", (char*)pkt_data);
+	vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
+	/* #warning some messages should be delayed and executed in read_block
+	   (ex. audio/spu stream changes, flush) */
+	continue;
+      }
+    } else {
+      /* Check for PES header */
+      if(pkt_data[0] || pkt_data[1] || pkt_data[2] != 1) {
+	LOGMSG("received invalid UDP packet (PES header 0x000001 missing)");
+	continue;
       }
     }
 
@@ -3375,11 +3394,6 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       LOGMSG("received invalid UDP packet (sequence number too big)");
       continue;
     }
-    if(pkt_data[0] || pkt_data[1] || pkt_data[2] != 1) {
-      LOGMSG("received invalid UDP packet (PES header 0x000001 missing)");
-      continue;
-    }
-
 
     /*
      * handle re-ordering and retransmissios 
@@ -3394,13 +3408,13 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     /* check if received sequence number is inside allowed window 
        (half of whole range) */
-    /*if(((current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK) > */
     if(ADDSEQ(current_seq, -udp->next_seq) > ((UDP_SEQ_MASK+1) >> 1)/*0x80*/) {
       struct sockaddr_in sin;
       LOGUDP("Received SeqNo out of window (%d ; [%d..%d])", 
 	     current_seq, udp->next_seq, 
 	     (udp->next_seq+((UDP_SEQ_MASK+1) >> 1)/*0x80*/) & UDP_SEQ_MASK);
       /* reset link */
+      LOGDBG("UDP: resetting link");
       memcpy(&sin, &udp->server_address, sizeof(sin));
       free_udp_data(udp);
       udp = this->udp_data = init_udp_data();
@@ -3424,7 +3438,6 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     read_buffer = NULL;
     udp->queued ++;
 
-
     /* stay inside receiving window:
        If window exceeded, skip missing frames */
     if(udp->queued > ((UDP_SEQ_MASK+1)>>2)) {
@@ -3442,14 +3455,17 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     /* flush continous part of queue to demuxer queue */
     while(udp->queued > 0 && udp->queue[udp->next_seq]) {
-      this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
       pkt = (stream_udp_header_t*)udp->queue[udp->next_seq]->content;
       udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - 
 	                     sizeof(stream_udp_header_t);
+      if(udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
+	this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
+      else
+	udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
+      
       udp->queue[udp->next_seq] = NULL;
       udp->queued --;
       INCSEQ(udp->next_seq);
-
       if(udp->resend_requested)
 	udp->resend_requested --;
     }
@@ -3468,7 +3484,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  INCSEQ(current_seq);
 	
 	printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n", 
-			udp->next_seq, PREVSEQ(current_seq), udp->queue_input_pos);
+		       udp->next_seq, PREVSEQ(current_seq), 
+		       udp->queue_input_pos);
 	udp->resend_requested = 
 	  (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
 	
@@ -3477,8 +3494,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       }
     }
 
-    /* Link quality statistics */
 #ifdef LOG_UDP
+    /* Link quality statistics */
     udp->received_frames++;
     if(udp->received_frames >= 1000) {
       if(udp->missed_frames)
@@ -3718,6 +3735,11 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
 #endif
   }
 }
+
+//#define CACHE_FIRST_IFRAME
+#ifdef CACHE_FIRST_IFRAME
+#  include "cache_iframe.c"
+#endif
 
 static off_t vdr_plugin_read (input_plugin_t *this_gen,
 			      char *buf, off_t len) 
