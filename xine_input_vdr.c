@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.21 2006-07-24 22:04:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.22 2006-08-04 12:28:21 phintuka Exp $
  *
  */
 
@@ -98,7 +98,7 @@ static void SetupLogLevel(void)
 {
   void *lib = NULL;
   if( !(lib = dlopen (NULL, RTLD_LAZY | RTLD_GLOBAL))) {
-    LOGERR("Can't dlopen self: %s\n", dlerror());
+    LOGERR("Can't dlopen self: %s", dlerror());
   } else {
     int *pLogToSyslog = (int*)dlsym(lib, "LogToSysLog");
     int *pSysLogLevel = (int*)dlsym(lib, "SysLogLevel");
@@ -249,6 +249,7 @@ typedef struct vdr_input_plugin_s {
   pthread_mutex_t osd_lock;
   int vdr_osd_width, vdr_osd_height;
   int video_width, video_height;
+  int video_changed;
   int rescale_osd;
   int rescale_osd_downscale;
   int unscaled_osd;
@@ -792,14 +793,6 @@ static int64_t pts_from_pes(const uint8_t *buf, int size)
   return pts;
 }
 
-static void clear_pts_from_pes(uint8_t *buf, int size)
-{
-  if(size>14 && buf[7] & 0x80) { /* pts avail */
-    buf[7] &= 0x7f; /* clear pts avail */
-    memcpy(buf+9, buf+14, size-14);
-  }
-}
-
 static void create_timeout_time(struct timespec *abstime, int timeout_ms)
 {
   struct timeval now;
@@ -1175,7 +1168,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   /* limit max. buffered data */
   if(!force) {
     int buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
-    if(this->buffer_pool->buffer_pool_num_free <= buffer_limit) 
+    if(this->buffer_pool->buffer_pool_num_free < buffer_limit) 
       return NULL;
   }
 
@@ -1356,9 +1349,9 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
 
 /******************************** OSD ************************************/
 
-#if 0
 static int update_video_size(vdr_input_plugin_t *this)
 {
+#if 0
   int w = 0, h = 0;
   int64_t duration;
 
@@ -1373,12 +1366,13 @@ static int update_video_size(vdr_input_plugin_t *this)
 	     this->video_width, this->video_height, w, h);
       this->video_width = w;
       this->video_height = h;
+      this->video_changed = 1;
       return 1;
     }
   }
+#endif
   return 0;
 }
-#endif
 
 static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
 {
@@ -1731,7 +1725,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	    rle_scaled = 1;
 	    scale_rle_image(cmd, new_w, new_h);
 	  } else {
-	    LOGOSD("osd_command: size out of margins, using UNSCALED\n");
+	    LOGOSD("osd_command: size out of margins, using UNSCALED");
 	    use_unscaled = unscaled_supported;
 	  }
 	}
@@ -1822,31 +1816,14 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
   return 0;
 }
 
-static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen, 
-				       osd_command_t *cmd)
-{
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int result = -3;
-
-  if(!pthread_mutex_lock (&this->osd_lock)) {
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
-    result = exec_osd_command(this, cmd);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);	  
-    pthread_mutex_unlock (&this->osd_lock);
-  } else {
-    LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
-  }
-
-  return result;
-}
-
 static void vdr_scale_osds(vdr_input_plugin_t *this, 
 			   int video_width, int video_height)
 {  
   if(! pthread_mutex_lock(&this->osd_lock)) {
 
     if((this->video_width  != video_width ||
-	this->video_height != video_height) &&
+	this->video_height != video_height ||
+	this->video_changed) &&
        video_width > 0 && video_height > 0) {
       int i, ticket = 0;
 
@@ -1856,6 +1833,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 
       this->video_width = video_width;
       this->video_height = video_height;
+      this->video_changed = 0;
 
       /* just call exec_osd_command for all stored osd's.
          scaling is done automatically if required. */
@@ -1886,6 +1864,30 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
     LOGERR("vdr_scale_osds: pthread_mutex_lock failed");
   }
 }
+
+static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen, 
+				       osd_command_t *cmd)
+{
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  int result = -3;
+  int video_changed = 0;
+
+  if(!pthread_mutex_lock (&this->osd_lock)) {
+    video_changed = update_video_size(this);
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+    result = exec_osd_command(this, cmd);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);	  
+    pthread_mutex_unlock (&this->osd_lock);
+  } else {
+    LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
+  }
+
+  if(video_changed)
+    vdr_scale_osds(this, this->video_width, this->video_height);
+
+  return result;
+}
+
 
 /******************************* Control *********************************/
 
@@ -2902,7 +2904,7 @@ static void *vdr_control_thread(void *this_gen)
   int err;
   int counter = 100;
 
-  LOGDBG("Control thread started\n");
+  LOGDBG("Control thread started");
 
   /*(void)nice(-1);*/
 
@@ -2926,7 +2928,7 @@ static void *vdr_control_thread(void *this_gen)
       }
       continue;
     }
-    LOGCMD("Received command %s\n",line);
+    LOGCMD("Received command %s",line);
     pthread_testcancel();
     
     if(!this->control_running || this->fd_control < 0) 
@@ -3202,7 +3204,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
       if(hdr->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
 	/* control data */
-	char *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
+	uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
 	if(pkt_data[0]) { /* -> can't be pes frame */
 	  pkt_data[64] = 0;
 	  LOGMSG("Control message in data stream: %s", (char*)pkt_data);
@@ -3320,7 +3322,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
        server_address.sin_port != udp->server_address.sin_port) {
 #ifdef LOG_UDP
       uint32_t tmp_ip = ntohl(server_address.sin_addr.s_addr);
-      LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d\n",
+      LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d",
 	     ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff), 
 	     ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
 	     server_address.sin_port);
@@ -3363,7 +3365,6 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	if(seq1 == udp->next_seq) {
 	  /* this is the one we are expecting ... */
 	  int n = ADDSEQ(seq2 + 1, -seq1);
-	  ADDSEQ(udp->next_seq, n);
 	  udp->missed_frames += n;
 	  seq2 &= UDP_SEQ_MASK;
 	  pkt->seq = seq2;
@@ -3616,7 +3617,7 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 
   buf = get_buf_element(this, len, 0);
   if(!buf) {
-    LOGMSG("vdr_plugin_write: buffer overflow !");
+    LOGMSG("vdr_plugin_write: buffer overflow ! (%d bytes)", len);
     VDR_ENTRY_UNLOCK();
     xine_usec_sleep(5*1000);
     return 0; /* EAGAIN */
@@ -3624,7 +3625,7 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 
   if(len > buf->max_size) {
     LOGMSG("vdr_plugin_write: PES too long (%d bytes, max size "
-	   "%d bytes), data ignored !\n", len, buf->max_size);
+	   "%d bytes), data ignored !", len, buf->max_size);
     buf->free_buffer(buf);
 /* curr_pos will be invalid when this point is reached ! */
     VDR_ENTRY_UNLOCK();
@@ -3714,9 +3715,13 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   }
 
   if(audio_changed) {
+#if XINE_VERSION_CODE < 10102
+#  warning xine-lib is older than 1.1.2. Multiple audio streams are not supported.
+#else
     put_control_buf(this->stream->audio_fifo,
 		    this->stream->audio_fifo,
 		    BUF_CONTROL_RESET_TRACK_MAP);
+#endif
 #if 0
     put_control_buf(this->stream->audio_fifo,
 		    this->stream->audio_fifo,
@@ -4381,7 +4386,7 @@ static int connect_udp_data_stream(vdr_input_plugin_t *this)
   }
   tmp_ip = ntohl(server_address.sin_addr.s_addr);
 
-  LOGDBG("VDR server address: %d.%d.%d.%d\n", 
+  LOGDBG("VDR server address: %d.%d.%d.%d", 
 	 ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff), 
 	 ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff));
 
