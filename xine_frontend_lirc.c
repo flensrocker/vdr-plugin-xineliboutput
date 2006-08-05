@@ -6,7 +6,7 @@
  *
  * Almost directly copied from vdr-1.3.34 (lirc.c : cLircRemote) 
  *
- * $Id: xine_frontend_lirc.c,v 1.1 2006-06-03 10:01:18 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.2 2006-08-05 19:23:13 phintuka Exp $
  *
  */
 
@@ -65,6 +65,8 @@ void *lirc_receiver_thread(void *fe)
     goto out;
   }
 
+  LOGMSG("lirc forwarding started");
+
   while(lirc_device_name && fd_lirc >= 0) {
     fd_set set;
     int ready, ret = -1;
@@ -84,9 +86,13 @@ void *lirc_receiver_thread(void *fe)
       ready = select(FD_SETSIZE, &set, NULL, NULL, NULL) > 0 && FD_ISSET(fd_lirc, &set);
     }
 
-    if(ready) {
+    if(ready < 0) {
+      LOGMSG("LIRC connection lost ?");
+      goto out;
+    } else if(ready) {
 
       do { 
+	errno = 0;
 	ret = read(fd_lirc, buf, sizeof(buf));
       } while(ret < 0 && errno == EINTR);
 
