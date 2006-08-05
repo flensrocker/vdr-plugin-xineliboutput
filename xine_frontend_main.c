@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.6 2006-07-15 21:49:23 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.7 2006-08-05 19:22:16 phintuka Exp $
  *
  */
 
@@ -168,7 +168,8 @@ int main(int argc, char *argv[])
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0;
   int fullscreen = 0, width = 720, height = 576;
-  int scale_video = 1, aspect = 1, nokbd = 0;
+  int scale_video = 1, aspect = 1;
+  int daemon_mode = 0, nokbd = 0;
   char *video_port = NULL;
   int xmajor, xminor, xsub;
   int i, err;
@@ -208,6 +209,7 @@ int main(int argc, char *argv[])
 	     "   --silent                     \n"
 	     "   --syslog                     \n"
 	     "   --nokbd                      \n"
+	     "   --daemon                     \n"
 	     "   --tcp                        \n"
 	     "   --udp                        \n"
 	     "   --rtp                        \n"
@@ -231,6 +233,9 @@ int main(int argc, char *argv[])
       printf("Video scaling disabled\n");
     } else if(!strncmp(argv[i], "--nokbd", 7)) {
       nokbd = 1;
+      printf("Keyboard input disabled\n");
+    } else if(!strncmp(argv[i], "--daemon", 8)) {
+      nokbd = daemon_mode = 1;
       printf("Keyboard input disabled\n");
     } else if(!strncmp(argv[i], "--tcp", 5)) {
       ftcp = 1;
@@ -351,6 +356,15 @@ int main(int argc, char *argv[])
     }
   }
 
+  if(daemon_mode) {
+    printf("Entering daemon mode\n\n");
+    if (daemon(1, 0) == -1) {
+      fprintf(stderr, "%s: %m\n", exec_name);
+      LOGERR("daemon() failed");
+      return 2;
+    }
+  }
+
   /* Create front-end */
   fe = (*fe_creator)();
   if(!fe) {
@@ -413,6 +427,9 @@ int main(int argc, char *argv[])
   /* Main loop */
 
   sleep(2);  /* give input_vdr some time to establish connection */
+
+  fflush(stdout);
+  fflush(stderr);
 
   while(fe->fe_run(fe) && !fe->xine_is_finished(fe) && !terminate_key_pressed) 
     pthread_yield();
