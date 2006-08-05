@@ -4,11 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.6 2006-07-02 16:59:27 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.7 2006-08-05 14:02:48 phintuka Exp $
  *
  */
 
-#define HAVE_XF86VIDMODE
+/*#define HAVE_XF86VIDMODE*/
 #define HAVE_XDPMS
 
 #include <errno.h>
@@ -138,12 +138,14 @@ typedef struct sxfe_s {
   int     stay_above;
   int     no_border;
 
-  Atom    wm_del_win;
-  Atom    sxfe_interrupt;
+  Atom    atom_wm_delete_window;
+  Atom    atom_sxfe_interrupt;
 
-  Atom    atom_wm_hints, atom_layer;
+  Atom    atom_wm_hints, atom_win_layer;
+
+  Atom    atom_state;
   Atom    atom_state_add, atom_state_del;
-  Atom    atom_state, atom_state_above, atom_state_fullscreen, atom_state_on_top;
+  Atom    atom_state_above, atom_state_fullscreen, atom_state_on_top;
 
 } fe_t, sxfe_t;
 
@@ -175,8 +177,9 @@ static void fe_dest_size_cb (void *data,
 static void set_fullscreen_props(sxfe_t *this)
 {
   XEvent ev;
+
   if(this->atom_state == None) {
-    this->atom_layer            = XInternAtom(this->display, "_WIN_LAYER", False);
+    this->atom_win_layer        = XInternAtom(this->display, "_WIN_LAYER", False);
     this->atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
     this->atom_state_add        = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
     this->atom_state_del        = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
@@ -192,20 +195,24 @@ static void set_fullscreen_props(sxfe_t *this)
   ev.xclient.display      = this->display;
   ev.xclient.window       = this->window[1];
   ev.xclient.format       = 32;
-  ev.xclient.data.l[0]    = 1 /*this->atom_state_add*/;
+  ev.xclient.data.l[0]    = 1; 
+  /*ev.xclient.data.l[0]    = this->atom_state_add;*/
 
+  /* _NET_WM_STATE_FULLSCREEN */
   XLockDisplay(this->display);
   ev.xclient.data.l[1] = this->atom_state_fullscreen;
   XSendEvent(this->display, DefaultRootWindow(this->display), False, 
 	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
+  /* _NET_WM_STATE_ABOVE */
   XLockDisplay(this->display);
   ev.xclient.data.l[1] = this->atom_state_above;
   XSendEvent(this->display, DefaultRootWindow(this->display), False, 
 	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
+  /* _NET_WM_STATE_ON_TOP */
   XLockDisplay(this->display);
   ev.xclient.data.l[1] = this->atom_state_on_top;
   XSendEvent(this->display, DefaultRootWindow(this->display), False, 
@@ -308,7 +315,7 @@ static void set_above(sxfe_t *this, int stay_above)
   xev.type = ClientMessage;
   xev.display = this->display;
   xev.window = this->window[0];
-  xev.message_type = this->atom_layer;
+  xev.message_type = this->atom_win_layer;
   xev.format = 32;
   xev.data.l[0] = 10;
   xev.data.l[1] = CurrentTime;
@@ -494,8 +501,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, this->display_ratio);
 
   /* we want to get notified if user closes the window */
-  this->wm_del_win = XInternAtom(this->display, "WM_DELETE_WINDOW", False);
-  XSetWMProtocols(this->display, this->window[fullscreen], &(this->wm_del_win), 1);
+  this->atom_wm_delete_window = XInternAtom(this->display, "WM_DELETE_WINDOW", False);
+  XSetWMProtocols(this->display, this->window[fullscreen], &(this->atom_wm_delete_window), 1);
 
   /* no cursor */
 #if 0
@@ -540,7 +547,9 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->vis.frame_output_cb  = fe_frame_output_cb;
   this->vis.user_data        = this;
 
-  this->sxfe_interrupt       = XInternAtom(this->display, "SXFE_INTERRUPT", False);
+  this->atom_sxfe_interrupt  = XInternAtom(this->display, "SXFE_INTERRUPT", False);
+
+  set_fullscreen_props(this);
 
   return 1;
 }
@@ -591,6 +600,8 @@ static int sxfe_display_config(frontend_t *this_gen,
     if(!fullscreen) {
       XResizeWindow(this->display, this->window[0], this->width, this->height);    
       set_above(this, this->stay_above);
+    } else {
+      set_fullscreen_props(this);
     }
     XSync(this->display, False);
     XTranslateCoordinates(this->display, this->window[this->fullscreen],
@@ -635,7 +646,7 @@ static void sxfe_interrupt(frontend_t *this_gen)
   ev2.type    = ClientMessage;
   ev2.display = this->display;
   ev2.window  = this->window[this->fullscreen];
-  ev2.message_type = this->sxfe_interrupt;
+  ev2.message_type = this->atom_sxfe_interrupt;
   ev2.format  = 32;
 
   if(!XSendEvent(ev2.display, ev2.window, TRUE, /*KeyPressMask*/0, (XEvent *)&ev2))
@@ -804,11 +815,12 @@ static int sxfe_run(frontend_t *this_gen)
       case ClientMessage:
       {
 	XClientMessageEvent *cmessage = (XClientMessageEvent *) &event;	
-	if ( cmessage->message_type == this->sxfe_interrupt )
+	if ( cmessage->message_type == this->atom_sxfe_interrupt )
 	  LOGDBG("ClientMessage: sxfe_interrupt");
 
-	if ( cmessage->data.l[0] == this->wm_del_win )
+	if ( cmessage->data.l[0] == this->atom_wm_delete_window )
 	  /* we got a window deletion message from out window manager.*/
+	  LOGDBG("ClientMessage: WM_DELETE_WINDOW");
 	  keep_going=0;
       }
     }
