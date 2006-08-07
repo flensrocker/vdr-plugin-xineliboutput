@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.5 2006-07-02 17:06:06 phintuka Exp $
+ * $Id: frontend_local.c,v 1.6 2006-08-07 17:12:29 phintuka Exp $
  *
  */
 
@@ -393,8 +393,8 @@ void cXinelibLocal::Action(void)
 			    xc.audio_surround);
     ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast);
     ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
-#ifdef ENABLE_TEST_POSTPLUGINS
     ConfigurePostprocessing("autocrop",  xc.autocrop  ? true : false, NULL);
+#ifdef ENABLE_TEST_POSTPLUGINS
     ConfigurePostprocessing("headphone", xc.headphone ? true : false, NULL);
 #endif
     LOGDBG("cXinelibLocal::Action - fe config OK");
