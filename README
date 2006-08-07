@@ -35,6 +35,7 @@ WARNING
 
   Remote (network) mode should be used only in firewalled 
   environment; it gives anyone full control to VDR !
+
   Full access is allowed to all hosts listed in svdrphosts.conf.
 
   Multicast streaming can flood your internet connection and/or
@@ -76,11 +77,27 @@ Buildtime options
 
   or changing corresponding lines in plugin's Makefile.
 
-  xineplug_inp_vdr.so is automatically copied to xine's plugin directory.
-  Writing to xine's plugin directory usually requires root permissions.
-
   It is possible to compile only remote frontends with command 
   "make frontends".
+
+
+Installing - IMPORTANT
+
+  XINE'S DYNAMIC LIBRARIES AND FRONTEND EXECUTABLES ARE NOT
+  INSTALLED AUTOMATICALLY.
+  This was changed in version 1.0.0pre2.
+
+  It is important to copy required libraries to right place
+  either by hand or by executing "make install" in plugin's
+  source directory.
+  Installing binaries and libraries usually requires root
+  permissions.
+
+
+  To be able to use remote frontends each client's IP address
+  must be defined in VDR's svdrphosts.conf.
+  Full access is allowed to all hosts listed in svdrphosts.conf.
+  Connections from any other hosts are rejected.
 
 
 Usage examples (VDR plugin)
@@ -117,7 +134,7 @@ Using remote frontends
 
   Frontend should find server automatically (from local subnet) 
   and negoate best available transport. If frontend does not
-  find server (or specific transport should be used), mrl must 
+  find server (or specific transport should be used), mrl must
   be given on command line.
 
   Examples:
