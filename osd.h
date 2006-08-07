@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: osd.h,v 1.2 2006-08-07 21:09:16 phintuka Exp $
  *
  */
 
@@ -13,7 +13,6 @@
 
 #include <vdr/config.h>
 #include <vdr/osd.h>
-#include <vdr/thread.h>  // cMutex
 #include <vdr/tools.h>   // cListObject
 
 class cXinelibDevice;
@@ -23,10 +22,13 @@ class cXinelibOsd : public cOsd, public cListObject
   private:
     cXinelibOsd();
     cXinelibOsd(cXinelibOsd&);
+
     cXinelibDevice *m_Device;
 
   protected:
-    cMutex m_Lock;
+    static cMutex             m_Lock;
+    static cList<cXinelibOsd> m_OsdStack;
+
     bool   m_IsVisible;
     bool   m_Shown;
 
@@ -38,6 +40,7 @@ class cXinelibOsd : public cOsd, public cListObject
     void Show(void);
     void Hide(void);
     void Refresh(void);
+    void Detach(void);
 
     friend class cXinelibOsdProvider;
 
@@ -46,18 +49,12 @@ class cXinelibOsd : public cOsd, public cListObject
     virtual ~cXinelibOsd();
 };
 
+class cMutex;
+
 class cXinelibOsdProvider : public cOsdProvider 
 {
   protected:
-    cXinelibDevice           *m_Device;
-    static cList<cXinelibOsd> m_OsdStack;
-    static cMutex             m_Lock;
-
-    // Messages from cXinelibOsd
-    static void OsdClosing(cXinelibOsd *Osd);
-    static void OsdClosed(cXinelibOsd *Osd);
-
-    friend class cXinelibOsd;
+    cXinelibDevice *m_Device;
 
   public:
     cXinelibOsdProvider(cXinelibDevice *Device);

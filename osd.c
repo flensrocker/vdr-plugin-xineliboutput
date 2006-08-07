@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.3 2006-07-06 02:57:59 phintuka Exp $
+ * $Id: osd.c,v 1.4 2006-08-07 21:09:16 phintuka Exp $
  *
  */
 
@@ -19,9 +19,8 @@
 
 #include "xine_osd_command.h"
 
-//extern "C" {
-//#include "xine_frontend.h"
-//} // extern "C"
+cList<cXinelibOsd> cXinelibOsd::m_OsdStack;
+cMutex             cXinelibOsd::m_Lock;
 
 static inline void CmdSize(cXinelibDevice *Device, int wnd, int w=0, int h=0)
 {
@@ -153,6 +152,7 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y)
     : cOsd(x, y), m_IsVisible(true)
 {
   TRACEF("cXinelibOsd::cXinelibOsd");
+
   m_Device = Device;
   m_Shown = false;
   CmdSize(m_Device, 0, 720, 576);
@@ -162,12 +162,15 @@ cXinelibOsd::~cXinelibOsd()
 {
   TRACEF("cXinelibOsd::~cXinelibOsd");
 
-  cXinelibOsdProvider::OsdClosing(this);
-  m_Lock.Lock();
+  cMutexLock ml(&m_Lock);
+
   if(m_IsVisible)
     Hide();
-  m_Lock.Unlock();
-  cXinelibOsdProvider::OsdClosed(this);
+
+  m_OsdStack.Del(this,false);
+
+  if(m_OsdStack.First())
+    m_OsdStack.First()->Show();
 }
 
 eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
@@ -236,9 +239,9 @@ void cXinelibOsd::Flush(void)
     if(now - last_refresh < 100) {
       /* too fast refresh rate, delay ... */
       cCondWait::SleepMs(40); /* Can't update faster anyway ... */
-#if 0
+# if 0
       LOGDBG("cXinelibOsd::Flush: OSD refreshing too fast ! (>10Hz) -> Sleeping 50ms");
-#endif
+# endif
     }
     last_refresh = now;
   }
@@ -290,64 +293,72 @@ void cXinelibOsd::Hide(void)
   }
 }
 
+void cXinelibOsd::Detach(void)
+{
+  TRACEF("cXinelibOsd::Detach");
 
-cList<cXinelibOsd> cXinelibOsdProvider::m_OsdStack;
-cMutex             cXinelibOsdProvider::m_Lock;
+  cMutexLock ml(&m_Lock);
+
+  Hide();
+  m_Device = NULL;
+}
+
+//
+// cXinelibOsdProvider
+//
 
 cXinelibOsdProvider::cXinelibOsdProvider(cXinelibDevice *Device)
-  : m_Device(Device)
 {
+  m_Device = Device;
 }
 
 cXinelibOsdProvider::~cXinelibOsdProvider()
 {
-  if(m_OsdStack.First())
+  LOGMSG("cXinelibOsdProvider: shutting down !");
+
+  cMutexLock ml(&cXinelibOsd::m_Lock);
+
+  m_Device = NULL;
+
+  if(cXinelibOsd::m_OsdStack.First()) {
     LOGMSG("cXinelibOsdProvider: OSD open while OSD provider shutting down !");
+
+    // Detach all OSD instances from device
+    cXinelibOsd *osd;
+    while(osd = cXinelibOsd::m_OsdStack.First()) {
+      osd->Detach();
+      cXinelibOsd::m_OsdStack.Del(osd, false);
+    }
+  }
 }
 
 cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top)
 {
   TRACEF("cXinelibOsdProvider::CreateOsd");
 
-  cMutexLock ml(&m_Lock);
+  cMutexLock ml(&cXinelibOsd::m_Lock);
 
-  if(m_OsdStack.First())
-    LOGDBG("cXinelibOsdProvider::CreateOsd - OSD already open !");
+  if(cXinelibOsd::m_OsdStack.First())
+    LOGMSG("cXinelibOsdProvider::CreateOsd - OSD already open !");
 
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top);
 
-  if(m_OsdStack.First())
-    m_OsdStack.First()->Hide();
+  if(cXinelibOsd::m_OsdStack.First())
+    cXinelibOsd::m_OsdStack.First()->Hide();
 
-  m_OsdStack.Ins(m_OsdInstance);
+  cXinelibOsd::m_OsdStack.Ins(m_OsdInstance);
 
   return m_OsdInstance;
-}
-
-void cXinelibOsdProvider::OsdClosed(cXinelibOsd *Osd)
-{
-  TRACEF("cXinelibOsdProvider::OsdClosed");
-//  m_Lock.Lock();   Atomic with OsdClosing
-  if(m_OsdStack.First())
-    m_OsdStack.First()->Show();
-  m_Lock.Unlock();
-}
-
-void cXinelibOsdProvider::OsdClosing(cXinelibOsd *Osd)
-{
-  TRACEF("cXinelibOsdProvider::OsdClosing");
-  m_Lock.Lock();
-  m_OsdStack.Del(Osd,false);
-//  m_Lock.Unlock();  Atomic with OsdClosed
 }
 
 void cXinelibOsdProvider::RefreshOsd(void)
 {
   TRACEF("cXinelibOsdProvider::RefreshOsd");
-  cMutexLock ml(&m_Lock);
 
-  if(m_OsdStack.First())
-    m_OsdStack.First()->Refresh();
+  cMutexLock ml(&cXinelibOsd::m_Lock);
+
+  if(cXinelibOsd::m_OsdStack.First())
+    cXinelibOsd::m_OsdStack.First()->Refresh();
 }
 
 
