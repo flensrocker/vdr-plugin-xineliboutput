@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.10 2006-07-21 22:56:41 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.11 2006-08-07 17:08:33 phintuka Exp $
  *
  */
 
@@ -80,6 +80,12 @@ cXinelibServer::cXinelibServer(int listen_port) :
   m_Scheduler  = new cUdpScheduler;
   m_StcFuture  = new cStcFuture;
   m_Futures    = new cCmdFutures;
+
+  cString Base(cPlugin::ConfigDirectory());
+  if(*Base)
+    m_PipesDir = cString::sprintf("%s/xineliboutput/pipes", *Base);
+  else
+    m_PipesDir = cString("/tmp/xineliboutput/pipes");
 }
 
 cXinelibServer::~cXinelibServer() 
@@ -97,8 +103,6 @@ cXinelibServer::~cXinelibServer()
   delete m_StcFuture;
   delete m_Futures;
   delete m_Scheduler;
-
-  RemoveFileOrDir(cPlugin::ConfigDirectory("xineliboutput/pipes"), false);
 }
 
 void cXinelibServer::Stop(void)
@@ -727,12 +731,12 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
     return;
   }
 
-  char pipeName[1024];
-  MakeDirs(cPlugin::ConfigDirectory("xineliboutput/pipes"), true);
+  MakeDirs(*m_PipesDir, true);
+
   int i;
+  char pipeName[1024];
   for(i=0; i<10; i++) {
-    sprintf(pipeName,"%s/pipe.%d",
-	    cPlugin::ConfigDirectory("xineliboutput/pipes"),i);
+    sprintf(pipeName,"%s/pipe.%d", *m_PipesDir, i);
     if(mknod(pipeName, 0644|S_IFIFO, 0) < 0) {
       unlink(pipeName);
       continue;
@@ -742,6 +746,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   }
   if(i>=10) {
     LOGERR("Pipe creation failed (%s)", pipeName);
+    RemoveFileOrDir(*m_PipesDir, false);
     write_cmd(fd_control[cli], "PIPE NONE\r\n");
     return;
   }
@@ -757,6 +762,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
     LOGDBG("Pipe not opened by client");
     /*write_cmd(fd_control[cli], "PIPE NONE\r\n");*/
     unlink(pipeName); 
+    RemoveFileOrDir(*m_PipesDir, false);
     return;
   }
 
@@ -765,6 +771,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   LOGDBG("cXinelibServer::Handle_Control: pipe %s open", pipeName);
 
   unlink(pipeName); /* safe to remove now, both ends are open or closed. */
+  RemoveFileOrDir(*m_PipesDir, false);
   write_cmd(fd_control[cli], "PIPE OK\r\n");
 
   CREATE_NEW_WRITER;
@@ -935,8 +942,8 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
                           xc.audio_surround);
   ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast);
   ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
-#ifdef ENABLE_TEST_POSTPLUGINS
   ConfigurePostprocessing("autocrop",  xc.autocrop    ? true : false, NULL);
+#ifdef ENABLE_TEST_POSTPLUGINS
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
 #endif
 

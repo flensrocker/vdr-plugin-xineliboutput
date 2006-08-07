@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.4 2006-07-07 05:32:14 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.5 2006-08-07 17:08:33 phintuka Exp $
  *
  */
 
@@ -104,6 +104,8 @@ protected:
     bool m_bConfigOk[MAXCLIENTS];
     int  m_iMulticastMask; // bit [cli] is 1 or 0. 1 == multicast in use.
     int  m_iUdpFlowMask;   // bit [cli] is 1 or 0. 1 == buffer full.
+
+    cString m_PipesDir;
 
     cBackgroundWriter *m_Writer[MAXCLIENTS];
     cUdpScheduler     *m_Scheduler;
