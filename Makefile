@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.3 2006-07-02 17:14:09 phintuka Exp $
+# $Id: Makefile,v 1.4 2006-08-07 21:24:37 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -9,6 +9,7 @@
 #
 
 PLUGIN = xineliboutput
+
 
 ###
 ### check for xine-lib and X11
@@ -25,33 +26,33 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
         #$(warning Detected X11)
     else
         $(warning ********************************************************)
-        $(warning X11 not detected ! X11 frontends will not be compiled.)
+        $(warning X11 not detected ! X11 frontends will not be compiled.  )
         $(warning ********************************************************)
     endif
 else
     $(warning ********************************************************)
-    $(warning xine-lib not detected ! frontends will not be compiled.)
+    $(warning xine-lib not detected ! frontends will not be compiled. )
     $(warning ********************************************************)
 endif
+
 
 #
 # Override configuration here or in ../../../Make.config
 #
 
-#XINELIBOUTPUT_X11  = 1
-#XINELIBOUTPUT_FB   = 1
+#XINELIBOUTPUT_X11        = 1
+#XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
-#XINELIBOUTPUT_VDRPLUGIN = 1
-#ENABLE_TEST_POSTPLUGINS = 1
-#$(warning ********************************************************)
-#$(warning TEST PLUGINS ENABLED)
-#$(warning ********************************************************)
+#XINELIBOUTPUT_VDRPLUGIN  = 1
+#ENABLE_TEST_POSTPLUGINS  = 1
+
 
 ###
 ### The version number of this plugin (taken from the main source file):
 ###
 
 VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ print $$6 }' | sed -e 's/[";]//g')
+
 
 ###
 ### The C++ compiler and options:
@@ -63,6 +64,7 @@ CXXFLAGS ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g
 
 CC     ?= gcc 
 CFLAGS ?= -O3 -pipe -Wall -fPIC -g
+
 
 ###
 ### The directory environment:
@@ -78,24 +80,19 @@ TMPDIR = /tmp
 
 -include $(VDRDIR)/Make.config
 
+
 ###
 ### check for VDR
 ###
 
-# XINELIBOUTPUT_VDRPLUGIN ?= $(shell (grep 'define VDRVERSION ' $(VDRDIR)/config.h > /dev/null && echo "1") || echo "0")
-# ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 0)
-
-### The version number of VDR (taken from VDR's "config.h"):
-#VDRVERSION = $(shell grep 'define VDRVERSION ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
 VDRVERSION = $(shell sed -ne '/define VDRVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
 ifeq ($(strip $(VDRVERSION)),)
     $(warning ********************************************************)
-    $(warning VDR not detected ! VDR plugin will not be compiled.)
+    $(warning VDR not detected ! VDR plugin will not be compiled.     )
     $(warning ********************************************************)
     XINELIBOUTPUT_VDRPLUGIN = 0
 else
     ### The version number of VDR's plugin API (taken from VDR's "config.h"):
-    #APIVERSION = $(shell grep 'define APIVERSION ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
     APIVERSION = $(shell sed -ne '/define APIVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
     ifeq ($(strip $(APIVERSION)),)
         $(warning VDR APIVERSION missing, using VDRVERSION $(VDRVERSION) )
@@ -104,12 +101,14 @@ else
     XINELIBOUTPUT_VDRPLUGIN = 1
 endif
 
+
 ###
 ### The name of the distribution archive:
 ###
 
 ARCHIVE = $(PLUGIN)-$(VERSION)
 PACKAGE = vdr-$(ARCHIVE)
+
 
 ###
 ### The name of executable and libraries
@@ -118,56 +117,49 @@ PACKAGE = vdr-$(ARCHIVE)
 VDRSXFE      = vdr-sxfe
 VDRFBFE      = vdr-fbfe
 XINEINPUTVDR = xineplug_inp_xvdr.so
-XINEPOSTAUTOSCALE = xineplug_post_autoscale.so
+XINEPOSTAUTOCROP  = xineplug_post_autocrop.so
 XINEPOSTHEADPHONE = xineplug_post_headphone.so
+
 
 ###
 ### which programs and libs to build
 ###
 
+VDRSXFE_EXEC =
+VDRPLUGIN_SXFE_SO =
+VDRFBFE_EXEC =
+VDRPLUGIN_FBFE_SO =
+XINEPOSTHEADPHONE_SO =
+XINEINPUTVDR_SO =
+XINEPLUGINDIR = ./
+XINEPOSTAUTOCROP_SO =
+XINEPOSTHEADPHONE_SO =
+VDRPLUGIN_SO =
+
 ifeq ($(XINELIBOUTPUT_X11), 1)
     VDRSXFE_EXEC = $(VDRSXFE)
     ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
         VDRPLUGIN_SXFE_SO = lib$(PLUGIN)-sxfe.so
-    else
-        VDRPLUGIN_SXFE_SO =
     endif
-else
-    VDRSXFE_EXEC = 
-    VDRPLUGIN_SXFE_SO =
 endif
 ifeq ($(XINELIBOUTPUT_FB), 1)
     VDRFBFE_EXEC = $(VDRFBFE)
     ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
         VDRPLUGIN_FBFE_SO = lib$(PLUGIN)-fbfe.so
-    else
-        VDRPLUGIN_FBFE_SO =
     endif
-else
-    VDRFBFE_EXEC = 
-    VDRPLUGIN_FBFE_SO =
 endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
     XINEPLUGINDIR   = $(shell xine-config --plugindir)
+    XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
     ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
-        XINEPOSTAUTOSCALE_SO = $(XINEPOSTAUTOSCALE)
         XINEPOSTHEADPHONE_SO = $(XINEPOSTHEADPHONE)
-    else
-        XINEPOSTAUTOSCALE_SO = 
-        XINEPOSTHEADPHONE_SO = 
     endif
-else
-    XINEINPUTVDR_SO = 
-    XINEPLUGINDIR = ./
-    XINEPOSTAUTOSCALE_SO = 
-    XINEPOSTHEADPHONE_SO = 
 endif
 ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
     VDRPLUGIN_SO = libvdr-$(PLUGIN).so
-else
-    VDRPLUGIN_SO =
 endif
+
 
 ###
 ### Includes and Defines (add further entries here):
@@ -179,7 +171,6 @@ LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
-             -DPLUGINLIBDIR='"$(PLUGINLIBDIR)"' \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
 
 # check for yaegp patch
@@ -193,20 +184,18 @@ ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
     DEFINES += -DENABLE_TEST_POSTPLUGINS
 endif
 
-#CFLAGS += -Wall -pedantic -ansi
-#CXXFLAGS += -Wall -ansi -pedantic
 
 ###
 ### configuration
 ###
 
-#DEFINES += -DENABLE_SUSPEND
 #DEFINES += -DHAVE_XV_FIELD_ORDER
-#DEFINES += -DSUSPEND_BY_PLAYER
+
 
 ###
 ### The object files (add further files here):
 ###
+
 ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
   OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
          i18n.o menuitems.o media_player.o equalizer.o \
@@ -218,9 +207,7 @@ else
   OBJS = 
   OBJS_MPG = 
 endif
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-else
-endif
+
 ifeq ($(XINELIBOUTPUT_X11), 1)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
   OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o
@@ -228,6 +215,7 @@ else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
 endif
+
 ifeq ($(XINELIBOUTPUT_FB), 1)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
   OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o
@@ -236,12 +224,14 @@ else
   OBJS_FBFE = 
 endif
 
+
 ###
 ### Implicit rules:
 ###
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
+
 
 ###
 ### Dependencies:
@@ -255,6 +245,7 @@ $(DEPFILE): Makefile
 -include $(DEPFILE)
 
 DEFINES += -Wall
+
 
 ###
 ### Rules:
@@ -274,8 +265,8 @@ xine_input_vdr.o: xine_input_vdr.c xine_input_vdr.h xine_osd_command.h nosignal_
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_vdr.c
 xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
-xine_post_autoscale.o: xine_post_autoscale.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autoscale.c
+xine_post_autocrop.o: xine_post_autocrop.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autocrop.c
 xine_post_headphone.o: xine_post_headphone.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_headphone.c
 
@@ -298,18 +289,27 @@ xine_fbfe_frontend_standalone.o: xine_fbfe_frontend.c xine_frontend.c \
 		xine_frontend_lirc.c xineliboutput.c
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_fbfe_frontend.c -o $@
 
-#
-# targets
-#
+
+###
+### targets
+###
+
+XINELIBOUTPUT_INSTALL_MSG =  \
+	    $(warning *********************** xineliboutput ***************************) \
+	    $(warning  Xine plugins and frontends will not be installed automatically. ) \
+	    $(warning  To install files execute "make install" in                      ) \
+	    $(warning  $(shell echo `pwd`)) \
+	    $(warning *****************************************************************) \
+
+install : XINELIBOUTPUT_INSTALL_MSG =
 
 all: $(VDRPLUGIN_SO) $(VDRPLUGIN_SXFE_SO) $(VDRPLUGIN_FBFE_SO) \
-	$(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	$(XINEPOSTAUTOSCALE_SO) $(XINEPOSTHEADPHONE_SO)
-
+	    $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO)
+	$(XINELIBOUTPUT_INSTALL_MSG)
 
 frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	$(XINEPOSTAUTOSCALE_SO) $(XINEPOSTHEADPHONE_SO)
-
+	$(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO)
 
 .PHONY: all
 
@@ -342,40 +342,37 @@ endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 $(XINEINPUTVDR_SO): xine_input_vdr.o
 	$(CC) -g -shared -fvisibility=hidden xine_input_vdr.o $(LIBS_XINE) -o $@
-	@-rm -rf $(XINEPLUGINDIR)/$@
-	@cp $@ $(XINEPLUGINDIR)/
+$(XINEPOSTAUTOCROP_SO): xine_post_autocrop.o
+	$(CC) -g -shared -fvisibility=hidden xine_post_autocrop.o $(LIBS_XINE) -o $@
 endif
-
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
-$(XINEPOSTAUTOSCALE_SO): xine_post_autoscale.o
-	$(CC) -g -shared -fvisibility=hidden xine_post_autoscale.o $(LIBS_XINE) -o $@
-	@-rm -rf $(XINEPLUGINDIR)/$@
-	@cp $@ $(XINEPLUGINDIR)/
 $(XINEPOSTHEADPHONE_SO): xine_post_headphone.o
 	$(CC) -g -shared -fvisibility=hidden xine_post_headphone.o $(LIBS_XINE) -o $@
-	@-rm -rf $(XINEPLUGINDIR)/$@
-	@cp $@ $(XINEPLUGINDIR)/
 endif
-
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-		@-rm -rf $(XINEPLUGINDIR)/$(XINEINPUTVDR)
-		@-cp $(XINEINPUTVDR) $(XINEPLUGINDIR)/
+	@echo Installing $(XINEINPUTVDR) to $(XINEPLUGINDIR)/
+	@-rm -rf $(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@cp $(XINEINPUTVDR) $(XINEPLUGINDIR)/
+	@echo Installing $(XINEPOSTAUTOCROP) to $(XINEPLUGINDIR)/post/
+	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@cp $(XINEPOSTAUTOCROP) $(XINEPLUGINDIR)/post/
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
-		@-rm -rf $(XINEPLUGINDIR)/$(XINEPOSTHEADPHONE)
-		@-rm -rf $(XINEPLUGINDIR)/$(XINEPOSTAUTOSCALE)
-		@-cp $(XINEPOSTHEADPHONE) $(XINEPLUGINDIR)/
-		@-cp $(XINEPOSTAUTOSCALE) $(XINEPLUGINDIR)/
+	@echo Installing $(XINEPOSTHEADPHONE) to $(XINEPLUGINDIR)/post/
+	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
+	@cp $(XINEPOSTHEADPHONE) $(XINEPLUGINDIR)/post/
 endif
 ifeq ($(XINELIBOUTPUT_FB), 1)
-		@-rm -rf /usr/bin/vdr-fbfe
-		@-cp vdr-fbfe /usr/bin/
+	@echo Installing vdr-fbfe to $(BINDIR)/
+	@-rm -rf $(BINDIR)/vdr-fbfe
+	@cp vdr-fbfe $(BINDIR)/
 endif
 ifeq ($(XINELIBOUTPUT_X11), 1)
-		@-rm -rf /usr/bin/vdr-sxfe
-		@-cp vdr-sxfe /usr/bin/
+	@echo Installing vdr-sxfe to $(BINDIR)/
+	@-rm -rf $(BINDIR)/vdr-sxfe
+	@cp vdr-sxfe $(BINDIR)/
 endif
 
 
