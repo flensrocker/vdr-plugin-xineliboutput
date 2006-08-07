@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.4 2006-08-07 21:24:37 phintuka Exp $
+# $Id: Makefile,v 1.5 2006-08-07 23:39:11 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -73,6 +73,7 @@ CFLAGS ?= -O3 -pipe -Wall -fPIC -g
 VDRDIR = ../../..
 LIBDIR = ../../lib
 TMPDIR = /tmp
+BINDIR = /usr/bin
 
 ###
 ### Allow user defined options to overwrite defaults:
@@ -352,29 +353,28 @@ endif
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-	@echo Installing $(XINEINPUTVDR) to $(XINEPLUGINDIR)/
+	@echo Installing $(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@-rm -rf $(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@cp $(XINEINPUTVDR) $(XINEPLUGINDIR)/
-	@echo Installing $(XINEPOSTAUTOCROP) to $(XINEPLUGINDIR)/post/
+	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@cp $(XINEPOSTAUTOCROP) $(XINEPLUGINDIR)/post/
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
-	@echo Installing $(XINEPOSTHEADPHONE) to $(XINEPLUGINDIR)/post/
+	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 	@cp $(XINEPOSTHEADPHONE) $(XINEPLUGINDIR)/post/
 endif
 ifeq ($(XINELIBOUTPUT_FB), 1)
-	@echo Installing vdr-fbfe to $(BINDIR)/
+	@echo Installing $(BINDIR)/vdr-fbfe
 	@-rm -rf $(BINDIR)/vdr-fbfe
 	@cp vdr-fbfe $(BINDIR)/
 endif
 ifeq ($(XINELIBOUTPUT_X11), 1)
-	@echo Installing vdr-sxfe to $(BINDIR)/
+	@echo Installing $(BINDIR)/vdr-sxfe
 	@-rm -rf $(BINDIR)/vdr-sxfe
 	@cp vdr-sxfe $(BINDIR)/
 endif
-
 
 dist: clean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
