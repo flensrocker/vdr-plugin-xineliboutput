@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.2 2006-07-15 21:46:45 phintuka Exp $
+ * $Id: setup_menu.c,v 1.3 2006-08-07 17:11:51 phintuka Exp $
  *
  */
 
@@ -132,9 +132,9 @@ cMenuSetupAudio::~cMenuSetupAudio(void)
   cXinelibDevice::Instance().ConfigurePostprocessing(
         xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
 	xc.audio_equalizer, xc.audio_surround);
-#ifdef ENABLE_TEST_POSTPLUGINS
   cXinelibDevice::Instance().ConfigurePostprocessing(
         "upmix", xc.audio_upmix ? true : false, NULL);
+#ifdef ENABLE_TEST_POSTPLUGINS
   cXinelibDevice::Instance().ConfigurePostprocessing(
         "headphone", xc.headphone ? true : false, NULL);
 #endif
@@ -337,6 +337,7 @@ class cMenuSetupVideo : public cMenuSetupPage
   private:
     config_t newconfig;
 
+    cOsdItem *ctrl_autocrop;
     cOsdItem *ctrl_hue;
     cOsdItem *ctrl_saturation;
     cOsdItem *ctrl_contrast;
@@ -369,6 +370,8 @@ cMenuSetupVideo::~cMenuSetupVideo(void)
 {
   cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, 
 					    xc.brightness, xc.contrast);
+  cXinelibDevice::Instance().ConfigurePostprocessing(
+       "autocrop", xc.autocrop ? true : false, NULL);
 }
 
 void cMenuSetupVideo::Set(void)
@@ -378,6 +381,10 @@ void cMenuSetupVideo::Set(void)
   Clear();
 
   Add(NewTitle("Video"));
+
+  Add(ctrl_autocrop = 
+      new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
+			    &newconfig.autocrop));
 
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
   Add(new cMenuEditIntItem(tr("HUE"), &newconfig.hue, -1, 0xffff));
@@ -427,6 +434,10 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
        INDEX_TO_CONTROL(newconfig.brightness), 
        INDEX_TO_CONTROL(newconfig.contrast));
 #endif
+  else if(item == ctrl_autocrop) 
+    cXinelibDevice::Instance().ConfigurePostprocessing(
+	 "autocrop", xc.autocrop ? true : false, NULL);
+
   return state;
 }
 
@@ -442,10 +453,11 @@ void cMenuSetupVideo::Store(void)
   xc.brightness = INDEX_TO_CONTROL(xc.brightness);
 #endif
 
-  SetupStore("Video.HUE",         xc.hue);
-  SetupStore("Video.Saturation",  xc.saturation);
-  SetupStore("Video.Contrast",    xc.contrast);
-  SetupStore("Video.Brightness",  xc.brightness);
+  SetupStore("Video.AutoCrop",   xc.autocrop);
+  SetupStore("Video.HUE",        xc.hue);
+  SetupStore("Video.Saturation", xc.saturation);
+  SetupStore("Video.Contrast",   xc.contrast);
+  SetupStore("Video.Brightness", xc.brightness);
 }
 
 
@@ -715,7 +727,6 @@ class cMenuSetupLocal : public cMenuSetupPage
     cOsdItem *ctrl_deinterlace_opts;
     cOsdItem *ctrl_interlace_order;  
     cOsdItem *ctrl_aspect;
-    cOsdItem *ctrl_autocrop;
 
   protected:
     virtual void Store(void);
@@ -755,10 +766,6 @@ cMenuSetupLocal::~cMenuSetupLocal(void)
   cXinelibDevice::Instance().ConfigurePostprocessing(
        xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
        xc.audio_equalizer, xc.audio_surround);
-#ifdef ENABLE_TEST_POSTPLUGINS
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-       "autocrop", xc.autocrop ? true : false, NULL);
-#endif
 }
 
 void cMenuSetupLocal::Set(void)
@@ -766,7 +773,6 @@ void cMenuSetupLocal::Set(void)
   int current = Current();
   Clear();
 
-  ctrl_autocrop = NULL;
   ctrl_interlace_order = NULL;
   ctrl_fullscreen = NULL;
   ctrl_window_width  = NULL;
@@ -775,15 +781,6 @@ void cMenuSetupLocal::Set(void)
   ctrl_aspect = NULL;
   ctrl_scale = NULL;
   ctrl_deinterlace_opts = NULL;
-
-  //Add(NewTitle("Video"));
-
-#ifdef ENABLE_TEST_POSTPLUGINS
-#warning move to Video menu (or enable only for local, for remote --> cmdline)
-  Add(ctrl_autocrop =
-      new cMenuEditBoolItem(tr("Crop letterbox to 16:9"), 
-			    &newconfig.autocrop));
-#endif
 
   Add(NewTitle("Local Frontend"));
   Add(ctrl_local_fe = 
@@ -886,11 +883,6 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
     } else if(newconfig.fullscreen && ctrl_window_width) {
       Set();
     }
-#ifdef ENABLE_TEST_POSTPLUGINS
-  } else if(item == ctrl_autocrop) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-	 "autocrop", xc.autocrop ? true : false, NULL);
-#endif
   } else if(item == ctrl_deinterlace) {
     if(deinterlace == DEINTERLACE_TVTIME && !ctrl_deinterlace_opts) {
       Set();
@@ -941,7 +933,6 @@ void cMenuSetupLocal::Store(void)
   SetupStore("Video.DeinterlaceOptions", xc.deinterlace_opts);
 
   SetupStore("Video.FieldOrder",  xc.field_order);
-  SetupStore("Video.AutoCrop",   xc.autocrop);
 }
 
 //--- cMenuSetupRemote -------------------------------------------------------
@@ -973,6 +964,7 @@ cMenuSetupRemote::cMenuSetupRemote(void)
 
 void cMenuSetupRemote::Set(void)
 {
+  int current = Current();
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
   Clear();
 
@@ -1012,6 +1004,8 @@ void cMenuSetupRemote::Set(void)
 			      &newconfig.remote_usebcast));
   }
 
+  if(current<1) current=1; /* first item is not selectable */
+  SetCurrent(Get(current));
   Display();
 }
 
