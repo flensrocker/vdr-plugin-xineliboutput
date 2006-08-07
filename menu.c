@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.3 2006-08-07 17:12:29 phintuka Exp $
+ * $Id: menu.c,v 1.4 2006-08-07 18:20:43 phintuka Exp $
  *
  */
 
@@ -20,11 +20,6 @@
 #include "menu.h"
 #include "menuitems.h"
 #include "device.h"
-#ifdef ENABLE_SUSPEND
-# ifdef SUSPEND_BY_PLAYER
-#  include "dummy_player.h"
-# endif
-#endif
 #include "media_player.h"
 #include "equalizer.h"
 
@@ -655,9 +650,6 @@ extern cOsdObject *g_PendingMenuAction;
 cMenuXinelib::cMenuXinelib()
 {
   field_order = xc.field_order;
-#ifdef ENABLE_SUSPEND
-  suspend = cXinelibDevice::Instance().IsSuspended();
-#endif
   compression = xc.audio_compression;
   headphone = xc.headphone;
   autocrop = xc.autocrop;
@@ -678,9 +670,6 @@ cMenuXinelib::cMenuXinelib()
 
 #ifdef HAVE_XV_FIELD_ORDER
   Add(video_ctrl_interlace_order = new cMenuEditStraI18nItem(tr("Interlaced Field Order"), &field_order, 2, xc.s_fieldOrder));
-#endif
-#ifdef ENABLE_SUSPEND
-  Add(decoder_ctrl_suspend = new cMenuEditStraI18nItem(tr("Decoder state"), &suspend, 2, decoderState));
 #endif
   Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"),"%", &compression, 100, 500, tr("Off")));
 
@@ -779,18 +768,6 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cXinelibDevice::Instance().ConfigurePostprocessing("headphone", headphone?true:false);    
     else if(item == ctrl_autocrop)
       cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", autocrop?true:false);
-#ifdef ENABLE_SUSPEND
-    else if(decoder_ctrl_suspend && item == decoder_ctrl_suspend) {
-      cXinelibDevice::Instance().Suspend(suspend);
-# ifdef SUSPEND_BY_PLAYER
-      if(suspend && !cDummyPlayerControl::IsOpen()) {
-        cControl::Launch(new cDummyPlayerControl);
-      } else {
-        cDummyPlayerControl::Close();
-      }
-# endif
-    }
-#endif
 #ifdef HAVE_XV_FIELD_ORDER
     else if(video_ctrl_interlace_order && item == video_ctrl_interlace_order)
       cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, xc.display_aspect, xc.scale_video, field_order);

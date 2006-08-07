@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.2 2006-07-02 17:03:26 phintuka Exp $
+ * $Id: config.c,v 1.3 2006-08-07 18:20:43 phintuka Exp $
  *
  */
 
@@ -104,7 +104,6 @@ config_t::config_t() {
   audio_upmix = 0;
   audio_surround = 0;
 
-  inactivity_timer     = 0;
   decoder_priority     = DECODER_PRIORITY_NORMAL;
   pes_buffers          = i_pesBufferSize[PES_BUFFERS_SMALL_250];
   strcpy(deinterlace_method, s_deinterlaceMethods[DEINTERLACE_NONE]);
@@ -288,7 +287,6 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.Rtp.TTL"))      remote_rtp_ttl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.AlwaysOn")) remote_rtp_always_on = atoi(Value);
 
-  else if (!strcasecmp(Name, "Decoder.InactivityTimer")) inactivity_timer=atoi(Value);
   else if (!strcasecmp(Name, "Decoder.Priority"))        decoder_priority=strstra(Value,s_decoderPriority,1);
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))      pes_buffers=atoi(Value);
 

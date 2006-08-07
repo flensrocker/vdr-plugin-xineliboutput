@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.6 2006-07-21 22:47:12 phintuka Exp $
+ * $Id: device.c,v 1.7 2006-08-07 18:20:43 phintuka Exp $
  *
  */
 
@@ -26,18 +26,6 @@
 #include "logdefs.h"
 #include "config.h"
 #include "osd.h"
-
-#ifdef ENABLE_SUSPEND
-#  include "tools/timer.h"
-#  include "tools/timer.c"
-#  ifdef SUSPEND_BY_PLAYER
-#    include "dummy_player.h"
-#    include "dummy_player.c"
-#  endif
-#  define ACTIVITY  m_inactivityTimer = 0;
-#else
-#  define ACTIVITY
-#endif
 
 #include "tools/listiter.h"
 #include "tools/pes.h"
@@ -177,10 +165,7 @@ cXinelibDevice::cXinelibDevice()
   m_ac3Present  = false;
   m_spuPresent  = false;
   ClrAvailableDvdSpuTracks();
-#ifdef ENABLE_SUSPEND
-  m_suspended   = false;
-  ACTIVITY
-#endif
+
   m_liveMode    = false;
   m_TrickSpeed  = -1;
   m_SkipAudio   = false;
@@ -228,16 +213,7 @@ bool cXinelibDevice::StartDevice()
     }
   }
 
-#ifdef ENABLE_SUSPEND
-  m_suspended = false;
-  ACTIVITY
-#endif
-
   m_statusMonitor = new cXinelibStatusMonitor(*this, CardIndex());
-  
-#ifdef ENABLE_SUSPEND
-  CreateTimerEvent(this, &cXinelibDevice::CheckInactivityTimer, 60*1000, false);
-#endif
 
   LOGDBG("cXinelibDevice::StartDevice(): Device started");
   return true;
@@ -247,9 +223,7 @@ void cXinelibDevice::StopDevice(void)
 {
   TRACEF("cXinelibDevice::StopDevice");
   LOGDBG("cXinelibDevice::StopDevice(): Stopping device ...");
-#ifdef ENABLE_SUSPEND
-  CancelTimerEvents(this);
-#endif
+
   if(m_statusMonitor) {
     delete m_statusMonitor;
     m_statusMonitor = NULL;
@@ -331,7 +305,6 @@ void cXinelibDevice::ConfigureOSD(bool prescale_osd, bool unscaled_osd)
 {
   TRACEF("cXinelibDevice::ConfigureOSD");
 
-  ACTIVITY
   if(m_local)
     m_local->ConfigureOSD(prescale_osd, unscaled_osd);
   if(m_server)
@@ -346,7 +319,6 @@ void cXinelibDevice::ConfigurePostprocessing(const char *deinterlace_method,
 {
   TRACEF("cXinelibDevice::ConfigurePostprocessing");
 
-  ACTIVITY
   if(m_local)
     m_local->ConfigurePostprocessing(deinterlace_method, audio_delay, 
 				     audio_compression, audio_equalizer,
@@ -362,7 +334,6 @@ void cXinelibDevice::ConfigurePostprocessing(const char *name, bool on,
 {
   TRACEF("cXinelibDevice::ConfigurePostprocessing");
 
-  ACTIVITY
   if(m_local)
     m_local->ConfigurePostprocessing(name, on, args);
   if(m_server)
@@ -373,7 +344,6 @@ void cXinelibDevice::ConfigureVideo(int hue, int saturation, int brightness, int
 {
   TRACEF("cXinelibDevice::ConfigureVideo");
 
-  ACTIVITY
   if(m_local)
     m_local->ConfigureVideo(hue, saturation, brightness, contrast);
   if(m_server)
@@ -384,7 +354,6 @@ void cXinelibDevice::ConfigureDecoder(int pes_buffers, int priority)
 {
   TRACEF("cXinelibDevice::ConfigureDecoder");
 
-  ACTIVITY
   if(m_local)
     m_local->ConfigureDecoder(pes_buffers, priority);
   //if(m_server)
@@ -400,7 +369,6 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
 {
   TRACEF("cXinelibDevice::ConfigureWindow");
 
-  ACTIVITY
   if((!*xc.local_frontend || !strncmp(xc.local_frontend, "none", 4)) && m_local) {
     cXinelibThread *tmp = m_local;
     m_clients.Del(tmp, false);
@@ -442,7 +410,6 @@ void cXinelibDevice::Listen(bool activate, int port)
 {
   TRACEF("cXinelibDevice::Listen");
 
-  ACTIVITY
   if(activate && port>0) {
     if(!m_server) {
       cXinelibThread *tmp = new cXinelibServer(port);
@@ -482,7 +449,6 @@ void cXinelibDevice::OsdCmd(void *cmd)
 {
   TRACEF("cXinelibDevice::OsdCmd");
 
-  ACTIVITY
   if(m_server)    // call first server, local frontend modifies contents of the message ...
     m_server->OsdCmd(cmd);
   if(m_local)
@@ -497,7 +463,6 @@ void cXinelibDevice::StopOutput(void)
 {
   TRACEF("cXinelibDevice::StopOutput");
 
-  ACTIVITY
   m_RadioStream = false;
   m_AudioCount  = 0;
 
@@ -520,7 +485,6 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
 
   m_StreamStart = true;
   m_liveMode = true;
-  ACTIVITY
   m_TrickSpeed = -1;
   m_SkipAudio  = false;
   m_AudioCount = 0;
@@ -553,14 +517,11 @@ void cXinelibDevice::SetReplayMode(void)
   ForEach(m_clients, &cXinelibThread::ResumeOutput);
 
   m_liveMode = false;
-  ACTIVITY
 }
 
 bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode) 
 {
   TRACEF("cXinelibDevice::SetPlayMode");
-
-  ACTIVITY
 
 #ifdef XINELIBOUTPUT_DEBUG
   switch (PlayMode) {
@@ -603,7 +564,6 @@ void cXinelibDevice::TrickSpeed(int Speed)
   TRACEF("cXinelibDevice::TrickSpeed");
 
   int RealSpeed = abs(Speed);
-  ACTIVITY
   m_TrickSpeed = Speed;
   m_TrickSpeedPts = 0;
 
@@ -622,7 +582,6 @@ void cXinelibDevice::Play(void)
 {
   TRACEF("cXinelibDevice::Play");
 
-  ACTIVITY
   m_SkipAudio  = false;
   
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
@@ -633,88 +592,8 @@ void cXinelibDevice::Freeze(void)
 {
   TRACEF("cXinelibDevice::Freeze");
 
-  ACTIVITY
-
   TrickSpeed(0);
 }
-
-//
-// Suspend device, inactivity timer
-//
-#ifdef ENABLE_SUSPEND
-void cXinelibDevice::CheckInactivityTimer() 
-{
-  TRACEF("cXinelibDevice::CheckInactivityTimer");
-
-  Lock();
-
-  if(xc.inactivity_timer>0) {
-    int old_Timer = m_inactivityTimer++;
-    TRACE("cXinelibDevice::CheckInactivityTimer @" << time(NULL));
-    TRACE("cXinelibDevice::CheckInactivityTimer: m_inactivityTimer = " << m_inactivityTimer);
-    
-    if(old_Timer<=xc.inactivity_timer && m_inactivityTimer>xc.inactivity_timer) {
-      SuspendedAction();
-      Unlock();
-# ifndef SUSPEND_BY_PLAYER
-      CreateTimerEvent(this, &cXinelibDevice::SuspendedAction, 5000);
-# endif
-      return;
-    }
-  }
-  Unlock();
-}
-
-bool cXinelibDevice::SuspendedAction(void) 
-{
-  TRACEF("cXinelibDevice::SuspendedAction");
-
-  LOCK_THREAD;
-  if(m_suspended || (xc.inactivity_timer>0 && m_inactivityTimer>xc.inactivity_timer)) {
-    if(m_liveMode) {
-# ifndef SUSPEND_BY_PLAYER
-      TRACE("cXinelibDevice::SuspendedAction - DECODER SUSPENDED");
-      ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
-      ForEach(m_clients, &cXinelibThread::LogoDisplay);
-# else
-      if(!cDummyPlayerControl::IsOpen()) 
-	cControl::Launch(new cDummyPlayerControl);
-# endif
-    }
-    return true;
-  }
-
-# ifndef SUSPEND_BY_PLAYER
-  ForEach(m_clients, &cXinelibThread::SetLiveMode, m_liveMode);
-# else
-  if(cDummyPlayerControl::IsOpen())
-    cDummyPlayerControl::Close();
-# endif
-
-  return false;
-}
-
-void cXinelibDevice::Suspend(bool onoff) 
-{
-  TRACEF("cXinelibDevice::Suspend");
-  TRACE("cXinelibDevice::Suspend = " << onoff);
-
-  Lock();
-  ACTIVITY
-
-  if(!m_suspended && onoff) {
-    m_suspended = onoff;
-    SuspendedAction();
-    Unlock();
-#ifndef SUSPEND_BY_PLAYER
-    CreateTimerEvent(this, &cXinelibDevice::SuspendedAction, 5000);
-#endif
-    return;
-  }
-  m_suspended = onoff;
-  Unlock();
-}
-#endif  // ENABLE_SUSPEND
 
 //
 // Playback of files and images
@@ -779,15 +658,6 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
 
   if(m_PlayingFile)
     return length;
-
-#ifdef ENABLE_SUSPEND
-  if(m_suspended || (xc.inactivity_timer > 0 && 
-		     m_inactivityTimer > xc.inactivity_timer)) {
-    if(m_liveMode) {
-      return length;
-    }
-  }
-#endif
 
   bool isMpeg1 = false;
 
@@ -1005,7 +875,6 @@ void cXinelibDevice::SetVolumeDevice(int Volume)
 {
   TRACEF("cXinelibDevice::SetVolumeDevice");
 
-  ACTIVITY
   ForEach(m_clients, &cXinelibThread::SetVolume, Volume);  
 }
 
@@ -1064,9 +933,8 @@ void cXinelibDevice::SetDigitalAudioDevice(bool On)
 void cXinelibDevice::SetVideoFormat(bool VideoFormat16_9) 
 {
   TRACEF("cXinelibDevice::SetVideoFormat");
-
   LOGDBG("SetVideoFormat(%s)", VideoFormat16_9 ? "16:9" : "4:3");
-  ACTIVITY
+
   cDevice::SetVideoFormat(VideoFormat16_9);
 
   //
@@ -1278,7 +1146,6 @@ bool cXinelibDevice::GrabImage(const char *FileName, bool Jpeg,
   int Size = 0;
   TRACEF("cXinelibDevice::GrabImage");
 
-  ACTIVITY
   if(m_local)
     Data = m_local->GrabImage(Size, Jpeg, Quality, SizeX, SizeY);
   if(!Data && m_server)
@@ -1307,7 +1174,6 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 {
   TRACEF("cXinelibDevice::GrabImage");
 
-  ACTIVITY
   if(m_local)
     return m_local->GrabImage(Size, Jpeg, Quality, SizeX, SizeY);
   if(m_server)

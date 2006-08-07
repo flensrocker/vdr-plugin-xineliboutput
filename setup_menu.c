@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.3 2006-08-07 17:11:51 phintuka Exp $
+ * $Id: setup_menu.c,v 1.4 2006-08-07 18:20:43 phintuka Exp $
  *
  */
 
@@ -646,11 +646,6 @@ void cMenuSetupDecoder::Set(void)
   Add(NewTitle("Decoder"));
   Add(new cMenuEditStraI18nItem(tr("Priority"), &xc.decoder_priority, 
 				DECODER_PRIORITY_count, xc.s_decoderPriority));
-#ifdef ENABLE_SUSPEND
-  Add(new cMenuEditTypedIntItem(tr("Stop after inactivity"), tr("min"), 
-				&newconfig.inactivity_timer, 0, 1440, 
-				tr("Off")));
-#endif
   Add(ctrl_pes_buffers_ind = 
       new cMenuEditStraI18nItem(tr("Buffer size"), &pes_buffers_ind, 
 				PES_BUFFERS_count, xc.s_bufferSize));
@@ -696,7 +691,6 @@ void cMenuSetupDecoder::Store(void)
   if(pes_buffers_ind != PES_BUFFERS_CUSTOM)
     xc.pes_buffers = xc.i_pesBufferSize[pes_buffers_ind];
 
-  SetupStore("Decoder.InactivityTimer", xc.inactivity_timer);
   SetupStore("Decoder.Priority", xc.s_decoderPriority[xc.decoder_priority]);
   SetupStore("Decoder.PesBuffers",    xc.pes_buffers);
 
