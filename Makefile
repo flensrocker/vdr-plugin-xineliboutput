@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.5 2006-08-07 23:39:11 phintuka Exp $
+# $Id: Makefile,v 1.6 2006-08-15 16:40:43 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -386,7 +386,7 @@ dist: clean
 
 
 clean:
-	@-rm -f $(DEPFILE) *.so *.o *.tgz core* *~ *.flc *.bak \
+	@-rm -f $(DEPFILE) *.so* *.o *.tgz core* *~ *.flc *.bak \
 		tools/*.o tools/*~ tools/*.flc xine/*.o xine/*~ \
 		xine/*.flc $(VDR_FBFE) $(VDR_SXFE) mpg2c black_720x576.c \
 		nosignal_720x576.c vdrlogo_720x576.c vdr-sxfe vdr-fbfe
