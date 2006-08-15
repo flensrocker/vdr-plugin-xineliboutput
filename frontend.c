@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.8 2006-07-21 22:55:01 phintuka Exp $
+ * $Id: frontend.c,v 1.9 2006-08-15 16:39:36 phintuka Exp $
  *
  */
 
@@ -409,7 +409,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
     Play_PES(seqend, 13);
   }
 
-  delete frame;
+  delete[] frame;
   return true;
 }
 
