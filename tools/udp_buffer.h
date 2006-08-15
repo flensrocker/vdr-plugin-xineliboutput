@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_buffer.h,v 1.1 2006-06-03 10:04:28 phintuka Exp $
+ * $Id: udp_buffer.h,v 1.2 2006-08-15 16:47:32 phintuka Exp $
  *
  */
 
@@ -64,7 +64,8 @@ class cUdpBackLog
       for(int i=0; i<UDP_BUFFER_SIZE; i++)
 	if(m_UdpBuffer[i]) {
 	  //m_UdpBufLen[i] = 0;
-	  DELETENULL(m_UdpBuffer[i]);
+          delete[] m_UdpBuffer[i];
+          m_UdpBuffer[i] = NULL;
 	}
     }
 
@@ -80,6 +81,28 @@ class cUdpBackLog
       return m_UdpBuffer[BufIndex] ? m_PayloadSize[BufIndex] : 0;
     }
 
+#if 0
+    stream_rtp_header_t *MakeFrame(uint32_t Seq, uint8_t *Data, int Length, bool Marker = false)
+    {
+/*
+  http://www.ietf.org/rfc/rfc2250.txt :
+  M bit:  Set to 1 whenever the timestamp is discontinuous
+          (such as might happen when a sender switches from one data
+          source to another). This allows the receiver and any
+          intervening RTP mixers or translators that are synchronizing
+          to the flow to ignore the difference between this timestamp
+          and any previous timestamp in their clock phase detectors.
+*/
+      stream_rtp_header_t hdr;
+      hdr.raw[0] = RTP_VERSION_BYTE;
+      hdr.raw[1] = Marker ? RTP_PAYLOAD_TYPE_M : RTP_PAYLOAD_TYPE;
+      hdr.seq  = htons(Seq);
+      hdr.ts   = htonl((uint32_t)(RtpScr.Now() & 0xffffffff));
+      hdr.ssrc = htonl(m_ssrc);
+      return NULL;
+    }
+#endif
+
     stream_udp_header_t *MakeFrame(uint64_t StreamPos, 
 				   const uchar *Data, int DataLen)
     {
@@ -87,9 +110,11 @@ class cUdpBackLog
       int BufIndex = m_SeqNo & UDP_BUFFER_MASK;
       
       // old buffer too small ? free it
-      if(m_UdpBuffer[BufIndex] && m_UdpBufLen[BufIndex] < UdpPacketLen) 
-	DELETENULL(m_UdpBuffer[BufIndex]);
-
+      if(m_UdpBuffer[BufIndex] && m_UdpBufLen[BufIndex] < UdpPacketLen) {
+        delete[] m_UdpBuffer[BufIndex];
+        m_UdpBuffer[BufIndex] = NULL;
+      }
+      
       // no buffer ? alloc it
       if(!m_UdpBuffer[BufIndex]) {
 	m_UdpBuffer[BufIndex] = (stream_udp_header_t*)new uchar[UdpPacketLen];
