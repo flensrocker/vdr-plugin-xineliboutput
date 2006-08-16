@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.23 2006-08-16 13:52:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.24 2006-08-16 17:53:05 phintuka Exp $
  *
  */
 
@@ -2183,10 +2183,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 
   strncpy(filename, pt, 1023);
   filename[1023] = 0;
-  if(strchr(filename,'\r'))
-    *strchr(filename,'\r') = 0;
-  if(strchr(filename,'\n'))
-    *strchr(filename,'\n') = 0;
 
   LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s)",
 	 loop, pos, *filename ? filename : "<STOP>" );
@@ -2606,13 +2602,11 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   uint64_t tmp64 = 0ULL;
   xine_stream_t *stream = this->stream;
   static const char *str_poll = "POLL";
+  char *pt;
 
   VDR_ENTRY_LOCK(CONTROL_DISCONNECTED);
 
   LOGCMD("vdr_plugin_parse_control: %s", cmd); 
-
-  if(this->slave_stream)
-    stream = this->slave_stream;
 
   if( *((uint32_t*)cmd) == *((uint32_t*)str_poll) ||
       !strncasecmp(cmd, "POLL ", 5)) {
@@ -2626,8 +2620,17 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     } else {
       err = CONTROL_PARAM_ERROR;
     }
-    
-  } else if(!strncasecmp(cmd, "OSDSCALING", 10)) {
+    VDR_ENTRY_UNLOCK();
+    return err;
+  }
+
+  if(this->slave_stream)
+    stream = this->slave_stream;
+
+  if(NULL != (pt = strstr(cmd, "\r\n")))
+    *((char*)pt) = 0; /* auts */
+
+  if(!strncasecmp(cmd, "OSDSCALING", 10)) {
     err = handle_control_osdscaling(this, cmd);
 
   } else if(!strncasecmp(cmd, "OSDCMD", 6)) {
@@ -3601,6 +3604,7 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf = NULL;
+  static int overflows = 0;
 
   if(this->slave_stream)
     return len;
@@ -3615,11 +3619,15 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
 
   buf = get_buf_element(this, len, 0);
   if(!buf) {
-    LOGMSG("vdr_plugin_write: buffer overflow ! (%d bytes)", len);
+    /* need counter to filter non-fatal overflows
+       (VDR is not polling for every PES packet) */
+    if(overflows++ > 1)
+      LOGMSG("vdr_plugin_write: buffer overflow ! (%d bytes)", len);
     VDR_ENTRY_UNLOCK();
     xine_usec_sleep(5*1000);
     return 0; /* EAGAIN */
   }
+  overflows = 0;
 
   if(len > buf->max_size) {
     LOGMSG("vdr_plugin_write: PES too long (%d bytes, max size "
