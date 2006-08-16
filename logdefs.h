@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: logdefs.h,v 1.2 2006-08-16 22:28:52 phintuka Exp $
  *
  */
 
@@ -58,6 +58,7 @@
 
 
 #ifdef XINELIBOUTPUT_DEBUG
+# ifdef __cplusplus
 #
 #  include <fstream>
 #  include <iostream>
@@ -82,6 +83,7 @@
        ~cTraceFunctionCall()
          { TRACE(m_name << " - Leave "); }
    };
+# endif
 #else
 #  define TRACE(x)
 #  define TRACEF(x)
