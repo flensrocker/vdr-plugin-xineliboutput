@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.9 2006-08-16 17:45:40 phintuka Exp $
+ * $Id: device.c,v 1.10 2006-08-16 23:49:41 phintuka Exp $
  *
  */
 
@@ -113,7 +113,7 @@ void cXinelibStatusMonitor::Replaying(const cControl *Control,
   TRACEF("cXinelibStatusMonitor::Replaying");
   
   if (On /*&& Name != NULL*/) {
-    TRACE("cXinelibStatusMonitor: Replaying " << Name << "("<<FileName")");
+    TRACE("cXinelibStatusMonitor: Replaying " << Name << "(" << FileName << ")");
     m_Device.SetReplayMode();
   }
 }
