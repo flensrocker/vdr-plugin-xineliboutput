@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.8 2006-08-16 13:18:42 phintuka Exp $
+ * $Id: device.c,v 1.9 2006-08-16 17:45:40 phintuka Exp $
  *
  */
 
@@ -615,17 +615,11 @@ int cXinelibDevice::PlayFileCtrl(const char *Cmd)
 
 bool cXinelibDevice::EndOfStreamReached(void)
 {
-#if 1
   if(m_local && !m_local->EndOfStreamReached())
     return false;
   if(m_server && !m_server->EndOfStreamReached())
     return false;
   return true;
-#else
-  // problem when local frontend and remote server with no clients 
-  return (((!m_server) || m_server->EndOfStreamReached()) &&
-	  ((!m_local)  || m_local->EndOfStreamReached()));
-#endif
 }
 
 bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
@@ -640,13 +634,15 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
       m_PlayingFile = true;
       StopOutput();
     }
-    result = (((!m_server) || 
-	       m_server->PlayFile(FileName, Position, LoopPlay)) &&
-	      ((!m_local) || 
-	       m_local->PlayFile(FileName, Position, LoopPlay)));
+    if(m_server)
+      result = m_server->PlayFile(FileName, Position, LoopPlay);
+    if(m_local)
+      result = m_local->PlayFile(FileName, Position, LoopPlay);
   } else if(/*!FileName &&*/m_PlayingFile) {
-    result = (((!m_server) || m_server->PlayFile(NULL, 0)) &&
-	      ((!m_local)  || m_local->PlayFile(NULL, 0)));
+    if(m_server) 
+      result = m_server->PlayFile(NULL, 0);
+    if(m_local)
+      result = m_local->PlayFile(NULL, 0);
     if(!m_liveMode)
       SetReplayMode();
     else
