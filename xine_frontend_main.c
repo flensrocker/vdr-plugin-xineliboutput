@@ -4,12 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.8 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.9 2006-08-16 23:01:19 phintuka Exp $
  *
  */
 
 #include <termios.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #if 0
 static void xine_log_cb(void *data, int section)
