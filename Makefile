@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.6 2006-08-15 16:40:43 phintuka Exp $
+# $Id: Makefile,v 1.7 2006-08-16 23:29:35 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -262,7 +262,7 @@ nosignal_720x576.c: mpg2c nosignal_720x576.mpg
 vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 	@./mpg2c vdrlogo vdrlogo_720x576.mpg vdrlogo_720x576.c
 
-xine_input_vdr.o: xine_input_vdr.c xine_input_vdr.h xine_osd_command.h nosignal_720x576.c
+xine_input_vdr.o: xine_input_vdr.c xine_input_vdr.h xine_osd_command.h nosignal_720x576.c logdefs.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_vdr.c
 xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
