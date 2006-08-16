@@ -36,6 +36,7 @@
 # include <sys/types.h>
 # include <linux/unistd.h>
 # include <errno.h>
+# include <syslog.h>
 
 # define LOG_MODULENAME "[xine-post] "
 # include "../logdefs.h"
@@ -45,12 +46,12 @@
   /* from xine_frontend.c: */
   extern int LogToSysLog; /* log to syslog instead of console */
 
+  pid_t gettid(void); /*_syscall0(pid_t, gettid);*/
+
 # if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
      !defined(XINELIBOUTPUT_DEBUG_STDERR)
 
 #   undef x_syslog
-
-    pid_t gettid(void); /*_syscall0(pid_t, gettid);*/
 
     static void x_syslog(int level, const char *fmt, ...)
     {

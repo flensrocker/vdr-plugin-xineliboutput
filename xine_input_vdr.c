@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.26 2006-08-16 22:36:30 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.27 2006-08-16 23:27:57 phintuka Exp $
  *
  */
 
@@ -33,6 +33,7 @@
 #include <dlfcn.h>
 #include <linux/unistd.h> /* gettid() */
 #include <sys/resource.h> /* setpriority() */
+#include <syslog.h>
 
 #include <xine/xine_internal.h>
 #include <xine/xineutils.h>
