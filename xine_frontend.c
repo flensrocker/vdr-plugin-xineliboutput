@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.8 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.9 2006-08-16 22:36:30 phintuka Exp $
  *
  */
 
@@ -42,6 +42,9 @@ typedef struct {
  * logging 
  */
 
+#if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
+    !defined(XINELIBOUTPUT_DEBUG_STDERR)
+
 #undef x_syslog
 
 _syscall0(pid_t, gettid)
@@ -59,6 +62,8 @@ static void x_syslog(int level, const char *fmt, ...)
   }
   va_end(argp);
 }
+
+#endif
 
 /*
  * detect input plugin 

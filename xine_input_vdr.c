@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.25 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.26 2006-08-16 22:36:30 phintuka Exp $
  *
  */
 
@@ -69,8 +69,11 @@
 
 #include "logdefs.h"
 
-#undef  x_syslog
-#define x_syslog syslog_with_tid
+#if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
+    !defined(XINELIBOUTPUT_DEBUG_STDERR)
+# undef  x_syslog
+# define x_syslog syslog_with_tid
+#endif
 
 int iSysLogLevel  = 1;
 int bLogToSysLog  = 0;
