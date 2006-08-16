@@ -1,14 +1,20 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2006-08-08: Version 1.0.0pre2
+2006-08-16: Version 1.0.0pre2
 
 - Xine plugins and frontends are not installed automatically.
   (Suggested by Udo Richter).
 - Added support for AC3 passthrough (thanks to Petri Helin)
-- Automatic 4:3 letterbox to 16:9 cropping
+- Automatic 4:3 letterbox to 16:9 cropping pre-version
 - Added daemon mode to stand-alone frontends
 - Removed possible busy loop from lirc receiver thread
+- New localized texts
+- Fixed local media player when remote server is active and there are no clients
+- Option for audio-only playback (discards video)
+- Fixed DVD navigation in local mode (Thanks to Petri Helin)
+- Completed simple playlist support
+  (play all media files in folder ; play .m3u playlist)
 
 2006-07-23: Verson 1.0.0pre1
 
