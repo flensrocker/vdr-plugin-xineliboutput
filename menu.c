@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.6 2006-08-16 17:48:07 phintuka Exp $
+ * $Id: menu.c,v 1.7 2006-08-16 21:13:04 phintuka Exp $
  *
  */
 
@@ -16,6 +16,7 @@
 #include <vdr/menu.h>
 #include <vdr/plugin.h>
 
+#include "logdefs.h"
 #include "config.h"
 #include "menu.h"
 #include "menuitems.h"
@@ -205,6 +206,14 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
       free(f);
       return osEnd;
     }
+    if(ForceOpen && GetCurrent()->IsDir()) {
+      /* play all files */
+      char *f = NULL;
+      asprintf(&f, "%s/%s/", m_CurrentDir, GetCurrent()->Name());
+      cControl::Launch(new cXinelibPlayerControl(f));
+      free(f);
+      return osEnd;
+    }
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
     asprintf(&buffer, "%s/%s", m_CurrentDir, d);
@@ -282,6 +291,7 @@ static bool IsVideoFile(const char *fname)
        !strcasecmp(pos, ".mp4") || 
        !strcasecmp(pos, ".asf") || 
        !strcasecmp(pos, ".flac") || 
+       !strcasecmp(pos, ".m3u") || 
        !strcasecmp(pos, ".ram"))
       return true;
   }
