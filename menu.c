@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.5 2006-08-16 13:51:34 phintuka Exp $
+ * $Id: menu.c,v 1.6 2006-08-16 17:48:07 phintuka Exp $
  *
  */
 
@@ -281,6 +281,7 @@ static bool IsVideoFile(const char *fname)
        !strcasecmp(pos, ".mp3") || 
        !strcasecmp(pos, ".mp4") || 
        !strcasecmp(pos, ".asf") || 
+       !strcasecmp(pos, ".flac") || 
        !strcasecmp(pos, ".ram"))
       return true;
   }
@@ -657,7 +658,10 @@ cMenuXinelib::cMenuXinelib()
 
   Add(new cOsdItem(tr("Play file >>"), osUser1));
   Add(new cOsdItem(tr("View images >>"), osUser2));
-  Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
+  if(xc.remote_mode)
+    Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
+  else
+    Add(new cOsdItem(tr("Play DVD Disc >>"), osUser4));
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
     Add(new cOsdItem(tr("  Select DVD SPU Track >>"), osUser5));
   Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
