@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.h,v 1.2 2006-08-07 18:20:43 phintuka Exp $
+ * $Id: menu.h,v 1.3 2006-08-16 13:34:12 phintuka Exp $
  *
  */
 
@@ -21,6 +21,7 @@ class cMenuXinelib : public cMenuSetupPage
     int compression;
     int headphone;
     int autocrop;
+    int novideo;
     
 #ifdef HAVE_XV_FIELD_ORDER
     cOsdItem *video_ctrl_interlace_order;
@@ -29,7 +30,8 @@ class cMenuXinelib : public cMenuSetupPage
 
     cOsdItem *ctrl_autocrop;
     cOsdItem *ctrl_headphone;
-
+    cOsdItem *ctrl_novideo;
+ 
   protected:
     virtual void Store(void);
 
