@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.5 2006-08-07 18:20:43 phintuka Exp $
+ * $Id: device.h,v 1.6 2006-08-16 13:18:42 phintuka Exp $
  *
  */
 
@@ -148,9 +148,11 @@ class cXinelibDevice : public cDevice
     bool HasDvdSpuTrack(int Type) const;
 #endif
 
+    virtual bool SetPlayMode(ePlayMode PlayMode);
+    ePlayMode GetPlayMode(void) const { return playMode; };
+
   protected:
     ePlayMode playMode;
-    virtual bool SetPlayMode(ePlayMode PlayMode);
 
     cList<cXinelibThread> m_clients;
     cXinelibThread        *m_server;
