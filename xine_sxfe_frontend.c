@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.7 2006-08-05 14:02:48 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.8 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -112,6 +112,7 @@ typedef struct sxfe_s {
 
   /* frontend */
   int                      playback_finished;
+  int                      slave_playback_finished;
 
   /* vdr */
   fe_keypress_f          keypress;

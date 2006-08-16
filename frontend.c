@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.9 2006-08-15 16:39:36 phintuka Exp $
+ * $Id: frontend.c,v 1.10 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -575,17 +575,15 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 int cXinelibThread::ConfigurePostprocessing(const char *name, bool on, const char *args)
 {
   char tmp[1024];  
-  if(!name) name = "0";
-  if(!args) args = "";
   if(on) {
-    sprintf(tmp, "POST %s On %s", name, args);
+    sprintf(tmp, "POST %s On %s", (name&&*name)?name:"0", args?args:"");
     return Xine_Control(tmp);
   } else {
     // 0 - audio vis.
     // 1 - audio post
     // 2 - video post
     //return fe->post_close(fe, name, -1);
-    sprintf(tmp, "POST %s Off", name);
+    sprintf(tmp, "POST %s Off", (name&&*name)?name:"0");
     return Xine_Control(tmp);
   }
   return -1;

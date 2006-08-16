@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.2 2006-06-04 11:00:04 phintuka Exp $
+ * $Id: frontend_local.h,v 1.3 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -40,6 +40,9 @@ class cXinelibLocal : public cXinelibThread
     virtual int  Play_PES(const uchar *buf, int len);
     virtual void OsdCmd(void *cmd);
     virtual int64_t GetSTC();
+
+    // Playback files
+    virtual bool EndOfStreamReached(void);
 
     // Image grabbing
     virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality, 

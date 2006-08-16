@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.3 2006-06-11 19:08:05 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.4 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -82,6 +82,7 @@ typedef struct fbfe_t {
 
   /* frontend */
   int                      playback_finished;
+  int                      slave_playback_finished;
 
   /* vdr */
   fe_keypress_f            keypress;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.6 2006-08-07 17:12:29 phintuka Exp $
+ * $Id: frontend_local.c,v 1.7 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -147,6 +147,18 @@ int64_t cXinelibLocal::GetSTC()
 }
 
 //
+// Playback files
+//
+
+bool cXinelibLocal::EndOfStreamReached(void) 
+{
+  LOCK_THREAD;
+  if(fe->xine_is_finished(fe, 1))
+    return true;
+  return cXinelibThread::EndOfStreamReached();
+}
+
+//
 // Configuration
 //
 
@@ -190,11 +202,13 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers, int priority)
 int cXinelibLocal::Xine_Control(const char *cmd)
 {
   TRACEF("cXinelibLocal::Xine_Control");
-  char buf[256];
-  sprintf(buf, "%s\r\n", cmd);
-  LOCK_FE;
-  if(fe)
-    return fe->xine_control(fe, (char*)buf);
+  if(cmd && *cmd) {
+    char buf[2048];
+    sprintf(buf, "%s\r\n", cmd);
+    LOCK_FE;
+    if(fe)
+      return fe->xine_control(fe, (char*)buf);
+  }
   return 0;
 }
 
@@ -416,13 +430,13 @@ void cXinelibLocal::Action(void)
     {
       LOCK_FE;
       while(!GetStopSignal() && m_bReady && 
-	    (/*m_bLoopPlay ||*/ !fe->xine_is_finished(fe)) && 
+	    (/*m_bLoopPlay ||*/ !fe->xine_is_finished(fe, 0)) && 
 	    fe->fe_run(fe)) 
 	/*cCondWait::SleepMs(50)*/ ;
     }
 
     LOGDBG("cXinelibLocal::Action - event loop terminated, "
-	   "xine_is_finished=%d", fe->xine_is_finished(fe));
+	   "xine_is_finished=%d", fe->xine_is_finished(fe, 0));
 
     {
       LOCK_THREAD;

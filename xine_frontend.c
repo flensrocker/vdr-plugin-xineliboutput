@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.7 2006-08-16 17:49:22 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.8 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -935,10 +935,19 @@ static void fe_free(frontend_t *this_gen)
   }
 }
 
-static int fe_is_finished(frontend_t *this_gen)
+static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 {
   fe_t *this = (fe_t*)this_gen;
-  return this ? this->playback_finished : 1;
+
+  if(!this || this->playback_finished)
+    return 1;
+  
+  if(slave_stream) {
+    if(!this->postplugins->slave_stream || this->slave_playback_finished)
+      return 1;
+  }
+  
+  return 0;
 }
 
 /************************** hooks to input plugin ****************************/
@@ -1026,9 +1035,22 @@ static void process_xine_keypress(input_plugin_t *input,
 static void *fe_control(void *fe_handle, const char *cmd)
 {
   fe_t *this = (fe_t*)fe_handle;
-  post_plugins_t *posts = this->postplugins;
+  post_plugins_t *posts;
 
   /*LOGDBG("fe_control(\"%s\")", cmd);*/
+
+  if(!cmd || !this) {
+    LOGMSG("fe_control(0x%x,0x%x) : invalid argument", 
+	   (unsigned long int)fe_handle, (unsigned long int)cmd);
+    return NULL;
+  }
+
+  posts = this->postplugins;
+
+  if(!posts) {
+    LOGMSG("fe_control : this->posts == NULL");
+    return NULL;
+  }
 
   if(!strncmp(cmd, "SLAVE 0x", 8)) {
     unsigned long pt;
@@ -1039,7 +1061,12 @@ static void *fe_control(void *fe_handle, const char *cmd)
 	posts->slave_stream = slave_stream;
 	fe_post_rewire(this);
       }
+      this->slave_playback_finished = 0;
     }
+
+  } else if(!strncmp(cmd, "ENDOFSTREAM", 11)) {
+    if(posts->slave_stream)
+      this->slave_playback_finished = 1;
 
   } else if(!strncmp(cmd, "SUBSTREAM ", 10)) {
     unsigned int pid;

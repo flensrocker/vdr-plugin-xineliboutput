@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.11 2006-08-07 17:08:33 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.12 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -446,17 +446,21 @@ int cXinelibServer::Xine_Control(const char *cmd)
 {
   TRACEF("cXinelibServer::Xine_Control");
 
-  char buf[128];
-  sprintf(buf, "%s\r\n", cmd);
-  int len = strlen(buf);
-  LOCK_THREAD;
+  if(cmd && *cmd) {
+    char buf[2048];
+    int len;
+    sprintf(buf, "%s\r\n", cmd);
+    len = strlen(buf);
 
-  for(int i=0; i<MAXCLIENTS; i++)
-    if(fd_control[i]>=0 && (fd_data[i]>=0 || m_bMulticast[i]) && m_bConfigOk[i])
-      if(len != timed_write(fd_control[i], buf, len, 100)) {
-	LOGMSG("Control send failed (%s), dropping client", cmd);
-	CloseConnection(i);
-      }
+    LOCK_THREAD;
+
+    for(int i=0; i<MAXCLIENTS; i++)
+      if(fd_control[i]>=0 && (fd_data[i]>=0 || m_bMulticast[i]) && m_bConfigOk[i])
+	if(len != timed_write(fd_control[i], buf, len, 100)) {
+	  LOGMSG("Control send failed (%s), dropping client", cmd);
+	  CloseConnection(i);
+	}
+  }
 
   return 1;
 }

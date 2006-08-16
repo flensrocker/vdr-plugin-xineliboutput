@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.7 2006-08-05 19:22:16 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.8 2006-08-16 21:46:34 phintuka Exp $
  *
  */
 
@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
   fflush(stdout);
   fflush(stderr);
 
-  while(fe->fe_run(fe) && !fe->xine_is_finished(fe) && !terminate_key_pressed) 
+  while(fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed) 
     pthread_yield();
 
   /* Clean up */
