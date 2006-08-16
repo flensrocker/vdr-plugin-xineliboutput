@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.9 2006-08-16 22:36:30 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.10 2006-08-16 23:26:16 phintuka Exp $
  *
  */
 
@@ -1045,7 +1045,7 @@ static void *fe_control(void *fe_handle, const char *cmd)
   /*LOGDBG("fe_control(\"%s\")", cmd);*/
 
   if(!cmd || !this) {
-    LOGMSG("fe_control(0x%x,0x%x) : invalid argument", 
+    LOGMSG("fe_control(0x%lx,0x%lx) : invalid argument", 
 	   (unsigned long int)fe_handle, (unsigned long int)cmd);
     return NULL;
   }
