@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.22 2006-08-04 12:28:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.23 2006-08-16 13:52:34 phintuka Exp $
  *
  */
 
@@ -66,16 +66,15 @@
 
 #define LOG_MODULENAME "[input_vdr] "
 #define SysLogLevel iSysLogLevel
+
 #include "logdefs.h"
+
+#undef  x_syslog
+#define x_syslog syslog_with_tid
 
 int iSysLogLevel  = 1;
 int bLogToSysLog  = 0;
 int bSymbolsFound = 0;
-
-#if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
-    !defined(XINELIBOUTPUT_DEBUG_STDERR)
-#undef  x_syslog
-#define x_syslog syslog_with_tid
 
 _syscall0(pid_t, gettid)
 
@@ -92,7 +91,6 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   }
   va_end(argp);
 }
-#endif
 
 static void SetupLogLevel(void)
 {
