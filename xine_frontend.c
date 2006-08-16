@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.6 2006-08-07 19:40:46 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.7 2006-08-16 17:49:22 phintuka Exp $
  *
  */
 
@@ -386,7 +386,8 @@ static void configure_audio_out(fe_t *this, const char *audio_driver, const char
     this->xine->config->update_string(this->xine->config,
 				      "audio.device.alsa_surround51_device",
 				      audio_port);
-    if(strstr(audio_port, "iec")) {
+    if(strstr(audio_port, "iec") ||
+       strstr(audio_port, "spdif")) {
       this->xine->config->update_string(this->xine->config,
 					"audio.device.alsa_passthrough_device",
 					audio_port);
