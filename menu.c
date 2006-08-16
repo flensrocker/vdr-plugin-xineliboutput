@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.4 2006-08-07 18:20:43 phintuka Exp $
+ * $Id: menu.c,v 1.5 2006-08-16 13:51:34 phintuka Exp $
  *
  */
 
@@ -653,6 +653,7 @@ cMenuXinelib::cMenuXinelib()
   compression = xc.audio_compression;
   headphone = xc.headphone;
   autocrop = xc.autocrop;
+  novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
   Add(new cOsdItem(tr("Play file >>"), osUser1));
   Add(new cOsdItem(tr("View images >>"), osUser2));
@@ -661,6 +662,8 @@ cMenuXinelib::cMenuXinelib()
     Add(new cOsdItem(tr("  Select DVD SPU Track >>"), osUser5));
   Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
 					    &autocrop));
+  Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
+					   &novideo));
 #ifdef ENABLE_TEST_POSTPLUGINS
   Add(ctrl_headphone = new cMenuEditBoolItem(tr("Headphone audio mode"), 
 					     &headphone));
@@ -710,6 +713,10 @@ cMenuXinelib::~cMenuXinelib()
   if(xc.autocrop != autocrop)
     cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", 
 						       xc.autocrop ? true : false);
+
+  int dev_novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
+  if(dev_novideo != novideo) 
+    cXinelibDevice::Instance().SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
 }
 
 eOSState cMenuXinelib::ProcessKey(eKeys Key)
@@ -763,14 +770,21 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 
   if(Key==kLeft || Key==kRight) {
     if(item == audio_ctrl_compress)
-      cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, compression, xc.audio_equalizer, xc.audio_surround);
+      cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
+							 compression, xc.audio_equalizer, 
+							 xc.audio_surround);
     else if(item == ctrl_headphone)
       cXinelibDevice::Instance().ConfigurePostprocessing("headphone", headphone?true:false);    
     else if(item == ctrl_autocrop)
       cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", autocrop?true:false);
+    else if(item == ctrl_novideo)
+      cXinelibDevice::Instance().SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
 #ifdef HAVE_XV_FIELD_ORDER
     else if(video_ctrl_interlace_order && item == video_ctrl_interlace_order)
-      cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, xc.display_aspect, xc.scale_video, field_order);
+      cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height, 
+						 xc.modeswitch, xc.modeline, 
+						 xc.display_aspect, xc.scale_video, 
+						 field_order);
 #endif
   }
   
