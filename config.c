@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.3 2006-08-07 18:20:43 phintuka Exp $
+ * $Id: config.c,v 1.4 2006-08-17 18:56:03 phintuka Exp $
  *
  */
 
@@ -82,6 +82,50 @@ static char *strcatrealloc(char *dest, const char *src)
   return dest;
 }
 
+bool config_t::IsVideoFile(const char *fname)
+{
+  if(fname) {
+    char *pos = strrchr(fname,'.');
+    if(pos) {
+      if(!strcasecmp(pos, ".avi") ||
+	 !strcasecmp(pos, ".mpv") ||
+	 !strcasecmp(pos, ".vob") || 
+	 !strcasecmp(pos, ".vdr") || 
+	 !strcasecmp(pos, ".mpg") ||
+	 !strcasecmp(pos, ".mpeg")|| 
+	 !strcasecmp(pos, ".mpa") || 
+	 !strcasecmp(pos, ".mp2") || 
+	 !strcasecmp(pos, ".mp3") || 
+	 !strcasecmp(pos, ".mp4") || 
+	 !strcasecmp(pos, ".asf") || 
+	 !strcasecmp(pos, ".flac") || 
+	 !strcasecmp(pos, ".m3u") || 
+	 !strcasecmp(pos, ".ram"))
+	return true;
+    }
+  }
+  return false;
+}
+
+bool config_t::IsImageFile(const char *fname)
+{
+  if(fname) {
+    char *pos = strrchr(fname,'.');
+    if(pos) {
+      if(!strcasecmp(pos, ".jpg") ||
+	 !strcasecmp(pos, ".jpeg") ||
+	 !strcasecmp(pos, ".gif") ||
+	 !strcasecmp(pos, ".tiff") || 
+	 !strcasecmp(pos, ".bmp") || 
+	 !strcasecmp(pos, ".png"))
+	return true;
+    }
+  }
+  return false;
+}
+
+
+
 config_t::config_t() {
   memset(this, 0, sizeof(config_t));
 
@@ -150,6 +194,7 @@ config_t::config_t() {
   brightness   = -1; 
 
   strcpy(browse_files_dir,  "/video");
+  strcpy(browse_music_dir,  "/video");
   strcpy(browse_images_dir, "/video");
 
   main_menu_mode = ShowMenu;
@@ -303,6 +348,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
 
   else if (!strcasecmp(Name, "BrowseFilesDir"))    strcpy(browse_files_dir, Value);
+  else if (!strcasecmp(Name, "BrowseMusicDir"))    strcpy(browse_music_dir, Value);
   else if (!strcasecmp(Name, "BrowseImagesDir"))   strcpy(browse_images_dir, Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
