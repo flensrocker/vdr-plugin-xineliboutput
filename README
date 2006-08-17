@@ -56,6 +56,10 @@ Public CVS
   CVS checkout command:
   cvs -d:pserver:anonymous@xineliboutput.cvs.sourceforge.net:/cvsroot/xineliboutput co vdr-xineliboutput
 
+  Distribution package includes public CVS repository information.
+  Updating to latest CVS version should be possible by just running 
+  "cvs update" in plugin source directory.
+
 
 Buildtime options
 
@@ -252,8 +256,9 @@ Frontend key bindings
 
 Image viewer key bindings
 
-  Up/Down         Next/previous image
-  Left/Right      Jump 5 images forward/backward
+  Left/Prev       Previous image
+  Right/Next      Next image
+  Up/Down         Jump 5 images forward/backward
   Yellow          Delete current image
   Back            Return to image list
   Stop/Blue       Exit image viewer
@@ -262,7 +267,6 @@ Image viewer key bindings
   FastFF/FastRew  Start slide show; Increase/decrease slide show speed; 
                   Change slideshow direction
   Ok              Toggle replay display mode
-
 
 Media player key bindings
 
@@ -278,6 +282,8 @@ Media player key bindings
   Pause      Pause replay
   Play       Play
   Ok         Toggle replay display mode
+  Next/Right Skip to next file when replaying playlist
+  Prev/Left  Skip to previous file when replaying playlist
 
 DVD player key bindings
 
@@ -341,9 +347,17 @@ Aspect ratio setting
              (useful with 16:9 TV if TV can switch between 
              16:9 and 4:3 -> 16:9 smart scaling)
 
+
+Xine-specific settings
+
+  All xine-specific settings can be changed by editing file
+  $(HOME)/.xine/config_xineliboutput.
+
+
 VDR Logo
 
   The VDR logo was designed by Jan Grell.
+
 
 Notes
 
