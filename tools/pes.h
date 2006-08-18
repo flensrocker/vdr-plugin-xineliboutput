@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.1 2006-06-03 10:04:27 phintuka Exp $
+ * $Id: pes.h,v 1.2 2006-08-18 02:17:24 phintuka Exp $
  *
  */
 
@@ -223,12 +223,11 @@ static inline int ScanVideoPacket(const uchar *Data, int Count, /*int Offset,*/
 {
   // Scans the video packet starting at Offset and returns its length.
   // If the return value is -1 the packet was not completely in the buffer.
-  int Offset = 0;
   int Length = Count;
-  if (Length > 0 && Offset + Length <= Count) {
-    int i = Offset + 8; // the minimum length of the video packet header
+  if (Length > 0 && Length <= Count) {
+    int i = 8;          // the minimum length of the video packet header
     i += Data[i] + 1;   // possible additional header bytes
-    for (; i < Offset + Length; i++) {
+    for (; i < Length-5; i++) {
       if (Data[i] == 0 && Data[i + 1] == 0 && Data[i + 2] == 1) {
 	switch (Data[i + 3]) {
 	  case SC_PICTURE: 
