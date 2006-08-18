@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.4 2006-08-18 04:24:02 phintuka Exp $
+ * $Id: media_player.c,v 1.5 2006-08-18 04:31:24 phintuka Exp $
  *
  */
 
@@ -252,7 +252,7 @@ bool cXinelibPlayer::NextFile(int step)
     asprintf(&m_ResumeFile, "%s.resume", m_File);
 
     Activate(true);
-    if(!m_bReplaying)
+    if(!m_Replaying)
       return false;
 
     return true;
