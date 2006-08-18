@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.8 2006-08-17 00:00:04 phintuka Exp $
+ * $Id: menu.c,v 1.9 2006-08-18 03:02:51 phintuka Exp $
  *
  */
 
@@ -29,9 +29,10 @@
 class cMenuBrowseFiles : public cOsdMenu 
 {
   protected:
-    char *m_CurrentDir;
-    bool m_Images, m_Preview;
-    char *m_ConfigLastDir;
+    char         *m_CurrentDir;
+    eMainMenuMode m_Mode;
+    bool          m_Preview;
+    char         *m_ConfigLastDir;
 
     virtual bool ScanDir(const char *DirName);
     virtual eOSState Open(bool ForceOpen = false, bool Parent = false);
@@ -41,9 +42,10 @@ class cMenuBrowseFiles : public cOsdMenu
     virtual void SetHelpButtons(void);
     cFileListItem *GetCurrent() { return (cFileListItem *)Get(Current()); }
     void StoreConfig(void);
+    char *GetLastDir(void);
 
   public:
-    cMenuBrowseFiles(const char *title, bool images = false, bool preview = false);
+    cMenuBrowseFiles(const char *title, eMainMenuMode mode = ShowFiles, bool preview = false);
     ~cMenuBrowseFiles();
 
     virtual eOSState ProcessKey(eKeys Key);
@@ -69,13 +71,13 @@ static char *LastDir(const char *dir)
   return NULL;
 }
 
-cMenuBrowseFiles::cMenuBrowseFiles(const char *title, bool images, bool preview) :
+cMenuBrowseFiles::cMenuBrowseFiles(const char *title, eMainMenuMode mode, bool preview) :
     cOsdMenu(title, 2, 4)
 {
   m_CurrentDir = NULL;
-  m_Images  = images;
+  m_Mode    = mode;
   m_Preview = preview;
-  m_ConfigLastDir = (!m_Images) ? xc.browse_files_dir : xc.browse_images_dir;
+  m_ConfigLastDir = GetLastDir();
   Set();
 }
 
@@ -83,6 +85,17 @@ cMenuBrowseFiles::~cMenuBrowseFiles()
 {
   Setup.Save();
   free(m_CurrentDir);
+}
+
+char *cMenuBrowseFiles::GetLastDir(void)
+{
+  switch(m_Mode) {
+    case ShowMusic:  return xc.browse_music_dir;
+    case ShowImages: return xc.browse_images_dir;
+    default:
+    case ShowFiles:  return xc.browse_files_dir;
+  }
+  return xc.browse_files_dir;
 }
 
 void cMenuBrowseFiles::Set(void)
@@ -134,12 +147,12 @@ void cMenuBrowseFiles::Set(void)
 
 void cMenuBrowseFiles::StoreConfig(void)
 {
-  if(!m_Images)
-    cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseFilesDir",  
-							    xc.browse_files_dir);
-  else    
-    cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseImagesDir", 
-							    xc.browse_images_dir);
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseMusicDir",  
+							  xc.browse_music_dir);
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseFilesDir",  
+							  xc.browse_files_dir);
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseImagesDir", 
+							  xc.browse_images_dir);
 }
 
 void cMenuBrowseFiles::SetHelpButtons(void)
@@ -162,7 +175,7 @@ eOSState cMenuBrowseFiles::Delete(void)
       asprintf(&name, "%s/%s", m_CurrentDir, it->Name());
       if(!unlink(name)) {
         isyslog("file %s deleted", name);
-	if(!m_Images) {
+	if(m_Mode != ShowImages) {
 	  free(name);
 	  name=NULL;
 	  asprintf(&name, "%s/%s.resume", m_CurrentDir, it->Name());
@@ -232,7 +245,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
     asprintf(&f, "%s/%s", m_CurrentDir, GetCurrent()->Name());
     strcpy(m_ConfigLastDir, f);
     StoreConfig();
-    if(!m_Images) {
+    if(m_Mode != ShowImages) {
       /* video/audio */
       cControl::Launch(new cXinelibPlayerControl(f));
     } else {
@@ -279,44 +292,6 @@ eOSState cMenuBrowseFiles::Info(void)
   return osContinue;
 }
 
-static bool IsVideoFile(const char *fname)
-{
-  char *pos = strrchr(fname,'.');
-  if(pos) {
-    if(!strcasecmp(pos, ".avi") ||
-       !strcasecmp(pos, ".mpv") ||
-       !strcasecmp(pos, ".vob") || 
-       !strcasecmp(pos, ".vdr") || 
-       !strcasecmp(pos, ".mpg") ||
-       !strcasecmp(pos, ".mpeg")|| 
-       !strcasecmp(pos, ".mpa") || 
-       !strcasecmp(pos, ".mp2") || 
-       !strcasecmp(pos, ".mp3") || 
-       !strcasecmp(pos, ".mp4") || 
-       !strcasecmp(pos, ".asf") || 
-       !strcasecmp(pos, ".flac") || 
-       !strcasecmp(pos, ".m3u") || 
-       !strcasecmp(pos, ".ram"))
-      return true;
-  }
-  return false;
-}
-
-static bool IsImageFile(const char *fname)
-{
-  char *pos = strrchr(fname,'.');
-  if(pos) {
-    if(!strcasecmp(pos, ".jpg") ||
-       !strcasecmp(pos, ".jpeg") ||
-       !strcasecmp(pos, ".gif") ||
-       !strcasecmp(pos, ".tiff") || 
-       !strcasecmp(pos, ".bmp") || 
-       !strcasecmp(pos, ".png"))
-      return true;
-  }
-  return false;
-}
-
 bool cMenuBrowseFiles::ScanDir(const char *DirName)
 {
   DIR *d = opendir(DirName);
@@ -331,8 +306,9 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
 	  // check symlink destination
           if (S_ISLNK(st.st_mode)) {
-	    free(buffer);
+	    char *old = buffer;
 	    buffer = ReadLink(buffer);
+	    free(old);
 	    if (!buffer)
 	      continue;
 	    if (stat(buffer, &st) != 0) {
@@ -343,7 +319,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
 	  // folders
           if (S_ISDIR(st.st_mode)) {
-	    if(m_Images)
+	    if(m_Mode == ShowImages)
 	      Add(new cFileListItem(e->d_name, true));
 	    else {
 	      // check if DVD
@@ -366,7 +342,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
           // regular files
           } else {
 	    // video/audio
-            if (!m_Images && IsVideoFile(buffer)) {
+            if (m_Mode != ShowImages && xc.IsVideoFile(buffer)) {
               bool resume=false, subs=false;
               free(buffer);
               buffer=NULL;
@@ -383,7 +359,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
               Add(new cFileListItem(e->d_name,false,resume,subs));
 
 	    // images
-            } else if(m_Images && IsImageFile(buffer)) {
+            } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
               Add(new cFileListItem(e->d_name,false));
 	    }
           }
@@ -671,7 +647,8 @@ cMenuXinelib::cMenuXinelib()
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
   Add(new cOsdItem(tr("Play file >>"), osUser1));
-  Add(new cOsdItem(tr("View images >>"), osUser2));
+  Add(new cOsdItem(tr("Play music >>"), osUser2));
+  Add(new cOsdItem(tr("View images >>"), osUser3));
   if(xc.remote_mode)
     Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
   else
@@ -694,11 +671,12 @@ cMenuXinelib::cMenuXinelib()
 #endif
   Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"),"%", &compression, 100, 500, tr("Off")));
 
-  Add(new cOsdItem(tr("Audio Equalizer >>"), osUser3));
+  Add(new cOsdItem(tr("Audio Equalizer >>"), osUser7));
 
   switch(xc.main_menu_mode) {
-    case ShowFiles:  AddSubMenu(new cMenuBrowseFiles(tr("Play file"))); break;
-    case ShowImages: AddSubMenu(new cMenuBrowseFiles(tr("Images"),true,true)); break;
+    case ShowFiles:  AddSubMenu(new cMenuBrowseFiles(tr("Play file"),  ShowFiles)); break;
+    case ShowMusic:  AddSubMenu(new cMenuBrowseFiles(tr("Play music"), ShowMusic)); break;
+    case ShowImages: AddSubMenu(new cMenuBrowseFiles(tr("Images"),     ShowImages, true)); break;
     default: break;
   }
 
@@ -748,17 +726,14 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 
   switch(state) {
     case osUser1:
-      AddSubMenu(new cMenuBrowseFiles(tr("Play file")));
+      AddSubMenu(new cMenuBrowseFiles(tr("Play file"), ShowFiles));
       return osUnknown;
     case osUser2:
-      AddSubMenu(new cMenuBrowseFiles(tr("Images"), true, true));
-      return osContinue;
+      AddSubMenu(new cMenuBrowseFiles(tr("Play music"), ShowMusic));
+      return osUnknown;
     case osUser3:
-      if(!g_PendingMenuAction) {
-	g_PendingMenuAction = new cEqualizer();
-	return osPlugin;
-      }
-      state = osContinue;
+      AddSubMenu(new cMenuBrowseFiles(tr("Images"), ShowImages, true));
+      return osContinue;
     case osUser4:
 #if 0
       cControl::Launch(new cXinelibDvdPlayerControl("dvd://"));
@@ -769,6 +744,12 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     case osUser5:
       AddSubMenu(new cDvdSpuTrackSelect());
       return osContinue;
+    case osUser7:
+      if(!g_PendingMenuAction) {
+	g_PendingMenuAction = new cEqualizer();
+	return osPlugin;
+      }
+      state = osContinue;
     case osUser8:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cTestGrayscale();
