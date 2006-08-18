@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.3 2006-07-07 05:32:14 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.4 2006-08-18 02:19:01 phintuka Exp $
  *
  */
 
@@ -92,13 +92,6 @@ class cUdpScheduler : public cThread
     uint64_t  m_LastRtcpTime;
     uint32_t  m_Frames;
     uint32_t  m_Octets;
-
-#if 0
-    int data_sent;   /* in current time interval, bytes */
-    int frames_sent; /* in current time interval */
-    int frame_rate;  /* pes frames / second */
-    int prev_frames;
-#endif
 
     int64_t last_delay_time;
 
