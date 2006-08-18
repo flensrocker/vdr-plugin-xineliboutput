@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.2 2006-07-21 22:49:33 phintuka Exp $
+ * $Id: media_player.h,v 1.3 2006-08-18 04:24:49 phintuka Exp $
  *
  */
 
@@ -25,8 +25,6 @@ class cXinelibPlayerControl : public cControl
     static cMutex m_Lock;
 
     static cXinelibPlayer *OpenPlayer(const char *file);
-
-    char *m_File;
 
  protected:
     cSkinDisplayReplay *m_DisplayReplay;
