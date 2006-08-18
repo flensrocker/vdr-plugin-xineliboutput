@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.4 2006-08-17 18:56:03 phintuka Exp $
+ * $Id: config.c,v 1.5 2006-08-18 02:24:56 phintuka Exp $
  *
  */
 
@@ -99,6 +99,9 @@ bool config_t::IsVideoFile(const char *fname)
 	 !strcasecmp(pos, ".mp4") || 
 	 !strcasecmp(pos, ".asf") || 
 	 !strcasecmp(pos, ".flac") || 
+	 !strcasecmp(pos, ".ts") || 
+	 !strcasecmp(pos, ".xvid") || 
+	 !strcasecmp(pos, ".divx") || 
 	 !strcasecmp(pos, ".m3u") || 
 	 !strcasecmp(pos, ".ram"))
 	return true;
