@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.3 2006-07-21 22:49:34 phintuka Exp $
+ * $Id: media_player.c,v 1.4 2006-08-18 04:24:02 phintuka Exp $
  *
  */
 
@@ -13,11 +13,13 @@
 #include <vdr/config.h>
 #include <vdr/status.h>
 #include <vdr/interface.h>
+#include <vdr/tools.h>
 
 #include "config.h"
 #include "media_player.h"
 #include "device.h"
 
+#include "logdefs.h"
 
 #if VDRVERSNUM < 10400
 // Dirty hack to bring menu back ...
@@ -48,6 +50,96 @@ static void BackToMenu(void)
 }
 #endif
 
+#define MAX_FILES 256
+static char **ScanDir(const char *DirName)
+{
+  DIR *d = opendir(DirName);
+  if (d) {
+    LOGDBG("ScanDir(%s)", DirName);
+    struct dirent *e;
+    int n = 0;
+    char **result = (char**)malloc(sizeof(char*)*(MAX_FILES+1));
+    char **current = result;
+    *current = NULL;
+    while ((e = readdir(d)) != NULL) {
+      char *buffer = NULL;
+      asprintf(&buffer, "%s/%s", DirName, e->d_name);
+      struct stat st;
+      if (stat(buffer, &st) == 0) {
+	if(!S_ISDIR(st.st_mode)) {
+	  // check symlink destination
+	  if (S_ISLNK(st.st_mode)) {
+	    char *old = buffer;
+	    buffer = ReadLink(buffer);
+	    free(old);
+	    if (!buffer)
+	      continue;
+	    if (stat(buffer, &st) != 0) {
+	      free(buffer);
+	      continue;
+	    }
+	  }
+	  if(xc.IsVideoFile(buffer)) {
+	    n++;
+	    if(n<MAX_FILES) {
+	      *current = buffer;
+	      *(++current) = NULL;
+	      buffer = NULL;
+	      LOGDBG("ScanDir: %s", e->d_name);
+	    } else {
+	      LOGMSG("ScanDir: Found over %d matching files, list truncated!", n);
+	      free(buffer);
+	      break;
+	    }
+	  }
+	}
+      }
+      free(buffer);
+    }
+    LOGDBG("ScanDir: Found %d matching files", n);
+    closedir(d);
+    return result;
+  }
+
+  LOGERR("ScanDir: Error opening %s", DirName);
+  return NULL;
+}
+
+static char **Read_m3u(const char *file)
+{
+  FILE *f = fopen(file, "r");
+  if(f) {
+    LOGDBG("Read_m3u(%s)", file);
+    int n = 0;
+    char **result = (char**)malloc(sizeof(char*)*(MAX_FILES+1));
+    char **current = result, *pt;
+    char *base = strdup(file);
+    *current = NULL;
+    if(NULL != (pt=strrchr(base,'/')))
+      pt[1]=0;
+    cReadLine r;
+    while(NULL != (pt=r.Read(f)) && n < MAX_FILES) {
+      if(*pt == '#' || !*pt)
+	continue;
+      if(*pt == '/' || 
+	 (strstr(pt,"://")+1 == strchr(pt,'/') && 
+	  strchr(pt,'/') - pt < 8))
+	*current = strdup(pt);
+      else
+	asprintf(current, "%s/%s", base, pt);
+      LOGDBG("Read_m3u: %s", *current);
+      *(++current) = NULL;
+      n++;
+    }
+    free(base);
+    if(n >= MAX_FILES) 
+      LOGMSG("Read_m3u: Found over %d matching files, list truncated!", n);
+    LOGDBG("Read_m3u: Found %d matching files", n);
+    return result;
+  }
+  LOGERR("Read_m3u: Error opening %s", file);
+  return NULL;
+}
 
 //
 // cXinelibPlayer
@@ -57,6 +149,12 @@ class cXinelibPlayer : public cPlayer {
   private:
     char *m_File;
     char *m_ResumeFile;
+    char *m_Title;
+
+    char **m_Playlist;
+    int  m_CurrInd;
+
+    bool m_Replaying;
 
   protected:
     virtual void Activate(bool On);
@@ -64,12 +162,35 @@ class cXinelibPlayer : public cPlayer {
   public:
     cXinelibPlayer(const char *file);
     virtual ~cXinelibPlayer();
+
+    const char *Title(void);    
+    const char *File(void);
+
+    bool NextFile(int step);
+    bool Replaying(void) { return m_Replaying; }
 };
 
 cXinelibPlayer::cXinelibPlayer(const char *file) 
 {
-  m_File = strdup(file);
+  int len = strlen(file);
+
+  m_Playlist = NULL;
   m_ResumeFile = NULL;
+  m_Title = NULL;
+  m_CurrInd = 0;
+  m_Replaying = false;
+  if(len && file[len-1] == '/') {
+    m_Playlist = ScanDir(file);
+  } else if(len>4 && !strncasecmp(file+len-4, ".m3u", 4)) {
+    m_Playlist = Read_m3u(file);
+  }
+  if(m_Playlist && !m_Playlist[0]) {
+    free(m_Playlist);
+    m_Playlist = NULL;
+  }
+
+  m_File = strdup(m_Playlist ? m_Playlist[m_CurrInd] : file);
+
   asprintf(&m_ResumeFile, "%s.resume", m_File);
 }
 
@@ -77,26 +198,88 @@ cXinelibPlayer::~cXinelibPlayer()
 {
   Activate(false);
   Detach();
-  
+
+  if(m_Playlist) {
+    int i=0;
+    while(m_Playlist[i])
+      free(m_Playlist[i++]);
+    free(m_Playlist);
+  }
   free(m_File);
   m_File = NULL;
   free(m_ResumeFile);
   m_ResumeFile = NULL;
+  free(m_Title);
+  m_Title = NULL;
+}
+
+const char *cXinelibPlayer::Title(void)
+{
+  char *pt;
+
+  if(!m_Title) {
+    if(NULL != (pt=strrchr(m_File,'/')))
+      m_Title = strdup(pt+1);
+    else
+      m_Title = strdup(m_File);
+    
+    if(NULL != (pt=strrchr(m_Title,'.')))
+      *pt = 0;
+  }
+
+  return m_Title;
+}
+
+const char *cXinelibPlayer::File(void)
+{
+  return m_File;
+}
+
+bool cXinelibPlayer::NextFile(int step)
+{
+  step = step<-1?-1 : (step>1?1 : step);
+  if(m_Playlist && ((step==1  && m_Playlist[m_CurrInd+1]) || 
+		    (step==-1 && m_CurrInd>0))){
+    free(m_File);
+    free(m_ResumeFile);
+    free(m_Title);
+    m_ResumeFile = NULL;
+    m_Title = NULL;
+    
+    m_CurrInd += step;
+
+    m_File = strdup(m_Playlist[m_CurrInd]);
+    asprintf(&m_ResumeFile, "%s.resume", m_File);
+
+    Activate(true);
+    if(!m_bReplaying)
+      return false;
+
+    return true;
+
+  } else if(m_CurrInd == 0 && step<0) {
+    cXinelibDevice::Instance().PlayFileCtrl("SEEK 0");
+    return true;
+  }
+  
+  return false;
 }
 
 void cXinelibPlayer::Activate(bool On)
 {
-  int pos = 0, fd=-1;
+  int pos = 0, fd = -1;
   if(On) {
     if(0 <= (fd = open(m_ResumeFile,O_RDONLY))) {
       if(read(fd, &pos, sizeof(int)) != sizeof(int))
 	 pos = 0;
       close(fd);
     }
-    cXinelibDevice::Instance().PlayFile(m_File, pos);
+    m_Replaying = cXinelibDevice::Instance().PlayFile(m_File, pos);
+    LOGDBG("cXinelibPlayer playing %s (%s)", m_File, m_Replaying?"OK":"FAIL");
   } else {
     pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
     if(pos>=0 && strcasecmp(m_File+strlen(m_File)-4,".ram")) {
+      pos /= 1000;
       if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
 			 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
 	if(write(fd, &pos, sizeof(int)) != sizeof(int))
@@ -107,6 +290,7 @@ void cXinelibPlayer::Activate(bool On)
       }
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
+    m_Replaying = false;
   }
 }
 
@@ -123,22 +307,14 @@ int cXinelibPlayerControl::m_SubtitlePos = 0;
 cXinelibPlayerControl::cXinelibPlayerControl(const char *File) :
   cControl(OpenPlayer(File))
 {
-  char *pt;
   m_DisplayReplay = NULL;
   m_ShowModeOnly = true;
   m_Speed = 1;
-  m_File = strdup(File);
-  if(NULL != (pt=strrchr(m_File,'/')))
-    strcpy(m_File, pt+1);
-  if(NULL != (pt=strrchr(m_File,'.')))
-    *pt = 0;
-
-  /*#warning If File is directory, play all files ! (album of mp3s etc.)*/
 
 #if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, m_File);
+  cStatus::MsgReplaying(this, m_Player->File());
 #else
-  cStatus::MsgReplaying(this, m_File, File, true);
+  cStatus::MsgReplaying(this, m_Player->Title(), m_Player->File(), true);
 #endif
 }
 
@@ -154,7 +330,6 @@ cXinelibPlayerControl::~cXinelibPlayerControl()
   cStatus::MsgReplaying(this, NULL, NULL, false);
 #endif
   Close();
-  free(m_File);
 }
 
 cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(const char *File)
@@ -189,12 +364,16 @@ void cXinelibPlayerControl::Show()
     int Current, Total;
     Current = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
     Total = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
-    m_DisplayReplay->SetTitle(m_File);
-    m_DisplayReplay->SetProgress(Current, Total);
-    sprintf(t, "%d:%02d:%02d", Total/3600, (Total%3600)/60, Total%60);
-    m_DisplayReplay->SetTotal( t );
-    sprintf(t, "%d:%02d:%02d", Current/3600, (Current%3600)/60, Current%60);
-    m_DisplayReplay->SetCurrent( t );
+    if(Current>=0 && Total>=0) {
+      Total = (Total+500)/1000;
+      Current = (Current+500)/1000;
+      m_DisplayReplay->SetTitle(m_Player->Title());
+      m_DisplayReplay->SetProgress(Current, Total);
+      sprintf(t, "%d:%02d:%02d", Total/3600, (Total%3600)/60, Total%60);
+      m_DisplayReplay->SetTotal( t );
+      sprintf(t, "%d:%02d:%02d", Current/3600, (Current%3600)/60, Current%60);
+      m_DisplayReplay->SetCurrent( t );
+    }
   }
 
   m_DisplayReplay->SetMode(Play, Forward, Speed);
@@ -212,8 +391,11 @@ void cXinelibPlayerControl::Hide()
 eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 {
   if (cXinelibDevice::Instance().EndOfStreamReached()) {
-    Hide();
-    return osEnd;
+    LOGDBG("cXinelibPlayerControl: EndOfStreamReached");
+    if(!m_Player->NextFile(1)) {
+      Hide();
+      return osEnd;
+    }
   }
 
   if (m_DisplayReplay) 
@@ -243,6 +425,12 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                   asprintf(&tmp,"SUBTITLES %d",m_SubtitlePos);
                   r = cXinelibDevice::Instance().PlayFileCtrl(tmp);
                   free(tmp);
+                  break;
+    case kNext:
+    case kRight:  m_Player->NextFile(1);
+                  break;
+    case kPrev:
+    case kLeft:   m_Player->NextFile(-1);
                   break;
     case kDown:
     case kPause:  if(m_Speed != 0) {
@@ -610,13 +798,15 @@ eOSState cXinelibImagesControl::ProcessKey(eKeys Key)
     case kBlue:    Hide();
                    Close();
                    return osEnd;
-    case kLeft:    Seek(-5);
+    case kPrev:
+    case kLeft:    Seek(-1);
                    break;
-    case kRight:   Seek(5);
+    case kNext:
+    case kRight:   Seek(1);
                    break;
-    case kUp:      Seek(1);  
+    case kUp:      Seek(5);  
                    break;
-    case kDown:    Seek(-1);
+    case kDown:    Seek(-5);
                    break;
     case kPause:   m_Speed = 0;
                    break;
