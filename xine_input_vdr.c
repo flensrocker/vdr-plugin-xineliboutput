@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.27 2006-08-16 23:27:57 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.28 2006-08-18 04:16:52 phintuka Exp $
  *
  */
 
@@ -482,7 +482,7 @@ static int64_t pvrscr_get_current (scr_plugin_t *scr)
   if(this->last_time.tv_sec+3 < tv.tv_sec && this->last_time.tv_sec) {
     LOGMSG("ERROR - CLOCK JUMPED FORWARDS ? "
 	   "(pvrscr_get_current diff %d.%06d sec)\n",
-           (int)(tv.tv_sec - this->last_time.tv_sec), 
+           (int)(tv.tv_sec - this->last_time.tv_sec),
 	   (int)(tv.tv_usec - this->last_time.tv_usec));
     pthread_mutex_unlock (&this->lock);
     pvrscr_adjust(scr,this->cur_pts);
@@ -491,7 +491,7 @@ static int64_t pvrscr_get_current (scr_plugin_t *scr)
   else if(this->last_time.tv_sec > tv.tv_sec) {
     LOGMSG("ERROR - CLOCK JUMPED BACKWARDS ! "
 	   "(pvrscr_get_current diff %d.%06d sec)\n",
-           (int)(tv.tv_sec - this->last_time.tv_sec), 
+           (int)(tv.tv_sec - this->last_time.tv_sec),
 	   (int)(tv.tv_usec - this->last_time.tv_usec));
     pthread_mutex_unlock (&this->lock);
     pvrscr_adjust(scr,this->cur_pts);
@@ -2248,6 +2248,8 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       }
       if(this->funcs.fe_control) 
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+      if(this->fd_control>=0)
+	write_control(this, "ENDOFSTREAM\r\n");
       xine_stop(this->slave_stream);
       xine_close(this->slave_stream);
       xine_dispose(this->slave_stream);
@@ -2865,7 +2867,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   } else if(!strncasecmp(cmd, "GETLENGTH", 9)) {
     int pos_stream=0, pos_time=0, length_time=0;
     xine_get_pos_length(stream, &pos_stream, &pos_time, &length_time);
-    err = length_time/1000;
+    err = length_time/*/1000*/;
     if(this->fd_control >= 0) {
       printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
@@ -2874,7 +2876,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   } else if(!strncasecmp(cmd, "GETPOS", 6)) {
     int pos_stream=0, pos_time=0, length_time=0;
     xine_get_pos_length(stream, &pos_stream, &pos_time, &length_time);
-    err = pos_time/1000;
+    err = pos_time/*/1000*/;
     if(this->fd_control >= 0) {
       printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
