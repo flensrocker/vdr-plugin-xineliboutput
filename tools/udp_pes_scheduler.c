@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.10 2006-07-22 20:13:18 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.11 2006-08-18 02:20:38 phintuka Exp $
  *
  */
 
@@ -109,6 +109,13 @@ typedef enum {
   eScrFromPS1,
   eScrFromVideo
 } ScrSource_t;
+
+#ifdef LOG_SCR
+    int data_sent;   /* in current time interval, bytes */
+    int frames_sent; /* in current time interval */
+    int frame_rate;  /* pes frames / second */
+    int prev_frames;
+#endif
 
 cUdpScheduler::cUdpScheduler()
 {
