@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.10 2006-08-16 23:26:16 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.11 2006-08-18 02:18:28 phintuka Exp $
  *
  */
 
@@ -1066,7 +1066,7 @@ static void *fe_control(void *fe_handle, const char *cmd)
 	posts->slave_stream = slave_stream;
 	fe_post_rewire(this);
       }
-      this->slave_playback_finished = 0;
+      this->slave_playback_finished = (slave_stream==NULL);
     }
 
   } else if(!strncmp(cmd, "ENDOFSTREAM", 11)) {
