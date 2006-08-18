@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.12 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.13 2006-08-18 02:57:18 phintuka Exp $
  *
  */
 
@@ -204,6 +204,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
     osd_command_t cmdnet;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     /* -> network order */
+    memset(&cmdnet, 0, sizeof(osd_command_t));
     cmdnet.cmd = htonl(cmd->cmd);
     cmdnet.wnd = htonl(cmd->wnd);
     cmdnet.pts = htonll(cmd->pts);
@@ -499,9 +500,10 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
     // return cXinelibThread::PlayFileCtrl(Cmd);
     //
   } else {
-    if(!strncmp(Cmd, "FLUSH", 5) ||
-       !strncmp(Cmd, "PLAYFILE", 8) ||
-       !strncmp(Cmd, "GET", 3)) {  // GETPOS, GETLENGTH, ...
+    bool bPlayfile = false/*, bGet = false, bFlush = false*/;
+    if((!strncmp(Cmd, "FLUSH", 5)    /*&& (bFlush=true)*/) ||
+       (!strncmp(Cmd, "PLAYFILE", 8) && (bPlayfile=true)) ||
+       (!strncmp(Cmd, "GET", 3)      /*&& (bGet=true)*/)) {  // GETPOS, GETLENGTH, ...
 
       cReplyFuture future;
       static int myToken = 0;
@@ -531,9 +533,13 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
       
       cXinelibThread::PlayFileCtrl(Cmd);
 
-      int timeout = 250;
-      if(!strncmp(Cmd, "PLAYFILE", 8))
+      int timeout = 100;
+      if(bPlayfile)
 	timeout = 5000;
+
+#ifdef XINELIBOUTPUT_DEBUG
+      int64_t t = cTimeMs::Now();
+#endif
       if(! future.Wait(timeout)) {
 	Lock();
 	m_Futures->Del(&future, token);
@@ -541,11 +547,15 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
 	LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms)", Cmd, timeout);
 	return -1;
       }
+      TRACE("cXinelibServer::PlayFileCtrl("<<Cmd<<"): result=" << future.Value()
+	    << " delay: " << (int)(cTimeMs::Now()-t) << "ms"); 
+      if(bPlayfile) 
+	m_bEndOfStreamReached = false;
 
       return future.Value();
     }
   }
-
+  
   return cXinelibThread::PlayFileCtrl(Cmd);
 }
 
@@ -954,7 +964,9 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   if(m_bPlayingFile) {
     char buf[2048];
     Unlock();
-    sprintf(buf, "PLAYFILE %d ", cXinelibDevice::Instance().PlayFileCtrl("GETPOS"));
+    int pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
+    if(pos<0) pos=0;
+    sprintf(buf, "PLAYFILE %d ", pos/1000);
     Lock();
     if(m_bPlayingFile) {
       strcat(buf, m_FileName ? m_FileName : "");
