@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.10 2006-08-16 23:49:41 phintuka Exp $
+ * $Id: device.c,v 1.11 2006-08-18 02:22:48 phintuka Exp $
  *
  */
 
@@ -164,7 +164,12 @@ cXinelibDevice::cXinelibDevice()
 
   m_ac3Present  = false;
   m_spuPresent  = false;
+
+  m_CurrentDvdSpuTrack = -1;
   ClrAvailableDvdSpuTracks();
+
+  m_PlayMode = pmNone;
+  m_LastTrack = ttAudioFirst;
 
   m_liveMode    = false;
   m_TrickSpeed  = -1;
@@ -479,7 +484,7 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
   m_RadioStream = false;
   if (Channel && !Channel->Vpid() && (Channel->Apid(0) || Channel->Apid(1)))
     m_RadioStream = true;
-  if(/*playMode==pmAudioOnly||*/playMode==pmAudioOnlyBlack)
+  if(m_PlayMode == pmAudioOnlyBlack)
     m_RadioStream = true;
   TRACE("cXinelibDevice::SetTvMode - isRadio = "<<m_RadioStream);
 
@@ -500,13 +505,8 @@ void cXinelibDevice::SetReplayMode(void)
 {
   TRACEF("cXinelibDevice::SetReplayMode");
 
-  //m_RadioStream = false;
-#if 1
-  //m_RadioStream = (playMode==pmAudioOnly || playMode==pmAudioOnlyBlack);
-  //TRACE("cXinelibDevice::SetReplayMode - isRadio = "<<m_RadioStream);
   m_RadioStream = true; // first seen replayed video packet resets this
   m_AudioCount  = 15;
-#endif
 
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   TrickSpeed(-1);
@@ -543,10 +543,10 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
   m_ac3Present = false;
   m_spuPresent = false;
   ClrAvailableDvdSpuTracks();
-  playMode = PlayMode;
+  m_PlayMode = PlayMode;
 
   TrickSpeed(-1);
-  if (playMode == pmAudioOnlyBlack /*|| playMode == pmNone*/) {
+  if (m_PlayMode == pmAudioOnlyBlack) {
     TRACE("pmAudioOnlyBlack --> BlankDisplay, NoVideo");
     ForEach(m_clients, &cXinelibThread::BlankDisplay);
     ForEach(m_clients, &cXinelibThread::SetNoVideo, true);
@@ -726,7 +726,7 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
 {
   TRACEF("cXinelibDevice::PlayVideo");
 
-  if(playMode == pmAudioOnlyBlack)
+  if(m_PlayMode == pmAudioOnlyBlack)
     return length;
 
   if(m_RadioStream) {

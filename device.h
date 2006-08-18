@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.6 2006-08-16 13:18:42 phintuka Exp $
+ * $Id: device.h,v 1.7 2006-08-18 02:22:48 phintuka Exp $
  *
  */
 
@@ -149,10 +149,10 @@ class cXinelibDevice : public cDevice
 #endif
 
     virtual bool SetPlayMode(ePlayMode PlayMode);
-    ePlayMode GetPlayMode(void) const { return playMode; };
+    ePlayMode GetPlayMode(void) const { return m_PlayMode; };
 
   protected:
-    ePlayMode playMode;
+    ePlayMode m_PlayMode;
 
     cList<cXinelibThread> m_clients;
     cXinelibThread        *m_server;
