@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.4 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.5 2006-08-19 19:18:21 phintuka Exp $
  *
  */
 
@@ -54,48 +54,50 @@
 typedef struct fbfe_t {
 
   /* function pointers */
-  frontend_t              fe;
+  frontend_t         fe;
   void (*update_display_size)(frontend_t*);
 
   /* xine stuff */
-  xine_t                  *xine;
-  xine_stream_t           *stream;
-  input_plugin_t          *input;
-  xine_video_port_t       *video_port;
-  xine_audio_port_t       *audio_port;
-  xine_event_queue_t      *event_queue;
+  xine_t             *xine;
+  xine_stream_t      *stream;
+  input_plugin_t     *input;
+  xine_video_port_t  *video_port;
+  xine_audio_port_t  *audio_port;
+  xine_event_queue_t *event_queue;
 
-  post_plugins_t          *postplugins;
+  post_plugins_t     *postplugins;
 
-  char                     configfile[256];
+  char                configfile[256];
 
-  int                      xine_visual_type;
-  fb_visual_t              vis;
+  int                 xine_visual_type;
+  fb_visual_t         vis;
 
-  double                   display_ratio;
+  double              display_ratio;
 
-  int                      pes_buffers;
-  int                      aspect;
-  int                      cropping;
-  int                      scale_video;
-  int                      priority;
+  int                 pes_buffers;
+  int                 aspect;
+  int                 cropping;
+  int                 scale_video;
+  int                 priority;
 
   /* frontend */
-  int                      playback_finished;
-  int                      slave_playback_finished;
+  int                 playback_finished;
+  int                 slave_playback_finished;
 
   /* vdr */
-  fe_keypress_f            keypress;
+  fe_keypress_f       keypress;
 
   /* display */
-  int                      display;
-  int                      fullscreen;
-  int                      vmode_switch;
-  int                      field_order;
-  char                     modeline[256];
+  int                 display;
+  int                 fullscreen;
+  int                 vmode_switch;
+  int                 field_order;
+  char                modeline[256];
 
-  int                      xpos, ypos;
-  int                      width, height;
+  int                 xpos, ypos;
+  int                 width, height;
+
+  int                 video_width, video_height;
 
 } fe_t;
 

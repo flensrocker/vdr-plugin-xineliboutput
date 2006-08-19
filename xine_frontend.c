@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.11 2006-08-18 02:18:28 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.12 2006-08-19 19:18:21 phintuka Exp $
  *
  */
 
@@ -130,6 +130,8 @@ static double fe_dest_pixel_aspect(fe_t *this, double video_pixel_aspect,
     case 2:  result = (4.0/3.0 * (double)this->height/(double)this->width); break;
     /* 16:9 */
     case 3:  result = (16.0/9.0 * (double)this->height/(double)this->width); break;
+    /* 16:10 */
+    case 4:  result = (16.0/10.0 * (double)this->height/(double)this->width); break;
     /* Pan&Scan */
     case 4: {
       double aspect_diff /*= video_pixel_aspect - 1.0*/;
@@ -172,6 +174,7 @@ aspect_diff=(video_pixel_aspect*(double)video_width/(double)video_height) - 4.0 
     this->cropping = 1;
   }
 #endif
+
   return result;
 }
 
@@ -226,7 +229,7 @@ static void fe_frame_output_cb (void *data,
 
 #if 0
   static int n=0,t=25/**10*/; n++;
-  static char *s_aspect[] = {"Auto","Default","4:3","16:9","Pan&Scan"};
+  static char *s_aspect[] = {"Auto","Default","4:3","16:9","16:10","Pan&Scan"};
   if((n % t) == 0) {
     LOGMSG("fe_frame_output_cb:");
     LOGMSG("  vid=%dx%d (frame %2d:9, pixel %2d:9)",
@@ -253,6 +256,24 @@ static void fe_frame_output_cb (void *data,
 #warning TODO: vmode_switch, scale_video
   }
 #endif
+
+  if(this->video_width  != video_width ||
+     this->video_height != video_height) {
+    xine_event_t event;
+    xine_format_change_data_t framedata;
+    event.type = XINE_EVENT_FRAME_FORMAT_CHANGE;
+    event.stream = this->stream;
+    event.data = &framedata;
+    event.data_length = sizeof(framedata);
+    framedata.width  = video_width;
+    framedata.height = video_height;
+    framedata.aspect = 0; /* TODO */
+    framedata.pan_scan = 0;
+    xine_event_send(this->stream, &event);
+    /*printf("emit FRAME_FORMAT_CHANGE %dx%d\n", video_width, video_height);*/
+    this->video_width = video_width;
+    this->video_height = video_height;
+  }
 }
 
 static void xine_event_cb (void *user_data, const xine_event_t *event) 
@@ -570,6 +591,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     posts->post_video_enable = 1;
     posts->post_audio_enable = 1;
   }
+
+  this->video_width = this->video_height = 0;
 
   return 1;
 }

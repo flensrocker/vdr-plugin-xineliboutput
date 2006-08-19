@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.4 2006-08-17 18:56:03 phintuka Exp $
+ * $Id: config.h,v 1.5 2006-08-19 19:18:21 phintuka Exp $
  *
  */
 
@@ -27,9 +27,10 @@
 #define ASPECT_DEFAULT  1
 #define ASPECT_4_3      2
 #define ASPECT_16_9     3
-#define ASPECT_PAN_SCAN 4
-#define ASPECT_CENTER_CUT_OUT 5
-#define ASPECT_count          6
+#define ASPECT_16_10    4
+#define ASPECT_PAN_SCAN 5
+#define ASPECT_CENTER_CUT_OUT 6
+#define ASPECT_count          7
 
 // De-interlace method
 #define DEINTERLACE_NONE         0

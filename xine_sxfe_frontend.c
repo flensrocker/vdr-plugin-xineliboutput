@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.8 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.9 2006-08-19 19:18:21 phintuka Exp $
  *
  */
 
@@ -147,6 +147,8 @@ typedef struct sxfe_s {
   Atom    atom_state;
   Atom    atom_state_add, atom_state_del;
   Atom    atom_state_above, atom_state_fullscreen, atom_state_on_top;
+
+  int     video_width, video_height;
 
 } fe_t, sxfe_t;
 

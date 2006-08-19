@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.5 2006-08-18 02:24:56 phintuka Exp $
+ * $Id: config.c,v 1.6 2006-08-19 19:18:21 phintuka Exp $
  *
  */
 
@@ -24,7 +24,7 @@ const char *config_t::s_bufferSize[] =
 const int config_t::i_pesBufferSize[] =
   {0,50,250,500,1000,2000,500};
 const char *config_t::s_aspects[] =
-  {"automatic", "default", "4:3", "16:9", "Pan&Scan", "CenterCutOut", 0};
+  {"automatic", "default", "4:3", "16:9", "16:10", "Pan&Scan", "CenterCutOut", 0};
 const char *config_t::s_deinterlaceMethods[] =
   {"none", "bob", "weave", "greedy", "onefield", "onefield_xv", 
    "linearblend", "tvtime", 0};
