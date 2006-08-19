@@ -5,7 +5,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: future.h,v 1.1 2006-06-03 10:04:27 phintuka Exp $
+ * $Id: future.h,v 1.2 2006-08-19 23:44:07 phintuka Exp $
  *
  */
 
@@ -56,13 +56,16 @@ class cFuture {
     {
       cMutexLock l(&mutex);
 
+      if(Timeout==0 || m_Ready)
+	return m_Ready;
+
       if(Timeout >= 0)
-	return cond.TimedWait(mutex, Timeout);
+	return cond.TimedWait(mutex, Timeout) && m_Ready;
 
       while(!m_Ready)
 	cond.Wait(mutex);
 
-      return true;
+      return m_Ready;
     }
 
     bool IsReady(void)
