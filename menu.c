@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.9 2006-08-18 03:02:51 phintuka Exp $
+ * $Id: menu.c,v 1.10 2006-08-19 14:22:14 phintuka Exp $
  *
  */
 
@@ -224,12 +224,16 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
       return osEnd;
     }
     if(ForceOpen && GetCurrent()->IsDir()) {
-      /* play all files */
-      char *f = NULL;
-      asprintf(&f, "%s/%s/", m_CurrentDir, GetCurrent()->Name());
-      cControl::Launch(new cXinelibPlayerControl(f));
-      free(f);
-      return osEnd;
+      /* play all files */ 
+      if(m_Mode != ShowImages) {
+	char *f = NULL;
+	asprintf(&f, "%s/%s/", m_CurrentDir, GetCurrent()->Name());
+	cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
+	free(f);
+	return osEnd;
+      } else {
+	// TODO: show all images
+      }
     }
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
@@ -247,7 +251,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
     StoreConfig();
     if(m_Mode != ShowImages) {
       /* video/audio */
-      cControl::Launch(new cXinelibPlayerControl(f));
+      cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
     } else {
       /* image */
       char **files = new char*[Count()+1];

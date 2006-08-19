@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.3 2006-08-18 04:24:49 phintuka Exp $
+ * $Id: media_player.h,v 1.4 2006-08-19 14:22:14 phintuka Exp $
  *
  */
 
@@ -12,6 +12,8 @@
 #define __XINELIB_PLAYER_H
 
 #include <vdr/player.h>
+
+#include "config.h"
 
 // --- Media player ---------------------------------------------------------
 
@@ -31,11 +33,12 @@ class cXinelibPlayerControl : public cControl
 
     int   m_Speed;
     bool  m_ShowModeOnly;
+    eMainMenuMode m_Mode;
 
     static int m_SubtitlePos;
 
   public:
-    cXinelibPlayerControl(const char *file);
+    cXinelibPlayerControl(eMainMenuMode Mode, const char *file);
     virtual ~cXinelibPlayerControl();
 
     virtual void Show(void);
@@ -57,7 +60,7 @@ class cXinelibDvdPlayerControl : public cXinelibPlayerControl
 
   public:
     cXinelibDvdPlayerControl(const char *file) : 
-      cXinelibPlayerControl(file), Menu(NULL)
+      cXinelibPlayerControl(ShowFiles, file), Menu(NULL)
       {}
     virtual ~cXinelibDvdPlayerControl();
  

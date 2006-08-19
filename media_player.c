@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.5 2006-08-18 04:31:24 phintuka Exp $
+ * $Id: media_player.c,v 1.6 2006-08-19 14:22:14 phintuka Exp $
  *
  */
 
@@ -304,12 +304,13 @@ cXinelibPlayer *cXinelibPlayerControl::m_Player = NULL;
 cMutex cXinelibPlayerControl::m_Lock;
 int cXinelibPlayerControl::m_SubtitlePos = 0;
 
-cXinelibPlayerControl::cXinelibPlayerControl(const char *File) :
+cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *File) :
   cControl(OpenPlayer(File))
 {
   m_DisplayReplay = NULL;
   m_ShowModeOnly = true;
   m_Speed = 1;
+  m_Mode = Mode;
 
 #if VDRVERSNUM < 10338
   cStatus::MsgReplaying(this, m_Player->File());
@@ -404,7 +405,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   int r;
   char *tmp = NULL;
   switch(Key) {
-    case kBack:   xc.main_menu_mode = ShowFiles;
+    case kBack:   xc.main_menu_mode = m_Mode;
                   Hide(); 
                   Close(); 
 		  BackToMenu();
