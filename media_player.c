@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.6 2006-08-19 14:22:14 phintuka Exp $
+ * $Id: media_player.c,v 1.7 2006-08-19 23:53:11 phintuka Exp $
  *
  */
 
@@ -168,6 +168,8 @@ class cXinelibPlayer : public cPlayer {
 
     bool NextFile(int step);
     bool Replaying(void) { return m_Replaying; }
+
+    bool m_UseResume;
 };
 
 cXinelibPlayer::cXinelibPlayer(const char *file) 
@@ -176,6 +178,7 @@ cXinelibPlayer::cXinelibPlayer(const char *file)
 
   m_Playlist = NULL;
   m_ResumeFile = NULL;
+  m_UseResume = true;
   m_Title = NULL;
   m_CurrInd = 0;
   m_Replaying = false;
@@ -191,7 +194,8 @@ cXinelibPlayer::cXinelibPlayer(const char *file)
 
   m_File = strdup(m_Playlist ? m_Playlist[m_CurrInd] : file);
 
-  asprintf(&m_ResumeFile, "%s.resume", m_File);
+  if(m_UseResume)
+    asprintf(&m_ResumeFile, "%s.resume", m_File);
 }
 
 cXinelibPlayer::~cXinelibPlayer()
@@ -249,7 +253,8 @@ bool cXinelibPlayer::NextFile(int step)
     m_CurrInd += step;
 
     m_File = strdup(m_Playlist[m_CurrInd]);
-    asprintf(&m_ResumeFile, "%s.resume", m_File);
+    if(m_UseResume)
+      asprintf(&m_ResumeFile, "%s.resume", m_File);
 
     Activate(true);
     if(!m_Replaying)
@@ -269,24 +274,30 @@ void cXinelibPlayer::Activate(bool On)
 {
   int pos = 0, fd = -1;
   if(On) {
-    if(0 <= (fd = open(m_ResumeFile,O_RDONLY))) {
+    if(m_UseResume && 0 <= (fd = open(m_ResumeFile,O_RDONLY))) {
       if(read(fd, &pos, sizeof(int)) != sizeof(int))
-	 pos = 0;
+	pos = 0;
       close(fd);
     }
     m_Replaying = cXinelibDevice::Instance().PlayFile(m_File, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", m_File, m_Replaying?"OK":"FAIL");
   } else {
-    pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-    if(pos>=0 && strcasecmp(m_File+strlen(m_File)-4,".ram")) {
-      pos /= 1000;
-      if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
-			 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
-	if(write(fd, &pos, sizeof(int)) != sizeof(int))
-	  Skins.QueueMessage(mtInfo, "Error writing resume position !", 5, 30);
-	close(fd);
-      } else {
-	Skins.QueueMessage(mtInfo, "Error creating resume file !", 5, 30);
+    if(m_UseResume) {
+      pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
+      if(strcasecmp(m_File+strlen(m_File)-4,".ram")) {
+	if(pos>=0) {
+	  pos /= 1000;
+	  if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
+			     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
+	    if(write(fd, &pos, sizeof(int)) != sizeof(int))
+	      Skins.QueueMessage(mtInfo, "Error writing resume position !", 5, 30);
+	    close(fd);
+	  } else {
+	    Skins.QueueMessage(mtInfo, "Error creating resume file !", 5, 30);
+	  }
+	} else {
+	  unlink(m_ResumeFile);
+	}
       }
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
@@ -311,6 +322,8 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
   m_ShowModeOnly = true;
   m_Speed = 1;
   m_Mode = Mode;
+
+  m_Player->m_UseResume = (Mode==ShowFiles);
 
 #if VDRVERSNUM < 10338
   cStatus::MsgReplaying(this, m_Player->File());
@@ -364,7 +377,7 @@ void cXinelibPlayerControl::Show()
     char t[128] = "";
     int Current, Total;
     Current = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-    Total = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
+    Total   = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
     if(Current>=0 && Total>=0) {
       Total = (Total+500)/1000;
       Current = (Current+500)/1000;
