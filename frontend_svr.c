@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.13 2006-08-18 02:57:18 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.14 2006-08-19 23:49:03 phintuka Exp $
  *
  */
 
@@ -285,8 +285,8 @@ int64_t cXinelibServer::GetSTC(void)
 
   Unlock();
 
-  if(! m_StcFuture->Wait(100)) {
-    LOGMSG("cXinelibServer::GetSTC timeout (100ms)");
+  if(! m_StcFuture->Wait(200)) {
+    LOGMSG("cXinelibServer::GetSTC timeout (200ms)");
     return -1ULL;
   }
     
@@ -533,7 +533,7 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
       
       cXinelibThread::PlayFileCtrl(Cmd);
 
-      int timeout = 100;
+      int timeout = 300;
       if(bPlayfile)
 	timeout = 5000;
 
@@ -542,10 +542,13 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
 #endif
       if(! future.Wait(timeout)) {
 	Lock();
-	m_Futures->Del(&future, token);
+	if(! future.IsReady()) { 
+	  m_Futures->Del(&future, token);
+	  Unlock();
+	  LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, timeout, token);
+	  return -1;
+	}
 	Unlock();
-	LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms)", Cmd, timeout);
-	return -1;
       }
       TRACE("cXinelibServer::PlayFileCtrl("<<Cmd<<"): result=" << future.Value()
 	    << " delay: " << (int)(cTimeMs::Now()-t) << "ms"); 
@@ -1016,6 +1019,7 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 #endif
 
   //LOGDBG("Server received %s", cmd);
+  TRACE("Server received " << cmd);
 
   /* Order of tests is significant !!!
      (example: UDP 2\r\n or UDP FULL 1\r\n) */
@@ -1067,7 +1071,6 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 	m_Futures->Del(f, token);
       }
     }
-
   } else if(!strncasecmp(cmd, "CLOSE", 5)) {
     CloseConnection(cli);
   } else if(!strncasecmp(cmd, "GET ", 4)) {
