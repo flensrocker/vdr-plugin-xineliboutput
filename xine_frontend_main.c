@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.9 2006-08-16 23:01:19 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.10 2006-08-19 19:19:17 phintuka Exp $
  *
  */
 
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 	     "   --tcp                        \n"
 	     "   --udp                        \n"
 	     "   --rtp                        \n"
-	     "   --aspect [auto|4:3|16:9|default] \n"
+	     "   --aspect [auto|4:3|16:9|16:10|default] \n"
 	     "   --noscaling                  \n"
 	     "   --post name[:arg=val[,arg=val]]\n");
       exit(0);
@@ -283,8 +283,11 @@ int main(int argc, char *argv[])
 	  aspect = 2;
 	if(!strncmp(argv[i], "16:9", 4))
 	  aspect = 3;
+	if(!strncmp(argv[i], "16:10", 5))
+	  aspect = 4;
 	printf("Aspect ratio: %s\n", 
-	       aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":"Default");
+	       aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
+	       aspect==4?"16:10":"Default");
       }
     } else if(!strncmp(argv[i], "--display", 9)) {
       if(argc > ++i) video_port = strdup(argv[i]);
