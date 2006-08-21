@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.28 2006-08-18 04:16:52 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.29 2006-08-21 01:21:35 phintuka Exp $
  *
  */
 
@@ -63,6 +63,19 @@
 
 #define RADIO_MAX_BUFFERS  10
 
+/*
+  Note:
+  I tried to set speed to something very small instead of full pause
+  when pausing SCR but it didn't work in all systems. 
+  TEST_SCR_PAUSE replaces this by adding delay before stream 
+  is paused (pause is triggered by first received PES containing PTS).
+  This should allow immediate processing of still frames and let video_out
+  run in paused_loop when there is gap in feed (ex. channel can't be decrypted).
+  Not running video_out in paused_loop caused very long delays in 
+  OSD updating in some setups.
+*/
+#define TEST_SCR_PAUSE
+
 /******************************* LOG ***********************************/
 
 #define LOG_MODULENAME "[input_vdr] "
@@ -80,8 +93,6 @@ int iSysLogLevel  = 1;
 int bLogToSysLog  = 0;
 int bSymbolsFound = 0;
 
-_syscall0(pid_t, gettid)
-
 static void syslog_with_tid(int level, const char *fmt, ...)
 {
   va_list argp;
@@ -91,7 +102,7 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   if(!bLogToSysLog) {
     printf(LOG_MODULENAME "%s\n", buf);
   } else {
-    syslog(level, "[%d] " LOG_MODULENAME "%s", gettid(), buf);
+    syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }
   va_end(argp);
 }
@@ -189,6 +200,7 @@ typedef struct vdr_input_plugin_s {
   int                 playback_finished;
   int                 stream_start;
   int                 send_pts;
+  int                 padding_cnt;
   int                 loop_play;
   int                 hd_stream;  /* true if current stream is HD */
 
@@ -596,7 +608,7 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this)
     
     this->speed_before_pause = _x_get_fine_speed(this->stream);
 
-#if 0
+#ifdef TEST_SCR_PAUSE
     if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE)
       _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
 #else
@@ -2112,8 +2124,10 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
 
   /* SCR tunning */
   if(this->live_mode) {
+#ifndef TEST_SCR_PAUSE
     LOGSCR("pause scr tunning by set_live_mode");
     scr_tunning_set_paused(this);
+#endif
   } else {
     LOGSCR("reset scr tunning by set_live_mode");
     reset_scr_tunning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
@@ -2224,13 +2238,17 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       set_live_mode(this, 0);
       set_playback_speed(this, 1);
       reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
-      this->stream->metronom->set_option(this->stream->metronom, 
+      this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					 METRONOM_PREBUFFER, 90000);
 
       if(this->funcs.fe_control) {
 	char tmp[128];
+	int has_video;
 	sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
 	this->funcs.fe_control(this->funcs.fe_handle, tmp);
+	has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
+	this->funcs.fe_control(this->funcs.fe_handle, 
+			       has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
       }
     } else {
       LOGMSG("Error playing file ! (File not found ? Unknown format ?)");
@@ -3756,14 +3774,18 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   }
 }
 
-//#define CACHE_FIRST_IFRAME
-#ifdef CACHE_FIRST_IFRAME
-#  include "cache_iframe.c"
-#endif
-
 static off_t vdr_plugin_read (input_plugin_t *this_gen,
 			      char *buf, off_t len) 
 {
+#if 1
+  /* from xine_input_dvd.c: */
+  /* FIXME: Tricking the demux_mpeg_block plugin */
+  buf[0] = 0;
+  buf[1] = 0;
+  buf[2] = 0x01;
+  buf[3] = 0xba;
+  return 1;
+#else
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   off_t n, total=0;
 
@@ -3808,13 +3830,22 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
   TRACE("vdr_plugin_read returns %" PRIu64 " bytes", (uint64_t)total);
 
   return total;
+#endif
 }
+
+//#define CACHE_FIRST_IFRAME
+#ifdef CACHE_FIRST_IFRAME
+#  include "cache_iframe.c"
+#endif
 
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 					     fifo_buffer_t *fifo, off_t todo) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf  = NULL;
+#ifdef TEST_SCR_PAUSE
+  int need_pause = 0;
+#endif
 
   TRACE("vdr_plugin_read_block");
 
@@ -3839,7 +3870,18 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     if(this->scr_tunning)
       reset_scr_tunning(this, this->speed_before_pause);
   } else {
-    vdr_adjust_realtime_speed(this);
+#ifdef TEST_SCR_PAUSE
+    if(this->stream_start || this->send_pts) {
+      reset_scr_tunning(this, this->speed_before_pause);
+      LOGDBG("read_block: vdr_adjust_realtime_speed SKIPPED (start=%d, send_pts=%d)",
+	     this->stream_start, this->send_pts);
+      need_pause = 1;
+    } else {
+#endif
+      vdr_adjust_realtime_speed(this);
+#ifdef TEST_SCR_PAUSE
+    }
+#endif
   }
   pthread_mutex_unlock(&this->lock); 
 #endif
@@ -3854,11 +3896,25 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	pthread_cond_timedwait (&this->block_buffer->not_empty, 
 				&this->block_buffer->mutex, &abstime);
       pthread_mutex_unlock(&this->block_buffer->mutex);
-      if(this->block_buffer->fifo_size <= 0)
+      if(this->block_buffer->fifo_size <= 0) {
+#if 1
+	if(!this->is_paused && 
+	   !this->slave_stream && 
+	   this->stream->video_fifo->fifo_size <= 0) {
+	  this->padding_cnt++;
+	  if(this->padding_cnt > 10) {
+	    LOGMSG("No data in 5 seconds, queuing no signal image");
+	    queue_nosignal(this);
+	    this->padding_cnt = 0;
+	  }
+	}
+#endif 
 	if(NULL != (buf = make_padding_frame(this)))
 	  return buf;
+      }
       continue;
     }
+    this->padding_cnt = 0;
 
     /* control buffers go always to demuxer */
     if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
@@ -3900,6 +3956,10 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   if(this->send_pts) {
     int64_t pts = pts_from_pes(buf->content, buf->size);
     if(pts > 0) {
+#ifdef TEST_SCR_PAUSE
+      if(need_pause)
+	scr_tunning_set_paused(this);
+#endif
       vdr_x_demux_control_newpts(this->stream, pts, 0);
       this->send_pts = 0;
     }
