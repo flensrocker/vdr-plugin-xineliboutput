@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.13 2006-08-19 19:30:30 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.14 2006-08-21 00:04:56 phintuka Exp $
  *
  */
 
@@ -47,8 +47,6 @@ typedef struct {
 
 #undef x_syslog
 
-_syscall0(pid_t, gettid)
-
 static void x_syslog(int level, const char *fmt, ...)
 {
   va_list argp;
@@ -58,7 +56,7 @@ static void x_syslog(int level, const char *fmt, ...)
   if(!LogToSysLog) {
     printf(LOG_MODULENAME "%s\n", buf);
   } else {
-    syslog(level, "[%d] " LOG_MODULENAME "%s", gettid(), buf);
+    syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }
   va_end(argp);
 }
@@ -270,7 +268,6 @@ static void fe_frame_output_cb (void *data,
     framedata.aspect = 0; /* TODO */
     framedata.pan_scan = 0;
     xine_event_send(this->stream, &event);
-    /*printf("emit FRAME_FORMAT_CHANGE %dx%d\n", video_width, video_height);*/
     this->video_width = video_width;
     this->video_height = video_height;
   }
@@ -1041,7 +1038,7 @@ static void process_xine_keypress(input_plugin_t *input,
 				  int repeat, int release)
 {
   /* from UI --> input plugin --> vdr */
-  LOGDBG("Keypress: %s %s %s %s\n", 
+  LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
   if(input) {
     vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)input;
