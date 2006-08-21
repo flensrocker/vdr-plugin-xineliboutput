@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.11 2006-08-18 02:20:38 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.12 2006-08-21 00:08:44 phintuka Exp $
  *
  */
 
@@ -35,8 +35,6 @@
 #include <sys/types.h>
 #include <linux/unistd.h>
 #include <errno.h>
-_syscall0(pid_t, gettid)
-
 
 //----------------------- cTimePts ------------------------------------------
 
@@ -134,7 +132,7 @@ cUdpScheduler::cUdpScheduler()
 
   last_delay_time = 0;
 
-  srandom(time(NULL) ^ gettid());
+  srandom(time(NULL) ^ getpid());
   m_ssrc = random();
   LOGDBG("RTP SSRC: 0x%08x", m_ssrc);
   m_LastRtcpTime = 0;
