@@ -34,6 +34,8 @@
 
 #if 1
 # include <sys/types.h>
+# include <sys/syscall.h>
+# include <unistd.h>
 # include <linux/unistd.h>
 # include <errno.h>
 # include <syslog.h>
@@ -45,8 +47,6 @@
   extern int SysLogLevel; /* errors and info, no debug */
   /* from xine_frontend.c: */
   extern int LogToSysLog; /* log to syslog instead of console */
-
-  pid_t gettid(void); /*_syscall0(pid_t, gettid);*/
 
 # if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
      !defined(XINELIBOUTPUT_DEBUG_STDERR)
@@ -62,7 +62,7 @@
       if(!LogToSysLog) {
 	printf(LOG_MODULENAME "%s\n", buf);
       } else {
-	syslog(level, "[%d] " LOG_MODULENAME "%s", gettid(), buf);
+	syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
       }
       va_end(argp);
     }
