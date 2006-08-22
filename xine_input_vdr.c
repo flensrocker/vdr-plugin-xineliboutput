@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.29 2006-08-21 01:21:35 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.30 2006-08-22 04:02:18 phintuka Exp $
  *
  */
 
@@ -2774,6 +2774,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     } else
       err = CONTROL_PARAM_ERROR;
 
+  } else if(!strncasecmp(cmd, "SPEAKERS ",9)) {
+    if(1 == sscanf(cmd, "SPEAKERS %d", &tmp32)) {
+      stream->xine->config->update_num(stream->xine->config,
+				       "audio.output.speaker_arrangement", tmp32);
+    } else
+      err = CONTROL_PARAM_ERROR;
+
   } else if(!strncasecmp(cmd, "EQUALIZER ", 10)) {
     int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0};
     sscanf(cmd,"EQUALIZER %d %d %d %d %d %d %d %d %d %d",
@@ -4535,10 +4542,14 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 
   LOGDBG("vdr_plugin_open_net %s", this->mrl);
 
+  if(strchr(this->mrl, '#')) 
+    *strchr(this->mrl, '#') = 0;
+
   if((!strncasecmp(this->mrl, "xvdr:tcp://", 11) && 1==(this->tcp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr:udp://", 11) && 1==(this->udp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && 1==(this->rtp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr://", 7))) {
+      (!strncasecmp(this->mrl, "xvdr:udp://", 11) && 1==(this->udp=1)) ||
+      (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && 1==(this->rtp=1)) ||
+      (!strncasecmp(this->mrl, "xvdr://", 7))) {
+
     char *phost = strdup(strstr(this->mrl, "//") + 2);
     char host[256];
     char *port = strchr(phost, ':');
