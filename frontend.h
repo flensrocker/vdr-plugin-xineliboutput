@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.5 2006-07-07 05:32:14 phintuka Exp $
+ * $Id: frontend.h,v 1.6 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -110,7 +110,8 @@ class cXinelibThread : public cThread, public cListObject
 					int audio_delay, 
 					int audio_compression, 
 					const int *audio_equalizer,
-					int audio_surround);
+					int audio_surround,
+					int speaker_type);
     virtual int ConfigurePostprocessing(const char *name, bool on, const char *args);
     virtual int ConfigureVideo(int hue, int saturation, 
 			       int brightness, int contrast);

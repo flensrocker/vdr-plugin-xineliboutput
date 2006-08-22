@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.10 2006-08-19 14:22:14 phintuka Exp $
+ * $Id: menu.c,v 1.11 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -704,7 +704,7 @@ cMenuXinelib::~cMenuXinelib()
 #endif
 
   if(xc.audio_compression != compression)
-    cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, xc.audio_equalizer, xc.audio_surround);
+    cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 
   if(xc.headphone != headphone)
     cXinelibDevice::Instance().ConfigurePostprocessing("headphone", 
@@ -712,7 +712,8 @@ cMenuXinelib::~cMenuXinelib()
 
   if(xc.autocrop != autocrop)
     cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", 
-						       xc.autocrop ? true : false);
+						       xc.autocrop ? true : false,
+						       xc.AutocropOptions());
 
   int dev_novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
   if(dev_novideo != novideo) 
@@ -779,11 +780,12 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     if(item == audio_ctrl_compress)
       cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
 							 compression, xc.audio_equalizer, 
-							 xc.audio_surround);
+							 xc.audio_surround, xc.speaker_type);
     else if(item == ctrl_headphone)
       cXinelibDevice::Instance().ConfigurePostprocessing("headphone", headphone?true:false);    
     else if(item == ctrl_autocrop)
-      cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", autocrop?true:false);
+      cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", autocrop?true:false,
+							 xc.AutocropOptions());
     else if(item == ctrl_novideo)
       cXinelibDevice::Instance().SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
 #ifdef HAVE_XV_FIELD_ORDER

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.6 2006-08-19 19:18:21 phintuka Exp $
+ * $Id: config.c,v 1.7 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -65,6 +65,14 @@ const char *config_t::s_audioVisualizationNames[] =
   {"Off", "Goom", "Oscilloscope", "FFT Scope", "FFT Graph", NULL};
 const char *config_t::s_audioVisualizations[] = 
   {"none", "goom", "oscope", "fftscope", "fftgraph", NULL};
+
+/* xine, audio_alsa_out.c */
+const char *config_t::s_speakerArrangements[] =
+  {"Mono 1.0", "Stereo 2.0", "Headphones 2.0", "Stereo 2.1",
+   "Surround 3.0", "Surround 4.0", "Surround 4.1", 
+   "Surround 5.0", "Surround 5.1", "Surround 6.0",
+   "Surround 6.1", "Surround 7.1", "Pass Through", 
+   NULL};
 
 static char *strcatrealloc(char *dest, const char *src)
 {
@@ -127,7 +135,16 @@ bool config_t::IsImageFile(const char *fname)
   return false;
 }
 
-
+const char *config_t::AutocropOptions(void)
+{
+  if(autocrop) {
+    static char buffer[128];
+    sprintf(buffer, "enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
+	    autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
+    return buffer;
+  }
+  return NULL;
+}
 
 config_t::config_t() {
   memset(this, 0, sizeof(config_t));
@@ -139,6 +156,7 @@ config_t::config_t() {
 
   strcpy(audio_driver , s_audioDrivers[AUDIO_DRIVER_ALSA]);
   strcpy(audio_port   , "default");
+  speaker_type = SPEAKERS_STEREO;
 
   post_plugins = NULL;
 
@@ -173,7 +191,11 @@ config_t::config_t() {
   height         = 576;
   scale_video    = 0;
   field_order    = 0;
-  autocrop      = 0;
+  autocrop       = 0;
+  autocrop_autodetect = 1;
+  autocrop_soft  = 1;
+  autocrop_fixedsize = 1;
+  autocrop_subs  = 1;
 
   remote_mode    = 0;
   listen_port    = LISTEN_PORT;
@@ -304,6 +326,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 
   else if (!strcasecmp(Name, "Audio.Driver")) strcpy(audio_driver, Value);
   else if (!strcasecmp(Name, "Audio.Port"))   strcpy(audio_port, Value);
+  else if (!strcasecmp(Name, "Audio.Speakers")) speaker_type = strstra(Value, s_speakerArrangements, 
+								       SPEAKERS_STEREO);
   else if (!strcasecmp(Name, "Audio.Delay"))  audio_delay = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Compression")) audio_compression = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Visualization")) strcpy(audio_visualization, Value);
@@ -345,6 +369,10 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Deinterlace")) strcpy(deinterlace_method, Value);
   else if (!strcasecmp(Name, "Video.FieldOrder"))  field_order=atoi(Value)?1:0;
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SoftStart"))    autocrop_soft = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.FixedSize"))    autocrop_fixedsize = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.DetectSubs"))   autocrop_subs = atoi(Value);
   else if (!strcasecmp(Name, "Video.HUE"))         hue = atoi(Value);
   else if (!strcasecmp(Name, "Video.Saturation"))  saturation = atoi(Value);
   else if (!strcasecmp(Name, "Video.Contrast"))    contrast = atoi(Value);

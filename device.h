@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.7 2006-08-18 02:22:48 phintuka Exp $
+ * $Id: device.h,v 1.8 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -29,6 +29,8 @@ class cXinelibDevice : public cDevice
     static cXinelibDevice* m_pInstance; // singleton
     cXinelibDevice();                   //
     cXinelibDevice(cXinelibDevice&);    // no copy constructor
+
+    //cList<cFunctorBase> *m_MainThreadFunctors; // function calls waiting to be executed in VDR main thread context
 
   public:
     virtual ~cXinelibDevice();
@@ -99,7 +101,8 @@ class cXinelibDevice : public cDevice
 				 int audio_delay,
 				 int audio_compression, 
 				 const int *audio_equalizer,
-				 int audio_surround);
+				 int audio_surround, 
+				 int speaker_type);
     void ConfigurePostprocessing(const char *name, bool on=true, 
 				 const char *args=NULL);
     void ConfigureVideo(int hue, int saturation, int brightness, int contrast);

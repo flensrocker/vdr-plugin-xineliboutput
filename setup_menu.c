@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.4 2006-08-07 18:20:43 phintuka Exp $
+ * $Id: setup_menu.c,v 1.5 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -97,6 +97,7 @@ class cMenuSetupAudio : public cMenuSetupPage
     int visualization;
 
     cOsdItem *audio_driver_item;
+    cOsdItem *audio_ctrl_speakers;
     cOsdItem *audio_ctrl_delay;
     cOsdItem *audio_ctrl_compression;
     cOsdItem *audio_ctrl_upmix;
@@ -131,7 +132,7 @@ cMenuSetupAudio::~cMenuSetupAudio(void)
 {
   cXinelibDevice::Instance().ConfigurePostprocessing(
         xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
-	xc.audio_equalizer, xc.audio_surround);
+	xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
   cXinelibDevice::Instance().ConfigurePostprocessing(
         "upmix", xc.audio_upmix ? true : false, NULL);
 #ifdef ENABLE_TEST_POSTPLUGINS
@@ -156,6 +157,10 @@ void cMenuSetupAudio::Set(void)
 			     DriverNameChars));
   else
     audio_port_item = NULL;
+
+  Add(audio_ctrl_speakers =
+      new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type, 
+				SPEAKERS_count, xc.s_speakerArrangements));
   Add(audio_ctrl_delay = 
       new cMenuEditTypedIntItem(tr("Delay"), tr("ms"), &newconfig.audio_delay,
 				-3000, 3000, tr("Off")));
@@ -217,16 +222,40 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
 	    audio_port_item)
       Set();
   }
-  else if(item == audio_ctrl_delay || item == audio_ctrl_compression || 
-	  item == audio_ctrl_surround) {
+  else if(item == audio_ctrl_delay || item == audio_ctrl_compression) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	  xc.deinterlace_method, newconfig.audio_delay, 
 	  newconfig.audio_compression, newconfig.audio_equalizer,
-	  newconfig.audio_surround);
+	  newconfig.audio_surround, newconfig.speaker_type);
+  }
+  else if(item == audio_ctrl_speakers) {
+    cXinelibDevice::Instance().ConfigurePostprocessing(
+          xc.deinterlace_method, newconfig.audio_delay, 
+	  newconfig.audio_compression, newconfig.audio_equalizer,
+	  newconfig.audio_surround, newconfig.speaker_type);
+    if(newconfig.speaker_type <= SPEAKERS_STEREO &&
+       newconfig.audio_upmix) {
+      newconfig.audio_upmix = false;
+      Set();
+    }
+  }
+  else if(item == audio_ctrl_surround) {
+    cXinelibDevice::Instance().ConfigurePostprocessing(
+          xc.deinterlace_method, newconfig.audio_delay, 
+	  newconfig.audio_compression, newconfig.audio_equalizer,
+	  newconfig.audio_surround, newconfig.speaker_type);
+    if(newconfig.audio_surround && newconfig.audio_upmix) {
+      newconfig.audio_upmix = 0;
+      Set();
+    }
   }
   else if(item == audio_ctrl_upmix) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	  "upmix", newconfig.audio_upmix ? true : false, NULL);
+    if(newconfig.audio_upmix && newconfig.audio_surround) {
+      newconfig.audio_surround = 0;
+      Set();
+    }
   }
 #ifdef ENABLE_TEST_POSTPLUGINS
   else if(item == audio_ctrl_headphone) {
@@ -245,9 +274,10 @@ void cMenuSetupAudio::Store(void)
   strcpy(xc.audio_driver, xc.s_audioDrivers[audio_driver]);
   strcpy(xc.audio_visualization, xc.s_audioVisualizations[visualization]);
 
-  SetupStore("Audio.Driver", xc.audio_driver);
-  SetupStore("Audio.Port",   xc.audio_port);
-  SetupStore("Audio.Delay",  xc.audio_delay);
+  SetupStore("Audio.Driver",   xc.audio_driver);
+  SetupStore("Audio.Port",     xc.audio_port);
+  SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
+  SetupStore("Audio.Delay",    xc.audio_delay);
   SetupStore("Audio.Compression",  xc.audio_compression);
   SetupStore("Audio.Surround",     xc.audio_surround);
   SetupStore("Audio.Upmix",        xc.audio_upmix);
@@ -283,7 +313,7 @@ cMenuSetupAudioEq::~cMenuSetupAudioEq(void)
 {
   cXinelibDevice::Instance().ConfigurePostprocessing(
         xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
-	xc.audio_equalizer, xc.audio_surround);
+	xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 }
 
 void cMenuSetupAudioEq::Set(void)
@@ -310,7 +340,7 @@ eOSState cMenuSetupAudioEq::ProcessKey(eKeys Key)
   if(Key == kLeft || Key == kRight) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
-	newconfig.audio_equalizer, xc.audio_surround);
+	newconfig.audio_equalizer, xc.audio_surround, xc.speaker_type);
   }
 
   return state;
@@ -371,13 +401,13 @@ cMenuSetupVideo::~cMenuSetupVideo(void)
   cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, 
 					    xc.brightness, xc.contrast);
   cXinelibDevice::Instance().ConfigurePostprocessing(
-       "autocrop", xc.autocrop ? true : false, NULL);
+       "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
 }
 
 void cMenuSetupVideo::Set(void)
 {
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
-  //int current = Current();
+  int current = Current();
   Clear();
 
   Add(NewTitle("Video"));
@@ -385,6 +415,17 @@ void cMenuSetupVideo::Set(void)
   Add(ctrl_autocrop = 
       new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
 			    &newconfig.autocrop));
+  if(newconfig.autocrop) {
+    Add(new cMenuEditBoolItem(tr("  Autodetect letterbox"), 
+			      &newconfig.autocrop_autodetect));
+    Add(new cMenuEditBoolItem(tr("  Soft start"), 
+			      &newconfig.autocrop_soft));
+    Add(new cMenuEditBoolItem(tr("  Cropping size"),
+			      &newconfig.autocrop_fixedsize,
+			      "4:3...20:9", "14:9/16:9"));
+    Add(new cMenuEditBoolItem(tr("  Detect subtitles"),
+			      &newconfig.autocrop_subs));
+  }
 
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
   Add(new cMenuEditIntItem(tr("HUE"), &newconfig.hue, -1, 0xffff));
@@ -405,9 +446,9 @@ void cMenuSetupVideo::Set(void)
 			    controls));
 #endif
 
-  //if(current<1) current=1; /* first item is not selectable */
-  //SetCurrent(Get(current));
-  SetCurrent(Get(1));
+  if(current<1) current=1; /* first item is not selectable */
+  SetCurrent(Get(current));
+  //SetCurrent(Get(1));
   Display();
 }
 
@@ -434,10 +475,12 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
        INDEX_TO_CONTROL(newconfig.brightness), 
        INDEX_TO_CONTROL(newconfig.contrast));
 #endif
-  else if(item == ctrl_autocrop) 
+  else if(item == ctrl_autocrop) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
-	 "autocrop", xc.autocrop ? true : false, NULL);
-
+	 "autocrop", newconfig.autocrop ? true : false, 
+	 newconfig.AutocropOptions());
+    Set();
+  }
   return state;
 }
 
@@ -453,7 +496,11 @@ void cMenuSetupVideo::Store(void)
   xc.brightness = INDEX_TO_CONTROL(xc.brightness);
 #endif
 
-  SetupStore("Video.AutoCrop",   xc.autocrop);
+  SetupStore("Video.AutoCrop",   xc.autocrop); 
+  SetupStore("Video.AutoCrop.AutoDetect", xc.autocrop_autodetect);
+  SetupStore("Video.AutoCrop.SoftStart",  xc.autocrop_soft);
+  SetupStore("Video.AutoCrop.FixedSize",  xc.autocrop_fixedsize);
+  SetupStore("Video.AutoCrop.DetectSubs", xc.autocrop_subs);
   SetupStore("Video.HUE",        xc.hue);
   SetupStore("Video.Saturation", xc.saturation);
   SetupStore("Video.Contrast",   xc.contrast);
@@ -551,7 +598,7 @@ void cMenuSetupOSD::Set(void)
   
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
-  SetCurrent(Get(1));
+  //SetCurrent(Get(1));
   Display();
 }
 
@@ -759,7 +806,7 @@ cMenuSetupLocal::~cMenuSetupLocal(void)
        xc.display_aspect, xc.scale_video, xc.field_order);
   cXinelibDevice::Instance().ConfigurePostprocessing(
        xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
-       xc.audio_equalizer, xc.audio_surround);
+       xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 }
 
 void cMenuSetupLocal::Set(void)

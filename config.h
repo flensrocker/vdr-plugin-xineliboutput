@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.5 2006-08-19 19:18:21 phintuka Exp $
+ * $Id: config.h,v 1.6 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -104,6 +104,22 @@
 #define AUDIO_VIS_GOOM   1
 #define AUDIO_VIS_count  5
 
+/* speaker arrangements: xine, audio_out_alsa.c */
+#define SPEAKERS_MONO          0
+#define SPEAKERS_STEREO        1
+#define SPEAKERS_HEADPHONES    2
+#define SPEAKERS_SURROUND21    3
+#define SPEAKERS_SURROUND3     4 
+#define SPEAKERS_SURROUND4     5
+#define SPEAKERS_SURROUND41    6
+#define SPEAKERS_SURROUND5     7
+#define SPEAKERS_SURROUND51    8
+#define SPEAKERS_SURROUND6     9
+#define SPEAKERS_SURROUND61    10
+#define SPEAKERS_SURROUND71    11
+#define SPEAKERS_A52_PASSTHRU  12 
+#define SPEAKERS_count         13 
+
 typedef enum {
   ShowMenu   = 0,
   ShowEq     = 1,
@@ -134,12 +150,14 @@ class config_t {
     static const char *s_audioEqNames[];
     static const char *s_audioVisualizations[];
     static const char *s_audioVisualizationNames[];
+    static const char *s_speakerArrangements[];
 
   public:
     char video_driver[32];
     char video_port[64];     // X11: DISPLAY=...
     char audio_driver[32];
     char audio_port[32];
+    int  speaker_type;
     char *post_plugins;      // from command line options
 
     int  audio_delay;        // in ms
@@ -176,6 +194,10 @@ class config_t {
     int  scale_video;
     int  field_order;
     int  autocrop;
+    int  autocrop_autodetect;
+    int  autocrop_soft;
+    int  autocrop_fixedsize;
+    int  autocrop_subs;
     int  exit_on_close;
     
     int  remote_mode;
@@ -209,6 +231,7 @@ class config_t {
 
     bool IsImageFile(const char *);
     bool IsVideoFile(const char *);
+    const char *AutocropOptions(void);
 
   protected:
     bool ProcessArg(const char *Name, const char *Value);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.12 2006-08-21 21:24:05 phintuka Exp $
+ * $Id: device.c,v 1.13 2006-08-22 03:45:34 phintuka Exp $
  *
  */
 
@@ -324,18 +324,19 @@ void cXinelibDevice::ConfigurePostprocessing(const char *deinterlace_method,
 					     int audio_delay, 
 					     int audio_compression, 
 					     const int *audio_equalizer, 
-					     int audio_surround)
+					     int audio_surround,
+					     int speaker_type)
 {
   TRACEF("cXinelibDevice::ConfigurePostprocessing");
 
   if(m_local)
     m_local->ConfigurePostprocessing(deinterlace_method, audio_delay, 
 				     audio_compression, audio_equalizer,
-				     audio_surround);
+				     audio_surround, speaker_type);
   if(m_server)
     m_server->ConfigurePostprocessing(deinterlace_method, audio_delay, 
 				      audio_compression, audio_equalizer,
-				      audio_surround);
+				      audio_surround, speaker_type);
 }
 
 void cXinelibDevice::ConfigurePostprocessing(const char *name, bool on, 
