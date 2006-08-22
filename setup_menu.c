@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.5 2006-08-22 03:45:34 phintuka Exp $
+ * $Id: setup_menu.c,v 1.6 2006-08-22 03:53:34 phintuka Exp $
  *
  */
 
@@ -420,7 +420,7 @@ void cMenuSetupVideo::Set(void)
 			      &newconfig.autocrop_autodetect));
     Add(new cMenuEditBoolItem(tr("  Soft start"), 
 			      &newconfig.autocrop_soft));
-    Add(new cMenuEditBoolItem(tr("  Cropping size"),
+    Add(new cMenuEditBoolItem(tr("  Crop to"),
 			      &newconfig.autocrop_fixedsize,
 			      "4:3...20:9", "14:9/16:9"));
     Add(new cMenuEditBoolItem(tr("  Detect subtitles"),
