@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.11 2006-08-22 03:45:34 phintuka Exp $
+ * $Id: frontend.c,v 1.12 2006-08-22 08:32:38 phintuka Exp $
  *
  */
 
@@ -494,8 +494,8 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
   TRACEF("cXinelibThread::PlayFile");
   char buf[2048];
   m_bEndOfStreamReached = false;
-  sprintf(buf, "PLAYFILE %s %d %s\r\n",
-	  LoopPlay ? "Loop" : "", Position, FileName ? FileName : "");
+  sprintf(buf, "PLAYFILE %s %d %s %s\r\n",
+	  LoopPlay ? "Loop" : "", Position, xc.audio_visualization, FileName ? FileName : "");
   int result = PlayFileCtrl(buf);
 
   if(!FileName || result != 0) {

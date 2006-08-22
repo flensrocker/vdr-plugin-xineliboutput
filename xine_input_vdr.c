@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.30 2006-08-22 04:02:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.31 2006-08-22 08:32:38 phintuka Exp $
  *
  */
 
@@ -2183,7 +2183,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event);
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
-  char filename[1024]="", *subs = NULL;
+  char filename[1024]="", *subs = NULL, av[64], *pt2=av;
   int loop = 0, pos = 0, err = 0;
 
   while(*pt==' ') pt++;
@@ -2199,11 +2199,17 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   while(*pt && *pt != ' ') pt++;
   while(*pt == ' ') pt++;
 
+  /* audio visualization */
+  while(*pt && *pt != ' ')
+    *pt2++ = *pt++;
+  *pt2 = 0;
+  while(*pt == ' ') pt++;
+
   strncpy(filename, pt, 1023);
   filename[1023] = 0;
 
-  LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s)",
-	 loop, pos, *filename ? filename : "<STOP>" );
+  LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s %s)",
+	 loop, pos, *filename ? av:"", *filename ? filename : "<STOP>");
 
   if(*filename) {
     this->loop_play = 0;
@@ -2249,6 +2255,11 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
 	this->funcs.fe_control(this->funcs.fe_handle, 
 			       has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
+	if(!has_video && *av && strcmp(av, "none")) {
+	  char str[64];
+	  sprintf(str, "POST %s On\r\n", av);
+	  this->funcs.fe_control(this->funcs.fe_handle, str);
+	}
       }
     } else {
       LOGMSG("Error playing file ! (File not found ? Unknown format ?)");
@@ -2264,6 +2275,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	xine_event_dispose_queue (this->slave_event_queue);
 	this->slave_event_queue = NULL;
       }
+      this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
       if(this->funcs.fe_control) 
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
       if(this->fd_control>=0)
