@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.7 2006-08-15 16:35:15 phintuka Exp $
+ * $Id: cxsocket.h,v 1.8 2006-08-23 06:46:00 phintuka Exp $
  *
  */
 
@@ -160,6 +160,39 @@ static inline ssize_t timed_write(int fd, const void *buffer, size_t size,
   }
 
   return written;
+}
+
+static inline ssize_t timed_read(int fd, void *buffer, size_t size, 
+				 int timeout_ms)
+{
+  ssize_t missing = (ssize_t)size;
+  unsigned char *ptr = (unsigned char *)buffer;
+  cPoller poller(fd);
+
+  while (missing > 0) {
+
+    if(!poller.Poll(timeout_ms)) {
+      LOGERR("timed_read: poll() failed at %d/%d", size-missing, size);
+      return size-missing;
+    }
+
+    errno = 0;
+    ssize_t p = read(fd, ptr, missing);
+
+    if (p <= 0) {
+      if (errno == EINTR || errno == EAGAIN) {
+	LOGDBG("timed_read: EINTR/EAGAIN during read(), retrying");
+	continue;
+      }
+      LOGERR("timed_read: read() error at %d/%d", size-missing, size);
+      return size-missing;
+    }
+
+    ptr  += p;
+    missing -= p;    
+  }
+
+  return size;
 }
 
 //#include "xine_osd_command.h"
