@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.7 2006-08-16 23:29:35 phintuka Exp $
+# $Id: Makefile,v 1.8 2006-08-23 05:28:18 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -328,7 +328,7 @@ $(VDRPLUGIN_SXFE_SO): $(OBJS_SXFE_SO)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
-	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) -o $@
+	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) -ljpeg $(LIBS_XINE) -o $@
 endif
 
 ifeq ($(XINELIBOUTPUT_FB), 1)
@@ -337,7 +337,7 @@ $(VDRPLUGIN_FBFE_SO): $(OBJS_FBFE_SO)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
-	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -o $@
+	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -ljpeg -o $@
 endif
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
