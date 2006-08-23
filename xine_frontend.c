@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.14 2006-08-21 00:04:56 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.15 2006-08-23 05:30:14 phintuka Exp $
  *
  */
 
@@ -432,7 +432,8 @@ static void configure_audio_out(fe_t *this, const char *audio_driver, const char
 }
 
 static int fe_xine_init(frontend_t *this_gen, const char *audio_driver, 
-			const char *audio_port, const char *video_driver, 
+			const char *audio_port,
+			const char *video_driver, 
 			int pes_buffers, int priority, 
 			const char *static_post_plugins)
 {
@@ -1157,12 +1158,23 @@ static void *fe_control(void *fe_handle, const char *cmd)
     }
     free(name);
     return NULL;
+
+  } else if(!strncmp(cmd, "GRAB ", 5)) {
+    int quality, width, height, jpeg, size=0;
+    jpeg = !strncmp(cmd+5,"JPEG",4);
+    if(3 == sscanf(cmd+5+4, "%d %d %d", &quality, &width, &height)) {
+      grab_data_t *result = (grab_data_t*)malloc(sizeof(grab_data_t));   
+      result->data = this->fe.grab((frontend_t*)this, &size, 
+				   jpeg, quality, width, height);
+      if(result->data && (result->size=size)>0)
+	return result;
+      free(result->data);
+      free(result);
+    }
   }
   
   return NULL;
 }
-
-#ifndef FE_STANDALONE
 
 /*
  * --- RgbToJpeg -------------------------------------------------------------
@@ -1355,7 +1367,6 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   return (char*) jcd.mem;
 }
 
-#endif /* #ifndef FE_STANDALONE */
 
 #ifdef FE_STANDALONE
 

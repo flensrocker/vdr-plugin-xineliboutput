@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.5 2006-08-19 19:18:21 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.6 2006-08-23 05:30:14 phintuka Exp $
  *
  */
 
@@ -255,8 +255,8 @@ static frontend_t *fbfe_get_frontend(void)
 
   this->fe.fe_free      = fe_free;
 
-#ifndef FE_STANDALONE
   this->fe.grab                  = fe_grab;
+#ifndef FE_STANDALONE
   this->fe.xine_osd_command      = xine_osd_command;
   this->fe.xine_control          = xine_control;
 
