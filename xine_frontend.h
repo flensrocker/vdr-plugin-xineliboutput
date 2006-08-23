@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.4 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.5 2006-08-23 05:27:11 phintuka Exp $
  *
  */
 
@@ -15,8 +15,7 @@
 extern "C" {
 #endif
 
-#define FE_VERSION_STR  "0.9.9"
-#define FE_VERSION      0x99 /*(((0)<<16) | ((9)<<8) | ((9)))*/
+#define FE_VERSION_STR  XINELIBOUTPUT_VERSION /*"1.0.0pre1"*/
 
 typedef void (*fe_keypress_f)(const char *keymap, const char *name);
 
