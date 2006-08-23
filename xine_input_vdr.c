@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.31 2006-08-22 08:32:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.32 2006-08-23 06:50:20 phintuka Exp $
  *
  */
 
@@ -854,27 +854,49 @@ static int io_select_rd (int fd)
   return XIO_TIMEOUT; /* newer reached ... */
 }
 
-static void write_control(vdr_input_plugin_t *this, const char *str)
+static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t len)
 {
-  size_t len = (size_t)strlen(str);
   size_t ret;
-
   do {
     if(this->fd_control < 0)
       return;
     errno = 0;
-    if(len != (ret = write(this->fd_control, str, len))) {
-      /*if(ret <= 0 && (errno == EINTR || errno == EAGAIN))*/
-      if(ret <= 0 && errno == EAGAIN)
-	continue;
-      if(ret <= 0 && errno == EINTR)
+    if(len == (ret = write(this->fd_control, str, len)))
+      return;
+
+    if(ret <= 0) {
+      if(errno == EAGAIN) {
+	/* poll socket instead of busy wait */
+	fd_set fdset, eset;
+	struct timeval select_timeout;
+	FD_ZERO (&fdset);
+	FD_ZERO (&eset);
+	FD_SET  (this->fd_control, &fdset);
+	FD_SET  (this->fd_control, &eset);   
+	select_timeout.tv_sec  = 0;
+	select_timeout.tv_usec = 500*1000; /* 500 ms */
+	errno = 0;
+	if(1 == select (this->fd_control + 1, NULL, &fdset, &eset, &select_timeout))
+	  continue;
+	LOGERR("write_control failed (poll timeout)");
+      } else if(errno == EINTR)
 	LOGERR("write_control failed (%d) EINTR", ret);
       else
 	LOGERR("write_control failed (%d)", ret);
       close(this->fd_control);
       this->fd_control = -1;
+    } else {
+      len -= ret;
+      str += ret;
+      continue;
     }
-  } while(0);
+  } while(1);
+}
+
+static void write_control(vdr_input_plugin_t *this, const char *str)
+{
+  size_t len = (size_t)strlen(str);
+  write_control_data(this, str, len);
 }
 
 static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
@@ -1643,6 +1665,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     ov_event.event_type = OVERLAY_EVENT_SHOW;
     ov_event.object.handle = handle;
     ov_event.object.overlay = &ov_overlay;
+    ov_event.object.object_type = 1; /* menu */
     memset( ov_event.object.overlay, 0, sizeof(*ov_event.object.overlay) );
 
 #if XINE_VERSION_CODE < 10101  
@@ -2290,6 +2313,41 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   return err ? CONTROL_PARAM_ERROR : CONTROL_OK;
 }
 
+static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
+{
+  int quality, width, height, jpeg;
+  jpeg = !strcmp(cmd+5,"JPEG");
+
+  if(3 == sscanf(cmd+5+4, "%d %d %d", &quality, &width, &height)) {
+    grab_data_t *data = NULL; 
+    uint64_t t = monotonic_time_ms();
+    LOGDBG("GRAB: jpeg=%d quality=%d w=%d h=%d", jpeg, quality, width, height);
+    /*VDR_ENTRY_UNLOCK();*/ /* grab takes long time so we may lose data connection ... */
+
+    if(this->funcs.fe_control)
+	data = (grab_data_t*)(this->funcs.fe_control(this->funcs.fe_handle, cmd));
+    if(this->fd_control >= 0) {
+      printf_control(this, "RESULT %d %d\r\n", this->token, data?data->size:-1);
+      if(data && data->size>0 && data->data) {
+	char zero=0;
+	/* TODO: should lock control stream ; if anythings is written in middle -> Boom! */ 
+	printf_control(this, "GRAB %d %d\r\n", this->token, data->size);
+	write_control_data(this, &zero, 1);
+	write_control_data(this, data->data, data->size);
+      }
+    }
+
+    if(data)
+      free(data->data);
+    free(data);
+    /*VDR_ENTRY_LOCK(CONTROL_DISCONNECTED);*/
+    LOGDBG("grab took %d ms", (int)(monotonic_time_ms() - t));
+    return CONTROL_OK;
+  }
+
+  return CONTROL_PARAM_ERROR;
+}
+
 static int handle_control_substream(vdr_input_plugin_t *this, const char *cmd)
 {
   unsigned int pid;
@@ -2928,6 +2986,10 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       else
 	err = CONTROL_PARAM_ERROR;
     }
+
+  } else if(!strncasecmp(cmd, "GRAB ", 5)) {
+    handle_control_grab(this, cmd);
+    /*LOGMSG("unimplemented control %s", cmd);*/
 
   } else {
     LOGMSG("unknown control %s", cmd);

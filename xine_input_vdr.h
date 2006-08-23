@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.h,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: xine_input_vdr.h,v 1.3 2006-08-23 06:50:20 phintuka Exp $
  *
  */
 
@@ -36,6 +36,11 @@ typedef struct vdr_input_plugin_funcs_s {
 #define CONTROL_UNKNOWN      -1 
 #define CONTROL_PARAM_ERROR  -2 
 #define CONTROL_DISCONNECTED -3
+
+typedef struct grab_data_s {
+  int size;
+  char *data;
+} grab_data_t;
 
 #if defined __cplusplus
 }
