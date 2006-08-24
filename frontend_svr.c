@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.16 2006-08-24 01:10:53 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.17 2006-08-24 01:12:48 phintuka Exp $
  *
  */
 
@@ -621,7 +621,7 @@ bool cXinelibServer::Listen(int listen_port)
       setsockopt(fd_discovery, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
       sin.sin_family = AF_INET;
       sin.sin_port   = htons(DISCOVERY_PORT);
-      sin.sin_addr.s_addr = INADDR_ANY;//BROADCAST;
+      sin.sin_addr.s_addr = INADDR_BROADCAST;  //INADDR_ANY grabs rtp too ...
 
       if (bind(fd_discovery, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
 	LOGERR("bind() failed (UDP discovery)");
