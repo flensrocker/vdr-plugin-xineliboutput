@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.14 2006-08-22 21:09:49 phintuka Exp $
+ * $Id: device.c,v 1.15 2006-08-24 23:31:16 phintuka Exp $
  *
  */
 
@@ -29,6 +29,7 @@
 
 #include "tools/listiter.h"
 #include "tools/pes.h"
+#include "tools/functor.h"
 
 #include "frontend_local.h"
 #include "frontend_svr.h"
@@ -255,10 +256,19 @@ void cXinelibDevice::MakePrimaryDevice(bool On)
 
 void cXinelibDevice::ForcePrimaryDevice(bool On) 
 {
+  LOGDBG("cXinelibDevice::ForcePrimaryDevice(%s)",On?"On":"Off");
+  m_MainThreadLock.Lock();
+  m_MainThreadFunctors.Add(CreateFunctor(this, &cXinelibDevice::ForcePrimaryDeviceImpl, On));
+  m_MainThreadLock.Unlock();
+}
+
+void cXinelibDevice::ForcePrimaryDeviceImpl(bool On) 
+{
   static int Original = 0;
   static int Counter = 0;
 
-  TRACEF("cXinelibDevice::ForcePrimaryDevice");
+  TRACEF("cXinelibDevice::ForcePrimaryDeviceImpl");
+  LOGDBG("cXinelibDevice::ForcePrimaryDeviceImpl(%s)",On?"On":"Off");
 
   /* TODO: All this stuff should really be done in VDR main thread context... */
 
@@ -305,6 +315,25 @@ void cXinelibDevice::ForcePrimaryDevice(bool On)
   }
 }
 
+void cXinelibDevice::MainThreadHook(void)
+{
+  TRACEF("cXinelibDevice::MainThreadHook");
+
+  cFunctor *f = NULL;
+  do {
+    m_MainThreadLock.Lock();
+    if(f)
+      m_MainThreadFunctors.Del(f);
+    f = m_MainThreadFunctors.First();
+    m_MainThreadLock.Unlock();
+
+    if(f) {
+      LOGDBG("cXinelibDevice::MainThreadHook: executing functor 0x%lx",(long)f);
+      f->Execute();
+    }
+
+  } while(f);
+}
 
 //
 // Configuration
