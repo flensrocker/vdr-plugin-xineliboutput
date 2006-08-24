@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.15 2006-08-22 03:45:34 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.16 2006-08-24 01:10:53 phintuka Exp $
  *
  */
 
@@ -813,11 +813,10 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
   if(1 == sscanf(arg, "%d", &clientId) &&
      clientId >= 0 && clientId < MAXCLIENTS &&
      fd_control[clientId] >= 0) {
+
+    CloseDataConnection(clientId);
+
     fd_control[oldId] = -1;
-    m_bUdp[clientId] = false;
-    m_bMulticast[clientId] = false;
-    m_iUdpFlowMask &= ~(1<<clientId);
-    m_iMulticastMask &= ~(1<<clientId);
     cli = clientId;
        
     write_cmd(fd, "DATA\r\n");
@@ -825,6 +824,9 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
     CREATE_NEW_WRITER;   
 
     fd_data[cli] = fd;
+    
+    /* not anymore control connection, so dec primary device reference counter */
+    cXinelibDevice::Instance().ForcePrimaryDevice(false); 
 
     return;
   }
