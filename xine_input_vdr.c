@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.32 2006-08-23 06:50:20 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.33 2006-08-24 09:17:04 phintuka Exp $
  *
  */
 
@@ -224,6 +224,7 @@ typedef struct vdr_input_plugin_s {
   /* Network */
   pthread_t           control_thread;
   pthread_t           data_thread;
+  pthread_mutex_t     fd_control_lock;
   int                 threads_initialized;
   volatile int        control_running;
   volatile int        fd_data;
@@ -857,46 +858,57 @@ static int io_select_rd (int fd)
 static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t len)
 {
   size_t ret;
-  do {
-    if(this->fd_control < 0)
-      return;
+  while(len>0) {
+    if(this->fd_control < 0) {
+      LOGERR("write_control aborted");
+      return;  
+    }
+
+#if 1
+    fd_set fdset, eset;
+    struct timeval select_timeout;
+    FD_ZERO (&fdset);
+    FD_ZERO (&eset);
+    FD_SET  (this->fd_control, &fdset);
+    FD_SET  (this->fd_control, &eset);   
+    select_timeout.tv_sec  = 0;
+    select_timeout.tv_usec = 500*1000; /* 500 ms */
     errno = 0;
-    if(len == (ret = write(this->fd_control, str, len)))
-      return;
+    if(1 != select (this->fd_control + 1, NULL, &fdset, &eset, &select_timeout) ||
+       !FD_ISSET(this->fd_control, &fdset) ||
+       FD_ISSET(this->fd_control, &eset))
+      LOGERR("write_control failed (poll timeout)");
+#endif
+
+    errno = 0;
+    ret = write(this->fd_control, str, len);
 
     if(ret <= 0) {
       if(errno == EAGAIN) {
-	/* poll socket instead of busy wait */
-	fd_set fdset, eset;
-	struct timeval select_timeout;
-	FD_ZERO (&fdset);
-	FD_ZERO (&eset);
-	FD_SET  (this->fd_control, &fdset);
-	FD_SET  (this->fd_control, &eset);   
-	select_timeout.tv_sec  = 0;
-	select_timeout.tv_usec = 500*1000; /* 500 ms */
-	errno = 0;
-	if(1 == select (this->fd_control + 1, NULL, &fdset, &eset, &select_timeout))
-	  continue;
-	LOGERR("write_control failed (poll timeout)");
-      } else if(errno == EINTR)
+	LOGERR("write_control failed (%d) EAGAIN", ret);
+	continue;
+      } else if(errno == EINTR) {
 	LOGERR("write_control failed (%d) EINTR", ret);
+	pthread_testcancel();
+        continue;
+      }
       else
 	LOGERR("write_control failed (%d)", ret);
       close(this->fd_control);
       this->fd_control = -1;
-    } else {
-      len -= ret;
-      str += ret;
-      continue;
+      return;
     }
-  } while(1);
+    len -= ret;
+    str += ret;
+  }
 }
 
 static void write_control(vdr_input_plugin_t *this, const char *str)
 {
   size_t len = (size_t)strlen(str);
+  pthread_mutex_lock (&this->fd_control_lock);
   write_control_data(this, str, len);
+  pthread_mutex_unlock (&this->fd_control_lock);
 }
 
 static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
@@ -2319,30 +2331,41 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
   jpeg = !strcmp(cmd+5,"JPEG");
 
   if(3 == sscanf(cmd+5+4, "%d %d %d", &quality, &width, &height)) {
-    grab_data_t *data = NULL; 
-    uint64_t t = monotonic_time_ms();
-    LOGDBG("GRAB: jpeg=%d quality=%d w=%d h=%d", jpeg, quality, width, height);
-    /*VDR_ENTRY_UNLOCK();*/ /* grab takes long time so we may lose data connection ... */
-
-    if(this->funcs.fe_control)
-	data = (grab_data_t*)(this->funcs.fe_control(this->funcs.fe_handle, cmd));
+ 
     if(this->fd_control >= 0) {
-      printf_control(this, "RESULT %d %d\r\n", this->token, data?data->size:-1);
-      if(data && data->size>0 && data->data) {
-	char zero=0;
-	/* TODO: should lock control stream ; if anythings is written in middle -> Boom! */ 
-	printf_control(this, "GRAB %d %d\r\n", this->token, data->size);
-	write_control_data(this, &zero, 1);
-	write_control_data(this, data->data, data->size);
-      }
-    }
 
-    if(data)
-      free(data->data);
-    free(data);
-    /*VDR_ENTRY_LOCK(CONTROL_DISCONNECTED);*/
-    LOGDBG("grab took %d ms", (int)(monotonic_time_ms() - t));
-    return CONTROL_OK;
+      grab_data_t *data = NULL; 
+      uint64_t t = monotonic_time_ms();
+      LOGDBG("GRAB: jpeg=%d quality=%d w=%d h=%d", jpeg, quality, width, height);  
+
+      /* grab takes long time and we don't want to lose data connection 
+	 or interrupt video ... */
+      pthread_mutex_unlock(&this->vdr_entry_lock);
+      
+      if(this->funcs.fe_control)
+	data = (grab_data_t*)(this->funcs.fe_control(this->funcs.fe_handle, cmd));
+      
+      if(data && data->size>0 && data->data) {
+	char s[128];
+	sprintf(s, "GRAB %d %d\r\n", this->token, data->size);
+	pthread_mutex_lock (&this->fd_control_lock);
+	write_control_data(this, s, strlen(s));
+	write_control_data(this, data->data, data->size);
+	pthread_mutex_unlock (&this->fd_control_lock);
+      } else {
+	/* failed */
+	printf_control(this, "GRAB %d 0\r\n", this->token);
+      }
+
+      pthread_mutex_lock(&this->vdr_entry_lock);
+
+      if(data)
+	free(data->data);
+      free(data);
+
+      LOGDBG("grab took %d ms", (int)(monotonic_time_ms() - t));
+      return CONTROL_OK;
+    }
   }
 
   return CONTROL_PARAM_ERROR;
@@ -4132,6 +4155,11 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     pthread_mutex_lock(&this->lock);
     pthread_mutex_unlock(&this->lock);
   }
+  while(pthread_mutex_destroy(&this->fd_control_lock) == EBUSY) {
+    LOGMSG("lock busy ...");
+    pthread_mutex_lock(&this->fd_control_lock);
+    pthread_mutex_unlock(&this->fd_control_lock);
+  }
 
   /* event queue(s) */
   if (this->slave_event_queue) 
@@ -4888,6 +4916,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   pthread_mutex_init (&this->lock, NULL);
   pthread_mutex_init (&this->osd_lock, NULL);
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
+  pthread_mutex_init (&this->fd_control_lock, NULL);
 
   this->udp_data = NULL;
 
