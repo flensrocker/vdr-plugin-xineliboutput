@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.5 2006-08-07 17:08:33 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.6 2006-08-24 09:20:07 phintuka Exp $
  *
  */
 
@@ -112,6 +112,10 @@ protected:
     bool              m_Master;
     cStcFuture        *m_StcFuture;
     cCmdFutures       *m_Futures;
+
+    int  m_Token;
+    int  AllocToken(void);
+    int  ClientCount(void);
 };
 
 #endif // __XINELIB_FRONTEND_SVR_H

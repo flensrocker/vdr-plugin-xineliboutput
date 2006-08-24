@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.17 2006-08-24 01:12:48 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.18 2006-08-24 09:20:07 phintuka Exp $
  *
  */
 
@@ -44,8 +44,14 @@
 
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
+typedef struct {
+  int    Size;
+  uchar *Data;
+} grab_result_t;
+
 class cStcFuture : public cFuture<int64_t> {};
 class cReplyFuture : public cFuture<int>, public cListObject {};
+class cGrabReplyFuture : public cFuture<grab_result_t>, public cListObject {};
 class cCmdFutures : public cHash<cReplyFuture> {};
 
 #define POLLING_INTERVAL (10*1000)
@@ -86,6 +92,8 @@ cXinelibServer::cXinelibServer(int listen_port) :
     m_PipesDir = cString::sprintf("%s/xineliboutput/pipes", *Base);
   else
     m_PipesDir = cString("/tmp/xineliboutput/pipes");
+
+  m_Token = 1;
 }
 
 cXinelibServer::~cXinelibServer() 
@@ -492,6 +500,29 @@ bool cXinelibServer::EndOfStreamReached(void)
   return cXinelibThread::EndOfStreamReached();
 }
 
+int cXinelibServer::AllocToken(void)
+{
+  LOCK_THREAD;
+
+  m_Token = (m_Token+1) & 0xffff;
+
+  cXinelibThread::Xine_Control((const char *)"TOKEN", m_Token);
+
+  return m_Token;
+}
+
+int cXinelibServer::ClientCount(void)
+{
+  LOCK_THREAD;
+
+  int i, n=0;
+  for(i=0; i<MAXCLIENTS; i++) 
+    if(fd_control[i]>=0 && m_bConfigOk[i])  
+      n++;
+
+  return n;
+}
+
 int cXinelibServer::PlayFileCtrl(const char *Cmd)
 {
   if( 0 /*(*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))*/ ) {  
@@ -500,59 +531,55 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
     // return cXinelibThread::PlayFileCtrl(Cmd);
     //
   } else {
-    bool bPlayfile = false/*, bGet = false, bFlush = false*/;
+    bool bPlayfile = false /*, bGet = false, bFlush = false*/;
     if((!strncmp(Cmd, "FLUSH", 5)    /*&& (bFlush=true)*/) ||
        (!strncmp(Cmd, "PLAYFILE", 8) && (bPlayfile=true)) ||
        (!strncmp(Cmd, "GET", 3)      /*&& (bGet=true)*/)) {  // GETPOS, GETLENGTH, ...
-
-      cReplyFuture future;
-      static int myToken = 0;
-      int i;
-      
-      Lock();
-      
+     
       /* Check if there are any clients */
-      for(i=0; i<MAXCLIENTS; i++) 
-	if(fd_control[i]>=0 && m_bConfigOk[i])  
-	  break;
-      if(i == MAXCLIENTS) {
-	Unlock();
+      if(ClientCount() <= 0)
 	return -1;
-      }
 
-      /* Next token */
-      cXinelibThread::Xine_Control((const char *)"TOKEN", myToken);
-      int token = myToken++;
+      Lock();  
+  
+      /* Get token, send it to client and set future for it */
+      int token = AllocToken();
+      cReplyFuture future;
       m_Futures->Add(&future, token);
 
-      // When server get REPLY %d %d (first %d == myToken, second returned value)
-      // it sets corresponding future (by token; if found) in list
-      // and removes it from list.
+      /* Send actual command */
+      cXinelibThread::PlayFileCtrl(Cmd);
 
       Unlock();
-      
-      cXinelibThread::PlayFileCtrl(Cmd);
+
+      /* When server thread get REPLY %d %d (first %d == token, second returned value)
+       * it sets corresponding future (by token; if found) in list
+       * and removes it from list.
+       */
+
+#ifdef XINELIBOUTPUT_DEBUG
+      int64_t t = cTimeMs::Now();
+#endif
 
       int timeout = 300;
       if(bPlayfile)
 	timeout = 5000;
 
-#ifdef XINELIBOUTPUT_DEBUG
-      int64_t t = cTimeMs::Now();
-#endif
-      if(! future.Wait(timeout)) {
-	Lock();
-	if(! future.IsReady()) { 
-	  m_Futures->Del(&future, token);
-	  Unlock();
-	  LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, timeout, token);
-	  return -1;
-	}
-	Unlock();
+      future.Wait(timeout);
+
+      Lock();
+      m_Futures->Del(&future, token);
+      Unlock();
+
+      if(!future.IsReady()) {
+	LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, timeout, token);
+	return -1;
       }
+
       TRACE("cXinelibServer::PlayFileCtrl("<<Cmd<<"): result=" << future.Value()
 	    << " delay: " << (int)(cTimeMs::Now()-t) << "ms"); 
-      if(bPlayfile) 
+
+      if(bPlayfile)
 	m_bEndOfStreamReached = false;
 
       return future.Value();
@@ -712,14 +739,46 @@ bool cXinelibServer::Listen(int listen_port)
   return result;
 }
 
-
 uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg, 
 				 int Quality, int SizeX, int SizeY) 
 {
-  //
-  // TODO
-  //
-  return NULL;
+  cGrabReplyFuture future;
+  char  cmd[64];
+  uchar *result = NULL;
+
+  Lock();
+
+  /* Check if there are any clients */
+  if(ClientCount() <= 0)
+    return NULL;
+
+  sprintf(cmd, "GRAB %s %d %d %d\r\n", 
+	  Jpeg ? "JPEG" : "PNM", Quality, SizeX, SizeY);
+
+  int token = AllocToken();
+  m_Futures->Add(&future, token);
+
+  Xine_Control(cmd);
+
+  Unlock();
+
+  if(future.Wait(5000)) {
+    grab_result_t r = future.Value(); 
+    if((Size = r.Size) > 0) {
+      LOGDBG("cXinelibServer::GrabImage: image size is %d bytes", Size);
+      result = r.Data;
+    } else {
+      LOGMSG("cXinelibServer::Grab: Grab failed (%d)", Size);
+    }
+  } else {
+    LOGMSG("cXinelibServer::Grab: Timeout (5000 ms)");
+  }
+
+  Lock();
+  m_Futures->Del(&future, token);
+  Unlock();
+
+  return result;
 }
 
 //
@@ -843,7 +902,7 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 
     CloseDataConnection(cli);
 
-    sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
+   sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
     write_cmd(fd_control[cli], buf);
 
     stream_udp_header_t nullhdr;
@@ -1070,10 +1129,48 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
     if(2 == sscanf(cmd, "RESULT %d %d", &token, &result)) {      
       cReplyFuture *f = m_Futures->Get(token);
       if(f) {
-	f->Set(result);
 	m_Futures->Del(f, token);
+	f->Set(result);
       }
     }
+
+  } else if(!strncasecmp(cmd, "GRAB ", 5)) {
+    int token = -1, size = 0;
+    if(2 == sscanf(cmd, "GRAB %d %d", &token, &size)) {
+      if(size>0) {
+	uchar *result = (uchar*)malloc(size);
+	Unlock(); /* may take a while ... */
+	ssize_t n = timed_read(fd_control[cli], result, size, 1000);
+	Lock();
+	if(n == size) {
+	  cGrabReplyFuture *f = (cGrabReplyFuture*)m_Futures->Get(token);
+	  if(f) {
+	    grab_result_t r;
+	    r.Size = size;
+	    r.Data = result;
+	    m_Futures->Del(f, token);
+	    f->Set(r);
+	    result = NULL;
+	  } else {
+	    LOGMSG("cXinelibServer: Grab image discarded");
+	  }
+	} else {
+	  LOGMSG("cXinelibServer: Grab result read() failed");
+	  CloseConnection(cli);
+	}
+	free(result);
+      } else {
+	cGrabReplyFuture *f = (cGrabReplyFuture*)m_Futures->Get(token);
+	if(f) {
+	  grab_result_t r;
+	  r.Size = 0;
+	  r.Data = NULL;
+	  m_Futures->Del(f, token);
+	  f->Set(r);
+	}
+      }
+    }
+
   } else if(!strncasecmp(cmd, "CLOSE", 5)) {
     CloseConnection(cli);
   } else if(!strncasecmp(cmd, "GET ", 4)) {
@@ -1083,28 +1180,29 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 
 void cXinelibServer::Read_Control(int cli)
 {
-  int n = read(fd_control[cli], 
-	       &m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ], 
-	       90 - m_CtrlBufPos[cli]);
-  if(n<=0) {
-    LOGMSG("Client connection %d closed", cli);
-    CloseConnection(cli);
-    return;
-  } 
+  while(read(fd_control[cli], &m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ], 1) == 1) {
 
-  char *pt;
-  m_CtrlBufPos[cli] += n;
-  m_CtrlBuf[cli][m_CtrlBufPos[cli]] = 0;
-  while(NULL != (pt=strstr(m_CtrlBuf[cli], "\r\n"))) {
-    *pt = 0;
-    Handle_Control(cli, m_CtrlBuf[cli]);
-    strcpy(m_CtrlBuf[cli], pt + 2);
-  }
-  m_CtrlBufPos[cli] = strlen(m_CtrlBuf[cli]);
+    ++m_CtrlBufPos[cli];
 
-  if(m_CtrlBufPos[cli]>=80) {
-    LOGMSG("Received too long control message from client %d", cli);
-    CloseConnection(cli);
+    if( m_CtrlBufPos[cli] > 79) {
+      LOGMSG("Received too long control message from client %d (%d bytes)", 
+	     cli, m_CtrlBufPos[cli]);
+      LOGMSG("%81s",m_CtrlBuf[cli]);
+      CloseConnection(cli);
+      return;
+    }
+
+    if( m_CtrlBufPos[cli] > 2 &&
+	m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] - 2 ] == '\r' &&
+	m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] - 1 ] == '\n') {
+
+      m_CtrlBufPos[cli] -= 2;
+      m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ] = 0;
+
+      Handle_Control(cli, m_CtrlBuf[cli]);
+
+      m_CtrlBufPos[cli] = 0;
+    }
   }
 }
 
