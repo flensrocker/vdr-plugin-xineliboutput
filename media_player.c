@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.7 2006-08-19 23:53:11 phintuka Exp $
+ * $Id: media_player.c,v 1.8 2006-08-24 09:13:23 phintuka Exp $
  *
  */
 
@@ -193,9 +193,6 @@ cXinelibPlayer::cXinelibPlayer(const char *file)
   }
 
   m_File = strdup(m_Playlist ? m_Playlist[m_CurrInd] : file);
-
-  if(m_UseResume)
-    asprintf(&m_ResumeFile, "%s.resume", m_File);
 }
 
 cXinelibPlayer::~cXinelibPlayer()
@@ -253,8 +250,6 @@ bool cXinelibPlayer::NextFile(int step)
     m_CurrInd += step;
 
     m_File = strdup(m_Playlist[m_CurrInd]);
-    if(m_UseResume)
-      asprintf(&m_ResumeFile, "%s.resume", m_File);
 
     Activate(true);
     if(!m_Replaying)
@@ -274,6 +269,8 @@ void cXinelibPlayer::Activate(bool On)
 {
   int pos = 0, fd = -1;
   if(On) {
+    if(m_UseResume && !m_ResumeFile)
+      asprintf(&m_ResumeFile, "%s.resume", m_File);
     if(m_UseResume && 0 <= (fd = open(m_ResumeFile,O_RDONLY))) {
       if(read(fd, &pos, sizeof(int)) != sizeof(int))
 	pos = 0;
@@ -282,15 +279,16 @@ void cXinelibPlayer::Activate(bool On)
     m_Replaying = cXinelibDevice::Instance().PlayFile(m_File, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", m_File, m_Replaying?"OK":"FAIL");
   } else {
-    if(m_UseResume) {
+    if(m_UseResume && m_ResumeFile) {
       pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
       if(strcasecmp(m_File+strlen(m_File)-4,".ram")) {
 	if(pos>=0) {
 	  pos /= 1000;
 	  if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
 			     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
-	    if(write(fd, &pos, sizeof(int)) != sizeof(int))
+	    if(write(fd, &pos, sizeof(int)) != sizeof(int)) {
 	      Skins.QueueMessage(mtInfo, "Error writing resume position !", 5, 30);
+	    }
 	    close(fd);
 	  } else {
 	    Skins.QueueMessage(mtInfo, "Error creating resume file !", 5, 30);
@@ -299,6 +297,8 @@ void cXinelibPlayer::Activate(bool On)
 	  unlink(m_ResumeFile);
 	}
       }
+      free(m_ResumeFile);
+      m_ResumeFile = NULL;
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
     m_Replaying = false;
