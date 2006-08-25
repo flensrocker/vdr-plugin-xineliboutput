@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.12 2006-08-22 08:32:38 phintuka Exp $
+ * $Id: frontend.c,v 1.13 2006-08-25 04:03:11 phintuka Exp $
  *
  */
 
@@ -592,9 +592,11 @@ int cXinelibThread::ConfigurePostprocessing(const char *name, bool on, const cha
 }
 
 int cXinelibThread::ConfigureVideo(int hue, int saturation, 
-				   int brightness, int contrast)
+				   int brightness, int contrast,
+				   int overscan)
 {
   char cmd[128];
+  Xine_Control("OVERSCAN", overscan);
   sprintf(cmd, "VIDEO_PROPERTIES %d %d %d %d", 
 	  hue, saturation, brightness, contrast);
   return Xine_Control(cmd);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.6 2006-08-22 03:53:34 phintuka Exp $
+ * $Id: setup_menu.c,v 1.7 2006-08-25 04:03:11 phintuka Exp $
  *
  */
 
@@ -372,6 +372,7 @@ class cMenuSetupVideo : public cMenuSetupPage
     cOsdItem *ctrl_saturation;
     cOsdItem *ctrl_contrast;
     cOsdItem *ctrl_brightness;
+    cOsdItem *ctrl_overscan;
   
   protected:
     virtual void Store(void);
@@ -399,7 +400,8 @@ cMenuSetupVideo::cMenuSetupVideo(void)
 cMenuSetupVideo::~cMenuSetupVideo(void)
 {
   cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, 
-					    xc.brightness, xc.contrast);
+					    xc.brightness, xc.contrast,
+					    xc.overscan);
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
 }
@@ -426,6 +428,11 @@ void cMenuSetupVideo::Set(void)
     Add(new cMenuEditBoolItem(tr("  Detect subtitles"),
 			      &newconfig.autocrop_subs));
   }
+
+  Add(ctrl_overscan =
+      new cMenuEditTypedIntItem(tr("Overscan (crop image borders)"), "%", 
+				&newconfig.overscan, 0, 10,
+				tr("Off")));
 
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
   Add(new cMenuEditIntItem(tr("HUE"), &newconfig.hue, -1, 0xffff));
@@ -462,18 +469,21 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
     return state;
 
   if(item == ctrl_hue || item == ctrl_saturation || 
-     item == ctrl_contrast || item == ctrl_brightness )
+     item == ctrl_contrast || item == ctrl_brightness ||
+     item == ctrl_overscan)
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
     cXinelibDevice::Instance().ConfigureVideo(newconfig.hue, 
 					      newconfig.saturation,
 					      newconfig.brightness, 
-					      newconfig.contrast);
+					      newconfig.contrast,
+					      newconfig.overscan);
 #else
     cXinelibDevice::Instance().ConfigureVideo(
        INDEX_TO_CONTROL(newconfig.hue), 
        INDEX_TO_CONTROL(newconfig.saturation),
        INDEX_TO_CONTROL(newconfig.brightness), 
-       INDEX_TO_CONTROL(newconfig.contrast));
+       INDEX_TO_CONTROL(newconfig.contrast),
+       newconfig.overscan);
 #endif
   else if(item == ctrl_autocrop) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
@@ -505,6 +515,7 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.Saturation", xc.saturation);
   SetupStore("Video.Contrast",   xc.contrast);
   SetupStore("Video.Brightness", xc.brightness);
+  SetupStore("Video.Overscan",   xc.overscan);
 }
 
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.9 2006-08-24 23:31:16 phintuka Exp $
+ * $Id: device.h,v 1.10 2006-08-25 04:03:11 phintuka Exp $
  *
  */
 
@@ -111,7 +111,8 @@ class cXinelibDevice : public cDevice
 				 int speaker_type);
     void ConfigurePostprocessing(const char *name, bool on=true, 
 				 const char *args=NULL);
-    void ConfigureVideo(int hue, int saturation, int brightness, int contrast);
+    void ConfigureVideo(int hue, int saturation, int brightness, int contrast,
+			int overscan);
     // local mode:
     void ConfigureWindow(int fullscreen, int width, int height, 
 			 int modeswitch, const char *modeline, 

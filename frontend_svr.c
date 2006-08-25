@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.18 2006-08-24 09:20:07 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.19 2006-08-25 04:03:11 phintuka Exp $
  *
  */
 
@@ -1018,7 +1018,7 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
 			  xc.audio_compression, xc.audio_equalizer,
                           xc.audio_surround, xc.speaker_type);
-  ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast);
+  ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast, xc.overscan);
   ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
   ConfigurePostprocessing("autocrop",  xc.autocrop    ? true : false, 
 			  xc.AutocropOptions());
