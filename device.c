@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.16 2006-08-25 04:03:11 phintuka Exp $
+ * $Id: device.c,v 1.17 2006-08-25 08:29:38 phintuka Exp $
  *
  */
 
@@ -585,6 +585,8 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
     TRACE("pmAudioOnlyBlack --> BlankDisplay, NoVideo");
     ForEach(m_clients, &cXinelibThread::BlankDisplay);
     ForEach(m_clients, &cXinelibThread::SetNoVideo, true);
+  } else {
+    ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
   }
   
   return true;
