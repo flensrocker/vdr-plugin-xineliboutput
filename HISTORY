@@ -1,6 +1,21 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2006-08-25: Version 1.0.0pre3
+
+- Fixed segfault when grabbing with remote-only frontends
+- Configurable speaker configuration and spdif passthru
+- Support for playlists (.m3u or whole directory) in media player
+- Separate menu item for playing music
+- Configuration options for letterbox cropping
+- Added audio visualization support for media files 
+  (originally was supported only with DVB radio)
+- Finished image grabbing for remote frontends
+- Fixed restoring primary device when using tcp transport
+- Executing primary device switching in main thread context
+- Added configurable overscan option (%) to crop frame borders
+  when using displays without overscan
+
 2006-08-16: Version 1.0.0pre2
 
 - Xine plugins and frontends are not installed automatically.
