@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.16 2006-08-25 04:03:11 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.17 2006-08-25 08:25:52 phintuka Exp $
  *
  */
 
@@ -861,10 +861,10 @@ static int fe_xine_play(frontend_t *this_gen)
   input_vdr->f.xine_input_event = this->keypress;
   input_vdr->f.fe_control = fe_control;
   input_vdr->f.fe_handle  = (void*)this;
-
+#if 0
   if(!this->playback_finished && this->keypress)
     this->keypress("XKeySym", "");
-
+#endif
   if(this->playback_finished)
     LOGMSG("Error playing xvdr:// !");
 

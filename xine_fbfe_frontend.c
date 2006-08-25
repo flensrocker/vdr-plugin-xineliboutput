@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.7 2006-08-25 03:55:05 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.8 2006-08-25 08:25:52 phintuka Exp $
  *
  */
 
@@ -135,8 +135,10 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->fe.fe_display_close(this_gen);
 
   this->display = 1;
-  if(keyfunc)
+  if(keyfunc) {
     this->keypress = keyfunc;
+    this->keypress("KBD", "");
+  }
 
   LOGDBG("fbfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
 	 width, height, fullscreen, video_port);

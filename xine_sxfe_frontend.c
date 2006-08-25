@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.11 2006-08-25 03:55:05 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.12 2006-08-25 08:25:52 phintuka Exp $
  *
  */
 
@@ -354,8 +354,10 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   if(this->display)
     this->fe.fe_display_close(this_gen);
 
-  if(keyfunc)
+  if(keyfunc) {
     this->keypress = keyfunc;
+    this->keypress("XKeySym", ""); /* triggers learning mode */
+  }
 
   LOGDBG("sxfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
 	 width, height, fullscreen, video_port);
