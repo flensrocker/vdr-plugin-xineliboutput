@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.33 2006-08-24 09:17:04 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.34 2006-08-25 04:10:33 phintuka Exp $
  *
  */
 
@@ -949,8 +949,14 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
     num_bytes = read (this->fd_control, buf + total_bytes, 1);
     pthread_testcancel();
 
+    if(this->fd_control < 0)
+      return -1;
+
     if (num_bytes <= 0) {
-      LOGERR("readline_control: read error at [%d]", num_bytes);
+      if(num_bytes==0)
+	LOGERR("Control stream disconnected");
+      else
+	LOGERR("readline_control: read error at [%d]", num_bytes);
       if(num_bytes < 0 && 
 	 (errno == EINTR || errno==EAGAIN) && 
 	 this->fd_control >= 0) {
@@ -1008,7 +1014,8 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
     pthread_testcancel();
 
     if (num_bytes <= 0) {
-      LOGERR("read_control read() error"); 
+      if(this->fd_control>=0 && num_bytes<0)
+	LOGERR("read_control read() error"); 
       return -1;
     }
     total_bytes += num_bytes;
@@ -2761,6 +2768,12 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     else
       err = CONTROL_PARAM_ERROR;
 
+  } else if(!strncasecmp(cmd, "OVERSCAN ", 9)) {
+    if(!this->funcs.fe_control)
+      LOGMSG("No fe_control function! %s failed.", cmd);
+    else
+      this->funcs.fe_control(this->funcs.fe_handle, cmd);
+
   } else if(!strncasecmp(cmd, "DEINTERLACE ", 12)) {
     if(this->fd_control < 0)
       err = set_deinterlace_method(this, cmd+12);
@@ -3052,7 +3065,7 @@ static void *vdr_control_thread(void *this_gen)
     pthread_testcancel();
     if((err=readline_control(this, line, sizeof(line)-1)) <= 0) {
       if(err < 0) {
-	LOGERR("control stream read error");
+	/*LOGERR("control stream read error");*/
 	break;
       }
       continue;
@@ -3308,7 +3321,10 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     n = read(this->fd_data, &read_buffer->mem[cnt], todo-cnt);
     if(n <= 0) {
       if(!n || (errno != EINTR && errno != EAGAIN)) {
-	LOGERR("TCP read error (data stream %d : %d)", this->fd_data, n);
+	if(n<0 && this->fd_data>=0)
+	  LOGERR("TCP read error (data stream %d : %d)", this->fd_data, n);
+	if(n==0)
+	  LOGMSG("Data stream disconnected");
 	result = XIO_ERROR;
 	break;
       }
@@ -3442,7 +3458,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 		 read_buffer->max_size, MSG_TRUNC,
 		 &server_address, &address_len);
     if(n <= 0) {
-      LOGERR("read_net_udp recv() error");
+      if(n<0 && this->fd_data>=0 && errno != EINTR)
+	LOGERR("read_net_udp recv() error");
       if(!n || errno != EINTR)
 	result = XIO_ERROR;
       break;
