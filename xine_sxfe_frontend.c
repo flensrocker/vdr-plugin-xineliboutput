@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.10 2006-08-23 05:30:14 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.11 2006-08-25 03:55:05 phintuka Exp $
  *
  */
 
@@ -109,6 +109,7 @@ typedef struct sxfe_s {
 
 
   double                   display_ratio;
+  int                      overscan;
 
   /* frontend */
   int                      playback_finished;
@@ -372,6 +373,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->cropping        = 0;
   this->field_order     = field_order ? 1 : 0;
   this->scale_video     = scale_video;
+  this->overscan        = 0;
   strcpy(this->modeline, modeline);
 
   /*

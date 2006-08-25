@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.7 2006-08-22 03:45:34 phintuka Exp $
+ * $Id: config.c,v 1.8 2006-08-25 03:55:05 phintuka Exp $
  *
  */
 
@@ -217,6 +217,7 @@ config_t::config_t() {
   saturation   = -1; 
   contrast     = -1; 
   brightness   = -1; 
+  overscan = 0;
 
   strcpy(browse_files_dir,  "/video");
   strcpy(browse_music_dir,  "/video");
@@ -377,6 +378,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Saturation"))  saturation = atoi(Value);
   else if (!strcasecmp(Name, "Video.Contrast"))    contrast = atoi(Value);
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
+  else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
 
   else if (!strcasecmp(Name, "BrowseFilesDir"))    strcpy(browse_files_dir, Value);
   else if (!strcasecmp(Name, "BrowseMusicDir"))    strcpy(browse_music_dir, Value);

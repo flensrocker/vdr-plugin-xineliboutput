@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.6 2006-08-22 03:45:34 phintuka Exp $
+ * $Id: config.h,v 1.7 2006-08-25 03:55:05 phintuka Exp $
  *
  */
 
@@ -217,7 +217,8 @@ class config_t {
     int  saturation;          // 0...0xffff, -1 == off
     int  contrast;            // 0...0xffff, -1 == off
     int  brightness;          // 0...0xffff, -1 == off
-    
+    int  overscan;            // %
+
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];
