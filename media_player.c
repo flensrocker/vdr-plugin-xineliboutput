@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.8 2006-08-24 09:13:23 phintuka Exp $
+ * $Id: media_player.c,v 1.9 2006-08-26 18:12:50 phintuka Exp $
  *
  */
 
@@ -566,6 +566,9 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     case kRed:    Hide();
                   Menu = new cDvdMenu();
 		  break;
+    // SPU channel
+    case k2:      r = cXinelibDevice::Instance().PlayFileCtrl("SPUSTREAM NEXT");  break;
+    case k5:      r = cXinelibDevice::Instance().PlayFileCtrl("SPUSTREAM PREV");  break;
     // Playback control
     case kGreen:  r = cXinelibDevice::Instance().PlayFileCtrl("SEEK -60");  break;
     case kYellow: r = cXinelibDevice::Instance().PlayFileCtrl("SEEK +60");  break;
