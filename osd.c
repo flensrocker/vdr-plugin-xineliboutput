@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.4 2006-08-07 21:09:16 phintuka Exp $
+ * $Id: osd.c,v 1.5 2006-08-26 19:09:08 phintuka Exp $
  *
  */
 
@@ -325,7 +325,7 @@ cXinelibOsdProvider::~cXinelibOsdProvider()
 
     // Detach all OSD instances from device
     cXinelibOsd *osd;
-    while(osd = cXinelibOsd::m_OsdStack.First()) {
+    while(NULL != (osd = cXinelibOsd::m_OsdStack.First())) {
       osd->Detach();
       cXinelibOsd::m_OsdStack.Del(osd, false);
     }
