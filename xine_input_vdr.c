@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.35 2006-08-26 14:50:46 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.36 2006-08-26 18:10:34 phintuka Exp $
  *
  */
 
@@ -197,7 +197,6 @@ typedef struct vdr_input_plugin_s {
   int                 no_video;
   int                 live_mode;
   int                 still_mode;
-  int                 playback_finished;
   int                 stream_start;
   int                 send_pts;
   int                 padding_cnt;
@@ -852,14 +851,15 @@ static int io_select_rd (int fd)
   if(FD_ISSET(fd,&fdset))
     return XIO_READY;
 
-  return XIO_TIMEOUT; /* newer reached ... */
+  return XIO_TIMEOUT;
 }
 
 static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t len)
 {
   size_t ret;
   while(len>0) {
-    if(this->fd_control < 0) {
+
+    if(!this->control_running) {
       LOGERR("write_control aborted");
       return;  
     }
@@ -876,26 +876,35 @@ static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t
     errno = 0;
     if(1 != select (this->fd_control + 1, NULL, &fdset, &eset, &select_timeout) ||
        !FD_ISSET(this->fd_control, &fdset) ||
-       FD_ISSET(this->fd_control, &eset))
-      LOGERR("write_control failed (poll timeout)");
+       FD_ISSET(this->fd_control, &eset)) {
+      LOGERR("write_control failed (poll timeout or error)");
+      this->control_running = 0;
+      return;
+    }
 #endif
+
+    if(!this->control_running) {
+      LOGERR("write_control aborted");
+      return;  
+    }
 
     errno = 0;
     ret = write(this->fd_control, str, len);
 
     if(ret <= 0) {
-      if(errno == EAGAIN) {
+      if(ret == 0) {
+	LOGMSG("write_control: disconnected");
+      } else if(errno == EAGAIN) {
 	LOGERR("write_control failed (%d) EAGAIN", ret);
 	continue;
       } else if(errno == EINTR) {
 	LOGERR("write_control failed (%d) EINTR", ret);
 	pthread_testcancel();
         continue;
-      }
-      else
+      } else {
 	LOGERR("write_control failed (%d)", ret);
-      close(this->fd_control);
-      this->fd_control = -1;
+      }
+      this->control_running = 0;
       return;
     }
     len -= ret;
@@ -928,11 +937,14 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
   *buf = 0;
   while(total_bytes < maxlen-1 ) {
 
+    if(!this->control_running)
+      return -1;
+
     pthread_testcancel();
     err = io_select_rd(this->fd_control);
     pthread_testcancel();
 
-    if(this->fd_control < 0)
+    if(!this->control_running)
       return -1;
 
     if(err == XIO_TIMEOUT) 
@@ -946,10 +958,11 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
       return -1;
     }
 
+    errno = 0;
     num_bytes = read (this->fd_control, buf + total_bytes, 1);
     pthread_testcancel();
 
-    if(this->fd_control < 0)
+    if(!this->control_running)
       return -1;
 
     if (num_bytes <= 0) {
@@ -957,11 +970,8 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
 	LOGERR("Control stream disconnected");
       else
 	LOGERR("readline_control: read error at [%d]", num_bytes);
-      if(num_bytes < 0 && 
-	 (errno == EINTR || errno==EAGAIN) && 
-	 this->fd_control >= 0) {
+      if(num_bytes < 0 && (errno == EINTR || errno==EAGAIN))
 	continue;
-      }
       return -1;
     }
       
@@ -995,7 +1005,7 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
     err = io_select_rd(this->fd_control);
     pthread_testcancel();
 
-    if(this->fd_control < 0)
+    if(!this->control_running)
       return -1;
 
     if(err == XIO_TIMEOUT) {
@@ -1010,11 +1020,12 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
       return -1;
     }
 
+    errno = 0;
     num_bytes = read (this->fd_control, buf + total_bytes, len - total_bytes);
     pthread_testcancel();
 
     if (num_bytes <= 0) {
-      if(this->fd_control>=0 && num_bytes<0)
+      if(this->control_running && num_bytes<0)
 	LOGERR("read_control read() error"); 
       return -1;
     }
@@ -1472,17 +1483,18 @@ static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
     int elems_current_line = 0;
     int old_x = 0, new_x = 0;
 
-    while(old_x < old_w) {      
+    while(old_x < old_w) { 
       int new_x_end = SCALEX(old_x + old_rle->len);
 
-      if(new_x_end >= new_w) 
+      if(new_x_end > new_w) {
 	new_x_end = new_w;
+      }
 
       new_rle->len   = new_x_end - new_x;
       new_rle->color = old_rle->color;
 
       old_x += old_rle->len;
-      old_rle++;
+      old_rle++; /* may be incremented to last element + 1 (element is not accessed anymore) */
 
       if(new_rle->len > 0) { 
 	new_x += new_rle->len;
@@ -1532,13 +1544,13 @@ static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
     } else if(factor_y < FACTORBASE) {
       /* scale down -- drop next line ? */
       int skip = new_y - SCALEY(old_y);
-
       if(old_y == old_h-1) {
 	/* one (old) line left ; don't skip it if new rle is not complete */
 	if(new_y < new_h)
 	  skip = 0;
       }
-      while(skip--) {
+      while(skip-- && 
+	    old_y<old_h /* rounding error may add one line, filter it out */) {
 	for(old_x = 0; old_x < old_w;) {
 	  old_x += old_rle->len;
 	  old_rle++;
@@ -2256,8 +2268,23 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   if(*filename) {
     this->loop_play = 0;
     if(this->slave_stream) {
+#if 1
+      LOGMSG("PLAYFILE: Closing old slave stream");
+      if(this->funcs.fe_control) {
+	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
+	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+      }
+      /*xine_stop(this->slave_stream);*/
+      /*xine_close(this->slave_stream);*/
+      /*xine_dispose(this->slave_stream);*/
+      /*this->slave_stream = NULL;*/
+#else
+      /* we don't want to emit ENDOFSTREAM message, as it would cause
+	 playback of _new_ file to be stopped */
       handle_control_playfile(this, "PLAYFILE 0");
+#endif
     }
+      
     subs = FindSubFile(filename);
     if(subs) {
       LOGMSG("Found subtitles: %s", subs);
@@ -2267,15 +2294,21 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     } else {
       LOGDBG("Subtitles not found for %s", filename);
     }
-    this->slave_stream = xine_stream_new(this->stream->xine, 
-					 this->stream->audio_out, 
-					 this->stream->video_out);
 
-    this->slave_event_queue = xine_event_new_queue (this->slave_stream);
-    xine_event_create_listener_thread (this->slave_event_queue, 
-				       vdr_event_cb, this);
+    if(!this->slave_stream) {
+      this->slave_stream = xine_stream_new(this->stream->xine, 
+					   this->stream->audio_out, 
+					   this->stream->video_out);
+    }
+
+    if(!this->slave_event_queue) {
+      this->slave_event_queue = xine_event_new_queue (this->slave_stream);
+      xine_event_create_listener_thread (this->slave_event_queue, 
+					 vdr_event_cb, this);
+    }
 
     err = !xine_open(this->slave_stream, filename);
+
     if(!err) {
       this->loop_play = loop;
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
@@ -2301,6 +2334,8 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	  char str[64];
 	  sprintf(str, "POST %s On\r\n", av);
 	  this->funcs.fe_control(this->funcs.fe_handle, str);
+	} else {
+	  this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
 	}
       }
     } else {
@@ -2309,6 +2344,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     }
   }
 
+  /* next code is also executed after failed open, so no "} else { " */
   if(!*filename) {
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
     this->loop_play = 0;
@@ -2317,9 +2353,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	xine_event_dispose_queue (this->slave_event_queue);
 	this->slave_event_queue = NULL;
       }
-      this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
-      if(this->funcs.fe_control) 
+      if(this->funcs.fe_control) {
+	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+      }
       if(this->fd_control>=0)
 	write_control(this, "ENDOFSTREAM\r\n");
       xine_stop(this->slave_stream);
@@ -2432,7 +2469,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   osd_command_t osdcmd;
   int err = CONTROL_OK;
 
-  if(this->fd_control < 0)
+  if(!this->control_running)
     return CONTROL_DISCONNECTED;
 
   if(read_control(this, (unsigned char*)&osdcmd, sizeof(osd_command_t))
@@ -2901,7 +2938,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 	pthread_mutex_lock(&this->lock);
 	if(this->reset_audio_cnt < 0)
 	  this->reset_audio_cnt = 0;
-	this->reset_audio_cnt++; 
+	this->reset_audio_cnt++;
 	this->audio_stream_id = tmp32;
 	pthread_mutex_unlock(&this->lock);
       } else {
@@ -2910,21 +2947,29 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     }
 
   } else if(!strncasecmp(cmd, "SPUSTREAM ", 10)) {
-    if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
+    int chind = _x_get_spu_channel (stream);
+    if(strstr(cmd, "NEXT"))
+      _x_select_spu_channel(stream, chind<stream->spu_track_map_entries ? chind+1 : chind);
+    else if(strstr(cmd, "PREV"))
+      _x_select_spu_channel(stream, chind>-2 ? chind-1 : -2);
+    else if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
+#if 1
+      _x_select_spu_channel(stream, tmp32);
+#else
       buf_element_t *buf_elem = 
 	stream->video_fifo->buffer_pool_try_alloc (stream->video_fifo);
-      /*if(tmp32<0) LOGMSG("SPU off (-1)");*/
       if(buf_elem) {
-	/*LOGDBG("SPU channel selected: %d", tmp32);*/
-	tmp32 &= 0x1f;
+        tmp32 &= 0x1f;
 	buf_elem->type = BUF_CONTROL_SPU_CHANNEL;
 	buf_elem->decoder_info[0] = tmp32;  /* widescreen / auto stream id */
 	buf_elem->decoder_info[1] = tmp32;  /* letterbox stream id */
 	buf_elem->decoder_info[2] = tmp32;  /* pan&scan stream id */
 	this->block_buffer->put(this->block_buffer, buf_elem);
       }
+#endif
     } else 
       err = CONTROL_PARAM_ERROR;
+    LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
 
   } else if(!strncasecmp(cmd, "AUDIODELAY ", 11)) {
     if(1 == sscanf(cmd, "AUDIODELAY %d", &tmp32))
@@ -3058,22 +3103,20 @@ static void *vdr_control_thread(void *this_gen)
 
   write_control(this, "CONFIG\r\n");
   
-  while(this->control_running && this->fd_control >= 0) {
+  while(this->control_running) {
 
     /* read next command */
     line[0] = 0;
     pthread_testcancel();
     if((err=readline_control(this, line, sizeof(line)-1)) <= 0) {
-      if(err < 0) {
-	/*LOGERR("control stream read error");*/
+      if(err < 0)
 	break;
-      }
       continue;
     }
     LOGCMD("Received command %s",line);
     pthread_testcancel();
     
-    if(!this->control_running || this->fd_control < 0) 
+    if(!this->control_running) 
       break;
 
     /* parse */
@@ -3096,19 +3139,9 @@ static void *vdr_control_thread(void *this_gen)
     }
   }
 
+  write_control(this, "CLOSE\r\n");
   this->control_running = 0;
-  LOGDBG("Control thread terminating...");
-
-  pthread_mutex_lock(&this->lock);
-  if(this->fd_control >= 0) 
-    close(this->fd_control);
-  if(this->fd_data >= 0) 
-    close(this->fd_data);
-  this->fd_data = this->fd_control = -1;
-  pthread_mutex_unlock(&this->lock);
-
   LOGDBG("Control thread terminated");
-
   pthread_exit(NULL);
 }
 
@@ -3226,15 +3259,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
     case XINE_EVENT_UI_PLAYBACK_FINISHED:
       if(event->stream == this->stream) {
 	LOGMSG("XINE_EVENT_UI_PLAYBACK_FINISHED");
-	pthread_mutex_lock(&this->lock);
-	this->playback_finished = 1;
 	this->control_running = 0;
-	if(this->fd_control >= 0)
-	  close(this->fd_control);
-	if(this->fd_data >= 0)
-	  close(this->fd_data);
-	this->fd_data = this->fd_control = -1;
-	pthread_mutex_unlock(&this->lock);
 #if 1
 	if(iSysLogLevel > 2) {
 	  /* dump whole xine log as we should not be here ... */
@@ -3292,9 +3317,13 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 
   while(XIO_READY == (result = io_select_rd(this->fd_data))) {
 
+    if(!this->control_running)
+      break;
+
     /* Allocate buffer */
     if(!read_buffer) {
 
+      /* can't cancel if read_buffer != NULL (disposing fifos would freeze) */
       pthread_testcancel();
 
       read_buffer = get_buf_element(this, 0, 0);
@@ -3302,6 +3331,9 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 	VDR_ENTRY_LOCK(XIO_ERROR);
 	vdr_plugin_poll(this, 100);
 	VDR_ENTRY_UNLOCK();
+
+	if(!this->control_running)
+	  break;
 
 	read_buffer = get_buf_element(this, 0, 0);
 	if(!read_buffer) {
@@ -3377,10 +3409,8 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     read_buffer->free_buffer(read_buffer);
     if(cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
       LOGMSG("TCP: Delay too long, disconnecting");
-      close(this->fd_data);
-      close(this->fd_control);
-      this->fd_data = this->fd_control = -1;
       this->control_running = 0;
+      return XIO_ERROR;
     }
   }
 
@@ -3397,7 +3427,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
   int result = XIO_ERROR, n, current_seq, timeouts = 0;
   buf_element_t *read_buffer = NULL;
 
-  while(this->fd_data >= 0) {
+  while(this->control_running && this->fd_data >= 0) {
 
     result = _x_io_select(this->stream, this->fd_data,
 			  XIO_READ_READY, 20);
@@ -3411,6 +3441,9 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       return result;
     }
     timeouts = 0;
+
+    if(!this->control_running)
+      break;
 
     /* 
      * allocate buffer and read incoming UDP packet from socket 
@@ -3440,6 +3473,9 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	vdr_plugin_poll(this, 100);
 	VDR_ENTRY_UNLOCK();
 
+	if(!this->control_running)
+	  break;
+
 	read_buffer = get_buf_element(this, 0, 0);
 	if(!read_buffer) {
 	  if(!this->is_paused)
@@ -3458,7 +3494,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 		 read_buffer->max_size, MSG_TRUNC,
 		 &server_address, &address_len);
     if(n <= 0) {
-      if(n<0 && this->fd_data>=0 && errno != EINTR)
+      if(n<0 && this->control_running && errno != EINTR)
 	LOGERR("read_net_udp recv() error");
       if(!n || errno != EINTR)
 	result = XIO_ERROR;
@@ -3688,18 +3724,7 @@ static void *vdr_data_thread(void *this_gen)
   }
 
   this->control_running = 0;
-  this->playback_finished = 1;
-
-  pthread_mutex_lock(&this->lock);
-  if(this->fd_control >= 0) 
-    close(this->fd_control);
-  if(this->fd_data >= 0) 
-    close(this->fd_data);
-  this->fd_data = this->fd_control = -1;
-  pthread_mutex_unlock(&this->lock);
-
   LOGDBG("Data thread terminated");
-
   pthread_exit(NULL);
 }
 
@@ -3905,6 +3930,7 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
 #if 1
   /* from xine_input_dvd.c: */
   /* FIXME: Tricking the demux_mpeg_block plugin */
+  LOGMSG("vdr_plugin_read()");
   buf[0] = 0;
   buf[1] = 0;
   buf[2] = 0x01;
@@ -4135,32 +4161,67 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   int i, local;
+  int fd = -1, fc = -1;
 
   if(!this_gen)
     return;
 
   LOGDBG("vdr_plugin_dispose");
 
+  if(this->fd_control)
+    write_control(this, "CLOSE\r\n");
+
+  this->control_running = 0;
+
   local = this->funcs.push_input_write ? 1 : 0;
   memset(&this->funcs, 0, sizeof(this->funcs));
 
-  /* sockets */
+  /* shutdown sockets */
   if(!local) {
-    if(this->fd_control >= 0)
-      shutdown(this->fd_control, SHUT_RDWR);
-    if(this->fd_data >= 0)
-      shutdown(this->fd_data, SHUT_RDWR);
-    if(this->fd_data >= 0)
-      if(close(this->fd_data))
-	LOGERR("close(fd_data) failed");
-    if(this->fd_control >= 0)
-      if(close(this->fd_control))
-	LOGERR("close(fd_control) failed");
-    this->fd_data = this->fd_control = -1;
+    struct linger {
+      int l_onoff;    /* linger active */
+      int l_linger;   /* how many seconds to linger for */
+    } l = {0,0};
+
+    fd = this->fd_data;
+    fc = this->fd_control;
+
+    if(fc >= 0) {
+      LOGDBG("Shutdown control");
+      setsockopt(fc, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+      shutdown(fc, SHUT_RDWR);
+    }
+
+    if(fd >= 0 && this->tcp) {
+      LOGDBG("Shutdown data");
+      setsockopt(fc, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+      shutdown(fd, SHUT_RDWR);
+    }
   }
 
+  /* threads */
+  if(!local && this->threads_initialized) {
+    void *p;
+    LOGDBG("Cancel control thread ...");
+    pthread_cancel(this->control_thread);
+    pthread_join (this->control_thread, &p);
+    LOGDBG("Cancel data thread ...");
+    pthread_cancel(this->data_thread);
+    pthread_join (this->data_thread, &p);   
+    LOGDBG("Threads joined");
+  }
+
+  /* event queue(s) and listener threads */
+  LOGDBG("Disposing event queues");
+  if (this->slave_event_queue) 
+    xine_event_dispose_queue (this->slave_event_queue);
+  this->slave_event_queue = NULL;
+  if (this->event_queue) 
+    xine_event_dispose_queue (this->event_queue);
+  this->event_queue = NULL;
+
   /* destroy mutexes (keep VDR out) */
-  this->control_running = 0;
+  LOGDBG("Destroying mutexes");
   while(pthread_mutex_destroy(&this->vdr_entry_lock) == EBUSY) {
     LOGMSG("vdr_entry_lock busy ...");
     pthread_mutex_lock(&this->vdr_entry_lock);
@@ -4182,25 +4243,12 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     pthread_mutex_unlock(&this->fd_control_lock);
   }
 
-  /* event queue(s) */
-  if (this->slave_event_queue) 
-    xine_event_dispose_queue (this->slave_event_queue);
-  this->slave_event_queue = NULL;
-  if (this->event_queue) 
-    xine_event_dispose_queue (this->event_queue);
-  this->event_queue = NULL;
+  signal_buffer_pool_not_empty(this);
+  signal_buffer_not_empty(this);
 
-  /* threads */
-  if(!local && this->threads_initialized) {
-    void *p;
-    pthread_cancel(this->control_thread);
-    pthread_join (this->control_thread, &p);
-    pthread_cancel(this->data_thread);
-    pthread_join (this->data_thread, &p);   
-  }
-
-  /* slave stream */
+  /* stop slave stream */
   if (this->slave_stream) {
+    LOGMSG("dispose: Closing slave stream");
     if(this->funcs.fe_control) 
       this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
     xine_stop(this->slave_stream);
@@ -4209,10 +4257,25 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     this->slave_stream = NULL;
   }
 
+  /* close sockets */
+  if(!local) {
+    LOGDBG("Closing data connection");
+    if(fd >= 0)
+      if(close(fd))
+	LOGERR("close(fd_data) failed");
+    LOGDBG("Closing control connection");
+    if(fc >= 0)
+      if(close(fc))
+	LOGERR("close(fd_control) failed");
+    this->fd_data = this->fd_control = -1;
+    LOGMSG("Connections closed.");
+  }
+
   /* OSD */
   for(i=0; i<MAX_OSD_OBJECT; i++) {
     if(this->osdhandle[i] != -1) {
       osd_command_t cmd;
+      LOGDBG("Closing osd %d", i);
       memset(&cmd,0,sizeof(cmd));
       cmd.cmd = OSD_Close;
       cmd.wnd = i;
@@ -4242,6 +4305,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   /* fifos */
 
   /* need to get all buffer elements back before disposing own buffers ... */
+  LOGDBG("Disposing fifos");
   if(this->read_buffer)
     this->read_buffer->free_buffer(this->read_buffer);
   if(this->stream && this->stream->audio_fifo)
@@ -4270,6 +4334,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   memset(this, 0, sizeof(this));
 
   free (this);
+  LOGDBG("dispose done.");
 }
 
 static char* vdr_plugin_get_mrl (input_plugin_t *this_gen) 
@@ -4392,6 +4457,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
     this->fd_control = saved_fd;
     return -1;
   }
+  this->control_running = 1;
 
   /* Check server greeting */
   if(readline_control(this, tmpbuf, 256) <= 0) {
@@ -4787,6 +4853,7 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 	  LOGERR("Data stream connection failed (TCP, read)");
 	} else if(strncmp(tmpbuf, "DATA\r\n", 6)) {
 	  LOGMSG("Data stream connection failed (TCP, token)");
+	  LOGMSG("Got %s", tmpbuf);
 	} else {
 	  this->tcp = 1;
 	}
@@ -4882,7 +4949,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->no_video     = 0;
   this->live_mode    = 0;
   this->still_mode   = 0;
-  this->playback_finished = 0;
   this->stream_start = 1;
   this->send_pts     = 0;
 
