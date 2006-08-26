@@ -423,11 +423,12 @@ static void _vpplugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
   if(post_elements_num) {
     xine_post_out_t   *vo_source;
     int                i = 0;
-    
+
     for(i = (post_elements_num - 1); i >= 0; i--) {
       const char *const *outs = xine_post_list_outputs(post_elements[i]->post);
       const xine_post_out_t *vo_out = xine_post_output(post_elements[i]->post, (char *) *outs);
       if(i == (post_elements_num - 1)) {
+	LOGDBG("        wiring %10s[out] -> [in]video_out", post_elements[i]->name);
 	xine_post_wire_video_port((xine_post_out_t *) vo_out, fe->video_port);
       }
       else {
@@ -438,6 +439,7 @@ static void _vpplugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
 	vo_in = xine_post_input(post_elements[i + 1]->post, "video");
 	if( !vo_in )
 	  vo_in = xine_post_input(post_elements[i + 1]->post, "video in");
+	LOGDBG("        wiring %10s[out] -> [in]%-10s ", post_elements[i]->name, post_elements[i+1]->name);
 	err = xine_post_wire((xine_post_out_t *) vo_out, 
 			     (xine_post_in_t *) vo_in);	
       }
@@ -454,6 +456,7 @@ static void _vpplugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
       vo_source = xine_get_video_source(fe->slave_stream);
     else
       vo_source = xine_get_video_source(fe->stream);
+    LOGDBG("        wiring %10s[out] -> [in]%-10s", "stream", post_elements[0]->name);
     xine_post_wire_video_port(vo_source, 
 			      post_elements[0]->post->video_input[0]);
   }
@@ -497,7 +500,8 @@ static void _applugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
 static post_element_t **_pplugin_join_deinterlace_and_post_elements(fe_t *fe, int *post_elements_num) 
 {
   post_element_t **post_elements;
-  int i = 0, j = 0, n = 0;
+  int i = 0, j = 0, n = 0, p = 0;
+  static const char *order[] = {"autocrop", "tvtime", "NULL"};
 
   *post_elements_num = 0;
   if( fe->post_video_enable )
@@ -522,16 +526,45 @@ static post_element_t **_pplugin_join_deinterlace_and_post_elements(fe_t *fe, in
 
   if(fe->post_video_enable)
     for( j = 0; j < fe->post_video_elements_num; j++ ) {
-      if(fe->post_video_elements[j]->enable)
+      if(fe->post_video_elements[j]->enable) {
 	post_elements[i+j-n] = fe->post_video_elements[j];
-      else
+      } else
 	n++;
     }
-  
+
   *post_elements_num -= n;
   if( *post_elements_num == 0 ) {
     free(post_elements);
     return NULL;
+  }
+
+  /* in some special cases order is important. By default plugin order 
+   * in post plugin chain is post plugin loading order.
+   * But, we want:
+   *
+   *   1. autocrop       - less data to process for other plugins
+   *                     - accepts only YV12
+   *   2. deinterlace    - blur etc. makes deinterlacing difficult.
+   *                     - upscales chroma (YV12->YUY2) in some modes.
+   *   3. anything else
+   *
+   * So let's move those two to beginning ...
+   */
+  n = 0;
+  while(order[p]) {
+    for(i = 0; i<*post_elements_num; i++)
+      if(!strcmp(post_elements[i]->name, order[p])) {
+	if(i != n) {
+	  post_element_t *tmp = post_elements[i];
+	  for(j=i; j>n; j--)
+	    post_elements[j] = post_elements[j-1];
+	  post_elements[n] = tmp;
+	  LOGMSG("      moved %s to post slot %d", order[p], n);
+	}
+	n++;
+	break;
+      }
+    p++;
   }
   
   return post_elements;
