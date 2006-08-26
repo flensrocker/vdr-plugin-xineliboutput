@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.11 2006-08-23 05:26:05 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.12 2006-08-26 15:24:50 phintuka Exp $
  *
  */
 
@@ -456,9 +456,9 @@ int main(int argc, char *argv[])
   if(!nokbd) {
     pthread_cancel (kbd_thread);
     pthread_join (kbd_thread, &p);
-  }
 
-  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+    tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  }
 
   fe->fe_free(fe); 
   return 0;
