@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.37 2006-08-26 18:23:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.38 2006-08-27 09:02:16 phintuka Exp $
  *
  */
 
@@ -1305,6 +1305,66 @@ void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
   if(buf) {
     buf->type = cmd;
     buffer->put(buffer, buf);
+  }
+}
+
+static void queue_blank_yv12(vdr_input_plugin_t *this)
+{
+  xine_bmiheader *bih;
+  buf_element_t *buf;
+  int pos = 0, size;
+  int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
+
+  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+  if(!buf) {
+    LOGMSG("queue_blank_yv12 out of fifo buffers !");
+    return;
+  }
+  bih = (xine_bmiheader *) buf->content;
+  bih->biWidth  = (this->video_width  + 3) & ~0x03;
+  bih->biHeight = (this->video_height + 3) & ~0x03;
+  bih->biSize   =  bih->biWidth * bih->biHeight *3/2;
+  bih->biPlanes = 3;
+  buf->decoder_flags = BUF_FLAG_STDHEADER | BUF_FLAG_ASPECT;
+  buf->decoder_info[0] = 0;
+  buf->decoder_info[1] = ratio;
+  buf->decoder_info[2] = 10000;
+  buf->decoder_info[3] = 1; /* progressive */
+  buf->decoder_info[4] = 0;
+  this->stream->video_fifo->put(this->stream->video_fifo, buf);
+
+  while(pos < (bih->biWidth * bih->biHeight * 3/2)) {
+    buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+    if(!buf)
+      buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
+    if(!buf) {
+      LOGMSG("queue_blank_yv12 out of fifo buffers !");
+      xine_usec_sleep(10*1000);
+      continue;
+    }
+
+    buf->decoder_flags = (pos==0) ? BUF_FLAG_FRAME_START : 0;
+
+    size = buf->max_size;
+    
+    if(pos < (bih->biWidth*bih->biHeight))
+      size = MIN(buf->max_size, bih->biWidth*bih->biHeight - pos);
+    else
+      size = MIN(buf->max_size, bih->biWidth*bih->biHeight*3/2 - pos);
+    
+    if(pos >= (bih->biWidth*bih->biHeight))
+      memset(buf->content, 0x80, size);
+    else
+      memset(buf->content, 0, size);
+
+    pos += size;
+    if(pos >= (bih->biWidth*bih->biHeight*3/2))
+      buf->decoder_flags = BUF_FLAG_FRAME_END;
+    
+    buf->content = buf->mem;
+    buf->size = size;
+    buf->type = BUF_VIDEO_YV12;
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
   }
 }
 
@@ -3072,6 +3132,12 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     handle_control_grab(this, cmd);
     /*LOGMSG("unimplemented control %s", cmd);*/
 
+    /* next ones need to be synchronized to data stream */
+  } else if(!strncasecmp(cmd, "BLANK", 5)) {
+    queue_blank_yv12(this);
+
+  } else if(!strncasecmp(cmd, "CLEAR", 5)) {
+
   } else {
     LOGMSG("unknown control %s", cmd);
     err = CONTROL_UNKNOWN;
@@ -3382,7 +3448,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     if(cnt >= todo) {
       /* Buffer complete */
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
-      if(hdr->pos == (uint64_t)(-1ULL) /*0xffffffff*/) {
+      if(hdr->pos == (uint64_t)(-1ULL) /*0xffffffff ffffffff*/) {
 	/* control data */
 	uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
 	if(pkt_data[0]) { /* -> can't be pes frame */
@@ -3533,8 +3599,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     pkt->pos = ntohull(pkt->pos);
 
     /* Check for control messages */
-    if(pkt->seq == (uint16_t)(-1) /*0xffff*/ && 
-       pkt->pos == (uint64_t)(-1ULL) /*0xffffffff*/ &&
+    if(/*pkt->seq == (uint16_t)(-1) &&*/ /*0xffff*/
+       pkt->pos == (uint64_t)(-1ULL) && /*0xffffffff*/
        pkt_data[0]) { /* -> can't be PES frame */
       pkt_data[64] = 0;
       if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
@@ -4024,8 +4090,6 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #ifdef TEST_SCR_PAUSE
     if(this->stream_start || this->send_pts) {
       reset_scr_tunning(this, this->speed_before_pause);
-      LOGDBG("read_block: vdr_adjust_realtime_speed SKIPPED (start=%d, send_pts=%d)",
-	     this->stream_start, this->send_pts);
       need_pause = 1;
     } else {
 #endif
@@ -4047,7 +4111,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	pthread_cond_timedwait (&this->block_buffer->not_empty, 
 				&this->block_buffer->mutex, &abstime);
       pthread_mutex_unlock(&this->block_buffer->mutex);
-      if(this->block_buffer->fifo_size <= 0) {
+      /*if(this->block_buffer->fifo_size <= 0) {*/
 #if 1
 	if(!this->is_paused && 
 	   !this->slave_stream && 
@@ -4062,7 +4126,8 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #endif 
 	if(NULL != (buf = make_padding_frame(this)))
 	  return buf;
-      }
+	LOGMSG("make_padding_frame FAILED");
+      /*}*/
       continue;
     }
     this->padding_cnt = 0;
