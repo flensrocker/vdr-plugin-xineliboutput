@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.12 2006-08-25 08:25:52 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.13 2006-09-01 12:25:50 phintuka Exp $
  *
  */
 
@@ -126,6 +126,9 @@ typedef struct sxfe_s {
   int                      vmode_switch;
   int                      field_order;
   char                     modeline[256];
+
+  int                      fullscreen_state_forced;
+
 #ifdef HAVE_XF86VIDMODE
   /* XF86VidMode Extension */
   XF86VidModeModeInfo**  XF86_modelines;
@@ -135,6 +138,7 @@ typedef struct sxfe_s {
   int     completion_event;
 
   int     xpos, ypos;
+  int     origxpos, origypos;
   int     width, height;
   int     origwidth, origheight;
   int     stay_above;
@@ -364,6 +368,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   this->xpos            = 0;
   this->ypos            = 0;
+  this->origxpos        = 0;
+  this->origypos        = 0;
   this->width           = width;
   this->height          = height;
   this->origwidth       = width>0 ? width : 720;
@@ -376,6 +382,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->field_order     = field_order ? 1 : 0;
   this->scale_video     = scale_video;
   this->overscan        = 0;
+  this->fullscreen_state_forced = 0;
   strcpy(this->modeline, modeline);
 
   /*
@@ -574,19 +581,19 @@ static int sxfe_display_config(frontend_t *this_gen,
 {
   sxfe_t *this = (sxfe_t*)this_gen;
   
-  if(this->width != width || this->height != height) {
+  if(this->fullscreen_state_forced)
+    fullscreen = this->fullscreen;
+
+  if(!fullscreen && (this->width != width || this->height != height)) {
     this->width      = width;
     this->height     = height;
-    /*this->fullscreen = fullscreen;*/
 
-    if(!fullscreen) {    
-      XLockDisplay(this->display);
-      XResizeWindow(this->display, this->window[0], this->width, this->height);
-      XUnlockDisplay(this->display);
-      if(!fullscreen && !this->fullscreen)
-	xine_gui_send_vo_data(this->stream, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			      (void*) this->window[0]);
-    }
+    XLockDisplay(this->display);
+    XResizeWindow(this->display, this->window[0], this->width, this->height);
+    XUnlockDisplay(this->display);
+    if(!fullscreen && !this->fullscreen)
+      xine_gui_send_vo_data(this->stream, XINE_GUI_SEND_DRAWABLE_CHANGED,
+			    (void*) this->window[0]);
   }
 
   if(fullscreen) {
@@ -605,7 +612,8 @@ static int sxfe_display_config(frontend_t *this_gen,
       set_above(this, this->stay_above);
     XMapRaised(this->display, this->window[this->fullscreen]);
     if(!fullscreen) {
-      XResizeWindow(this->display, this->window[0], this->width, this->height);    
+      XResizeWindow(this->display, this->window[0], this->width, this->height);
+      XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
       set_above(this, this->stay_above);
     } else {
       set_fullscreen_props(this);
@@ -725,8 +733,8 @@ static int sxfe_run(frontend_t *this_gen)
 
       case MotionNotify:
       {
-	XMotionEvent *mev = (XMotionEvent *) &event;
-	if(dragging) {
+	if(dragging && !this->fullscreen) {
+	  XMotionEvent *mev = (XMotionEvent *) &event;
 	  Window tmp_win;
 	  int xpos, ypos;
 
@@ -757,11 +765,23 @@ static int sxfe_run(frontend_t *this_gen)
 	  static Time prev_time = 0;
 	  if(bev->time - prev_time < DOUBLECLICK_TIME) {
 	    /* Toggle fullscreen */
-	    sxfe_display_config(this_gen, this->origwidth, this->origheight, 
+	    int force = this->fullscreen_state_forced;
+	    this->fullscreen_state_forced = 0;
+	    if(!this->fullscreen) {
+	      this->origwidth  = this->width;
+	      this->origheight = this->height;
+	      this->origxpos = this->xpos;
+	      this->origypos = this->ypos;
+	    } else {
+	      this->xpos = this->origxpos;
+	      this->ypos = this->origypos;
+	    }
+	    sxfe_display_config(this_gen, this->origwidth, this->origheight,
 				this->fullscreen ? 0 : 1, 
 				this->vmode_switch, this->modeline, 
 				this->aspect, this->scale_video, this->field_order);
 	    prev_time = 0; /* don't react to third click ... */
+	    this->fullscreen_state_forced = !force;
 	  } else {
 	    prev_time = bev->time;
 	    if(!this->fullscreen && this->no_border && !dragging) {
