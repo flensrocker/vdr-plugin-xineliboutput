@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.38 2006-08-27 09:02:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.39 2006-09-01 11:13:38 phintuka Exp $
  *
  */
 
@@ -2322,28 +2322,14 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   strncpy(filename, pt, 1023);
   filename[1023] = 0;
 
-  LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s %s)",
-	 loop, pos, *filename ? av:"", *filename ? filename : "<STOP>");
-
   if(*filename) {
     this->loop_play = 0;
-    if(this->slave_stream) {
-#if 1
-      LOGMSG("PLAYFILE: Closing old slave stream");
-      if(this->funcs.fe_control) {
-	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
-	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
-      }
-      /*xine_stop(this->slave_stream);*/
-      /*xine_close(this->slave_stream);*/
-      /*xine_dispose(this->slave_stream);*/
-      /*this->slave_stream = NULL;*/
-#else
-      /* we don't want to emit ENDOFSTREAM message, as it would cause
-	 playback of _new_ file to be stopped */
+
+    if(this->slave_stream)
       handle_control_playfile(this, "PLAYFILE 0");
-#endif
-    }
+
+    LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s %s)",
+	   loop, pos, *filename ? av:"", *filename ? filename : "<STOP>");
       
     subs = FindSubFile(filename);
     if(subs) {
@@ -2417,8 +2403,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
       }
+#if 0
       if(this->fd_control>=0)
 	write_control(this, "ENDOFSTREAM\r\n");
+#endif
       xine_stop(this->slave_stream);
       xine_close(this->slave_stream);
       xine_dispose(this->slave_stream);
@@ -4233,6 +4221,22 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   LOGDBG("vdr_plugin_dispose");
 
+  /* stop slave stream */
+  if (this->slave_stream) {
+    LOGMSG("dispose: Closing slave stream");
+    if (this->slave_event_queue) 
+      xine_event_dispose_queue (this->slave_event_queue);
+    this->slave_event_queue = NULL;
+    if(this->funcs.fe_control) {
+      this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
+      this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+    }
+    xine_stop(this->slave_stream);
+    xine_close(this->slave_stream);
+    xine_dispose(this->slave_stream);
+    this->slave_stream = NULL;
+  }
+
   if(this->fd_control)
     write_control(this, "CLOSE\r\n");
 
@@ -4278,9 +4282,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* event queue(s) and listener threads */
   LOGDBG("Disposing event queues");
-  if (this->slave_event_queue) 
-    xine_event_dispose_queue (this->slave_event_queue);
-  this->slave_event_queue = NULL;
   if (this->event_queue) 
     xine_event_dispose_queue (this->event_queue);
   this->event_queue = NULL;
@@ -4310,17 +4311,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   signal_buffer_pool_not_empty(this);
   signal_buffer_not_empty(this);
-
-  /* stop slave stream */
-  if (this->slave_stream) {
-    LOGMSG("dispose: Closing slave stream");
-    if(this->funcs.fe_control) 
-      this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
-    xine_stop(this->slave_stream);
-    xine_close(this->slave_stream);
-    xine_dispose(this->slave_stream);
-    this->slave_stream = NULL;
-  }
 
   /* close sockets */
   if(!local) {
