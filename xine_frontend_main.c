@@ -4,13 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.12 2006-08-26 15:24:50 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.13 2006-09-01 15:14:30 phintuka Exp $
  *
  */
 
 #include <termios.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <getopt.h>
 
 #if 0
 static void xine_log_cb(void *data, int section)
@@ -164,6 +165,64 @@ static char *strcatrealloc(char *dest, const char *src)
   return dest;
 }
 
+static const char *help_str = 
+    "   --help                        Show (this) help message\n"
+    "   --audio=audiodriver[:device]  Select audio driver and optional port\n"
+    "                                 drivers: auto, alsa, oss, arts, esound, none\n"
+    "   --video=videodriver           Select video driver\n"
+    "                                 X11: auto, x11, xshm, xv, xvmc, xxmc, none\n"
+    "                                 framebuffer: auto, fb, DirectFB, none\n"
+    "   --display=displayaddress      X11 display address\n"
+    "   --aspect=[auto|4:3|16:9|16:10|default] Display aspect ratio\n"
+    "   --fullscreen                  Fullscreen mode\n"
+    "   --width=x                     Video window width\n"
+    "   --height=x                    Video window height\n"
+    "   --noscaling                   Disable all video scaling\n"
+    "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
+    "                                 examples:\n"
+    "                                 --post=upmix\n"
+    "                                 --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
+    "   --lirc[=devicename]           Use lirc input device\n"
+    "                                 Optional lirc socket name can be given\n"
+    "   --verbose                     Verbose debug output\n"
+    "   --silent                      Silent mode (report only errors)\n"
+    "   --syslog                      Write all output to system log\n"
+    "   --nokbd                       Disable kayboard input\n"
+    "   --daemon                      Run as daemon (disable keyboard,\n"
+    "                                 log to syslog and fork to background)\n"
+    "   --tcp                         Use TCP transport\n"
+    "   --udp                         Use UDP transport\n"
+    "   --rtp                         Use RTP transport\n\n"
+    "                                 If no transport options are given, transports\n"
+    "                                 are tried in following order:\n"
+    "                                 local pipe, rtp, udp, tcp\n\n";
+
+static const struct option long_options[] = {
+  { "help",       no_argument,       NULL, 'H' },
+  { "audio",      required_argument, NULL, 'A' },
+  { "video",      required_argument, NULL, 'V' },
+  { "display",    required_argument, NULL, 'd' },
+  { "aspect",     required_argument, NULL, 'a' },
+  { "fullscreen", no_argument,       NULL, 'f' },
+  { "width",      required_argument, NULL, 'w' },
+  { "height",     required_argument, NULL, 'h' },
+  { "noscaling",  no_argument,       NULL, 'n' },
+  { "post",       required_argument, NULL, 'P' },
+  { "lirc",       optional_argument, NULL, 'L' },
+
+  { "verbose", no_argument,  NULL, 'v' },
+  { "silent",  no_argument,  NULL, 's' },
+  { "syslog",  no_argument,  NULL, 'l' },
+  { "nokbd",   no_argument,  NULL, 'k' },
+  { "daemon",  no_argument,  NULL, 'b' },
+  
+  { "tcp",     no_argument,  NULL, 't' },
+  { "udp",     no_argument,  NULL, 'u' },
+  { "rtp",     no_argument,  NULL, 'r' },
+  { NULL }
+};
+ 
+
 int main(int argc, char *argv[])
 {
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
@@ -173,13 +232,13 @@ int main(int argc, char *argv[])
   int daemon_mode = 0, nokbd = 0;
   char *video_port = NULL;
   int xmajor, xminor, xsub;
-  int i, err;
+  int err, c;
   frontend_t *fe = NULL;
   extern const fe_creator_f fe_creator;
   char *static_post_plugins = NULL;
   void *p;
   char *exec_name = argv[0];
-  
+
   if(strrchr(argv[0],'/'))
     exec_name = strrchr(argv[0],'/')+1;
 
@@ -191,126 +250,96 @@ int main(int argc, char *argv[])
 	 xmajor, xminor, xsub);
 
   /* Parse arguments */
-  for(i=1; i<argc; i++) {
-    if(!strncmp(argv[i], "--help", 6)) {
-      printf("\n"
-	     "Usage: %s [options] [xvdr:[udp:|tcp:|rtp:]//host:port] \n"
-	     "\n"
-	     "Available options:\n"
-	     "   --help                       \n"
-	     "   --fullscreen                 \n"
-	     "   --width x                    \n"
-	     "   --height x                   \n"
-	     "   --lirc [devicename]          \n"
-	     "   --audio audiodriver[:device] \n"
-	     "   --video videodriver          \n", 
-	     exec_name);
-      printf("   --display displayaddress     \n"
-	     "   --verbose                    \n"
-	     "   --silent                     \n"
-	     "   --syslog                     \n"
-	     "   --nokbd                      \n"
-	     "   --daemon                     \n"
-	     "   --tcp                        \n"
-	     "   --udp                        \n"
-	     "   --rtp                        \n"
-	     "   --aspect [auto|4:3|16:9|16:10|default] \n"
-	     "   --noscaling                  \n"
-	     "   --post name[:arg=val[,arg=val]]\n");
-      exit(0);
-    } else if(!strncmp(argv[i], "--fullscreen", 12)) {
-      fullscreen=1;
-      printf("Fullscreen mode\n");
-    } else if(!strncmp(argv[i], "--verbose", 9)) {
-      verbose_xine_log = 1;
-      SysLogLevel = 3;
-      printf("Verbose mode\n");
-    } else if(!strncmp(argv[i], "--silent", 8)) {
-      verbose_xine_log = 0;
-      SysLogLevel = 1;
-      printf("Silent mode\n");
-    } else if(!strncmp(argv[i], "--noscaling", 11)) {
-      scale_video = 0;
-      printf("Video scaling disabled\n");
-    } else if(!strncmp(argv[i], "--nokbd", 7)) {
-      nokbd = 1;
-      printf("Keyboard input disabled\n");
-    } else if(!strncmp(argv[i], "--daemon", 8)) {
-      nokbd = daemon_mode = 1;
-      printf("Keyboard input disabled\n");
-    } else if(!strncmp(argv[i], "--tcp", 5)) {
-      ftcp = 1;
-      printf("Protocol: TCP\n");
-    } else if(!strncmp(argv[i], "--udp", 5)) {
-      fudp = 1;
-      printf("Protocol: UDP\n");
-    } else if(!strncmp(argv[i], "--rtp", 5)) {
-      frtp = 1;
-      printf("Protocol: RTP\n");
-    } else if(!strncmp(argv[i], "--syslog", 8)) {
-      LogToSysLog = 1;
-      openlog(exec_name, LOG_PID|LOG_CONS, LOG_USER);
-    } else if(!strncmp(argv[i], "--video", 7)) {
-      if(argc > ++i) { 
-	gdrv = strdup(argv[i]);
-	printf("Video driver: %s\n",gdrv);
-      }
-    } else if(!strncmp(argv[i], "--audio", 7)) {
-      if(argc > ++i) {
-	adrv = strdup(argv[i]);
-	adev = strchr(adrv, ':');
-	if(adev)
-	  *(adev++) = 0;
-	printf("Audio driver: %s\n",adrv);
-	if(adev)
-	  printf("Audio device: %s\n",adev);
-      }
-    } else if(!strncmp(argv[i], "--post", 6)) {
-      if(argc > ++i) {
-	if(static_post_plugins)
-	  strcatrealloc(static_post_plugins, ";");
-	static_post_plugins = strcatrealloc(static_post_plugins, argv[i]);
-	printf("Post plugins: %s\n", static_post_plugins);
-      }	
-    } else if(!strncmp(argv[i], "--height", 8)) {
-      if(argc > ++i) height = atoi(argv[i]);
-      printf("Height: %d\n", height);
-    } else if(!strncmp(argv[i], "--aspect", 8)) {
-      if(argc > ++i) {
-	if(!strncmp(argv[i], "auto", 4))
-	  aspect = 0;
-	if(!strncmp(argv[i], "4:3", 3))
-	  aspect = 2;
-	if(!strncmp(argv[i], "16:9", 4))
-	  aspect = 3;
-	if(!strncmp(argv[i], "16:10", 5))
-	  aspect = 4;
-	printf("Aspect ratio: %s\n", 
-	       aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
-	       aspect==4?"16:10":"Default");
-      }
-    } else if(!strncmp(argv[i], "--display", 9)) {
-      if(argc > ++i) video_port = strdup(argv[i]);
-    } else if(!strncmp(argv[i], "--width", 7)) {
-      if(argc > ++i) width = atoi(argv[i]);
-      printf("Width:  %d\n", width);
-    } else if(!strncmp(argv[i], "--lirc", 6)) {
-      if(argc > i+1 && argv[i+1][0] == '/') 
-	lirc_device_name = strdup(argv[++i]);
-      else
-	lirc_device_name = strdup("/dev/lircd");
-      printf("LIRC device:  %s\n", lirc_device_name);
-    } else {
-      if(argv[i][0] != '-') {
-	mrl = strdup(argv[i]);
-	printf("VDR Server: %s\n", mrl);
-      } else {
-	fprintf(stderr, "Unknown argument: %s\n", argv[i]);
-	exit(-1);
-      }
+  while ((c = getopt_long(argc, argv, "HL:A:V:d:a:fw:h:P:vslkbtur", long_options, NULL)) != -1) {
+    switch (c) {
+    default:  
+    case 'H': printf("\nUsage: %s [options] [xvdr:[udp:|tcp:|rtp:]//host:port] \n"
+		     "\nAvailable options:\n", exec_name);
+              printf("%s", help_str);
+	      exit(0);
+    case 'A': adrv = strdup(optarg);
+              adev = strchr(adrv, ':');
+	      if(adev)
+	        *(adev++) = 0;
+	      printf("Audio driver: %s\n",adrv);
+	      if(adev)
+		printf("Audio device: %s\n",adev);
+	      break;
+    case 'V': gdrv = strdup(optarg);
+              printf("Video driver: %s\n",gdrv);
+              break;
+    case 'd': video_port = strdup(optarg);
+              break;
+    case 'a': if(!strncmp(optarg, "auto", 4))
+                aspect = 0;
+              if(!strncmp(optarg, "4:3", 3))
+		aspect = 2;
+	      if(!strncmp(optarg, "16:9", 4))
+		aspect = 3;
+	      if(!strncmp(optarg, "16:10", 5))
+		aspect = 4;
+	      printf("Aspect ratio: %s\n", 
+		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
+		     aspect==4?"16:10":"Default");
+	      break;
+    case 'f': fullscreen=1;
+              printf("Fullscreen mode\n");
+	      break;
+    case 'w': width = atoi(optarg);
+              printf("Width: %d\n", width);
+	      break;
+    case 'h': height = atoi(optarg);
+              printf("Height: %d\n", height);
+	      break;
+    case 'n': scale_video = 0;
+              printf("Video scaling disabled\n");
+	      break;
+    case 'P': if(static_post_plugins)
+                strcatrealloc(static_post_plugins, ";");
+              static_post_plugins = strcatrealloc(static_post_plugins, optarg);
+	      printf("Post plugins: %s\n", static_post_plugins);
+	      break;
+    case 'L': lirc_device_name = optarg ? : strdup("/dev/lircd");
+              printf("LIRC device:  %s\n", lirc_device_name);
+	      break;
+    case 'v': verbose_xine_log = 1;
+              SysLogLevel = 3;
+	      printf("Verbose mode\n");
+	      break;
+    case 's': verbose_xine_log = 0;
+              SysLogLevel = 1;
+	      printf("Silent mode\n");
+	      break;
+    case 'l': LogToSysLog = 1;
+              openlog(exec_name, LOG_PID|LOG_CONS, LOG_USER);
+	      break;
+    case 'k': nokbd = 1;
+              printf("Keyboard input disabled\n");
+	      break;
+    case 'b': nokbd = daemon_mode = 1;
+              printf("Keyboard input disabled\n");
+	      break;
+    case 't': ftcp = 1;
+              printf("Protocol: TCP\n");
+	      break;
+    case 'u': fudp = 1;
+              printf("Protocol: UDP\n");
+	      break;
+    case 'r': frtp = 1;
+              printf("Protocol: RTP\n");
+	      break;
+    case 1: printf("arg 1 (%s)\n", long_options[optind].name);exit(0);
     }
   }
-  printf("\n");
+
+  if (optind < argc) {
+    mrl = strdup(argv[optind]);
+    printf("VDR Server: %s\n", mrl);
+    while (++optind < argc)
+      printf ("Unknown argument: %s\n", argv[optind]);
+  }
+
+  printf ("\n");
 
   /* check xine-lib version */
   if(!xine_check_version(1, 1, 0)) {
