@@ -112,13 +112,13 @@ Usage examples (VDR plugin)
   with "vdr --help".
 
   Only local frontend, X11/Xv video, alsa audio:
-    vdr -P"xineliboutput --local=sxfe --video=xv --audio=alsa --noremote"
+    vdr -P"xineliboutput --local=sxfe --video=xv --audio=alsa --remote=none"
 
   Only local frontend, (slow) X11 video, oss audio:
-    vdr -P"xineliboutput --local=sxfe --video=x11 --audio=oss --noremote"
+    vdr -P"xineliboutput --local=sxfe --video=x11 --audio=oss --remote=none"
 
   Only local frontend, DirectFB: 
-    vdr -P"xineliboutput --local=fbfe --video=DirectFB --noremote"
+    vdr -P"xineliboutput --local=fbfe --video=DirectFB --remote=none"
 
   Only remote frontend(s):
     vdr -P"xineliboutput --local=none --remote=37890"
