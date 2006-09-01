@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.12 2006-08-25 04:03:11 phintuka Exp $
+ * $Id: menu.c,v 1.13 2006-09-01 11:11:43 phintuka Exp $
  *
  */
 
@@ -214,11 +214,8 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
     if(!ForceOpen && GetCurrent()->IsDvd()) {
       /* play dvd */
       char *f = NULL;
-#if 0
-      asprintf(&f, "dvd://%s/%s", m_CurrentDir, GetCurrent()->Name());
-#else
       asprintf(&f, "dvd:%s/%s", m_CurrentDir, GetCurrent()->Name());
-#endif
+      cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl(f));
       free(f);
       return osEnd;
@@ -228,6 +225,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
       if(m_Mode != ShowImages) {
 	char *f = NULL;
 	asprintf(&f, "%s/%s/", m_CurrentDir, GetCurrent()->Name());
+	cControl::Shutdown();
 	cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
 	free(f);
 	return osEnd;
@@ -251,6 +249,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
     StoreConfig();
     if(m_Mode != ShowImages) {
       /* video/audio */
+      cControl::Shutdown();
       cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
     } else {
       /* image */
@@ -263,6 +262,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
 	if(!it->IsDir())
 	  asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name());
       }
+      cControl::Shutdown();
       cControl::Launch(new cXinelibImagesControl(files, index, i));
     }
     free(f);
@@ -740,11 +740,8 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       AddSubMenu(new cMenuBrowseFiles(tr("Images"), ShowImages, true));
       return osContinue;
     case osUser4:
-#if 0
-      cControl::Launch(new cXinelibDvdPlayerControl("dvd://"));
-#else
+      cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
-#endif
       return osEnd;
     case osUser5:
       AddSubMenu(new cDvdSpuTrackSelect());
