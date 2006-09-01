@@ -291,15 +291,18 @@ DVD player key bindings
   Red        DVD menu(s)
   Green      Jump 1 min back
   Yellow     Jump 1 min forward
+  1, User8   Jump 20 s back  
+  3, User9   Jump 20 s forward
   Blue       Stop replay
   Pause      Pause replay
   Play       Play
   Stop       Stop replay
   Next
   Prev
-  Info
+  Info       Show progress display
   2          Select next subtitle track
   5          Select previous subtitle track
+  FastRew/FastFwd  Play faster/slower
 
 
 DVD playback
