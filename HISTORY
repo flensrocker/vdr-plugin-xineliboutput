@@ -1,6 +1,23 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+- NOTE: updated command-line options !
+
+- Fixed starting replay of new file while old file is still playing
+- Fixed segfault in OSD downscaling
+- Added SPU track selection for DVDs without menu
+- Forcing order and location of video filter post plugins 
+  autocrop and tvtime in post plugin chain
+- Fixed replaying some older VDR recordings (video PID != 0xE0)
+  (Reported by Petri Helin)
+- Fixed deadlock when closing xine input plugin and threads
+  in TCP mode (reported by Tobias Grimm)
+- Fixed wrong XKeySym remote learning trigger when using fbfe
+  (reported by Voitto Tuomainen)
+- Minor updates to playlists and file replay OSD handling
+- Added trick speed modes (forward only) to DVD player
+- Improved X11 fullscreen <-> window mode switching
+
 2006-08-25: Version 1.0.0pre3
 
 - Fixed segfault when grabbing with remote-only frontends
@@ -9,8 +26,8 @@ VDR Plugin 'xineliboutput' Revision History
 - Separate menu item for playing music
 - Configuration options for letterbox cropping
 - Added audio visualization support for media files 
-  (originally was supported only with DVB radio)
-- Finished image grabbing for remote frontends
+  (originally supported only with DVB radio)
+- Implemented image grabbing for remote frontends
 - Fixed restoring primary device when using tcp transport
 - Executing primary device switching in main thread context
 - Added configurable overscan option (%) to crop frame borders

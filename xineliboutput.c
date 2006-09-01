@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.8 2006-08-25 04:16:38 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.9 2006-09-01 12:36:08 phintuka Exp $
  *
  */
 
@@ -92,32 +92,32 @@ const char cmdLineHelp[] =
 "                           sxfe    (X11)\n"
 "                           fbfe    (framebuffer)\n"
 "                           none    (only remote frontends)\n"
-"  -V NAME   --video=NAME   Use video driver NAME\n"
+"  -r PORT   --remote=PORT  Listen PORT for remote clients\n"
+"                           (default "LISTEN_PORT_S")\n"
+"                           none or 0 disables remote mode\n"
+"  -A NAME   --audio=NAME   Use audio driver NAME for local frontend\n"
+"                           Supported values:\n"
+"                           auto, alsa, oss, arts, esound, none\n"
+"  -V NAME   --video=NAME   Use video driver NAME for local frontend\n"
 "                           Supported values:\n"
 "                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc, none\n"
 "                           for fbfe: auto, fb, DirectFB, none\n"
-"  -A NAME   --audio=NAME   Use audio driver NAME\n"
-"                           Supported values:\n"
-"                           auto, alsa, oss, arts, esound, none\n"
-"  -L        --nolocal      No local frontend, only remote frontends\n"
 #if 0
+"  -L        --nolocal      No local frontend, only remote frontends\n"
 "  -m M      --modeline=M   Use modeline M for local frontend\n"
 "                           (example: )\n" 
-#endif
 "  -k        --xkeyboard    X11 keyboard in use\n"
-"  -r PORT   --remote=PORT  Listen PORT for remote clients\n"
-"                           (default "LISTEN_PORT_S")\n"
 "  -R        --noremote     No remote clients\n"
+#endif
 "  -f        --fullscreen   Fullscreen mode (X11)\n"
-"  -w        --window       Window mode (X11)\n"
+"  -w        --width=x      Window width\n"
+"  -h        --height=x     Window width\n"
 "  -d DISP   --display=DISP Use X11 display DISP\n"
-"                           (or framebuffer device name)" 
-"  -P POST   --post=POST    Use xine post plugin POST\n"
+"                           (or framebuffer device name)"
+"  -P NAME   --post=NAME    Use xine post plugin NAME\n"
 "                           format: pluginname[:arg=val[,arg=val]][,...]\n"
 "                           example: \n"
 "                           --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
-//"                           If multiple post plugins are given, all\n"
-//"                           will be initialized."
 "  -p        --primary      Force xineliboutput to be primary device when\n"
 "                           there are active frontend(s)\n"
 "  -c        --exit-on-close  Exit vdr when local frontend window is closed\n"

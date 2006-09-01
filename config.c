@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.8 2006-08-25 03:55:05 phintuka Exp $
+ * $Id: config.c,v 1.9 2006-09-01 12:36:08 phintuka Exp $
  *
  */
 
@@ -242,53 +242,62 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
   return false;
 }
 
-char *m_ProcessedArgs;
-
 bool config_t::ProcessArgs(int argc, char *argv[])
 {
   static struct option long_options[] = {
-      { "display",    required_argument, NULL, 'd' },
-      { "fullscreen", no_argument,       NULL, 'f' },
-      { "xkeyboard",  no_argument,       NULL, 'k' },
-      //{ "noxkeyboard",no_argument,       NULL, 'K' },
-      { "local",      required_argument, NULL, 'l' },
-      { "nolocal",    no_argument,       NULL, 'L' },
-      { "modeline",   required_argument, NULL, 'm' },
-      { "remote",     required_argument, NULL, 'r' },
-      { "noremote",   no_argument,       NULL, 'R' },
-      { "window",     no_argument,       NULL, 'w' },
-      { "video",      required_argument, NULL, 'V' },
-      { "audio",      required_argument, NULL, 'A' },
-      { "post",       required_argument, NULL, 'P' },
-      { "primary",    no_argument,       NULL, 'p' },
+      { "fullscreen",   no_argument,       NULL, 'f' },
+      { "width",        required_argument, NULL, 'w' },
+      { "height",       required_argument, NULL, 'h' },
+      //{ "xkeyboard",    no_argument,       NULL, 'k' },
+      //{ "noxkeyboard",  no_argument,       NULL, 'K' },
+      { "local",        required_argument, NULL, 'l' },
+      //{ "nolocal",      no_argument,       NULL, 'L' },
+      //{ "modeline",     required_argument, NULL, 'm' },
+      { "remote",       required_argument, NULL, 'r' },
+      //{ "noremote",     no_argument,       NULL, 'R' },
+      //{ "window",       no_argument,       NULL, 'w' },
+      { "audio",        required_argument, NULL, 'A' },
+      { "video",        required_argument, NULL, 'V' },
+      { "display",      required_argument, NULL, 'd' },
+      { "post",         required_argument, NULL, 'P' },
+      { "primary",      no_argument,       NULL, 'p' },
       { "exit-on-close",no_argument,     NULL, 'c' },
       { NULL }
     };
 
   int c;
-  while ((c = getopt_long(argc, argv, "d:fkKl:Lm:r:RW", long_options, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, "fw:h:l:r:A:V:d:P:pc", long_options, NULL)) != -1) {
     switch (c) {
     case 'd': ProcessArg("Video.Port", optarg);
               break;
     case 'f': ProcessArg("Fullscreen", "1");
               break;
-    case 'k': ProcessArg("X11.UseKeyboard", "1");
+    case 'w': ProcessArg("Fullscreen", "0");
+              ProcessArg("X11.WindowWidth", optarg);
               break;
+    case 'h': ProcessArg("Fullscreen", "0");
+              ProcessArg("X11.WindowHeight", optarg);
+              break;
+    //case 'k': ProcessArg("X11.UseKeyboard", "1");
+    //          break;
     //case 'K': ProcessArg("X11.UseKeyboard", "0");
-              //break;
+    //          break;
     case 'l': ProcessArg("Frontend", optarg);
               break;
-    case 'L': ProcessArg("Frontend", "none");
+    //case 'L': ProcessArg("Frontend", "none");
+    //          break;
+    //case 'm': ProcessArg("Modeline", optarg);
+    //          break;
+    case 'r': if(strcmp(optarg, "none")) {
+                ProcessArg("Remote.ListenPort", optarg);
+                ProcessArg("RemoteMode", listen_port>0 ? "1" : "0");
+              } else
+                ProcessArg("RemoteMode", "0");
               break;
-    case 'm': ProcessArg("Modeline", optarg);
-              break;
-    case 'r': ProcessArg("Remote.ListenPort", optarg);
-              ProcessArg("RemoteMode", "1");
-              break;
-    case 'R': ProcessArg("RemoteMode", "0");
-              break;
-    case 'w': ProcessArg("Fullscreen", "0");
-              break;
+    //case 'R': ProcessArg("RemoteMode", "0");
+    //          break;
+    //case 'w': ProcessArg("Fullscreen", "0");
+    //          break;
     case 'V': ProcessArg("Video.Driver", optarg);
               break;
     case 'A': ProcessArg("Audio.Driver", optarg);
