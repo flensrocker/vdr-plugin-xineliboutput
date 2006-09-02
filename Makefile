@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.8 2006-08-23 05:28:18 phintuka Exp $
+# $Id: Makefile,v 1.9 2006-09-02 15:52:16 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -302,15 +302,24 @@ XINELIBOUTPUT_INSTALL_MSG =  \
 	    $(warning  $(shell echo `pwd`)) \
 	    $(warning *****************************************************************) \
 
+XINELIBOUTPUT_ARGS_WARNING =  \
+	    $(warning *********************** xineliboutput ***************************) \
+	    $(warning WARNING: )\
+	    $(warning Command-line arguments have been changed from previous version.) \
+	    $(warning Check your vdr and xineliboutput startup scripts !) \
+	    $(warning *****************************************************************) \
+
 install : XINELIBOUTPUT_INSTALL_MSG =
 
 all: $(VDRPLUGIN_SO) $(VDRPLUGIN_SXFE_SO) $(VDRPLUGIN_FBFE_SO) \
 	    $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
 	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO)
 	$(XINELIBOUTPUT_INSTALL_MSG)
+	$(XINELIBOUTPUT_ARGS_WARNING)
 
 frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
 	$(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO)
+	$(XINELIBOUTPUT_ARGS_WARNING)
 
 .PHONY: all
 
