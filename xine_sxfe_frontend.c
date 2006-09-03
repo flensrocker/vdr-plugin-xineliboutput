@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.13 2006-09-01 12:25:50 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.14 2006-09-03 12:16:43 phintuka Exp $
  *
  */
 
@@ -92,6 +92,7 @@ typedef struct sxfe_s {
   input_plugin_t          *input;
   xine_video_port_t       *video_port;
   xine_audio_port_t       *audio_port;
+  xine_audio_port_t       *audio_port_none;
   xine_event_queue_t      *event_queue;
 
   post_plugins_t          *postplugins;
@@ -395,7 +396,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     return 0;
   }
 
-  if(video_port && strlen(video_port)>3) {
+  if(video_port && strlen(video_port)>2) {
     if(!(this->display = XOpenDisplay(video_port)))
       LOGERR("sxfe_display_open: failed to connect to X server (%s)",
 	     video_port);
