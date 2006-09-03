@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.17 2006-08-25 08:29:38 phintuka Exp $
+ * $Id: device.c,v 1.18 2006-09-03 14:03:52 phintuka Exp $
  *
  */
 
@@ -256,7 +256,7 @@ void cXinelibDevice::MakePrimaryDevice(bool On)
 
 void cXinelibDevice::ForcePrimaryDevice(bool On) 
 {
-  LOGDBG("cXinelibDevice::ForcePrimaryDevice(%s)",On?"On":"Off");
+  TRACEF("cXinelibDevice::ForcePrimaryDevice");
   m_MainThreadLock.Lock();
   m_MainThreadFunctors.Add(CreateFunctor(this, &cXinelibDevice::ForcePrimaryDeviceImpl, On));
   m_MainThreadLock.Unlock();
@@ -268,7 +268,7 @@ void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
   static int Counter = 0;
 
   TRACEF("cXinelibDevice::ForcePrimaryDeviceImpl");
-  LOGDBG("cXinelibDevice::ForcePrimaryDeviceImpl(%s)",On?"On":"Off");
+  /*LOGDBG("cXinelibDevice::ForcePrimaryDeviceImpl(%s)",On?"On":"Off");*/
 
   /* TODO: All this stuff should really be done in VDR main thread context... */
 
@@ -328,7 +328,7 @@ void cXinelibDevice::MainThreadHook(void)
     m_MainThreadLock.Unlock();
 
     if(f) {
-      LOGDBG("cXinelibDevice::MainThreadHook: executing functor 0x%lx",(long)f);
+      /*LOGDBG("cXinelibDevice::MainThreadHook: executing functor 0x%lx",(long)f);*/
       f->Execute();
     }
 
@@ -587,6 +587,7 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
     ForEach(m_clients, &cXinelibThread::SetNoVideo, true);
   } else {
     ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+    ForEach(m_clients, &cXinelibThread::Clear);
   }
   
   return true;
