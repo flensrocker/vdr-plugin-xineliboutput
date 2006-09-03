@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.9 2006-09-01 12:36:08 phintuka Exp $
+ * $Id: config.c,v 1.10 2006-09-03 12:14:39 phintuka Exp $
  *
  */
 
@@ -151,7 +151,7 @@ config_t::config_t() {
 
   strcpy(local_frontend, s_frontends[FRONTEND_X11]);
   strcpy(video_driver  , s_videoDriversX11[X11_DRIVER_XV]);
-  strcpy(video_port    , "127.0.0.1:0.0");
+  strcpy(video_port    , "0.0");
   strcpy(modeline      , "");
 
   strcpy(audio_driver , s_audioDrivers[AUDIO_DRIVER_ALSA]);
