@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.6 2006-08-24 09:20:07 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.7 2006-09-03 12:11:50 phintuka Exp $
  *
  */
 
@@ -62,6 +62,7 @@ protected:
     // Playback control
     virtual void Xine_Sync(void);
     virtual int  Xine_Control(const char *cmd);  
+    virtual int  Xine_Control_Sync(const char *cmd);  
 
 protected:
 
@@ -80,6 +81,7 @@ protected:
     void Handle_Control_KEY(int cli, const char *arg);
     void Handle_Control_UDP_RESEND(int cli, const char *arg);
     void Handle_Control_CONFIG(int cli);
+    void Handle_Control_GRAB(int cli, const char *arg);
 
     void CloseConnection(int cli);
 
@@ -115,7 +117,7 @@ protected:
 
     int  m_Token;
     int  AllocToken(void);
-    int  ClientCount(void);
+    bool HasClients(void);
 };
 
 #endif // __XINELIB_FRONTEND_SVR_H

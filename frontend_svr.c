@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.19 2006-08-25 04:03:11 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.20 2006-09-03 12:11:50 phintuka Exp $
  *
  */
 
@@ -201,10 +201,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
   LOCK_THREAD;
 
   // check if there are any clients 
-  for(i=0; i<MAXCLIENTS; i++)
-    if(fd_control[i]>=0)
-      break;
-  if(i == MAXCLIENTS)
+  if(!HasClients())
     return;
 
   if(cmd_gen) {
@@ -273,16 +270,10 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 
 int64_t cXinelibServer::GetSTC(void)
 {
-  int i;
-  //cTimeMs delay;
-
   Lock();
 
   // check if there are any clients 
-  for(i=0; i<MAXCLIENTS; i++)
-    if(fd_control[i]>=0)
-      break;
-  if(i == MAXCLIENTS) {
+  if(!HasClients()) {
     Unlock();
     return -1ULL;
   }
@@ -350,9 +341,8 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
   RtpClients = ((m_iMulticastMask || xc.remote_rtp_always_on) && fd_multicast >= 0);
 
   if(UdpClients || RtpClients)
-    if(! m_Scheduler->Queue(m_StreamPos, data, len)) {
+    if(! m_Scheduler->Queue(m_StreamPos, data, len))
       LOGMSG("cXinelibServer::Play_PES Buffer overflow (UDP/RTP)");
-    }
   
   if(TcpClients || UdpClients || RtpClients) 
     cXinelibThread::Play_PES(data, len);
@@ -408,7 +398,7 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
     Unlock();
     
     // replay is paused when no clients 
-    if(!Clients) {
+    if(!Clients && !xc.remote_rtp_always_on) {
       if(TimeoutMs>0)
 	cCondWait::SleepMs(TimeoutMs);
       return false;
@@ -474,6 +464,39 @@ int cXinelibServer::Xine_Control(const char *cmd)
   return 1;
 }
 
+int cXinelibServer::Xine_Control_Sync(const char *cmd)
+{
+  TRACEF("cXinelibServer::Xine_Control_Sync");
+
+  if(cmd && *cmd) {
+    int UdpClients = 0, RtpClients = 0;
+    char buf[2048];
+    int len;
+    sprintf(buf, "%s\r\n", cmd);
+    len = strlen(buf);
+
+    LOCK_THREAD;
+
+    for(int i=0; i<MAXCLIENTS; i++)
+      if(fd_control[i]>=0 && m_bConfigOk[i]) {
+	if(fd_data[i] >= 0) {
+	  if(m_bUdp[i])
+	    UdpClients++;
+	  else if(m_Writer[i]) 
+	    m_Writer[i]->Put((uint64_t)(-1ULL), (const uchar*)buf, len);
+	}
+      }
+
+    RtpClients = ((m_iMulticastMask || xc.remote_rtp_always_on) && fd_multicast >= 0);
+
+    if(UdpClients || RtpClients)
+      if(! m_Scheduler->Queue((uint64_t)(-1ULL), (const uchar*)buf, len)) 
+	LOGMSG("cXinelibServer::Xine_Control_Sync overflow (UDP/RTP)");
+  }
+  
+  return 1;
+}
+
 void cXinelibServer::TrickSpeed(int Speed)
 {
   if(Speed == 0)
@@ -489,13 +512,8 @@ bool cXinelibServer::EndOfStreamReached(void)
   LOCK_THREAD;
  
   /* Check if there are any clients */
-  int i;
-  for(i=0; i<MAXCLIENTS; i++)
-    if(fd_control[i]>=0) 
-      break;
-  if(i == MAXCLIENTS) {
+  if(!HasClients())
     return true;
-  }
 
   return cXinelibThread::EndOfStreamReached();
 }
@@ -511,79 +529,72 @@ int cXinelibServer::AllocToken(void)
   return m_Token;
 }
 
-int cXinelibServer::ClientCount(void)
+bool cXinelibServer::HasClients(void)
 {
   LOCK_THREAD;
 
-  int i, n=0;
+  int i;
   for(i=0; i<MAXCLIENTS; i++) 
     if(fd_control[i]>=0 && m_bConfigOk[i])  
-      n++;
+      return true;
 
-  return n;
+  return false;
 }
 
 int cXinelibServer::PlayFileCtrl(const char *Cmd)
 {
-  if( 0 /*(*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))*/ ) {  
-    // Don't wait reply if local frontend is running
-    //
-    // return cXinelibThread::PlayFileCtrl(Cmd);
-    //
-  } else {
-    bool bPlayfile = false /*, bGet = false, bFlush = false*/;
-    if((!strncmp(Cmd, "FLUSH", 5)    /*&& (bFlush=true)*/) ||
-       (!strncmp(Cmd, "PLAYFILE", 8) && (bPlayfile=true)) ||
-       (!strncmp(Cmd, "GET", 3)      /*&& (bGet=true)*/)) {  // GETPOS, GETLENGTH, ...
+  /* Check if there are any clients */
+  if(!HasClients())
+    return -1;
+
+  bool bPlayfile = false /*, bGet = false, bFlush = false*/;
+  if((!strncmp(Cmd, "FLUSH", 5)    /*&& (bFlush=true)*/) ||
+     (!strncmp(Cmd, "PLAYFILE", 8) && (bPlayfile=true)) ||
+     (!strncmp(Cmd, "GET", 3)      /*&& (bGet=true)*/)) {  // GETPOS, GETLENGTH, ...
      
-      /* Check if there are any clients */
-      if(ClientCount() <= 0)
-	return -1;
-
-      Lock();  
+    Lock();  
   
-      /* Get token, send it to client and set future for it */
-      int token = AllocToken();
-      cReplyFuture future;
-      m_Futures->Add(&future, token);
+    /* Get token, send it to client and set future for it */
+    int token = AllocToken();
+    cReplyFuture future;
+    m_Futures->Add(&future, token);
 
-      /* Send actual command */
-      cXinelibThread::PlayFileCtrl(Cmd);
+    /* Send actual command */
+    cXinelibThread::PlayFileCtrl(Cmd);
 
-      Unlock();
+    Unlock();
 
-      /* When server thread get REPLY %d %d (first %d == token, second returned value)
-       * it sets corresponding future (by token; if found) in list
-       * and removes it from list.
-       */
+    /* When server thread get REPLY %d %d (first %d == token, second returned value)
+     * it sets corresponding future (by token; if found) in list
+     * and removes it from list.
+     */
 
 #ifdef XINELIBOUTPUT_DEBUG
-      int64_t t = cTimeMs::Now();
+    int64_t t = cTimeMs::Now();
 #endif
 
-      int timeout = 300;
-      if(bPlayfile)
-	timeout = 5000;
+    int timeout = 300;
+    if(bPlayfile)
+      timeout = 5000;
 
-      future.Wait(timeout);
+    future.Wait(timeout);
 
-      Lock();
-      m_Futures->Del(&future, token);
-      Unlock();
+    Lock();
+    m_Futures->Del(&future, token);
+    Unlock();
 
-      if(!future.IsReady()) {
-	LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, timeout, token);
-	return -1;
-      }
-
-      TRACE("cXinelibServer::PlayFileCtrl("<<Cmd<<"): result=" << future.Value()
-	    << " delay: " << (int)(cTimeMs::Now()-t) << "ms"); 
-
-      if(bPlayfile)
-	m_bEndOfStreamReached = false;
-
-      return future.Value();
+    if(!future.IsReady()) {
+      LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, timeout, token);
+      return -1;
     }
+
+    TRACE("cXinelibServer::PlayFileCtrl("<<Cmd<<"): result=" << future.Value()
+	  << " delay: " << (int)(cTimeMs::Now()-t) << "ms"); 
+
+    if(bPlayfile)
+      m_bEndOfStreamReached = false;
+
+    return future.Value();
   }
   
   return cXinelibThread::PlayFileCtrl(Cmd);
@@ -749,7 +760,7 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
   Lock();
 
   /* Check if there are any clients */
-  if(ClientCount() <= 0)
+  if(!HasClients())
     return NULL;
 
   sprintf(cmd, "GRAB %s %d %d %d\r\n", 
@@ -758,6 +769,7 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
   int token = AllocToken();
   m_Futures->Add(&future, token);
 
+  // might be better to request iamge from one client only (?)
   Xine_Control(cmd);
 
   Unlock();
@@ -1070,6 +1082,41 @@ void cXinelibServer::Handle_Control_UDP_RESEND(int cli, const char *arg)
   }
 }
 
+void cXinelibServer::Handle_Control_GRAB(int cli, const char *arg)
+{
+  cGrabReplyFuture *f;
+  int token = -1, size = 0;
+  if(2 == sscanf(arg, "%d %d", &token, &size)) {
+    if(size > 0) {
+      uchar *result = (uchar*)malloc(size);
+      Unlock(); /* may take a while ... */
+      ssize_t n = timed_read(fd_control[cli], result, size, 1000);
+      Lock();
+      if(n == size) {
+	if(NULL != (f = (cGrabReplyFuture*)m_Futures->Get(token))) {
+	  grab_result_t r;
+	  r.Size = size;
+	  r.Data = result;
+	  m_Futures->Del(f, token);
+	  f->Set(r);
+	  result = NULL;
+	} else {
+	  LOGMSG("cXinelibServer: Grab image discarded");
+	}
+      } else {
+	LOGMSG("cXinelibServer: Grab result read() failed");
+	CloseConnection(cli);
+      }
+      free(result);
+    } else if(NULL != (f = (cGrabReplyFuture*)m_Futures->Get(token))) {
+      grab_result_t r;
+      r.Size = 0;
+      r.Data = NULL;
+      m_Futures->Del(f, token);
+      f->Set(r);
+    }
+  }
+}
 
 void cXinelibServer::Handle_Control(int cli, const char *cmd)
 {
@@ -1135,44 +1182,11 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
     }
 
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
-    int token = -1, size = 0;
-    if(2 == sscanf(cmd, "GRAB %d %d", &token, &size)) {
-      if(size>0) {
-	uchar *result = (uchar*)malloc(size);
-	Unlock(); /* may take a while ... */
-	ssize_t n = timed_read(fd_control[cli], result, size, 1000);
-	Lock();
-	if(n == size) {
-	  cGrabReplyFuture *f = (cGrabReplyFuture*)m_Futures->Get(token);
-	  if(f) {
-	    grab_result_t r;
-	    r.Size = size;
-	    r.Data = result;
-	    m_Futures->Del(f, token);
-	    f->Set(r);
-	    result = NULL;
-	  } else {
-	    LOGMSG("cXinelibServer: Grab image discarded");
-	  }
-	} else {
-	  LOGMSG("cXinelibServer: Grab result read() failed");
-	  CloseConnection(cli);
-	}
-	free(result);
-      } else {
-	cGrabReplyFuture *f = (cGrabReplyFuture*)m_Futures->Get(token);
-	if(f) {
-	  grab_result_t r;
-	  r.Size = 0;
-	  r.Data = NULL;
-	  m_Futures->Del(f, token);
-	  f->Set(r);
-	}
-      }
-    }
+    Handle_Control_GRAB(cli, cmd+5);
 
   } else if(!strncasecmp(cmd, "CLOSE", 5)) {
     CloseConnection(cli);
+
   } else if(!strncasecmp(cmd, "GET ", 4)) {
     // HTTP ?
   }
