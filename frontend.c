@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.13 2006-08-25 04:03:11 phintuka Exp $
+ * $Id: frontend.c,v 1.14 2006-09-03 14:16:19 phintuka Exp $
  *
  */
 
@@ -234,13 +234,10 @@ void cXinelibThread::Clear(void)
   int64_t  tmp1 = m_StreamPos;
   uint32_t tmp2 = m_Frames;
   Unlock();
-#if 0
-  Xine_Control("DISCARD", tmp);
-#else
+
   char buf[128];
   sprintf(buf, "DISCARD %" PRId64 " %d", tmp1, tmp2);
   Xine_Control(buf);
-#endif
 }
 
 bool cXinelibThread::Flush(int TimeoutMs) 
@@ -370,6 +367,11 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
   uchar *frame = new uchar[PES_CHUNK_SIZE+32];
 
+  static uchar hdr_pts[] = {0x00,0x00,0x01,0xe0, 0x00,0x08,0x80,0x80,
+                            0x00,0x00,0x00,0x00, 0x00,0x00}; /* mpeg2 */
+  hdr_pts[3] = (uchar)streamID;
+  Play_PES(hdr_pts, sizeof(hdr_pts));
+
   hdr[3] = (uchar)streamID;
   while(todo) {
     int blocklen = todo;
@@ -385,14 +387,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
     todo -= blocklen;
 
     cPoller p;
-#if 1
     Poll(p, 100);
-#else
-    int loops=0;
-    while(!Poll(p,100) && loops++ < 10) {
-      LOGDBG("Play_ES: Poll Failed");
-    }
-#endif
 
     if(blocklen+hdrlen != Play_PES(frame,blocklen+hdrlen)) {      
       delete frame;
@@ -424,7 +419,9 @@ bool cXinelibThread::QueueBlankDisplay(void)
   extern const unsigned char v_mpg_black[];     // black_720x576.c
   extern const int v_mpg_black_length;
 
-  return Play_Mpeg2_ES(v_mpg_black, v_mpg_black_length, VIDEO_STREAM);
+  int r = Play_Mpeg2_ES(v_mpg_black, v_mpg_black_length, VIDEO_STREAM);
+  Xine_Control_Sync("BLANK");
+  return r;
 }
 
 bool cXinelibThread::BlankDisplay(void)
