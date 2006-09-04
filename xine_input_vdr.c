@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.39 2006-09-01 11:13:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.40 2006-09-04 13:48:41 phintuka Exp $
  *
  */
 
@@ -375,7 +375,7 @@ struct pvrscr_s {
 
 static int pvrscr_get_priority (scr_plugin_t *scr) 
 {
-  return 10; /* high priority */
+  return 50; /* high priority */
 }
 
 /* Only call pvrscr_set_pivot when already mutex locked ! */
@@ -797,7 +797,7 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this,
 static int64_t pts_from_pes(const uint8_t *buf, int size)
 {
   int64_t pts = -1;
-  if(size>14 && buf[7] & 0x80) { /* pts avail */
+  if(size>13 && buf[7] & 0x80) { /* pts avail */
     pts  = ((int64_t)( buf[ 9] & 0x0E)) << 29;
     pts |=  (int64_t)( buf[10]         << 22 );
     pts |=  (int64_t)((buf[11] & 0xFE) << 14 );
@@ -1310,10 +1310,11 @@ void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
 
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
+  int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
+#if 0
   xine_bmiheader *bih;
   buf_element_t *buf;
   int pos = 0, size;
-  int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
 
   buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
   if(!buf) {
@@ -1363,9 +1364,35 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
     
     buf->content = buf->mem;
     buf->size = size;
-    buf->type = BUF_VIDEO_YV12;
+    buf->type = BUF_VIDEO_YV12; /* BUF_VIDEO_GREY; */
+    buf->pts = 40*90; /* 40ms */
     this->stream->video_fifo->put(this->stream->video_fifo, buf);
   }
+#endif
+
+  _x_demux_control_newpts(this->stream, 0, 0);
+
+#if 1      
+  pthread_yield();
+  if(this->stream && this->stream->video_out) {
+    vo_frame_t *img = this->stream->video_out->get_frame (this->stream->video_out,
+							  this->video_width, this->video_height,
+							  1.0*ratio/10000.0, XINE_IMGFMT_YV12, 
+							  VO_BOTH_FIELDS);
+    if(img) {
+      memset( img->base[0], 0x00, this->video_width * this->video_height);
+      memset( img->base[1], 0x80, this->video_width * this->video_height / 4 );
+      memset( img->base[2], 0x80, this->video_width * this->video_height / 4 );
+      
+      img->duration  = 3600;
+      img->pts       = 3600;
+      img->bad_frame = 0;
+      img->draw(img, this->stream);
+      img->free(img);
+    }
+  }
+  this->still_mode = 0;
+#endif
 }
 
 
@@ -2218,13 +2245,14 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
     this->stream->metronom->set_option(this->stream->metronom, 
 				       METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
 
-    if(!this->live_mode || (this->fd_control > 0 && !this->slave_stream)) {
-      config->update_num(this->stream->xine->config,
-			 "audio.synchronization.av_sync_method", 1);
-    } else {
-      config->update_num(this->stream->xine->config,
-			 "audio.synchronization.av_sync_method", 0);
-    }
+    if(this->live_mode || (this->fd_control >= 0 && !this->slave_stream)) 
+      config->update_num(config, "audio.synchronization.av_sync_method", 1);
+#if 0
+    /* does not work after playing music files (?) */
+    else 
+      config->update_num(config, "audio.synchronization.av_sync_method", 0);
+#endif
+
   }
 
   /* set buffer usage limits */
@@ -2399,18 +2427,21 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	xine_event_dispose_queue (this->slave_event_queue);
 	this->slave_event_queue = NULL;
       }
+
       if(this->funcs.fe_control) {
 	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
       }
-#if 0
-      if(this->fd_control>=0)
-	write_control(this, "ENDOFSTREAM\r\n");
-#endif
+
       xine_stop(this->slave_stream);
       xine_close(this->slave_stream);
       xine_dispose(this->slave_stream);
       this->slave_stream = NULL;
+
+      if(this->funcs.fe_control)
+	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE CLOSED\r\n");
+
+      _x_demux_control_start(this->stream);
     }
   }
 
@@ -3118,13 +3149,14 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     handle_control_grab(this, cmd);
-    /*LOGMSG("unimplemented control %s", cmd);*/
 
-    /* next ones need to be synchronized to data stream */
+  /* next ones need to be synchronized to data stream */
   } else if(!strncasecmp(cmd, "BLANK", 5)) {
+    /* #warning should be delayed and executed in read_block */
     queue_blank_yv12(this);
 
   } else if(!strncasecmp(cmd, "CLEAR", 5)) {
+    /* #warning should be delayed and executed in read_block */
 
   } else {
     LOGMSG("unknown control %s", cmd);
@@ -3231,6 +3263,7 @@ struct {
   {XINE_EVENT_INPUT_NUMBER_8, "8"},
   {XINE_EVENT_INPUT_NUMBER_9, "9"},
 
+#if defined(XINE_EVENT_VDR_RED)
   {XINE_EVENT_VDR_BACK,         "Back"},
   {XINE_EVENT_VDR_CHANNELPLUS,  "Channel+"},
   {XINE_EVENT_VDR_CHANNELMINUS, "Channel-"},
@@ -3264,8 +3297,9 @@ struct {
   {XINE_EVENT_VDR_VOLMINUS,     "Volume-"},
   {XINE_EVENT_VDR_MUTE,         "Mute"},
   {XINE_EVENT_VDR_AUDIO,        "Audio"},
-#if XINE_VERSION_CODE > 10101
+# if defined(XINE_EVENT_VDR_INFO)
   {XINE_EVENT_VDR_INFO,         "Info"},
+# endif
 #endif
   {-1, NULL}
 };
@@ -3441,7 +3475,6 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 	uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
 	if(pkt_data[0]) { /* -> can't be pes frame */
 	  pkt_data[64] = 0;
-	  LOGMSG("Control message in data stream: %s", (char*)pkt_data);
 	  vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
 
 	  /* read next block */
@@ -3615,10 +3648,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  continue;
 	}
       } else {
-	LOGMSG("Control message in data stream: %s", (char*)pkt_data);
 	vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
-	/* #warning some messages should be delayed and executed in read_block
-	   (ex. audio/spu stream changes, flush) */
 	continue;
       }
     } else {
@@ -3912,7 +3942,7 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   if(buf->content[3] >= 0xc0 && buf->content[3] < 0xe0) {
     /* audio */
     if(this->prev_audio_stream_id != (buf->content[3] << 8)) {
-      LOGDBG("Audio changed -> %d (%02X)", buf->content[3] - 0xc0, buf->content[3]);
+      /*LOGDBG("Audio changed -> %d (%02X)", buf->content[3] - 0xc0, buf->content[3]);*/
       this->prev_audio_stream_id = buf->content[3] << 8;
       audio_changed = 1;
     }
@@ -3952,7 +3982,7 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   }
 
   if(audio_changed) {
-#if XINE_VERSION_CODE < 10102
+#if !defined(BUF_CONTROL_RESET_TRACK_MAP)
 #  warning xine-lib is older than 1.1.2. Multiple audio streams are not supported.
 #else
     put_control_buf(this->stream->audio_fifo,
@@ -4099,23 +4129,24 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	pthread_cond_timedwait (&this->block_buffer->not_empty, 
 				&this->block_buffer->mutex, &abstime);
       pthread_mutex_unlock(&this->block_buffer->mutex);
-      /*if(this->block_buffer->fifo_size <= 0) {*/
 #if 1
-	if(!this->is_paused && 
-	   !this->slave_stream && 
-	   this->stream->video_fifo->fifo_size <= 0) {
-	  this->padding_cnt++;
-	  if(this->padding_cnt > 10) {
-	    LOGMSG("No data in 5 seconds, queuing no signal image");
-	    queue_nosignal(this);
-	    this->padding_cnt = 0;
-	  }
+      if(!this->is_paused && 
+	 !this->still_mode &&
+	 !this->slave_stream /*&& 
+	 this->stream->video_fifo->fifo_size <= 0*/) {
+	this->padding_cnt++;
+	if(this->padding_cnt > 16) {
+	  LOGMSG("No data in 8 seconds, queuing no signal image");
+	  queue_nosignal(this);
+	  this->padding_cnt = 0;
 	}
+      } else {
+	this->padding_cnt = 0;
+      }
 #endif 
-	if(NULL != (buf = make_padding_frame(this)))
-	  return buf;
-	LOGMSG("make_padding_frame FAILED");
-      /*}*/
+      if(NULL != (buf = make_padding_frame(this)))
+	return buf;
+      LOGMSG("make_padding_frame FAILED");
       continue;
     }
     this->padding_cnt = 0;
@@ -4161,11 +4192,24 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     int64_t pts = pts_from_pes(buf->content, buf->size);
     if(pts > 0) {
 #ifdef TEST_SCR_PAUSE
-      if(need_pause)
+      if(need_pause) 
 	scr_tunning_set_paused(this);
 #endif
       vdr_x_demux_control_newpts(this->stream, pts, 0);
       this->send_pts = 0;
+    } else if(pts == 0) {
+      /* Still image? do nothing, leave send_pts ON */
+    }
+  } 
+
+  if(this->still_mode && buf->size == 14) {
+    /* generated still images start with empty video PES, PTS = 0.
+       Reset metronom pts so images will be displayed */
+    int64_t pts = pts_from_pes(buf->content, buf->size);
+    if(pts==0) {
+      vdr_x_demux_control_newpts(this->stream, pts, 0);
+      /* delay frame 10ms (9000 ticks) */
+      /*buf->content[12] = (uint8_t)((10*90) >> 7);*/
     }
   }
 
@@ -4237,7 +4281,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     this->slave_stream = NULL;
   }
 
-  if(this->fd_control)
+  if(this->fd_control>=0)
     write_control(this, "CLOSE\r\n");
 
   this->control_running = 0;
@@ -4425,7 +4469,8 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
     time = xine->clock->get_current_time(xine->clock);
     this->scr = pvrscr_init();
     this->scr->scr.start(&this->scr->scr, time);
-    xine->clock->register_scr(this->stream->xine->clock, &this->scr->scr);
+    if(xine->clock->register_scr(this->stream->xine->clock, &this->scr->scr))
+      LOGMSG("xine->clock->register_scr FAILED !");
  }
 #endif
   this->scr_tunning = SCR_TUNNING_OFF;
