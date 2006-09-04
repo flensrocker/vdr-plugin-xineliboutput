@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.17 2006-08-25 08:25:52 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.18 2006-09-04 11:25:18 phintuka Exp $
  *
  */
 
@@ -522,6 +522,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     return 0;
   }
 
+  this->video_port_none = NULL;
+  
   /* re-configure display size (DirectFB driver changes display mode in init) */
   if(this->update_display_size)
     this->update_display_size(this_gen);
@@ -533,9 +535,10 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(audio_driver && !strcmp(audio_driver, "auto"))
     this->audio_port = xine_open_audio_driver (this->xine, NULL, NULL);
-  if(audio_driver && !strcmp(audio_driver, "none"))
-    ;
-  else
+  if(audio_driver && !strcmp(audio_driver, "none")) {
+    this->audio_port = _x_ao_new_port (this->xine, NULL, 1);
+    this->audio_port->set_property(this->audio_port, AO_PROP_DISCARD_BUFFERS, 1);
+  } else
     this->audio_port = xine_open_audio_driver (this->xine, audio_driver, NULL);
   
   if(!this->audio_port && (audio_driver && !!strcmp(audio_driver, "none"))) {
@@ -543,6 +546,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 	   audio_driver?audio_driver:"(NULL)", 
 	   audio_port?":":"", audio_port?audio_port:""); 
   }
+
+  this->audio_port_none = NULL;
 
   /* create stream */
 
@@ -672,13 +677,59 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 #define POST_VIDEO      2
 #define POST_VIDEO_PIP  3
 
+
+static void init_dummy_ports(fe_t *this, int on)
+{
+  if(!on) {
+    if(this->postplugins->slave_stream)
+      LOGMSG("ERROR: init_dummy_ports(false) called while port is still in use !");
+    
+    if(this->audio_port_none)
+      xine_close_audio_driver(this->xine, this->audio_port_none);
+    this->audio_port_none = NULL;
+    if(this->video_port_none)
+      xine_close_video_driver(this->xine, this->video_port_none);
+    this->video_port_none = NULL;
+  } else {
+    if(! this->audio_port_none)
+      this->audio_port_none = _x_ao_new_port (this->xine, NULL, 1); 
+    this->audio_port_none->set_property(this->audio_port_none, AO_PROP_DISCARD_BUFFERS, 1);
+    /*LOGMSG("initialized dummy audio port %x", this->audio_port_none);*/
+#if 0
+    if(! this->video_port_none)
+      this->video_port_none =
+	_x_vo_new_port(this->xine, 
+		       _x_load_video_output_plugin(this->xine, "none", 
+						   XINE_VISUAL_TYPE_NONE, NULL),
+		       1);
+    this->video_port_none->set_property(this->video_port_none, VO_PROP_DISCARD_FRAMES, 1);
+#endif
+  }
+}
+
 static void fe_post_unwire(fe_t *this)
 {
   xine_post_out_t  *vo_source = xine_get_video_source(this->stream);
   xine_post_out_t  *ao_source = xine_get_audio_source(this->stream);
-  LOGDBG("unwiring post plugins");
-  (void) xine_post_wire_video_port(vo_source, this->video_port);
-  (void) xine_post_wire_audio_port(ao_source, this->audio_port);
+
+  if(this->postplugins->slave_stream) {
+    LOGDBG("unwiring slave stream post plugins");
+
+    init_dummy_ports(this, 1);
+    (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
+    /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
+
+    vo_source = xine_get_video_source(this->postplugins->slave_stream);
+    ao_source = xine_get_audio_source(this->postplugins->slave_stream);
+    (void) xine_post_wire_video_port(vo_source, this->video_port);
+    (void) xine_post_wire_audio_port(ao_source, this->audio_port);
+
+  } else {
+    LOGDBG("unwiring post plugins");
+    init_dummy_ports(this, 0);
+    (void) xine_post_wire_video_port(vo_source, this->video_port);
+    (void) xine_post_wire_audio_port(ao_source, this->audio_port);   
+  }
 }
 
 static void fe_post_rewire(fe_t *this)
@@ -772,8 +823,6 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     }
   }
 
-  /*LOGDBG("Post plugin(s) closed : result=%d", result);*/
-
   return result;
 }
 
@@ -807,14 +856,12 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
   if(!strcmp(name,"goom") || !strcmp(name,"oscope") || 
      !strcmp(name,"fftscope") || !strcmp(name,"fftgraph")) {
 
-    /*LOGDBG("  * %s is audio visualization", name);*/
     /* close if changed */
     if(posts->post_vis_elements_num && 
        posts->post_vis_elements &&   
        posts->post_vis_elements[0] &&
        strcmp(name, posts->post_vis_elements[0]->name)) {
-      /*LOGDBG("  * visualization changed, unloading %s", 
-	posts->post_vis_elements[0]->name);*/
+
       fe_post_close(this, NULL, POST_AUDIO_VIS);
     }
 
@@ -823,13 +870,11 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
 
   if(vpplugin_enable_post(posts, initstr, &found)) {
     posts->post_video_enable = 1;
-    /*LOGDBG("  * rewiring video");*/
     vpplugin_rewire_posts(posts);
     return 1;
   }
   if(!found && applugin_enable_post(posts, initstr, &found)) {
     posts->post_audio_enable = 1;
-    /*LOGDBG("  * rewiring audio");*/
     applugin_rewire_posts(posts);
     return 1;
   }
@@ -857,14 +902,12 @@ static int fe_xine_play(frontend_t *this_gen)
 
   if(!this->input && !find_input(this))
     return -1;
+
   input_vdr = (vdr_input_plugin_t *)this->input;
   input_vdr->f.xine_input_event = this->keypress;
   input_vdr->f.fe_control = fe_control;
   input_vdr->f.fe_handle  = (void*)this;
-#if 0
-  if(!this->playback_finished && this->keypress)
-    this->keypress("XKeySym", "");
-#endif
+
   if(this->playback_finished)
     LOGMSG("Error playing xvdr:// !");
 
@@ -944,6 +987,8 @@ static void fe_xine_exit(frontend_t *this_gen)
     if(this->audio_port)
       xine_close_audio_driver(this->xine, this->audio_port);
     this->audio_port = NULL;
+
+    init_dummy_ports(this, 0);
 
     if(this->video_port)
       xine_close_video_driver(this->xine, this->video_port);
@@ -1087,13 +1132,33 @@ static void *fe_control(void *fe_handle, const char *cmd)
     return NULL;
   }
 
-  if(!strncmp(cmd, "SLAVE 0x", 8)) {
+  if(!strncmp(cmd, "SLAVE CLOSED", 16)) {
+    /*LOGMSG("fe_control : slave closed");*/
+    if(posts->slave_stream)
+      fe_control(fe_handle, "SLAVE 0x0\r\n");
+    init_dummy_ports(this, 0);
+
+  } else if(!strncmp(cmd, "SLAVE 0x", 8)) {
     unsigned long pt;
     if(1 == sscanf(cmd, "SLAVE 0x%lx", &pt)) {
       xine_stream_t *slave_stream = (xine_stream_t*)pt;
       if(posts->slave_stream != slave_stream) {
+
 	fe_post_unwire(this);
+
+	if(posts->slave_stream) {
+	  /*xine_post_out_t  *vo_source = xine_get_video_source(posts->slave_stream);*/
+	  xine_post_out_t  *ao_source = xine_get_audio_source(posts->slave_stream);
+	  LOGMSG("unwiring slave stream from output");
+	  /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
+	  (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
+	}
+
 	posts->slave_stream = slave_stream;
+
+	if(posts->slave_stream)
+	  fe_post_unwire(this);
+
 	fe_post_rewire(this);
       }
       this->slave_playback_finished = (slave_stream==NULL);
