@@ -1,8 +1,9 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-- NOTE: updated command-line options !
+2006-09-04: Version 1.0.0pre4
 
+- WARNING: updated command-line options !
 - Fixed starting replay of new file while old file is still playing
 - Fixed segfault in OSD downscaling
 - Added SPU track selection for DVDs without menu
@@ -17,6 +18,9 @@ VDR Plugin 'xineliboutput' Revision History
 - Minor updates to playlists and file replay OSD handling
 - Added trick speed modes (forward only) to DVD player
 - Improved X11 fullscreen <-> window mode switching
+- Improved display blanking: blank image is now generated using
+  last seen video frame size and aspect ratio. This should reduce
+  OSD resizings and re-positioning when switching channels.
 
 2006-08-25: Version 1.0.0pre3
 
