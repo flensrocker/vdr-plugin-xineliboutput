@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.40 2006-09-04 13:48:41 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.41 2006-09-05 22:02:52 phintuka Exp $
  *
  */
 
@@ -75,6 +75,9 @@
   OSD updating in some setups.
 */
 #define TEST_SCR_PAUSE
+
+/* picture-in-picture support */
+/*#define TEST_PIP 1*/
 
 /******************************* LOG ***********************************/
 
@@ -1064,14 +1067,44 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 #define extern static
 #include "nosignal_720x576.c"
 #undef extern
-  buf_element_t *buf;
-  int pos = 0;
-  while(pos < v_mpg_nosignal_length) {
+  static char   *data = NULL;
+  static int     datalen = 0;
+  buf_element_t *buf = NULL;
+  int            pos = 0;
+
+  if(!data) {
+    char *path;
+    int fd = open(path="/usr/share/vdr/xineliboutput/nosignal.mpg", O_RDONLY);
+    fd = fd>=0 ?: open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+    fd = fd>=0 ?: open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
+    fd = fd>=0 ?: open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+    fd = fd>=0 ?: open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
+    fd = fd>=0 ?: open(path="/video/nosignal.mpg", O_RDONLY);
+    if(fd>=0) {
+      data = malloc(0xffff);
+      datalen = read(fd, data, 0xffff);
+      if(datalen<=0) {
+	free(data);
+	LOGERR("error reading nosignal.mpg (%s)", path);
+      } else {
+	LOGMSG("using custom nosignal image (%s)", path);
+      }
+    }
+  }
+  if(datalen<=0) {
+    data    = (char*)&v_mpg_nosignal[0];
+    datalen = v_mpg_nosignal_length;
+  }
+
+  /* need to reset decoder if video format is not the same */
+  _x_demux_control_start(this->stream);
+
+  while(pos < datalen) {
     buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
     buf->content = buf->mem;
-    buf->size = MIN(v_mpg_nosignal_length - pos, buf->max_size);
+    buf->size = MIN(datalen - pos, buf->max_size);
     buf->type = BUF_VIDEO_MPEG;
-    xine_fast_memcpy(buf->content, &v_mpg_nosignal[pos], buf->size);
+    xine_fast_memcpy(buf->content, &data[pos], buf->size);
     pos += buf->size;
     this->stream->video_fifo->put(this->stream->video_fifo, buf);
   }
@@ -1436,7 +1469,7 @@ static buf_element_t *fifo_read_block (input_plugin_t *this_gen,
 				       fifo_buffer_t *fifo, off_t todo) 
 {
   fifo_input_plugin_t *this = (fifo_input_plugin_t *) this_gen;
-  LOGDBG("fifo_read_block");
+  //LOGDBG("fifo_read_block");
 
   while(!this->stream->demux_action_pending) {
     buf_element_t *buf = fifo_buffer_try_get(this->buffer);
@@ -1475,9 +1508,9 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
   vdr_input_plugin_t *master;
   LOGDBG("fifo_class_get_instance");
 
-  sscanf(data+4+1+5+1, "%lx", &imaster);
+  sscanf(data+15, "%lx", &imaster);
   master = (vdr_input_plugin_t*)imaster;
-
+LOGMSG("master=%x",imaster);
   memset(slave, 0, sizeof(fifo_input_plugin_t));
   slave->master = (vdr_input_plugin_t*)master;
   slave->stream = stream;
@@ -2913,6 +2946,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 	i++;
       }
 
+  } else if(!strncasecmp(cmd, "HDMODE ", 7)) {
+    if(1 == sscanf(cmd, "NOVIDEO %d", &tmp32)) {
+      pthread_mutex_lock(&this->lock);
+      this->hd_stream = tmp32 ? 1 : 0;
+      pthread_mutex_unlock(&this->lock);
+    }
+
   } else if(!strncasecmp(cmd, "NOVIDEO ", 8)) {
     if(1 == sscanf(cmd, "NOVIDEO %d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
@@ -3812,7 +3852,7 @@ static void *vdr_data_thread(void *this_gen)
   pthread_exit(NULL);
 }
 
-#if 0
+#ifdef TEST_PIP
 static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int len)
 {
   fifo_input_plugin_t *slave;
@@ -3821,15 +3861,15 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
   TRACE("write_slave_stream (%d bytes)", len); 
 
   if(!this->pip_stream) {
-    LOGMSG("Detected new video stream");
+    LOGMSG("Detected new video stream 0x%X", (unsigned int)data[3]);
     LOGMSG("  no xine stream yet, trying to create ...");
-    vdr_plugin_parse_control(this_gen, "SUBSTREAM 0xE1 50 50 288 196");
+    vdr_plugin_parse_control((input_plugin_t*)this, "SUBSTREAM 0xE1 50 50 288 196");
   }
   if(!this->pip_stream) {
     LOGMSG("  pip substream: no stream !");
     return -1;
   }
-  LOGMSG("  pip substream open, queuing data");
+  //LOGMSG("  pip substream open, queuing data");
 
   slave = (fifo_input_plugin_t*)this->pip_stream->input_plugin;  
   if(!slave) {
@@ -3837,7 +3877,12 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
     return len;
   }
 
-  buf_element_t *buf = slave->buffer_pool->buffer_pool_try_alloc(slave->buffer_pool);
+  if(slave->buffer_pool->num_free(slave->buffer_pool) < 20) {
+    //LOGMSG("  pip substream: fifo almost full !");
+    xine_usec_sleep(3000);
+    return 0;
+  }
+  buf = slave->buffer_pool->buffer_pool_try_alloc(slave->buffer_pool);
   if(!buf) {
     LOGMSG("  pip substream: fifo full !");
     return 0;
@@ -3866,7 +3911,7 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
   if(this->slave_stream)
     return len;
 
-#if 0
+#ifdef TEST_PIP
   /* some (older?) VDR recordings have video PID != 0xE0 ... */
 
   /* slave */
@@ -5015,11 +5060,14 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 
   LOGDBG("vdr_class_get_instance");
 
+LOGMSG("vdr_class_get_instance: %s",mrl);
   if (strncasecmp (mrl, "xvdr:",5))
     return NULL;
 
-  if(!strncasecmp(mrl, "xvdr:slave:0x", 13)) 
-    return fifo_class_get_instance(cls_gen, stream, data);  
+  if(!strncasecmp(mrl, "xvdr:slave://0x", 15)) {
+    LOGMSG("vdr_class_get_instance: slave stream requested");
+    return fifo_class_get_instance(cls_gen, stream, data);
+  }
 
   this = (vdr_input_plugin_t *) xine_xmalloc (sizeof(vdr_input_plugin_t));
   memset(this, 0, sizeof(vdr_input_plugin_t));
