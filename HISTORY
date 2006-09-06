@@ -1,9 +1,11 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2006-09-04: Version 1.0.0pre4
+2006-09-06: Version 1.0.0pre4
 
 - WARNING: updated command-line options !
+- Support for HD (larger buffers wit HD content)
+- Simple playlist support to media player
 - Fixed starting replay of new file while old file is still playing
 - Fixed segfault in OSD downscaling
 - Added SPU track selection for DVDs without menu
