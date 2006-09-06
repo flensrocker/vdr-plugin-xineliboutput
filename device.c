@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.20 2006-09-06 18:16:56 phintuka Exp $
+ * $Id: device.c,v 1.21 2006-09-06 20:36:52 phintuka Exp $
  *
  */
 
@@ -974,13 +974,14 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
 {
   TRACEF("cXinelibDevice::SetAudioChannelDevice");
 
-  /*LOGDBG("SetAudioChannelDevice(%d)", (int)AudioChannel);*/
   m_AudioChannel = AudioChannel;
-  //
-  // TODO
-  //
-  // - stereo, left only, right only
-  //
+
+  switch(AudioChannel) {
+  default:
+  case 0: ConfigurePostprocessing("audiochannel", false, NULL); break;
+  case 1: ConfigurePostprocessing("audiochannel", true, "channel=0"); break;
+  case 2: ConfigurePostprocessing("audiochannel", true, "channel=1"); break;
+  }
 }
 
 void cXinelibDevice::SetDigitalAudioDevice(bool On)
