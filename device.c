@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.19 2006-09-04 08:44:00 phintuka Exp $
+ * $Id: device.c,v 1.20 2006-09-06 18:16:56 phintuka Exp $
  *
  */
 
@@ -22,6 +22,11 @@
 //#define XINELIBOUTPUT_DEBUG
 //#define XINELIBOUTPUT_DEBUG_STDOUT
 //#define XINELIBOUTPUT_DEBUG_STDERR
+//#define TRACK_EXEC_TIME
+#define HD_MODE_TEST
+//#define TEST_TRICKSPEEDS
+//#define SKIP_DVDSPU
+#define DEBUG_SWITCHING_TIME
 
 #include "logdefs.h"
 #include "config.h"
@@ -39,8 +44,6 @@
 #define STILLPICTURE_REPEAT_COUNT 3
 
 //---------------------------- status monitor -------------------------------
-
-#define DEBUG_SWITCHING_TIME
 
 #ifdef DEBUG_SWITCHING_TIME
 int64_t switchtimeOff = 0LL;
@@ -75,7 +78,8 @@ void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device,
 					  int ChannelNumber) 
 {
   TRACEF("cXinelibStatusMonitor::ChannelSwitch");
-  
+  TRACK_TIME(200);
+
   if (ChannelNumber) {
     if (Device->CardIndex() == m_cardIndex) {
 #ifdef DEBUG_SWITCHING_TIME
@@ -112,7 +116,7 @@ void cXinelibStatusMonitor::Replaying(const cControl *Control,
 				      const char *FileName, bool On)
 {
   TRACEF("cXinelibStatusMonitor::Replaying");
-  
+
   if (On /*&& Name != NULL*/) {
     TRACE("cXinelibStatusMonitor: Replaying " << Name << "(" << FileName << ")");
     m_Device.SetReplayMode();
@@ -488,6 +492,7 @@ void cXinelibDevice::Listen(bool activate, int port)
 void cXinelibDevice::OsdCmd(void *cmd)
 {
   TRACEF("cXinelibDevice::OsdCmd");
+  TRACK_TIME(250);
 
   if(m_server)    // call first server, local frontend modifies contents of the message ...
     m_server->OsdCmd(cmd);
@@ -502,6 +507,7 @@ void cXinelibDevice::OsdCmd(void *cmd)
 void cXinelibDevice::StopOutput(void)
 {
   TRACEF("cXinelibDevice::StopOutput");
+  TRACK_TIME(250);
 
   m_RadioStream = false;
   m_AudioCount  = 0;
@@ -515,6 +521,7 @@ void cXinelibDevice::StopOutput(void)
 void cXinelibDevice::SetTvMode(cChannel *Channel)
 {
   TRACEF("cXinelibDevice::SetTvMode");
+  TRACK_TIME(250);
 
   m_RadioStream = false;
   if (Channel && !Channel->Vpid() && (Channel->Apid(0) || Channel->Apid(1)))
@@ -542,6 +549,7 @@ void cXinelibDevice::SetReplayMode(void)
 
   m_RadioStream = true; // first seen replayed video packet resets this
   m_AudioCount  = 15;
+  m_StreamStart = true;
 
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   TrickSpeed(-1);
@@ -611,7 +619,9 @@ void cXinelibDevice::TrickSpeed(int Speed)
 void cXinelibDevice::Clear(void) 
 {
   TRACEF("cXinelibDevice::Clear");
-  m_StreamStart = 1;
+  TRACK_TIME(100);
+
+  m_StreamStart = true;
   TrickSpeed(-1);
   ForEach(m_clients, &cXinelibThread::Clear);
 }
@@ -698,6 +708,7 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
 int cXinelibDevice::PlayAny(const uchar *buf, int length) 
 {
   TRACEF("cXinelibDevice::PlayAny");
+  TRACK_TIME(100);
 
   if(m_PlayingFile)
     return length;
@@ -785,9 +796,29 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
       return length;
     }
   }
+#elif defined(HD_MODE_TEST)
+  if(m_StreamStart) {
+    int i = 8;         // the minimum length of the video packet header
+    i += buf[i] + 1;   // possible additional header bytes
+    for (; i < length-6; i++) {
+      if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1) {
+	if(buf[i + 3] == 0xb3) {
+	  int d = (buf[i+4] << 16) | (buf[i+5] << 8) | buf[i+6];
+	  int w = (d >> 12);
+	  int h = (d & 0xfff);
+
+	  m_StreamStart = false;
+	  LOGMSG("Detected video size %dx%d", w, h);
+	  ForEach(m_clients, &cXinelibThread::SetHDMode, (w>800));
+	  break;
+	}
+      }
+    }
+  }
 #else
   m_StreamStart = false;
 #endif
+
 
 #ifdef DEBUG_SWITCHING_TIME
   if(switchtimeOff && switchtimeOn) {
@@ -1037,7 +1068,8 @@ eVideoSystem cXinelibDevice::GetVideoSystem(void)
 bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs) 
 {
   TRACEF("cXinelibDevice::Poll");
-                          
+  TRACK_TIME(400);
+
   if(m_PlayingFile)
     return true;
 
@@ -1065,6 +1097,7 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
 bool cXinelibDevice::Flush(int TimeoutMs) 
 {
   TRACEF("cXinelibDevice::Flush");
+  TRACK_TIME(500);
 
   if(m_TrickSpeed == 0) {
     ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
