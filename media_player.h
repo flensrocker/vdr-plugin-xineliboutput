@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.5 2006-09-06 15:30:42 phintuka Exp $
+ * $Id: media_player.h,v 1.6 2006-09-06 18:00:56 phintuka Exp $
  *
  */
 
@@ -37,6 +37,7 @@ class cXinelibPlayerControl : public cControl
     int   m_Speed;
     bool  m_ShowModeOnly;
     eMainMenuMode m_Mode;
+    bool m_RandomPlay;
 
     static int m_SubtitlePos;
 
