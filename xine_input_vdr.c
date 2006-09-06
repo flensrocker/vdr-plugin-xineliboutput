@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.41 2006-09-05 22:02:52 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.42 2006-09-06 10:41:39 phintuka Exp $
  *
  */
 
@@ -1067,19 +1067,19 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 #define extern static
 #include "nosignal_720x576.c"
 #undef extern
-  static char   *data = NULL;
-  static int     datalen = 0;
+  char          *data = NULL;
+  int            datalen = 0;
   buf_element_t *buf = NULL;
   int            pos = 0;
 
   if(!data) {
     char *path;
     int fd = open(path="/usr/share/vdr/xineliboutput/nosignal.mpg", O_RDONLY);
-    fd = fd>=0 ?: open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
-    fd = fd>=0 ?: open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
-    fd = fd>=0 ?: open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
-    fd = fd>=0 ?: open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
-    fd = fd>=0 ?: open(path="/video/nosignal.mpg", O_RDONLY);
+    if(fd<0) fd = open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+    if(fd<0) fd = open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
+    if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+    if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
+    if(fd<0) fd = open(path="/video/nosignal.mpg", O_RDONLY);
     if(fd>=0) {
       data = malloc(0xffff);
       datalen = read(fd, data, 0xffff);
@@ -1089,6 +1089,7 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       } else {
 	LOGMSG("using custom nosignal image (%s)", path);
       }
+      close(fd);
     }
   }
   if(datalen<=0) {
@@ -1101,13 +1102,17 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 
   while(pos < datalen) {
     buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
-    buf->content = buf->mem;
-    buf->size = MIN(datalen - pos, buf->max_size);
-    buf->type = BUF_VIDEO_MPEG;
-    xine_fast_memcpy(buf->content, &data[pos], buf->size);
-    pos += buf->size;
-    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+    if(buf) {
+      buf->content = buf->mem;
+      buf->size = MIN(datalen - pos, buf->max_size);
+      buf->type = BUF_VIDEO_MPEG;
+      xine_fast_memcpy(buf->content, &data[pos], buf->size);
+      pos += buf->size;
+      this->stream->video_fifo->put(this->stream->video_fifo, buf);
+    } else break;
   }
+
+  free(data);
 }
 
 /************************** BUFFER HANDLING ******************************/
@@ -4693,15 +4698,17 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
     return -1;
   }
   
-  LOGMSG("Connecting (data) to rtp://%u.%u.%u.%u:%u ...", 
+  LOGMSG("Connecting (data) to rtp://@%u.%u.%u.%u:%u ...", 
 	 ip0, ip1, ip2, ip3, port);
   multicastAddress.sin_family = AF_INET;
   multicastAddress.sin_port   = htons(port);
   multicastAddress.sin_addr.s_addr = htonl((ip0<<24)|(ip1<<16)|(ip2<<8)|ip3);
+#if 0
   LOGDBG("got address: %s int=0x%x net=0x%x translated=0x%x port=%d",
 	 cmd+4, (ip0<<24)|(ip1<<16)|(ip2<<8)|ip3, 
 	 htonl((ip0<<24)|(ip1<<16)|(ip2<<8)|ip3),
 	 inet_addr("224.0.1.9"), port);
+#endif
 
   if((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     LOGERR("socket() failed");
