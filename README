@@ -271,10 +271,11 @@ Image viewer key bindings
 Media player key bindings
 
   Back       Return to file list
-  Red        Jump to beginning of file
+  Red        Open playlist / Jump to beginning of file
   Green      Jump 1 min back
   Yellow     Jump 1 min forward
   Stop/Blue  Stop replay
+  0          Random play / normal play
   1, User8   Jump 20 s back  
   3, User9   Jump 20 s forward
   2          Move subtitles up
