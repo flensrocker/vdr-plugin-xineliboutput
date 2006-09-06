@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.42 2006-09-06 10:41:39 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.43 2006-09-06 14:25:43 phintuka Exp $
  *
  */
 
@@ -1067,7 +1067,7 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 #define extern static
 #include "nosignal_720x576.c"
 #undef extern
-  char          *data = NULL;
+  char          *data = NULL, *tmp = NULL;
   int            datalen = 0;
   buf_element_t *buf = NULL;
   int            pos = 0;
@@ -1081,10 +1081,10 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
     if(fd<0) fd = open(path="/video/nosignal.mpg", O_RDONLY);
     if(fd>=0) {
-      data = malloc(0xffff);
+      tmp = data = malloc(0xffff);
       datalen = read(fd, data, 0xffff);
       if(datalen<=0) {
-	free(data);
+	free(tmp);
 	LOGERR("error reading nosignal.mpg (%s)", path);
       } else {
 	LOGMSG("using custom nosignal image (%s)", path);
@@ -1112,7 +1112,7 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     } else break;
   }
 
-  free(data);
+  free(tmp);
 }
 
 /************************** BUFFER HANDLING ******************************/
