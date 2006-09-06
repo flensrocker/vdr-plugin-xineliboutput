@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.4 2006-08-19 14:22:14 phintuka Exp $
+ * $Id: media_player.h,v 1.5 2006-09-06 15:30:42 phintuka Exp $
  *
  */
 
@@ -20,6 +20,8 @@
 class cXinelibPlayer;
 class cSkinDisplayReplay;
 
+class cPlaylistMenu;
+
 class cXinelibPlayerControl : public cControl 
 {
   private:
@@ -30,6 +32,7 @@ class cXinelibPlayerControl : public cControl
 
  protected:
     cSkinDisplayReplay *m_DisplayReplay;
+    cPlaylistMenu *m_PlaylistMenu;
 
     int   m_Speed;
     bool  m_ShowModeOnly;
