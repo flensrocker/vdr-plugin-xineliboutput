@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.8 2006-09-01 11:52:53 phintuka Exp $
+ * $Id: frontend.h,v 1.9 2006-09-06 17:58:07 phintuka Exp $
  *
  */
 
@@ -77,6 +77,7 @@ class cXinelibThread : public cThread, public cListObject
     virtual int  Play_PES(const uchar *buf, int len);
     virtual void OsdCmd(void *cmd) = 0;
     virtual int64_t GetSTC(void) { return -1; }
+    virtual void SetHDMode(bool On) { (void)Xine_Control("HDMODE",On?1:0); };
 
     // Stream type conversions
     int  Play_Mpeg1_PES(const uchar *data, int len);
