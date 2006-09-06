@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.9 2006-09-02 15:52:16 phintuka Exp $
+# $Id: Makefile,v 1.10 2006-09-06 23:07:39 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -119,6 +119,7 @@ VDRSXFE      = vdr-sxfe
 VDRFBFE      = vdr-fbfe
 XINEINPUTVDR = xineplug_inp_xvdr.so
 XINEPOSTAUTOCROP  = xineplug_post_autocrop.so
+XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
 XINEPOSTHEADPHONE = xineplug_post_headphone.so
 
 
@@ -134,6 +135,7 @@ XINEPOSTHEADPHONE_SO =
 XINEINPUTVDR_SO =
 XINEPLUGINDIR = ./
 XINEPOSTAUTOCROP_SO =
+XINEPOSTAUDIOCHANNEL_SO =
 XINEPOSTHEADPHONE_SO =
 VDRPLUGIN_SO =
 
@@ -153,6 +155,7 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
     XINEPLUGINDIR   = $(shell xine-config --plugindir)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
+    XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
     ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
         XINEPOSTHEADPHONE_SO = $(XINEPOSTHEADPHONE)
     endif
@@ -268,6 +271,8 @@ xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
 xine_post_autocrop.o: xine_post_autocrop.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autocrop.c
+xine_post_audiochannel.o: xine_post_audiochannel.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_audiochannel.c
 xine_post_headphone.o: xine_post_headphone.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_headphone.c
 
@@ -313,12 +318,14 @@ install : XINELIBOUTPUT_INSTALL_MSG =
 
 all: $(VDRPLUGIN_SO) $(VDRPLUGIN_SXFE_SO) $(VDRPLUGIN_FBFE_SO) \
 	    $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO)
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO) \
+	    $(XINEPOSTAUDIOCHANNEL_SO)
 	$(XINELIBOUTPUT_INSTALL_MSG)
 	$(XINELIBOUTPUT_ARGS_WARNING)
 
 frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	$(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO)
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO) \
+	    $(XINEPOSTAUDIOCHANNEL_SO)
 	$(XINELIBOUTPUT_ARGS_WARNING)
 
 .PHONY: all
@@ -354,6 +361,8 @@ $(XINEINPUTVDR_SO): xine_input_vdr.o
 	$(CC) -g -shared -fvisibility=hidden xine_input_vdr.o $(LIBS_XINE) -o $@
 $(XINEPOSTAUTOCROP_SO): xine_post_autocrop.o
 	$(CC) -g -shared -fvisibility=hidden xine_post_autocrop.o $(LIBS_XINE) -o $@
+$(XINEPOSTAUDIOCHANNEL_SO): xine_post_audiochannel.o
+	$(CC) -g -shared -fvisibility=hidden xine_post_audiochannel.o $(LIBS_XINE) -o $@
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
 $(XINEPOSTHEADPHONE_SO): xine_post_headphone.o
@@ -368,6 +377,9 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@cp $(XINEPOSTAUTOCROP) $(XINEPLUGINDIR)/post/
+	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@cp $(XINEPOSTAUDIOCHANNEL) $(XINEPLUGINDIR)/post/
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
 	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
