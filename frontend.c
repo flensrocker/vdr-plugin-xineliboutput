@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.15 2006-09-04 13:22:55 phintuka Exp $
+ * $Id: frontend.c,v 1.16 2006-09-06 17:57:45 phintuka Exp $
  *
  */
 
@@ -368,7 +368,8 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   uchar *frame = new uchar[PES_CHUNK_SIZE+32];
 
   static uchar hdr_pts[] = {0x00,0x00,0x01,0xe0, 0x00,0x08,0x80,0x80,
-                            0x00,0x00,0x00,0x00, 0x00,0x00}; /* mpeg2 */
+                            0x05,0x00,0x00,0x00, 0x00,0x00}; /* mpeg2 */
+
   hdr_pts[3] = (uchar)streamID;
   Play_PES(hdr_pts, sizeof(hdr_pts));
 
