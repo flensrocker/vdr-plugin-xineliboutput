@@ -452,9 +452,11 @@ static void _vpplugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
     }
 
     if(fe->post_pip_enable && 
-       !strcmp(post_elements[0]->name, "mosaico")) {
+       !strcmp(post_elements[0]->name, "mosaico") &&
+       fe->pip_stream) {
       vo_source = xine_get_video_source(fe->pip_stream);
-      xine_post_wire_video_port(vo_source, 
+      LOGDBG("        wiring %10s[out] -> [in1]%-10s ", "pip stream", post_elements[0]->name);      
+      xine_post_wire_video_port(vo_source,
 				post_elements[0]->post->video_input[1]);
     }
 
