@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.21 2006-09-06 20:36:52 phintuka Exp $
+ * $Id: device.c,v 1.22 2006-09-09 23:09:56 phintuka Exp $
  *
  */
 
@@ -539,7 +539,6 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
   Clear();
   ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
   ForEach(m_clients, &cXinelibThread::SetLiveMode, true);
-  ForEach(m_clients, &cXinelibThread::QueueBlankDisplay);
   ForEach(m_clients, &cXinelibThread::ResumeOutput);
 }
 
