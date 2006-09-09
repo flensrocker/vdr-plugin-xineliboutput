@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.10 2006-09-06 23:07:39 phintuka Exp $
+# $Id: Makefile,v 1.11 2006-09-09 23:26:16 phintuka Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -45,7 +45,8 @@ endif
 #XINELIBOUTPUT_XINEPLUGIN = 1
 #XINELIBOUTPUT_VDRPLUGIN  = 1
 #ENABLE_TEST_POSTPLUGINS  = 1
-
+#DEFINES += -DNOSIGNAL_IMAGE_FILE='"/usr/share/vdr/xineliboutput/nosignal.mpv"'
+#DEFINES += -DSTARTUP_IMAGE_FILE='"/usr/share/vdr/xineliboutput/logodisplay.mpv"'
 
 ###
 ### The version number of this plugin (taken from the main source file):
