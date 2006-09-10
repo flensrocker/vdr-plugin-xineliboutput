@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.10 2006-09-03 12:14:39 phintuka Exp $
+ * $Id: config.c,v 1.11 2006-09-10 14:18:50 phintuka Exp $
  *
  */
 
@@ -300,7 +300,15 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     //          break;
     case 'V': ProcessArg("Video.Driver", optarg);
               break;
-    case 'A': ProcessArg("Audio.Driver", optarg);
+    case 'A': if(strchr(optarg,':')) {
+                char *tmp = strdup(optarg);
+		char *pt = strchr(tmp,':');
+		*pt = 0;
+                ProcessArg("Audio.Driver", tmp);
+                ProcessArg("Audio.Port", pt+1);
+		free(tmp);
+              } else
+                ProcessArg("Audio.Driver", optarg);
               break;
     case 'P': if(post_plugins)
                 post_plugins = strcatrealloc(post_plugins, ";");
