@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.43 2006-09-06 14:25:43 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.44 2006-09-10 12:42:39 phintuka Exp $
  *
  */
 
@@ -62,6 +62,13 @@
 #define HD_BUF_ELEM_SIZE  (2048+64)
 
 #define RADIO_MAX_BUFFERS  10
+
+#ifndef NOSIGNAL_IMAGE_FILE
+#  define  NOSIGNAL_IMAGE_FILE "/usr/share/vdr/xineliboutput/nosignal.mpv"
+#endif
+#ifndef NOSIGNAL_MAX_SIZE
+#  define NOSIGNAL_MAX_SIZE 0x10000 /* 64k */
+#endif
 
 /*
   Note:
@@ -645,6 +652,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
                  this->block_buffer->size(this->block_buffer);
   int num_free = this->buffer_pool->num_free(this->buffer_pool);
   int scr_tunning = this->scr_tunning;
+  int num_vbufs = 0;
 
   if(this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
@@ -685,8 +693,11 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    (if clock is not paused we will got a lot of discarded frames 
    as those are decoded too late according to running SCR)
 */
-    int num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
-							  VO_PROP_BUFS_IN_FIFO);
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+    num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
+						      VO_PROP_BUFS_IN_FIFO);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+
     if(num_vbufs < 3) {
       LOGSCR("SCR paused by adjust_speed (vbufs=%d)", num_vbufs);
       scr_tunning_set_paused(this);
@@ -704,8 +715,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    - First I-frame can be delivered as soon as it is decoded 
    -> illusion of faster channel switches
 */
-    int num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
-							  VO_PROP_BUFS_IN_FIFO);
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+    num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
+						      VO_PROP_BUFS_IN_FIFO);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
     this->paused_frames++;
 
     if( num_used/2 > num_free 
@@ -1068,30 +1081,32 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 #include "nosignal_720x576.c"
 #undef extern
   char          *data = NULL, *tmp = NULL;
-  int            datalen = 0;
+  int            datalen = 0, pos = 0;
   buf_element_t *buf = NULL;
-  int            pos = 0;
+  char          *path, *home;
 
-  if(!data) {
-    char *path;
-    int fd = open(path="/usr/share/vdr/xineliboutput/nosignal.mpg", O_RDONLY);
-    if(fd<0) fd = open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
-    if(fd<0) fd = open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
-    if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
-    if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
-    if(fd<0) fd = open(path="/video/nosignal.mpg", O_RDONLY);
-    if(fd>=0) {
-      tmp = data = malloc(0xffff);
-      datalen = read(fd, data, 0xffff);
-      if(datalen<=0) {
-	free(tmp);
-	LOGERR("error reading nosignal.mpg (%s)", path);
-      } else {
-	LOGMSG("using custom nosignal image (%s)", path);
-      }
-      close(fd);
+  asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
+  int fd = open(path=home, O_RDONLY);
+  if(fd<0) fd = open(path=NOSIGNAL_IMAGE_FILE, O_RDONLY);
+  if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
+  if(fd>=0) {
+    tmp = data = malloc(NOSIGNAL_MAX_SIZE);
+    datalen = read(fd, data, NOSIGNAL_MAX_SIZE);
+    if(datalen==NOSIGNAL_MAX_SIZE) {
+      LOGMSG("WARNING: custom \"no signal\" image %s too large", path);
+    } else if(datalen<=0) {
+      free(tmp);
+      LOGERR("error reading %s", path);
+    } else {
+      LOGMSG("using custom \"no signal\" image %s", path);
     }
+    close(fd);
   }
+  free(home);
+  
   if(datalen<=0) {
     data    = (char*)&v_mpg_nosignal[0];
     datalen = v_mpg_nosignal_length;
@@ -1349,79 +1364,27 @@ void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
   int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
-#if 0
-  xine_bmiheader *bih;
-  buf_element_t *buf;
-  int pos = 0, size;
+  double dratio;
 
-  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
-  if(!buf) {
-    LOGMSG("queue_blank_yv12 out of fifo buffers !");
+  if(!this || !this->stream)
     return;
-  }
-  bih = (xine_bmiheader *) buf->content;
-  bih->biWidth  = (this->video_width  + 3) & ~0x03;
-  bih->biHeight = (this->video_height + 3) & ~0x03;
-  bih->biSize   =  bih->biWidth * bih->biHeight *3/2;
-  bih->biPlanes = 3;
-  buf->decoder_flags = BUF_FLAG_STDHEADER | BUF_FLAG_ASPECT;
-  buf->decoder_info[0] = 0;
-  buf->decoder_info[1] = ratio;
-  buf->decoder_info[2] = 10000;
-  buf->decoder_info[3] = 1; /* progressive */
-  buf->decoder_info[4] = 0;
-  this->stream->video_fifo->put(this->stream->video_fifo, buf);
 
-  while(pos < (bih->biWidth * bih->biHeight * 3/2)) {
-    buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
-    if(!buf)
-      buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
-    if(!buf) {
-      LOGMSG("queue_blank_yv12 out of fifo buffers !");
-      xine_usec_sleep(10*1000);
-      continue;
-    }
+  if(ratio > 13300 && ratio < 13400) dratio = 4.0/3.0;
+  else if(ratio > 17700 && ratio < 17800) dratio = 16.0/9.0;
+  else if(ratio > 21000 && ratio < 22000) dratio = 2.11/1.0;
+  else dratio = ((double)ratio)/10000.0;
 
-    buf->decoder_flags = (pos==0) ? BUF_FLAG_FRAME_START : 0;
-
-    size = buf->max_size;
-    
-    if(pos < (bih->biWidth*bih->biHeight))
-      size = MIN(buf->max_size, bih->biWidth*bih->biHeight - pos);
-    else
-      size = MIN(buf->max_size, bih->biWidth*bih->biHeight*3/2 - pos);
-    
-    if(pos >= (bih->biWidth*bih->biHeight))
-      memset(buf->content, 0x80, size);
-    else
-      memset(buf->content, 0, size);
-
-    pos += size;
-    if(pos >= (bih->biWidth*bih->biHeight*3/2))
-      buf->decoder_flags = BUF_FLAG_FRAME_END;
-    
-    buf->content = buf->mem;
-    buf->size = size;
-    buf->type = BUF_VIDEO_YV12; /* BUF_VIDEO_GREY; */
-    buf->pts = 40*90; /* 40ms */
-    this->stream->video_fifo->put(this->stream->video_fifo, buf);
-  }
-#endif
-
-  _x_demux_control_newpts(this->stream, 0, 0);
-
-#if 1      
-  pthread_yield();
   if(this->stream && this->stream->video_out) {
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
     vo_frame_t *img = this->stream->video_out->get_frame (this->stream->video_out,
 							  this->video_width, this->video_height,
-							  1.0*ratio/10000.0, XINE_IMGFMT_YV12, 
+							  dratio, XINE_IMGFMT_YV12, 
 							  VO_BOTH_FIELDS);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
     if(img) {
       memset( img->base[0], 0x00, this->video_width * this->video_height);
       memset( img->base[1], 0x80, this->video_width * this->video_height / 4 );
       memset( img->base[2], 0x80, this->video_width * this->video_height / 4 );
-      
       img->duration  = 3600;
       img->pts       = 3600;
       img->bad_frame = 0;
@@ -1430,7 +1393,6 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
     }
   }
   this->still_mode = 0;
-#endif
 }
 
 
@@ -1546,8 +1508,10 @@ static int update_video_size(vdr_input_plugin_t *this)
   int w = 0, h = 0;
   int64_t duration;
 
+  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
   this->stream->video_out->status(this->stream->video_out, 
 				  this->stream, &w, &h, &duration);
+  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
 
   if(w>0 && h>0) {
     if(this->video_width  != w ||
@@ -1732,6 +1696,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     return -2;
   }
 
+  /* we already have port ticket */
   ovl_manager = 
       this->stream->video_out->get_overlay_manager(this->stream->video_out);
 
@@ -2788,13 +2753,16 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
   if(this->live_mode /*&& this->fd_control < 0*/) {
     /* No flush in live mode */
     sched_yield();
-    return 1;
+    return 1; 
   }
 
+  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
   result = MAX(0, pool->size(pool)) + 
            MAX(0, buffer->size(buffer)) +
            this->stream->video_out->get_property(this->stream->video_out, 
 						 VO_PROP_BUFS_IN_FIFO);
+  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+
   if(result>0) {
     put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
     put_control_buf(buffer, pool, BUF_CONTROL_NOP);
@@ -2814,10 +2782,13 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
     waitresult = pthread_cond_timedwait (&pool->buffer_pool_cond_not_empty, 
 					 &pool->buffer_pool_mutex, &abstime);
     pthread_mutex_unlock(&pool->buffer_pool_mutex);
+
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
     result = MAX(0, pool->size(pool)) +
              MAX(0, buffer->size(buffer)) +
              this->stream->video_out->get_property(this->stream->video_out, 
 						   VO_PROP_BUFS_IN_FIFO);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
   }
 
   TRACE("vdr_plugin_flush returns %d (%d+%d used, %d frames)\n", result,
@@ -3198,6 +3169,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   /* next ones need to be synchronized to data stream */
   } else if(!strncasecmp(cmd, "BLANK", 5)) {
     /* #warning should be delayed and executed in read_block */
+    _x_demux_control_newpts(this->stream, 0, 0);
     queue_blank_yv12(this);
 
   } else if(!strncasecmp(cmd, "CLEAR", 5)) {
@@ -3384,8 +3356,13 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
         LOGOSD("XINE_EVENT_FRAME_FORMAT_CHANGE (%dx%d, aspect=%d)", 
 	       frame_change->width, frame_change->height, 
 	       frame_change->aspect);
-	if(this->rescale_osd) 
-	  vdr_scale_osds(this, frame_change->width, frame_change->height);
+	if(!frame_change->aspect) /* from frontend */
+	  if(this->rescale_osd) 
+	    vdr_scale_osds(this, frame_change->width, frame_change->height);
+#if 0
+	if(frame_change->aspect)
+	  queue_blank_yv12(this);
+#endif
       }
       break;
 
@@ -4061,7 +4038,6 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
 static off_t vdr_plugin_read (input_plugin_t *this_gen,
 			      char *buf, off_t len) 
 {
-#if 1
   /* from xine_input_dvd.c: */
   /* FIXME: Tricking the demux_mpeg_block plugin */
   LOGMSG("vdr_plugin_read()");
@@ -4070,52 +4046,6 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
   buf[2] = 0x01;
   buf[3] = 0xba;
   return 1;
-#else
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  off_t n, total=0;
-
-  if(this->slave_stream) {
-    LOGERR("vdr_plugin_read with slave stream !!!");
-    return 0;
-  }
-
-  TRACE("vdr_plugin_read: reading %" PRIu64 " bytes...", (uint64_t)len);
-
-  while (total<len) {
-
-    if(!this->curr_buffer) {
-      buf_element_t *buf = this->input_plugin.read_block(this_gen, this->stream->video_fifo, len);
-      if(!buf) 
-	return -1 /*total*/;
-      pthread_mutex_lock(&this->lock);
-      this->curr_buffer = buf;
-      this->curpos -= (uint64_t)this->curr_buffer->size;
-    } else
-      pthread_mutex_lock(&this->lock);
-
-    n = MIN(this->curr_buffer->size, len-total);
-
-    xine_fast_memcpy(&buf[total], this->curr_buffer->content, n);
-
-    this->curr_buffer->size -= n;
-    this->curr_buffer->content += n;
-    this->curpos += (uint64_t)n;
-    total += n;
-
-    if(this->curr_buffer->size <= 0) {
-      this->curr_buffer->free_buffer(this->curr_buffer);
-      this->curr_buffer = NULL;
-    }
-    pthread_mutex_unlock(&this->lock);
-
-    TRACE("vdr_plugin_read: got %" PRIu64 " bytes (%" PRIu64 "/%" PRIu64 " bytes read)", 
-	  (uint64_t)n, (uint64_t)total, (uint64_t)len);
-  }
-
-  TRACE("vdr_plugin_read returns %" PRIu64 " bytes", (uint64_t)total);
-
-  return total;
-#endif
 }
 
 //#define CACHE_FIRST_IFRAME
@@ -4225,6 +4155,10 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     if(this->stream_start) {
       this->send_pts = 1;
       this->stream_start = 0;
+
+      pthread_mutex_lock (&this->stream->first_frame_lock);
+      this->stream->first_frame_flag = 2;
+      pthread_mutex_unlock (&this->stream->first_frame_lock);
     }
 
     pthread_mutex_unlock(&this->lock);
@@ -4250,7 +4184,25 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     } else if(pts == 0) {
       /* Still image? do nothing, leave send_pts ON */
     }
-  } 
+  }
+
+#ifdef LOG_FIRSTFRAME_FLAG
+  {
+    /* trace flag changes */
+    static uint64_t timer = 0;
+    static int tfd = 0;
+    pthread_mutex_lock (&this->stream->first_frame_lock);
+    if(tfd != this->stream->first_frame_flag) {
+      uint64_t now = monotonic_time_ms();
+      if(tfd)
+	LOGMSG("FIRST FRAME FLAG %d -> %d (%d ms)", 
+	       tfd, this->stream->first_frame_flag, (int)(now-timer));
+      timer = now;
+      tfd = this->stream->first_frame_flag;
+    }
+    pthread_mutex_unlock (&this->stream->first_frame_lock);
+  }
+#endif
 
   if(this->still_mode && buf->size == 14) {
     /* generated still images start with empty video PES, PTS = 0.
@@ -5045,9 +4997,11 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     return 0;
   }
 
+  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
   if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
        VO_CAP_UNSCALED_OVERLAY))
     LOGMSG("WARNING: Video output driver reports it does not support unscaled overlays !");
+  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
 
   this->threads_initialized = 1;
 
@@ -5215,9 +5169,16 @@ static void *init_class (xine_t *xine, void *data)
  * exported plugin catalog entry
  */
 
+/*
+#define NO_INFO_EXPORT
+#include "xine_post_audiochannel.c"
+#undef NO_INFO_EXPORT
+*/
+
 const plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) = {
   /* type, API, "name", version, special_info, init_function */
   { PLUGIN_INPUT, INPUT_PLUGIN_IFACE_VERSION, "XVDR", XINE_VERSION_CODE, NULL, init_class },
+  /*{ PLUGIN_POST, 9, "audiochannel", XINE_VERSION_CODE, &audioch_info, &audioch_init_plugin },*/
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 
