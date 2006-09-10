@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.44 2006-09-10 12:42:39 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.45 2006-09-10 20:59:09 phintuka Exp $
  *
  */
 
@@ -85,6 +85,11 @@
 
 /* picture-in-picture support */
 /*#define TEST_PIP 1*/
+
+
+#define  CONTROL_BUF       (0x0f000000)              /* 0x0f000000 */
+#define  CONTROL_BUF_BLANK (CONTROL_BUF|0x00010000)  /* 0x0f010000 */
+#define  CONTROL_BUF_CLEAR (CONTROL_BUF|0x00020000)  /* 0x0f020000 */
 
 /******************************* LOG ***********************************/
 
@@ -1087,11 +1092,11 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 
   asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
   int fd = open(path=home, O_RDONLY);
-  if(fd<0) fd = open(path=NOSIGNAL_IMAGE_FILE, O_RDONLY);
   if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
   if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
   if(fd<0) fd = open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
   if(fd<0) fd = open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path=NOSIGNAL_IMAGE_FILE, O_RDONLY);
   if(fd>=0) {
     tmp = data = malloc(NOSIGNAL_MAX_SIZE);
     datalen = read(fd, data, NOSIGNAL_MAX_SIZE);
@@ -3168,9 +3173,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 
   /* next ones need to be synchronized to data stream */
   } else if(!strncasecmp(cmd, "BLANK", 5)) {
-    /* #warning should be delayed and executed in read_block */
-    _x_demux_control_newpts(this->stream, 0, 0);
-    queue_blank_yv12(this);
+    put_control_buf(this->block_buffer, this->buffer_pool, CONTROL_BUF_BLANK);
 
   } else if(!strncasecmp(cmd, "CLEAR", 5)) {
     /* #warning should be delayed and executed in read_block */
@@ -4130,6 +4133,16 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       continue;
     }
     this->padding_cnt = 0;
+
+    /* internal control bufs */
+    if(buf->type == CONTROL_BUF_BLANK) {
+      if(!this->stream_start)
+	LOGMSG("BLANK in middle of stream!");
+      buf->free_buffer(buf);
+      _x_demux_control_newpts(this->stream, 0, 0);
+      queue_blank_yv12(this);
+      continue;
+    }
 
     /* control buffers go always to demuxer */
     if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
