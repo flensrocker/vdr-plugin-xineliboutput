@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.18 2006-09-04 11:25:18 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.19 2006-09-10 00:04:12 phintuka Exp $
  *
  */
 
@@ -264,6 +264,12 @@ static void fe_frame_output_cb (void *data,
   }
 #endif
 
+  if(!this->stream)
+    return;
+
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_RATIO, 
+		     (int)(10000.0*video_pixel_aspect * 
+			   ((double)video_width)/((double)video_height)));
   if(this->video_width  != video_width ||
      this->video_height != video_height) {
     xine_event_t event;
@@ -1177,9 +1183,9 @@ static void *fe_control(void *fe_handle, const char *cmd)
 	posts->pip_stream = xine_stream_new(this->xine, 
 					    this->audio_port, 
 					    this->video_port);
-      LOGMSG("  PIP %d: %dx%d @ (%d,%d)", pid & 0xf0, w, h, x, y);
+      LOGMSG("  PIP %d: %dx%d @ (%d,%d)", pid & 0x0f, w, h, x, y);
       LOGMSG("create pip stream done");
-      sprintf(mrl, "xvdr:slave:0x%lx#nocache;demux:mpeg_block",
+      sprintf(mrl, "xvdr:slave://0x%lx#nocache;demux:mpeg_block",
 	      (unsigned long int)this);
       if(!xine_open(posts->pip_stream, mrl) ||
 	 !xine_play(posts->pip_stream, 0, 0)) {
