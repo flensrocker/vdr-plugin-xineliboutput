@@ -1,6 +1,10 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+
+- Implemented audio channel selection as xine post plugin
+  (to select only left or right channel from stereo)
+
 2006-09-06: Version 1.0.0pre4
 
 - WARNING: updated command-line options !
