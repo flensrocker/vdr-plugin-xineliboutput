@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.45 2006-09-10 20:59:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.46 2006-09-11 19:59:22 phintuka Exp $
  *
  */
 
@@ -350,9 +350,10 @@ static void free_udp_data(udp_data_t *data)
   int i;
 
   for(i=0; i<=UDP_SEQ_MASK; i++)
-    if(data->queue[i])
+    if(data->queue[i]) {
       data->queue[i]->free_buffer(data->queue[i]);
-
+      data->queue[i] = NULL;
+    }
   free(data);
 }
 
@@ -3519,6 +3520,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 
   if(read_buffer) {
     read_buffer->free_buffer(read_buffer);
+    read_buffer = NULL;
     if(cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
       LOGMSG("TCP: Delay too long, disconnecting");
       this->control_running = 0;
@@ -4139,6 +4141,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       if(!this->stream_start)
 	LOGMSG("BLANK in middle of stream!");
       buf->free_buffer(buf);
+      buf = NULL;
       _x_demux_control_newpts(this->stream, 0, 0);
       queue_blank_yv12(this);
       continue;
