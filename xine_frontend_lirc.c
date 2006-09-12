@@ -6,7 +6,7 @@
  *
  * Almost directly copied from vdr-1.3.34 (lirc.c : cLircRemote) 
  *
- * $Id: xine_frontend_lirc.c,v 1.2 2006-08-05 19:23:13 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.3 2006-09-12 14:52:31 phintuka Exp $
  *
  */
 
@@ -20,6 +20,7 @@
 #define KEYPRESSDELAY    150 /* ms */
 #define LIRC_KEY_BUF      30
 #define LIRC_BUFFER_SIZE 128 
+#define MIN_LIRCD_CMD_LEN  5
 
 /* static data */
 pthread_t lirc_thread;
@@ -101,7 +102,7 @@ void *lirc_receiver_thread(void *fe)
 	break;
       }
 
-      if (ret > 21) {
+      if (ret >= MIN_LIRCD_CMD_LEN) {
         unsigned int count;
 	char KeyName[LIRC_KEY_BUF];
 	LOGDBG("LIRC: %s", buf);
