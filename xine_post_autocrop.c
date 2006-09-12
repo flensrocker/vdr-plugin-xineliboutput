@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.4 2006-09-12 13:11:50 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.5 2006-09-12 22:53:18 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -81,6 +81,7 @@
 #define UVSHIFTUP       (0x03U)
 #define UVNOISEFILTER   (0xF8U)
 
+/* YV12 */
 #define YNOISEFILTER32  (YNOISEFILTER  * 0x01010101U)
 #define UVBLACK32       (UVBLACK       * 0x01010101U)
 #define UVSHIFTUP32     (UVSHIFTUP     * 0x01010101U)
@@ -90,6 +91,16 @@
 #define UVBLACK64       (UVBLACK       * UINT64_C(0x0101010101010101))
 #define UVSHIFTUP64     (UVSHIFTUP     * UINT64_C(0x0101010101010101))
 #define UVNOISEFILTER64 (UVNOISEFILTER * UINT64_C(0x0101010101010101))
+
+/* YUY2 */
+#define YUY2BLACK32       (UVBLACK      *0x00010001U)
+#define YUY2SHIFTUP32     (UVSHIFTUP    *0x00010001U)
+#define YUY2NOISEFILTER32 ((YNOISEFILTER*0x01000100U)|(UVNOISEFILTER*0x00010001U))
+
+#define YUY2BLACK64       (YUY2BLACK32       * UINT64_C(0x0000000100000001))
+#define YUY2VSHIFTUP64    (YUY2SHIFTUP32     * UINT64_C(0x0000000100000001))
+#define YUY2NOISEFILTER64 (YUY2NOISEFILTER32 * UINT64_C(0x0000000100000001))
+
 
 #define START_TIMER_INIT         (25) /* 1 second, unit: frames */
 #define HEIGHT_LIMIT_LIFETIME (60*25) /* 1 minute, unit: frames */
@@ -195,10 +206,12 @@ static int blank_line_UV_mmx(uint8_t *data, int length);
 
 static int blank_line_Y_INIT(uint8_t *data, int length);
 static int blank_line_UV_INIT(uint8_t *data, int length);
+static int blank_line_YUY2_INIT(uint8_t *data, int length);
 static void autocrop_init_mm_accel(void);
 
 int (*blank_line_Y)(uint8_t *data, int length)  = blank_line_Y_INIT;
 int (*blank_line_UV)(uint8_t *data, int length) = blank_line_UV_INIT;
+int (*blank_line_YUY2)(uint8_t *data, int length) = blank_line_YUY2_INIT;
 
 static int blank_line_Y_C(uint8_t *data, int length)
 {
@@ -404,11 +417,48 @@ static int blank_line_UV_sse(uint8_t *data, int length)
 }
 #endif
 
+static int blank_line_YUY2_C(uint8_t *data, int length)
+{
+  uint32_t *data32 = (uint32_t*)((((long int)data) + 64 + 3) & (~3));
+  uint32_t r1 = 0, r2 = 0;
+
+  length -= 128; /* skip borders (2 x 32 pixels, 2 bytes/pixel) */
+  length /= 4;   /* 2 x 4 bytes / loop */
+
+  while(length) {
+    r1 = r1 | ((data32[--length] + YUY2SHIFTUP32) ^ YUY2BLACK32);
+    r2 = r2 | ((data32[--length] + YUY2SHIFTUP32) ^ YUY2BLACK32);
+  }
+  return !((r1|r2) & YUY2NOISEFILTER32);
+}
+
+#if defined(ENABLE_64BIT)
+static int blank_line_YUY2_C64(uint8_t *data, int length)
+{
+  uint64_t *data64 = (uint32_t*)((((long int)data) + 64 + 7) & (~7));
+  uint64_t r1 = 0, r2 = 0;
+
+  length -= 128; /* skip borders (2 x 32 pixels, 2 bytes/pixel) */
+  length /= 8;   /* 2 x 8 bytes / loop */
+
+  while(length) {
+    r1 = r1 | ((data64[--length] + YUY2SHIFTUP64) ^ YUY2BLACK64);
+    r2 = r2 | ((data64[--length] + YUY2SHIFTUP64) ^ YUY2BLACK64);
+  }
+  return !((r1|r2) & YUY2NOISEFILTER64);
+}
+#endif
+
 
 static void autocrop_init_mm_accel(void)
 {
   blank_line_Y  = blank_line_Y_C;
   blank_line_UV = blank_line_UV_C;
+#if !defined(ENABLE_64BIT)
+  blank_line_YUY2 = blank_line_YUY2_C;
+#else
+  blank_line_YUY2 = blank_line_YUY2_C64;
+#endif
 
 #if defined(__SSE__)
   if(xine_mm_accel() & MM_ACCEL_X86_SSE) {
@@ -423,6 +473,7 @@ static void autocrop_init_mm_accel(void)
     INFO("autocrop_init_mm_accel: using 64-bit integer operations\n");
     blank_line_Y  = blank_line_Y_C64;
     blank_line_UV = blank_line_UV_C64;
+    blank_line_YUY2 = blank_line_YUY2_C64;
     return;
   }
 #endif
@@ -450,6 +501,12 @@ static int blank_line_UV_INIT(uint8_t *data, int length)
   return (*blank_line_UV)(data, length);
 }
 
+static int blank_line_YUY2_INIT(uint8_t *data, int length)
+{
+  autocrop_init_mm_accel();
+  return (*blank_line_YUY2)(data, length);
+}
+
 /*
  * Analyze frame
  *  - if frame needs cropping set crop_top & crop_bottom
@@ -461,9 +518,6 @@ int dbg_top=0, dbg_bottom=0;
 
 static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
-  post_video_port_t *port = (post_video_port_t *)frame->port;
-  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
-
   int y;
   int ypitch = frame->pitches[0];
   int upitch = frame->pitches[1];
@@ -527,6 +581,56 @@ static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_botto
       *crop_bottom = frame->height - 1;
     }
   }
+}
+
+static void analyze_frame_yuy2(vo_frame_t *frame, int *crop_top, int *crop_bottom)
+{
+  int y;
+  int pitch = frame->pitches[0];
+  uint8_t *data = frame->base[0];
+  int max_crop = (frame->height / 4) / 2; /* 4:3 --> 16:9 */
+
+  /* from top -> down */
+  data += 6 * pitch;  /* skip 6 first lines */
+  for(y = 6; y <= max_crop  *2 /* *2 = 20:9+subs -> 16:9 */ ; y ++)
+    if(  ! ( blank_line_YUY2(data,            (frame->width-LOGOSKIP)*2) ||
+	     blank_line_YUY2(data+2*LOGOSKIP, (frame->width-LOGOSKIP)*2))) 
+      break;
+    else 
+      data += pitch;
+
+  *crop_top = y;
+
+  /* from bottom -> up */
+  data = frame->base[0] + ((frame->height-4)   -1 ) * pitch;
+  for(y = frame->height - 5; y >= frame->height-max_crop; y -- )
+    if( ! blank_line_YUY2(data,  frame->width * 2))
+      break;
+    else 
+      data -= pitch;
+  
+  *crop_bottom = y;
+  
+  /* test for black in center - don't crop if frame is empty */
+  if(*crop_top >= max_crop*2 && *crop_bottom <= frame->height-max_crop) {
+    data = frame->base[0] + (frame->height/2)*pitch;
+    if( blank_line_YUY2(data, frame->width * 2)) {
+      TRACE("not cropping black frame\n");
+      *crop_top = 0;
+      *crop_bottom = frame->height - 1;
+    }
+  }
+}
+
+static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
+{
+  post_video_port_t *port = (post_video_port_t *)frame->port;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
+
+  if(frame->format == XINE_IMGFMT_YV12)
+    analyze_frame_yv12(frame, crop_top, crop_bottom);
+  else /*if(frame->format == XINE_IMGFMT_YUY2)*/
+    analyze_frame_yuy2(frame, crop_top, crop_bottom);
 
 #if defined(__MMX__)
   _mm_empty();
@@ -695,7 +799,7 @@ vdata = frame->base[2] + ((frame->height-72)/2)*vpitch;
  * crop frame by copying 
  */
 #ifndef USE_CROP
-static int crop_copy(vo_frame_t *frame, xine_stream_t *stream)
+static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
 {
   post_video_port_t *port = (post_video_port_t *)frame->port;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
@@ -756,28 +860,6 @@ static int crop_copy(vo_frame_t *frame, xine_stream_t *stream)
     vdata2 += vp2;
   }
 
-#if 0
-  new_frame->height = new_height;
-  new_frame->ratio = frame->ratio * ((float)frame->height) / ((float)new_frame->height);
-#endif
-
-#if 0
-  static int k=0;
-  if(++k > 50) {
-    printf("%f (%f) %f (%f)    %f %f\n", new_frame->ratio, 16.0/9.0, frame->ratio, 4.0/3.0,
-	   ((float)frame->width) / ((float)frame->height), 
-	   ((float)new_frame->width) / ((float)new_frame->height));
-    k=0;
-  }
-  static int t=0;
-  if(++t > 50) {
-    printf("new ratio: %1.3f (%1.3f/9.0) ; expected %1.3f (%1.3f/9.0)\n", 
-	   new_frame->ratio, new_frame->ratio*9.0,
-	   new_ratio, new_ratio*9.0);
-    t=0;
-  }
-#endif
-
 #ifdef MARK_FRAME
   mark_frame_yv12(this, new_frame, &this->start_line, &this->end_line);
 #endif
@@ -788,6 +870,50 @@ static int crop_copy(vo_frame_t *frame, xine_stream_t *stream)
   
   return result;
 }
+
+static int crop_copy_yuy2(vo_frame_t *frame, xine_stream_t *stream)
+{
+  post_video_port_t *port = (post_video_port_t *)frame->port;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
+  vo_frame_t *new_frame;
+    
+  int y, result;
+  int p = frame->pitches[0], p2;
+  uint8_t *data = frame->base[0], *data2;
+
+  int   new_height = frame->height;
+  float new_ratio;
+
+  /* top bar */
+  data += this->start_line * p;
+  new_height -= this->start_line;
+
+  /* bottom bar */
+  new_height -= (frame->height - (this->end_line+2));
+
+  new_ratio = 12.0/9.0 * ((float)frame->height / (float)new_height);
+  new_frame = port->original_port->get_frame(port->original_port,
+					     frame->width, new_height, 
+					     new_ratio, frame->format, 
+					     frame->flags | VO_BOTH_FIELDS);
+  _x_post_frame_copy_down(frame, new_frame);
+
+  p2 = new_frame->pitches[0];
+  data2 = new_frame->base[0];
+
+  for(y=0; y < new_height; y++) {
+    xine_fast_memcpy(data2, data, frame->width);
+    data += p;
+    data2 += p2;
+  }
+
+  result = new_frame->draw(new_frame, stream);
+  _x_post_frame_copy_up(frame, new_frame);
+  new_frame->free(new_frame);
+  
+  return result;
+}
+
 #endif
 
 /*
@@ -834,7 +960,10 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 #ifdef USE_CROP
     return crop_nocopy(frame, stream);
 #else
-    return crop_copy(frame, stream);
+    if(frame->format == XINE_IMGFMT_YV12)
+      return crop_copy_yv12(frame, stream);
+    else /*if(frame->format == XINE_IMGFMT_YUY2)*/
+      return crop_copy_yuy2(frame, stream);
 #endif
   }
 
@@ -870,15 +999,16 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   }
 
   /* only 4:3 YV12 frames are cropped */
-  if(frame->ratio != 4.0/3.0 || frame->format != XINE_IMGFMT_YV12) {
+  if(frame->ratio != 4.0/3.0 || (frame->format != XINE_IMGFMT_YV12 && 
+				 frame->format != XINE_IMGFMT_YUY2)) {
     this->cropping_active = 0;
-
+    
   } else if(frame->bad_frame) {
 
   /* check for letterbox borders only from I-frames */
   } else if(frame->picture_coding_type == 1/*XINE_PICT_I_TYPE*/) {
 
-    analyze_frame_yv12(frame, &this->start_line, &this->end_line);
+    analyze_frame(frame, &this->start_line, &this->end_line);
 
     /* ignore very small bars */
     if(this->start_line > 10 || this->end_line < frame->height - 10) 
@@ -1007,7 +1137,10 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 #ifdef USE_CROP
   result = crop_nocopy(frame, stream);
 #else
-  result = crop_copy(frame, stream);
+  if(frame->format == XINE_IMGFMT_YV12)
+    result = crop_copy_yv12(frame, stream);
+  else /*if(frame->format == XINE_IMGFMT_YUY2)*/
+    result = crop_copy_yuy2(frame, stream);
 #endif
   this->crop_total = this->start_line + frame->height - this->end_line;
 
@@ -1032,7 +1165,8 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
     if(height > 1)
       ratio = (double)width / (double)height;
   
-  if (ratio == 4.0/3.0 && format == XINE_IMGFMT_YV12) {
+  if (ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
+			   format == XINE_IMGFMT_YUY2)) {
     frame = port->original_port->get_frame(port->original_port,
 					   width, height, 
 					   12.0/9.0, format, flags);
@@ -1042,7 +1176,7 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
     
     frame->ratio = ratio;
     return frame;
-  } 
+  }
   
   return port->original_port->get_frame(port->original_port,
 					width, height, 
@@ -1054,7 +1188,8 @@ static int autocrop_intercept_frame(post_video_port_t *port, vo_frame_t *frame)
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
 
   /* Crop only SDTV YV12 4:3 frames ... */
-  int intercept = (frame->format == XINE_IMGFMT_YV12 && 
+  int intercept = ((frame->format == XINE_IMGFMT_YV12 || 
+		    frame->format == XINE_IMGFMT_YUY2) &&
 		   frame->ratio == 4.0/3.0 &&
 		   frame->width  >= 480 && frame->width  <= 768 &&
 		   frame->height >= 288 && frame->height <= 576);
