@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.13 2006-09-01 11:11:43 phintuka Exp $
+ * $Id: menu.c,v 1.14 2006-09-12 16:39:29 phintuka Exp $
  *
  */
 
@@ -23,6 +23,8 @@
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
+
+#define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
 
 //--------------------------- cMenuBrowseFiles -------------------------------
 
@@ -648,21 +650,35 @@ cMenuXinelib::cMenuXinelib()
   compression = xc.audio_compression;
   headphone = xc.headphone;
   autocrop = xc.autocrop;
+  overscan = xc.overscan;
+
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
+  Add(NewTitle("Media"));
   Add(new cOsdItem(tr("Play file >>"), osUser1));
   Add(new cOsdItem(tr("Play music >>"), osUser2));
   Add(new cOsdItem(tr("View images >>"), osUser3));
   if(xc.remote_mode)
     Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
   else
-    Add(new cOsdItem(tr("Play DVD Disc >>"), osUser4));
+    Add(new cOsdItem(tr("Play DVD disc >>"), osUser4));
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
-    Add(new cOsdItem(tr("  Select DVD SPU Track >>"), osUser5));
-  Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
-					    &autocrop));
+    Add(new cOsdItem(tr("  Select DVD SPU track >>"), osUser5));
+
+  Add(NewTitle("Video settings"));
   Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
 					   &novideo));
+  Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
+					    &autocrop));
+  Add(ctrl_overscan = new cMenuEditTypedIntItem(tr("Overscan (crop image borders)"), "%",
+						&overscan, 0, 10,
+						tr("Off")));
+#ifdef HAVE_XV_FIELD_ORDER
+  Add(video_ctrl_interlace_order = new cMenuEditStraI18nItem(tr("Interlaced Field Order"), 
+							     &field_order, 2, xc.s_fieldOrder));
+#endif
+
+  Add(NewTitle("Audio settings"));
 #ifdef ENABLE_TEST_POSTPLUGINS
   Add(ctrl_headphone = new cMenuEditBoolItem(tr("Headphone audio mode"), 
 					     &headphone));
@@ -670,12 +686,9 @@ cMenuXinelib::cMenuXinelib()
   ctrl_headphone = NULL;
 #endif
 
-#ifdef HAVE_XV_FIELD_ORDER
-  Add(video_ctrl_interlace_order = new cMenuEditStraI18nItem(tr("Interlaced Field Order"), &field_order, 2, xc.s_fieldOrder));
-#endif
   Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"),"%", &compression, 100, 500, tr("Off")));
 
-  Add(new cOsdItem(tr("Audio Equalizer >>"), osUser7));
+  Add(new cOsdItem(tr("Audio equalizer >>"), osUser7));
 
   switch(xc.main_menu_mode) {
     case ShowFiles:  AddSubMenu(new cMenuBrowseFiles(tr("Play file"),  ShowFiles)); break;
@@ -685,7 +698,7 @@ cMenuXinelib::cMenuXinelib()
   }
 
   /* #warning should be separate plugin ? fbconfig / x11config */
-  Add(NewTitle("Test Images"));
+  Add(NewTitle("Test images"));
   char buf[128];
   Add(new cOsdItem(tr("Grayscale"), osUser8));
   sprintf(buf, "%s 1bit", tr("Bitmap"));
@@ -700,11 +713,19 @@ cMenuXinelib::~cMenuXinelib()
 {
 #ifdef HAVE_XV_FIELD_ORDER
   if(xc.field_order != field_order )
-    cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, xc.display_aspect, xc.scale_video, xc.field_order);
+    cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height, 
+					       xc.modeswitch, xc.modeline, xc.display_aspect, 
+					       xc.scale_video, xc.field_order);
 #endif
 
   if(xc.audio_compression != compression)
-    cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
+    cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
+						       xc.audio_compression, xc.audio_equalizer, 
+						       xc.audio_surround, xc.speaker_type);
+
+  if(xc.overscan != overscan)
+    cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
+					      xc.contrast, xc.overscan);
 
   if(xc.headphone != headphone)
     cXinelibDevice::Instance().ConfigurePostprocessing("headphone", 
@@ -773,12 +794,19 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     default: ;
   }
 
-  if(Key==kLeft || Key==kRight) {
+  Key = NORMALKEY(Key);
+
+  if(Key==kLeft || Key==kRight || ISNUMBERKEY(Key)) {
     if(item == audio_ctrl_compress)
       cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
 							 compression, xc.audio_equalizer, 
 							 xc.audio_surround, xc.speaker_type);
-    else if(item == ctrl_headphone)
+    else if(item == ctrl_overscan)
+      cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
+                                                xc.contrast, overscan);
+  }
+  if(Key==kLeft || Key==kRight) {
+    if(item == ctrl_headphone)
       cXinelibDevice::Instance().ConfigurePostprocessing("headphone", headphone?true:false);    
     else if(item == ctrl_autocrop)
       cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", autocrop?true:false,
@@ -804,6 +832,7 @@ void cMenuXinelib::Store(void)
 #endif
   xc.audio_compression = compression;
   xc.autocrop = autocrop;
+  xc.overscan = overscan;
   xc.headphone = headphone;
 }
 
