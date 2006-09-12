@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.7 2006-08-25 04:03:11 phintuka Exp $
+ * $Id: setup_menu.c,v 1.8 2006-09-12 16:34:48 phintuka Exp $
  *
  */
 
@@ -21,6 +21,8 @@ namespace XinelibOutputSetupMenu {
 
 //#define INTEGER_CONFIG_VIDEO_CONTROLS
 //#define LINEAR_VIDEO_CONTROLS
+
+#define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
 
 //--- Setup Menu -------------------------------------------------------------
 
@@ -197,6 +199,8 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
 
+  Key = NORMALKEY(Key);
+
   if(Key!=kLeft && Key!=kRight)
     return state;
 
@@ -337,6 +341,8 @@ eOSState cMenuSetupAudioEq::ProcessKey(eKeys Key)
 {
   eOSState state = cMenuSetupPage::ProcessKey(Key);
 
+  Key = NORMALKEY(Key);
+
   if(Key == kLeft || Key == kRight) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
@@ -464,6 +470,8 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
   cOsdItem *item = Get(Current());
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
+
+  Key = NORMALKEY(Key);
 
   if(Key!=kLeft && Key!=kRight)
     return state;
@@ -619,6 +627,8 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
 
+  Key = NORMALKEY(Key);
+
   if(Key!=kLeft && Key!=kRight)
     return state;
 
@@ -724,6 +734,8 @@ eOSState cMenuSetupDecoder::ProcessKey(eKeys Key)
   cOsdItem *item = Get(Current());
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
+
+  Key = NORMALKEY(Key);
 
   if(Key!=kLeft && Key!=kRight)
     return state;
@@ -919,6 +931,8 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
 
+  Key = NORMALKEY(Key);
+
   if((Key!=kLeft && Key!=kRight) || !item)
     return state;
 
@@ -1066,6 +1080,8 @@ eOSState cMenuSetupRemote::ProcessKey(eKeys Key)
   cOsdItem *item = Get(Current());
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
+
+  Key = NORMALKEY(Key);
 
   if(Key!=kLeft && Key!=kRight)
     return state;
