@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.3 2006-08-22 04:19:35 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.4 2006-09-12 13:11:50 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -25,7 +25,13 @@
  * 
  * based on expand.c
  *
+ *
+ * TODO: 
+ *  - more reliable border detection, including channel logo detection
+ *  - OSD re-positioning (?)
+ *
  */
+
 
 #ifdef HAVE_CONFIG_H 
 #include "config.h"     /* ARCH_X86 */
@@ -36,48 +42,59 @@
 #include <xine/xine_internal.h>
 #include <xine/post.h>
 
-/*#define TRACE_FRAME      */
-/*#define USE_CROP         Crop frame at video_out instead of copying */
-/*#define MARK_FRAME       Draw boundary markers on frames */
-/*#define ENABLE_64BIT 1   Force using of 64-bit routines */
-
-/*#define TRACE printf*/
-#define TRACE(x...) do{}while(0)
-#define INFO  printf
-
 /*
-  TODO: 
-   - more reliable border detection, including channel logo detection
-   - MMX routines
-   - OSD re-positioning (?)
-*/
-
-
-/*
- * Constants
+ *  Configuration
  */
+
+/*#define USE_CROP         Crop frame at video_out instead of copying */
+/*#define MARK_FRAME       Draw markers on detected boundaries */
+/*#define ENABLE_64BIT 1   Force using of 64-bit routines */
+/*#undef __MMX__           Disable MMX */
+/*#undef __SSE__           Disable SSE */
+
+# if defined(__SSE__)
+#  warning Compiling with SSE support
+#  include <xmmintrin.h>
+# elif defined(__MMX__)
+#  warning Compiling with MMX support
+#  include <mmintrin.h>
+# endif
 
 #if defined(__WORDSIZE)
 #  if __WORDSIZE == 64
-#    warning Compiling for 64-bit system
+#    warning Compiling with 64-bit integer support
 #    define ENABLE_64BIT (sizeof(int) > 32)
 #  endif
 #endif
 
-#define TRESHOLD       (0x1f)            /* "black" treshold value for Y-plane 
-					    borders are not always black) */
-#define TRESHOLD32     (0x1f1f1f1f)
-#define TRESHOLD64     (UINT64_C(0x1f1f1f1f1f1f1f1f)) 
-#define TRESHOLD_INV   (~(TRESHOLD))
-#define TRESHOLD32_INV (~(TRESHOLD32))   
-#define TRESHOLD64_INV (~(TRESHOLD64))
-#define UVBLACK        (0x80)            /* "black" for U/V planes  */
-#define UVBLACK32      (0x80808080)      /* (UVBLACK*0x01010101)    */
-#define UVBLACK64      (UINT64_C(0x8080808080808080))
+/*#define TRACE       printf*/
+#define TRACE(x...)   do {} while(0)
+#define INFO          printf
 
+
+/*
+ * Constants
+ */ 
+
+#define YNOISEFILTER    (0xE0U)
+#define UVBLACK         (0x80U)
+#define UVSHIFTUP       (0x03U)
+#define UVNOISEFILTER   (0xF8U)
+
+#define YNOISEFILTER32  (YNOISEFILTER  * 0x01010101U)
+#define UVBLACK32       (UVBLACK       * 0x01010101U)
+#define UVSHIFTUP32     (UVSHIFTUP     * 0x01010101U)
+#define UVNOISEFILTER32 (UVNOISEFILTER * 0x01010101U)
+
+#define YNOISEFILTER64  (YNOISEFILTER  * UINT64_C(0x0101010101010101))
+#define UVBLACK64       (UVBLACK       * UINT64_C(0x0101010101010101))
+#define UVSHIFTUP64     (UVSHIFTUP     * UINT64_C(0x0101010101010101))
+#define UVNOISEFILTER64 (UVNOISEFILTER * UINT64_C(0x0101010101010101))
 
 #define START_TIMER_INIT         (25) /* 1 second, unit: frames */
 #define HEIGHT_LIMIT_LIFETIME (60*25) /* 1 minute, unit: frames */
+
+#define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-left or top-right quarter) */
 
 /*
  * Plugin
@@ -120,6 +137,7 @@ typedef struct autocrop_post_plugin_s
   /* Detected bars */
   int start_line;       
   int end_line;
+  int crop_total;
 
   /* Previously detected bars
      - eliminate jumping if there is some noise at bar boundaries: 
@@ -151,27 +169,13 @@ typedef struct autocrop_post_plugin_s
 
 
 /*
- *  debug tracing
- */
-
-#ifndef TRACE_FRAME
-#  define TRACEFRAME(x...)
-#else
-#  define TRACEFRAME(x...) printf(x)
-#endif
-
-#ifdef TRACE_FRAME
-static int avg_line_Y_C(uint8_t *data, int length)
-{
-  int x, val = 0;
-  for(x=32; x<length-32; x++)
-    val += data[x];
-  return val / (length-64);
-}
-#endif
-
-/*
  * Black bar detection
+ *
+ *  Detect black lines with simple noise filtering.
+ *  Line is "black" if Y-valus are less than 0x20 and 
+ *  U/V values inside range 0x7d...0x84.
+ *  ~ 32 first and last pixels are not checked.
+ *
  */
 
 static int blank_line_Y_C(uint8_t *data, int length);
@@ -180,7 +184,11 @@ static int blank_line_UV_C(uint8_t *data, int length);
 static int blank_line_Y_C64(uint8_t *data, int length);
 static int blank_line_UV_C64(uint8_t *data, int length);
 #endif
-#if defined(ARCH_X86)
+#if defined(__MMX__)
+static int blank_line_Y_mmx(uint8_t *data, int length);
+static int blank_line_UV_mmx(uint8_t *data, int length);
+#endif
+#if defined(__SSE__)
 static int blank_line_Y_mmx(uint8_t *data, int length);
 static int blank_line_UV_mmx(uint8_t *data, int length);
 #endif
@@ -189,140 +197,245 @@ static int blank_line_Y_INIT(uint8_t *data, int length);
 static int blank_line_UV_INIT(uint8_t *data, int length);
 static void autocrop_init_mm_accel(void);
 
-int (*blank_line_Y)(uint8_t *data, int length) = blank_line_Y_INIT;
+int (*blank_line_Y)(uint8_t *data, int length)  = blank_line_Y_INIT;
 int (*blank_line_UV)(uint8_t *data, int length) = blank_line_UV_INIT;
 
 static int blank_line_Y_C(uint8_t *data, int length)
 {
-  uint32_t *data32 = (uint32_t*)data;
-  int x;
-  
-  length /= 4; /* 4 bytes / loop */
-  length -= 8; /* skip right border (32 pixels) */
-  x = 8;       /* skip left border (32 pixels) */
+  uint32_t *data32 = (uint32_t*)((((long int)data) + 32 + 3) & (~3)), r = 0;
 
-  for(; x<length; x++)
-    if(data32[x] & TRESHOLD32_INV) {
-      TRACEFRAME("Y fail @%d (=%x)  |  ", x, data32[x]);
-      return 0;
-    }
+  length -= 64; /* skip borders (2 x 32 pixels) */
+  length /= 4;  /* 4 bytes / loop */
 
-  return 1;
+  while(length)
+    r = r | data32[--length];
+
+  return !(r & YNOISEFILTER32);
 }
 
 static int blank_line_UV_C(uint8_t *data, int length)
 {
-  uint32_t *data32 = (uint32_t*)data;
-  int x;
+  uint32_t *data32 = (uint32_t*)((((long int)data) + 16 + 3) & (~3));
+  uint32_t r1 = 0, r2 = 0;
 
-  length /= 4; /* 4 bytes / loop */
-  length -= 4; /* skip right border (32 pixels) */
-  x = 4;       /* skip left border (32 pixels) */
+  length -= 32; /* skip borders (2 x 32 pixels, 2 pix/byte) */
+  length /= 4;  /* 2 x 4 bytes / loop */
 
-  for(; x<length; x++)
-    if(((data32[x]+0x03030303) & ~(0x07070707)) != UVBLACK32) {
-      TRACEFRAME("UV fail @%d (=%x)  |  ", x, data32[x]);
-      return 0;
-    }
-
-  return 1;
+  while(length>0) {
+    r1 = r1 | ((data32[--length] + UVSHIFTUP32) ^ UVBLACK32);
+    r2 = r2 | ((data32[--length] + UVSHIFTUP32) ^ UVBLACK32);
+  }
+  return !((r1|r2) & (UVNOISEFILTER32));
 }
 
 #if defined(ENABLE_64BIT)
 static int blank_line_Y_C64(uint8_t *data, int length)
 {
-  uint64_t *data64 = (uint64_t*)data;
-  int x;
+  uint64_t *data64 = (uint64_t*)((((long int)data) + 32 + 7) & (~7)), r = 0;
 
-  length /= 8; /* 8 bytes / loop */
-  length -= 4; /* skip right border (32 pixels) */
-  x = 4;       /* skip left border (32 pixels) */
+  length -= 64; /* skip borders (2 x 32 pixels) */
+  length /= 8;  /* 8 bytes / loop */
 
-  for(; x<length; x++)
-    if(data64[x] & TRESHOLD64_INV) {
-      TRACEFRAME("Y fail @%d (=%x)  |  ", x, data64[x]);
-      return 0;
-    }
+  while(length)
+    r = r | data64[--length];
 
-  return 1;
+  return !(r & YNOISEFILTER64);
 }
 #endif
 
 #if defined(ENABLE_64BIT)
 static int blank_line_UV_C64(uint8_t *data, int length)
 {
-  uint64_t *data64 = (uint64_t*)data;
-  int x;
+  uint64_t *data64 = (uint64_t*)((((long int)data) + 16 + 7) & (~7));
+  uint64_t r1 = UINT64_C(0), r2 = UINT64_C(0);
 
-  length /= 8; /* 8 bytes / loop */
-  length -= 2; /* skip right border (32 pixels) */
-  x = 2;       /* skip left border (32 pixels) */
+  length -= 32; /* skip borders (2x32 pixels, 2 pix/byte) */
+  length /= 8;  /* 2 x 8 bytes / loop */
 
-  for(; x<length; x++)
-    if(((data64[x]+UINT64_C(0x0303030303030303)) & (~(UINT64_C(0x0707070707070707)))) != UVBLACK64) {
-      TRACEFRAME("UV fail @%d (=%x)  |  ", x, data64[x]);
-      return 0;
-    }
-
-  return 1;
+  while(length>0) {
+    r1 = r1 | ((data64[--length] + UVSHIFTUP64) ^ UVBLACK64);
+    r2 = r2 | ((data64[--length] + UVSHIFTUP64) ^ UVBLACK64);
+  }
+  return !((r1|r2) & (UVNOISEFILTER64));
 }
 #endif
 
 
-#if defined(ARCH_X86)
-/* ARCH_X86 is only defined in xine config.h which is not 
-   accessible unless compiling inside xine source tree ... */
-# if defined(__SSE__)
-#  warning Compiling with SSE mnemonics support
-# elif defined(__MMX__)
-#  warning Compiling with MMX mnemonics support
-# endif
-static int blank_line_Y_mmx(uint8_t *data, int length)
-{
-  return blank_line_Y_C(data, length);
-}
+#if defined(__MMX__)
+typedef union {
+  uint32_t u32[2];
+  __m64    m64;
+} __attribute__((__aligned__ (8))) __m64_wrapper;
+#endif
 
+#if defined(__MMX__)
+ int blank_line_Y_mmx(uint8_t *data, int length)
+{
+  static const __m64_wrapper mask = {{YNOISEFILTER32, YNOISEFILTER32}};
+  __m64 *data64 = (__m64*)(((long int)(data + 32 + 7)) & (~7));
+  register __m64 sum;
+
+  /*sum = _m_pxor(sum,sum);*/
+  __asm__("pxor %0,%0" : "=y"(sum));
+
+  length -= 64; /* skip borders (2 x 32 pixels) */
+  length /= 8;  /* 8 bytes / loop */
+
+  while(length)
+    sum = _m_por(sum, data64[--length]);
+
+  sum = _m_pand(sum, mask.m64);
+  return 0 == _m_to_int(_m_packsswb(sum, sum));
+}
+#endif
+
+#if defined(__MMX__)
 static int blank_line_UV_mmx(uint8_t *data, int length)
 {
-  return blank_line_UV_C(data, length);
+  static const __m64_wrapper gm_03 = {{UVSHIFTUP32,     UVSHIFTUP32}};
+  static const __m64_wrapper gm_f8 = {{UVNOISEFILTER32, UVNOISEFILTER32}};
+  static const __m64_wrapper gm_80 = {{UVBLACK32,       UVBLACK32}};
+  __m64 *data64 = (__m64*)(((long int)(data) + 16 + 7) & (~7));
+  register __m64 sum1, sum2, m_03, /*m_f8,*/ m_80;
+
+  /*sum1 = _m_pxor(sum1, sum1); sum1 = _mm_setzero_si64(); */
+  /*sum2 = _m_pxor(sum2, sum2); sum2 = _mm_setzero_si64(); */
+  __asm__("pxor %0,%0" : "=y"(sum1));
+  __asm__("pxor %0,%0" : "=y"(sum2));
+
+  m_03 = gm_03.m64;
+  /*m_f8 = gm_f8.m64;*/
+  m_80 = gm_80.m64;
+
+  length -= 32; /* skip borders (2 x 32 pixels, 2pix/byte) */
+  length /= 8;  /* 8 bytes / vector */
+
+  do {
+    /* process two 8-byte vectors */
+    sum1 = _m_por(sum1,
+		  /* grab every byte that is not black (x ^ 0x80 != 0) */
+		  _m_pxor(
+			  /* filter noise: U/V of each "black" pixel should be 0x7d..0x84 
+			     -> each black pixel should be 0x80 after (x+3) & 0xf8 */
+			  /*_m_pand(*/
+				  /* each black pixel should be 0x80..0x87 after adding 3 */
+				  _m_paddb(
+					     data64[length-1], 
+					     m_03)/*,
+				  m_f8)*/,
+			  m_80));
+    sum2 = _m_por(sum2, 
+		  _m_pxor( 
+			  /*_m_pand( */
+				  _m_paddb( 
+					     data64[length-2], 
+					     m_03)/*, 
+				  m_f8)*/,
+			    m_80));
+    length -= 2;
+  } while(length>0);
+  
+  /* combine two result vectors (or), filter noise (and) */
+  sum1 = _m_pand(_m_por(sum1,
+			sum2), 
+		 gm_f8.m64);
+  /* result vector of black line is 0 */
+  return 0 == _m_to_int(_m_packsswb(sum1, sum1));
 }
 #endif
+
+#if defined(__SSE__)
+typedef  union {
+  uint32_t u32[4];
+  __m128   m128;
+} __attribute((__aligned__ (16))) __m128_wrapper;
+#endif
+
+#if defined(__SSE__)
+static int blank_line_Y_sse(uint8_t *data, int length)
+{
+  static const __m128_wrapper gmask = {{YNOISEFILTER32, YNOISEFILTER32,
+					YNOISEFILTER32, YNOISEFILTER32}};
+  __m128 *data128 = (__m128*)(((long int)(data) + 32 + 15) & (~15));
+  register __m128 sum1, sum2, zero, mask;
+
+  length -= 64; /* skip borders (2 x 32 pixels) */
+  length /= 16; /* 16 bytes / loop */
+
+  _mm_prefetch(data128+length-1, _MM_HINT_NTA);
+  _mm_prefetch(data128+length-3, _MM_HINT_NTA);
+
+  /* 
+   * Process in two paraller loops, one 16 byte vector / each sub-loop 
+   * - grabs bytes with value larger than treshold
+   */
+
+  zero = _mm_setzero_ps();
+  mask = gmask.m128;
+  sum1 = zero;
+  sum2 = zero;
+
+  do {
+    _mm_prefetch(data128+length-5, _MM_HINT_NTA);
+    sum1 = _mm_or_ps(sum1, data128[--length]);
+    sum2 = _mm_or_ps(sum2, data128[--length]);
+  } while(length>0);
+
+  return 0x0f == _mm_movemask_ps(_mm_cmpeq_ps(_mm_and_ps(_mm_or_ps(sum1, 
+								   sum2), 
+							 gmask.m128), 
+					      _mm_setzero_ps()));
+}
+#endif
+
+#if defined(__SSE__)
+static int blank_line_UV_sse(uint8_t *data, int length)
+{
+  uint8_t *top = data + length - 1;
+  do {
+    _mm_prefetch(top,    _MM_HINT_NTA);
+    _mm_prefetch(top-32, _MM_HINT_NTA);
+    _mm_prefetch(top-64, _MM_HINT_NTA);
+    _mm_prefetch(top-72, _MM_HINT_NTA);
+    top -= 128;
+  } while(top >= data);
+
+  return blank_line_UV_mmx(data, length);
+}
+#endif
+
 
 static void autocrop_init_mm_accel(void)
 {
   blank_line_Y  = blank_line_Y_C;
   blank_line_UV = blank_line_UV_C;
+
+#if defined(__SSE__)
+  if(xine_mm_accel() & MM_ACCEL_X86_SSE) {
+    INFO("autocrop_init_mm_accel: using SSE\n");
+    blank_line_Y  = blank_line_Y_sse;
+    blank_line_UV = blank_line_UV_sse;
+    return;
+  }
+# endif
 #if defined(ENABLE_64BIT)
   if(ENABLE_64BIT) {
     INFO("autocrop_init_mm_accel: using 64-bit integer operations\n");
     blank_line_Y  = blank_line_Y_C64;
     blank_line_UV = blank_line_UV_C64;
+    return;
   }
 #endif
-#if defined(ARCH_X86)
-# if 0
-  if(xine_get_mm_accel() & SSE) {
-    INFO("autocrop_init_mm_accel: using SSE\n");
-    blank_line_Y  = blank_line_Y_SSE;
-    blank_line_UV = blank_line_UV_SSE;
-  }
-# endif
-#endif
-#if defined(ARCH_X86) && !defined(ENABLE_64BIT)
-# if 0
-  else if(xine_get_mm_accel() & MMXEXT) {
-    INFO("autocrop_init_mm_accel: using MMXEXT\n");
-    blank_line_Y  = blank_line_Y_MMXEXT;
-    blank_line_UV = blank_line_UV_MMXEXT;
-  }
-  else if(xine_get_mm_accel() & MMX) {
-    /* mmx not faster than normal x64  (?) */
+#if defined(__MMX__)
+  if(xine_mm_accel() & MM_ACCEL_X86_MMX) {
+    /* mmx not faster than normal x64 (?) */
     INFO("autocrop_init_mm_accel: using MMX\n");
     blank_line_Y  = blank_line_Y_mmx;
     blank_line_UV = blank_line_UV_mmx;
+    return;
   }
-# endif
 #endif
+  INFO("autocrop_init_mm_accel: no compatible acceleration methods found\n");
 }
 
 static int blank_line_Y_INIT(uint8_t *data, int length)
@@ -345,8 +458,6 @@ static int blank_line_UV_INIT(uint8_t *data, int length)
 #ifdef MARK_FRAME
 int dbg_top=0, dbg_bottom=0;
 #endif
-
-#define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-right or top-left quarter) */
 
 static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
@@ -384,9 +495,6 @@ static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_botto
   }
   *crop_top = y;
 
-  TRACEFRAME("Yavg %x | ", avg_line_Y_C(ydata,        frame->width));
-  TRACEFRAME("Yavg %x | ", avg_line_Y_C(ydata+ypitch, frame->width));
-
   /* from bottom -> up */
   ydata = frame->base[0] + ((frame->height-4)   -1 ) * ypitch;
   udata = frame->base[1] + ((frame->height-4)/2 -1 ) * upitch;
@@ -419,6 +527,10 @@ static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_botto
       *crop_bottom = frame->height - 1;
     }
   }
+
+#if defined(__MMX__)
+  _mm_empty();
+#endif
 
 #ifdef MARK_FRAME
   dbg_top = *crop_top; dbg_bottom = *crop_bottom;
@@ -480,6 +592,7 @@ static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_botto
 
     if(*crop_top > (frame->height/8)) {
       /* if wider than 16:9, prefer cropping top */
+/* #warning TODO: only if subtitles are at bottom ... */
       if(*crop_top + (frame->height - *crop_bottom) > frame->height/4) {
 	int diff = *crop_top + (frame->height - *crop_bottom) - frame->height/4;
 	diff &= ~1;
@@ -522,9 +635,6 @@ static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_botto
   /* adjust start and stop to even lines */
   (*crop_top)    = (*crop_top)        & (~1);
   (*crop_bottom) = (*crop_bottom + 1) & (~1);
-
-  TRACEFRAME("Yavg %x | ", avg_line_Y_C(ydata,        frame->width));
-  TRACEFRAME("Yavg %x\n",  avg_line_Y_C(ydata+ypitch, frame->width));
 }
 
 #ifdef MARK_FRAME
@@ -691,12 +801,9 @@ static int crop_nocopy(vo_frame_t *frame, xine_stream_t *stream)
   int skip;
 
   if(this->cropping_active) {
-    // TODO: use detected borders
-    int new_height = (12.0*frame->height) / 16.0;
-    frame->crop_top += (frame->height - new_height) / 2;
-    frame->crop_bottom += (frame->height + 1 - new_height) / 2;
-    // what ratio should be used now ... ?
-    frame->ratio = 16.0/9.0;  
+    frame->crop_top += this->start_line;
+    frame->crop_bottom += (frame->height + 1 - this->end_line);
+    TRACE("crop_nocopy: top ->%d bottom ->%d\n", frame->crop_top, frame->crop_bottom);
   }
 
   _x_post_frame_copy_down(frame, frame->next);
@@ -723,6 +830,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   if(!this->autodetect) {
     this->start_line = frame->height/8;
     this->end_line   = frame->height*7/8;
+    this->crop_total = frame->height/4;
 #ifdef USE_CROP
     return crop_nocopy(frame, stream);
 #else
@@ -901,6 +1009,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 #else
   result = crop_copy(frame, stream);
 #endif
+  this->crop_total = this->start_line + frame->height - this->end_line;
 
   /* forget stabilized values */
   this->start_line = detected_start;
@@ -951,28 +1060,28 @@ static int autocrop_intercept_frame(post_video_port_t *port, vo_frame_t *frame)
 		   frame->height >= 288 && frame->height <= 576);
   if(!intercept) {
     this->height_limit_active = 0;
+    this->crop_total = 0;
   }
 
   return intercept;
 }
 
-#if 0
 static int autocrop_intercept_ovl(post_video_port_t *port)
 {
-  post_expand_t         *this = (post_expand_t *)port->post;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
 
-  if (this->centre_cut_out_mode && this->cropping_active) return 0;
-  /* we always intercept overlay manager */
+  if (!this->cropping_active) 
+    return 0;
+
   return 1;
 }
-#endif
 
-#if 0
 static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, void *event_gen)
 {
-  post_expand_t         *this = (post_expand_t *)port->post;
-  post_video_port_t     *port = _x_post_ovl_manager_to_port(this_gen);
-  video_overlay_event_t *event = (video_overlay_event_t *)event_gen;
+  post_video_port_t      *port  = _x_post_ovl_manager_to_port(this_gen);
+#if 0
+  autocrop_post_plugin_t *this  = (autocrop_post_plugin_t *)port->post;
+  video_overlay_event_t  *event = (video_overlay_event_t *)event_gen;
 
   if (event->event_type == OVERLAY_EVENT_SHOW) {
     switch (event->object.object_type) {
@@ -980,17 +1089,30 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
       /* regular subtitle */
 
       /* Subtitle overlays must be coming somewhere inside xine engine */
-      event->object.overlay->y -= this->crop_top + this->crop_bottom;
+# ifdef USE_CROP
+      INFO("autocrop_overlay_add_event: subtitle event untouched\n");
+# else
+      event->object.overlay->y -= this->crop_total;
+      INFO("autocrop_overlay_add_event: subtitle event moved up\n");
+# endif
       break;
     case 1:
       /* menu overlay */
-      
+
       /* All overlays coming from VDR have this type */
+# ifdef USE_CROP
+      event->object.overlay->y += this->crop_total; /* cancel the move that will be done in vo */
+      if(this->crop_total>0)
+	INFO("autocrop_overlay_add_event: DOWN %d\n", this->start_line);
+# else
+      /*INFO("autocrop_overlay_add_event: non-subtitle event untouched\n");*/
+# endif
+      break;
     }
   }
+#endif
   return port->original_manager->add_event(port->original_manager, event_gen);
 }
-#endif
 
 
 /*
@@ -1085,13 +1207,12 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
 
       input->xine_in.name   = "video in";
       output->xine_out.name = "video out";
-#if 0
+
       port->intercept_ovl          = autocrop_intercept_ovl;
       port->new_manager->add_event = autocrop_overlay_add_event;
-#endif
-      port->intercept_frame    = autocrop_intercept_frame;
-      port->new_port.get_frame = autocrop_get_frame;
-      port->new_frame->draw    = autocrop_draw;
+      port->intercept_frame        = autocrop_intercept_frame;
+      port->new_port.get_frame     = autocrop_get_frame;
+      port->new_frame->draw        = autocrop_draw;
 
       this->post_plugin.xine_post.video_input[ 0 ] = &port->new_port;
       this->post_plugin.dispose = autocrop_dispose;
@@ -1100,9 +1221,11 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       input_param->name = "parameters";
       input_param->type = XINE_POST_DATA_PARAMETERS;
       input_param->data = &post_api;
-      /*xine_list_append_content(this->post_plugin.input, input_param);*/
+#if XINE_VERSION_CODE >= 10102
       xine_list_push_back(this->post_plugin.input, input_param);
-
+#else
+      xine_list_append_content(this->post_plugin.input, input_param);
+#endif
       this->cropping_active = 0;
       this->autodetect  = 1;
       this->subs_detect = 1;
@@ -1113,8 +1236,6 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
 
       this->prev_start_line = 0;
       this->prev_end_line = 576;
-
-      autocrop_init_mm_accel();
 
       return &this->post_plugin;
     }
