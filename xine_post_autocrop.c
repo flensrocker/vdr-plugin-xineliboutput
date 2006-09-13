@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.5 2006-09-12 22:53:18 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.6 2006-09-13 00:14:53 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -191,22 +191,27 @@ typedef struct autocrop_post_plugin_s
 
 static int blank_line_Y_C(uint8_t *data, int length);
 static int blank_line_UV_C(uint8_t *data, int length);
+static int blank_line_YUY2_C(uint8_t *data, int length);
 #if defined(ENABLE_64BIT)
 static int blank_line_Y_C64(uint8_t *data, int length);
 static int blank_line_UV_C64(uint8_t *data, int length);
+static int blank_line_YUY2_C64(uint8_t *data, int length);
 #endif
 #if defined(__MMX__)
 static int blank_line_Y_mmx(uint8_t *data, int length);
 static int blank_line_UV_mmx(uint8_t *data, int length);
+static int blank_line_YUY2_mmx(uint8_t *data, int length);
 #endif
 #if defined(__SSE__)
-static int blank_line_Y_mmx(uint8_t *data, int length);
-static int blank_line_UV_mmx(uint8_t *data, int length);
+static int blank_line_Y_sse(uint8_t *data, int length);
+static int blank_line_UV_sse(uint8_t *data, int length);
+static int blank_line_YUY2_sse(uint8_t *data, int length);
 #endif
 
 static int blank_line_Y_INIT(uint8_t *data, int length);
 static int blank_line_UV_INIT(uint8_t *data, int length);
 static int blank_line_YUY2_INIT(uint8_t *data, int length);
+
 static void autocrop_init_mm_accel(void);
 
 int (*blank_line_Y)(uint8_t *data, int length)  = blank_line_Y_INIT;
@@ -449,22 +454,47 @@ static int blank_line_YUY2_C64(uint8_t *data, int length)
 }
 #endif
 
+#if defined(__MMX__)
+static int blank_line_YUY2_mmx(uint8_t *data, int length)
+{
+  /* not implemented */
+
+# if !defined(ENABLE_64BIT)
+  return blank_line_YUY2_C(data, length);
+# else
+  return blank_line_YUY2_C64(data, length);
+# endif
+}
+#endif
+
+#if defined(__SSE__)
+static int blank_line_YUY2_sse(uint8_t *data, int length)
+{
+  uint8_t *top = data + length - 1;
+  do {
+    _mm_prefetch(top,    _MM_HINT_NTA);
+    _mm_prefetch(top-32, _MM_HINT_NTA);
+    _mm_prefetch(top-64, _MM_HINT_NTA);
+    _mm_prefetch(top-72, _MM_HINT_NTA);
+    top -= 128;
+  } while(top >= data);
+
+  return blank_line_YUY2_mmx(data, length);
+}
+#endif
 
 static void autocrop_init_mm_accel(void)
 {
   blank_line_Y  = blank_line_Y_C;
   blank_line_UV = blank_line_UV_C;
-#if !defined(ENABLE_64BIT)
   blank_line_YUY2 = blank_line_YUY2_C;
-#else
-  blank_line_YUY2 = blank_line_YUY2_C64;
-#endif
 
 #if defined(__SSE__)
   if(xine_mm_accel() & MM_ACCEL_X86_SSE) {
     INFO("autocrop_init_mm_accel: using SSE\n");
     blank_line_Y  = blank_line_Y_sse;
     blank_line_UV = blank_line_UV_sse;
+    blank_line_YUY2 = blank_line_YUY2_sse;
     return;
   }
 # endif
@@ -483,6 +513,7 @@ static void autocrop_init_mm_accel(void)
     INFO("autocrop_init_mm_accel: using MMX\n");
     blank_line_Y  = blank_line_Y_mmx;
     blank_line_UV = blank_line_UV_mmx;
+    blank_line_YUY2 = blank_line_YUY2_mmx;
     return;
   }
 #endif
@@ -516,7 +547,7 @@ static int blank_line_YUY2_INIT(uint8_t *data, int length)
 int dbg_top=0, dbg_bottom=0;
 #endif
 
-static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom)
+static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
   int y;
   int ypitch = frame->pitches[0];
@@ -577,13 +608,18 @@ static void analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_botto
 	blank_line_UV(udata,       frame->width/2) &&
 	blank_line_UV(vdata,       frame->width/2)) {
       TRACE("not cropping black frame\n");
+#if 0
       *crop_top = 0;
       *crop_bottom = frame->height - 1;
+#else
+      return 0;
+#endif
     }
   }
+  return 1;
 }
 
-static void analyze_frame_yuy2(vo_frame_t *frame, int *crop_top, int *crop_bottom)
+static int analyze_frame_yuy2(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
   int y;
   int pitch = frame->pitches[0];
@@ -616,25 +652,35 @@ static void analyze_frame_yuy2(vo_frame_t *frame, int *crop_top, int *crop_botto
     data = frame->base[0] + (frame->height/2)*pitch;
     if( blank_line_YUY2(data, frame->width * 2)) {
       TRACE("not cropping black frame\n");
+#if 0
       *crop_top = 0;
       *crop_bottom = frame->height - 1;
+#else
+      return 0;
+#endif
     }
   }
+
+  return 1;
 }
 
 static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
   post_video_port_t *port = (post_video_port_t *)frame->port;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
+  int result;
 
-  if(frame->format == XINE_IMGFMT_YV12)
-    analyze_frame_yv12(frame, crop_top, crop_bottom);
+  if(frame->format == XINE_IMGFMT_YV12) 
+    result = analyze_frame_yv12(frame, crop_top, crop_bottom);
   else /*if(frame->format == XINE_IMGFMT_YUY2)*/
-    analyze_frame_yuy2(frame, crop_top, crop_bottom);
+    result = analyze_frame_yuy2(frame, crop_top, crop_bottom);
 
 #if defined(__MMX__)
   _mm_empty();
 #endif
+
+  if(!result)
+    return;
 
 #ifdef MARK_FRAME
   dbg_top = *crop_top; dbg_bottom = *crop_bottom;
