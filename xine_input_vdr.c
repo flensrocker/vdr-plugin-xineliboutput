@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.47 2006-09-13 22:38:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.48 2006-09-14 19:59:05 phintuka Exp $
  *
  */
 
@@ -57,7 +57,6 @@
 
 #define ADJUST_SCR_SPEED        1
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
-
 #define HD_BUF_NUM_BUFS   (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
 #define HD_BUF_ELEM_SIZE  (2048+64)
 
@@ -1381,21 +1380,35 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
   else dratio = ((double)ratio)/10000.0;
 
   if(this->stream && this->stream->video_out) {
+    /* our video size is size _after_ cropping, so generate 
+       larger image if cropping is active. This will result 
+       in right sized image after cropping ...*/
+    int width  = this->video_width;
+    int height = this->video_height;
     this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
-    vo_frame_t *img = this->stream->video_out->get_frame (this->stream->video_out,
-							  this->video_width, this->video_height,
-							  dratio, XINE_IMGFMT_YV12, 
-							  VO_BOTH_FIELDS);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
-    if(img) {
-      memset( img->base[0], 0x00, this->video_width * this->video_height);
-      memset( img->base[1], 0x80, this->video_width * this->video_height / 4 );
-      memset( img->base[2], 0x80, this->video_width * this->video_height / 4 );
-      img->duration  = 3600;
-      img->pts       = 3600;
-      img->bad_frame = 0;
-      img->draw(img, this->stream);
-      img->free(img);
+    width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_LEFT);
+    width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_RIGHT);
+    height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_TOP);
+    height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM);
+
+    if(width >= 360 && height >= 288 && width <= 1920 && height <= 1024) {
+      vo_frame_t *img = this->stream->video_out->get_frame (this->stream->video_out,
+							    width, height,
+							    dratio, XINE_IMGFMT_YV12, 
+							    VO_BOTH_FIELDS);
+      this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+      if(img) {
+	memset( img->base[0], 0x00, width * height);
+	memset( img->base[1], 0x80, width * height / 4 );
+	memset( img->base[2], 0x80, width * height / 4 );
+	img->duration  = 3600;
+	img->pts       = 3600;
+	img->bad_frame = 0;
+	img->draw(img, this->stream);
+	img->free(img);
+      }
+    } else {
+      this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
     }
   }
   this->still_mode = 0;
@@ -1937,7 +1950,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	  ymove = (win_height - this->vdr_osd_height)/2;
       }
     }
-  
+
     /* set position and size for this overlay */
     ov_event.object.overlay->x = cmd->x + xmove;
     ov_event.object.overlay->y = cmd->y + ymove;
