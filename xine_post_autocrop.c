@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.6 2006-09-13 00:14:53 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.7 2006-09-16 19:11:00 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -46,7 +46,7 @@
  *  Configuration
  */
 
-/*#define USE_CROP         Crop frame at video_out instead of copying */
+/*#define USE_CROP         / * Crop frame in video_out instead of copying */
 /*#define MARK_FRAME       Draw markers on detected boundaries */
 /*#define ENABLE_64BIT 1   Force using of 64-bit routines */
 /*#undef __MMX__           Disable MMX */
@@ -77,29 +77,40 @@
  */ 
 
 #define YNOISEFILTER    (0xE0U)
+#define YSHIFTUP        (0x03U)
 #define UVBLACK         (0x80U)
 #define UVSHIFTUP       (0x03U)
 #define UVNOISEFILTER   (0xF8U)
 
 /* YV12 */
 #define YNOISEFILTER32  (YNOISEFILTER  * 0x01010101U)
+#define YSHIFTUP32      (YSHIFTUP      * 0x01010101U)
 #define UVBLACK32       (UVBLACK       * 0x01010101U)
 #define UVSHIFTUP32     (UVSHIFTUP     * 0x01010101U)
 #define UVNOISEFILTER32 (UVNOISEFILTER * 0x01010101U)
 
 #define YNOISEFILTER64  (YNOISEFILTER  * UINT64_C(0x0101010101010101))
+#define YSHIFTUP64      (YSHIFTUP      * UINT64_C(0x0101010101010101))
 #define UVBLACK64       (UVBLACK       * UINT64_C(0x0101010101010101))
 #define UVSHIFTUP64     (UVSHIFTUP     * UINT64_C(0x0101010101010101))
 #define UVNOISEFILTER64 (UVNOISEFILTER * UINT64_C(0x0101010101010101))
 
 /* YUY2 */
-#define YUY2BLACK32       (UVBLACK      *0x00010001U)
-#define YUY2SHIFTUP32     (UVSHIFTUP    *0x00010001U)
-#define YUY2NOISEFILTER32 ((YNOISEFILTER*0x01000100U)|(UVNOISEFILTER*0x00010001U))
+/* TODO: should use normal/inverse order based on endianess */
+#define YUY2BLACK32       (UVBLACK       * 0x00010001U)
+#define YUY2SHIFTUP32     (UVSHIFTUP     * 0x00010001U)
+#define YUY2NOISEFILTER32 ((YNOISEFILTER * 0x01000100U)|(UVNOISEFILTER * 0x00010001U))
 
 #define YUY2BLACK64       (YUY2BLACK32       * UINT64_C(0x0000000100000001))
-#define YUY2VSHIFTUP64    (YUY2SHIFTUP32     * UINT64_C(0x0000000100000001))
+#define YUY2SHIFTUP64     (YUY2SHIFTUP32     * UINT64_C(0x0000000100000001))
 #define YUY2NOISEFILTER64 (YUY2NOISEFILTER32 * UINT64_C(0x0000000100000001))
+
+/*#define FILTER2*/
+#ifdef FILTER2
+/* tighter Y-filter: original black threshold is 0x1f ; here it is 0x1f - 0x0b = 0x14 */
+# define YUY2SHIFTUP32  ((UVSHIFTUP    * 0x00010001U)|(YSHIFTUP      * 0x01000100U))
+# undef __SSE__
+#endif
 
 
 #define START_TIMER_INIT         (25) /* 1 second, unit: frames */
@@ -225,8 +236,18 @@ static int blank_line_Y_C(uint8_t *data, int length)
   length -= 64; /* skip borders (2 x 32 pixels) */
   length /= 4;  /* 4 bytes / loop */
 
+#ifdef FILTER2
+  while(length) {
+    /* shiftdown needs saturated unsigned element-wise substraction, available only in MMX ...*/
+    /* -> use shiftup and looser noise filter for same result. */
+    /*    this needs special handling for large values */
+    r = r | data32[--length]; /* this catches large values (0xf9 : 0xf9+0x7=0x100 === black) */
+    r = r | (data32[length] + YSHIFTUP32); /* this catches small walues (0x1d...0x1f) */
+  }
+#else
   while(length)
     r = r | data32[--length];
+#endif
 
   return !(r & YNOISEFILTER32);
 }
@@ -254,8 +275,15 @@ static int blank_line_Y_C64(uint8_t *data, int length)
   length -= 64; /* skip borders (2 x 32 pixels) */
   length /= 8;  /* 8 bytes / loop */
 
+#ifdef FILTER2
+  while(length) {
+    r = r | data64[--length];
+    r = r | (data64[length] + YSHIFTUP64);
+  }
+#else
   while(length)
     r = r | data64[--length];
+#endif
 
   return !(r & YNOISEFILTER64);
 }
@@ -289,9 +317,15 @@ typedef union {
 #if defined(__MMX__)
  int blank_line_Y_mmx(uint8_t *data, int length)
 {
-  static const __m64_wrapper mask = {{YNOISEFILTER32, YNOISEFILTER32}};
-  __m64 *data64 = (__m64*)(((long int)(data + 32 + 7)) & (~7));
+#ifdef FILTER2
+  static const __m64_wrapper mask   = {{YNOISEFILTER32, YNOISEFILTER32}};
+  static const __m64_wrapper gshift = {{YSHIFTUP32,     YSHIFTUP32}};
+  register __m64 sum, sum2, shift = gshift.m64, val;
+#else
+  static const __m64_wrapper mask  = {{YNOISEFILTER32, YNOISEFILTER32}};
   register __m64 sum;
+#endif
+  __m64 *data64 = (__m64*)(((long int)(data + 32 + 7)) & (~7));
 
   /*sum = _m_pxor(sum,sum);*/
   __asm__("pxor %0,%0" : "=y"(sum));
@@ -299,8 +333,18 @@ typedef union {
   length -= 64; /* skip borders (2 x 32 pixels) */
   length /= 8;  /* 8 bytes / loop */
 
+#ifdef FILTER2
+  __asm__("pxor %0,%0" : "=y"(sum2));
+  while(length) {
+    val  = data64[--length];
+    sum  = _m_por(sum, val);
+    sum2 = _m_por(sum2, _m_paddb(val, shift));
+  }
+  sum = _m_por(sum, sum2);
+#else
   while(length)
     sum = _m_por(sum, data64[--length]);
+#endif
 
   sum = _m_pand(sum, mask.m64);
   return 0 == _m_to_int(_m_packsswb(sum, sum));
@@ -559,10 +603,10 @@ static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom
   int max_crop = (frame->height / 4) / 2; /* 4:3 --> 16:9 */
 
   /* from top -> down */
-  ydata += 6 * ypitch;  /* skip 6 first lines */
-  udata += 3 * upitch;
-  vdata += 3 * vpitch;
-  for(y = 6; y <= max_crop   *2 /* *2 = 20:9+subs -> 16:9 */ ; y += 2) {
+  ydata += 8 * ypitch;  /* skip 8 first lines */
+  udata += 4 * upitch;
+  vdata += 4 * vpitch;
+  for(y = 8; y <= max_crop   *2 /* *2 = 20:9+subs -> 16:9 */ ; y += 2) {
     if(  ! ( blank_line_UV(udata,                (frame->width-LOGOSKIP)/2) ||
 	     blank_line_UV(udata+LOGOSKIP/2,     (frame->width-LOGOSKIP)/2)    ) ||
 	 ! ( blank_line_UV(vdata,                (frame->width-LOGOSKIP)/2) ||
@@ -578,7 +622,7 @@ static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom
       vdata += vpitch;
     }
   }
-  *crop_top = y;
+  *crop_top = y>8 ? y : 0;
 
   /* from bottom -> up */
   ydata = frame->base[0] + ((frame->height-4)   -1 ) * ypitch;
@@ -741,27 +785,50 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
       *crop_bottom = frame->height*7/8;
 
     if(*crop_top > (frame->height/8)) {
-      /* if wider than 16:9, prefer cropping top */
-/* #warning TODO: only if subtitles are at bottom ... */
+      /* if wider than 16:9, prefer cropping top if subtitles are inside bottom bar */
       if(*crop_top + (frame->height - *crop_bottom) > frame->height/4) {
 	int diff = *crop_top + (frame->height - *crop_bottom) - frame->height/4;
 	diff &= ~1;
 	TRACE("balance: %d,%d -> %d,%d\n",
 	      *crop_top, *crop_bottom, 
 	      *crop_top, *crop_bottom + diff);
-	*crop_bottom += diff;
+#if 0
+        /* this moves image to top (crop only top) */ 
+        *crop_bottom += diff;
+#endif
+#if 0
+        /* this moves image to center */ 
+	/* may cause problems with subtitles ... */
+	*crop_top -= diff;
+#endif
+#if 1
+        /* this moves image to center when there are no 
+	   detected subtitles inside bottom bar */
+	if(this->height_limit_active) {
+	  int reserved = this->height_limit - *crop_bottom;
+	  if(reserved>0) {
+	    *crop_bottom += reserved;
+	    diff -= reserved;
+	  }
+	}
+	*crop_top -= diff;
+#endif
+#if 0
+	/* do nothing - image will be centered in video out.
+	   - problems with subtitles using unscaled OSD */
+#endif
       }
     }
 
     /* stay inside frame and forget very small bars */
-    if(*crop_top < 6)
+    if(*crop_top <= 8)
       *crop_top = 0;
     if(*crop_bottom >= (frame->height-6))
       *crop_bottom = frame->height;
  
     if(*crop_top < frame->height/12 || *crop_bottom > frame->height*11/12) {
       /* Small bars -> crop only detected borders */
-      if(*crop_top || *crop_bottom) {
+     if(*crop_top || *crop_bottom < frame->height-1) {
 	TRACE("Small bars -> <16:9 : start_line = %d end_line = %d (%s%d t%d)\n", 
 	      *crop_top, *crop_bottom,
 	      this->height_limit_active ? "height limit " : "",
@@ -830,7 +897,7 @@ static void mark_frame_yv12(autocrop_post_plugin_t *this,
     }
   }
   if(frame->height > 500) {
-    // TODO: use frame height instead of assuming 576 ... -> 72
+    /* TODO: use frame height instead of assuming 576 ... -> 72 */
     vdata = frame->base[2] + ((72-*crop_top)/2)*vpitch;
 vdata = frame->base[2] + (72/2)*vpitch;
     memset(vdata, 0xff, frame->width/2);
@@ -859,19 +926,17 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
   uint8_t *udata = frame->base[1], *udata2;
   uint8_t *vdata = frame->base[2], *vdata2;
 
-  int   new_height = frame->height;
+  int   new_height;
   float new_ratio;
 
   /* top bar */
   ydata += this->start_line * yp;
   udata += (this->start_line/2) * up;
   vdata += (this->start_line/2) * vp;
-  new_height -= this->start_line;
 
-  /* bottom bar */
-  new_height -= (frame->height - (this->end_line+2));
+  new_height = this->end_line+2 - this->start_line;
+  new_ratio  = 12.0/9.0 * ((float)frame->height / (float)new_height);
 
-  new_ratio = 12.0/9.0 * ((float)frame->height / (float)new_height);
   new_frame = port->original_port->get_frame(port->original_port,
 					     frame->width, new_height, 
 					     new_ratio, frame->format, 
@@ -981,7 +1046,6 @@ static int crop_nocopy(vo_frame_t *frame, xine_stream_t *stream)
   _x_post_frame_copy_down(frame, frame->next);
   skip = frame->next->draw(frame->next, stream);
   TRACE("crop: top %d, bottom %d\n", frame->crop_top, frame->crop_bottom);
-  // cropping moves overlay too... even if it is already in right place :(
   _x_post_frame_copy_up(frame, frame->next);
 
   return skip;
@@ -1201,11 +1265,12 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
 				       uint32_t width, uint32_t height, 
 				       double ratio, int format, int flags)
 {
-  post_video_port_t *port = (post_video_port_t *)port_gen;
-  post_plugin_t     *this = port->post;
-  vo_frame_t        *frame;
+  post_video_port_t      *port = (post_video_port_t *)port_gen;
+  post_plugin_t          *this_gen = port->post;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)this_gen;
+  vo_frame_t             *frame;
   
-  _x_post_rewire(this);
+  _x_post_rewire(this_gen);
   
   if (ratio <= 0.0)
     if(height > 1)
@@ -1213,10 +1278,12 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
   
   if (ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
 			   format == XINE_IMGFMT_YUY2)) {
+    int new_height = this->end_line+2 - this->start_line;
+    float new_ratio = 12.0/9.0 * ((float)height / (float)new_height);
+
     frame = port->original_port->get_frame(port->original_port,
 					   width, height, 
-					   12.0/9.0, format, flags);
-
+					   new_ratio, format, flags);
     _x_post_inc_usage(port);
     frame = _x_post_intercept_video_frame(frame, port);
     
@@ -1260,38 +1327,52 @@ static int autocrop_intercept_ovl(post_video_port_t *port)
 static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, void *event_gen)
 {
   post_video_port_t      *port  = _x_post_ovl_manager_to_port(this_gen);
-#if 0
   autocrop_post_plugin_t *this  = (autocrop_post_plugin_t *)port->post;
   video_overlay_event_t  *event = (video_overlay_event_t *)event_gen;
+  int caps;
 
-  if (event->event_type == OVERLAY_EVENT_SHOW) {
-    switch (event->object.object_type) {
-    case 0:
-      /* regular subtitle */
+  if(this->cropping_active && this->crop_total>10) {
+    if (event->event_type == OVERLAY_EVENT_SHOW) {
+      switch (event->object.object_type) {
+      case 0:
+	/* regular subtitle */
+	/* Subtitle overlays must be coming somewhere inside xine engine */
 
-      /* Subtitle overlays must be coming somewhere inside xine engine */
-# ifdef USE_CROP
-      INFO("autocrop_overlay_add_event: subtitle event untouched\n");
-# else
-      event->object.overlay->y -= this->crop_total;
-      INFO("autocrop_overlay_add_event: subtitle event moved up\n");
-# endif
-      break;
-    case 1:
-      /* menu overlay */
+	caps = port->stream->video_out->get_capabilities (port->stream->video_out);
+#ifdef USE_CROP
+	if(caps & VO_CAP_CROP) {
+	  if(! event->object.overlay->unscaled || !(caps & VO_CAP_UNSCALED_OVERLAY)) {
+	    event->object.overlay->y -= this->crop_total;
+	  }
+	} else {
+	  /* object is moved crop_top amount in video_out */
+	  if(event->object.overlay->unscaled && (caps & VO_CAP_UNSCALED_OVERLAY)) {
+	    /* cancel incorrect move that will be done in video_out */
+	    event->object.overlay->y += this->start_line;
+	  } else {
+	    /* move crop_bottom pixels up */
+	    event->object.overlay->y -= (this->crop_total - this->start_line);
+	  }
+	}
 
-      /* All overlays coming from VDR have this type */
-# ifdef USE_CROP
-      event->object.overlay->y += this->crop_total; /* cancel the move that will be done in vo */
-      if(this->crop_total>0)
-	INFO("autocrop_overlay_add_event: DOWN %d\n", this->start_line);
-# else
-      /*INFO("autocrop_overlay_add_event: non-subtitle event untouched\n");*/
-# endif
-      break;
+	/* when using cropping overlays are moved in video_out */
+	INFO("autocrop_overlay_add_event: subtitle event untouched\n");
+#else
+	/* when cropping here subtitles coming from inside of xine must be re-positioned */
+	if(! event->object.overlay->unscaled || !(caps & VO_CAP_UNSCALED_OVERLAY)) {
+	  event->object.overlay->y -= this->crop_total;
+	  INFO("autocrop_overlay_add_event: subtitle event moved up\n");
+	}
+#endif
+	break;
+      case 1:
+	/* menu overlay */
+	/* All overlays coming from VDR have this type */
+	break;
+      }
     }
   }
-#endif
+
   return port->original_manager->add_event(port->original_manager, event_gen);
 }
 
