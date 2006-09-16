@@ -842,11 +842,11 @@ static int _pplugin_unload_post(post_plugins_t *fe, const char *name,
   if(!*post_elements || !*post_elements_num)
     return 0;
 
-  for(i=0; i < *post_elements_num; i++)
-    if((*post_elements)[i])
+  for(i=0; i < *post_elements_num; i++) {
+    if((*post_elements)[i]) {
       if(!name || !strcmp((*post_elements)[i]->name, name)) {
 
-	if((*post_elements)[i]->enable == 0) {
+	if((*post_elements)[i]->enable == 0 || !name) {
 	  xine_post_dispose(fe->xine, (*post_elements)[i]->post);
 
 	  free((*post_elements)[i]->name);
@@ -863,10 +863,15 @@ static int _pplugin_unload_post(post_plugins_t *fe, const char *name,
 	  (*post_elements)[(*post_elements_num)] = 0;
 
 	  result = 1;
+	  i--;
+
 	} else {
-	  LOGDBG("Unload %s failed: plugin enabled and in use", name);
+	  LOGDBG("Unload %s failed: plugin enabled and in use", 
+		 (*post_elements)[i]->name);
 	}
       }
+    }
+  }
 
   if(*post_elements_num <= 0) {
     if(*post_elements)
