@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.19 2006-09-10 00:04:12 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.20 2006-09-16 13:39:21 phintuka Exp $
  *
  */
 
@@ -225,6 +225,8 @@ static void fe_frame_output_cb (void *data,
   }
 #endif
 
+#if 0
+  /* video_out cropping works better */
   if(this->overscan) {
     int crop_x = this->overscan * this->width  / 100 / 2;
     int crop_y = this->overscan * this->height / 100 / 2;
@@ -232,35 +234,6 @@ static void fe_frame_output_cb (void *data,
     *dest_y -= crop_y;
     *dest_width  += crop_x;
     *dest_height += crop_y;
-  }
-
-#if 0
-  static int n=0,t=25/**10*/; n++;
-  static char *s_aspect[] = {"Auto","Default","4:3","16:9","16:10","Pan&Scan"};
-  if((n % t) == 0) {
-    LOGMSG("fe_frame_output_cb:");
-    LOGMSG("  vid=%dx%d (frame %2d:9, pixel %2d:9)",
-	   video_width, video_height, 
-	   (int)(video_pixel_aspect * 9.0 * ((double)video_width)/((double)video_height) + 0.5),
-	   (int)(video_pixel_aspect * 9.0 + 0.5));
-    LOGMSG("            %2.3f %2.3f",
-	   (video_pixel_aspect*((double)video_width)/((double)video_height)),
-	   (video_pixel_aspect));
-
-
-    LOGMSG("  win=%dx%d (frame %2d:9, pixel %2d:9)",
-	   this->width, this->height,
-	   (int)(this->display_ratio * 9.0 + 0.5), 
-	   (int)(*dest_pixel_aspect * 9.0 + 0.5));
-    LOGMSG("            %2.3f %2.3f",
-	   (this->display_ratio), 
-	   (*dest_pixel_aspect));
-
-    LOGMSG("    given display aspect=%s (%d), zoom=%s",
-	   s_aspect[this->aspect], this->aspect, 
-	   this->scale_video?"ON":"OFF");
-    
-#warning TODO: vmode_switch, scale_video
   }
 #endif
 
@@ -285,6 +258,9 @@ static void fe_frame_output_cb (void *data,
     xine_event_send(this->stream, &event);
     this->video_width = video_width;
     this->video_height = video_height;
+
+    /* trigger forced redraw to make cropping changes effective */
+    xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
   }
 }
 
@@ -1254,8 +1230,17 @@ static void *fe_control(void *fe_handle, const char *cmd)
 
   } else if(!strncmp(cmd, "OVERSCAN ", 9)) {
     int overscan;
-    if(1 == sscanf(cmd+9, "%d", &overscan)) 
+    if(1 == sscanf(cmd+9, "%d", &overscan)) {
+      int crop_x = overscan * this->width  / 100 / 2;
+      int crop_y = overscan * this->height / 100 / 2;
       this->overscan = overscan;
+      xine_set_param(this->stream, XINE_PARAM_VO_CROP_LEFT,   crop_x);
+      xine_set_param(this->stream, XINE_PARAM_VO_CROP_TOP,    crop_y);
+      xine_set_param(this->stream, XINE_PARAM_VO_CROP_RIGHT,  crop_x);
+      xine_set_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM, crop_y);
+      /* trigger forced redraw to make changes effective */
+      xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
+    }
   }
   
 
