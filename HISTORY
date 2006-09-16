@@ -1,14 +1,28 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2006-09-17: Version 1.0.0pre5
 
+- Allow overriding default no signal image
+- Several fixes to post plugin handling
+- Fixed --audio=driver:port parsing in vdr plugin
+- Fixed overscan when image does not fill whole output window
+  (bug #1556912)
+- Implemented simple MMX/SSE and YUY2 detection routines 
+  to autocrop
+- Main menu re-arranged (Thanks to Petri Helin)
+- Fixed display blanking aspect ratio (bug #1554070)
+- Lirc receiver accepts shorter LIRC commands (bug #1540896)
+- Fixed immediate re-configuration when setup entries are 
+  changed with repeated keys (Thanks to Petri Helin)
 - Implemented audio channel selection as xine post plugin
   (to select only left or right channel from stereo)
+- Several minor fixes / enhancements to autocrop plugin
 
 2006-09-06: Version 1.0.0pre4
 
 - WARNING: updated command-line options !
-- Support for HD (larger buffers wit HD content)
+- Support for HD (larger buffers with HD content)
 - Simple playlist support to media player
 - Fixed starting replay of new file while old file is still playing
 - Fixed segfault in OSD downscaling
