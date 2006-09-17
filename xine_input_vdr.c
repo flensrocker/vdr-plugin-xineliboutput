@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.49 2006-09-17 02:02:42 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.50 2006-09-17 02:59:11 phintuka Exp $
  *
  */
 
@@ -659,6 +659,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   int scr_tunning = this->scr_tunning;
   int num_vbufs = 0;
 
+  if(this->hd_stream && this->hd_buffer) {
+    num_free += this->hd_buffer->num_free(this->hd_buffer);
+  }
+
   if(this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
   num_free -= (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
@@ -1290,7 +1294,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   }
 
   /* limit max. buffered data */
-  if(!force) {
+  if(!force && !buf) {
     int buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
     if(this->buffer_pool->buffer_pool_num_free < buffer_limit) 
       return NULL;
