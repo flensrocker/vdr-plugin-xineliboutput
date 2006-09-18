@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.8 2006-09-12 16:34:48 phintuka Exp $
+ * $Id: setup_menu.c,v 1.9 2006-09-18 02:52:56 phintuka Exp $
  *
  */
 
@@ -904,10 +904,11 @@ void cMenuSetupLocal::Set(void)
 				  DEINTERLACE_count, 
 				  xc.s_deinterlaceMethodNames));
 
-    if(deinterlace == DEINTERLACE_TVTIME)
+    if(deinterlace == DEINTERLACE_TVTIME) {
       Add(ctrl_deinterlace_opts = new cMenuEditStrItem(tr("   Options:"), 
 						       newconfig.deinterlace_opts, 
-						       64, OptionsChars));
+						       254, OptionsChars));
+    }
 
 #ifdef HAVE_XV_FIELD_ORDER
     if(!deinterlace)
