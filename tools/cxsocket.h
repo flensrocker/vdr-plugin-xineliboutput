@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.8 2006-08-23 06:46:00 phintuka Exp $
+ * $Id: cxsocket.h,v 1.9 2006-09-19 09:50:47 phintuka Exp $
  *
  */
 
@@ -137,7 +137,7 @@ static inline ssize_t timed_write(int fd, const void *buffer, size_t size,
   cPoller poller(fd, true);
 
   while (size > 0) {
-
+    errno = 0;
     if(!poller.Poll(timeout_ms)) {
       LOGERR("timed_write: poll() failed");
       return written-size;
