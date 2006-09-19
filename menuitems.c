@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.2 2006-07-21 22:50:58 phintuka Exp $
+ * $Id: menuitems.c,v 1.3 2006-09-19 08:24:09 phintuka Exp $
  *
  */
 
@@ -14,27 +14,33 @@
 
 // --- cMenuEditTypedIntItem -------------------------------------------------
 
-cMenuEditTypedIntItem::cMenuEditTypedIntItem(const char *Name, const char *Type, int *Value, int Min, int Max, const char *ZeroText)
-:cMenuEditIntItem(Name,Value,Min,Max)
+cMenuEditTypedIntItem::cMenuEditTypedIntItem(const char *Name, const char *Type, int *Value, 
+					     int Min, int Max, const char *ZeroString,
+					     const char *MinString, const char *MaxString)
+:cMenuEditIntItem(Name,Value,Min,Max,MinString,MaxString)
 {
   type = strdup(Type?Type:"");
-  zeroText = ZeroText ? strdup(ZeroText) : NULL;
+  zeroString = ZeroString ? strdup(ZeroString) : NULL;
   Set();
 }
 
 cMenuEditTypedIntItem::~cMenuEditTypedIntItem()
 {
   free(type);
-  if(zeroText)
-    free(zeroText);
+  if(zeroString)
+    free(zeroString);
 }
 
 void cMenuEditTypedIntItem::Set(void)
 {
-  char buf[16];
-  if(zeroText && *value == 0) {
-    SetValue(zeroText);
-  } else {
+  char buf[64];
+  if(zeroString && *value == 0) 
+    SetValue(zeroString);
+  else if (minString && *value == min)
+    SetValue(minString);
+  else if (maxString && *value == max)
+    SetValue(maxString);
+  else {
     snprintf(buf, sizeof(buf), "%d %s", *value, type);
     SetValue(buf);
   }
