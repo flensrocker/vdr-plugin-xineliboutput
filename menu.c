@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.14 2006-09-12 16:39:29 phintuka Exp $
+ * $Id: menu.c,v 1.15 2006-09-19 06:06:35 phintuka Exp $
  *
  */
 
@@ -401,184 +401,6 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
   return state;
 }
 
-//--------------------------- cMenuTestImages-------------------------------
-
-#include <vdr/osdbase.h>
-
-#define OSD_W (720-2)
-#define OSD_H (576-2)
-#define OSD_X (1)
-#define OSD_Y (1)
-
-//
-// cTestGrayscale
-//
-
-class cTestGrayscale : public cOsdObject 
-{
-  private:
-    cOsd *m_Osd;
-
-  public:
-    cTestGrayscale() { m_Osd = NULL; }
-    virtual ~cTestGrayscale() { delete m_Osd; }
-
-    virtual void Show();
-    virtual eOSState ProcessKey(eKeys Key);
-};
-
-void cTestGrayscale::Show()
-{
-  tArea areas [] = { {      0, 0, OSD_W/2 - 1, OSD_H - 1, 8},
-                     {OSD_W/2, 0,   OSD_W - 1, OSD_H - 1, 8}};
-  int i;
-
-  if(!m_Osd)
-    m_Osd = cOsdProvider::NewOsd(OSD_X, OSD_Y);
-
-  if(m_Osd) {
-    if (m_Osd->CanHandleAreas(areas, sizeof(areas) / sizeof(tArea) ) == oeOk) {
-      m_Osd->SetAreas(areas, sizeof(areas) / sizeof(tArea));
-      m_Osd->Flush();
-
-      // border
-      m_Osd->DrawRectangle(0, 0, OSD_W - 1, OSD_H - 1, 0xff000000);
-      m_Osd->DrawRectangle(1, 1, OSD_W - 2, OSD_H - 2, 0xff000000);
-
-      // background
-      m_Osd->DrawRectangle(2, 2, 2+103, OSD_H - 3, 0xffffffff); 
-      m_Osd->DrawRectangle(OSD_W-2-103, 2, OSD_W-2, OSD_H - 3, 0xff000000); 
-
-      for(i=0; i<0xff; i++)
-	m_Osd->DrawRectangle(2+103+2*i, 2, 2+103+2*(i+1), OSD_H - 3, 
-			     0xff000000|(i*0x00010101)/*=(i<<16)|(i<<8)|(i)*/);
-      // line
-      m_Osd->DrawRectangle(1, OSD_H/2-20, OSD_W - 2, OSD_H/2, 0xffffffff);
-      m_Osd->DrawRectangle(1, OSD_H/2+1, OSD_W - 2, OSD_H/2+21, 0xff000000);
-
-      // Cross
-      for(int x=0; x<OSD_W;x++) {
-	m_Osd->DrawPixel(x, x*OSD_H/OSD_W, 0x00000000);
-	m_Osd->DrawPixel(x, OSD_H - 1 - x*OSD_H/OSD_W, 0x00000000);
-      }
-
-      // commit
-      m_Osd->Flush();
-    }
-
-  }
-}
-
-eOSState cTestGrayscale::ProcessKey(eKeys key)
-{
-  char s[32];
-  static int br = xc.brightness;
-  static int co = xc.contrast;
-  eOSState state = cOsdObject::ProcessKey(key);
-  if (state == osUnknown) {
-    switch (key & ~k_Repeat) {
-      case kOk:
-      case kBack:
-	return osEnd;
-      case kRight:
-	br += 0xffff/1024*2;
-      case kLeft:
-	br -= 0xffff/1024;
-	sprintf(s, "b %d", br);
-	m_Osd->DrawText(400, 100, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan);
-	m_Osd->Flush();
-	return osContinue;	
-      case kUp:
-	co += 0xffff/1024*2;
-      case kDown:
-	co -= 0xffff/1024;
-	sprintf(s, "c %d", co);
-	m_Osd->DrawText(400, 130, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan);
-	m_Osd->Flush();
-	return osContinue;
-    }
-  }
-  return state;
-}
-
-
-//
-// cTestBitmap
-//
-
-class cTestBitmap : public cOsdObject 
-{
-  private:
-    cOsd *m_Osd;
-    int bpp;
-
-  public:
-    cTestBitmap(int _bpp = 1) { 
-      m_Osd = NULL; 
-      if(_bpp<1) _bpp = 1; 
-      if(_bpp>6) _bpp = 6; 
-      bpp = 1<<_bpp; 
-    }
-    virtual ~cTestBitmap() { delete m_Osd; }
-
-    virtual void Show();
-    virtual eOSState ProcessKey(eKeys Key);
-};
-
-void cTestBitmap::Show()
-{
-  tArea areas [] = {{ 0, 0, OSD_W - 1, OSD_H - 1, 8}};
-  int x, y, bit = 0;
-
-  if(!m_Osd) {
-    m_Osd = cOsdProvider::NewOsd(OSD_X, OSD_Y);
-
-    if(m_Osd) {
-      if (m_Osd->CanHandleAreas(areas, sizeof(areas) / sizeof(tArea) ) == oeOk) {
-	m_Osd->SetAreas(areas, sizeof(areas) / sizeof(tArea));
-	m_Osd->Flush();
-      }
-    }      
-  }
-   
-  if(m_Osd) {
-    for(x=0; x<OSD_W; x+=bpp) {
-      bit = (x/bpp) & 1;
-      for(y=0; y<OSD_H; y+=bpp) {
-	m_Osd->DrawRectangle(x, y, x+bpp, y+bpp, bit?0xffffffff:0xff000000);
-	bit = !bit;
-      }
-    }
-    // commit
-    m_Osd->Flush();
-  }
-}
-
-eOSState cTestBitmap::ProcessKey(eKeys key)
-{
-  eOSState state = cOsdObject::ProcessKey(key);
-
-  if (state == osUnknown) {
-    switch (key & ~k_Repeat) {
-      case kOk:
-      case kBack:
-	return osEnd;
-      case kRight:
-	bpp = (bpp<64) ? (bpp<<1) : 1;
-	Show();
-	return osContinue;
-      case kLeft:
-	bpp = (bpp>1) ? (bpp>>1) : 64;
-	Show();
-	return osContinue;	
-      default:
-	break;
-    }
-  }
-  return state;
-}
 
 //-------------------------- cDvdSpuTrackSelect ------------------------------
 
@@ -697,15 +519,6 @@ cMenuXinelib::cMenuXinelib()
     default: break;
   }
 
-  /* #warning should be separate plugin ? fbconfig / x11config */
-  Add(NewTitle("Test images"));
-  char buf[128];
-  Add(new cOsdItem(tr("Grayscale"), osUser8));
-  sprintf(buf, "%s 1bit", tr("Bitmap"));
-  Add(new cOsdItem(buf, osUser9));
-  sprintf(buf, "%s 4bit", tr("Bitmap"));
-  Add(new cOsdItem(buf, osUser10));
-
   xc.main_menu_mode = ShowMenu;
 }
 
@@ -770,24 +583,6 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     case osUser7:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cEqualizer();
-	return osPlugin;
-      }
-      state = osContinue;
-    case osUser8:
-      if(!g_PendingMenuAction) {
-	g_PendingMenuAction = new cTestGrayscale();
-	return osPlugin;
-      }
-      return osContinue;
-    case osUser9:
-      if(!g_PendingMenuAction) {
-	g_PendingMenuAction = new cTestBitmap(1);
-	return osPlugin;
-      }
-      return osContinue;
-    case osUser10:
-      if(!g_PendingMenuAction) {
-	g_PendingMenuAction = new cTestBitmap(4);
 	return osPlugin;
       }
       return osContinue;
