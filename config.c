@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.11 2006-09-10 14:18:50 phintuka Exp $
+ * $Id: config.c,v 1.12 2006-09-19 04:11:09 phintuka Exp $
  *
  */
 
@@ -146,6 +146,19 @@ const char *config_t::AutocropOptions(void)
   return NULL;
 }
 
+const char *config_t::FfmpegPpOptions(void)
+{
+  if(ffmpeg_pp) {
+    static char buffer[128];
+    if(*ffmpeg_pp_mode)
+      sprintf(buffer, "quality=%d,mode=%s", ffmpeg_pp_quality, ffmpeg_pp_mode);
+    else
+      sprintf(buffer, "quality=%d", ffmpeg_pp_quality);
+    return buffer;
+  }
+  return NULL;
+}
+
 config_t::config_t() {
   memset(this, 0, sizeof(config_t));
 
@@ -173,6 +186,9 @@ config_t::config_t() {
   pes_buffers          = i_pesBufferSize[PES_BUFFERS_SMALL_250];
   strcpy(deinterlace_method, s_deinterlaceMethods[DEINTERLACE_NONE]);
   strcpy(deinterlace_opts, DEFAULT_DEINTERLACE_OPTS);
+  ffmpeg_pp            = 0;
+  ffmpeg_pp_quality    = 3;
+  strcpy(ffmpeg_pp_mode, "de");
   display_aspect       = 0;     /* auto */
 
   hide_main_menu       = 0;
@@ -228,6 +244,11 @@ config_t::config_t() {
 
   m_ProcessedArgs = NULL;
 };
+
+static uint8_t g_hidden_options[sizeof(config_t)] = {0};
+static uint8_t g_readonly_options[sizeof(config_t)] = {0};
+uint8_t *config_t::hidden_options   = &g_hidden_options[0];
+uint8_t *config_t::readonly_options = &g_readonly_options[0];
 
 bool config_t::ProcessArg(const char *Name, const char *Value)
 {
@@ -318,6 +339,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
               break;
     case 'c': exit_on_close = 1;
               break;
+
     default:  return false;
     }
   }
@@ -363,13 +385,13 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.AlphaCorrection"))    alpha_correction = atoi(Value);
   else if (!strcasecmp(Name, "OSD.AlphaCorrectionAbs")) alpha_correction_abs = atoi(Value);
 
-  else if (!strcasecmp(Name, "RemoteMode"))        remote_mode = atoi(Value);
-  else if (!strcasecmp(Name, "Remote.ListenPort")) listen_port = atoi(Value);
-  else if (!strcasecmp(Name, "Remote.Keyboard"))   use_remote_keyboard = atoi(Value);
-  else if (!strcasecmp(Name, "Remote.UseTcp"))   remote_usetcp = atoi(Value);
-  else if (!strcasecmp(Name, "Remote.UseUdp"))   remote_useudp = atoi(Value);
-  else if (!strcasecmp(Name, "Remote.UseRtp"))   remote_usertp = atoi(Value);
-  else if (!strcasecmp(Name, "Remote.UsePipe"))  remote_usepipe= atoi(Value);
+  else if (!strcasecmp(Name, "RemoteMode"))          remote_mode = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.ListenPort"))   listen_port = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.Keyboard"))     use_remote_keyboard = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.UseTcp"))       remote_usetcp = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.UseUdp"))       remote_useudp = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.UseRtp"))       remote_usertp = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.UsePipe"))      remote_usepipe= atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseBroadcast")) remote_usebcast = atoi(Value);
 
   else if (!strcasecmp(Name, "Remote.Rtp.Address"))  strncpy(remote_rtp_addr, Value, 20);
@@ -377,8 +399,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.Rtp.TTL"))      remote_rtp_ttl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.AlwaysOn")) remote_rtp_always_on = atoi(Value);
 
-  else if (!strcasecmp(Name, "Decoder.Priority"))        decoder_priority=strstra(Value,s_decoderPriority,1);
-  else if (!strcasecmp(Name, "Decoder.PesBuffers"))      pes_buffers=atoi(Value);
+  else if (!strcasecmp(Name, "Decoder.Priority"))    decoder_priority=strstra(Value,s_decoderPriority,1);
+  else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);
 
   else if (!strcasecmp(Name, "Video.Driver"))      strcpy(video_driver, Value);
   else if (!strcasecmp(Name, "Video.Port"))        strcpy(video_port, Value);
@@ -396,6 +418,10 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Contrast"))    contrast = atoi(Value);
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
   else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
+
+  else if (!strcasecmp(Name, "Post.pp.Enable"))   ffmpeg_pp = atoi(Value);
+  else if (!strcasecmp(Name, "Post.pp.Quality"))  ffmpeg_pp_quality = atoi(Value);
+  else if (!strcasecmp(Name, "Post.pp.Mode"))     strcpy(ffmpeg_pp_mode, Value);
 
   else if (!strcasecmp(Name, "BrowseFilesDir"))    strcpy(browse_files_dir, Value);
   else if (!strcasecmp(Name, "BrowseMusicDir"))    strcpy(browse_music_dir, Value);

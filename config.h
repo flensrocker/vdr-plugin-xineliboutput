@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.7 2006-08-25 03:55:05 phintuka Exp $
+ * $Id: config.h,v 1.8 2006-09-19 04:11:09 phintuka Exp $
  *
  */
 
@@ -120,6 +120,11 @@
 #define SPEAKERS_A52_PASSTHRU  12 
 #define SPEAKERS_count         13 
 
+#define HIDDEN_OPTION(opt) \
+  (xc.IsOptionHidden(xc.opt))
+#define READONLY_OPTION(opt) \
+  (xc.IsOptionReadOnly(xc.opt))
+
 typedef enum {
   ShowMenu   = 0,
   ShowEq     = 1,
@@ -173,6 +178,9 @@ class config_t {
     int  pes_buffers;
     char deinterlace_method[32];
     char deinterlace_opts[256];
+    int  ffmpeg_pp;  
+    int  ffmpeg_pp_quality;   // 0...6
+    char ffmpeg_pp_mode[256];
     int  display_aspect;
     
     int  hide_main_menu;
@@ -227,16 +235,32 @@ class config_t {
     int  force_primary_device;
 
     config_t();
+
     bool SetupParse(const char *Name, const char *Value);
     bool ProcessArgs(int argc, char *argv[]);
 
     bool IsImageFile(const char *);
     bool IsVideoFile(const char *);
+
     const char *AutocropOptions(void);
+    const char *FfmpegPpOptions(void);
+
+    template<typename T> bool IsOptionHidden(T & option)
+      { return hidden_options[(int)((long int)&option - (long int)this)];};
+    template<typename T> bool IsOptionReadOnly(T & option)
+      { return readonly_options[(int)((long int)&option - (long int)this)];};
 
   protected:
     bool ProcessArg(const char *Name, const char *Value);
     char *m_ProcessedArgs;
+
+    static uint8_t *hidden_options;
+    static uint8_t *readonly_options;
+
+    template<typename T> void HideOption(T & option)
+      { hidden_options[(int)((long int)&option - (long int)this)] = 1;};
+    template<typename T> void ReadOnlyOption(T & option)
+      { readonly_options[(int)((long int)&option - (long int)this)] = 1;};
 };
 
 // Global instance
