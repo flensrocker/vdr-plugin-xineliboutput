@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.13 2006-09-01 15:14:30 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.14 2006-09-19 00:56:13 phintuka Exp $
  *
  */
 
@@ -43,20 +43,29 @@ volatile int terminate_key_pressed = 0;
 
 static int read_key(void)
 {
-  /* from vdr, remote.c */
+  unsigned char ch;
+  int err;
   struct pollfd pfd;
   pfd.fd = STDIN_FILENO;
   pfd.events = POLLIN;
-  if(poll(&pfd, 1, 50) == 1) {
-    unsigned char ch = 0;
-    int r = read(STDIN_FILENO, &ch, 1);
-    if (r == 1)
+
+  errno = 0;
+  if(1 == (err=poll(&pfd, 1, 50))) {
+
+    if (1 == (err = read(STDIN_FILENO, &ch, 1)))
       return (int)ch;
-    if (r < 0) {
-      LOGERR("read_key: read failed");
-      return -2;
-    }
+
+    if (err < 0)
+      LOGERR("read_key: read(stdin) failed");
+    else
+      LOGERR("read_key: read(stdin) failed: no stdin");
+    return -2;
+
+  } else if(err < 0) {
+    LOGERR("read_key: poll(stdin) failed");
+    return -2;
   }
+
   return -1;
 }
 
