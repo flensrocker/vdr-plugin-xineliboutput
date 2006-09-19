@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.15 2006-09-19 06:06:35 phintuka Exp $
+ * $Id: menu.c,v 1.16 2006-09-19 08:26:38 phintuka Exp $
  *
  */
 
@@ -508,7 +508,8 @@ cMenuXinelib::cMenuXinelib()
   ctrl_headphone = NULL;
 #endif
 
-  Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"),"%", &compression, 100, 500, tr("Off")));
+  Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"),"%", 
+						      &compression, 100, 500, NULL, tr("Off")));
 
   Add(new cOsdItem(tr("Audio equalizer >>"), osUser7));
 
