@@ -682,12 +682,18 @@ static int _pplugin_enable_post(post_plugins_t *fe, const char *name,
 	*found = 1;
 
 	if(args && *args) {
-	  char *tmp = strdup(args);
-	  __pplugin_update_parameters(post_elements[i]->post, tmp);
-	  free(tmp);
-	  if(post_elements[i]->args)
-	    free(post_elements[i]->args);
-	  post_elements[i]->args = strdup(args);
+	  if(post_elements[i]->enable != 2) {
+	    char *tmp = strdup(args);
+	    __pplugin_update_parameters(post_elements[i]->post, tmp);
+	    free(tmp);
+	    if(post_elements[i]->args)
+	      free(post_elements[i]->args);
+	    post_elements[i]->args = strdup(args);
+	  } else {
+	    LOGDBG("  * enable post %s, parameters fixed in command line.", name);
+	    LOGDBG("      requested: %s", args ? : "none");
+	    LOGDBG("      using    : %s", post_elements[i]->args ? : "none");
+	  }
 	}
       }
 
