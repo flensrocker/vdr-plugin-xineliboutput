@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.20 2006-09-03 12:11:50 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.21 2006-09-19 04:20:31 phintuka Exp $
  *
  */
 
@@ -350,6 +350,11 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
   return len;
 }
 
+void cXinelibServer::SetHDMode(bool On) 
+{
+  cXinelibThread::SetHDMode(On);
+  // TODO
+}
 
 void cXinelibServer::Xine_Sync(void)
 {
@@ -1034,6 +1039,8 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
   ConfigurePostprocessing("autocrop",  xc.autocrop    ? true : false, 
 			  xc.AutocropOptions());
+  ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
+			  xc.FfmpegPpOptions());
 #ifdef ENABLE_TEST_POSTPLUGINS
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
 #endif

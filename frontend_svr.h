@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.7 2006-09-03 12:11:50 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.8 2006-09-19 04:20:31 phintuka Exp $
  *
  */
 
@@ -47,6 +47,7 @@ class cXinelibServer : public cXinelibThread
     virtual int  Play_PES(const uchar *buf, int len);
     virtual void OsdCmd(void *cmd);
     virtual int64_t GetSTC();
+    virtual void SetHDMode(bool On);
 
     // Image grabbing
     virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality, 
