@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.17 2006-09-19 07:58:00 phintuka Exp $
+ * $Id: frontend.c,v 1.18 2006-09-20 12:30:48 phintuka Exp $
  *
  */
 
@@ -37,6 +37,13 @@
 
 //#define LOG_CONTROL_MESSAGES
 //#define XINELIBOUTPUT_LOG_KEYS
+
+#ifndef STARTUP_IMAGE_FILE
+#  define  STARTUP_IMAGE_FILE "/usr/share/vdr/xineliboutput/logo.mpv"
+#endif
+#ifndef STARTUP_MAX_SIZE
+#  define STARTUP_MAX_SIZE (256*1024)
+#endif
 
 //----------------------------- cXinelibThread --------------------------------
 
@@ -439,12 +446,50 @@ bool cXinelibThread::BlankDisplay(void)
 bool cXinelibThread::LogoDisplay(void)
 {
   TRACEF("cXinelibThread::LogoDisplay");
-
+  
+  char *path = NULL;
+  if(Setup.FileName()) {
+    char *setup_path = strdup(Setup.FileName());
+    char *end = strrchr(setup_path, '/');
+    if(end) {
+      *end = 0;
+      asprintf(&path, "%s/plugins/xineliboutput/logo.mpv", setup_path);
+    }
+    free(setup_path);
+  }
+  
+  int fd = path ? open(path, O_RDONLY) : -1;
+  if(fd<0) {
+    free(path);
+    path = strdup(STARTUP_IMAGE_FILE);
+    fd = open(path, O_RDONLY);
+  }
+  
+  if(fd >= 0) {
+    uint8_t *data = (uint8_t*)malloc(STARTUP_MAX_SIZE);
+    int datalen = read(fd, data, STARTUP_MAX_SIZE);
+    if(datalen == STARTUP_MAX_SIZE) {
+      LOGMSG("WARNING: custom startup image %s too large", path);
+    } else if(datalen<=0) {
+      LOGERR("error reading custom startup image %s", path);
+    } else {
+      LOGMSG("using custom startup image %s", path);
+      bool r = Play_Mpeg2_ES(data, datalen, VIDEO_STREAM);
+      free(data);
+      free(path);
+      for(int i=0; i<5 && !Flush(100); i++)
+	;
+      return r;
+    }
+    free(data);
+    close(fd);
+  }
+  free(path);
+  
+  /* use default image */
   extern const unsigned char v_mpg_vdrlogo[];     // vdrlogo_720x576.c
   extern const int v_mpg_vdrlogo_length;
-#ifdef STARTUP_IMAGE_FILE
-  // load or mmap ?
-#endif
+
   bool r = Play_Mpeg2_ES(v_mpg_vdrlogo, v_mpg_vdrlogo_length, VIDEO_STREAM);
   for(int i=0; i<5 && !Flush(100); i++)
     ;
@@ -471,21 +516,24 @@ bool cXinelibThread::NoSignalDisplay(void)
 int cXinelibThread::Xine_Control(const char *cmd, int p1)
 {
   char buf[128];
-  sprintf(buf, "%s %d", cmd, p1);
+  snprintf(buf, sizeof(buf), "%s %d", cmd, p1);
+  buf[sizeof(buf)-1] = 0;
   return Xine_Control(buf);
 }
 
 int cXinelibThread::Xine_Control(const char *cmd, int64_t p1)
 {
   char buf[128];
-  sprintf(buf, "%s %" PRId64, cmd, p1);
+  snprintf(buf, sizeof(buf), "%s %" PRId64, cmd, p1);
+  buf[sizeof(buf)-1] = 0;
   return Xine_Control(buf);
 }
 
 int cXinelibThread::Xine_Control(const char *cmd, const char *p1)
 {
   char buf[1024];
-  sprintf(buf, "%s %s", cmd, p1);
+  snprintf(buf, sizeof(buf), "%s %s", cmd, p1);
+  buf[sizeof(buf)-1] = 0;
   return Xine_Control(buf);
 }
 
@@ -493,10 +541,12 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 			      bool LoopPlay)
 {
   TRACEF("cXinelibThread::PlayFile");
-  char buf[2048];
+
+  char buf[4096];
   m_bEndOfStreamReached = false;
-  sprintf(buf, "PLAYFILE %s %d %s %s\r\n",
-	  LoopPlay ? "Loop" : "", Position, xc.audio_visualization, FileName ? FileName : "");
+  snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s\r\n",
+	   LoopPlay ? "Loop" : "", Position, xc.audio_visualization, FileName ? FileName : "");
+  buf[sizeof(buf)-1] = 0;
   int result = PlayFileCtrl(buf);
 
   if(!FileName || result != 0) {
@@ -521,18 +571,18 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 
 int cXinelibThread::ConfigureOSD(bool prescale_osd, bool unscaled_osd) 
 {
-  char s[256];
-  sprintf(s, "OSDSCALING %d", prescale_osd);
+  char buf[256];
+  sprintf(buf, "OSDSCALING %d", prescale_osd);
   if(!xc.prescale_osd_downscale)
-    strcat(s, " NoDownscale");
+    strcat(buf, " NoDownscale");
   if(unscaled_osd)
-    strcat(s, " UnscaledAlways");
+    strcat(buf, " UnscaledAlways");
   if(xc.unscaled_osd_opaque)
-    strcat(s, " UnscaledOpaque");
+    strcat(buf, " UnscaledOpaque");
   if(xc.unscaled_osd_lowresvideo)
-    strcat(s, " UnscaledLowRes");
+    strcat(buf, " UnscaledLowRes");
 
-  return Xine_Control(s);
+  return Xine_Control(buf);
 }
 
 int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method, 
@@ -542,7 +592,7 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 					    int audio_surround,
 					    int speaker_type) 
 {
-  char tmp[1024];
+  char buf[1024];
   int r = true;
 
   if(strcmp(deinterlace_method, "tvtime")) 
@@ -553,13 +603,13 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
   r = Xine_Control("AUDIOCOMPRESSION", audio_compression) && r;
   r = Xine_Control("AUDIOSURROUND", audio_surround) && r;
   r = Xine_Control("SPEAKERS", speaker_type) && r;
-  sprintf(tmp,"EQUALIZER %d %d %d %d %d %d %d %d %d %d",
+  sprintf(buf,"EQUALIZER %d %d %d %d %d %d %d %d %d %d",
 	  audio_equalizer[0],audio_equalizer[1],
 	  audio_equalizer[2],audio_equalizer[3],
 	  audio_equalizer[4],audio_equalizer[5],
 	  audio_equalizer[6],audio_equalizer[7],
 	  audio_equalizer[8],audio_equalizer[9]);
-  r = Xine_Control(tmp) && r;
+  r = Xine_Control(buf) && r;
 
   if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
     //fe->post_open(fe, xc.audio_visualization, NULL);
@@ -577,17 +627,19 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 
 int cXinelibThread::ConfigurePostprocessing(const char *name, bool on, const char *args)
 {
-  char tmp[1024];  
+  char buf[1024];  
   if(on) {
-    sprintf(tmp, "POST %s On %s", (name&&*name)?name:"0", args?args:"");
-    return Xine_Control(tmp);
+    snprintf(buf, sizeof(buf), "POST %s On %s", (name&&*name)?name:"0", args?args:"");
+    buf[sizeof(buf)-1] = 0;
+    return Xine_Control(buf);
   } else {
     // 0 - audio vis.
     // 1 - audio post
     // 2 - video post
     //return fe->post_close(fe, name, -1);
-    sprintf(tmp, "POST %s Off", (name&&*name)?name:"0");
-    return Xine_Control(tmp);
+    snprintf(buf, sizeof(buf), "POST %s Off", (name&&*name)?name:"0");
+    buf[sizeof(buf)-1] = 0;
+    return Xine_Control(buf);
   }
   return -1;
 }
