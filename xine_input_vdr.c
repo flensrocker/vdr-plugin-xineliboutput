@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.50 2006-09-17 02:59:11 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.51 2006-09-20 05:42:12 phintuka Exp $
  *
  */
 
@@ -112,9 +112,9 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   va_list argp;
   char buf[512];
   va_start(argp, fmt);
-  vsnprintf(buf, 512, fmt, argp);
+  vsnprintf(buf, sizeof(buf), fmt, argp);
   if(!bLogToSysLog) {
-    printf(LOG_MODULENAME "%s\n", buf);
+    printf("[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
   } else {
     syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }
@@ -950,7 +950,7 @@ static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
   va_list argp;
   char buf[512];
   va_start(argp, fmt);
-  vsnprintf(buf, 512, fmt, argp);
+  vsnprintf(buf, sizeof(buf), fmt, argp);
   write_control(this, buf);
   va_end(argp);
 }
@@ -2351,7 +2351,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event);
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
-  char filename[1024]="", *subs = NULL, av[64], *pt2=av;
+  char filename[4096]="", *subs = NULL, av[64], *pt2=av;
   int loop = 0, pos = 0, err = 0;
 
   while(*pt==' ') pt++;
@@ -2373,8 +2373,8 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   *pt2 = 0;
   while(*pt == ' ') pt++;
 
-  strncpy(filename, pt, 1023);
-  filename[1023] = 0;
+  strncpy(filename, pt, sizeof(filename));
+  filename[sizeof(filename)-1] = 0;
 
   if(*filename) {
     this->loop_play = 0;
@@ -2431,8 +2431,9 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	this->funcs.fe_control(this->funcs.fe_handle, 
 			       has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
 	if(!has_video && *av && strcmp(av, "none")) {
-	  char str[64];
-	  sprintf(str, "POST %s On\r\n", av);
+	  char str[128];
+	  snprintf(str, sizeof(str), "POST %s On\r\n", av);
+	  str[sizeof(str)-1] = 0;
 	  this->funcs.fe_control(this->funcs.fe_handle, str);
 	} else {
 	  this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
@@ -2946,13 +2947,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       }
 
   } else if(!strncasecmp(cmd, "VERSION ", 7)) {
-    if(!strncmp(XINELIBOUTPUT_VERSION " ", cmd+8, 
-		strlen(XINELIBOUTPUT_VERSION)+1)) {
+    if(strncmp(XINELIBOUTPUT_VERSION " ", cmd+8, 
+	       strlen(XINELIBOUTPUT_VERSION)+1)) {
       if(this->fd_control < 0) {
       /* Check should use protocol version.
        * In remote mode check is done in connect */
 	LOGMSG("WARNING! xineplug_inp_xvdr.so and libvdr-xineliboutput.so "
-	       "are from different version");
+	       "are from different version (%s and %s)", XINELIBOUTPUT_VERSION, cmd+8);
 	LOGMSG("Re-install plugin !");
 	/*abort();*/
       }
@@ -3224,7 +3225,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 static void *vdr_control_thread(void *this_gen)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  char line[1024];
+  char line[8128];
   int err;
   int counter = 100;
 
@@ -3267,7 +3268,7 @@ static void *vdr_control_thread(void *this_gen)
         LOGMSG("invalid parameter in control message %s", line);
         break;
       case CONTROL_DISCONNECTED:
-        LOGERR("control stream read error - disconnected ?");
+        LOGMSG("control stream read error - disconnected ?");
         this->control_running = 0;
         break;
       default:
