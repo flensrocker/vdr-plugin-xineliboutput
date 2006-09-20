@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.51 2006-09-20 05:42:12 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.52 2006-09-20 07:25:27 phintuka Exp $
  *
  */
 
@@ -183,6 +183,7 @@ typedef struct udp_data_s udp_data_t;
 typedef struct vdr_input_class_s {
   input_class_t     input_class;
   xine_t           *xine;
+  char             *mrls[ 2 ];
 } vdr_input_class_t;
 
 /* input plugin */
@@ -5058,6 +5059,13 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 }
 
 /**************************** Plugin class *******************************/
+/* Callback on default mrl change */
+static void vdr_class_default_mrl_change_cb(void *data, xine_cfg_entry_t *cfg) {
+  vdr_input_class_t *class = (vdr_input_class_t *) data;
+  
+  class->mrls[0] = cfg->str_value;
+} 
+
 
 static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 				    xine_stream_t *stream,
@@ -5184,6 +5192,14 @@ static const char *vdr_class_get_identifier (input_class_t *this_gen)
   return "xvdr";
 }
 
+static char **vdr_plugin_get_autplay_list(input_class_t *this_gen, int *num_files) {
+  vdr_input_class_t *class = (vdr_input_class_t *)this_gen;
+
+  *num_files = 1;
+  return class->mrls;
+       
+}
+
 static void vdr_class_dispose (input_class_t *this_gen) 
 {
   vdr_input_class_t *cls = (vdr_input_class_t *) this_gen;
@@ -5193,16 +5209,26 @@ static void vdr_class_dispose (input_class_t *this_gen)
 static void *init_class (xine_t *xine, void *data) 
 {
   vdr_input_class_t  *this;
+  config_values_t     *config = xine->config;
 
   this = (vdr_input_class_t *) xine_xmalloc (sizeof (vdr_input_class_t));
 
   this->xine   = xine;
+  
+  this->mrls[ 0 ] = config->register_string(config,
+                                            "media.xvdr.default_mrl",
+                                            "xvdr://127.0.0.1#nocache;demux:mpeg_block",
+                                            _("default VDR host"),
+                                            _("The default VDR host"),
+                                            10, vdr_class_default_mrl_change_cb, (void *)this);
+  
+  this->mrls[ 1 ] = 0;
 
   this->input_class.get_instance       = vdr_class_get_instance;
   this->input_class.get_identifier     = vdr_class_get_identifier;
   this->input_class.get_description    = vdr_class_get_description;
   this->input_class.get_dir            = NULL;
-  this->input_class.get_autoplay_list  = NULL;
+  this->input_class.get_autoplay_list  = vdr_plugin_get_autplay_list;
   this->input_class.dispose            = vdr_class_dispose;
   this->input_class.eject_media        = NULL;
 
