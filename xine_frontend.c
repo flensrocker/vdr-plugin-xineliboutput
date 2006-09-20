@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.20 2006-09-16 13:39:21 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.21 2006-09-20 07:06:12 phintuka Exp $
  *
  */
 
@@ -52,7 +52,7 @@ static void x_syslog(int level, const char *fmt, ...)
   va_list argp;
   char buf[512];
   va_start(argp, fmt);
-  vsnprintf(buf, 512, fmt, argp);
+  vsnprintf(buf, sizeof(buf), fmt, argp);
   if(!LogToSysLog) {
     printf(LOG_MODULENAME "%s\n", buf);
   } else {
@@ -488,6 +488,34 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   this->xine->config->update_num(this->xine->config,"video.device.xv_double_buffer", 1);
   this->xine->config->update_num(this->xine->config,"engine.buffers.video_num_buffers", pes_buffers);
 
+#ifdef IS_FBFE
+  if(fbdev) {
+    if(!strcmp(video_driver, "fb"))
+      this->xine->config->update_string(this->xine->config,"video.device.fb_device", fbdev);
+    else if(!strcmp(video_driver, "DirectFB")) { 
+      /* DirectFBInit (NULL, NULL); */
+      /* DirectFBSetOption ("fbdev", video_port); */
+      char *orig = strdup(getenv("DFBARGS")), *head = NULL, *tail = NULL, *tmp = NULL;
+      if(orig && (head=strstr(orig,"fbdev="))) {
+	tail = strchr(head, ',');
+	if(head == orig)
+	  head = NULL;
+	else
+	  *head = 0;
+	asprintf(&tmp, "%sfbdev=%s%s",
+		head ? orig : "", fbdev, tail ? tail : "");
+      } else {
+	asprintf(&tmp, "fbdev=%s", fbdev);
+      }
+      LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
+	     getenv("DFBARGS"), tmp);
+      setenv("DFBARGS", tmp, 1);
+      free(tmp);
+      free(orig);
+    }
+  }
+#endif
+
   this->playback_finished = 0;
 
   /* create video port */
@@ -601,7 +629,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 {
   fe_t *this = (fe_t*)this_gen;
   int result = 0;
-  char url[1024] = "";
+  char *url = NULL;
 
   if(!this)
     return 0;
@@ -609,17 +637,16 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   this->input = NULL;
   this->playback_finished = 1;
 
-  if(!mrl)
-    mrl = "xvdr://";
-
-  sprintf(url, "%s#nocache;demux:mpeg_block", mrl);
+  asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : "xvdr://");
 
   result = xine_open(this->stream, url);
 
   if(!result) {
-    LOGMSG("fe_xine_open: xine_open(\"%s\") failed", mrl);
+    LOGMSG("fe_xine_open: xine_open(\"%s\") failed", url);
+    free(url);
     return 0;
   }
+  free(url);
 
 #if 0
   /* priority */
@@ -827,10 +854,11 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
       LOGMSG("enabling picture-in-picture (\"%s\") post plugin", initstr);
   }
 
-  if(args)
-    sprintf(initstr, "%s:%s", name, args);
-  else
-    strcpy(initstr, name);
+  if(args) {
+    snprintf(initstr, sizeof(initstr), "%s:%s", name, args);
+    initstr[sizeof(initstr)-1] = 0;
+  } else
+    strncpy(initstr, name, sizeof(initstr));
 
   LOGDBG("opening post plugin: %s", initstr);
 
@@ -1167,7 +1195,7 @@ static void *fe_control(void *fe_handle, const char *cmd)
 	 !xine_play(posts->pip_stream, 0, 0)) {
 	LOGERR("  pip stream open/play failed");
       } else {
-	char params[256];
+	char params[64];
 	sprintf(params, "pip_num=1,x=%d,y=%d,w=%d,h=%d", x,y,w,h);
 	fe_post_open(this, "Pip", params);
 	return posts->pip_stream;
