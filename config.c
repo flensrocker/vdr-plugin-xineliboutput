@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.12 2006-09-19 04:11:09 phintuka Exp $
+ * $Id: config.c,v 1.13 2006-09-20 01:51:31 phintuka Exp $
  *
  */
 
@@ -15,6 +15,7 @@
 
 #include <vdr/config.h>
 
+#include "logdefs.h"
 #include "config.h"
 
 #define DEFAULT_DEINTERLACE_OPTS "method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
@@ -346,6 +347,13 @@ bool config_t::ProcessArgs(int argc, char *argv[])
   return true;
 }
 
+#define STRN0CPY(dst, src) \
+  do { \
+    strn0cpy(dst, src, sizeof(dst)-1); \
+    if(strlen(src) > sizeof(dst)-1) \
+      LOGMSG("WARNING: Setting %s truncated to %s !", Name, dst); \
+  } while(0)
+
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
   char *pt;
@@ -353,8 +361,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
      *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ')
     return true;
 
-       if (!strcasecmp(Name, "Frontend"))           strcpy(local_frontend, Value);
-  else if (!strcasecmp(Name, "Modeline"))           strcpy(modeline, Value);
+       if (!strcasecmp(Name, "Frontend"))           STRN0CPY(local_frontend, Value);
+  else if (!strcasecmp(Name, "Modeline"))           STRN0CPY(modeline, Value);
   else if (!strcasecmp(Name, "VideoModeSwitching")) modeswitch = atoi(Value);
   else if (!strcasecmp(Name, "Fullscreen"))         fullscreen = atoi(Value);
   else if (!strcasecmp(Name, "DisplayAspect"))      display_aspect = strstra(Value, s_aspects, 0);
@@ -364,13 +372,13 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "X11.WindowHeight")) height = atoi(Value);
   else if (!strcasecmp(Name, "X11.UseKeyboard"))  use_x_keyboard = atoi(Value);
 
-  else if (!strcasecmp(Name, "Audio.Driver")) strcpy(audio_driver, Value);
-  else if (!strcasecmp(Name, "Audio.Port"))   strcpy(audio_port, Value);
+  else if (!strcasecmp(Name, "Audio.Driver")) STRN0CPY(audio_driver, Value);
+  else if (!strcasecmp(Name, "Audio.Port"))   STRN0CPY(audio_port, Value);
   else if (!strcasecmp(Name, "Audio.Speakers")) speaker_type = strstra(Value, s_speakerArrangements, 
 								       SPEAKERS_STEREO);
   else if (!strcasecmp(Name, "Audio.Delay"))  audio_delay = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Compression")) audio_compression = atoi(Value);
-  else if (!strcasecmp(Name, "Audio.Visualization")) strcpy(audio_visualization, Value);
+  else if (!strcasecmp(Name, "Audio.Visualization")) STRN0CPY(audio_visualization, Value);
   else if (!strcasecmp(Name, "Audio.Surround"))  audio_surround = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Upmix"))     audio_upmix = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Headphone")) headphone = atoi(Value);
@@ -394,7 +402,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.UsePipe"))      remote_usepipe= atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseBroadcast")) remote_usebcast = atoi(Value);
 
-  else if (!strcasecmp(Name, "Remote.Rtp.Address"))  strncpy(remote_rtp_addr, Value, 20);
+  else if (!strcasecmp(Name, "Remote.Rtp.Address"))  STRN0CPY(remote_rtp_addr, Value);
   else if (!strcasecmp(Name, "Remote.Rtp.Port"))     remote_rtp_port = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.TTL"))      remote_rtp_ttl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.AlwaysOn")) remote_rtp_always_on = atoi(Value);
@@ -402,11 +410,11 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Decoder.Priority"))    decoder_priority=strstra(Value,s_decoderPriority,1);
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);
 
-  else if (!strcasecmp(Name, "Video.Driver"))      strcpy(video_driver, Value);
-  else if (!strcasecmp(Name, "Video.Port"))        strcpy(video_port, Value);
+  else if (!strcasecmp(Name, "Video.Driver"))      STRN0CPY(video_driver, Value);
+  else if (!strcasecmp(Name, "Video.Port"))        STRN0CPY(video_port, Value);
   else if (!strcasecmp(Name, "Video.Scale"))       scale_video = atoi(Value);
-  else if (!strcasecmp(Name, "Video.DeinterlaceOptions")) strcpy(deinterlace_opts, Value);
-  else if (!strcasecmp(Name, "Video.Deinterlace")) strcpy(deinterlace_method, Value);
+  else if (!strcasecmp(Name, "Video.DeinterlaceOptions")) STRN0CPY(deinterlace_opts, Value);
+  else if (!strcasecmp(Name, "Video.Deinterlace")) STRN0CPY(deinterlace_method, Value);
   else if (!strcasecmp(Name, "Video.FieldOrder"))  field_order=atoi(Value)?1:0;
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);
@@ -419,13 +427,13 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
   else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
 
-  else if (!strcasecmp(Name, "Post.pp.Enable"))   ffmpeg_pp = atoi(Value);
-  else if (!strcasecmp(Name, "Post.pp.Quality"))  ffmpeg_pp_quality = atoi(Value);
-  else if (!strcasecmp(Name, "Post.pp.Mode"))     strcpy(ffmpeg_pp_mode, Value);
+  else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
+  else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);
+  else if (!strcasecmp(Name, "Post.pp.Mode"))      STRN0CPY(ffmpeg_pp_mode, Value);
 
-  else if (!strcasecmp(Name, "BrowseFilesDir"))    strcpy(browse_files_dir, Value);
-  else if (!strcasecmp(Name, "BrowseMusicDir"))    strcpy(browse_music_dir, Value);
-  else if (!strcasecmp(Name, "BrowseImagesDir"))   strcpy(browse_images_dir, Value);
+  else if (!strcasecmp(Name, "BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
+  else if (!strcasecmp(Name, "BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
+  else if (!strcasecmp(Name, "BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
     sscanf(Value,"%d %d %d %d %d %d %d %d %d %d",
