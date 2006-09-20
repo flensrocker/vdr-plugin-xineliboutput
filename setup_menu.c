@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.10 2006-09-19 10:04:00 phintuka Exp $
+ * $Id: setup_menu.c,v 1.11 2006-09-20 01:53:50 phintuka Exp $
  *
  */
 
@@ -629,8 +629,8 @@ void cMenuSetupVideo::Store(void)
   xc.brightness = INDEX_TO_CONTROL(xc.brightness);
 #endif
 
-  //strcpy(xc.deinterlace_method, xc.s_deinterlaceMethods[deinterlace]);
-  strcpy(xc.deinterlace_method, tvtime.ToString());
+  strcpy(xc.deinterlace_method, xc.s_deinterlaceMethods[deinterlace]);
+  strcpy(xc.deinterlace_opts, tvtime.ToString());
   SetupStore("Video.Deinterlace", xc.deinterlace_method);
   SetupStore("Video.DeinterlaceOptions", xc.deinterlace_opts);
 
