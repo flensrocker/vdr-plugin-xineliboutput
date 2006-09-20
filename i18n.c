@@ -4,12 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.8 2006-09-19 08:52:35 phintuka Exp $
+ * $Id: i18n.c,v 1.9 2006-09-20 10:32:23 phintuka Exp $
  *
  * Translations provided by:
  *
  * Finnish   Petri Hintukainen, Rolf Ahrenberg
  * Russian   Vladimir Monchenko
+ * German    Udo Richter
  *
  */
 
@@ -19,7 +20,7 @@
 const tI18nPhrase Phrases[] = {
   {
     "X11/xine-lib output plugin", // English
-    "", // Deutsch
+    "X11/xine-lib Ausgabe-Plugin", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -39,7 +40,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Xine-lib", // English
-    "", // Deutsch
+    "Xine-lib", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -59,7 +60,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "high", // English
-    "", // Deutsch
+    "Hoch", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -79,7 +80,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "low", // English
-    "", // Deutsch
+    "Niedrig", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -99,7 +100,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "normal", // English
-    "", // Deutsch
+    "Normal", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -119,7 +120,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "inverted", // English
-    "", // Deutsch
+    "Invertiert", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -137,9 +138,10 @@ const tI18nPhrase Phrases[] = {
     "¸ÝÒÕàâØàÞÒÐÝÞ", // Russian
     "", // Croatian
   },
+#if 0
   {
     "paused", // English
-    "", // Deutsch
+    "Pausiert", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -157,9 +159,11 @@ const tI18nPhrase Phrases[] = {
     "¿àØÞáâÐÝÞÒÛÕÝ", // Russian
     "", // Croatian
   },
+#endif
+#if 0
   {
     "running", // English
-    "", // Deutsch
+    "Laufend", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -177,9 +181,10 @@ const tI18nPhrase Phrases[] = {
     "·ÐßãéÕÝ", // Russian
     "", // Croatian
   },
+#endif
   {
     "Interlaced Field Order", // English
-    "", // Deutsch
+    "Interlaced Halbbild-Reihenfolge", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -197,9 +202,10 @@ const tI18nPhrase Phrases[] = {
     "ÇÕàÕ×áâàÞçÝëÙ ßÞàïÔÞÚ ßÞÛÕÙ", // Russian
     "", // Croatian
   },
+#if 0
   {
     "Decoder state", // English
-    "", // Deutsch
+    "Dekoder-Status", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -217,9 +223,10 @@ const tI18nPhrase Phrases[] = {
     "ÁÞáâÞïÝØÕ ÔÕÚÞÔÕàÐ", // Russian
     "", // Croatian
   },
+#endif
   {
     "Brightness", // English
-    "", // Deutsch
+    "Helligkeit", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -239,7 +246,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Decoder", // English
-    "", // Deutsch
+    "Dekoder", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -259,7 +266,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Audio", // English
-    "", // Deutsch
+    "Audio", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -279,7 +286,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "On-Screen Display", // English
-    "", // Deutsch
+    "On-Screen Display", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -299,7 +306,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Hide main menu", // English
-    "", // Deutsch
+    "Verstecke Hauptmenü", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -319,7 +326,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Window aspect", // English
-    "", // Deutsch
+    "Fenster-Seitenverhältnis", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -339,7 +346,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Scale to window size", // English
-    "", // Deutsch
+    "Skaliere auf Fenster-Größe", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -359,7 +366,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Scale OSD to video size", // English
-    "", // Deutsch
+    "Skaliere OSD auf Videogröße", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -379,7 +386,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Unscaled OSD (no transparency)", // English
-    "", // Deutsch
+    "Unskaliertes OSD (keine Transparenz)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -399,7 +406,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Dynamic transparency correction", // English
-    "", // Deutsch
+    "Dynamische Transparenz-Korrektur", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -419,7 +426,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Static transparency correction", // English
-    "", // Deutsch
+    "Statische Transparenz-Korrektur", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -439,7 +446,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Video", // English
-    "", // Deutsch
+    "Video", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -459,7 +466,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Deinterlacing", // English
-    "", // Deutsch
+    "De-Interlacing", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -479,7 +486,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Remote Clients", // English
-    "", // Deutsch
+    "Entfernte Clients", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -499,7 +506,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Allow remote clients", // English
-    "", // Deutsch
+    "Erlaube entfernte Clients", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -519,7 +526,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Listen port (TCP and broadcast)", // English
-    "", // Deutsch
+    "  Empfangender Port (TCP und Broadcast)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -539,7 +546,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Remote keyboard", // English
-    "", // Deutsch
+    "  Tastaturfernsteuerung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -559,7 +566,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Buffer size", // English
-    "", // Deutsch
+    "Puffergröße", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -579,7 +586,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Number of PES packets", // English
-    "", // Deutsch
+    "  Anzahl PES-Pakete", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -599,7 +606,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Priority", // English
-    "", // Deutsch
+    "Priorität", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -619,7 +626,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "custom", // English
-    "", // Deutsch
+    "Benutzerdefiniert", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -639,7 +646,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "tiny", // English
-    "", // Deutsch
+    "Winzig", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -659,7 +666,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "small", // English
-    "", // Deutsch
+    "Klein", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -679,7 +686,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "medium", // English
-    "", // Deutsch
+    "Mittel", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -699,7 +706,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "large", // English
-    "", // Deutsch
+    "Groß", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -719,7 +726,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "huge", // English
-    "", // Deutsch
+    "Riesig", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -739,7 +746,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Display address", // English
-    "", // Deutsch
+    "Bildschirm-Adresse", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -759,7 +766,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Use keyboard", // English
-    "", // Deutsch
+    "Tastatur benutzen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -779,7 +786,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Driver", // English
-    "", // Deutsch
+    "Treiber", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -799,7 +806,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Port", // English
-    "", // Deutsch
+    "Port", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -819,7 +826,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Delay", // English
-    "", // Deutsch
+    "Verzögerung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -837,9 +844,10 @@ const tI18nPhrase Phrases[] = {
     "·ÐÔÕàÖÚÐ", // Russian
     "", // Croatian
   },
+#if 0
   {      // min - minutes
     "min", // English
-    "", // Deutsch
+    "min", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -857,9 +865,10 @@ const tI18nPhrase Phrases[] = {
     "min", // Russian
     "", // Croatian
   },
+#endif
   {    // ms -- milliseconds
     "ms", // English
-    "", // Deutsch
+    "ms", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -879,7 +888,7 @@ const tI18nPhrase Phrases[] = {
   },
   {     // px - pixels
     "px", // English
-    "", // Deutsch
+    "px", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -899,7 +908,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Window width", // English
-    "", // Deutsch
+    "  Fensterbreite", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -919,7 +928,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Window height", // English
-    "", // Deutsch
+    "  Fensterhöhe", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -939,7 +948,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "automatic", // English
-    "", // Deutsch
+    "Automatik", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -959,7 +968,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "default", // English
-    "", // Deutsch
+    "Standard", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1039,7 +1048,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "HUE", // English
-    "", // Deutsch
+    "Farbton", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1059,7 +1068,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Saturation", // English
-    "", // Deutsch
+    "Sättigung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1079,7 +1088,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Contrast", // English
-    "", // Deutsch
+    "Kontrast", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1099,7 +1108,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "off", // English
-    "", // Deutsch
+    "Aus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1119,7 +1128,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "no audio", // English
-    "", // Deutsch
+    "Kein Audio", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1139,7 +1148,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "no video", // English
-    "", // Deutsch
+    "Kein Video", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1159,7 +1168,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Fullscreen mode", // English
-    "", // Deutsch
+    "Vollbild-Modus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1179,7 +1188,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Local Frontend", // English
-    "", // Deutsch
+    "Lokale Anzeige", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1199,7 +1208,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Local Display Frontend", // English
-    "", // Deutsch
+    "Lokale Bildschirmanzeige", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1219,7 +1228,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Delete image ?", // English
-    "", // Deutsch
+    "Bild löschen?", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1239,7 +1248,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  TCP transport", // English
-    "", // Deutsch
+    "  TCP-Übertragung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1259,7 +1268,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  UDP transport", // English
-    "", // Deutsch
+    "  UDP-Übertragung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1279,7 +1288,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  RTP (multicast) transport", // English
-    "", // Deutsch
+    "  RTP (multicast) Übertragung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1299,7 +1308,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  PIPE transport", // English
-    "", // Deutsch
+    "  Pipe-Übertragung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1319,7 +1328,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Server announce broadcasts", // English
-    "", // Deutsch
+    "  Server-Bekanntmachung Broadcast", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1339,7 +1348,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Audio equalizer >>", // English
-    "", // Deutsch
+    "Audio-Equalizer >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1359,7 +1368,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Audio Equalizer", // English
-    "", // Deutsch
+    "Audio Equalizer", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1379,7 +1388,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Grayscale", // English
-    "", // Deutsch
+    "Graustufen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1399,7 +1408,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Bitmap", // English
-    "", // Deutsch
+    "Bitmap", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1417,9 +1426,10 @@ const tI18nPhrase Phrases[] = {
     "±ØâÞÒÐï ÚÐàâÐ", // Russian
     "", // Croatian
   },
+#if 0
   {
     "Button$Up", // English
-    "", // Deutsch
+    "Hoch", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1437,9 +1447,11 @@ const tI18nPhrase Phrases[] = {
     "", // Russian
     "", // Croatian
   },
+#endif
+#if 0
   {
     "Button$Select", // English
-    "", // Deutsch
+    "Auswahl", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1457,9 +1469,10 @@ const tI18nPhrase Phrases[] = {
     "", // Russian
     "", // Croatian
   },
+#endif
   {
     "Button$Info", // English
-    "", // Deutsch
+    "Info", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1479,7 +1492,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Audio Compression", // English
-    "", // Deutsch
+    "Audio-Komprimierung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1497,9 +1510,10 @@ const tI18nPhrase Phrases[] = {
     "°ãÔØÞ ÚÞÜßàÕááØï", // Russian
     "", // Croatian
   },
+#if 0
   {
     "Remove letterbox (4:3 -> 16:9)", // English
-    "", // Deutsch
+    "Entferne Letterbox (4:3 -> 16:9)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1517,9 +1531,10 @@ const tI18nPhrase Phrases[] = {
     "ÃÔÐÛØâì letterbox (4:3 -> 16:9)", // Russian
     "", // Croatian
   },
+#endif
   {
     "Play file >>", // English
-    "", // Deutsch
+    "Datei abspielen >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1539,7 +1554,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play music >>", // English
-    "", // Deutsch
+    "Musik abspielen >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1559,7 +1574,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "View images >>", // English
-    "", // Deutsch
+    "Bilder ansehen >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1579,7 +1594,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play file", // English
-    "", // Deutsch
+    "Datei abspielen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1599,7 +1614,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Images", // English
-    "", // Deutsch
+    "Bilder", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1619,7 +1634,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "CenterCutOut", // English
-    "", // Deutsch
+    "CenterCutOut", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1638,8 +1653,8 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "Test images", // English
-    "", // Deutsch
+    "Test Images", // English
+    "Testbilder", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1659,7 +1674,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Visualization", // English
-    "", // Deutsch
+    "Visualisierung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1679,7 +1694,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Upmix stereo to 5.1", // English
-    "", // Deutsch
+    "Stereo zu 5.1 hoch mischen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1699,7 +1714,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Downmix AC3 to surround", // English
-    "", // Deutsch
+    "AC3 zu Surround herunter mischen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1719,7 +1734,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Framebuffer device", // English
-    "", // Deutsch
+    "Framebuffer-Device", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1739,7 +1754,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Allow downscaling", // English
-    "", // Deutsch
+    "  Verkleinern zulassen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1759,7 +1774,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  When opaque OSD", // English
-    "", // Deutsch
+    "  Wenn undurchsichtiges OSD", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1779,7 +1794,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  When low-res video", // English
-    "", // Deutsch
+    "  Wenn Video mit niedriger Auflösung", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1801,7 +1816,7 @@ const tI18nPhrase Phrases[] = {
   // 1.0.0pre2:
   {
     "Play remote DVD >>", // English
-    "", // Deutsch
+    "Spiele Fern-DVD >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1821,7 +1836,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play DVD Disc >>", // English
-    "", // Deutsch
+    "Spiele DVD-Disk", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1841,7 +1856,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Crop letterbox 4:3 to 16:9", // English
-    "", // Deutsch
+    "Schneide letterbox 4:3 zu 16:9", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1861,7 +1876,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play only audio", // English
-    "", // Deutsch
+    "Nur Audio spielen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1881,7 +1896,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Off", // English
-    "", // Deutsch
+    "Aus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1901,7 +1916,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "OSS", // English
-    "", // Deutsch
+    "OSS", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1921,7 +1936,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Alsa", // English
-    "", // Deutsch
+    "Alsa", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1941,7 +1956,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Goom", // English
-    "", // Deutsch
+    "Goom", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1961,7 +1976,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Oscilloscope", // English
-    "", // Deutsch
+    "Oszilloskop", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1981,7 +1996,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "FFT Scope", // English
-    "", // Deutsch
+    "FFT Spektrum", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2001,7 +2016,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "FFT Graph", // English
-    "", // Deutsch
+    "FFT Graph", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2021,7 +2036,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "X11 (sxfe)", // English
-    "", // Deutsch
+    "X11 (sxfe)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2041,7 +2056,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Framebuffer (fbfe)", // English
-    "", // Deutsch
+    "Framebuffer (fbfe)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2061,7 +2076,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Xv", // English
-    "", // Deutsch
+    "Xv", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2081,7 +2096,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "XShm", // English
-    "", // Deutsch
+    "XShm", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2101,7 +2116,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Bob", // English
-    "", // Deutsch
+    "Bob", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2121,7 +2136,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Weave", // English
-    "", // Deutsch
+    "Weave", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2141,7 +2156,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Greedy", // English
-    "", // Deutsch
+    "Greedy", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2161,7 +2176,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "One Field", // English
-    "", // Deutsch
+    "Ein Halbbild", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2181,7 +2196,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "One Field XV", // English
-    "", // Deutsch
+    "Ein Halbbild XV", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2201,7 +2216,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Linear Blend", // English
-    "", // Deutsch
+    "Linear mischen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2221,7 +2236,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "TvTime", // English
-    "", // Deutsch
+    "TvTime", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2240,15 +2255,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "   Options:", // English
-    "", // Deutsch
+    "   Options", // English
+    "   Optionen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "   Parametrit:", // Suomi
+    "   Parametrit", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2261,7 +2276,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "    Multicast address", // English
-    "", // Deutsch
+    "    Multicast-Adresse", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2281,7 +2296,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "    Multicast port", // English
-    "", // Deutsch
+    "    Multicast-Port", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2301,7 +2316,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "    Multicast TTL", // English
-    "", // Deutsch
+    "    Multicast-TTL", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2321,7 +2336,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "    Transmit always on", // English
-    "", // Deutsch
+    "    Immer senden", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2341,7 +2356,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Speakers", // English
-    "", // Deutsch
+    "Lautsprecher", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2361,7 +2376,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Headphones 2.0", // English
-    "", // Deutsch
+    "Kopfhöhrer 2.0", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2381,7 +2396,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Autodetect letterbox", // English
-    "", // Deutsch
+    "  Letterbox automatisch erkennen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2401,7 +2416,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Soft start", // English
-    "", // Deutsch
+    "  Weich starten", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2421,7 +2436,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Crop to", // English
-    "", // Deutsch
+    "  Schneide auf", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2441,7 +2456,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Detect subtitles", // English
-    "", // Deutsch
+    "  Erkenne Untertitel", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2463,7 +2478,7 @@ const tI18nPhrase Phrases[] = {
   // 1.0.0pre4:
   {
     "Media", // English
-    "", // Deutsch
+    "Medien", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2483,7 +2498,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Video settings", // English
-    "", // Deutsch
+    "Video-Einstellungen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2503,7 +2518,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Audio settings", // English
-    "", // Deutsch
+    "Audio-Einstellungen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2523,7 +2538,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Overscan (crop image borders)", // English
-    "", // Deutsch
+    "Overscan (Bildränder abschneiden)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2541,6 +2556,462 @@ const tI18nPhrase Phrases[] = {
     "", // Russian
     "", // Croatian
   },
+  // Missing texts 2006-09-20
+  {
+    "Post processing (ffmpeg)", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // ffmpeg post processing
+    "  Quality", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Laatu", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // ffmpeg post processing
+    "  Mode", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Method", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "     Menetelmä", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Cheap mode", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Pulldown", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Frame rate", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Judder Correction", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Use progressive frame flag", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // tvtime de-interlacing
+    "     Chroma Filter", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+#if 0
+  {  // in vdr i18n.c
+    "Delete recording?",
+    "Aufzeichnung löschen?",
+    "Izbri¹i posnetek?",
+    "Cancellare la registrazione?",
+    "Opname verwijderen?",
+    "Apagar a gravação?",
+    "Supprimer l'enregistrement?",
+    "Slette opptak?",
+    "Poistetaanko tallenne?",
+    "Usun±æ nagranie?",
+    "¿Eliminar grabacion?",
+    "ÄéáãñáöÞ åããñáöÞò?",
+    "Ta bort inspelningen?",
+    "ªterg înregistrarea?",
+    "Felvétel törlése?",
+    "Esborrar gravació?",
+    "ÁâÕàÕâì ×ÐßØáì?",
+    "Obrisati snimku?",
+    "Kustutada salvestus?",
+    "Slet optagelse?",
+    "Smazat nahrávku?",
+  },
+#endif
+#if 0
+  { // in vdr i18n.c
+    "Error while deleting recording!",
+    "Fehler beim Löschen der Aufzeichnung!",
+    "Napaka pri brisanju posnetka!",
+    "Errore nel cancellare la registrazione!",
+    "Fout bij verwijderen opname!",
+    "Erro enquanto apagava uma gravação!",
+    "Erreur de suppression de l'enregistrement!",
+    "Feil under sletting av opptak!",
+    "Tallenteen poistaminen epäonnistui!",
+    "Bl±d podczas usuwania nagrania!",
+    "¡Error al borrar la grabación!",
+    "ËÜèïò êáôÜ ôÞí äéáãñáöÞ ôïõ áñ÷åßïõ!",
+    "Inspelningen går inte att ta bort!",
+    "Eroare la ºtergerea înregistrãrii!",
+    "Hiba a felvétel törlésénél!",
+    "Error a l'esborrar la gravació!",
+    "¾èØÑÚÐ ãÔÐÛÕÝØï ×ÐßØáØ!",
+    "Gre¹ka pri brisanju snimke!",
+    "Salvestuse kustutamine ebaõnnestus!",
+    "Fejl ved sletning af optagelse!",
+    "Chyba pøi mazání nahrávky!",
+  },
+#endif
+  {
+    "Select DVD SPU Track", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Valitse tekstityskieli (DVD)", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "  Select DVD SPU track >>", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Valitse tekstityskieli (DVD) >>", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+#if 0
+  {
+    "Headphone audio mode", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+#endif
+#if 0
+  {
+    "Mix to headphones", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+#endif
+  {
+    "Play music", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Toista musiikkia", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Now playing", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Random play", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Satunnaistoisto", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Normal play", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Normaali toisto", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Frontend initialization failed", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Näyttölaitteen alustus epäonnistui", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Server initialization failed", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Palvelimen käynnistys epäonnistui", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+
 #if 0
   {
     "", // English
