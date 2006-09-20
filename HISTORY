@@ -1,6 +1,18 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2006-09-20:
+
+- German translations (Thanks to Udo Richter)
+- Setup menu re-arranged
+- Command-line given post plugin parameters are never changed at runtime
+- Added string length checks to several places
+- Added missing frame buffer device selection
+- Support for ffmpeg post processing
+- Easier configuration for tvtime post plugin in menu
+- Autoplay list support for xine (patch from sf feature request #1561688)
+- Removed busy loop from vdr-fbfe/vdr-sxfe when console was unavailable
+
 2006-09-17: Version 1.0.0pre5
 
 - Allow overriding default no signal image
