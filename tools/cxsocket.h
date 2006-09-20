@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.9 2006-09-19 09:50:47 phintuka Exp $
+ * $Id: cxsocket.h,v 1.10 2006-09-20 06:57:00 phintuka Exp $
  *
  */
 
@@ -222,14 +222,14 @@ static inline int write_osd_command(int fd, osd_command_t *cmd)
   return 1;
 }
 
-static inline ssize_t write_str(int fd, const char *str, int timeout_ms=-1)
+static inline ssize_t write_str(int fd, const char *str, int timeout_ms=-1, int len=0)
 {
-  return timed_write(fd, str, strlen(str), timeout_ms);
+  return timed_write(fd, str, len ? : strlen(str), timeout_ms);
 }
 
-static inline ssize_t write_cmd(int fd, const char *str)
+static inline ssize_t write_cmd(int fd, const char *str, int len=0)
 {
-  return write_str(fd, str, 10);
+  return write_str(fd, str, 10, len);
 }
 
 static inline int udp_discovery_broadcast(int fd_discovery, int m_Port)
