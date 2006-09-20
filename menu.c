@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.16 2006-09-19 08:26:38 phintuka Exp $
+ * $Id: menu.c,v 1.17 2006-09-20 09:06:13 phintuka Exp $
  *
  */
 
@@ -456,7 +456,7 @@ static cOsdItem *NewTitle(const char *s)
 {
   char str[128];
   cOsdItem *tmp;
-  sprintf(str,"----- %s -----", tr(s));
+  sprintf(str,"----- %s -----", s);
   tmp = new cOsdItem(str);
   tmp->SetSelectable(false);
   return tmp;
@@ -476,7 +476,7 @@ cMenuXinelib::cMenuXinelib()
 
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
-  Add(NewTitle("Media"));
+  Add(NewTitle(tr("Media")));
   Add(new cOsdItem(tr("Play file >>"), osUser1));
   Add(new cOsdItem(tr("Play music >>"), osUser2));
   Add(new cOsdItem(tr("View images >>"), osUser3));
@@ -487,7 +487,7 @@ cMenuXinelib::cMenuXinelib()
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
     Add(new cOsdItem(tr("  Select DVD SPU track >>"), osUser5));
 
-  Add(NewTitle("Video settings"));
+  Add(NewTitle(tr("Video settings")));
   Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
 					   &novideo));
   Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
@@ -500,7 +500,7 @@ cMenuXinelib::cMenuXinelib()
 							     &field_order, 2, xc.s_fieldOrder));
 #endif
 
-  Add(NewTitle("Audio settings"));
+  Add(NewTitle(tr("Audio settings")));
 #ifdef ENABLE_TEST_POSTPLUGINS
   Add(ctrl_headphone = new cMenuEditBoolItem(tr("Headphone audio mode"), 
 					     &headphone));

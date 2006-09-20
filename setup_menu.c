@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.12 2006-09-20 06:59:56 phintuka Exp $
+ * $Id: setup_menu.c,v 1.13 2006-09-20 09:06:13 phintuka Exp $
  *
  */
 
@@ -83,7 +83,7 @@ static cOsdItem *NewTitle(const char *s)
 {
   char str[128];
   cOsdItem *tmp;
-  sprintf(str,"----- %s -----", tr(s));
+  sprintf(str,"----- %s -----", s);
   tmp = new cOsdItem(str);
   tmp->SetSelectable(false);
   return tmp;
@@ -143,7 +143,7 @@ void cMenuSetupAudio::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle("Audio"));
+  Add(NewTitle(tr("Audio")));
 
   Add(audio_ctrl_speakers =
       new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type, 
@@ -285,7 +285,7 @@ void cMenuSetupAudioEq::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle("Audio Equalizer"));
+  Add(NewTitle(tr("Audio Equalizer")));
   for(int i=0; i<AUDIO_EQ_count; i++)
     Add(new cMenuEditTypedIntItem(config_t::s_audioEqNames[i], "%", 
 				  &newconfig.audio_equalizer[i],
@@ -486,7 +486,7 @@ void cMenuSetupVideo::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle("Video"));
+  Add(NewTitle(tr("Video")));
 
   Add(ctrl_autocrop = 
       new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
@@ -708,7 +708,7 @@ void cMenuSetupOSD::Set(void)
   ctrl_alpha = NULL;
   ctrl_alpha_abs = NULL;
 
-  Add(NewTitle("On-Screen Display"));
+  Add(NewTitle(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
 			    &newconfig.hide_main_menu));
   Add(ctrl_scale = 
@@ -834,7 +834,7 @@ void cMenuSetupDecoder::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle("Decoder"));
+  Add(NewTitle(tr("Decoder")));
   Add(new cMenuEditStraI18nItem(tr("Priority"), &xc.decoder_priority, 
 				DECODER_PRIORITY_count, xc.s_decoderPriority));
   Add(ctrl_pes_buffers_ind = 
@@ -969,7 +969,7 @@ void cMenuSetupLocal::Set(void)
   ctrl_audio_driver = NULL;
   ctrl_audio_port = NULL;
 
-  Add(NewTitle("Local Frontend"));
+  Add(NewTitle(tr("Local Frontend")));
 
   Add(ctrl_local_fe = 
       new cMenuEditStraI18nItem(tr("Local Display Frontend"), &local_frontend,
@@ -981,7 +981,7 @@ void cMenuSetupLocal::Set(void)
   }
 
   if(local_frontend != FRONTEND_NONE) {
-    Add(NewTitle("Video"));
+    Add(NewTitle(tr("Video")));
   }
 
   if(local_frontend == FRONTEND_X11) {
@@ -1037,7 +1037,7 @@ void cMenuSetupLocal::Set(void)
 				  xc.s_fieldOrder));
 #endif
 
-    Add(NewTitle("Audio"));
+    Add(NewTitle(tr("Audio")));
 
     Add(ctrl_audio_driver = 
 	new cMenuEditStraI18nItem(tr("Driver"), &audio_driver, 
@@ -1168,7 +1168,7 @@ void cMenuSetupRemote::Set(void)
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
   Clear();
 
-  Add(NewTitle("Remote Clients"));
+  Add(NewTitle(tr("Remote Clients")));
   Add(ctrl_remote_mode = new cMenuEditBoolItem(tr("Allow remote clients"), 
 					       &newconfig.remote_mode));
   ctrl_usertp = NULL;
