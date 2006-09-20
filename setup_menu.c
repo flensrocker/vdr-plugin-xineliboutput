@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.11 2006-09-20 01:53:50 phintuka Exp $
+ * $Id: setup_menu.c,v 1.12 2006-09-20 06:59:56 phintuka Exp $
  *
  */
 
@@ -989,7 +989,7 @@ void cMenuSetupLocal::Set(void)
 	new cMenuEditStraI18nItem(tr("Driver"), &video_driver, 
 				  X11_DRIVER_count, 
 				  xc.s_videoDriverNamesX11));
-    strcpy(newconfig.video_port, "127.0.0.1:0.0");
+    strcpy(newconfig.video_port, "0.0");
     Add(new cMenuEditStrItem(tr("Display address"), newconfig.video_port, 
 			     31, DriverNameChars));
 
