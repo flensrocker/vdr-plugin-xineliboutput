@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.8 2006-09-19 04:11:09 phintuka Exp $
+ * $Id: config.h,v 1.9 2006-09-20 03:49:32 phintuka Exp $
  *
  */
 
@@ -159,16 +159,16 @@ class config_t {
 
   public:
     char video_driver[32];
-    char video_port[64];     // X11: DISPLAY=...
+    char video_port[32];     // X11: DISPLAY=...
     char audio_driver[32];
-    char audio_port[32];
+    char audio_port[64];
     int  speaker_type;
     char *post_plugins;      // from command line options
 
     int  audio_delay;        // in ms
     int  audio_compression;  // 100%(=off)...500%
     int  audio_equalizer[AUDIO_EQ_count];
-    char audio_visualization[256];
+    char audio_visualization[64];
     //char audio_vis_goom_opts[256];
     int  audio_surround;
     int  headphone;
@@ -192,8 +192,8 @@ class config_t {
     int  alpha_correction;
     int  alpha_correction_abs;
 
-    char local_frontend[256];
-    char modeline[128];
+    char local_frontend[64];
+    char modeline[64];
     
     int  fullscreen;
     int  modeswitch;
@@ -214,7 +214,7 @@ class config_t {
     int  remote_usetcp, remote_useudp, remote_usertp, remote_usepipe;
     int  remote_usebcast;
 
-    char remote_rtp_addr[64];
+    char remote_rtp_addr[32]; //xxx.xxx.xxx.xxx\0
     int  remote_rtp_port;
     int  remote_rtp_ttl;
     int  remote_rtp_always_on;
@@ -269,10 +269,12 @@ extern config_t xc;
 // Find index of string in array of strings
 static inline int strstra(const char *str, const char *stra[], int def_index)
 {
-  int i;
-  for(i=0; stra[i]; i++)
-    if(!strcmp(str,stra[i]))
-      return i;
+  if(str && stra) {
+    int i;
+    for(i=0; stra[i]; i++)
+      if(!strcmp(str,stra[i]))
+	return i;
+  }
   return def_index;
 }
 
