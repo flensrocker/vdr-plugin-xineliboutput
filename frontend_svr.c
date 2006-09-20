@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.21 2006-09-19 04:20:31 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.22 2006-09-20 05:46:33 phintuka Exp $
  *
  */
 
@@ -354,6 +354,15 @@ void cXinelibServer::SetHDMode(bool On)
 {
   cXinelibThread::SetHDMode(On);
   // TODO
+#if 0
+  LOCK_THREAD;
+
+  int i;
+  for(i=0; i<MAXCLIENTS; i++)
+    if(m_Writer[i])
+      m_Writer[i]->SetBuffer(On ? 2048 : 512);
+  m_Scheduler->SetWindow(On ? 512 : 128);
+#endif
 }
 
 void cXinelibServer::Xine_Sync(void)
@@ -451,11 +460,13 @@ int cXinelibServer::Xine_Control(const char *cmd)
   TRACEF("cXinelibServer::Xine_Control");
 
   if(cmd && *cmd) {
-    char buf[2048];
-    int len;
-    sprintf(buf, "%s\r\n", cmd);
-    len = strlen(buf);
-
+    char buf[4096];
+    int len = snprintf(buf, sizeof(buf), "%s\r\n", cmd);
+    if(len >= (int)sizeof(buf)) {
+      LOGMSG("Xine_Control: command truncated !");
+      len = sizeof(buf);
+    }
+    
     LOCK_THREAD;
 
     for(int i=0; i<MAXCLIENTS; i++)
@@ -474,15 +485,18 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
   TRACEF("cXinelibServer::Xine_Control_Sync");
 
   if(cmd && *cmd) {
-    int UdpClients = 0, RtpClients = 0;
-    char buf[2048];
-    int len;
-    sprintf(buf, "%s\r\n", cmd);
-    len = strlen(buf);
+    int  i, len, UdpClients = 0, RtpClients = 0;
+    char buf[4096];
+
+    len = snprintf(buf, sizeof(buf), "%s\r\n", cmd);
+    if(len >= (int)sizeof(buf)) {
+      LOGMSG("Xine_Control_Sync: command truncated !");
+      len = sizeof(buf);
+    }
 
     LOCK_THREAD;
 
-    for(int i=0; i<MAXCLIENTS; i++)
+    for(i=0; i<MAXCLIENTS; i++)
       if(fd_control[i]>=0 && m_bConfigOk[i]) {
 	if(fd_data[i] >= 0) {
 	  if(m_bUdp[i])
@@ -809,7 +823,6 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
 
 void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 {
-  char buf[256];
   LOGDBG("Trying PIPE connection ...");
 
   CloseDataConnection(cli);
@@ -827,9 +840,9 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   MakeDirs(*m_PipesDir, true);
 
   int i;
-  char pipeName[1024];
+  char pipeName[1024], buf[1024];
   for(i=0; i<10; i++) {
-    sprintf(pipeName,"%s/pipe.%d", *m_PipesDir, i);
+    snprintf(pipeName, sizeof(pipeName), "%s/pipe.%d", *m_PipesDir, i);
     if(mknod(pipeName, 0644|S_IFIFO, 0) < 0) {
       unlink(pipeName);
       continue;
@@ -844,7 +857,8 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
     return;
   }
 
-  sprintf(buf, "PIPE %s\r\n", pipeName);
+  snprintf(buf, sizeof(buf), "PIPE %s\r\n", pipeName);
+  buf[sizeof(buf)-1] = 0;
   write_cmd(fd_control[cli], buf);
 
   cPoller poller(fd_control[cli],false);
