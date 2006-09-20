@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.14 2006-09-19 00:56:13 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.15 2006-09-20 07:01:10 phintuka Exp $
  *
  */
 
@@ -275,6 +275,12 @@ int main(int argc, char *argv[])
 		printf("Audio device: %s\n",adev);
 	      break;
     case 'V': gdrv = strdup(optarg);
+              if(strchr(gdrv, ':')) {
+		video_port = strchr(gdrv, ':');
+		*video_port = 0;
+		video_port++;
+		printf("Video port: %s\n",video_port);
+	      }
               printf("Video driver: %s\n",gdrv);
               break;
     case 'd': video_port = strdup(optarg);
