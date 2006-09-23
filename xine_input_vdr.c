@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.52 2006-09-20 07:25:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.53 2006-09-23 05:00:55 phintuka Exp $
  *
  */
 
@@ -1888,6 +1888,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	  if(unscaled_supported && this->unscaled_osd_lowresvideo)
 	    use_unscaled = 1;
 
+	* test: if display width == 1440, every second pixel opaque / transparent ... -> pseudo-alpha ? (2x720->1440; common TFT)
 	if(this->rescale_osd) {
 
 	  if(!this->rescale_osd_downscale) {
@@ -1932,7 +1933,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	if(win_width > 240 && win_height > 196) {
 	  if(this->rescale_osd) {
 	    if(win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
-
 	      int new_w = (0x100*cmd->w * win_width 
 			   / this->vdr_osd_width)>>8;
 	      int new_h = (0x100*cmd->h * win_height 
@@ -2408,13 +2408,24 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 					 vdr_event_cb, this);
     }
 
+    errno = 0;
     err = !xine_open(this->slave_stream, filename);
+    if(err) {
+      LOGERR("Error opening file ! (File not found ? Unknown format ?)");
+    } else {
+#if 1
+      if(this->stream->video_fifo->size(this->stream->video_fifo))
+	LOGMSG("playfile: main stream video_fifo not empty ! (%d)",
+	       this->stream->video_fifo->size(this->stream->video_fifo));
+      
+      /*
+       * flush decoders and output fifos, close decoders and free frames.
+       * freeing frames is important in systems with only 4 MB frame buffer memory 
+       */
+      _x_demux_control_start(this->stream);
+      xine_usec_sleep(50*1000);
 
-    if(!err) {
-      this->loop_play = loop;
-      err = !xine_play(this->slave_stream, 0, 1000 * pos);
-    }
-    if(!err) {
+      /* keep our own demux happy while playing another stream */
       set_playback_speed(this, 1);
       this->live_mode = 1;
       set_live_mode(this, 0);
@@ -2422,27 +2433,40 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					 METRONOM_PREBUFFER, 90000);
-
-      if(this->funcs.fe_control) {
-	char tmp[128];
-	int has_video;
-	sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
-	this->funcs.fe_control(this->funcs.fe_handle, tmp);
-	has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
-	this->funcs.fe_control(this->funcs.fe_handle, 
-			       has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
-	if(!has_video && *av && strcmp(av, "none")) {
-	  char str[128];
-	  snprintf(str, sizeof(str), "POST %s On\r\n", av);
-	  str[sizeof(str)-1] = 0;
-	  this->funcs.fe_control(this->funcs.fe_handle, str);
-	} else {
-	  this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
+#endif
+      this->loop_play = loop;
+      err = !xine_play(this->slave_stream, 0, 1000 * pos);
+      if(err) {
+	LOGMSG("Error playing file");
+	*filename = 0; /* this triggers stop */
+      } else {
+#if 0
+	set_playback_speed(this, 1);
+	this->live_mode = 1;
+	set_live_mode(this, 0);
+	set_playback_speed(this, 1);
+	reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
+	this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
+						 METRONOM_PREBUFFER, 90000);
+#endif
+	if(this->funcs.fe_control) {
+	  char tmp[128];
+	  int has_video;
+	  sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
+	  this->funcs.fe_control(this->funcs.fe_handle, tmp);
+	  has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
+	  this->funcs.fe_control(this->funcs.fe_handle, 
+				 has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
+	  if(!has_video && *av && strcmp(av, "none")) {
+	    char str[128];
+	    snprintf(str, sizeof(str), "POST %s On\r\n", av);
+	    str[sizeof(str)-1] = 0;
+	    this->funcs.fe_control(this->funcs.fe_handle, str);
+	  } else {
+	    this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
+	  }
 	}
       }
-    } else {
-      LOGMSG("Error playing file ! (File not found ? Unknown format ?)");
-      *filename = 0;
     }
   }
 
