@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.21 2006-09-20 07:06:12 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.22 2006-09-23 06:47:14 phintuka Exp $
  *
  */
 
@@ -54,7 +54,7 @@ static void x_syslog(int level, const char *fmt, ...)
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
   if(!LogToSysLog) {
-    printf(LOG_MODULENAME "%s\n", buf);
+    printf("[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
   } else {
     syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }

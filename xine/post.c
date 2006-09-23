@@ -60,7 +60,7 @@
       va_start(argp, fmt);
       vsnprintf(buf, 512, fmt, argp);
       if(!LogToSysLog) {
-	printf(LOG_MODULENAME "%s\n", buf);
+	printf("[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
       } else {
 	syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
       }
