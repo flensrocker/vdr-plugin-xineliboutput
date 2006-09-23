@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.53 2006-09-23 05:00:55 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.54 2006-09-23 06:39:50 phintuka Exp $
  *
  */
 
@@ -1888,7 +1888,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	  if(unscaled_supported && this->unscaled_osd_lowresvideo)
 	    use_unscaled = 1;
 
-	* test: if display width == 1440, every second pixel opaque / transparent ... -> pseudo-alpha ? (2x720->1440; common TFT)
 	if(this->rescale_osd) {
 
 	  if(!this->rescale_osd_downscale) {
@@ -4128,6 +4127,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   if(!this->funcs.push_input_write /* reading from socket */ &&
      !this->control_running) {
     LOGMSG("read_block: no data source, returning NULL");
+    this->stream->emergency_brake=1;
     return NULL; /* disconnected ? */
   }
 
