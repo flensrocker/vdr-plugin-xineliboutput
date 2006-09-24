@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.7 2006-09-16 19:11:00 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.8 2006-09-24 16:43:48 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -97,9 +97,15 @@
 
 /* YUY2 */
 /* TODO: should use normal/inverse order based on endianess */
+#if 0
 #define YUY2BLACK32       (UVBLACK       * 0x00010001U)
 #define YUY2SHIFTUP32     (UVSHIFTUP     * 0x00010001U)
 #define YUY2NOISEFILTER32 ((YNOISEFILTER * 0x01000100U)|(UVNOISEFILTER * 0x00010001U))
+#else
+#define YUY2BLACK32       (UVBLACK       * 0x01000100U)
+#define YUY2SHIFTUP32     (UVSHIFTUP     * 0x01000100U)
+#define YUY2NOISEFILTER32 ((YNOISEFILTER * 0x00010001U)|(UVNOISEFILTER * 0x01000100U))
+#endif
 
 #define YUY2BLACK64       (YUY2BLACK32       * UINT64_C(0x0000000100000001))
 #define YUY2SHIFTUP64     (YUY2SHIFTUP32     * UINT64_C(0x0000000100000001))
@@ -941,6 +947,8 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
 					     frame->width, new_height, 
 					     new_ratio, frame->format, 
 					     frame->flags | VO_BOTH_FIELDS);
+
+frame->ratio=new_frame->ratio;
   _x_post_frame_copy_down(frame, new_frame);
 
   yp2 = new_frame->pitches[0];
@@ -1278,12 +1286,18 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
   
   if (ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
 			   format == XINE_IMGFMT_YUY2)) {
+#if 0
     int new_height = this->end_line+2 - this->start_line;
     float new_ratio = 12.0/9.0 * ((float)height / (float)new_height);
 
     frame = port->original_port->get_frame(port->original_port,
 					   width, height, 
 					   new_ratio, format, flags);
+#else
+    frame = port->original_port->get_frame(port->original_port,
+					   width, height, 
+					   ratio, format, flags);
+#endif
     _x_post_inc_usage(port);
     frame = _x_post_intercept_video_frame(frame, port);
     
@@ -1494,7 +1508,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->soft_start  = 1;
       this->stabilize   = 1;
       this->start_line  = 0;
-      this->end_line    = 0;
+      this->end_line    = 576;
 
       this->prev_start_line = 0;
       this->prev_end_line = 576;
