@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.23 2006-09-26 07:43:16 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.24 2006-09-26 08:23:09 phintuka Exp $
  *
  */
 
@@ -474,7 +474,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 			    20, NULL, NULL);
   xine_config_register_bool(this->xine,
 			    "gui.osd_use_unscaled",
-			    1,
+			    0,
 			    _("Use unscaled OSD"),
 			    _("Use unscaled (full screen resolution) OSD if possible"),
 			    10, NULL, NULL);
