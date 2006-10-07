@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.8 2006-09-24 16:43:48 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.9 2006-10-07 18:57:17 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -51,6 +51,7 @@
 /*#define ENABLE_64BIT 1   Force using of 64-bit routines */
 /*#undef __MMX__           Disable MMX */
 /*#undef __SSE__           Disable SSE */
+/*#define FILTER2          Tighter Y-filter */
 
 # if defined(__SSE__)
 #  warning Compiling with SSE support
@@ -77,7 +78,7 @@
  */ 
 
 #define YNOISEFILTER    (0xE0U)
-#define YSHIFTUP        (0x03U)
+#define YSHIFTUP        (0x05U)
 #define UVBLACK         (0x80U)
 #define UVSHIFTUP       (0x03U)
 #define UVNOISEFILTER   (0xF8U)
@@ -111,7 +112,6 @@
 #define YUY2SHIFTUP64     (YUY2SHIFTUP32     * UINT64_C(0x0000000100000001))
 #define YUY2NOISEFILTER64 (YUY2NOISEFILTER32 * UINT64_C(0x0000000100000001))
 
-/*#define FILTER2*/
 #ifdef FILTER2
 /* tighter Y-filter: original black threshold is 0x1f ; here it is 0x1f - 0x0b = 0x14 */
 # define YUY2SHIFTUP32  ((UVSHIFTUP    * 0x00010001U)|(YSHIFTUP      * 0x01000100U))
@@ -940,7 +940,7 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
   udata += (this->start_line/2) * up;
   vdata += (this->start_line/2) * vp;
 
-  new_height = this->end_line+2 - this->start_line;
+  new_height = this->end_line - this->start_line;
   new_ratio  = 12.0/9.0 * ((float)frame->height / (float)new_height);
 
   new_frame = port->original_port->get_frame(port->original_port,
@@ -948,7 +948,9 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
 					     new_ratio, frame->format, 
 					     frame->flags | VO_BOTH_FIELDS);
 
-frame->ratio=new_frame->ratio;
+  /* ??? */
+  frame->ratio = new_frame->ratio;
+
   _x_post_frame_copy_down(frame, new_frame);
 
   yp2 = new_frame->pitches[0];
@@ -1000,21 +1002,21 @@ static int crop_copy_yuy2(vo_frame_t *frame, xine_stream_t *stream)
   int p = frame->pitches[0], p2;
   uint8_t *data = frame->base[0], *data2;
 
-  int   new_height = frame->height;
+  int   new_height;
   float new_ratio;
 
   /* top bar */
   data += this->start_line * p;
-  new_height -= this->start_line;
 
-  /* bottom bar */
-  new_height -= (frame->height - (this->end_line+2));
-
+  new_height = this->end_line - this->start_line;
   new_ratio = 12.0/9.0 * ((float)frame->height / (float)new_height);
   new_frame = port->original_port->get_frame(port->original_port,
 					     frame->width, new_height, 
 					     new_ratio, frame->format, 
 					     frame->flags | VO_BOTH_FIELDS);
+  /* ??? */
+  frame->ratio = new_frame->ratio;
+
   _x_post_frame_copy_down(frame, new_frame);
 
   p2 = new_frame->pitches[0];
@@ -1044,14 +1046,24 @@ static int crop_nocopy(vo_frame_t *frame, xine_stream_t *stream)
   post_video_port_t *port = (post_video_port_t *)frame->port;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
   int skip;
+  double new_ratio = frame->ratio;
+  int new_height;
 
   if(this->cropping_active) {
     frame->crop_top += this->start_line;
     frame->crop_bottom += (frame->height + 1 - this->end_line);
+
     TRACE("crop_nocopy: top ->%d bottom ->%d\n", frame->crop_top, frame->crop_bottom);
+
+    new_height = this->end_line - this->start_line;
+    new_ratio  = 12.0/9.0 * ((float)frame->height / (float)new_height);
   }
 
   _x_post_frame_copy_down(frame, frame->next);
+
+  /* ??? */
+  frame->ratio = new_ratio;
+
   skip = frame->next->draw(frame->next, stream);
   TRACE("crop: top %d, bottom %d\n", frame->crop_top, frame->crop_bottom);
   _x_post_frame_copy_up(frame, frame->next);
@@ -1269,6 +1281,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   return result;
 }
 
+#ifdef USE_CROP
 static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen, 
 				       uint32_t width, uint32_t height, 
 				       double ratio, int format, int flags)
@@ -1284,20 +1297,15 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
     if(height > 1)
       ratio = (double)width / (double)height;
   
-  if (ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
+  if (this->cropping_active &&
+      ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
 			   format == XINE_IMGFMT_YUY2)) {
-#if 0
     int new_height = this->end_line+2 - this->start_line;
     float new_ratio = 12.0/9.0 * ((float)height / (float)new_height);
 
     frame = port->original_port->get_frame(port->original_port,
 					   width, height, 
 					   new_ratio, format, flags);
-#else
-    frame = port->original_port->get_frame(port->original_port,
-					   width, height, 
-					   ratio, format, flags);
-#endif
     _x_post_inc_usage(port);
     frame = _x_post_intercept_video_frame(frame, port);
     
@@ -1309,6 +1317,7 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
 					width, height, 
 					ratio, format, flags);
 }
+#endif
 
 static int autocrop_intercept_frame(post_video_port_t *port, vo_frame_t *frame)
 {
@@ -1323,6 +1332,7 @@ static int autocrop_intercept_frame(post_video_port_t *port, vo_frame_t *frame)
   if(!intercept) {
     this->height_limit_active = 0;
     this->crop_total = 0;
+    this->cropping_active = 0;
   }
 
   return intercept;
@@ -1382,6 +1392,17 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
       case 1:
 	/* menu overlay */
 	/* All overlays coming from VDR have this type */
+
+#ifdef USE_CROP
+	if(!event->object.overlay->unscaled) {
+	    event->object.overlay->y += this->start_line;//crop_total;
+	} else {
+	  caps = port->stream->video_out->get_capabilities (port->stream->video_out);
+	  if(!(caps & VO_CAP_UNSCALED_OVERLAY))
+	    event->object.overlay->y += this->start_line;//crop_total;
+	}
+#endif
+
 	break;
       }
     }
@@ -1487,7 +1508,9 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       port->intercept_ovl          = autocrop_intercept_ovl;
       port->new_manager->add_event = autocrop_overlay_add_event;
       port->intercept_frame        = autocrop_intercept_frame;
+#ifdef USE_CROP
       port->new_port.get_frame     = autocrop_get_frame;
+#endif
       port->new_frame->draw        = autocrop_draw;
 
       this->post_plugin.xine_post.video_input[ 0 ] = &port->new_port;
