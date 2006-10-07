@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.22 2006-09-20 05:46:33 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.23 2006-10-07 19:54:05 phintuka Exp $
  *
  */
 
@@ -400,15 +400,36 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
   do {
     Lock();
     m_Master = true;
-    int Free = 0xffff, Clients = 0;
+    int Free = 0xffff, Clients = 0, Udp = 0;
     for(int i=0; i<MAXCLIENTS; i++) {
-      if(fd_control[i]>=0 && m_bConfigOk[i]) 
+      if(fd_control[i]>=0 && m_bConfigOk[i]) {
 	if(fd_data[i]>=0 || m_bMulticast[i]) {
 	  if(m_Writer[i])
 	    Free = min(Free, m_Writer[i]->Free());
+	  else if(m_bUdp[i])
+	    Udp++;
 	  Clients++;
 	}
+      }
     }
+
+    /* select master timing source for replay mode */
+    static int sMaster = -1;
+    int master = -1;
+    if(Clients && !m_iMulticastMask && !Udp) {
+      for(int i=0; i<MAXCLIENTS; i++) 
+	if(fd_control[i]>=0 && m_bConfigOk[i] && m_Writer[i]) {
+	  master = i;
+	  break;
+	}
+    }
+    if(master != sMaster) {
+      Xine_Control("MASTER 0");
+      if(master >= 0)
+	write_cmd(fd_control[master], "MASTER 1\r\n");
+      sMaster = master;
+    }
+
     Unlock();
     
     // replay is paused when no clients 
