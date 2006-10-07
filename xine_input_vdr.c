@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.55 2006-09-23 07:52:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.56 2006-10-07 22:13:16 phintuka Exp $
  *
  */
 
@@ -225,6 +225,7 @@ typedef struct vdr_input_plugin_s {
   /* SCR */
   pvrscr_t           *scr;
   int                 scr_tunning;
+  int                 fixed_scr;
   int                 speed_before_pause;
   int                 is_paused;
 
@@ -3050,9 +3051,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     pthread_mutex_unlock(&this->lock);
 
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
-      this->still_mode = 0;
-      err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ?
-	set_live_mode(this, tmp32) : -2 ;
+    this->still_mode = 0;
+    err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ?
+           set_live_mode(this, tmp32) : -2 ;
+    
+  } else if(!strncasecmp(cmd, "MASTER ", 7)) {
+    if(1 != sscanf(cmd, "MASTER %d", &this->fixed_scr))
+      err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "VOLUME ", 7)) {
     if(1 == sscanf(cmd, "VOLUME %d", &tmp32)) {
@@ -3302,7 +3307,8 @@ static void *vdr_control_thread(void *this_gen)
     }
   }
 
-  write_control(this, "CLOSE\r\n");
+  if(this->control_running)
+    write_control(this, "CLOSE\r\n");
   this->control_running = 0;
   LOGDBG("Control thread terminated");
   pthread_exit(NULL);
@@ -3374,9 +3380,13 @@ struct {
   {XINE_EVENT_VDR_VOLMINUS,     "Volume-"},
   {XINE_EVENT_VDR_MUTE,         "Mute"},
   {XINE_EVENT_VDR_AUDIO,        "Audio"},
-# if defined(XINE_EVENT_VDR_INFO)
+#else
+#  warning Xine VDR keys not defined
+#endif
+#if defined(XINE_EVENT_VDR_INFO)
   {XINE_EVENT_VDR_INFO,         "Info"},
-# endif
+#else
+#  warning Xine VDR key "Info" not defined
 #endif
   {-1, NULL}
 };
@@ -3507,6 +3517,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 
 	read_buffer = get_buf_element(this, 0, 0);
 	if(!read_buffer) {
+	  /* do not drop any data here ; dropping is done only at server side. */
 	  if(!this->is_paused)
 	    LOGDBG("TCP: fifo buffer full");
 	  xine_usec_sleep(3*1000);
@@ -4128,7 +4139,16 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   if(!this->funcs.push_input_write /* reading from socket */ &&
      !this->control_running) {
     LOGMSG("read_block: no data source, returning NULL");
-    this->stream->emergency_brake=1;
+    if(this->block_buffer)
+      this->block_buffer->clear(this->block_buffer);
+    if(this->big_buffer)
+      this->big_buffer->clear(this->big_buffer);
+    if(this->hd_buffer)
+      this->hd_buffer->clear(this->hd_buffer);
+    set_playback_speed(this, 1);
+    this->live_mode = 0;
+    reset_scr_tunning(this, XINE_FINE_SPEED_NORMAL);
+    this->stream->emergency_brake = 1;
     return NULL; /* disconnected ? */
   }
 
@@ -4142,7 +4162,9 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     LOGERR("read_block: pthread_mutex_lock failed");
     return NULL;
   }
-  if( (!this->live_mode && this->fd_control < 0) ||
+
+  if( (!this->live_mode && (this->fd_control < 0 || 
+			    this->fixed_scr)) ||
       this->slave_stream) {
     if(this->scr_tunning)
       reset_scr_tunning(this, this->speed_before_pause);
@@ -4217,6 +4239,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     /* Update stream position */
     this->curpos += buf->size;
+    this->curframe ++;
 
     /* Handle discard */
     if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
