@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.22 2006-09-09 23:09:56 phintuka Exp $
+ * $Id: device.c,v 1.23 2006-10-13 04:41:03 phintuka Exp $
  *
  */
 
@@ -516,6 +516,7 @@ void cXinelibDevice::StopOutput(void)
   Clear();
   ForEach(m_clients, &cXinelibThread::QueueBlankDisplay);
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
+  ClrAvailableDvdSpuTracks();
 }
 
 void cXinelibDevice::SetTvMode(cChannel *Channel)
@@ -928,7 +929,7 @@ int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id)
 
     if(!m_spuPresent) {
       TRACE("cXinelibDevice::PlaySpu first DVD SPU frame");
-      Skins.QueueMessage(mtInfo,"DVD SPU");
+      Skins.QueueMessage(mtInfo,"DVD Subtitles");
       m_spuPresent = true;
 
       ForEach(m_clients, &cXinelibThread::SpuStreamChanged, (int)Id);
@@ -1317,11 +1318,22 @@ void cXinelibDevice::ClrAvailableDvdSpuTracks(void)
   }
 }
 
-bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type)
+const char *cXinelibDevice::GetDvdSpuLang(int Type)
+{
+  if(Type >= 0 && Type < 64 &&
+     m_DvdSpuTrack[Type])
+    return m_DvdSpuLang[Type][0] ? m_DvdSpuLang[Type] : NULL;
+  return NULL;
+}
+
+bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang)
 {
   if(Type >= 0 && Type < 64 &&
      ! m_DvdSpuTrack[Type]) {
     m_DvdSpuTrack[Type] = true;
+    m_DvdSpuLang[Type][0] = 0;
+    if(lang) 
+      strn0cpy(m_DvdSpuLang[Type], lang, 32);
     m_DvdSpuTracks++;
     return true;
   }
