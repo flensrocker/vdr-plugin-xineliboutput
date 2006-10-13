@@ -1,8 +1,15 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2006-09-20:
+2006-10-13: Version 1.0.0pre6
 
+- Display DVD SPU track language names instead track numbers
+- Improved shortcut key support
+- Fixed garbage in bottom of image when using autocrop
+- Fixed SCR tunning when only one TCP/PIPE client
+- Fixed unscaled OSD scaling to display size when low-resolution video or
+  different aspect ratio
+- Allow overriding default startup image
 - German translations (Thanks to Udo Richter)
 - Setup menu re-arranged
 - Command-line given post plugin parameters are never changed at runtime
