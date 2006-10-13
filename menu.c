@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.17 2006-09-20 09:06:13 phintuka Exp $
+ * $Id: menu.c,v 1.18 2006-10-13 12:48:34 phintuka Exp $
  *
  */
 
@@ -23,6 +23,25 @@
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
+
+#ifndef HOTKEY_START
+# define HOTKEY_START        kRed
+
+# define HOTKEY_DVD          k0    /* */
+# define HOTKEY_DVD_TRACK1   k1    /* */
+# define HOTKEY_DVD_SPU      k2    /* */
+
+# define HOTKEY_NEXT_ASPECT  k3    /* auto, 4:3, 16:9 */
+# define HOTKEY_TOGGLE_CROP  k4    /* off, force, auto */
+# define HOTKEY_UPMIX        k5    /* off, on */
+# define HOTKEY_DOWNMIX      k6    /* off, on */
+# define HOTKEY_DEINTERLACE  k7    /* off, on */
+# define HOTKEY_LOCAL_FE     k8    /* off, on */
+
+# define HOTKEY_PLAYLIST     k9    /* Start replaying playlist or file pointed by
+				      symlink $(CONFDIR)/plugins/xineliboutput/default_playlist */
+#endif
+
 
 #define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
 
@@ -411,6 +430,7 @@ class cDvdSpuTrackSelect : public cOsdMenu
     virtual eOSState ProcessKey(eKeys Key);
 };
 
+/* #warning TODO: use SelectAudioTrack skin display */
 cDvdSpuTrackSelect::cDvdSpuTrackSelect(void) : 
       cOsdMenu(tr("Select DVD SPU Track")) 
 {
@@ -421,7 +441,10 @@ cDvdSpuTrackSelect::cDvdSpuTrackSelect(void) :
   while(count && id < 64) {
     if(cXinelibDevice::Instance().HasDvdSpuTrack(id)) {
       char name[64];
-      sprintf(name, "Track %d", id);
+      if(cXinelibDevice::Instance().GetDvdSpuLang(id))
+	sprintf(name, "Track %d: %s", id, cXinelibDevice::Instance().GetDvdSpuLang(id));
+      else
+	sprintf(name, "Track %d", id);
       Add(new cOsdItem(name, osUser1));
       count--;
       if(id == current)
@@ -452,6 +475,8 @@ eOSState cDvdSpuTrackSelect::ProcessKey(eKeys Key)
 
 //----------------------------- cMenuXinelib ---------------------------------
 
+#include "tools/display_message.h"
+
 static cOsdItem *NewTitle(const char *s)
 {
   char str[128];
@@ -466,6 +491,9 @@ static cOsdItem *NewTitle(const char *s)
 const char *decoderState[] = {"running", "paused", NULL};
 extern cOsdObject *g_PendingMenuAction;
 
+time_t cMenuXinelib::g_LastHotkeyTime = 0;
+eKeys  cMenuXinelib::g_LastHotkey = kNone;
+
 cMenuXinelib::cMenuXinelib()
 {
   field_order = xc.field_order;
@@ -473,6 +501,8 @@ cMenuXinelib::cMenuXinelib()
   headphone = xc.headphone;
   autocrop = xc.autocrop;
   overscan = xc.overscan;
+
+  hotkey_state = hkInit;
 
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
@@ -557,6 +587,18 @@ cMenuXinelib::~cMenuXinelib()
 
 eOSState cMenuXinelib::ProcessKey(eKeys Key)
 {
+  /* Hot key support */
+  if(hotkey_state == hkInit && Key == kNone)
+    return osContinue;
+  if(hotkey_state == hkInit && Key == HOTKEY_START) {
+    hotkey_state = hkSeen;
+    return osContinue;
+  } else if(hotkey_state == hkSeen && Key != kNone) {
+    hotkey_state = hkNone;
+    return ProcessHotkey(Key);
+  }
+  hotkey_state = hkNone;
+    
   cOsdItem *item = Get(Current());
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
@@ -632,3 +674,186 @@ void cMenuXinelib::Store(void)
   xc.headphone = headphone;
 }
 
+eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
+{
+  eOSState NewState = osEnd;
+  char    *Message  = NULL;
+  time_t   now      = time(NULL);
+  bool     OnlyInfo = ((g_LastHotkeyTime < now-3) || g_LastHotkey != Key);
+
+  switch(Key) {
+    case HOTKEY_DVD:
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
+      break;
+
+    case HOTKEY_DVD_TRACK1:
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibDvdPlayerControl("dvd:/1"));
+      break;
+
+    case HOTKEY_DVD_SPU:
+      /* case 1: DVD SPUs in vdr recordings */
+      /* * TODO: DVD spu/audio map when playing DVD ... */
+      /* use audio track window ... ? */
+      {
+	int count = cXinelibDevice::Instance().NumDvdSpuTracks();
+	int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
+	if(!OnlyInfo) {
+	  current++;
+	  if(current == count)
+	    current = -1;
+	  cXinelibDevice::Instance().SetCurrentDvdSpuTrack(current);
+	}
+	asprintf(&Message, "%s %s %d", tr("DVD SPU Track"), 
+		 OnlyInfo ? ":" : "->", 
+		 current);
+      }
+      break;
+
+    case HOTKEY_LOCAL_FE:
+      /* off, on */
+      {
+	int local_frontend = strstra(xc.local_frontend, xc.s_frontends, 0);
+	if(!OnlyInfo) {
+	  local_frontend++;
+	  if(local_frontend >= FRONTEND_count)
+	    local_frontend = 0;
+	  strcpy(xc.local_frontend, xc.s_frontends[local_frontend]);
+	  cXinelibDevice::Instance().ConfigureWindow(
+	      xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
+	      xc.display_aspect, xc.scale_video, xc.field_order);
+	}
+	asprintf(&Message, "%s %s %s", tr("Local Frontend"), 
+		 OnlyInfo ? ":" : "->", 
+		 xc.s_frontendNames[local_frontend]);
+      }
+      break;
+
+    case HOTKEY_NEXT_ASPECT:
+      /* auto, 4:3, 16:9, ... */
+      if(!OnlyInfo) {
+	xc.display_aspect = (xc.display_aspect < ASPECT_count-1) ? xc.display_aspect+1 : 0;
+	cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height, 
+						   xc.modeswitch, xc.modeline, xc.display_aspect, 
+						   xc.scale_video, xc.field_order);      
+      }
+      asprintf(&Message, "%s %s %s", tr("Aspect ratio"), 
+	       OnlyInfo ? ":" : "->",
+	       tr(xc.s_aspects[xc.display_aspect]));
+      break;
+
+    case HOTKEY_TOGGLE_CROP:    
+      /* off, force, auto */
+      if(!OnlyInfo) {
+	if(!xc.autocrop) {
+	  xc.autocrop = 1;
+	  xc.autocrop_autodetect = 1;
+	} else if(xc.autocrop_autodetect) {
+	  xc.autocrop_autodetect = 0;
+	} else {
+	  xc.autocrop = 0;
+	}
+	cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", 
+							   xc.autocrop ? true : false,
+							   xc.AutocropOptions());
+      }
+
+      asprintf(&Message, "%s %s %s", tr("Crop letterbox 4:3 to 16:9"), 
+	       OnlyInfo ? ":" : "->",
+	       !xc.autocrop ? tr("Off") : xc.autocrop_autodetect ? tr("automatic") : tr("On"));
+      break;
+
+    case HOTKEY_DEINTERLACE:    
+      {
+	/* off, on */
+	int off = !strcmp(xc.deinterlace_method, "none");
+	if(!OnlyInfo) {
+	  off = !off;
+	  if(off)
+	    strcpy(xc.deinterlace_method, "none");
+	  else
+	    strcpy(xc.deinterlace_method, "tvtime");
+	  cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
+							     compression, xc.audio_equalizer, 
+							     xc.audio_surround, xc.speaker_type);
+	}
+	asprintf(&Message, "%s %s %s", tr("Deinterlacing"), 
+		 OnlyInfo ? ":" : "->", 
+		 tr(off ? "Off":"On"));
+      }
+      break;
+
+    case HOTKEY_UPMIX:    
+      /* off, on */
+      if(!OnlyInfo) {
+	xc.audio_upmix = xc.audio_upmix ? 0 : 1;
+	cXinelibDevice::Instance().ConfigurePostprocessing(
+		  "upmix", xc.audio_upmix ? true : false, NULL);
+      }
+      asprintf(&Message, "%s %s %s", 
+	       tr("Upmix stereo to 5.1"), 
+	       OnlyInfo ? ":" : "->",
+	       tr(xc.audio_upmix ? "On" : "Off"));
+      break;
+
+    case HOTKEY_DOWNMIX:    
+      /* off, on */
+      if(!OnlyInfo) {
+	xc.audio_surround = xc.audio_surround ? 0 : 1;
+	cXinelibDevice::Instance().ConfigurePostprocessing(
+	    xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
+	    xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
+      }
+      asprintf(&Message, "%s %s %s", 
+	       tr("Downmix AC3 to surround"), 
+	       OnlyInfo ? ":" : "->",
+	       tr(xc.audio_surround ? "On":"Off"));
+      break;
+
+      case HOTKEY_PLAYLIST:
+	/* Start replaying playlist or file pointed by 
+	   symlink $(CONFDIR)/plugins/xineliboutput/default_playlist */
+	{
+	  struct stat st;
+	  char *file;
+	  asprintf(&file, "%s%s", cPlugin::ConfigDirectory("xineliboutput"), "/default_playlist");
+	  if (lstat(file, &st) == 0) {
+	    if (S_ISLNK(st.st_mode)) {
+	      char *buffer = ReadLink(file);
+	      if (!buffer || stat(buffer, &st)) {
+		asprintf(&Message, tr("Default playlist not found"));
+	      } else {
+		LOGDBG("Replaying default playlist: %s", file);
+		cControl::Shutdown();
+		cControl::Launch(new cXinelibPlayerControl(CloseOsd, buffer));
+	      }
+	      free(buffer);
+	    } else {
+	      asprintf(&Message, tr("Default playlist is not symlink"));
+	    }
+	  } else {
+	    asprintf(&Message, tr("Default playlist not defined"));
+	  }
+	  free(file);
+	}
+	break;
+
+    default:
+      asprintf(&Message, tr("xineliboutput: hotkey %s not binded"), cKey::ToString(Key));
+      break;
+  }
+
+  if(Message) {
+    if(!g_PendingMenuAction &&
+       !cRemote::HasKeys() &&
+       cRemote::CallPlugin("xineliboutput"))
+      g_PendingMenuAction = new cDisplayMessage(Message);
+    free(Message);
+  }
+
+  g_LastHotkeyTime = now;
+  g_LastHotkey = Key;
+
+  return NewState;
+}
