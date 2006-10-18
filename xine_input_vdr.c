@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.56 2006-10-07 22:13:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.57 2006-10-18 21:41:31 phintuka Exp $
  *
  */
 
@@ -3106,29 +3106,24 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       } else {
 	err = CONTROL_PARAM_ERROR;
       }
+    } else {
+      if(1 == sscanf(cmd, "AUDIOSTREAM AC3 %d", &tmp32)) {
+	tmp32 &= 0xff;
+	LOGDBG("Audio channel -> [%d]", tmp32);
+	xine_set_param(stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL, tmp32);
+      }
+      LOGDBG("Audio channel selected: [%d]", _x_get_audio_channel (stream));
     }
 
   } else if(!strncasecmp(cmd, "SPUSTREAM ", 10)) {
     int chind = _x_get_spu_channel (stream);
+    int max   = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     if(strstr(cmd, "NEXT"))
-      _x_select_spu_channel(stream, chind<stream->spu_track_map_entries ? chind+1 : chind);
+      _x_select_spu_channel(stream, chind < max ? chind+1 : -2);
     else if(strstr(cmd, "PREV"))
-      _x_select_spu_channel(stream, chind>-2 ? chind-1 : -2);
+      _x_select_spu_channel(stream, chind > -2 ? chind-1 : max-1);
     else if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
-#if 1
       _x_select_spu_channel(stream, tmp32);
-#else
-      buf_element_t *buf_elem = 
-	stream->video_fifo->buffer_pool_try_alloc (stream->video_fifo);
-      if(buf_elem) {
-        tmp32 &= 0x1f;
-	buf_elem->type = BUF_CONTROL_SPU_CHANNEL;
-	buf_elem->decoder_info[0] = tmp32;  /* widescreen / auto stream id */
-	buf_elem->decoder_info[1] = tmp32;  /* letterbox stream id */
-	buf_elem->decoder_info[2] = tmp32;  /* pan&scan stream id */
-	this->block_buffer->put(this->block_buffer, buf_elem);
-      }
-#endif
     } else 
       err = CONTROL_PARAM_ERROR;
     LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
@@ -3316,6 +3311,56 @@ static void *vdr_control_thread(void *this_gen)
 
 /**************************** Control to VDR ********************************/
 
+static void slave_track_maps_changed(vdr_input_plugin_t *this)
+{
+  char tracks[1024], lang[128], tmp[64];
+  int i, current, n=0;
+  
+  /* Audio tracks */
+  
+  strcpy(tracks, "TRACKMAP AUDIO ");
+  current = xine_get_param(this->slave_stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
+  for(i=0; i<32; i++)
+    if(xine_get_audio_lang(this->slave_stream, i, lang)) {
+      while(lang[0]==' ') strcpy(lang, lang+1);
+      sprintf(tmp, "%s%d:%s ", i==current?"*":"", i, lang);
+      strcat(tracks, tmp);
+      n++;
+    }
+  if(n>1)
+    LOGDBG("%s", tracks);
+  strcat(tracks,"\r\n");
+
+  if(this->funcs.xine_input_event) {
+    /* local mode: -> VDR */
+    this->funcs.xine_input_event(tracks, NULL);
+  }
+  else {
+    /* remote mode: -> connection -> VDR */
+    write_control(this, tracks);
+  }
+  
+  /* DVD SPU tracks */
+  
+  strcpy(tracks, "TRACKMAP SPU ");
+  current = xine_get_param(this->slave_stream, XINE_PARAM_SPU_CHANNEL);
+  for(i=0; i<32; i++)
+    if(xine_get_spu_lang(this->slave_stream, i, lang)) {
+      while(lang[0]==' ') strcpy(lang, lang+1);
+      sprintf(tmp, "%s%d:%s ", i==current?"*":"", i, lang);
+      strcat(tracks, tmp);
+      n++;
+    }
+  if(n>1)
+    LOGDBG("%s", tracks);
+  strcat(tracks,"\r\n");
+  
+  if(this->funcs.xine_input_event)
+    this->funcs.xine_input_event(tracks, NULL);
+  else
+    write_control(this, tracks);
+}
+
 /* Map some xine input events to vdr input (remote key names) */
 struct {
   int event;
@@ -3407,10 +3452,12 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	     event->type, vdr_keymap[i].name);
 
       if(this->funcs.input_control) {
-	this->funcs.input_control((input_plugin_t *)this, 
+	/* remote mode: -> input_plugin -> connection -> VDR */
+	this->funcs.input_control((input_plugin_t *)this,
 				  NULL, vdr_keymap[i].name, 0, 0);
       }
       if(this->funcs.xine_input_event) {
+	/* local mode: -> VDR */
 	this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
       }
       return;
@@ -3419,6 +3466,11 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
   }
 
   switch (event->type) {
+    case XINE_EVENT_UI_CHANNELS_CHANGED:
+      if(event->stream==this->slave_stream) 
+	slave_track_maps_changed(this);
+      break;
+
     case XINE_EVENT_FRAME_FORMAT_CHANGE:
       {
         xine_format_change_data_t *frame_change = 
