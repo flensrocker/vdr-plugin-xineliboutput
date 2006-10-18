@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.11 2006-09-20 05:47:52 phintuka Exp $
+ * $Id: frontend_local.c,v 1.12 2006-10-18 08:41:08 phintuka Exp $
  *
  */
 
@@ -220,13 +220,21 @@ int cXinelibLocal::Xine_Control(const char *cmd)
 extern "C" {
   static void keypress_handler(const char *keymap, const char *key)
   {
-    if(!xc.use_x_keyboard || !key) {
+    if(!strncmp("TRACKMAP", keymap, 8)) {
+
+      cXinelibThread::InfoHandler(keymap);
+
+    } else if(!xc.use_x_keyboard || !key) {
+
       /* Only X11 key events came this way in local mode.
 	 Keyboard is handled by vdr. */
       LOGMSG("keypress_handler(%s): X11 Keyboard disabled in config", key);
-      return;
+
+    } else {
+
+      cXinelibThread::KeypressHandler(keymap, key, false, false);
+
     }
-    cXinelibThread::KeypressHandler(keymap, key, false, false);
   }
 };
 

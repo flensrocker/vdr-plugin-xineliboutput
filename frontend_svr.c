@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.23 2006-10-07 19:54:05 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.24 2006-10-18 08:41:08 phintuka Exp $
  *
  */
 
@@ -1222,6 +1222,9 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 	f->Set(result);
       }
     }
+
+  } else if(!strncmp(cmd, "TRACKMAP ", 9)) {
+    cXinelibThread::InfoHandler(cmd);
 
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     Handle_Control_GRAB(cli, cmd+5);
