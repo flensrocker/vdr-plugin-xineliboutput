@@ -1,8 +1,9 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2006-10-13: Version 1.0.0pre6
+2006-10-20: Version 1.0.0pre6
 
+- Display Audio track languages when replaying DVDs
 - Display DVD SPU track language names instead track numbers
 - Improved shortcut key support
 - Fixed garbage in bottom of image when using autocrop
