@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.11 2006-09-06 16:11:34 phintuka Exp $
+ * $Id: media_player.c,v 1.12 2006-10-18 20:17:46 phintuka Exp $
  *
  */
 
@@ -209,6 +209,17 @@ class cXinelibPlayer : public cPlayer {
   public:
     cXinelibPlayer(const char *file);
     virtual ~cXinelibPlayer();
+
+    virtual void SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
+      {
+	LOGMSG("cXinelibPlayer::SetAudioTrack(%d)",(int)Type);
+	char tmp[64];
+	if(IS_DOLBY_TRACK(Type))
+	  sprintf(tmp, "AUDIOSTREAM AC3 %d", (int)(Type - ttDolbyFirst));
+	if(IS_AUDIO_TRACK(Type))
+	  sprintf(tmp, "AUDIOSTREAM AC3 %d", (int)(Type - ttAudioFirst));
+	cXinelibDevice::Instance().PlayFileCtrl(tmp);
+      };
 
     const char *Title(void);    
     const char *File(void);
