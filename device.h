@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.12 2006-10-18 13:32:08 phintuka Exp $
+ * $Id: device.h,v 1.13 2006-10-18 20:32:51 phintuka Exp $
  *
  */
 
@@ -151,7 +151,7 @@ class cXinelibDevice : public cDevice
     char m_DvdSpuLang[64][64];
 
   public:
-    void ClrAvailableDvdSpuTracks(void);
+    void ClrAvailableDvdSpuTracks(bool NotifyFrontend = true);
     bool SetAvailableDvdSpuTrack(int Type, const char *lang = NULL, bool Current=false);
     const char *GetDvdSpuLang(int Type);
     int  NumDvdSpuTracks(void) const { return m_DvdSpuTracks; }
