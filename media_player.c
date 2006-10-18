@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.12 2006-10-18 20:17:46 phintuka Exp $
+ * $Id: media_player.c,v 1.13 2006-10-18 21:20:41 phintuka Exp $
  *
  */
 
@@ -212,7 +212,7 @@ class cXinelibPlayer : public cPlayer {
 
     virtual void SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
       {
-	LOGMSG("cXinelibPlayer::SetAudioTrack(%d)",(int)Type);
+	/*LOGMSG("cXinelibPlayer::SetAudioTrack(%d)",(int)Type);*/
 	char tmp[64];
 	if(IS_DOLBY_TRACK(Type))
 	  sprintf(tmp, "AUDIOSTREAM AC3 %d", (int)(Type - ttDolbyFirst));
@@ -704,8 +704,18 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
                   Menu = new cDvdMenu();
 		  break;
     // SPU channel
+#if 0
     case k2:      r = cXinelibDevice::Instance().PlayFileCtrl("SPUSTREAM NEXT");  break;
     case k5:      r = cXinelibDevice::Instance().PlayFileCtrl("SPUSTREAM PREV");  break;
+#else
+    case k5:      cXinelibDevice::Instance().SetCurrentDvdSpuTrack(
+                       cXinelibDevice::Instance().GetCurrentDvdSpuTrack() - 2);
+    case k2:      cRemote::CallPlugin("xineliboutput"); 
+                  cRemote::Put(kRed); 
+		  cRemote::Put(k2);
+                  break;
+#endif
+
     // Playback control
     case kGreen:  r = cXinelibDevice::Instance().PlayFileCtrl("SEEK -60");  break;
     case kYellow: r = cXinelibDevice::Instance().PlayFileCtrl("SEEK +60");  break;
