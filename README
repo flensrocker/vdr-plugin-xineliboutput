@@ -310,30 +310,33 @@ DVD playback
 
   DVD images
 
-  Media player supports playing DVDs directly from hard disk.
-  Found DVD folders are marked with 'D' in media player 
-  file list.
-  Plugin detects folders as DVDs if there is file 
-  Name_Of_DVD/VIDEO_TS/VIDEO_TS.IFO.
+    Media player supports playing DVDs directly from hard disk.
+    Found DVD folders are marked with 'D' in media player 
+    file list.
+    Plugin detects folders as DVDs if there is file 
+    Name_Of_DVD/VIDEO_TS/VIDEO_TS.IFO.
 
-  It is also possible to replay DVD as VDR recording by 
-  creating empty recording directory and renaming or
-  symlinking .VOBs of selected title to 00?.vdr files.
-  DVD menus (VTS_??_0.VOB) should _not_ be copied.
-  Audio can be selected from main menu just as with normal 
-  VDR recordings.
-  Subtitle track can be selected from xineliboutput plugin 
-  menu.
-  For seeking it is necessarily to create index.vdr file
-  with genindex or similar tool.
+    It is also possible to replay DVD as VDR recording by 
+    creating empty recording directory and renaming or
+    symlinking .VOBs of selected title to 00?.vdr files.
+    DVD menus (VTS_??_0.VOB) should _not_ be copied.
+    Audio can be selected from main menu just as with normal 
+    VDR recordings.
+    For seeking it is necessarily to create index.vdr file
+    with genindex or similar tool.
 
   DVD discs
 
-  "Real" DVD discs (accessible from /dev/dvd) can be played 
-  from xineliboutput plugin menu.
+    "Real" DVD discs (accessible from /dev/dvd) can be played 
+    from xineliboutput plugin menu.
 
-  In case of remote frontend (vdr-sxfe/vdr-fbfe) DVD drive 
-  of _remote client_ is used.
+    In case of remote frontend (vdr-sxfe/vdr-fbfe) DVD drive 
+    of _remote client_ is used.
+
+  Audio track can be selected from VDR audio track menu 
+  (keys "Menu" + "Green" or "Audio") or from DVD menu.
+  Subtitle track can be selected from xineliboutput plugin 
+  menu, DVD menu or with keys "2" and "5".
 
 
 Aspect ratio setting
@@ -352,6 +355,28 @@ Aspect ratio setting
              wider than 16:9 is displayed as 16:9.
              (useful with 16:9 TV if TV can switch between 
              16:9 and 4:3 -> 16:9 smart scaling)
+
+
+Shortcut key macros
+
+  It is possible to change some settings and execute actions with 
+  user-defined key macros and VDR User? keys.
+
+  Supported settings and corresponding key sequences in VDR 
+  keymacros.conf format are:
+
+    Start replaying DVD                  (User? @xineliboutput kRed 0)
+    Start replaying Title 1 from DVD     (User? @xineliboutput kRed 1)
+    Next DVD SPU track                   (User? @xineliboutput kRed 2)
+    Toggle aspect ratio                  (User? @xineliboutput kRed 3)
+    Toggle letterbox -> 16:9 cropping    (User? @xineliboutput kRed 4)
+    Toggle stereo -> 5.1 upmix           (User? @xineliboutput kRed 5)
+    Toggle 5.1 -> surround downmix       (User? @xineliboutput kRed 6)
+    Toggle de-interlacing                (User? @xineliboutput kRed 7)
+    Toggle local frontend on/off         (User? @xineliboutput kRed 8)
+    Start replaying default playlist or file pointed by symlink 
+    $(CONFDIR)/plugins/xineliboutput/default_playlist
+                                         (User? @xineliboutput kRed 9)
 
 
 Xine-specific settings
