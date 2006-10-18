@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.24 2006-10-18 08:41:08 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.25 2006-10-18 12:50:12 phintuka Exp $
  *
  */
 
@@ -1243,7 +1243,7 @@ void cXinelibServer::Read_Control(int cli)
 
     ++m_CtrlBufPos[cli];
 
-    if( m_CtrlBufPos[cli] > 79) {
+    if( m_CtrlBufPos[cli] > 256) {
       LOGMSG("Received too long control message from client %d (%d bytes)", 
 	     cli, m_CtrlBufPos[cli]);
       LOGMSG("%81s",m_CtrlBuf[cli]);
