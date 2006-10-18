@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.19 2006-10-18 13:01:14 phintuka Exp $
+ * $Id: frontend.c,v 1.20 2006-10-18 20:28:16 phintuka Exp $
  *
  */
 
@@ -88,29 +88,49 @@ void cXinelibThread::InfoHandler(const char *info)
 {
   char *pmap = strdup(info), *map = pmap;
 
+  if(strchr(map, '\r'))
+    *strchr(map, '\r') = 0;
+
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
     map += 13;
-    if(strchr(map, '\r'))
-      *strchr(map, '\r') = 0;
-    cXinelibDevice::Instance().ClrAvailableDvdSpuTracks();
+    cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
     while(*map) {
+      bool Current = false;
       while(*map == ' ') map++;
+      if(*map == '*') {
+	Current = true;
+	map++;
+      }
       int id = atoi(map);
       while(*map && *map != ':') map++;
       if(*map == ':') map++;
       char *lang = map;
       while(*map && *map != ' ') map++;
       if(*map == ' ') { *map = 0; map++; };
-      cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, *lang ? lang : NULL);
+      cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, *lang ? lang : NULL, Current);
     }
   }
 
   else if(!strncmp(info, "TRACKMAP AUDIO", 14)) {
     map += 15;
-    if(strchr(map, '\r'))
-      *strchr(map, '\r') = 0;
-
-    /* #warning TODO: audio tracks -> device */
+    cXinelibDevice::Instance().ClrAvailableTracks();
+    while(*map) {
+      bool Current = false;
+      while(*map == ' ') map++;
+      if(*map == '*') {
+	Current = true;
+	map++;
+      }
+      int id = atoi(map);
+      while(*map && *map != ':') map++;
+      if(*map == ':') map++;
+      char *lang = map;
+      while(*map && *map != ' ') map++;
+      if(*map == ' ') { *map = 0; map++; };
+      cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, *lang ? lang : NULL);
+      if(Current) 
+	cXinelibDevice::Instance().SetCurrentAudioTrack((eTrackType)(ttDolby+id));
+    }
   }
 
   free(pmap);
