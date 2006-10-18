@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.19 2006-10-18 13:00:09 phintuka Exp $
+ * $Id: menu.c,v 1.20 2006-10-18 21:28:05 phintuka Exp $
  *
  */
 
@@ -697,9 +697,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       break;
 
     case HOTKEY_DVD_SPU:
-      /* case 1: DVD SPUs in vdr recordings */
-      /* * TODO: DVD spu/audio map when playing DVD ... */
-      /* use audio track window ... ? */
+      /* use audio track display menu ? */
       {
 	int count = cXinelibDevice::Instance().NumDvdSpuTracks();
 	int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
