@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.18 2006-10-13 12:48:34 phintuka Exp $
+ * $Id: menu.c,v 1.19 2006-10-18 13:00:09 phintuka Exp $
  *
  */
 
@@ -674,6 +674,10 @@ void cMenuXinelib::Store(void)
   xc.headphone = headphone;
 }
 
+#if APIVERSNUM < 10404
+#  warning Using hotkeys may segfault with VDR version < 1.4.3-2
+#endif
+
 eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 {
   eOSState NewState = osEnd;
@@ -705,9 +709,16 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	    current = -1;
 	  cXinelibDevice::Instance().SetCurrentDvdSpuTrack(current);
 	}
-	asprintf(&Message, "%s %s %d", tr("DVD SPU Track"), 
-		 OnlyInfo ? ":" : "->", 
-		 current);
+	const char *lang = cXinelibDevice::Instance().GetDvdSpuLang(current); 
+	if(current == -1) lang = "default";
+	if(lang && lang[0])
+	  asprintf(&Message, "%s %s %s (%d)", tr("DVD SPU Track"), 
+		   OnlyInfo ? ":" : "->",
+		   lang, current);
+	else
+	  asprintf(&Message, "%s %s %d", tr("DVD SPU Track"), 
+		   OnlyInfo ? ":" : "->", 
+		   current);
       }
       break;
 
