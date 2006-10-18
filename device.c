@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.24 2006-10-18 13:32:08 phintuka Exp $
+ * $Id: device.c,v 1.25 2006-10-18 20:32:22 phintuka Exp $
  *
  */
 
@@ -959,14 +959,14 @@ void cXinelibDevice::SetAudioTrackDevice(eTrackType Type)
 {
   TRACEF("cXinelibDevice::SetAudioTrackDevice");
 
-  /*LOGDBG("SetAudioTrackDevice(%d)", (int)Type);*/
 #if 0
+  LOGMSG("SetAudioTrackDevice(%d)", (int)Type);
   if(IS_DOLBY_TRACK(Type))
     ForEach(m_clients, &cXinelibThread::AudioStreamChanged, 
-	    true, (int)(Type - ttDolbyFirst));
+	    true, (PRIVATE_STREAM1<<8) | (int)(Type - ttDolbyFirst));
   if(IS_AUDIO_TRACK(Type))
     ForEach(m_clients, &cXinelibThread::AudioStreamChanged,
-	    false, AUDIO_STREAM + (int)(Type - ttAudioFirst));
+	    false, (AUDIO_STREAM + (int)(Type - ttAudioFirst)) << 8);
 #endif
 }
 
@@ -987,15 +987,17 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
 void cXinelibDevice::SetDigitalAudioDevice(bool On)
 {
   TRACEF("cXinelibDevice::SetDigitalAudioDevice");
-  /*LOGDBG("SeDigitalAudioDevice(%s)", On ? "on" : "off");*/
 
+#if 0
+  LOGMSG("SetDigitalAudioDevice(%s)", On ? "on" : "off");
+  /* selects wrong track if new track is not dolby track */
   eTrackType CurrTrack = GetCurrentAudioTrack();
   if(m_LastTrack != CurrTrack) {
     bool ac3   = IS_DOLBY_TRACK(CurrTrack);
     int  index = CurrTrack - (ac3 ? ttDolbyFirst : ttAudioFirst);
     m_LastTrack = CurrTrack;
 #if 0
-    LOGDBG("    Switching audio track -> %d (%02x:%s:%d)", m_LastTrack, 
+    LOGMSG("    Switching audio track -> %d (%02x:%s:%d)", m_LastTrack, 
 	   ac3 ? PRIVATE_STREAM1 : (index+AUDIO_STREAM), 
 	   ac3 ? "AC3" : "MPEG", index);
 #endif
@@ -1006,6 +1008,7 @@ void cXinelibDevice::SetDigitalAudioDevice(bool On)
       ForEach(m_clients, &cXinelibThread::AudioStreamChanged, false, 
 	      (index + AUDIO_STREAM) << 8);
   }
+#endif
 }
 
 void cXinelibDevice::SetVideoFormat(bool VideoFormat16_9) 
@@ -1307,14 +1310,15 @@ bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type)
   return false;
 }
 
-void cXinelibDevice::ClrAvailableDvdSpuTracks(void)
+void cXinelibDevice::ClrAvailableDvdSpuTracks(bool NotifyFrontend)
 {
   m_DvdSpuTracks = 0;
   for(int i=0; i<64; i++)
     m_DvdSpuTrack[i] = false;
   if(m_CurrentDvdSpuTrack >=0 ) {
     m_CurrentDvdSpuTrack = -1;
-    ForEach(m_clients, &cXinelibThread::SpuStreamChanged, -1);
+    if(NotifyFrontend)
+      ForEach(m_clients, &cXinelibThread::SpuStreamChanged, -1);
   }
 }
 
@@ -1335,7 +1339,8 @@ bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Cu
     if(lang) 
       strn0cpy(m_DvdSpuLang[Type], lang, 32);
     m_DvdSpuTracks++;
-    m_CurrentDvdSpuTrack = Type;
+    if(Current)
+      m_CurrentDvdSpuTrack = Type;
     return true;
   }
   return false;
