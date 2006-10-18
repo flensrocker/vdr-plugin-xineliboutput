@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.23 2006-10-13 04:41:03 phintuka Exp $
+ * $Id: device.c,v 1.24 2006-10-18 13:32:08 phintuka Exp $
  *
  */
 
@@ -1326,7 +1326,7 @@ const char *cXinelibDevice::GetDvdSpuLang(int Type)
   return NULL;
 }
 
-bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang)
+bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Current)
 {
   if(Type >= 0 && Type < 64 &&
      ! m_DvdSpuTrack[Type]) {
@@ -1335,6 +1335,7 @@ bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang)
     if(lang) 
       strn0cpy(m_DvdSpuLang[Type], lang, 32);
     m_DvdSpuTracks++;
+    m_CurrentDvdSpuTrack = Type;
     return true;
   }
   return false;
