@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.24 2006-09-26 08:23:09 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.25 2006-10-19 10:06:57 phintuka Exp $
  *
  */
 
@@ -491,23 +491,30 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     else if(!strcmp(video_driver, "DirectFB")) { 
       /* DirectFBInit (NULL, NULL); */
       /* DirectFBSetOption ("fbdev", video_port); */
-      char *orig = strdup(getenv("DFBARGS")), *head = NULL, *tail = NULL, *tmp = NULL;
-      if(orig && (head=strstr(orig,"fbdev="))) {
-	tail = strchr(head, ',');
-	if(head == orig)
-	  head = NULL;
-	else
-	  *head = 0;
-	asprintf(&tmp, "%sfbdev=%s%s",
-		head ? orig : "", fbdev, tail ? tail : "");
+      char *orig = getenv("DFBARGS"), *head = NULL, *tail = NULL, *tmp = NULL;
+      if(orig) {
+	orig = strdup(orig);
+	if(NULL != (head = strstr(orig,"fbdev="))) {
+	  tail = strchr(head, ',');
+	  if(head == orig)
+	    head = NULL;
+	  else
+	    *head = 0;
+	  asprintf(&tmp, "%sfbdev=%s%s",
+		   head ? orig : "", fbdev, tail ? tail : "");
+	} else {
+	  asprintf(&tmp, "fbdev=%s%s%s", fbdev, orig?",":"", orig?orig:"");
+	}
+	LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
+	       tmp, getenv("DFBARGS"));
+	free(orig);
       } else {
 	asprintf(&tmp, "fbdev=%s", fbdev);
+	LOGMSG("setting environment variable DFBARGS to %s", tmp);
       }
-      LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
-	     getenv("DFBARGS"), tmp);
       setenv("DFBARGS", tmp, 1);
       free(tmp);
-      free(orig);
+      /*free(orig);*/
     }
   }
 #endif
