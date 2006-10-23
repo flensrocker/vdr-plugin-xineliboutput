@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.57 2006-10-18 21:41:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.58 2006-10-23 21:37:20 phintuka Exp $
  *
  */
 
@@ -96,6 +96,7 @@
 #define SysLogLevel iSysLogLevel
 
 #include "logdefs.h"
+
 
 #if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
     !defined(XINELIBOUTPUT_DEBUG_STDERR)
@@ -640,7 +641,7 @@ static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
 {
   if(this->scr_tunning != SCR_TUNNING_OFF) {
     this->scr_tunning = SCR_TUNNING_OFF; /* marked as normal */
-    if(this->scr) 
+    if(this->scr)
       pvrscr_speed_tunning(this->scr, 1.0);
 
     if(new_speed >= 0) {
@@ -1391,30 +1392,31 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
        in right sized image after cropping ...*/
     int width  = this->video_width;
     int height = this->video_height;
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+    vo_frame_t *img = NULL;
+
     width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_LEFT);
     width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_RIGHT);
     height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_TOP);
     height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM);
 
     if(width >= 360 && height >= 288 && width <= 1920 && height <= 1024) {
-      vo_frame_t *img = this->stream->video_out->get_frame (this->stream->video_out,
-							    width, height,
-							    dratio, XINE_IMGFMT_YV12, 
-							    VO_BOTH_FIELDS);
+      this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+      img = this->stream->video_out->get_frame (this->stream->video_out,
+						width, height,
+						dratio, XINE_IMGFMT_YV12, 
+						VO_BOTH_FIELDS);
       this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
-      if(img) {
-	memset( img->base[0], 0x00, width * height);
-	memset( img->base[1], 0x80, width * height / 4 );
-	memset( img->base[2], 0x80, width * height / 4 );
-	img->duration  = 3600;
-	img->pts       = 3600;
-	img->bad_frame = 0;
-	img->draw(img, this->stream);
-	img->free(img);
-      }
-    } else {
-      this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+    }
+
+    if(img) {
+      memset( img->base[0], 0x00, width * height);
+      memset( img->base[1], 0x80, width * height / 4 );
+      memset( img->base[2], 0x80, width * height / 4 );
+      img->duration  = 3600;
+      img->pts       = 3600;
+      img->bad_frame = 0;
+      img->draw(img, this->stream);
+      img->free(img);
     }
   }
   this->still_mode = 0;
@@ -2107,12 +2109,10 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
 
   stream->xine->port_ticket->acquire(stream->xine->port_ticket, 1);
 
-  if (stream->video_out) {
+  if (stream->video_out)
     stream->video_out->set_property(stream->video_out, VO_PROP_DISCARD_FRAMES, 1);
-  }
-  if (stream->audio_out) {
+  if (stream->audio_out)
     stream->audio_out->set_property(stream->audio_out, AO_PROP_DISCARD_BUFFERS, 1);
-  }
 
   fifo_buffer_clear(stream->video_fifo);
   fifo_buffer_clear(stream->audio_fifo);
@@ -2413,6 +2413,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     err = !xine_open(this->slave_stream, filename);
     if(err) {
       LOGERR("Error opening file ! (File not found ? Unknown format ?)");
+      *filename = 0; /* this triggers stop */
     } else {
 #if 1
       if(this->stream->video_fifo->size(this->stream->video_fifo))
@@ -2433,7 +2434,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       set_playback_speed(this, 1);
       reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
-					 METRONOM_PREBUFFER, 90000);
+					       METRONOM_PREBUFFER, 90000);
 #endif
       this->loop_play = loop;
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
@@ -2476,6 +2477,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
     this->loop_play = 0;
     if(this->slave_stream) {
+
+      _x_set_fine_speed (this->slave_stream, speed);
+      xine_stop(this->slave_stream);
+
       if (this->slave_event_queue) {
 	xine_event_dispose_queue (this->slave_event_queue);
 	this->slave_event_queue = NULL;
@@ -2485,8 +2490,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
       }
-
-      xine_stop(this->slave_stream);
       xine_close(this->slave_stream);
       xine_dispose(this->slave_stream);
       this->slave_stream = NULL;
@@ -5292,18 +5295,23 @@ static const char *vdr_class_get_identifier (input_class_t *this_gen)
   return "xvdr";
 }
 
-static char **vdr_plugin_get_autplay_list(input_class_t *this_gen, int *num_files) {
-  vdr_input_class_t *class = (vdr_input_class_t *)this_gen;
+static char **vdr_plugin_get_autplay_list(input_class_t *this_gen, int *num_files) 
+{
+  vdr_input_class_t *this = (vdr_input_class_t *)this_gen;
 
   *num_files = 1;
-  return class->mrls;
-       
+
+  return this->mrls;
 }
 
 static void vdr_class_dispose (input_class_t *this_gen) 
 {
-  vdr_input_class_t *cls = (vdr_input_class_t *) this_gen;
-  free (cls);
+  vdr_input_class_t *this = (vdr_input_class_t *) this_gen;
+
+  this->xine->config->unregister_callback(this->xine->config,
+					  "media.xvdr.default_mrl");
+
+  free (this);
 }
 
 static void *init_class (xine_t *xine, void *data) 
