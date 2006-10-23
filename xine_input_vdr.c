@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.58 2006-10-23 21:37:20 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.59 2006-10-23 21:39:34 phintuka Exp $
  *
  */
 
@@ -2478,7 +2478,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     this->loop_play = 0;
     if(this->slave_stream) {
 
-      _x_set_fine_speed (this->slave_stream, speed);
       xine_stop(this->slave_stream);
 
       if (this->slave_event_queue) {
