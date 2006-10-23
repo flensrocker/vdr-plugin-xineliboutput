@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.3 2006-09-06 17:59:34 phintuka Exp $
+ * $Id: logdefs.h,v 1.4 2006-10-23 19:22:14 phintuka Exp $
  *
  */
 
@@ -55,6 +55,21 @@
                      } while(0)
 #define LOGMSG(x...) do{ if(SysLogLevel > 1) x_syslog(LOG_INFO,  x); } while(0)
 #define LOGDBG(x...) do{ if(SysLogLevel > 2) x_syslog(LOG_DEBUG, x); } while(0)
+
+
+#ifdef NDEBUG
+#  define ASSERT(expr)
+#else
+#  define ASSERT(expr,fatal) \
+      do { \
+        if(!(expr)) { \
+          LOGERR("Asseretion failed: %s at %s:%d (%s)", \
+                 #expr, __FILE__, __LINE__, __FUNCTION__); \
+          if(fatal) \
+            abort(); \
+        } \
+      } while(0)
+#endif
 
 
 #ifdef XINELIBOUTPUT_DEBUG
