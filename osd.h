@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.h,v 1.2 2006-08-07 21:09:16 phintuka Exp $
+ * $Id: osd.h,v 1.3 2006-10-23 20:09:04 phintuka Exp $
  *
  */
 
@@ -49,7 +49,6 @@ class cXinelibOsd : public cOsd, public cListObject
     virtual ~cXinelibOsd();
 };
 
-class cMutex;
 
 class cXinelibOsdProvider : public cOsdProvider 
 {
