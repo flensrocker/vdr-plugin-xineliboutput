@@ -4,13 +4,16 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.2 2006-08-18 02:17:24 phintuka Exp $
+ * $Id: pes.h,v 1.3 2006-10-23 19:01:49 phintuka Exp $
  *
  */
 
 #ifndef _PES_H_
 #define _PES_H_
 
+//
+// Constants
+//
 
 #define PES_CHUNK_SIZE 2048
 
@@ -45,6 +48,11 @@
 #define P_FRAME     2
 #define B_FRAME     3
 
+
+//
+// Extract PTS from PES packet
+//
+
 static inline int64_t pes_extract_pts(const uchar *Data, int Length, 
 				  bool& Audio, bool& Video) 
 {
@@ -73,7 +81,11 @@ static inline int64_t pes_extract_pts(const uchar *Data, int Length,
   return -1ULL;
 }
 
-static inline void pes_change_pts(uchar *Data, int Length)
+//
+// Change PTS of PES packet
+//
+
+static inline void pes_change_pts(uchar *Data, int Length, int64_t pts)
 {
   /* assume mpeg2 pes header ... Assume header already HAS pts */
   if((VIDEO_STREAM == (Data[3] & ~VIDEO_STREAM_MASK)) ||
@@ -86,22 +98,19 @@ static inline void pes_change_pts(uchar *Data, int Length)
       return;
       
     if((Length > 14) && (Data[7] & 0x80)) { /* pts avail */
-      int64_t pts;
-      //pts  = ((int64_t)(Data[ 9] & 0x0E)) << 29 ;
       Data[ 9] |= ((pts >> 29) & 0x0E);
-      //pts |= ((int64_t) Data[10])         << 22 ;
       Data[10] |= ((pts >> 22) & 0xFF);
-      //pts |= ((int64_t)(Data[11] & 0xFE)) << 14 ;
       Data[11] |= ((pts >> 14) & 0xFE);
-      //pts |= ((int64_t) Data[12])         <<  7 ;
       Data[12] |= ((pts >> 7 ) & 0xFF);
-      //pts |= ((int64_t)(Data[13] & 0xFE)) >>  1 ;
       Data[13] |= ((pts << 1 ) & 0xFE);
     }
   }
 }
 
-// Remove pts from PES packet (zero it)
+//
+// Remove pts from PES packet (set to 0LL)
+//
+
 static inline void pes_strip_pts(uchar *Data, int Len)
 {
   if(VIDEO_STREAM == (Data[3] & ~VIDEO_STREAM_MASK) ||
@@ -184,6 +193,10 @@ static inline void pes_strip_pts(uchar *Data, int Len)
   }
 }
 
+//
+// Extract PES packet length
+//
+
 static inline int pes_packet_len(const uchar *header, const int maxlen, bool &isMpeg1)
 {
   if(VIDEO_STREAM == (header[3] & ~VIDEO_STREAM_MASK) ||
@@ -215,6 +228,28 @@ static inline int pes_packet_len(const uchar *header, const int maxlen, bool &is
   }
   isMpeg1 = false;
   return -(6 + (header[4] << 8 | header[5]));
+}
+
+//
+// Extract video frame size from video PES packet
+//  - returns 1 if size was found
+//
+
+static inline int GetVideoSize(const uchar *buf, int length, int *width, int *height)
+{
+  int i = 8;         // the minimum length of the video packet header
+  i += buf[i] + 1;   // possible additional header bytes
+  for (; i < length-6; i++) {
+    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1) {
+      if(buf[i + 3] == 0xb3) {
+	int d = (buf[i+4] << 16) | (buf[i+5] << 8) | buf[i+6];
+	*width = (d >> 12);
+	*height = (d & 0xfff);
+	return 1;
+      }
+    }
+  }
+  return 0;
 }
 
 // from vdr/remux.c:
