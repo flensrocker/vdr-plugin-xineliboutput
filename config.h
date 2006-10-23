@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.9 2006-09-20 03:49:32 phintuka Exp $
+ * $Id: config.h,v 1.10 2006-10-23 19:21:23 phintuka Exp $
  *
  */
 
@@ -169,7 +169,7 @@ class config_t {
     int  audio_compression;  // 100%(=off)...500%
     int  audio_equalizer[AUDIO_EQ_count];
     char audio_visualization[64];
-    //char audio_vis_goom_opts[256];
+    char audio_vis_goom_opts[256];
     int  audio_surround;
     int  headphone;
     int  audio_upmix;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.13 2006-09-20 01:51:31 phintuka Exp $
+ * $Id: config.c,v 1.14 2006-10-23 19:21:23 phintuka Exp $
  *
  */
 
@@ -178,7 +178,8 @@ config_t::config_t() {
   audio_compression = 0;
   memset(audio_equalizer,0,sizeof(audio_equalizer));
   strcpy(audio_visualization, "goom");
-  //strcpy(audio_vis_goom_opts, "fps:25,width:720,height:576");
+  strcpy(audio_vis_goom_opts, "fps:25,width:720,height:576");
+
   headphone = 0;
   audio_upmix = 0;
   audio_surround = 0;
@@ -378,6 +379,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 								       SPEAKERS_STEREO);
   else if (!strcasecmp(Name, "Audio.Delay"))  audio_delay = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Compression")) audio_compression = atoi(Value);
+  else if (!strcasecmp(Name, "Audio.Visualization.GoomOpts")) STRN0CPY(audio_vis_goom_opts, Value);
   else if (!strcasecmp(Name, "Audio.Visualization")) STRN0CPY(audio_visualization, Value);
   else if (!strcasecmp(Name, "Audio.Surround"))  audio_surround = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Upmix"))     audio_upmix = atoi(Value);
