@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.25 2006-10-18 20:32:22 phintuka Exp $
+ * $Id: device.c,v 1.26 2006-10-23 19:18:09 phintuka Exp $
  *
  */
 
@@ -26,6 +26,7 @@
 #define HD_MODE_TEST
 //#define TEST_TRICKSPEEDS
 //#define SKIP_DVDSPU
+//#define FORWARD_DVD_SPUS
 #define DEBUG_SWITCHING_TIME
 
 #include "logdefs.h"
@@ -45,12 +46,6 @@
 
 //---------------------------- status monitor -------------------------------
 
-#ifdef DEBUG_SWITCHING_TIME
-int64_t switchtimeOff = 0LL;
-int64_t switchtimeOn = 0LL;
-bool    switchingIframe;
-#endif
-
 class cXinelibStatusMonitor : public cStatus 
 {
   private:
@@ -59,7 +54,14 @@ class cXinelibStatusMonitor : public cStatus
 
   public:
     cXinelibStatusMonitor(cXinelibDevice& device, int cardIndex) :
-        m_Device(device), m_cardIndex(cardIndex) {};
+        m_Device(device), m_cardIndex(cardIndex) 
+    {
+#ifdef DEBUG_SWITCHING_TIME
+      switchtimeOff   = 0LL;
+      switchtimeOn    = 0LL;
+      switchingIframe = false;
+#endif
+    };
 
   protected:
     virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
@@ -72,6 +74,32 @@ class cXinelibStatusMonitor : public cStatus
 
     cXinelibDevice& m_Device;
     int m_cardIndex;
+
+#ifdef DEBUG_SWITCHING_TIME
+  public:
+    int64_t switchtimeOff;
+    int64_t switchtimeOn;
+    bool    switchingIframe;
+
+    void IFrame(void)  
+    {
+      if(!switchingIframe) {
+	int64_t now = cTimeMs::Now();
+	switchingIframe = true;
+	LOGMSG("Channel switch: off -> on %" PRId64 " ms, "
+	       "on -> 1. I-frame %" PRId64 " ms",
+	       switchtimeOn-switchtimeOff, now-switchtimeOn);
+      } else {
+	int64_t now = cTimeMs::Now();
+	LOGMSG("Channel switch: on -> 2. I-frame %" PRId64 " ms, "
+	       "Total %" PRId64 " ms",
+	       now-switchtimeOn, now-switchtimeOff);
+	switchtimeOff = 0LL;
+	switchtimeOn = 0LL;
+	switchingIframe = false;
+      }
+    }
+#endif
 };
 
 void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device, 
@@ -126,7 +154,10 @@ void cXinelibStatusMonitor::Replaying(const cControl *Control,
 
 //----------------------------- device ----------------------------------------
 
+//
 // Singleton
+//
+
 cXinelibDevice* cXinelibDevice::m_pInstance = NULL;
 
 cXinelibDevice& cXinelibDevice::Instance(void) 
@@ -161,6 +192,9 @@ cXinelibDevice::cXinelibDevice()
 
   m_local  = NULL;
   m_server = NULL;
+
+  m_OriginalPrimaryDevice = 0;
+  m_ForcePrimaryDeviceCnt = 0;
 
   if(*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))
     m_clients.Add(m_local = new cXinelibLocal(xc.local_frontend));
@@ -223,6 +257,7 @@ bool cXinelibDevice::StartDevice()
     }
   }
 
+  ASSERT(m_statusMonitor == NULL, false);
   m_statusMonitor = new cXinelibStatusMonitor(*this, CardIndex());
 
   LOGDBG("cXinelibDevice::StartDevice(): Device started");
@@ -251,9 +286,14 @@ void cXinelibDevice::StopDevice(void)
   m_clients.Clear();
 }
 
+//
+// Primary device switching
+//
+
 void cXinelibDevice::MakePrimaryDevice(bool On) 
 {
   TRACEF("cXinelibDevice::MakePrimaryDevice");
+
   if(On)
     new cXinelibOsdProvider(this);
 }
@@ -261,6 +301,7 @@ void cXinelibDevice::MakePrimaryDevice(bool On)
 void cXinelibDevice::ForcePrimaryDevice(bool On) 
 {
   TRACEF("cXinelibDevice::ForcePrimaryDevice");
+
   m_MainThreadLock.Lock();
   m_MainThreadFunctors.Add(CreateFunctor(this, &cXinelibDevice::ForcePrimaryDeviceImpl, On));
   m_MainThreadLock.Unlock();
@@ -268,22 +309,17 @@ void cXinelibDevice::ForcePrimaryDevice(bool On)
 
 void cXinelibDevice::ForcePrimaryDeviceImpl(bool On) 
 {
-  static int Original = 0;
-  static int Counter = 0;
-
   TRACEF("cXinelibDevice::ForcePrimaryDeviceImpl");
-  /*LOGDBG("cXinelibDevice::ForcePrimaryDeviceImpl(%s)",On?"On":"Off");*/
-
-  /* TODO: All this stuff should really be done in VDR main thread context... */
+  ASSERT(cThread::IsMainThread(), false);
 
   if(On) {
-    Counter++;
+    m_ForcePrimaryDeviceCnt++;
+
     if(xc.force_primary_device) {
       if(cDevice::PrimaryDevice() && this != cDevice::PrimaryDevice()) {
-	/* TODO: may need to use vdr main thread for this */
-	Original = cDevice::PrimaryDevice()->DeviceNumber() + 1;
+	m_OriginalPrimaryDevice = cDevice::PrimaryDevice()->DeviceNumber() + 1;
 	cControl::Shutdown();
-	LOGMSG("Forcing primary device, original index = %d", Original);
+	LOGMSG("Forcing primary device, original index = %d", m_OriginalPrimaryDevice);
 	if(cOsd::IsOpen()) {
 	  LOGMSG("Forcing primary device, old OSD still open !");
 #if VDRVERSNUM >= 10400
@@ -296,12 +332,13 @@ void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
     }
   
   } else /* Off */ {
-    Counter--;
-    if(Counter<0)
+    m_ForcePrimaryDeviceCnt--;
+
+    if(m_ForcePrimaryDeviceCnt < 0)
       LOGMSG("ForcePrimaryDevice: Internal error (ForcePrimaryDevice < 0)");
-    if(!Counter) {
-      if(Original) {
-	LOGMSG("Restoring original primary device %d", Original);
+    else if(m_ForcePrimaryDeviceCnt == 0) {
+      if(m_OriginalPrimaryDevice) {
+	LOGMSG("Restoring original primary device %d", m_OriginalPrimaryDevice);
 	cControl::Shutdown();
 	if(cOsd::IsOpen()) {
 	  LOGMSG("Restoring primary device, xineliboutput OSD still open !");
@@ -311,13 +348,17 @@ void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
 #endif
 	}
 	cChannel *channel = Channels.GetByNumber(CurrentChannel());
-	cDevice::SetPrimaryDevice(Original);
+	cDevice::SetPrimaryDevice(m_OriginalPrimaryDevice);
 	PrimaryDevice()->SwitchChannel(channel, true);
-	Original = 0;
+	m_OriginalPrimaryDevice = 0;
       }
     }
   }
 }
+
+//
+// Execute functors in main thread context
+//
 
 void cXinelibDevice::MainThreadHook(void)
 {
@@ -424,9 +465,11 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
     if(xc.force_primary_device)
       ForcePrimaryDevice(false);
   }
+
   if(m_local)
     m_local->ConfigureWindow(fullscreen, width, height, modeswitch, modeline, 
 			     aspect, scale_video, field_order);
+
   else if(*xc.local_frontend && strncmp(xc.local_frontend, "none", 4)) {
     cXinelibThread *tmp = new cXinelibLocal(xc.local_frontend);
     tmp->Start();
@@ -442,9 +485,9 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
       Skins.QueueMessage(mtError, tr("Frontend initialization failed"), 10);
     } else {
       if(xc.force_primary_device)
-	ForcePrimaryDevice(true);  
+	ForcePrimaryDevice(true);
   
-      m_local->ConfigureWindow(fullscreen, width, height, modeswitch, modeline, 
+      m_local->ConfigureWindow(fullscreen, width, height, modeswitch, modeline,
 			       aspect, scale_video, field_order);
     }
   }
@@ -536,6 +579,7 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
   m_TrickSpeed = -1;
   m_SkipAudio  = false;
   m_AudioCount = 0;
+  m_spuPresent = false;
 
   Clear();
   ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
@@ -585,6 +629,7 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
 
   m_ac3Present = false;
   m_spuPresent = false;
+
   ClrAvailableDvdSpuTracks();
   m_PlayMode = PlayMode;
 
@@ -594,7 +639,7 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
     ForEach(m_clients, &cXinelibThread::BlankDisplay);
     ForEach(m_clients, &cXinelibThread::SetNoVideo, true);
   } else {
-    ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+    ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream && (!m_liveMode || m_AudioCount<1));
     ForEach(m_clients, &cXinelibThread::Clear);
   }
   
@@ -642,6 +687,34 @@ void cXinelibDevice::Freeze(void)
 
   TrickSpeed(0);
 }
+
+int64_t cXinelibDevice::GetSTC(void)
+{
+  TRACEF("cXinelibDevice::GetSTC");
+
+  if(m_local)
+    return m_local->GetSTC();
+  if(m_server)
+    return m_server->GetSTC();
+  return cDevice::GetSTC();
+}
+
+bool cXinelibDevice::Flush(int TimeoutMs) 
+{
+  TRACEF("cXinelibDevice::Flush");
+  TRACK_TIME(500);
+
+  if(m_TrickSpeed == 0) {
+    ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
+    TrickSpeed(-1);
+  }
+
+  bool r = ForEach(m_clients, &cXinelibThread::Flush, TimeoutMs, 
+		   &mand<bool>, true);
+
+  return r;
+}
+
 
 //
 // Playback of files and images
@@ -724,7 +797,7 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     if(!m_SkipAudio) {
 
 #ifdef TEST_TRICKSPEEDS
-#warning Experimental trickspeed mode handling included !
+# warning Experimental trickspeed mode handling included !
       // TODO: re-gen pts or signal pts+trickspeed for udp scheduler
       bool Video = false, Audio = false;
       uchar PictureType = NO_PICTURE;
@@ -784,9 +857,10 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
     ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
   }
   
-#ifdef START_IFRAME
-  // Start with I-frame if stream has video
   if(m_StreamStart) {
+
+#ifdef START_IFRAME
+    // Start with I-frame if stream has video
     // wait for first I-frame
     uchar pictureType;
     if( ScanVideoPacket(buf, length, /*0,*/pictureType) > 0 && 
@@ -795,52 +869,24 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
     } else {
       return length;
     }
-  }
-#elif defined(HD_MODE_TEST)
-  if(m_StreamStart) {
-    int i = 8;         // the minimum length of the video packet header
-    i += buf[i] + 1;   // possible additional header bytes
-    for (; i < length-6; i++) {
-      if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1) {
-	if(buf[i + 3] == 0xb3) {
-	  int d = (buf[i+4] << 16) | (buf[i+5] << 8) | buf[i+6];
-	  int w = (d >> 12);
-	  int h = (d & 0xfff);
-
-	  m_StreamStart = false;
-	  LOGMSG("Detected video size %dx%d", w, h);
-	  ForEach(m_clients, &cXinelibThread::SetHDMode, (w>800));
-	  break;
-	}
-      }
-    }
-  }
-#else
-  m_StreamStart = false;
 #endif
 
+#if defined(HD_MODE_TEST)
+    int Width, Height;
+    if(GetVideoSize(buf, length, &Width, &Height)) {
+      m_StreamStart = false;
+      LOGDBG("Detected video size %dx%d", Width, Height);
+      ForEach(m_clients, &cXinelibThread::SetHDMode, (Width > 800));
+    }
+#endif
+  }
 
 #ifdef DEBUG_SWITCHING_TIME
-  if(switchtimeOff && switchtimeOn) {
+  if(m_statusMonitor->switchtimeOff && m_statusMonitor->switchtimeOn) {
     uchar pictureType;
-    if( ScanVideoPacket(buf, length, /*0,*/pictureType) > 0 && 
-	pictureType == I_FRAME) {
-      if(!switchingIframe) {
-	int64_t now = cTimeMs::Now();
-	switchingIframe = true;
-	LOGMSG("Channel switch: off -> on %" PRId64 " ms, "
-	       "on -> 1. I-frame %" PRId64 " ms",
-	       switchtimeOn-switchtimeOff, now-switchtimeOn);
-      } else {
-	int64_t now = cTimeMs::Now();
-	LOGMSG("Channel switch: on -> 2. I-frame %" PRId64 " ms, "
-	       "Total %" PRId64 " ms",
-	       now-switchtimeOn, now-switchtimeOff);
-	switchtimeOff = 0LL;
-	switchtimeOn = 0LL;
-	switchingIframe = false;
-      }
-    }
+    if( ScanVideoPacket(buf, length, pictureType) > 0 && 
+	pictureType == I_FRAME)
+      m_statusMonitor->IFrame();
   }
 #endif
 
@@ -869,7 +915,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   ForEach(m_clients, &cXinelibThread::TrickSpeed, 1);
 
   m_TrickSpeed = -1; // to make Poll work ...
-  m_SkipAudio = 1;  // enables audio and pts stripping
+  m_SkipAudio = 1;   // enables audio and pts stripping
 
   for(i=0; i<STILLPICTURE_REPEAT_COUNT; i++)
     if(isMpeg1) {
@@ -931,142 +977,17 @@ int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id)
       TRACE("cXinelibDevice::PlaySpu first DVD SPU frame");
       Skins.QueueMessage(mtInfo,"DVD Subtitles");
       m_spuPresent = true;
-
+      
       ForEach(m_clients, &cXinelibThread::SpuStreamChanged, (int)Id);
     }
 
+    // Strip all but selected SPU track
     if(Id != m_CurrentDvdSpuTrack)
       return length;
   }
-printf("SPU %d\n", Id);
-
-  //
-  // TODO: channel must be selectable
-  //
 
   return PlayAny(buf, length);
 #endif
-}
-
-void cXinelibDevice::SetVolumeDevice(int Volume) 
-{
-  TRACEF("cXinelibDevice::SetVolumeDevice");
-
-  ForEach(m_clients, &cXinelibThread::SetVolume, Volume);  
-}
-
-void cXinelibDevice::SetAudioTrackDevice(eTrackType Type)
-{
-  TRACEF("cXinelibDevice::SetAudioTrackDevice");
-
-#if 0
-  LOGMSG("SetAudioTrackDevice(%d)", (int)Type);
-  if(IS_DOLBY_TRACK(Type))
-    ForEach(m_clients, &cXinelibThread::AudioStreamChanged, 
-	    true, (PRIVATE_STREAM1<<8) | (int)(Type - ttDolbyFirst));
-  if(IS_AUDIO_TRACK(Type))
-    ForEach(m_clients, &cXinelibThread::AudioStreamChanged,
-	    false, (AUDIO_STREAM + (int)(Type - ttAudioFirst)) << 8);
-#endif
-}
-
-void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
-{
-  TRACEF("cXinelibDevice::SetAudioChannelDevice");
-
-  m_AudioChannel = AudioChannel;
-
-  switch(AudioChannel) {
-  default:
-  case 0: ConfigurePostprocessing("audiochannel", false, NULL); break;
-  case 1: ConfigurePostprocessing("audiochannel", true, "channel=0"); break;
-  case 2: ConfigurePostprocessing("audiochannel", true, "channel=1"); break;
-  }
-}
-
-void cXinelibDevice::SetDigitalAudioDevice(bool On)
-{
-  TRACEF("cXinelibDevice::SetDigitalAudioDevice");
-
-#if 0
-  LOGMSG("SetDigitalAudioDevice(%s)", On ? "on" : "off");
-  /* selects wrong track if new track is not dolby track */
-  eTrackType CurrTrack = GetCurrentAudioTrack();
-  if(m_LastTrack != CurrTrack) {
-    bool ac3   = IS_DOLBY_TRACK(CurrTrack);
-    int  index = CurrTrack - (ac3 ? ttDolbyFirst : ttAudioFirst);
-    m_LastTrack = CurrTrack;
-#if 0
-    LOGMSG("    Switching audio track -> %d (%02x:%s:%d)", m_LastTrack, 
-	   ac3 ? PRIVATE_STREAM1 : (index+AUDIO_STREAM), 
-	   ac3 ? "AC3" : "MPEG", index);
-#endif
-    if(ac3) 
-      ForEach(m_clients, &cXinelibThread::AudioStreamChanged, true, 
-	      (PRIVATE_STREAM1 << 8) | index);
-    else 
-      ForEach(m_clients, &cXinelibThread::AudioStreamChanged, false, 
-	      (index + AUDIO_STREAM) << 8);
-  }
-#endif
-}
-
-void cXinelibDevice::SetVideoFormat(bool VideoFormat16_9) 
-{
-  TRACEF("cXinelibDevice::SetVideoFormat");
-  /*LOGDBG("SetVideoFormat(%s)", VideoFormat16_9 ? "16:9" : "4:3");*/
-
-  cDevice::SetVideoFormat(VideoFormat16_9);
-
-  //
-  // TODO
-  //
-#if 0
-  if(xc.aspect != ASPECT_AUTO && 
-     xc.aspect != ASPECT_DEFAULT) {
-    if(VideoFormat16_9)
-      xc.aspect = ASPECT_16_9;
-    else if(xc.aspect == ASPECT_16_9)
-      xc.aspect = ASPECT_4_3;
-    ConfigureDecoder(,,,xc.aspect,,,);
-  }
-#endif
-}
-
-void cXinelibDevice::SetVideoDisplayFormat(eVideoDisplayFormat VideoDisplayFormat)
-{
-  TRACEF("cXinelibDevice::SetVideoDisplayFormat");
-
-  /*LOGDBG("SetVideoDisplayFormat(%d)", VideoDisplayFormat);*/
-  cDevice::SetVideoDisplayFormat(VideoDisplayFormat);
-  //
-  // TODO
-  //
-  //  - set normal, pan&scan, letterbox (only for 4:3?)
-  //
-#if 0
-  if(xc.aspect != ASPECT_AUTO && 
-     xc.aspect != ASPECT_DEFAULT)  {
-    switch(VideoDisplayFormat) {
-    case vdfPanAndScan:
-      xc.aspect = ASPECT_PAN_SCAN;
-      break;
-    case vdfLetterBox:    
-      xc.aspect = ASPECT_4_3; /* borders are added automatically if needed */
-      break;
-    case vdfCenterCutOut:
-      xc.aspect = ASPECT_CENTER_CUT_OUT;
-      break;
-    }
-    ConfigureDecoder(,,,xc.aspect,,,);
-  }
-#endif
-}
-
-eVideoSystem cXinelibDevice::GetVideoSystem(void)
-{
-  TRACEF("cXinelibDevice::GetVideoSystem");
-  return cDevice::GetVideoSystem();
 }
 
 bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs) 
@@ -1098,100 +1019,120 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
   return result /*|| Poller.Poll(0)*/;
 }
 
-bool cXinelibDevice::Flush(int TimeoutMs) 
+//
+// Audio facilities
+//
+
+void cXinelibDevice::SetVolumeDevice(int Volume) 
 {
-  TRACEF("cXinelibDevice::Flush");
-  TRACK_TIME(500);
+  TRACEF("cXinelibDevice::SetVolumeDevice");
 
-  if(m_TrickSpeed == 0) {
-    ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
-    TrickSpeed(-1);
-  }
-
-  bool r = ForEach(m_clients, &cXinelibThread::Flush, TimeoutMs, 
-		   &mand<bool>, true);
-
-  return r;
+  ForEach(m_clients, &cXinelibThread::SetVolume, Volume);  
 }
+
+void cXinelibDevice::SetAudioTrackDevice(eTrackType Type)
+{
+  TRACEF("cXinelibDevice::SetAudioTrackDevice");
+
+  // track changes are autodetected at xine side
+}
+
+void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
+{
+  TRACEF("cXinelibDevice::SetAudioChannelDevice");
+
+  m_AudioChannel = AudioChannel;
+
+  switch(AudioChannel) {
+    default:
+    case 0: ConfigurePostprocessing("audiochannel", false, NULL); 
+            break;
+    case 1: ConfigurePostprocessing("audiochannel", true, "channel=0");
+            break;
+    case 2: ConfigurePostprocessing("audiochannel", true, "channel=1");
+            break;
+  }
+}
+
+void cXinelibDevice::SetDigitalAudioDevice(bool On)
+{
+  TRACEF("cXinelibDevice::SetDigitalAudioDevice");
+
+  // track changes are autodetected at xine side
+}
+
+//
+// Video format facilities
+//
+
+void cXinelibDevice::SetVideoFormat(bool VideoFormat16_9) 
+{
+  TRACEF("cXinelibDevice::SetVideoFormat");
+  cDevice::SetVideoFormat(VideoFormat16_9);
 
 #if 0
-//
-// TODO
-//  - forward spu's directly to Xine
-//
-class cXineSpuDecoder : public cDvbSpuDecoder
-{
-  private:
-    cSpuDecoder::eScaleMode scaleMode;
-    cXinelibDevice *m_Device;
-
-  public:
-     cXineSpuDecoder(cXinelibDevice *dev) { 
-       scaleMode = eSpuNormal; 
-       m_Device = dev;
-     }
-     virtual ~cXineSpuDecoder() {};
-
-     virtual int setTime(uint32_t pts) { return 1; }
-
-     cSpuDecoder::eScaleMode getScaleMode(void) { return scaleMode; }
-     virtual void setScaleMode(cSpuDecoder::eScaleMode ScaleMode) 
-       { scaleMode = ScaleMode; }
-     virtual void setPalette(uint32_t * pal) {};
-     virtual void setHighlight(uint16_t sx, uint16_t sy,
-			       uint16_t ex, uint16_t ey,
-			       uint32_t palette) {};
-     virtual void clearHighlight(void) {};
-     virtual void Empty(void) {};
-     virtual void Hide(void) {};
-     virtual void Draw(void) {};
-     virtual bool IsVisible(void) { return true; }
-     virtual void processSPU(uint32_t pts, uint8_t * buf, 
-			     bool AllowedShow = true);
-};
-
-#define CMD_SPU_MENU            0x00
-#define CMD_SPU_SHOW            0x01
-#define CMD_SPU_HIDE            0x02
-#define CMD_SPU_SET_PALETTE     0x03
-#define CMD_SPU_SET_ALPHA       0x04
-#define CMD_SPU_SET_SIZE        0x05
-#define CMD_SPU_SET_PXD_OFFSET  0x06
-#define CMD_SPU_CHG_COLCON      0x07
-#define CMD_SPU_EOF             0xff
-
-#define spuU32(i)  ((spu[i] << 8) + spu[i+1])
-
-void cXineSpuDecoder::processSPU(uint32_t pts, uint8_t * buf, bool AllowedShow)
-{
-  uchar buf2[65536+8] = {0, 0, 1, PRIVATE_STREAM1, 0, 0, 0x80, 0x80, 5};
-  int len = ((buf[0] << 8) | buf[1]);
-
-  if(len+8 < 0xffff) {
-    buf2[4]  = ((len+8)<<8) & 0xFF;
-    buf2[5]  = ((len+8)) & 0xFF;
-  } else {
-    // should be able to handle this (but only internally ...)
-    LOGMSG("cXineSpuDecoder: SPU bigger than PES packet !");
-    buf2[4]  = 0xff;
-    buf2[5]  = 0xff;
+  //
+  // TODO
+  //
+  if(xc.aspect != ASPECT_AUTO && 
+     xc.aspect != ASPECT_DEFAULT) {
+    if(VideoFormat16_9)
+      xc.aspect = ASPECT_16_9;
+    else if(xc.aspect == ASPECT_16_9)
+      xc.aspect = ASPECT_4_3;
+    ConfigureDecoder(,,,xc.aspect,,,);
   }
-  buf2[9]  = ((pts>>29) & 0x0E) | 0x21;
-  buf2[10] = (pts>>22) & 0xFF; 
-  buf2[11] = (pts>>14) & 0xFE;
-  buf2[12] = (pts>>7)  & 0xFF;
-  buf2[13] = (pts<<1)  & 0xFE;
-
-  memcpy(buf2+14, buf, len);
-
-  m_Device->PlaySpu(buf, len+14, 0);
+#endif
 }
+
+void cXinelibDevice::SetVideoDisplayFormat(eVideoDisplayFormat VideoDisplayFormat)
+{
+  TRACEF("cXinelibDevice::SetVideoDisplayFormat");
+  cDevice::SetVideoDisplayFormat(VideoDisplayFormat);
+
+#if 0
+  //
+  // TODO
+  //
+  //  - set normal, pan&scan, letterbox (only for 4:3?)
+  //
+  if(xc.aspect != ASPECT_AUTO && 
+     xc.aspect != ASPECT_DEFAULT)  {
+    switch(VideoDisplayFormat) {
+    case vdfPanAndScan:
+      xc.aspect = ASPECT_PAN_SCAN;
+      break;
+    case vdfLetterBox:    
+      xc.aspect = ASPECT_4_3; /* borders are added automatically if needed */
+      break;
+    case vdfCenterCutOut:
+      xc.aspect = ASPECT_CENTER_CUT_OUT;
+      break;
+    }
+    ConfigureDecoder(,,,xc.aspect,,,);
+  }
+#endif
+}
+
+eVideoSystem cXinelibDevice::GetVideoSystem(void)
+{
+  TRACEF("cXinelibDevice::GetVideoSystem");
+  return cDevice::GetVideoSystem();
+}
+
+
+//
+// SPU decoder
+//
+
+#ifdef FORWARD_DVD_SPUS
+# include "spu_decoder.h"
 #endif
 
 cSpuDecoder *cXinelibDevice::GetSpuDecoder(void)
 {
   TRACEF("cXinelibDevice::GetSpuDecoder");
-  if (!m_spuDecoder && IsPrimaryDevice())
+  if (!m_spuDecoder && IsPrimaryDevice()) {
     //
     // TODO
     //
@@ -1199,26 +1140,19 @@ cSpuDecoder *cXinelibDevice::GetSpuDecoder(void)
     //    -> always visible
     //
 
-#if 1
-    m_spuDecoder = new cDvbSpuDecoder();
+#ifdef FORWARD_DVD_SPUS
+    // forward DVD SPUs to xine without decoding
+    m_spuDecoder = new cFwdSpuDecoder(this);
 #else
-#warning NON-FUNCTIONAL SPU DECODER SELECTED !!!
-    m_spuDecoder = new cXineSpuDecoder(this);
+    m_spuDecoder = new cDvbSpuDecoder();
 #endif
+  }
   return m_spuDecoder;
 }
 
-int64_t cXinelibDevice::GetSTC(void)
-{
-  TRACEF("cXinelibDevice::GetSTC");
-
-  if(m_local)
-    return m_local->GetSTC();
-  if(m_server)
-    return m_server->GetSTC();
-  return cDevice::GetSTC();
-}
-
+//
+// Image Grabbing
+//
 
 #if VDRVERSNUM < 10338
 
@@ -1268,8 +1202,12 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 #endif
 
 
-#if 1
-// override cDevice to get DVD SPUs
+//
+// DVD SPU support in VDR recordings
+//
+//   - override cDevice::PlayPesPacket to get DVD SPUs
+//
+
 int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length, 
 				  bool VideoOnly)
 {
@@ -1297,12 +1235,17 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
   return cDevice::PlayPesPacket(Data, Length, VideoOnly);
 }
 
+
+//
+// Available DVD SPU tracks
+//
+
 bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type)
 {
   if(Type == -1 || 
-     (Type >= 0 && 
-      Type < 64 &&
-      m_DvdSpuTrack[Type])) {
+     ( Type >= 0 && 
+       Type < 64 &&
+       m_DvdSpuTrack[Type].id != 0xffff)) {
     m_CurrentDvdSpuTrack = Type;
     ForEach(m_clients, &cXinelibThread::SpuStreamChanged, Type);
     return true;
@@ -1312,9 +1255,8 @@ bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type)
 
 void cXinelibDevice::ClrAvailableDvdSpuTracks(bool NotifyFrontend)
 {
-  m_DvdSpuTracks = 0;
   for(int i=0; i<64; i++)
-    m_DvdSpuTrack[i] = false;
+    m_DvdSpuTrack[i].id = 0xffff;
   if(m_CurrentDvdSpuTrack >=0 ) {
     m_CurrentDvdSpuTrack = -1;
     if(NotifyFrontend)
@@ -1322,23 +1264,39 @@ void cXinelibDevice::ClrAvailableDvdSpuTracks(bool NotifyFrontend)
   }
 }
 
-const char *cXinelibDevice::GetDvdSpuLang(int Type)
+int cXinelibDevice::NumDvdSpuTracks(void) const
+{ 
+  int DvdSpuTracks = 0;
+  for(int i=0; i<64; i++)
+    if(m_DvdSpuTrack[i].id != 0xffff)
+      DvdSpuTracks++;
+  return DvdSpuTracks; 
+}
+
+const tTrackId *cXinelibDevice::GetDvdSpuTrack(int Type) const
 {
   if(Type >= 0 && Type < 64 &&
-     m_DvdSpuTrack[Type])
-    return m_DvdSpuLang[Type][0] ? m_DvdSpuLang[Type] : NULL;
+     m_DvdSpuTrack[Type].id != 0xffff)
+    return &m_DvdSpuTrack[Type];
+  return NULL;
+}
+
+const char *cXinelibDevice::GetDvdSpuLang(int Type) const
+{
+  const tTrackId *track = GetDvdSpuTrack(Type);
+  if(track)
+    return track->language[0] ? track->language : NULL;
   return NULL;
 }
 
 bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Current)
 {
-  if(Type >= 0 && Type < 64 &&
-     ! m_DvdSpuTrack[Type]) {
-    m_DvdSpuTrack[Type] = true;
-    m_DvdSpuLang[Type][0] = 0;
+  if(Type >= 0 && Type < 64) {
+    m_DvdSpuTrack[Type].id = Type;
+    m_DvdSpuTrack[Type].language[0] = '\0';
     if(lang) 
-      strn0cpy(m_DvdSpuLang[Type], lang, 32);
-    m_DvdSpuTracks++;
+      strn0cpy(m_DvdSpuTrack[Type].language, lang, MAXLANGCODE2);
+    //m_DvdSpuTracks++;
     if(Current)
       m_CurrentDvdSpuTrack = Type;
     return true;
@@ -1346,12 +1304,3 @@ bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Cu
   return false;
 }
 
-bool cXinelibDevice::HasDvdSpuTrack(int Type) const 
-{
-  if(Type >= 0 && Type < 64 &&
-     m_DvdSpuTrack[Type])
-    return true;
-  return false;
-}
-
-#endif

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.13 2006-10-18 20:32:51 phintuka Exp $
+ * $Id: device.h,v 1.14 2006-10-23 19:18:09 phintuka Exp $
  *
  */
 
@@ -22,60 +22,124 @@ class cFunctor;
 
 class cXinelibDevice : public cDevice 
 {
-  public:
-    static cXinelibDevice& Instance(void); // singleton
-    static void Dispose(void);
+
+  // Singleton
 
   private:
     static cXinelibDevice* m_pInstance; // singleton
     cXinelibDevice();                   //
     cXinelibDevice(cXinelibDevice&);    // no copy constructor
 
-    // function calls waiting to be executed in VDR main thread context
+  public:
+    static cXinelibDevice& Instance(void); // singleton
+    static void Dispose(void);
+
+    virtual ~cXinelibDevice();
+
+
+  // device start/stop (from cPlugin)
+
+  public:
+    bool StartDevice(void);
+    void StopDevice(void);
+
+
+  // function calls waiting to be executed in VDR main thread context
+
+  private:
     cList<cFunctor> m_MainThreadFunctors; 
     cMutex m_MainThreadLock;
+
+  public:
+    void MainThreadHook(void);
+
+
+  // Primary device switching
+
+  private:
+    int m_OriginalPrimaryDevice;
+    int m_ForcePrimaryDeviceCnt;
 
     void ForcePrimaryDeviceImpl(bool On);
 
   public:
-    virtual ~cXinelibDevice();
+    virtual void MakePrimaryDevice(bool On);
+    void ForcePrimaryDevice(bool On);
+
+
+  // Device capabilities
+
+  public:
 
     virtual bool HasDecoder(void) const { return true; };
     virtual bool CanReplay(void) const { return true; };
 
-    virtual void MakePrimaryDevice(bool On);
-    void ForcePrimaryDevice(bool On);
-    void MainThreadHook(void);
 
-    virtual void Clear(void);
-    virtual void Play(void);
-    virtual void TrickSpeed(int Speed);
-    virtual void Freeze(void);
+  // Playback control
 
-    virtual void StillPicture(const uchar *Data, int Length);
-    virtual bool Poll(cPoller &Poller, int TimeoutMs = 0);
-    virtual bool Flush(int TimeoutMs = 0);
+  private:
+    ePlayMode m_PlayMode;
+    int       m_TrickSpeed;
+    int64_t   m_TrickSpeedPts;
+
+  public:
+    virtual bool SetPlayMode(ePlayMode PlayMode);
+    ePlayMode GetPlayMode(void) const { return m_PlayMode; };
+
+  protected:
+    virtual void    Clear(void);
+    virtual void    Play(void);
+    virtual void    TrickSpeed(int Speed);
+    virtual void    Freeze(void);
+    virtual bool    Flush(int TimeoutMs = 0);
     virtual int64_t GetSTC(void);
 
-    // Video format facilities
+
+  // Video format facilities
+
   public:
     virtual void SetVideoDisplayFormat(eVideoDisplayFormat VideoDisplayFormat);
     virtual void SetVideoFormat(bool VideoFormat16_9);
     virtual eVideoSystem GetVideoSystem(void);
 
-    // Track facilities
+
+  // Track facilities
+
   protected:
     virtual void SetAudioTrackDevice(eTrackType Type);
 
-    // Audio facilities
+  private:
+    // (DVD) SPU tracks, -> cDevice
+    tTrackId m_DvdSpuTrack[64];
+    int      m_CurrentDvdSpuTrack;
+
+  public:
+    void ClrAvailableDvdSpuTracks(bool NotifyFrontend = true);
+    bool SetAvailableDvdSpuTrack(int Type, const char *lang = NULL, bool Current = false);
+
+    int   NumDvdSpuTracks(void) const;
+    const tTrackId *GetDvdSpuTrack(int Type) const;
+    const char *GetDvdSpuLang(int Type) const;
+
+    int   GetCurrentDvdSpuTrack(void) const { return m_CurrentDvdSpuTrack; }
+    bool  SetCurrentDvdSpuTrack(int Type);
+
+
+  // Audio facilities
+
   private:
     eTrackType m_LastTrack;
     int        m_AudioChannel;
+
   protected:
-    virtual int  GetAudioChannelDevice(void) {return m_AudioChannel;}
+    virtual int  GetAudioChannelDevice(void) { return m_AudioChannel; }
     virtual void SetAudioChannelDevice(int AudioChannel);
     virtual void SetVolumeDevice(int Volume);
     virtual void SetDigitalAudioDevice(bool On);
+
+
+  // Image grabbing
+
   public:
 
 #if VDRVERSNUM < 10338
@@ -87,21 +151,44 @@ class cXinelibDevice : public cDevice
 			     int Quality = -1, int SizeX = -1, int SizeY = -1);
 #endif
 
+
+  // SPU decoder
+
+  private:
+    cSpuDecoder *m_spuDecoder;
+
+    friend class cXineSpuDecoder;
+
+  public:
     virtual cSpuDecoder *GetSpuDecoder(void);
 
-    // Messages from StatusMonitor:
+
+  // Messages from StatusMonitor:
+
+  private:
+    cXinelibStatusMonitor *m_statusMonitor;
+    bool m_liveMode;
+
+  public:
     void SetTvMode(cChannel *Channel);
     void SetReplayMode(void);
     void StopOutput(void);
 
-    // device startup (from cPlugin)
-    bool StartDevice(void);
-    void StopDevice(void);
 
-    // Osd Commands (from cXinelibOsd)
+  // Osd Commands (from cXinelibOsd)
+
+  public:
     void OsdCmd(void *cmd);
 
-    // Configuration
+
+  // Configuration
+
+  private:
+    cList<cXinelibThread>  m_clients;
+    cXinelibThread        *m_server;
+    cXinelibThread        *m_local;
+
+  public:
     void ConfigureOSD(bool prescale_osd, bool unscaled_osd);
     void ConfigurePostprocessing(const char *deinterlace_method, 
 				 int audio_delay,
@@ -121,70 +208,50 @@ class cXinelibDevice : public cDevice
     // remote mode:
     void Listen(bool activate, int port);
 
-    // File playback
+
+  // File playback
+
+  private:
+    bool m_PlayingFile;
+
+  public:
     bool PlayFile(const char *Filename, int Position=0, bool LoopPlay=false);
     int  PlayFileCtrl(const char *Cmd);
     bool EndOfStreamReached(void);
 
+
+  // Stream data
+
   private:
+    bool m_ac3Present;
+    bool m_spuPresent;
+    bool m_RadioStream;
+    int  m_AudioCount;
+    bool m_SkipAudio;
+    bool m_StreamStart;
 
     int PlayAny(const uchar *Data, int Length);
 
   protected:
+
+    virtual bool Poll(cPoller &Poller, int TimeoutMs = 0);
+
+    virtual void StillPicture(const uchar *Data, int Length);
+
     virtual int  PlayVideo(const uchar *Data, int Length);
     virtual int  PlayAudio(const uchar *Data, int Length, uchar Id);
-#if VDRVERSNUM< 10342
-    virtual int  PlayAudio(const uchar *Data, int Length)
-    { return PlayAudio(Data, Length, 0); }
-#endif
+
     virtual int  PlaySpu(const uchar *Data, int Length, uchar Id);
 
-#if 1
     // override cDevice to get DVD SPUs
     virtual int PlayPesPacket(const uchar *Data, int Length,
 			      bool VideoOnly = false);
 
-    // -> cDevice
-    int  m_DvdSpuTracks;
-    int  m_CurrentDvdSpuTrack;
-    bool m_DvdSpuTrack[64];
-    char m_DvdSpuLang[64][64];
-
-  public:
-    void ClrAvailableDvdSpuTracks(bool NotifyFrontend = true);
-    bool SetAvailableDvdSpuTrack(int Type, const char *lang = NULL, bool Current=false);
-    const char *GetDvdSpuLang(int Type);
-    int  NumDvdSpuTracks(void) const { return m_DvdSpuTracks; }
-    int  GetCurrentDvdSpuTrack(void) { return m_CurrentDvdSpuTrack; }
-    bool SetCurrentDvdSpuTrack(int Type);
-    bool HasDvdSpuTrack(int Type) const;
+#if VDRVERSNUM < 10342
+    // API changed in VDR 1.3.42
+    virtual int  PlayAudio(const uchar *Data, int Length)
+    { return PlayAudio(Data, Length, 0); }
 #endif
-
-    virtual bool SetPlayMode(ePlayMode PlayMode);
-    ePlayMode GetPlayMode(void) const { return m_PlayMode; };
-
-  protected:
-    ePlayMode m_PlayMode;
-
-    cList<cXinelibThread> m_clients;
-    cXinelibThread        *m_server;
-    cXinelibThread        *m_local;
-    cXinelibStatusMonitor *m_statusMonitor;
-    cSpuDecoder           *m_spuDecoder;
-
-    bool m_ac3Present;
-    bool m_spuPresent;
-
-    bool m_liveMode;
-    int  m_TrickSpeed;
-    int64_t m_TrickSpeedPts;
-    bool m_SkipAudio;
-    bool m_PlayingFile;
-    bool m_StreamStart;
-    bool m_RadioStream;
-    int  m_AudioCount;
-
-    friend class cXineSpuDecoder;
 };
 
 #endif // __XINELIB_DEVICE_H
