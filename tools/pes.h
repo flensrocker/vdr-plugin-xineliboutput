@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.3 2006-10-23 19:01:49 phintuka Exp $
+ * $Id: pes.h,v 1.4 2006-10-27 23:02:02 phintuka Exp $
  *
  */
 
@@ -47,7 +47,6 @@
 #define I_FRAME     1
 #define P_FRAME     2
 #define B_FRAME     3
-
 
 //
 // Extract PTS from PES packet
@@ -98,11 +97,11 @@ static inline void pes_change_pts(uchar *Data, int Length, int64_t pts)
       return;
       
     if((Length > 14) && (Data[7] & 0x80)) { /* pts avail */
-      Data[ 9] |= ((pts >> 29) & 0x0E);
-      Data[10] |= ((pts >> 22) & 0xFF);
-      Data[11] |= ((pts >> 14) & 0xFE);
-      Data[12] |= ((pts >> 7 ) & 0xFF);
-      Data[13] |= ((pts << 1 ) & 0xFE);
+      Data[ 9] = ((pts >> 29) & 0x0E) | (Data[ 9] & 0xf1);
+      Data[10] = ((pts >> 22) & 0xFF);
+      Data[11] = ((pts >> 14) & 0xFE) | (Data[11] & 0x01);
+      Data[12] = ((pts >> 7 ) & 0xFF);
+      Data[13] = ((pts << 1 ) & 0xFE) | (Data[13] & 0x01);
     }
   }
 }
