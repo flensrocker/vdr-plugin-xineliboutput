@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.4 2006-08-18 02:19:01 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.5 2006-10-28 02:30:11 phintuka Exp $
  *
  */
 
@@ -21,9 +21,11 @@
 class cTimePts 
 {
   private:
-    int64_t begin;
-    struct timeval tbegin;
+    int64_t begin;          /* Start time (PTS) */
+    struct timeval tbegin;  /* Start time (real time) */
     bool m_Paused;
+    int  m_Multiplier;
+    bool m_Monotonic;
 
   public:
     cTimePts(void);
@@ -33,6 +35,7 @@ class cTimePts
 
     void Pause(void);
     void Resume(void);
+    void TrickSpeed(int Multiplier);
 };
 
 //----------------------- cUdpPesScheduler ----------------------------------
@@ -60,6 +63,7 @@ class cUdpScheduler : public cThread
     bool Flush(int TimeoutMs);
 
     void Pause(bool On);
+    void TrickSpeed(int Multiplier);
 
   protected:
 
@@ -79,16 +83,15 @@ class cUdpScheduler : public cThread
     cUdpBackLog *m_BackLog;  /* queue for incoming data (not yet send) and retransmissions */
 
     // Data for scheduling algorithm
-
-    cTimePts  MasterClock; // Current MPEG PTS (synchronized with current stream)
+    cTimePts  MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
     cCondWait CondWait;
 
     int64_t  current_audio_vtime;
     int64_t  current_video_vtime;
 
     // RTP
-    uint32_t  m_ssrc;   // RTP synchronization source id
-    cTimePts  RtpScr;   // 90 kHz monotonic time source for RTP timestamps
+    uint32_t  m_ssrc;   /* RTP synchronization source id */
+    cTimePts  RtpScr;   /* 90 kHz monotonic time source for RTP timestamps */
     uint64_t  m_LastRtcpTime;
     uint32_t  m_Frames;
     uint32_t  m_Octets;

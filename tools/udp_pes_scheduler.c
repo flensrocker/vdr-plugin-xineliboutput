@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.12 2006-08-21 00:08:44 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.13 2006-10-28 02:30:11 phintuka Exp $
  *
  */
 
 #define __STDC_FORMAT_MACROS
+#define __STDC_CONSTANT_MACROS 
 #include <inttypes.h>
 
 #include <stdint.h>
@@ -38,9 +39,37 @@
 
 //----------------------- cTimePts ------------------------------------------
 
+#include <time.h>
+
 cTimePts::cTimePts(void)
 {
-  m_Paused = false;
+  m_Paused     = false;
+  m_Multiplier = 90000;
+  m_Monotonic  = false;
+
+#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
+  struct timespec resolution;   
+
+  if(clock_getres(CLOCK_MONOTONIC, &resolution)) {
+    LOGERR("cTimePts: clock_getres(CLOCK_MONOTONIC) failed");
+  } else {
+    LOGDBG("cTimePts: clock_gettime(CLOCK_MONOTONIC): clock resolution %d us",
+	   ((int)resolution.tv_nsec) / 1000);
+
+    if( resolution.tv_sec == 0 && resolution.tv_nsec <= 1000000 ) {
+      struct timespec tp;
+      if(clock_gettime(CLOCK_MONOTONIC, &tp)) {
+	LOGERR("cTimePts: clock_gettime(CLOCL_MONOTONIC) failed");
+      } else {
+	LOGDBG("cTimePts: using monotonic clock");
+	m_Monotonic = true;
+      }
+    }
+  }
+#else
+#  warning Posix monotonic clock not available
+#endif
+
   Set();
 }
 
@@ -51,26 +80,62 @@ int64_t cTimePts::Now(void)
 
   struct timeval t;
 
-  if (gettimeofday(&t, NULL) == 0) {
-    t.tv_sec -= tbegin.tv_sec;
-    if(t.tv_usec < tbegin.tv_usec) {
-      t.tv_sec--;
-      t.tv_usec += 1000000;
+#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
+  if(m_Monotonic) {
+    struct timespec tp;
+
+    if(clock_gettime(CLOCK_MONOTONIC, &tp)) {
+      LOGERR("cTimePts: clock_gettime(CLOCK_MONOTONIC) failed");
+      return -1;
     }
-    t.tv_usec -= tbegin.tv_usec;
 
-    return (uint64(t.tv_sec)) * 90000LL + 
-           (uint64(t.tv_usec)) * 90LL / 1000LL +
-           begin;
+    t.tv_sec  = tp.tv_sec;
+    t.tv_usec = tp.tv_nsec/1000;
+
+  } else if (gettimeofday(&t, NULL)) {
+    LOGERR("cTimePts: gettimeofday() failed");
+    return -1;
   }
+#else
+  if (gettimeofday(&t, NULL)) {
+    LOGERR("cTimePts: gettimeofday() failed");
+    return -1;
+  }
+#endif
 
-  return 0;
+  t.tv_sec -= tbegin.tv_sec;
+  if(t.tv_usec < tbegin.tv_usec) {
+    t.tv_sec--;
+    t.tv_usec += 1000000;
+  }
+  t.tv_usec -= tbegin.tv_usec;
+  
+  return ( ((int64_t)t.tv_sec) * ((int64_t)m_Multiplier) + 
+	   ((int64_t)t.tv_usec) * INT64_C(90) / INT64_C(1000) +
+	   begin) & MAX_SCR;
+
 }
 
 void cTimePts::Set(int64_t Pts)
 {
-  gettimeofday(&tbegin, NULL);
   begin = Pts;
+
+#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
+  if(m_Monotonic) {
+    struct timespec tp;
+
+    if(!clock_gettime(CLOCK_MONOTONIC, &tp)) {
+      tbegin.tv_sec  = tp.tv_sec;
+      tbegin.tv_usec = tp.tv_nsec/1000;
+      return;
+    }
+
+    LOGERR("cTimePts: clock_gettime(CLOCL_MONOTONIC) failed");
+    m_Monotonic = false;
+  }
+#endif
+
+  gettimeofday(&tbegin, NULL);
 }
 
 void cTimePts::Pause(void)
@@ -82,6 +147,16 @@ void cTimePts::Pause(void)
 void cTimePts::Resume(void)
 {
   m_Paused = false;
+}
+
+void cTimePts::TrickSpeed(int Multiplier)
+{
+  if(Multiplier < 0)
+    m_Multiplier = 90000 / (-Multiplier);
+  else if(Multiplier > 0)
+    m_Multiplier = 90000 * Multiplier;
+  else
+    LOGERR("cTimePts::SetSpeed: Multiplier=%d", Multiplier);
 }
 
 //----------------------- cUdpScheduler -------------------------------------
@@ -122,6 +197,7 @@ cUdpScheduler::cUdpScheduler()
 
   current_audio_vtime = 0;
   current_video_vtime = 0;
+  MasterClock.Set(INT64_C(0));
 
 #ifdef LOG_SCR
   data_sent = 0; 
@@ -132,14 +208,18 @@ cUdpScheduler::cUdpScheduler()
 
   last_delay_time = 0;
 
+  // RTP
+
   srandom(time(NULL) ^ getpid());
+
   m_ssrc = random();
   LOGDBG("RTP SSRC: 0x%08x", m_ssrc);
   m_LastRtcpTime = 0;
   m_Frames = 0;
   m_Octets = 0;
+  RtpScr.Set((int64_t)random());
 
-  // queuing
+  // Queuing
 
   int i;
   for(i=0; i<MAX_UDP_HANDLES; i++)
@@ -282,6 +362,22 @@ void cUdpScheduler::Pause(bool On)
     MasterClock.Pause();
   else
     MasterClock.Resume();
+}
+
+void cUdpScheduler::TrickSpeed(int Multiplier)
+{
+  cMutexLock ml(&m_Lock);
+
+#ifdef LOG_SCR
+  if(Multiplier == 1 || Multiplier == -1)
+    LOGMSG("UDP clock --> normal");
+  else if(Multiplier < 0)
+    LOGMSG("UDP clock --> %dx", -Multiplier);
+  else
+    LOGMSG("UDP clock --> 1/%d", Multiplier);
+#endif
+
+  MasterClock.TrickSpeed(Multiplier);
 }
 
 bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length) 
