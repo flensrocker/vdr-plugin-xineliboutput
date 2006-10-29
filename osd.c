@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.5 2006-08-26 19:09:08 phintuka Exp $
+ * $Id: osd.c,v 1.6 2006-10-29 19:43:06 phintuka Exp $
  *
  */
 
@@ -181,7 +181,16 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
   eOsdError Result = cOsd::SetAreas(Areas, NumAreas);
   if(Result == oeOk) 
     m_Shown = false;
-  
+
+  if(Left() + Width() > 720 || Top() + Height() > 576) {
+    LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d", 
+	   Left() + Width(), Top() + Height(), 
+	   Setup.OSDWidth, Setup.OSDHeight);
+    CmdSize(m_Device, 0, Setup.OSDWidth, Setup.OSDHeight);
+  } else {
+    CmdSize(m_Device, 0, 720, 576);
+  }
+
   return Result;
 }
 
