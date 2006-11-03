@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.26 2006-10-18 13:33:06 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.27 2006-11-03 20:23:14 phintuka Exp $
  *
  */
 
@@ -539,11 +539,13 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
 
 void cXinelibServer::TrickSpeed(int Speed)
 {
-  if(Speed == 0)
+  if(Speed == 0) {
     m_Scheduler->Pause(true);
-  else
+  } else {
     m_Scheduler->Pause(false);
-
+    m_Scheduler->TrickSpeed(Speed == -1 ? 1 : Speed);
+  }
+  
   cXinelibThread::TrickSpeed(Speed);
 }
 
