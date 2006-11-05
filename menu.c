@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.21 2006-10-23 19:15:19 phintuka Exp $
+ * $Id: menu.c,v 1.22 2006-11-05 17:06:47 phintuka Exp $
  *
  */
 
@@ -180,7 +180,7 @@ void cMenuBrowseFiles::SetHelpButtons(void)
 {
   bool isDir = !GetCurrent() || GetCurrent()->IsDir();
   bool isDvd = GetCurrent() && GetCurrent()->IsDvd();
-  SetHelp(isDvd ? tr("Button$Open") : tr("Button$Play"),
+  SetHelp((isDir && isDvd) ? tr("Button$Open") : tr("Button$Play"),
 	  strlen(m_CurrentDir) > 1 ? "[..]" : NULL,
 	  (isDir && !isDvd) ? NULL : tr("Button$Delete"),
 	  isDir ? NULL : tr("Button$Info"));
@@ -265,13 +265,17 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
   /* regular file */
   } else {
     char *f = NULL;
-    asprintf(&f, "%s/%s", m_CurrentDir, GetCurrent()->Name());
+    asprintf(&f, "%s/%s/%s", 
+	     GetCurrent()->IsDvd() ? "dvd:" : "",
+	     m_CurrentDir, GetCurrent()->Name());
     strcpy(m_ConfigLastDir, f);
     StoreConfig();
     if(m_Mode != ShowImages) {
       /* video/audio */
       cControl::Shutdown();
-      cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
+      cControl::Launch(GetCurrent()->IsDvd()
+		       ? new cXinelibDvdPlayerControl(f)
+		       : new cXinelibPlayerControl(m_Mode, f));
     } else {
       /* image */
       char **files = new char*[Count()+1];
@@ -368,24 +372,34 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
           } else {
 	    // video/audio
             if (m_Mode != ShowImages && xc.IsVideoFile(buffer)) {
-              bool resume=false, subs=false;
-              free(buffer);
-              buffer=NULL;
-              asprintf(&buffer, "%s/%s.resume", DirName, e->d_name);
-              if (stat(buffer, &st) == 0)
-                resume=true;
-              *strrchr(buffer,'.')=0;
-              strcpy(strrchr(buffer,'.'), ".sub");
-              if (stat(buffer, &st) == 0)
-                subs=true;
-              strcpy(strrchr(buffer,'.'), ".srt");
-              if (stat(buffer, &st) == 0)
-                subs=true;
-              Add(new cFileListItem(e->d_name,false,resume,subs));
+	      bool resume = false, subs = false, dvd = false;
+	      char *pos = strrchr(e->d_name, '.');
+
+	      free(buffer);
+	      buffer = NULL;
+
+	      // .iso image -> dvd
+	      if(pos && !strcasecmp(pos, ".iso"))
+		dvd = true;
+
+	      // resume file ?
+	      asprintf(&buffer, "%s/%s.resume", DirName, e->d_name);
+	      if (stat(buffer, &st) == 0)
+		resume = true;
+	      // separate subtitles ?
+	      *strrchr(buffer, '.') = 0;
+	      strcpy(strrchr(buffer,'.'), ".sub");
+	      if (stat(buffer, &st) == 0)
+		subs = true;
+	      strcpy(strrchr(buffer,'.'), ".srt");
+	      if (stat(buffer, &st) == 0)
+		subs = true;
+
+	      Add(new cFileListItem(e->d_name, false, resume, subs, dvd));
 
 	    // images
             } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
-              Add(new cFileListItem(e->d_name,false));
+	      Add(new cFileListItem(e->d_name, false));
 	    }
           }
         }
