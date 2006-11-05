@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.14 2006-10-23 19:21:23 phintuka Exp $
+ * $Id: config.c,v 1.15 2006-11-05 14:28:31 phintuka Exp $
  *
  */
 
@@ -21,9 +21,9 @@
 #define DEFAULT_DEINTERLACE_OPTS "method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
 
 const char *config_t::s_bufferSize[] =
-  {"custom","tiny","small","medium","large","huge",NULL};
+  {"custom", "tiny", "small", "medium", "large", "huge", NULL};
 const int config_t::i_pesBufferSize[] =
-  {0,50,250,500,1000,2000,500};
+  {0, 50, 250, 500, 1000, 2000, 500};
 const char *config_t::s_aspects[] =
   {"automatic", "default", "4:3", "16:9", "16:10", "Pan&Scan", "CenterCutOut", 0};
 const char *config_t::s_deinterlaceMethods[] =
@@ -55,7 +55,7 @@ const char *config_t::s_frontends[] =
 const char *config_t::s_frontend_files[] =
   {"lib" PLUGIN_NAME_I18N "-sxfe.so." XINELIBOUTPUT_VERSION, 
    "lib" PLUGIN_NAME_I18N "-fbfe.so." XINELIBOUTPUT_VERSION, 
-   // example: xineliboutput-sxfe.so.0.4.0
+   // example: libxineliboutput-sxfe.so.0.4.0
    "", 
    NULL};
 
@@ -112,7 +112,8 @@ bool config_t::IsVideoFile(const char *fname)
 	 !strcasecmp(pos, ".xvid") || 
 	 !strcasecmp(pos, ".divx") || 
 	 !strcasecmp(pos, ".m3u") || 
-	 !strcasecmp(pos, ".ram"))
+	 !strcasecmp(pos, ".ram") || 
+	 !strcasecmp(pos, ".iso"))  /* maybe dvd */
 	return true;
     }
   }
