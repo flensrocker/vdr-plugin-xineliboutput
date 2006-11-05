@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.14 2006-10-13 12:50:23 phintuka Exp $
+ * $Id: setup_menu.c,v 1.15 2006-11-05 16:48:35 phintuka Exp $
  *
  */
 
@@ -96,6 +96,7 @@ class cMenuSetupAudio : public cMenuSetupPage
   private:
     config_t newconfig;
     int visualization;
+    int goom_width, goom_height, goom_fps;
 
     cOsdItem *audio_ctrl_speakers;
     cOsdItem *audio_ctrl_delay;
@@ -103,6 +104,7 @@ class cMenuSetupAudio : public cMenuSetupPage
     cOsdItem *audio_ctrl_upmix;
     cOsdItem *audio_ctrl_surround;
     cOsdItem *audio_ctrl_headphone;
+    cOsdItem *audio_ctrl_vis;
   
   protected:
     virtual void Store(void);
@@ -118,9 +120,22 @@ class cMenuSetupAudio : public cMenuSetupPage
 cMenuSetupAudio::cMenuSetupAudio(void) 
 {
   memcpy(&newconfig, &xc, sizeof(config_t));
+
   visualization = strstra(xc.audio_visualization, 
 			  xc.s_audioVisualizations, 
 			  0);
+  goom_width  = 720;
+  goom_height = 576;
+  goom_fps    = 25;
+
+  char *pt;
+  if(NULL != (pt=strstr(xc.audio_vis_goom_opts, "width=")))
+    goom_width = max(320, min(1920, atoi(pt+6)));
+  if(NULL != (pt=strstr(xc.audio_vis_goom_opts, "height=")))
+    goom_height = max(240, min(1280, atoi(pt+7)));
+  if(NULL != (pt=strstr(xc.audio_vis_goom_opts, "fps=")))
+    goom_fps = max(1, min(100, atoi(pt+4)));
+
   Set();
 }
 
@@ -168,9 +183,18 @@ void cMenuSetupAudio::Set(void)
 #else
   audio_ctrl_headphone = NULL;
 #endif
-  Add(new cMenuEditStraI18nItem(tr("Visualization"), &visualization, 
-			    AUDIO_VIS_count, 
-			    xc.s_audioVisualizationNames));
+  Add(audio_ctrl_vis = 
+      new cMenuEditStraI18nItem(tr("Visualization"), &visualization, 
+				AUDIO_VIS_count, 
+				xc.s_audioVisualizationNames));
+  if(visualization == AUDIO_VIS_GOOM) {
+    Add(new cMenuEditTypedIntItem(tr("  Width"), tr("px"), &goom_width,
+				  320, 1920));
+    Add(new cMenuEditTypedIntItem(tr("  Height"),tr("px"), &goom_height,
+				  240, 1280));
+    Add(new cMenuEditTypedIntItem(tr("  Speed"), tr("fps"), &goom_fps,
+				  1, 100));
+  }
 
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
@@ -193,6 +217,9 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
 	  xc.deinterlace_method, newconfig.audio_delay, 
 	  newconfig.audio_compression, newconfig.audio_equalizer,
 	  newconfig.audio_surround, newconfig.speaker_type);
+  }
+  else if(item == audio_ctrl_vis) {
+    Set();
   }
   else if(item == audio_ctrl_speakers) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
@@ -237,7 +264,10 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
 void cMenuSetupAudio::Store(void)
 {
   memcpy(&xc, &newconfig, sizeof(config_t));
+
   strcpy(xc.audio_visualization, xc.s_audioVisualizations[visualization]);
+  sprintf(xc.audio_vis_goom_opts, "width=%d,height=%d,fps=%d",
+	  goom_width, goom_height, goom_fps);
 
   SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
   SetupStore("Audio.Delay",    xc.audio_delay);
@@ -246,6 +276,7 @@ void cMenuSetupAudio::Store(void)
   SetupStore("Audio.Upmix",        xc.audio_upmix);
   SetupStore("Audio.Headphone",    xc.headphone);
   SetupStore("Audio.Visualization",xc.audio_visualization);
+  SetupStore("Audio.Visualization.GoomOpts",xc.audio_vis_goom_opts);
 }
 
 //--- cMenuSetupAudioEq ------------------------------------------------------
