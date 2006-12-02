@@ -264,7 +264,7 @@ Image viewer key bindings
   Stop/Blue       Exit image viewer
   Play            Start slide show
   Pause           Stop slide show
-  FastFF/FastRew  Start slide show; Increase/decrease slide show speed; 
+  FastFwd/FastRew Start slide show; Increase/decrease slide show speed; 
                   Change slideshow direction
   Ok              Toggle replay display mode
 
@@ -289,21 +289,24 @@ Media player key bindings
 DVD player key bindings
 
   Up/Down/Left/Right/Ok/Back  DVD menu navigation
-  Red        DVD menu(s)
-  Green      Jump 1 min back
-  Yellow     Jump 1 min forward
-  1, User8   Jump 20 s back  
-  3, User9   Jump 20 s forward
-  Blue       Stop replay
-  Pause      Pause replay
-  Play       Play
-  Stop       Stop replay
-  Next
-  Prev
-  Info       Show progress display
-  2          Select next subtitle track
-  5          Select previous subtitle track
-  FastRew/FastFwd  Play faster/slower
+  Red            Access DVD menu(s)
+  Green          Jump 1 min back
+  Yellow         Jump 1 min forward
+  Stop/Blue/Back Stop replay
+  Ok / Info      Toggle replay display mode
+  1 / User8      Jump 20 s back  
+  3 / User9      Jump 20 s forward
+  Pause / Down   Pause replay
+  Play / Up      Play
+  6 / Next,      Next chapter
+  4 / Prev       Previous chapter
+  9              Next title
+  7              Previous title
+  Info           Show progress display
+  2              Next subtitle track
+  5              Previous subtitle track
+  FastRew/FastFwd,
+  Left/Right    Play faster/slower
 
 
 DVD playback

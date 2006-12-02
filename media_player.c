@@ -4,7 +4,7 @@
  * See the main source file '.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.13 2006-10-18 21:20:41 phintuka Exp $
+ * $Id: media_player.c,v 1.14 2006-12-02 23:35:31 phintuka Exp $
  *
  */
 
@@ -691,30 +691,78 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   if (m_DisplayReplay) 
     Show();
 
+  bool MenuDomain = false;
+  if(Key != kNone) {
+    const char *l0 = cXinelibDevice::Instance().GetDvdSpuLang(0);
+    const char *l1 = cXinelibDevice::Instance().GetDvdSpuLang(1);
+    if((l0 && !strcmp("menu", l0)) ||
+       (l1 && !strcmp("menu", l1))) {
+      /*LOGMSG(" *** menu domain %s %s", l0, l1);*/
+      MenuDomain = true;
+    } else {
+      /*LOGMSG(" *** replay domain %s %s", l0, l1);*/
+    }
+  }
+
   int r;
+  if(MenuDomain) {
+    switch(Key) {
+      // DVD navigation
+      case kUp:     r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_UP");     return osContinue;
+      case kDown:   r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_DOWN");   return osContinue;
+      case kLeft:   r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_LEFT");   return osContinue;
+      case kRight:  r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_RIGHT");  return osContinue;
+      case kOk:     r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_SELECT"); return osContinue;
+      case kBack:   r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_MENU1");  return osContinue;
+      default:      break;
+    }
+  }
+
+  if(!MenuDomain) {
+    switch(Key) {
+      // Replay control
+      case kUp:    Key = kPlay;    break;
+      case kDown:  Key = kPause;   break;
+      case kLeft:  Key = kFastRew; break;
+      case kRight: Key = kFastFwd; break;
+      case kOk:
+                   if(m_Speed != 1) {
+		     Hide();
+		     m_ShowModeOnly = !m_ShowModeOnly;
+		     Show();
+		   } else {
+		     if(m_DisplayReplay) {
+		       m_ShowModeOnly = true;
+		       Hide();
+		     } else {
+		       Hide();
+		       m_ShowModeOnly = false;
+		       Show();
+		     }
+		   }
+		   break;
+      case kBack:  xc.main_menu_mode = m_Mode;
+	           Hide(); 
+		   Close(); 
+		   BackToMenu();
+		   return osEnd;
+      default:     break;
+    }
+  }
+
   switch(Key) {
-    // DVD navigation
-    case kUp:     r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_UP"); break;
-    case kDown:   r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_DOWN"); break;
-    case kLeft:   r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_LEFT"); break;
-    case kRight:  r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_RIGHT"); break;
-    case kOk:     r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_SELECT"); break;
-    case kBack:   r = cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_MENU1"); break;
+    // DVD menus
     case kRed:    Hide();
                   Menu = new cDvdMenu();
 		  break;
+
     // SPU channel
-#if 0
-    case k2:      r = cXinelibDevice::Instance().PlayFileCtrl("SPUSTREAM NEXT");  break;
-    case k5:      r = cXinelibDevice::Instance().PlayFileCtrl("SPUSTREAM PREV");  break;
-#else
     case k5:      cXinelibDevice::Instance().SetCurrentDvdSpuTrack(
                        cXinelibDevice::Instance().GetCurrentDvdSpuTrack() - 2);
     case k2:      cRemote::CallPlugin("xineliboutput"); 
-                  cRemote::Put(kRed); 
+                  cRemote::Put(kRed); /* shortcut key */ 
 		  cRemote::Put(k2);
                   break;
-#endif
 
     // Playback control
     case kGreen:  r = cXinelibDevice::Instance().PlayFileCtrl("SEEK -60");  break;
@@ -722,14 +770,19 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     case kUser8:
     case k1:      r = cXinelibDevice::Instance().PlayFileCtrl("SEEK -20");  break;
     case kUser9:
-    case k3:      r = cXinelibDevice::Instance().PlayFileCtrl("SEEK -20");  break;
+    case k3:      r = cXinelibDevice::Instance().PlayFileCtrl("SEEK +20");  break;
 
     case kStop: 
     case kBlue:   Hide();
                   Close();
                   return osEnd;
-    case kNext:   cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_NEXT"); break;
-    case kPrev:   cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_PREVIOUS"); break;
+
+    case k9:      cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_NEXT TITLE"); break;
+    case k7:      cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_PREVIOUS TITLE"); break;
+    case k6:
+    case kNext:   cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_NEXT CHAPTER"); break;
+    case k4:
+    case kPrev:   cXinelibDevice::Instance().PlayFileCtrl("EVENT XINE_EVENT_INPUT_PREVIOUS CHAPTER"); break;
 
     case kFastFwd:switch(m_Speed) {
                     case  0: m_Speed=-4; r = cXinelibDevice::Instance().PlayFileCtrl("TRICKSPEED 8");   break;

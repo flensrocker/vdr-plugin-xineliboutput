@@ -1,6 +1,9 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+- Try to detect when navigating in DVD menus and change 
+  functions of Up/Down/Left/Right/Ok/Back keys when in menus
+
 2006-10-20: Version 1.0.0pre6
 
 - Display Audio track languages when replaying DVDs
