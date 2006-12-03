@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.59 2006-10-23 21:39:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.60 2006-12-03 00:32:17 phintuka Exp $
  *
  */
 
@@ -182,9 +182,10 @@ typedef struct udp_data_s udp_data_t;
 
 /* plugin class */
 typedef struct vdr_input_class_s {
-  input_class_t     input_class;
-  xine_t           *xine;
-  char             *mrls[ 2 ];
+  input_class_t   input_class;
+  xine_t         *xine;
+  char           *mrls[ 2 ];
+  int             fast_osd_scaling;
 } vdr_input_class_t;
 
 /* input plugin */
@@ -1857,7 +1858,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
     this->osddata[cmd->wnd].data = NULL;
     if(cmd->palette) {
-      this->osddata[cmd->wnd].palette = malloc(4*cmd->colors);
+      this->osddata[cmd->wnd].palette = malloc(sizeof(xine_clut_t)*cmd->colors);
       memcpy(this->osddata[cmd->wnd].palette, cmd->palette, 4*cmd->colors);
     }
 
@@ -2956,9 +2957,22 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       err = set_deinterlace_method(this, cmd+12);
 
   } else if(!strncasecmp(cmd, "EVENT ", 6)) {
+#warning  //    err = handle_event(this, cmd);
     int i=0;
     char *pt = strchr(cmd, '\n');
     if(pt) *pt=0;
+    pt = strstr(cmd+6, " CHAPTER");
+    if(pt) {
+      *pt = 0;
+      stream->xine->config->update_num(stream->xine->config,
+				       "media.dvd.skip_behaviour", 1);
+    }
+    pt = strstr(cmd+6, " TITLE");
+    if(pt) {
+      *pt = 0;
+      stream->xine->config->update_num(stream->xine->config,
+				       "media.dvd.skip_behaviour", 2);
+    }
     while(eventmap[i].name)
       if(!strcmp(cmd+6, eventmap[i].name)) {
 	xine_event_t ev;
@@ -5162,12 +5176,20 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 
 /**************************** Plugin class *******************************/
 /* Callback on default mrl change */
-static void vdr_class_default_mrl_change_cb(void *data, xine_cfg_entry_t *cfg) {
+static void vdr_class_default_mrl_change_cb(void *data, xine_cfg_entry_t *cfg) 
+{
   vdr_input_class_t *class = (vdr_input_class_t *) data;
-  
+
   class->mrls[0] = cfg->str_value;
 } 
 
+/* callback on OSD scaling mode change */
+static void vdr_class_fast_osd_scaling_cb(void *data, xine_cfg_entry_t *cfg) 
+{
+  vdr_input_class_t *class = (vdr_input_class_t *) data;
+
+  class->fast_osd_scaling = cfg->num_value;
+}
 
 static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 				    xine_stream_t *stream,
@@ -5180,7 +5202,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 
   LOGDBG("vdr_class_get_instance");
 
-LOGMSG("vdr_class_get_instance: %s",mrl);
   if (strncasecmp (mrl, "xvdr:",5))
     return NULL;
 
@@ -5309,6 +5330,8 @@ static void vdr_class_dispose (input_class_t *this_gen)
 
   this->xine->config->unregister_callback(this->xine->config,
 					  "media.xvdr.default_mrl");
+  this->xine->config->unregister_callback(this->xine->config,
+					  "xvdr.osd.fast_scaling");
 
   free (this);
 }
@@ -5328,8 +5351,19 @@ static void *init_class (xine_t *xine, void *data)
                                             _("default VDR host"),
                                             _("The default VDR host"),
                                             10, vdr_class_default_mrl_change_cb, (void *)this);
-  
   this->mrls[ 1 ] = 0;
+
+  this->fast_osd_scaling = config->register_bool(config,
+						 "input.xvdr.fast_osd_scaling", 0,
+						 _("Fast (low-quality) OSD scaling"),
+						 _("Enable fast (lower quality) OSD scaling.\n"
+						   "Default is to use (slow) linear interpolation "
+						   "to calculate pixels and full palette re-allocation "
+						   "to optimize color palette.\n"
+						   "Fast method only duplicates/removes rows and columns "
+						   "and does not modify palette."),
+						 10, vdr_class_fast_osd_scaling_cb, 
+						 (void *)this);
 
   this->input_class.get_instance       = vdr_class_get_instance;
   this->input_class.get_identifier     = vdr_class_get_identifier;
