@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.27 2006-11-03 20:23:14 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.28 2006-12-07 15:18:46 phintuka Exp $
  *
  */
 
@@ -1242,7 +1242,8 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 
 void cXinelibServer::Read_Control(int cli)
 {
-  while(read(fd_control[cli], &m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ], 1) == 1) {
+  int n;
+  while((n = read(fd_control[cli], &m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ], 1)) == 1) {
 
     ++m_CtrlBufPos[cli];
 
@@ -1265,6 +1266,10 @@ void cXinelibServer::Read_Control(int cli)
 
       m_CtrlBufPos[cli] = 0;
     }
+  }
+  if (n == 0) {
+    LOGMSG("Client connection %d closed", cli);
+    CloseConnection(cli);
   }
 }
 
