@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_buffer.h,v 1.2 2006-08-15 16:47:32 phintuka Exp $
+ * $Id: udp_buffer.h,v 1.3 2006-12-14 12:30:25 phintuka Exp $
  *
  */
 
@@ -32,19 +32,21 @@ class cUdpBackLog
 
     cUdpBackLog(cUdpBackLog&);
 
-    stream_udp_header_t *m_UdpBuffer[UDP_BUFFER_SIZE];
+    stream_rtp_header_impl_t *m_UdpBuffer[UDP_BUFFER_SIZE];
     int m_UdpBufLen[UDP_BUFFER_SIZE];   /* size of allocated memory, not frame */
     int m_PayloadSize[UDP_BUFFER_SIZE]; /* size of frame */
     unsigned int m_SeqNo; /* next (outgoing) sequence number */
+    unsigned int m_RtpSeqNo; /* next (outgoing) RTP sequence number */
 
   protected:
 
     cUdpBackLog()
     {
-      memset(m_UdpBuffer, 0, sizeof(stream_udp_header_t *)*UDP_BUFFER_SIZE);
+      memset(m_UdpBuffer, 0, sizeof(stream_rtp_header_impl_t *)*UDP_BUFFER_SIZE);
       memset(m_UdpBufLen, 0, sizeof(int) * UDP_BUFFER_SIZE);
       memset(m_PayloadSize, 0, sizeof(int) * UDP_BUFFER_SIZE); 
       m_SeqNo = 0;
+      m_RtpSeqNo = random();
     }
 
     void Clear(int HowManyFrames)
@@ -69,7 +71,7 @@ class cUdpBackLog
 	}
     }
 
-    stream_udp_header_t *Get(int UdpSeqNo)
+    stream_rtp_header_impl_t *Get(int UdpSeqNo)
     {
       int BufIndex = UdpSeqNo & UDP_BUFFER_MASK;
       return m_UdpBuffer[BufIndex];
@@ -81,34 +83,12 @@ class cUdpBackLog
       return m_UdpBuffer[BufIndex] ? m_PayloadSize[BufIndex] : 0;
     }
 
-#if 0
-    stream_rtp_header_t *MakeFrame(uint32_t Seq, uint8_t *Data, int Length, bool Marker = false)
+    stream_rtp_header_impl_t *MakeFrame(uint64_t StreamPos, 
+					const uchar *Data, int DataLen)
     {
-/*
-  http://www.ietf.org/rfc/rfc2250.txt :
-  M bit:  Set to 1 whenever the timestamp is discontinuous
-          (such as might happen when a sender switches from one data
-          source to another). This allows the receiver and any
-          intervening RTP mixers or translators that are synchronizing
-          to the flow to ignore the difference between this timestamp
-          and any previous timestamp in their clock phase detectors.
-*/
-      stream_rtp_header_t hdr;
-      hdr.raw[0] = RTP_VERSION_BYTE;
-      hdr.raw[1] = Marker ? RTP_PAYLOAD_TYPE_M : RTP_PAYLOAD_TYPE;
-      hdr.seq  = htons(Seq);
-      hdr.ts   = htonl((uint32_t)(RtpScr.Now() & 0xffffffff));
-      hdr.ssrc = htonl(m_ssrc);
-      return NULL;
-    }
-#endif
-
-    stream_udp_header_t *MakeFrame(uint64_t StreamPos, 
-				   const uchar *Data, int DataLen)
-    {
-      int UdpPacketLen = DataLen + sizeof(stream_udp_header_t);
+      int UdpPacketLen = DataLen + sizeof(stream_rtp_header_impl_t);
       int BufIndex = m_SeqNo & UDP_BUFFER_MASK;
-      
+
       // old buffer too small ? free it
       if(m_UdpBuffer[BufIndex] && m_UdpBufLen[BufIndex] < UdpPacketLen) {
         delete[] m_UdpBuffer[BufIndex];
@@ -117,19 +97,35 @@ class cUdpBackLog
       
       // no buffer ? alloc it
       if(!m_UdpBuffer[BufIndex]) {
-	m_UdpBuffer[BufIndex] = (stream_udp_header_t*)new uchar[UdpPacketLen];
+	m_UdpBuffer[BufIndex] = (stream_rtp_header_impl_t*)new uchar[UdpPacketLen];
 	m_UdpBufLen[BufIndex] = UdpPacketLen;
       }
       m_PayloadSize[BufIndex] = DataLen;
 
       // Fill frame to buffer
-      stream_udp_header_t *header = m_UdpBuffer[BufIndex];
-      uchar *Payload = UDP_PAYLOAD(header);
+      stream_rtp_header_impl_t *header = m_UdpBuffer[BufIndex];
 
-      memcpy(Payload, Data, DataLen);
-      header->pos = htonll(StreamPos);
-      header->seq = htons(m_SeqNo);
+      memcpy(header->payload, Data, DataLen);
 
+      // RTP header
+      header->rtp_hdr.raw[0] = RTP_VERSION_BYTE | RTP_HDREXT_BIT;
+      header->rtp_hdr.raw[1] = RTP_PAYLOAD_TYPE;
+      header->rtp_hdr.seq  = htons(m_RtpSeqNo & 0xFFFF);
+      /*header->rtp_hdr.ts   = htonl((uint32_t)(RtpScr.Now() & 0xffffffff));*/
+      /*header->rtp_hdr.ssrc = htonl(m_ssrc);*/
+
+      // RTP header extension
+      header->hdr_ext.hdr.size = htons(RTP_HEADER_EXT_X_SIZE);
+      header->hdr_ext.hdr.type = htons(RTP_HEADER_EXT_X_TYPE);
+
+      // UDP header
+      header->hdr_ext.pos = htonull(StreamPos);
+      header->hdr_ext.seq = htons(m_SeqNo);
+
+      header->hdr_ext.padding1[0] = 0;
+      header->hdr_ext.padding1[1] = 0;
+
+      m_RtpSeqNo = (m_RtpSeqNo + 1) & 0xFFFF;
       m_SeqNo = (m_SeqNo + 1) & UDP_SEQ_MASK;
 
       return header;
