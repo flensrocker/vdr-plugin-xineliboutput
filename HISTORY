@@ -1,8 +1,11 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+- Fixed control channel disconnection detection in frontend_svr.c
 - Try to detect when navigating in DVD menus and change 
   functions of Up/Down/Left/Right/Ok/Back keys when in menus
+- Added RFC2974 SAP (Session Announcement Protocol) implementation
+- Now using RTP when multicasting
 
 2006-10-20: Version 1.0.0pre6
 
