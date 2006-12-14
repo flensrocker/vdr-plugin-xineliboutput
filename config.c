@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.15 2006-11-05 14:28:31 phintuka Exp $
+ * $Id: config.c,v 1.16 2006-12-14 12:39:19 phintuka Exp $
  *
  */
 
@@ -229,6 +229,7 @@ config_t::config_t() {
   remote_rtp_port = LISTEN_PORT;
   remote_rtp_ttl = 1;
   remote_rtp_always_on = 0;
+  remote_rtp_sap = 1;
 
   use_x_keyboard = 1;
 
@@ -409,6 +410,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.Rtp.Port"))     remote_rtp_port = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.TTL"))      remote_rtp_ttl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.AlwaysOn")) remote_rtp_always_on = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.Rtp.SapAnnouncements")) remote_rtp_sap = atoi(Value);
 
   else if (!strcasecmp(Name, "Decoder.Priority"))    decoder_priority=strstra(Value,s_decoderPriority,1);
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);
