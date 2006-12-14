@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.13 2006-10-28 02:30:11 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.14 2006-12-14 18:54:41 phintuka Exp $
  *
  */
 
@@ -14,10 +14,12 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <linux/unistd.h>
 
 #include <vdr/config.h>
 #include <vdr/tools.h>
@@ -29,13 +31,13 @@
 
 #include "udp_pes_scheduler.h"
 
-#include "../xine_input_vdr_net.h" // frame headers
-#include "../config.h"             // rtp address & port
+#include "../xine_input_vdr_net.h" // frame headers and constants
+#include "../config.h"             // configuration data
 
-
-#include <sys/types.h>
-#include <linux/unistd.h>
-#include <errno.h>
+#include "cxsocket.h"
+#include "sap.h"  // SAP  - Session Announcement Protocol
+#include "sdp.h"  // SDP  - Session Description Protocol
+#include "rtcp.h" // RTCP
 
 //----------------------- cTimePts ------------------------------------------
 
@@ -161,11 +163,21 @@ void cTimePts::TrickSpeed(int Multiplier)
 
 //----------------------- cUdpScheduler -------------------------------------
 
-//#define LOG_RESEND
-//#define LOG_SCR
+#ifdef LOG_RESEND
+#  define LOGRESEND LOGDBG
+#else
+#  define LOGRESEND(x...)
+#endif
+
+#ifdef LOG_SCR
+#  define LOGSCR  LOGDBG
+#else
+#  define LOGSCR(x...)
+#endif
+
 
 const int MAX_QUEUE_SIZE      = 64;       // ~ 65 ms with typical DVB stream
-const int MAX_LIVE_QUEUE_SIZE = (64+32);  // ~ 100 ms with typical DVB stream
+const int MAX_LIVE_QUEUE_SIZE = (64+60);  // ~ 100 ms with typical DVB stream
 const int HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
 
 // initial burst length after seek (500ms = ~13 video frames)
@@ -184,10 +196,10 @@ typedef enum {
 } ScrSource_t;
 
 #ifdef LOG_SCR
-    int data_sent;   /* in current time interval, bytes */
-    int frames_sent; /* in current time interval */
-    int frame_rate;  /* pes frames / second */
-    int prev_frames;
+int data_sent;   /* in current time interval, bytes */
+int frames_sent; /* in current time interval */
+int frame_rate;  /* pes frames / second */
+int prev_frames;
 #endif
 
 cUdpScheduler::cUdpScheduler()
@@ -219,12 +231,15 @@ cUdpScheduler::cUdpScheduler()
   m_Octets = 0;
   RtpScr.Set((int64_t)random());
 
+  m_fd_rtp = -1;
+  m_fd_rtcp = -1;
+  m_fd_sap = -1;
+
   // Queuing
 
   int i;
   for(i=0; i<MAX_UDP_HANDLES; i++)
     m_Handles[i] = -1;
-  m_fd_rtp = m_fd_rtcp = -1;
 
   m_BackLog = new cUdpBackLog;
 
@@ -240,6 +255,16 @@ cUdpScheduler::cUdpScheduler()
 
 cUdpScheduler::~cUdpScheduler()
 {
+  if(m_fd_rtcp >= 0 || m_fd_rtp >= 0) {
+    Send_SAP(false);
+    close(m_fd_rtp);
+    m_fd_rtp = -1;
+    close(m_fd_rtcp);
+    m_fd_rtcp = -1;
+  }
+  close(m_fd_sap);
+  m_fd_sap = -1;
+
   m_Lock.Lock();
   m_Running = 0;
   m_Cond.Broadcast();
@@ -250,7 +275,113 @@ cUdpScheduler::~cUdpScheduler()
   delete m_BackLog;
 }
 
-bool cUdpScheduler::AddHandle(int fd, int fd_rtcp) 
+bool cUdpScheduler::AddRtp(void) 
+{
+  cMutexLock ml(&m_Lock);
+
+  int fd_rtp = -1, fd_rtcp = -1;
+  struct sockaddr_in sin;
+  sin.sin_family = AF_INET;
+  sin.sin_port = htons(xc.remote_rtp_port);
+  sin.sin_addr.s_addr = inet_addr(xc.remote_rtp_addr);
+
+
+  if(m_fd_rtp >= 0) {
+    LOGERR("cUdpScheduler::AddHandle: RTP socket already open !");
+    Send_SAP(false);
+    close(m_fd_rtp);
+    m_fd_rtp = -1;
+  }
+
+  if(m_fd_rtcp >= 0) {
+    LOGERR("cUdpScheduler::AddHandle: RTCP socket already open !");
+    close(m_fd_rtcp);
+    m_fd_rtcp = -1;
+  }
+
+  /* need new ssrc */
+  m_ssrc = random();
+  LOGDBG("RTP SSRC: 0x%08x", m_ssrc);
+
+  //
+  // RTP
+  //
+  if((fd_rtp = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    LOGERR("socket() failed (UDP/RTP multicast)");
+    return false;
+  }
+
+  // Set buffer sizes
+  set_socket_buffers(fd_rtp, KILOBYTE(256), 2048);
+
+  // Set multicast socket options
+  if(set_multicast_options(fd_rtp, xc.remote_rtp_ttl)) {
+    close(fd_rtp);
+    return false;
+  }
+
+  // Connect to multicast address
+  if(connect(fd_rtp, (struct sockaddr *)&sin, sizeof(sin)) == -1 && 
+     errno != EINPROGRESS) {
+    LOGERR("connect(fd_rtp) failed. Address=%s, port=%d",
+	   xc.remote_rtp_addr, xc.remote_rtp_port);
+    close(fd_rtp);
+    return false;
+  }
+
+  // Set to non-blocking mode
+  if(fcntl (fd_rtp, F_SETFL, 
+	    fcntl (fd_rtp, F_GETFL) | O_NONBLOCK) == -1) 
+    LOGERR("can't put multicast socket in non-blocking mode");      
+  
+  
+  //
+  // RTCP
+  //
+  if((fd_rtcp = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    LOGERR("socket() failed (RTCP multicast)");
+      
+  /* RTCP port (RFC 1889) */
+  if(xc.remote_rtp_port & 1)
+    sin.sin_port = htons(xc.remote_rtp_port - 1);
+  else
+    sin.sin_port = htons(xc.remote_rtp_port + 1);
+      
+  set_socket_buffers(fd_rtcp, 16384, 16384);
+  if(set_multicast_options(fd_rtcp, xc.remote_rtp_ttl)) {
+    close(fd_rtcp);
+    fd_rtcp = -1;
+  }
+      
+  else if(connect(fd_rtcp, (struct sockaddr *)&sin, sizeof(sin))==-1 && 
+	  errno != EINPROGRESS) {
+    LOGERR("connect(fd_rtcp) failed. Address=%s, port=%d",
+	   xc.remote_rtp_addr, xc.remote_rtp_port +
+	   (xc.remote_rtp_port&1)?-1:1);
+    close(fd_rtcp);
+    fd_rtcp = -1;
+  }
+
+  // Set to non-blocking mode
+  else if(fcntl (fd_rtcp, F_SETFL, 
+		 fcntl (fd_rtcp, F_GETFL) | O_NONBLOCK) == -1) 
+    LOGERR("can't put multicast socket in non-blocking mode");
+
+  // Finished
+
+  if(!AddHandle(fd_rtp)) {
+    LOGERR("cUdpScheduler::AddHandle(fd_rtp) failed");
+  }
+
+  m_fd_rtp = fd_rtp;
+  m_fd_rtcp = fd_rtcp;
+	
+  Send_SAP(true);
+
+  return true;
+}
+
+bool cUdpScheduler::AddHandle(int fd) 
 {
   cMutexLock ml(&m_Lock);
 
@@ -259,15 +390,38 @@ bool cUdpScheduler::AddHandle(int fd, int fd_rtcp)
   for(i=0; i<MAX_UDP_HANDLES; i++)
     if(m_Handles[i] < 0 || m_Handles[i] == fd) {
       m_Handles[i] = fd;
+
+      /* query socket send buffer size */
+      m_wmem[i] = 0x10000; /* default to 64k */
+      socklen_t l = sizeof(int);
+      if(getsockopt(m_Handles[i], SOL_SOCKET, SO_SNDBUF, &m_wmem[i], &l))
+	LOGERR("getsockopt(SO_SNDBUF) failed");
+      m_wmem[i] /= 2; /* man 7 socket */
+
+      m_Cond.Broadcast();
+
       return true;
     }
 
-  if(fd_rtcp >=0 ) {
-    m_fd_rtp = fd;
-    m_fd_rtcp = fd_rtcp;
-  }
-
   return false;
+}
+
+void cUdpScheduler::RemoveRtp(void) 
+{
+  cMutexLock ml(&m_Lock);
+
+  if(m_fd_rtp >= 0 || m_fd_rtcp >= 0) {
+    Send_SAP(false);
+
+    RemoveHandle(m_fd_rtp);
+    
+    close(m_fd_rtp);
+    m_fd_rtp = -1;
+    close(m_fd_rtcp);
+    m_fd_rtcp = -1;
+    close(m_fd_sap);
+    m_fd_sap = -1;
+  }
 }
 
 void cUdpScheduler::RemoveHandle(int fd) 
@@ -283,9 +437,6 @@ void cUdpScheduler::RemoveHandle(int fd)
     m_Handles[i] = m_Handles[i+1];
 
   m_Handles[MAX_UDP_HANDLES-1] = -1;
-
-  if(fd == m_fd_rtp)
-    m_fd_rtp = m_fd_rtcp = -1;
 
   if(m_Handles[0] < 0) {
     // No clients left ...
@@ -312,35 +463,38 @@ bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
     return true;
   }
   
-  uint64_t WaitEnd = cTimeMs::Now();
-  if(TimeoutMs >= 0)
-    WaitEnd += (uint64_t)TimeoutMs;
+  const int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
+  if(m_QueuePending >= limit) {
+    uint64_t WaitEnd = cTimeMs::Now();
+    if(TimeoutMs >= 0)
+      WaitEnd += (uint64_t)TimeoutMs;
 
-  int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
-  while(cTimeMs::Now() < WaitEnd &&
-	m_Running &&
-	m_QueuePending >= limit)
-    m_Cond.TimedWait(m_Lock, 5);
+    while(cTimeMs::Now() < WaitEnd &&
+	  m_Running &&
+	  m_QueuePending >= limit)	
+      m_Cond.TimedWait(m_Lock, 5);
+  }
 
   return m_QueuePending < limit;
 }
 
 bool cUdpScheduler::Flush(int TimeoutMs)
 {
-  uint64_t WaitEnd = cTimeMs::Now();
-  if(TimeoutMs >= 0)
-    WaitEnd += (uint64_t)TimeoutMs;
-
   cMutexLock ml(&m_Lock);
 
   if(m_Handles[0] < 0)
     return true;
   
-  while(cTimeMs::Now() < WaitEnd &&
-	m_Running &&
-	m_QueuePending > 0)
-    m_Cond.TimedWait(m_Lock, 25);
+  if(m_QueuePending > 0) {
+    uint64_t WaitEnd = cTimeMs::Now();
+    if(TimeoutMs >= 0)
+      WaitEnd += (uint64_t)TimeoutMs;
 
+    while(cTimeMs::Now() < WaitEnd &&
+	  m_Running &&
+	  m_QueuePending > 0)
+      m_Cond.TimedWait(m_Lock, 5);
+  }
   return m_QueuePending == 0;
 }
 
@@ -494,16 +648,16 @@ void cUdpScheduler::Send_RTCP(void)
 	    hostname[0] ? hostname : xc.remote_rtp_addr,
 	    xc.remote_rtp_port, 0, 0, 0);
     msg->sdes.item[0].length = strlen(msg->sdes.item[0].data);
-
     msg->hdr.length = htons(1 + 1 + ((msg->sdes.item[0].length - 2) + 3) / 4); 
     
     content += sizeof(rtcp_common_t) + 4*ntohs(msg->hdr.length);
     msg = (rtcp_packet_t *)content;
 
     // Send
+#ifndef LOG_RTCP
     (void) send(m_fd_rtcp, frame, content - frame, 0);
-#ifdef LOG_RTCP
-    LOGMSG("RTCP send (%d)", err);
+#else
+    LOGMSG("RTCP send (%d)", send(m_fd_rtcp, frame, content - frame, 0));
     for(int i=0; i<content-frame; i+=16) 
       LOGMSG("%02X %02X %02X %02X %02X %02X %02X %02X  "
 	     "%02X %02X %02X %02X %02X %02X %02X %02X  "
@@ -519,6 +673,88 @@ void cUdpScheduler::Send_RTCP(void)
 #endif
 
     m_LastRtcpTime = scr;
+  }
+}
+
+#include <sys/ioctl.h>
+#include <net/if.h>
+
+static uint32_t get_local_address(int fd, char *ip_address)
+{
+  uint32_t local_addr = 0;
+  struct ifconf conf;
+  struct ifreq buf[3];
+  unsigned int n;
+
+  conf.ifc_len = sizeof(buf);
+  conf.ifc_req = buf;
+  memset(buf, 0, sizeof(buf));
+
+  errno = 0;
+  if(ioctl(fd, SIOCGIFCONF, &conf) < 0)
+    LOGERR("can't obtain socket local address");
+  else {
+    for(n=0; n<conf.ifc_len/sizeof(struct ifreq); n++) {
+      struct sockaddr_in *in = (struct sockaddr_in *) &buf[n].ifr_addr;
+#if 0
+      uint32_t tmp = ntohl(in->sin_addr.s_addr);
+      LOGMSG("Local address %6s %d.%d.%d.%d", 
+	     conf.ifc_req[n].ifr_name,
+	     ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
+	     ((tmp>>8)&0xff), ((tmp)&0xff));
+#endif
+      if(n==0 || local_addr == htonl(INADDR_LOOPBACK)) 
+	local_addr = in->sin_addr.s_addr;
+      else
+	break;
+    }
+  }
+
+  if(!local_addr)
+    LOGERR("No local address found");
+
+  if(ip_address) {
+    uint32_t tmp = ntohl(local_addr);
+    sprintf(ip_address, "%d.%d.%d.%d", 
+	    ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
+	    ((tmp>>8)&0xff), ((tmp)&0xff));
+  }
+
+  return local_addr;  
+}
+
+void cUdpScheduler::Send_SAP(bool Announce)
+{
+  if(xc.remote_rtp_sap && m_fd_rtp >= 0) {
+    char ip[20] = "";
+    uint32_t local_addr = get_local_address(m_fd_rtp, ip);
+    
+    if(local_addr) {
+      const char *sdp_descr = vdr_sdp_description(ip,
+						  2001,
+						  xc.listen_port,
+						  xc.remote_rtp_addr,
+						  m_ssrc,
+						  xc.remote_rtp_port,
+						  xc.remote_rtp_ttl);
+#if 1
+      /* store copy of SDP data */
+      if(m_fd_sap < 0) {
+	FILE *fp = fopen("/video/xineliboutput.sdp", "w");
+	fprintf(fp, "%s", sdp_descr);
+	fclose(fp);
+      }
+#endif
+      sap_pdu_t *pdu = sap_create_pdu(local_addr,
+				      Announce, 
+				      (m_ssrc >> 16 | m_ssrc) & 0xffff,
+				      "application/sdp",
+				      sdp_descr);
+      
+      if(!sap_send_pdu(&m_fd_sap, pdu, 0))
+	LOGERR("SAP/SDP announce failed");
+      free(pdu);
+    }
   }
 }
 
@@ -637,10 +873,10 @@ void cUdpScheduler::Action(void)
 	// possible missing frames and server shutdown
 	static unsigned char padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
 	int prevseq = (m_QueueNextSeq + UDP_BUFFER_SIZE - 1) & UDP_BUFFER_MASK;
-	stream_udp_header_t *frame = m_BackLog->Get(prevseq);
+	stream_rtp_header_impl_t *frame = m_BackLog->Get(prevseq);
 	if(frame) {
 	  int prevlen = m_BackLog->PayloadSize(prevseq);
-	  uint64_t pos = ntohll(frame->pos) + prevlen - 8;
+	  uint64_t pos = ntohll(frame->hdr_ext.pos) + prevlen - 8;
 	  m_BackLog->MakeFrame(pos, padding, 8);
 	} else
 	  m_BackLog->MakeFrame(0, padding, 8);
@@ -650,9 +886,11 @@ void cUdpScheduler::Action(void)
     }
 
     // Take next frame from queue
-    stream_udp_header_t *frame = m_BackLog->Get(m_QueueNextSeq);
-    int PayloadSize = m_BackLog->PayloadSize(m_QueueNextSeq);
+    stream_rtp_header_impl_t *frame = m_BackLog->Get(m_QueueNextSeq);
+    int PayloadSize  = m_BackLog->PayloadSize(m_QueueNextSeq);
     int UdpPacketLen = PayloadSize + sizeof(stream_udp_header_t);
+    int RtpPacketLen = PayloadSize + sizeof(stream_rtp_header_impl_t);
+
     m_QueueNextSeq = (m_QueueNextSeq + 1) & UDP_BUFFER_MASK;
     m_QueuePending--;
 
@@ -660,39 +898,12 @@ void cUdpScheduler::Action(void)
  
     m_Lock.Unlock();
 
-#if 0 /* debugging checks */
-    {
-      if(!frame)
-	LOGMSG("frame == NULL !");
-      uint8_t *p = UDP_PAYLOAD(frame);
-
-      if(p[0] || p[1] || p[2]!=1)
-	LOGMSG("cUdpScheduler: invalid content");
-
-      int n = sizeof(stream_udp_header_t) + (p[4]<<8) + p[5] + 6;
-      if(n != UdpPacketLen)
-	LOGMSG("cUdpScheduler: length error -- %d != %d", n, UdpPacketLen);
-
-      static int seq = 0;
-      if(seq != ntohs(frame->seq))
-	LOGMSG("cUdpScheduler: SEQ jump %d -> %d !", seq, ntohs(frame->seq));
-      seq = (ntohs(frame->seq) + 1) & UDP_BUFFER_MASK;
-
-      if(PayloadSize != 8) {
-	static uint64_t pos = 0;
-	if(pos != ntohull(frame->pos))
-	  LOGMSG("cUdpScheduler: POS jump %lld -> %lld !", pos, ntohull(frame->pos));
-	pos = ntohull(frame->pos) + PayloadSize;
-      }
-    }
-#endif
-
     // Schedule frame
     if(m_Master)
-      Schedule(UDP_PAYLOAD(frame), PayloadSize);
+      Schedule(frame->payload, PayloadSize);
 
-    /* need some limit here for ex. sequence of stills when moving cutting marks very fast
-       (no audio or PTS available) */
+    // Need some bandwidth limit for ex. sequence of still frames when 
+    // moving cutting marks very fast (no audio or PTS available) 
 #if 1
     // hard limit for used bandwidth:
     // - ~1 frames/ms & 8kb/ms -> 8mb/s -> ~ 80 Mbit/s ( / client)
@@ -716,6 +927,11 @@ void cUdpScheduler::Action(void)
     }
 #endif
 
+    /* tag frame with ssrc and timestamp */
+    frame->rtp_hdr.ts   = htonl((uint32_t)(RtpScr.Now() & 0xffffffff));
+    frame->rtp_hdr.ssrc = htonl(m_ssrc);
+
+    /* deliver to all active sockets */
     for(int i=0; i<MAX_UDP_HANDLES && m_Handles[i]>=0; i++) {
 
       //
@@ -726,38 +942,44 @@ void cUdpScheduler::Action(void)
       // -> poll() + send() just causes frames to be dropped
       //
       int size = 0;
-      if(!ioctl(m_Handles[i], TIOCOUTQ, &size))
-	if(size > ((0x10000)/2 - 2048)) { // assume 64k kernel buffer
-	  int wmem=0;
-	  socklen_t l = sizeof(int);
-	  if(!getsockopt(m_Handles[i], SOL_SOCKET, SO_SNDBUF, &wmem, &l)) {
-#if 0
-// Large bursts cause client to loose data :(
-	    if(size >= (wmem/2 - 8128)) {
-	      LOGMSG("cUdpScheduler: kernel transmit queue > ~%dkb ! (master=%d)", 
-		     (wmem/2-8128)/1024, m_Master);
-	      CondWait.Wait(2);
-	    } 
-	    else 
-#endif
-	    {
-	      if(m_QueuePending > (MAX_QUEUE_SIZE-5))
-		LOGDBG("cUdpScheduler: kernel transmit queue > ~30kb ! (master=%d ; Queue=%d)", 
-		       m_Master, m_QueuePending);
-	      CondWait.Wait(2);
-	    }
-	  }
+      if(!ioctl(m_Handles[i], TIOCOUTQ, &size)) {
+	if(size >= (m_wmem[i] - 2*RtpPacketLen)) {
+	  LOGMSG("cUdpScheduler: kernel transmit queue > ~%dkb (max %dkb) ! (master=%d)", 
+		 (m_wmem[i] - 2*RtpPacketLen)/1024, m_wmem[i]/1024, m_Master);
+	  CondWait.Wait(2);
 	}
-      
-      if(send(m_Handles[i], frame, UdpPacketLen, 0) <= 0)
-	LOGERR("cUdpScheduler: UDP send() failed !");
+      }	else {
+	if(m_QueuePending > (MAX_QUEUE_SIZE-5))
+	  LOGDBG("cUdpScheduler: kernel transmit queue > ~30kb ! (master=%d ; Queue=%d)", 
+		 m_Master, m_QueuePending);
+	CondWait.Wait(2);
+      }
+
+      if(m_Handles[i] == m_fd_rtp) {
+	if(send(m_Handles[i], frame, RtpPacketLen, 0) <= 0)
+	  LOGERR("cUdpScheduler: UDP/RTP send() failed !");
+      } else {
+	/* UDP: send without rtp header */
+	if(send(m_Handles[i], 
+		((uint8_t*)frame) + sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t), 
+		UdpPacketLen, 0) <= 0)
+	  LOGERR("cUdpScheduler: UDP send() failed !");
+      }
     }
 
     m_Lock.Lock();
     m_Frames ++;
     m_Octets += PayloadSize;
-    if((m_Frames & 0xff) == 1) // every 256th frame
+    if(m_fd_rtcp >= 0 && (m_Frames & 0xff) == 1) { // every 256th frame
       Send_RTCP();
+#if 0
+      if((m_Frames & 0xff00) == 0) // every 65536th frame (~ 2 min)
+	Send_SAP();
+#else
+      if((m_Frames & 0x0300) == 0) // every 1024th frame (~ 2...4 sec)
+	Send_SAP();
+#endif
+    }
   }
   
   m_Lock.Unlock();
@@ -765,6 +987,9 @@ void cUdpScheduler::Action(void)
 
 void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2) 
 {
+  if(fd < 0) /* no re-send for RTP */
+    return;
+
   char udp_ctrl[64] = {0};
   ((stream_udp_header_t *)udp_ctrl)->seq = (uint16_t)(-1);
   ((stream_udp_header_t *)udp_ctrl)->pos = (uint64_t)(-1);
@@ -790,54 +1015,45 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
   for(; Seq1 <= Seq2; Seq1++) {
       
     // Wait if kernel queue is full
-    int size=0;
+    int size = 0;
     if(!ioctl(fd, TIOCOUTQ, &size))
       if(size > ((0x10000)/2 - 2048)) { // assume 64k kernel buffer
 	LOGDBG("cUdpScheduler::ReSend: kernel transmit queue > ~30kb !");
 	cCondWait::SleepMs(2);
       }
     
-    stream_udp_header_t *frame = m_BackLog->Get(Seq1);
+    stream_rtp_header_impl_t *frame = m_BackLog->Get(Seq1);
       
     if(frame) {
-      if(ntohull(frame->pos) - Pos < 100000) {
+      if(ntohull(frame->hdr_ext.pos) - Pos < 100000) {
 	send(fd, 
-	     frame, 
+	     ((uint8_t*)frame) + sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t), 
 	     m_BackLog->PayloadSize(Seq1) + sizeof(stream_udp_header_t), 
 	     0);
-#ifdef LOG_RESEND
-	LOGDBG("cUdpScheduler::ReSend: %d (%d bytes) @%lld sent", 
-	       Seq1, m_BackLog->PayloadSize(Seq1), Pos);
-#endif
-	//Pos += m_BackLog->PayloadSize(Seq1);
-	Pos = ntohull(frame->pos) + m_BackLog->PayloadSize(Seq1);
+	LOGRESEND("cUdpScheduler::ReSend: %d (%d bytes) @%lld sent", 
+		  Seq1, m_BackLog->PayloadSize(Seq1), Pos);
+	Pos = ntohull(frame->hdr_ext.pos) + m_BackLog->PayloadSize(Seq1);
 	continue;
       } else {
 	// buffer has been lost long time ago...
-#ifdef LOG_RESEND
-	LOGDBG("cUdpScheduler::ReSend: Requested position does not match "
-	       "(%lld ; has %lld)", Pos, ntohll(frame->pos));
-#endif
+	LOGRESEND("cUdpScheduler::ReSend: Requested position does not match "
+	       "(%lld ; has %lld)", Pos, ntohll(frame->hdr_ext.pos));
       }
     } else {
-#ifdef LOG_RESEND
-      LOGDBG("cUdpScheduler::ReSend: %d @%lld missing", Seq1, Pos);
-#endif
+      LOGRESEND("cUdpScheduler::ReSend: %d @%lld missing", Seq1, Pos);
     }
 
     // buffer has been lost - send packet missing info
 
-#ifdef LOG_RESEND
-    LOGDBG("cUdpScheduler::ReSend: missing %d-%d @%d (hdr 0x%llx 0x%x)",
+    LOGRESEND("cUdpScheduler::ReSend: missing %d-%d @%d (hdr 0x%llx 0x%x)",
 	   Seq1, Seq1, Pos,
 	   ((stream_udp_header_t *)udp_ctrl)->pos,
 	   ((stream_udp_header_t *)udp_ctrl)->seq);
-#endif
 
     int Seq0 = Seq1;
     for(; Seq1 <= Seq2; Seq1++) {
-      stream_udp_header_t *frame = m_BackLog->Get(Seq1+1);
-      if(frame && (ntohull(frame->pos) - Pos < 100000))
+      stream_rtp_header_impl_t *frame = m_BackLog->Get(Seq1+1);
+      if(frame && (ntohull(frame->hdr_ext.pos) - Pos < 100000))
 	break;
     }
 
