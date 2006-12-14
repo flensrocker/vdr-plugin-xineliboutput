@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.10 2006-09-20 06:57:00 phintuka Exp $
+ * $Id: cxsocket.h,v 1.11 2006-12-14 12:48:08 phintuka Exp $
  *
  */
 
@@ -247,12 +247,13 @@ static inline int udp_discovery_broadcast(int fd_discovery, int m_Port)
   
   char *test = NULL;
   asprintf(&test, 
-	   "VDR xineliboutput DISCOVERY 1.0\r\n"
-	   "Server port: %d\r\n"
-	   "Server version: vdr-" VDRVERSION "\r\n"
-	   "\txineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
+	   DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
+	   DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
+	   DISCOVERY_1_0_VERSION //"Server version: vdr-" VDRVERSION "\r\n"
+                                 //"\txineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
 	   "\r\n",
 	   m_Port);
+
   int testlen = strlen(test);
   int result;
   if(testlen != sendto(fd_discovery, test, testlen, 0,
