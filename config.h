@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.10 2006-10-23 19:21:23 phintuka Exp $
+ * $Id: config.h,v 1.11 2006-12-14 12:42:58 phintuka Exp $
  *
  */
 
@@ -218,6 +218,7 @@ class config_t {
     int  remote_rtp_port;
     int  remote_rtp_ttl;
     int  remote_rtp_always_on;
+    int  remote_rtp_sap;
 
     int  use_x_keyboard;
 
