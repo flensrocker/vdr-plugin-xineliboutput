@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sap.h,v 1.2 2006-12-14 12:52:17 phintuka Exp $
+ * $Id: sap.h,v 1.3 2006-12-14 14:41:22 phintuka Exp $
  *
  */
 
@@ -115,32 +115,42 @@ static inline int sap_compress_pdu(sap_pdu_t *pdu)
   return -1;
 }
 
-static inline int sap_send_pdu(sap_pdu_t *pdu, uint32_t dst_ip)
+static inline int sap_send_pdu(int *pfd, sap_pdu_t *pdu, uint32_t dst_ip)
 {
   int len = 0, r;
   int iReuse = 1, iLoop = 1, iTtl = SAP_IP_TTL;
-  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  int fd;
 
-  if(fd < 0) {
-    LOGERR("socket() failed (UDP/SAP multicast)");
-    return -1;
-  }
+  if(!pfd || *pfd < 0) {
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
-  setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &iTtl, sizeof(int));
-  setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &iLoop, sizeof(int));
+    if(fd < 0) {
+      LOGERR("socket() failed (UDP/SAP multicast)");
+      return -1;
+    }
 
-  // Connect to multicast address
-  struct sockaddr_in sin;
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(SAP_UDP_PORT);
-  sin.sin_addr.s_addr = dst_ip ? dst_ip : inet_addr(SAP_IP_ADDRESS_GLOBAL);
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
+    setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &iTtl, sizeof(int));
+    setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &iLoop, sizeof(int));
+
+    // Connect to multicast address
+    struct sockaddr_in sin;
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(SAP_UDP_PORT);
+    sin.sin_addr.s_addr = dst_ip ? dst_ip : inet_addr(SAP_IP_ADDRESS_GLOBAL);
   
-  if(connect(fd, (struct sockaddr *)&sin, sizeof(sin))==-1) 
-    LOGERR("UDP/SAP multicast connect() failed.");
+    if(connect(fd, (struct sockaddr *)&sin, sizeof(sin))==-1) 
+      LOGERR("UDP/SAP multicast connect() failed.");
     
-  // Set to non-blocking mode
-  fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
+    // Set to non-blocking mode
+    fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
+
+    if(pfd)
+      *pfd = fd;
+
+  } else {
+    fd = *pfd;
+  }
 
   // size of PDU
   len += strlen(&pdu->payload[0]);
@@ -158,6 +168,9 @@ static inline int sap_send_pdu(sap_pdu_t *pdu, uint32_t dst_ip)
   r = send(fd, pdu, len, 0);
   if(r < 0)
     LOGERR("UDP/SAP multicast send() failed.");
+
+  if(!pfd)
+    close(fd);
 
 #ifdef LOG_SAP
   /* log PDU */
