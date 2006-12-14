@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.28 2006-12-07 15:18:46 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.29 2006-12-14 15:14:18 phintuka Exp $
  *
  */
 
@@ -54,8 +54,6 @@ class cReplyFuture : public cFuture<int>, public cListObject {};
 class cGrabReplyFuture : public cFuture<grab_result_t>, public cListObject {};
 class cCmdFutures : public cHash<cReplyFuture> {};
 
-#define POLLING_INTERVAL (10*1000)
-
 //----------------------------- cXinelibServer --------------------------------
 
 cXinelibServer::cXinelibServer(int listen_port) :
@@ -69,13 +67,12 @@ cXinelibServer::cXinelibServer(int listen_port) :
     m_bMulticast[i] = 0;
     m_bConfigOk[i] = false;
     m_bUdp[i] = 0;
+    m_bRtcp[i] = 0;
   }
 
   m_Port = listen_port;
 
   fd_listen    = -1;
-  fd_multicast = -1;
-  fd_rtcp = -1;
   fd_discovery = -1;
 
   m_iMulticastMask = 0;
@@ -102,8 +99,6 @@ cXinelibServer::~cXinelibServer()
   
   CLOSESOCKET(fd_listen);
   CLOSESOCKET(fd_discovery);
-  CLOSESOCKET(fd_multicast);
-  CLOSESOCKET(fd_rtcp);
   
   for(i=0; i<MAXCLIENTS; i++) 
     CloseConnection(i);
@@ -123,8 +118,6 @@ void cXinelibServer::Stop(void)
 
   CLOSESOCKET(fd_listen);
   CLOSESOCKET(fd_discovery);
-  CLOSESOCKET(fd_multicast);
-  CLOSESOCKET(fd_rtcp);
 
   for(i=0; i<MAXCLIENTS; i++) 
     CloseConnection(i);
@@ -160,7 +153,7 @@ void cXinelibServer::Clear(void)
     m_iUdpFlowMask &= ~(1<<cli);       \
     m_iMulticastMask &= ~(1<<cli);     \
     if(!m_iMulticastMask && !xc.remote_rtp_always_on) \
-      m_Scheduler->RemoveHandle(fd_multicast); \
+      m_Scheduler->RemoveRtp();        \
     m_bUdp[cli] = false;               \
     m_bMulticast[cli] = false;         \
     m_bConfigOk[cli] = false;          \
@@ -338,7 +331,7 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
     }
   }
 
-  RtpClients = ((m_iMulticastMask || xc.remote_rtp_always_on) && fd_multicast >= 0);
+  RtpClients = (m_iMulticastMask || xc.remote_rtp_always_on);
 
   if(UdpClients || RtpClients)
     if(! m_Scheduler->Queue(m_StreamPos, data, len))
@@ -527,7 +520,7 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
 	}
       }
 
-    RtpClients = ((m_iMulticastMask || xc.remote_rtp_always_on) && fd_multicast >= 0);
+    RtpClients = (m_iMulticastMask || xc.remote_rtp_always_on);
 
     if(UdpClients || RtpClients)
       if(! m_Scheduler->Queue((uint64_t)(-1ULL), (const uchar*)buf, len)) 
@@ -653,10 +646,8 @@ bool cXinelibServer::Listen(int listen_port)
   if(listen_port <= 0 || listen_port > 0xffff) {
     CLOSESOCKET(fd_listen);
     CLOSESOCKET(fd_discovery);
-    if(fd_multicast >= 0 && m_Scheduler)
-      m_Scheduler->RemoveHandle(fd_multicast);
-    CLOSESOCKET(fd_multicast);
-    CLOSESOCKET(fd_rtcp);
+    if(m_Scheduler)
+      m_Scheduler->RemoveRtp();
     LOGMSG("Not listening for remote connections");
     return false;
   }
@@ -664,29 +655,30 @@ bool cXinelibServer::Listen(int listen_port)
   if(fd_listen<0 || listen_port != m_Port) {
     m_Port = listen_port;
     CLOSESOCKET(fd_listen);
-    if(m_Port>0) {
-      int iReuse = 1;
-      struct sockaddr_in name;
-      name.sin_family = AF_INET;
-      name.sin_addr.s_addr = htonl(INADDR_ANY);
-      name.sin_port = htons(m_Port);
 
-      fd_listen = socket(PF_INET,SOCK_STREAM,0);
-      setsockopt(fd_listen, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
+    int iReuse = 1;
+    struct sockaddr_in name;
+    name.sin_family = AF_INET;
+    name.sin_addr.s_addr = htonl(INADDR_ANY);
+    name.sin_port = htons(m_Port);
 
-      if (bind(fd_listen, (struct sockaddr *)&name, sizeof(name)) < 0) {
-	LOGERR("cXinelibServer: bind error (port %d): %s", 
-	       m_Port, strerror(errno));
-        CLOSESOCKET(fd_listen);
-      } else if(listen(fd_listen, MAXCLIENTS)) {
-	LOGERR("cXinelibServer: listen error (port %d): %s", 
-	       m_Port, strerror(errno));
-        CLOSESOCKET(fd_listen);
-      } else {
-	LOGMSG("Listening on port %d", m_Port);
-	result = true;
-      }
+    fd_listen = socket(PF_INET,SOCK_STREAM,0);
+    setsockopt(fd_listen, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
+
+    if (bind(fd_listen, (struct sockaddr *)&name, sizeof(name)) < 0) {
+      LOGERR("cXinelibServer: bind error (port %d): %s", 
+	     m_Port, strerror(errno));
+      CLOSESOCKET(fd_listen);
+    } else if(listen(fd_listen, MAXCLIENTS)) {
+      LOGERR("cXinelibServer: listen error (port %d): %s", 
+	     m_Port, strerror(errno));
+      CLOSESOCKET(fd_listen);
+    } else {
+      LOGMSG("Listening on port %d", m_Port);
+      result = true;
     }
+  } else {
+    result = true;
   }
 
   // set listen for discovery messages
@@ -717,76 +709,14 @@ bool cXinelibServer::Listen(int listen_port)
 
   // set up multicast sockets
 
-  if(fd_multicast >= 0 && m_Scheduler)
-    m_Scheduler->RemoveHandle(fd_multicast);
-  CLOSESOCKET(fd_multicast);
-  CLOSESOCKET(fd_rtcp);
+  if(m_Scheduler)
+    m_Scheduler->RemoveRtp();
 
   if(xc.remote_usertp) {
-    //
-    // RTP
-    //
-    if((fd_multicast = socket(AF_INET, SOCK_DGRAM, 0)) < 0) 
-      LOGERR("socket() failed (UDP/RTP multicast)");
-
-    // Set buffer sizes
-    set_socket_buffers(fd_multicast, KILOBYTE(256), 2048);
-
-    // Set multicast socket options
-    if(set_multicast_options(fd_multicast, xc.remote_rtp_ttl))
-      CLOSESOCKET(fd_multicast);
-
-    // Connect to multicast address
-    struct sockaddr_in sin;
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(xc.remote_rtp_port);
-    sin.sin_addr.s_addr = inet_addr(xc.remote_rtp_addr);
-
-    if(connect(fd_multicast, (struct sockaddr *)&sin, sizeof(sin))==-1 && 
-       errno != EINPROGRESS) 
-      LOGERR("connect(fd_multicast) failed. Address=%s, port=%d",
-	     xc.remote_rtp_addr, xc.remote_rtp_port);
-    
-    // Set to non-blocking mode
-    if(fcntl (fd_multicast, F_SETFL, 
-	      fcntl (fd_multicast, F_GETFL) | O_NONBLOCK) == -1) 
-      LOGERR("can't put multicast socket in non-blocking mode");      
-    
-    //
-    // RTCP
-    //
-    if((fd_rtcp = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-      LOGERR("socket() failed (RTCP multicast)");
-
-    /* RTCP port (RFC 1889) */
-    if(xc.remote_rtp_port & 1)
-      sin.sin_port = htons(xc.remote_rtp_port - 1);
-    else
-      sin.sin_port = htons(xc.remote_rtp_port + 1);
-    
-    set_socket_buffers(fd_rtcp, 16384, 16384);
-    if(set_multicast_options(fd_rtcp, xc.remote_rtp_ttl))
-      CLOSESOCKET(fd_rtcp);
-    
-    if(connect(fd_rtcp, (struct sockaddr *)&sin, sizeof(sin))==-1 && 
-       errno != EINPROGRESS) 
-      LOGERR("connect(fd_rtcp) failed. Address=%s, port=%d",
-	     xc.remote_rtp_addr, xc.remote_rtp_port +
-	     (xc.remote_rtp_port&1)?-1:1);
-    
-    // Set to non-blocking mode
-    if(fcntl (fd_rtcp, F_SETFL, 
-	      fcntl (fd_rtcp, F_GETFL) | O_NONBLOCK) == -1) 
-      LOGERR("can't put multicast socket in non-blocking mode");
-    
-    // Finished
-
-    if(fd_multicast >= 0) {
-      if(xc.remote_rtp_always_on)
-	LOGMSG("WARNING: RTP Configuration: transmission is always on !");
-      if(xc.remote_rtp_always_on || m_iMulticastMask)
-	m_Scheduler->AddHandle(fd_multicast, fd_rtcp);
-    }
+    if(xc.remote_rtp_always_on)
+      LOGMSG("WARNING: RTP Configuration: transmission is always on !");
+    if(xc.remote_rtp_always_on || m_iMulticastMask)
+      m_Scheduler->AddRtp();
   }
 
   return result;
@@ -950,34 +880,17 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 {
-  if(xc.remote_usertp && fd_multicast>=0) {
+  if(xc.remote_usertp) {
     char buf[256];
     LOGDBG("Trying RTP connection ...");
 
     CloseDataConnection(cli);
 
-   sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
+    sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
     write_cmd(fd_control[cli], buf);
 
-    stream_udp_header_t nullhdr;
-    nullhdr.pos = m_StreamPos;
-    nullhdr.seq = 0xffff;//-1;//m_UdpSeqNo;
-
-    struct sockaddr_in sin;
-    sin.sin_family = sin.sin_family = AF_INET;
-    sin.sin_port = sin.sin_port = htons(xc.remote_rtp_port);
-    sin.sin_addr.s_addr = inet_addr(xc.remote_rtp_addr);
-
-    if(sizeof(nullhdr) != 
-       sendto(fd_multicast, &nullhdr, sizeof(nullhdr), 0, 
-	      (struct sockaddr *)&sin, sizeof(sin))) {
-      LOGERR("UDP/RTP multicast send() failed");
-      //CloseConnection(cli);
-      return;
-    }
-
-    if(!m_iMulticastMask)
-      m_Scheduler->AddHandle(fd_multicast, fd_rtcp); 
+    if(!m_iMulticastMask && !xc.remote_rtp_always_on)
+      m_Scheduler->AddRtp();
 
     m_bMulticast[cli] = true;
     m_iMulticastMask |= (1<<cli);
@@ -1004,15 +917,6 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   if(fd < 0) {
     LOGERR("socket() for UDP failed");
     //CloseConnection(cli);
-    return;
-  }
-
-  stream_udp_header_t nullhdr;
-  nullhdr.pos = m_StreamPos;
-  nullhdr.seq = 0xffff;//-1;//m_UdpSeqNo;
-  if(sizeof(nullhdr) != send(fd, &nullhdr, sizeof(nullhdr), 0)) {
-    LOGERR("UDP send() failed");
-    CloseConnection(cli);
     return;
   }
 
@@ -1115,7 +1019,7 @@ void cXinelibServer::Handle_Control_UDP_RESEND(int cli, const char *arg)
       if(fd_data[cli] >= 0)
 	m_Scheduler->ReSend(fd_data[cli], pos, seq1, seq2);
       else
-	m_Scheduler->ReSend(fd_multicast, pos, seq1, seq2);
+	m_Scheduler->ReSend(-1, pos, seq1, seq2);
     } else {
       LOGMSG("Invalid re-send request: %s (send pos=%" PRIu64 ")", 
 	     arg, m_StreamPos);
@@ -1320,7 +1224,8 @@ void cXinelibServer::Handle_ClientConnected(int fd)
 
   m_CtrlBufPos[cli] = 0;
   m_CtrlBuf[cli][0] = 0;
-    
+
+  m_bRtcp[cli] = false;
   sprintf(str,
 	  "VDR-" VDRVERSION " "
 	  "xineliboutput-" XINELIBOUTPUT_VERSION " "
@@ -1363,7 +1268,7 @@ void cXinelibServer::Handle_Discovery_Broadcast()
 	 ((tmp>>8)&0xff), ((tmp)&0xff),
 	 buf);
 
-  char *id_string = "VDR xineliboutput DISCOVERY 1.0\r\nClient:";
+  char *id_string = DISCOVERY_1_0_HDR "Client:";
 
   if(!strncmp(id_string, buf, strlen(id_string))) {	
     LOGMSG("Received valid discovery message from %d.%d.%d.%d",
