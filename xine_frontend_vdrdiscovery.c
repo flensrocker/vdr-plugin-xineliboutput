@@ -6,7 +6,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_vdrdiscovery.c,v 1.2 2006-07-02 16:43:30 phintuka Exp $
+ * $Id: xine_frontend_vdrdiscovery.c,v 1.3 2006-12-14 12:33:44 phintuka Exp $
  *
  */
 
@@ -44,15 +44,19 @@ static int search_vdr_server(int *port, char *address)
 
     if (bind(fd_broadcast, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
       LOGERR("Can't bind fd_broadcast to %d", DISCOVERY_PORT);
-    } else {  
-      char *test = "VDR xineliboutput DISCOVERY 1.0\r\n"
-	           "Client: 192.168.1.21:37890\r\n"
-	           "\r\n";
-      int testlen = strlen(test);
+    } else {
+      char msg[128];
+      sprintf(msg, 
+	      DISCOVERY_1_0_HDR  /* "VDR xineliboutput DISCOVERY 1.0" "\r\n" */
+ 	      DISCOVERY_1_0_CLI  /* "Client: %s:%d" "\r\n" */
+	      "\r\n",
+	      "255.255.255.255",
+	      DISCOVERY_PORT);
+      int msglen = strlen(msg);
 retry:
       sin.sin_addr.s_addr = INADDR_BROADCAST;
-      if(testlen != sendto(fd_broadcast, test, testlen, 0,
-			   (struct sockaddr *)&sin, sizeof(sin))) {
+      if(msglen != sendto(fd_broadcast, msg, msglen, 0,
+			  (struct sockaddr *)&sin, sizeof(sin))) {
 	LOGERR("UDP broadcast send failed (discovery)");
       } else {
 
@@ -71,7 +75,7 @@ retry:
 	    errno=0;
 	    if((err=recvfrom(fd_broadcast, pktbuf, 1023, 0, 
 			     (struct sockaddr *)&from, &fromlen)) > 0) {
-	      char *mystring = "VDR xineliboutput DISCOVERY 1.0\r\n"
+	      char *mystring = DISCOVERY_1_0_HDR  /* "VDR xineliboutput DISCOVERY 1.0" "\r\n" */
 		               "Server port: ";
 	      uint32_t tmp = ntohl(from.sin_addr.s_addr);
 
@@ -88,7 +92,7 @@ retry:
 			((tmp>>24)&0xff), ((tmp>>16)&0xff), 
 			((tmp>>8)&0xff), ((tmp)&0xff));
 		if(1==sscanf(pktbuf+strlen(mystring), "%d", port))
-		return 1;
+		  return 1;
 	      } else {
 		LOGDBG("NOT valid discovery message");
 	      }
