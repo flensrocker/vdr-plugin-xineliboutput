@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sap.h,v 1.1 2006-12-07 22:15:05 uid218003 Exp $
+ * $Id: sap.h,v 1.2 2006-12-14 12:52:17 phintuka Exp $
  *
  */
 
@@ -14,8 +14,14 @@
 #include <arpa/inet.h>
 #include <endian.h>
 
+/*#define LOG_SAP*/
 
-#define SAP_IP_ADDRESS "224.2.127.254" /* SAPv1 IP4 global scope multicast address */
+/* SAP IPv4 multicast addresses */
+#define SAP_IP_ADDRESS_GLOBAL "224.2.127.254"   /* SAPv1 IP4 global scope multicast address */
+#define SAP_IP_ADDRESS_ORG    "239.195.255.255" /* organization-local */
+#define SAP_IP_ADDRESS_LOCAL  "239.255.255.255" /* local */
+#define SAP_IP_ADDRESS_LINK   "224.0.0.255"     /* link-local */
+
 #define SAP_IP_TTL     255
 #define SAP_UDP_PORT   9875
 
@@ -25,6 +31,7 @@ typedef struct {
   /* RFC2974: SAP (Session Announcement Protocol) version 2 PDU */
 
   union {
+    uint8_t raw0;
     struct {
 #if __BYTE_ORDER == __BIG_ENDIAN
       uint8_t version    : 3;
@@ -41,9 +48,8 @@ typedef struct {
       uint8_t addr_type  : 1;
       uint8_t version    : 3;
 #endif
-    };
-    uint8_t raw0;
-  };
+    } __attribute__((packed));
+  } __attribute__((packed));
   
   uint8_t  auth_len;
   uint16_t msgid_hash;
@@ -51,11 +57,11 @@ typedef struct {
   union {
     uint8_t  u8[4];
     uint32_t u32;
-  } ip4_source;
+  } __attribute__((packed)) ip4_source;
   
   char payload[0];
 
-}  __attribute__((packed)) sap_pdu_t;
+} __attribute__((packed)) sap_pdu_t;
 
 
 static inline sap_pdu_t *sap_create_pdu(uint32_t src_ip, 
@@ -93,7 +99,15 @@ static inline sap_pdu_t *sap_create_pdu(uint32_t src_ip,
 
 static inline int sap_compress_pdu(sap_pdu_t *pdu)
 {
+#ifdef HAVE_ZLIB_H
+
   /* zlib compression */
+
+  Compress();
+
+  /*pdu->compressed = 1;*/
+
+#endif
 
   /* not implemented */
 
@@ -120,7 +134,7 @@ static inline int sap_send_pdu(sap_pdu_t *pdu, uint32_t dst_ip)
   struct sockaddr_in sin;
   sin.sin_family = AF_INET;
   sin.sin_port = htons(SAP_UDP_PORT);
-  sin.sin_addr.s_addr = dst_ip ? dst_ip : inet_addr(SAP_IP_ADDRESS);
+  sin.sin_addr.s_addr = dst_ip ? dst_ip : inet_addr(SAP_IP_ADDRESS_GLOBAL);
   
   if(connect(fd, (struct sockaddr *)&sin, sizeof(sin))==-1) 
     LOGERR("UDP/SAP multicast connect() failed.");
@@ -145,7 +159,7 @@ static inline int sap_send_pdu(sap_pdu_t *pdu, uint32_t dst_ip)
   if(r < 0)
     LOGERR("UDP/SAP multicast send() failed.");
 
-#if 0
+#ifdef LOG_SAP
   /* log PDU */
   for(int i=0; i<len;) {
     char x[4096]="", a[4096]="";
@@ -165,5 +179,6 @@ static inline int sap_send_pdu(sap_pdu_t *pdu, uint32_t dst_ip)
 
   return r == len ? len : -1;
 }
+
 
 #endif /* XINELIBOUTPUT_SAP_H_ */
