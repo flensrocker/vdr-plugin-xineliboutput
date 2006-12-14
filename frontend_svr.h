@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.9 2006-10-18 12:50:12 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.10 2006-12-14 14:43:46 phintuka Exp $
  *
  */
 
@@ -93,8 +93,6 @@ protected:
     int  m_Port;
 
     int  fd_listen;
-    int  fd_multicast;
-    int  fd_rtcp;
     int  fd_discovery;
     int  fd_control[MAXCLIENTS];
     int  fd_data[MAXCLIENTS];
@@ -103,6 +101,7 @@ protected:
     int  m_CtrlBufPos[MAXCLIENTS];
 
     bool m_bUdp[MAXCLIENTS];
+    bool m_bRtcp[MAXCLIENTS];
     bool m_bMulticast[MAXCLIENTS];
     bool m_bConfigOk[MAXCLIENTS];
     int  m_iMulticastMask; // bit [cli] is 1 or 0. 1 == multicast in use.
