@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.5 2006-10-28 02:30:11 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.6 2006-12-14 15:18:16 phintuka Exp $
  *
  */
 
@@ -52,8 +52,10 @@ class cUdpScheduler : public cThread
     virtual ~cUdpScheduler();
 
     // fd should be binded & connected to IP:PORT (local+remote) pair !
-    bool AddHandle(int fd, int fd_rtcp=-1);
-    void RemoveHandle(int fd);
+    bool AddHandle(int fd);     /* UDP unicast */
+    void RemoveHandle(int fd);  /* UDP unicast */ 
+    bool AddRtp(void);          /* UDP/RTP multicast */
+    void RemoveRtp(void);       /* UDP/RTP multicast */
 
     bool Poll(int TimeoutMs, bool Master);
     bool Queue(uint64_t StreamPos, const uchar *Data, int Length);
@@ -75,7 +77,9 @@ class cUdpScheduler : public cThread
 
     // Clients
     int       m_Handles[MAX_UDP_HANDLES];
-    int       m_fd_rtp, m_fd_rtcp;
+    int       m_wmem[MAX_UDP_HANDLES];  /* kernel buffer size */
+    int       m_fd_rtp;
+    int       m_fd_rtcp;
 
     // Queue
     int m_QueueNextSeq;      /* next outgoing */
@@ -92,6 +96,8 @@ class cUdpScheduler : public cThread
     // RTP
     uint32_t  m_ssrc;   /* RTP synchronization source id */
     cTimePts  RtpScr;   /* 90 kHz monotonic time source for RTP timestamps */
+
+    // RTCP
     uint64_t  m_LastRtcpTime;
     uint32_t  m_Frames;
     uint32_t  m_Octets;
@@ -102,13 +108,15 @@ class cUdpScheduler : public cThread
 
     // Scheduling 
   
-    int calc_elapsed_vtime(int64_t pts, bool Audio);
+    int  calc_elapsed_vtime(int64_t pts, bool Audio);
     void Schedule(const uchar *Data, int Length);
 
     bool m_Running;
     virtual void Action(void);
 
     void Send_RTCP(void);
+    int  m_fd_sap;
+    void Send_SAP(bool Announce = true);
 };
 
 #endif
