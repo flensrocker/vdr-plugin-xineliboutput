@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.11 2006-12-14 12:48:08 phintuka Exp $
+ * $Id: cxsocket.h,v 1.12 2006-12-14 15:15:37 phintuka Exp $
  *
  */
 
@@ -195,7 +195,7 @@ static inline ssize_t timed_read(int fd, void *buffer, size_t size,
   return size;
 }
 
-//#include "xine_osd_command.h"
+#include "../xine_osd_command.h"
 
 static inline int write_osd_command(int fd, osd_command_t *cmd)
 {
