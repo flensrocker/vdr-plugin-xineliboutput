@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sdp.h,v 1.1 2006-12-14 11:54:20 phintuka Exp $
+ * $Id: sdp.h,v 1.2 2006-12-14 12:52:49 phintuka Exp $
  *
  */
 
@@ -39,7 +39,7 @@ static char *vdr_sdp_description(const char *vdr_ip,
 	   /* version    */        "v=0"
 	   /* origin     */ "\r\n" "o=%s %u %"PRIu64" IN IP4 %s"
 	   /* name       */ "\r\n" "s=%s@%s (multicast %s:%d)"
-	   /* opt:info   */ //"\r\n" "i=vdr-xineliboutput primary device output"
+	   /* opt:info   */ /*"\r\n" "i=vdr-xineliboutput primary device output"*/
 	   /* time       */ "\r\n" "t=0 0"
 
 	   /*** data stream(s) ***/
