@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.17 2006-12-15 13:47:19 phintuka Exp $
+ * $Id: config.c,v 1.18 2006-12-15 15:28:25 phintuka Exp $
  *
  */
 
@@ -96,24 +96,27 @@ bool config_t::IsVideoFile(const char *fname)
   if(fname) {
     char *pos = strrchr(fname,'.');
     if(pos) {
-      if(!strcasecmp(pos, ".avi") ||
-	 !strcasecmp(pos, ".mpv") ||
-	 !strcasecmp(pos, ".vob") || 
-	 !strcasecmp(pos, ".vdr") || 
-	 !strcasecmp(pos, ".mpg") ||
-	 !strcasecmp(pos, ".mpeg")|| 
-	 !strcasecmp(pos, ".mpa") || 
-	 !strcasecmp(pos, ".mp2") || 
-	 !strcasecmp(pos, ".mp3") || 
-	 !strcasecmp(pos, ".mp4") || 
-	 !strcasecmp(pos, ".asf") || 
-	 !strcasecmp(pos, ".flac") || 
-	 !strcasecmp(pos, ".ts") || 
-	 !strcasecmp(pos, ".xvid") || 
-	 !strcasecmp(pos, ".divx") || 
-	 !strcasecmp(pos, ".m3u") || 
-	 !strcasecmp(pos, ".ram") || 
-	 !strcasecmp(pos, ".iso"))  /* maybe dvd */
+      pos++;
+      if(!strcasecmp(pos, "avi") ||
+	 !strcasecmp(pos, "mpv") ||
+	 !strcasecmp(pos, "vob") || 
+	 !strcasecmp(pos, "vdr") || 
+	 !strcasecmp(pos, "mpg") ||
+	 !strcasecmp(pos, "mpeg")|| 
+	 !strcasecmp(pos, "mpa") || 
+	 !strcasecmp(pos, "mp2") || 
+	 !strcasecmp(pos, "mp3") || 
+	 !strcasecmp(pos, "mp4") || 
+	 !strcasecmp(pos, "asf") || 
+	 !strcasecmp(pos, "wmv") || 
+	 !strcasecmp(pos, "mov") || 
+	 !strcasecmp(pos, "flac") || 
+	 !strcasecmp(pos, "ts") || 
+	 !strcasecmp(pos, "xvid") || 
+	 !strcasecmp(pos, "divx") || 
+	 !strcasecmp(pos, "m3u") || 
+	 !strcasecmp(pos, "ram") || 
+	 !strcasecmp(pos, "iso"))  /* maybe dvd */
 	return true;
     }
   }
