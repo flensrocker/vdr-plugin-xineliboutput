@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.61 2006-12-14 12:57:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.62 2006-12-15 16:42:18 phintuka Exp $
  *
  */
 
@@ -4754,6 +4754,12 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
   }
   this->control_running = 1;
 
+  /* request control connection */
+  if(_x_io_tcp_write(this->stream, fd_control, "CONTROL\r\n", 9) < 0) {
+    LOGERR("Control stream write error");
+    return -1;
+  }
+
   /* Check server greeting */
   if(readline_control(this, tmpbuf, 256) <= 0) {
     LOGMSG("Server not replying");
@@ -5020,6 +5026,45 @@ retry_recvfrom:
   return fd;
 }
 
+static int connect_tcp_data_stream(vdr_input_plugin_t *this, const char *host, 
+				   int port)
+{
+  char tmpbuf[256];
+  int fd_data;
+
+  /* Connect to server */
+  fd_data = _x_io_tcp_connect(this->stream, host, port);
+
+  if(fd_data < 0 || 
+     XIO_READY != _x_io_tcp_connect_finish(this->stream, fd_data, 3000)) {
+    LOGERR("Can't connect to tcp://%s:%d", host, port);
+    close(fd_data);
+    return -1;
+  }
+
+  set_recv_buffer_size(fd_data, KILOBYTE(64));
+
+  /* request data connection */
+  sprintf(tmpbuf, "DATA %d\r\n", this->client_id);
+  if(_x_io_tcp_write(this->stream, fd_data, tmpbuf, strlen(tmpbuf)) < 0) {
+    LOGERR("Data stream write error");
+  } else if( XIO_READY != io_select_rd(fd_data)) {
+    LOGERR("Data stream connection failed (TCP, select)");
+  } else if(read(fd_data, tmpbuf, 6) != 6) {
+    LOGERR("Data stream connection failed (TCP, read)");
+  } else if(strncmp(tmpbuf, "DATA\r\n", 6)) {
+    LOGMSG("Data stream connection failed (TCP, token). Got: %6s", tmpbuf);
+  } else {
+    /* succeed */
+    /* set socket to non-blocking mode */
+    fcntl (fd_data, F_SETFL, fcntl (fd_data, F_GETFL) | O_NONBLOCK);
+    return fd_data;
+  }
+
+  close(fd_data);
+  return -1;
+}
+
 static int vdr_plugin_open_net (input_plugin_t *this_gen) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
@@ -5131,29 +5176,11 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     if(this->fd_data < 0) {
       LOGMSG("Connecting (data) to tcp://%s:%d ...", host, iport);
       this->tcp = 0;
-      this->fd_data = connect_control_stream(this, host, iport, NULL);
-      if(this->fd_data < 0) {
+      if((this->fd_data = connect_tcp_data_stream(this, host, iport)) < 0) {
 	LOGMSG("Data stream connection failed (TCP)");
+	this->tcp = 0;
       } else {
-	set_recv_buffer_size(this->fd_data, KILOBYTE(64));
-	fcntl (this->fd_data, F_SETFL, 
-	       fcntl (this->fd_data, F_GETFL) | O_NONBLOCK);
-	/* flush control buffer (if UDP/RTP was tried first) */
-	while(0 < read(this->fd_control, tmpbuf, 255)) ;
-	 
-	sprintf(tmpbuf, "DATA %d\r\n", this->client_id);
-	if(write(this->fd_data, tmpbuf, strlen(tmpbuf)) != (ssize_t)strlen(tmpbuf)) {
-	  LOGERR("Data stream connection failed (TCP, write)");
-	} else if( XIO_READY != io_select_rd(this->fd_data)) {
-	  LOGERR("Data stream connection failed (TCP, select)");
-	} else if(read(this->fd_data, tmpbuf, 6) != 6) {
-	  LOGERR("Data stream connection failed (TCP, read)");
-	} else if(strncmp(tmpbuf, "DATA\r\n", 6)) {
-	  LOGMSG("Data stream connection failed (TCP, token)");
-	  LOGMSG("Got %s", tmpbuf);
-	} else {
-	  this->tcp = 1;
-	}
+	this->tcp = 1;
       }
       if(this->tcp) {
 	/* succeed */
