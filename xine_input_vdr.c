@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.62 2006-12-15 16:42:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.63 2006-12-15 16:43:31 phintuka Exp $
  *
  */
 
@@ -2957,7 +2957,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       err = set_deinterlace_method(this, cmd+12);
 
   } else if(!strncasecmp(cmd, "EVENT ", 6)) {
-#warning  //    err = handle_event(this, cmd);
+    //#warning  //    err = handle_event(this, cmd);
     int i=0;
     char *pt = strchr(cmd, '\n');
     if(pt) *pt=0;
