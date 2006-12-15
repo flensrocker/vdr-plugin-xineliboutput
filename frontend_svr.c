@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.29 2006-12-14 15:14:18 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.30 2006-12-15 16:58:05 phintuka Exp $
  *
  */
 
@@ -56,6 +56,15 @@ class cCmdFutures : public cHash<cReplyFuture> {};
 
 //----------------------------- cXinelibServer --------------------------------
 
+// (control) connection types
+enum {
+  ctNone = -1,
+  ctDetecting = 0,
+  ctControl,
+  ctHttp,
+  ctRtsp
+};
+
 cXinelibServer::cXinelibServer(int listen_port) :
   cXinelibThread("Remote decoder/display server (cXinelibServer)") 
 {
@@ -67,7 +76,7 @@ cXinelibServer::cXinelibServer(int listen_port) :
     m_bMulticast[i] = 0;
     m_bConfigOk[i] = false;
     m_bUdp[i] = 0;
-    m_bRtcp[i] = 0;
+    m_ConnType[i] = ctNone;
   }
 
   m_Port = listen_port;
@@ -134,7 +143,7 @@ void cXinelibServer::Clear(void)
   cXinelibThread::Clear();
 
   for(int i=0; i<MAXCLIENTS; i++) 
-    if(fd_control[i] >= 0 && fd_data >= 0 && m_Writer[i]) 
+    if(fd_control[i] >= 0 && m_Writer[i]) 
       m_Writer[i]->Clear();
 
   if(m_Scheduler)
@@ -305,15 +314,12 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
   LOCK_THREAD; // Lock control thread out
 
   for(int i=0; i<MAXCLIENTS; i++) {
-    if(fd_control[i] >= 0 && m_bConfigOk[i]) {
-      if(fd_data[i] >= 0) {
+    if(fd_control[i] >= 0) {
+      if((m_bConfigOk[i] && fd_data[i] >= 0) || 
+	 m_ConnType[i] == ctHttp) {
+
 	if(m_bUdp[i]) {
-# if 0
-	  if(m_iUdpFlowMask & (1<<i)) {
-	    LOGDBG("UDP full signal in Play_PES, sleeping 5ms");
-	    cCondWait::SleepMs(5);
-	  }
-# endif
+
 	  UdpClients++;
 	  
 	} else if(m_Writer[i]) {
@@ -323,6 +329,8 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
 	    CloseConnection(i);
 	  } else if(result<0) {
 	    LOGMSG("cXinelibServer::Play_PES Buffer overflow (TCP/PIPE)");
+	    if(m_ConnType[i] == ctHttp)
+	      m_Writer[i]->Clear();
 	  }
 	  
 	  TcpClients++;	
@@ -693,7 +701,7 @@ bool cXinelibServer::Listen(int listen_port)
       setsockopt(fd_discovery, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
       sin.sin_family = AF_INET;
       sin.sin_port   = htons(DISCOVERY_PORT);
-      sin.sin_addr.s_addr = INADDR_BROADCAST;  //INADDR_ANY grabs rtp too ...
+      sin.sin_addr.s_addr = htonl(INADDR_BROADCAST);  //INADDR_ANY grabs rtp too ...
 
       if (bind(fd_discovery, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
 	LOGERR("bind() failed (UDP discovery)");
@@ -1066,6 +1074,50 @@ void cXinelibServer::Handle_Control_GRAB(int cli, const char *arg)
   }
 }
 
+void cXinelibServer::Handle_Control_CONTROL(int cli, const char *arg)
+{
+  char str[256];
+  sprintf(str,
+	  "VDR-" VDRVERSION " "
+	  "xineliboutput-" XINELIBOUTPUT_VERSION " "
+	  "READY\r\nCLIENT-ID %d\r\n", cli);
+  write_cmd(fd_control[cli], str);
+  m_ConnType[cli] = ctControl;
+}
+
+void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
+{
+  if(m_ConnType[cli] == ctDetecting) {
+    if(!strncmp(arg, "GET / HTTP/1.", 13)) {
+      LOGDBG("Accepted HTTP request: %s", arg);
+      
+      write_cmd(fd_control[cli], 
+		"HTTP/1.1 200 OK\r\n"
+		"Content-type: video/mp2p\r\n"
+		"Connection: Close\r\n"
+		"\r\n"
+		);
+      if(m_Writer[cli]) 
+	delete m_Writer[cli];
+      m_Writer[cli] = new cBackgroundWriter(fd_control[cli], KILOBYTE(1024), true);
+      m_ConnType[cli] = ctHttp;
+    }
+    else {
+      LOGMSG("Rejected HTTP request: %s", arg);
+      CloseConnection(cli);
+    }
+    return;
+  }
+
+  else if(m_ConnType[cli] == ctHttp) {
+    LOGDBG("HTTP(%d): %s", cli, arg);
+  }
+}
+
+void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
+{
+}
+
 void cXinelibServer::Handle_Control(int cli, const char *cmd)
 {
   TRACEF("cXinelibServer::Handle_Control");
@@ -1081,7 +1133,12 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
   /* Order of tests is significant !!!
      (example: UDP 2\r\n or UDP FULL 1\r\n) */
 
-  if(!strncasecmp(cmd, "PIPE OPEN", 9)) {
+  if(!strncasecmp(cmd, "GET ", 4) || 
+     m_ConnType[cli] == ctHttp) {
+
+    Handle_Control_HTTP(cli, cmd);
+
+  } else if(!strncasecmp(cmd, "PIPE OPEN", 9)) {
     LOGDBG("Pipe open");
 
   } else if(!strncasecmp(cmd, "PIPE", 4)) {
@@ -1139,8 +1196,9 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
   } else if(!strncasecmp(cmd, "CLOSE", 5)) {
     CloseConnection(cli);
 
-  } else if(!strncasecmp(cmd, "GET ", 4)) {
-    // HTTP ?
+  } else if(!strncasecmp(cmd, "CONTROL", 7)) {
+    Handle_Control_CONTROL(cli, cmd);
+
   }
 }
 
@@ -1181,7 +1239,6 @@ void cXinelibServer::Handle_ClientConnected(int fd)
 {
   struct sockaddr_in sin;
   socklen_t len = sizeof(sin);
-  char str[1024];
   int cli;
 
   for(cli=0; cli<MAXCLIENTS; cli++)
@@ -1224,13 +1281,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
 
   m_CtrlBufPos[cli] = 0;
   m_CtrlBuf[cli][0] = 0;
-
-  m_bRtcp[cli] = false;
-  sprintf(str,
-	  "VDR-" VDRVERSION " "
-	  "xineliboutput-" XINELIBOUTPUT_VERSION " "
-	  "READY\r\nCLIENT-ID %d\r\n", cli);
-  write_cmd(fd, str);
+  m_ConnType[cli] = ctDetecting;
   fd_control[cli] = fd;
 
   cXinelibDevice::Instance().ForcePrimaryDevice(true);
