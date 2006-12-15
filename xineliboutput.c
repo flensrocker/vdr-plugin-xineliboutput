@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.13 2006-10-18 11:39:02 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.14 2006-12-15 13:47:20 phintuka Exp $
  *
  */
 
@@ -100,8 +100,9 @@ const char cmdLineHelp[] =
 "                           auto, alsa, oss, arts, esound, none\n"
 "  -V NAME   --video=NAME   Use video driver NAME for local frontend\n"
 "                           Supported values:\n"
-"                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc, none\n"
-"                           for fbfe: auto, fb, DirectFB, none\n"
+"                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc,\n"
+"                                     vidix, none\n"
+"                           for fbfe: auto, fb, DirectFB, vidixfb, none\n"
 #if 0
 "  -L        --nolocal      No local frontend, only remote frontends\n"
 "  -m M      --modeline=M   Use modeline M for local frontend\n"
@@ -113,7 +114,7 @@ const char cmdLineHelp[] =
 "  -w        --width=x      Window width\n"
 "  -h        --height=x     Window width\n"
 "  -d DISP   --display=DISP Use X11 display DISP\n"
-"                           (or framebuffer device name)"
+"                           (or framebuffer device name)\n"
 "  -P NAME   --post=NAME    Use xine post plugin NAME\n"
 "                           format: pluginname[:arg=val[,arg=val]][,...]\n"
 "                           example: \n"

@@ -13,7 +13,7 @@ Description
 
   Simple framebuffer and/or X11 front-end for VDR.
   (displays OSD and video in raw X/Xv/XvMC window or 
-  Linux framebuffer/DirectFB).
+  Linux framebuffer/DirectFB/vidixfb).
 
   Support for local and remote frontends.
 
@@ -186,10 +186,11 @@ Using remote frontends
         --video xvmc:127.0.0.1:1.0
 
     With framebuffer frontend (vdr-fbfe):
-      --video [fb | DirectFB] [:fb_device]
+      --video [fb | DirectFB | vidixfb] [:fb_device]
       examples:
       --video DirectFB
       --video fb:/dev/fb/1
+      --video vidixfb
 
   De-interlacing
     De-interlacing can be switched on with command-line option

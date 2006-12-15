@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.16 2006-12-14 12:39:19 phintuka Exp $
+ * $Id: config.c,v 1.17 2006-12-15 13:47:19 phintuka Exp $
  *
  */
 
@@ -41,13 +41,13 @@ const char *config_t::s_audioDriverNames[] =
 const char *config_t::s_audioDrivers[] =
   {"auto","alsa","oss","none","arts","esound",NULL};
 const char *config_t::s_videoDriverNamesX11[] =
-  {"automatic","XShm","Xv","XvMC","XvMC+VLD","no video",NULL};
+  {"automatic","XShm","Xv","XvMC","XvMC+VLD","Vidix","no video",NULL};
 const char *config_t::s_videoDriversX11[] =
-  {"auto","X11","xv","xvmc","xxmc","none",NULL};
+  {"auto","X11","xv","xvmc","xxmc","vidix","none",NULL};
 const char *config_t::s_videoDriverNamesFB[] =
-  {"automatic","Framebuffer","DirectFB","No Video",NULL};
+  {"automatic","Framebuffer","DirectFB","VidixFB","No Video",NULL};
 const char *config_t::s_videoDriversFB[] =
-  {"auto","fb","DirectFB","none",NULL};
+  {"auto","fb","DirectFB","vidixfb","none",NULL};
 const char *config_t::s_frontendNames[] =
   {"X11 (sxfe)", "Framebuffer (fbfe)", "Off", NULL};
 const char *config_t::s_frontends[] =
