@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.26 2006-10-23 19:18:09 phintuka Exp $
+ * $Id: device.c,v 1.27 2006-12-15 23:18:59 phintuka Exp $
  *
  */
 
@@ -217,6 +217,7 @@ cXinelibDevice::cXinelibDevice()
   m_StreamStart = true;
   m_RadioStream = false;
   m_AudioCount  = 0;
+  m_Polled = false;
 }
 
 cXinelibDevice::~cXinelibDevice() 
@@ -786,6 +787,25 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   if(m_PlayingFile)
     return length;
 
+  //
+  // Need to be sure Poll has been called for every frame:
+  //  - cDevice can feed multiple frames after each poll from player/transfer.
+  //  - If only part of frames are consumed, rest are fed again after next Poll.
+  //  - If there are multiple clients it is possible first client(s)
+  //    can queue more frames than last client(s).
+  //    -> frame(s) are either lost immediately (last client(s)) 
+  //       or duplicated after next poll (first client(s))
+  //
+  if(!m_Polled) {
+    /*#warning TODO: modify poll to return count of free bufs and store min() here ? */
+    cPoller Poller;
+    if(!Poll(Poller,0)) {
+      errno = EAGAIN;
+      return 0;
+    }
+  }
+  m_Polled = false;
+
   bool isMpeg1 = false;
 
   int len = pes_packet_len(buf, length, isMpeg1);
@@ -1015,6 +1035,8 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
     result = result && m_local->Poll(Poller, TimeoutMs);
   if(m_server)
     result = result && m_server->Poll(Poller, TimeoutMs);
+
+  m_Polled = true;
 
   return result /*|| Poller.Poll(0)*/;
 }
