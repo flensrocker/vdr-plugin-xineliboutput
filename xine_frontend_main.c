@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.16 2006-12-15 13:47:20 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.17 2006-12-15 15:26:40 phintuka Exp $
  *
  */
 
@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <getopt.h>
+#include <signal.h>
 
 #if 0
 static void xine_log_cb(void *data, int section)
@@ -154,6 +155,14 @@ static void *kbd_receiver_thread(void *fe)
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
   pthread_exit(NULL);
   return NULL; /* never reached */
+}
+
+static void SignalHandler(int signum)
+{
+  if (signum != SIGPIPE)
+    terminate_key_pressed = 1;
+
+  signal(signum, SignalHandler);
 }
 
 static char *strcatrealloc(char *dest, const char *src)
@@ -472,7 +481,14 @@ int main(int argc, char *argv[])
       fprintf(stderr, "can't create new thread for keyboard (%s)\n", 
 	      strerror(err));
   }
-   
+
+  /* signal handlers */
+
+  if (signal(SIGHUP,  SignalHandler) == SIG_IGN) signal(SIGHUP,  SIG_IGN);
+  if (signal(SIGINT,  SignalHandler) == SIG_IGN) signal(SIGINT,  SIG_IGN);
+  if (signal(SIGTERM, SignalHandler) == SIG_IGN) signal(SIGTERM, SIG_IGN);
+  if (signal(SIGPIPE, SignalHandler) == SIG_IGN) signal(SIGPIPE, SIG_IGN);
+
   /* Main loop */
 
   sleep(2);  /* give input_vdr some time to establish connection */
