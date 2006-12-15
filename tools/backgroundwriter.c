@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.2 2006-06-11 10:19:50 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.3 2006-12-15 16:35:31 phintuka Exp $
  *
  */
 
@@ -23,12 +23,13 @@
 
 #define MAX_OVERFLOWS_BEFORE_DISCONNECT 500 // ~ 1 second
 
-cBackgroundWriter::cBackgroundWriter(int fd, int Size) 
+cBackgroundWriter::cBackgroundWriter(int fd, int Size, bool Raw) 
   : m_RingBuffer(Size, sizeof(stream_tcp_header_t))
 { 
   m_fd = fd; 
   m_RingBuffer.SetTimeouts(0, 100);
   m_Active = true;
+  m_Raw = Raw;
 
   m_PutPos = 0;
   m_DiscardStart = 0;
@@ -36,7 +37,8 @@ cBackgroundWriter::cBackgroundWriter(int fd, int Size)
 
   m_BufferOverflows = 0;
 
-  LOGDBG("cBackgroundWriter initialized (buffer %d kb)", Size/1024);
+  LOGDBG("cBackgroundWriter%s initialized (buffer %d kb)", 
+	 Raw?"(RAW)":"", Size/1024);
 
   Start();
 }
@@ -62,7 +64,7 @@ void cBackgroundWriter::Action(void)
 
     if(Poller.Poll(100)) {
 
-      int Count = 0;
+      int Count = 0, n;
       uchar *Data = m_RingBuffer.Get(Count);
 
       if(Data && Count > 0) {
@@ -125,7 +127,12 @@ void cBackgroundWriter::Action(void)
 #endif
 
 	errno = 0;
-	int n = write(m_fd, Data, Count);
+	if(!m_Raw)
+	  n = write(m_fd, Data, Count);
+	else
+	  n = write(m_fd, 
+		    Data + sizeof(stream_tcp_header_t), 
+		    Count - sizeof(stream_tcp_header_t));
 
 	if(n == 0) {
 	  LOGERR("cBackgroundWriter: Client disconnected data stream ?");
@@ -143,6 +150,9 @@ void cBackgroundWriter::Action(void)
 	    break;
 	  }
 	}
+
+	if(m_Raw)
+	  n += sizeof(stream_tcp_header_t);
 
 	GetPos += n;
 	m_RingBuffer.Del(n);
