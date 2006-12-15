@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.14 2006-12-14 18:54:41 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.15 2006-12-15 21:34:18 phintuka Exp $
  *
  */
 
@@ -463,7 +463,7 @@ bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
     return true;
   }
   
-  const int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
+  int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
   if(m_QueuePending >= limit) {
     uint64_t WaitEnd = cTimeMs::Now();
     if(TimeoutMs >= 0)
@@ -541,7 +541,8 @@ bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length)
   if(m_Handles[0] < 0) 
     return true;
 
-  if(m_QueuePending >= MAX_QUEUE_SIZE)
+  int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
+  if(m_QueuePending >= limit)
     return false;
 
   m_BackLog->MakeFrame(StreamPos, Data, Length); 
