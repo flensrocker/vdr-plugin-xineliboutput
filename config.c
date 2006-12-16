@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.18 2006-12-15 15:28:25 phintuka Exp $
+ * $Id: config.c,v 1.19 2006-12-16 23:07:02 phintuka Exp $
  *
  */
 
@@ -91,6 +91,48 @@ static char *strcatrealloc(char *dest, const char *src)
   return dest;
 }
 
+bool config_t::IsPlaylistFile(const char *fname)
+{
+  if(fname) {
+    char *pos = strrchr(fname,'.');
+    if(pos) {
+      pos++;
+      if(!strcasecmp(pos, "pls") || 
+	 !strcasecmp(pos, "m3u") /*|| 
+	 !strcasecmp(pos, "asx")*/)
+	return true;
+    }
+  }
+  return false;
+}
+
+bool config_t::IsAudioFile(const char *fname)
+{
+  if(fname) {
+    char *pos = strrchr(fname,'.');
+    if(pos) {
+      pos++;
+      if(!strcasecmp(pos, "mpa") ||
+	 !strcasecmp(pos, "mp2") ||
+	 !strcasecmp(pos, "mp3") ||
+	 !strcasecmp(pos, "mpega") ||
+	 !strcasecmp(pos, "flac") ||
+	 !strcasecmp(pos, "ac3") ||
+	 !strcasecmp(pos, "ogg") ||
+	 !strcasecmp(pos, "au") ||
+	 !strcasecmp(pos, "aud") ||
+	 !strcasecmp(pos, "wma") ||
+	 !strcasecmp(pos, "asf") ||
+	 !strcasecmp(pos, "wav") ||
+	 !strcasecmp(pos, "ra") ||
+	 !strcasecmp(pos, "ram"))
+	return true;
+      return IsPlaylistFile(fname);
+    }
+  }
+  return false;
+}
+
 bool config_t::IsVideoFile(const char *fname)
 {
   if(fname) {
@@ -99,25 +141,24 @@ bool config_t::IsVideoFile(const char *fname)
       pos++;
       if(!strcasecmp(pos, "avi") ||
 	 !strcasecmp(pos, "mpv") ||
-	 !strcasecmp(pos, "vob") || 
-	 !strcasecmp(pos, "vdr") || 
+	 !strcasecmp(pos, "vob") ||
+	 !strcasecmp(pos, "vdr") ||
 	 !strcasecmp(pos, "mpg") ||
-	 !strcasecmp(pos, "mpeg")|| 
-	 !strcasecmp(pos, "mpa") || 
-	 !strcasecmp(pos, "mp2") || 
-	 !strcasecmp(pos, "mp3") || 
-	 !strcasecmp(pos, "mp4") || 
-	 !strcasecmp(pos, "asf") || 
-	 !strcasecmp(pos, "wmv") || 
-	 !strcasecmp(pos, "mov") || 
-	 !strcasecmp(pos, "flac") || 
-	 !strcasecmp(pos, "ts") || 
-	 !strcasecmp(pos, "xvid") || 
-	 !strcasecmp(pos, "divx") || 
-	 !strcasecmp(pos, "m3u") || 
-	 !strcasecmp(pos, "ram") || 
+	 !strcasecmp(pos, "mpeg")||
+	 !strcasecmp(pos, "mp4") ||
+	 !strcasecmp(pos, "asf") ||
+	 !strcasecmp(pos, "wmv") ||
+	 !strcasecmp(pos, "mov") ||
+	 !strcasecmp(pos, "ts") ||
+	 !strcasecmp(pos, "pes") ||
+	 !strcasecmp(pos, "xvid") ||
+	 !strcasecmp(pos, "divx") ||
+	 !strcasecmp(pos, "fli") ||
+	 !strcasecmp(pos, "dv") ||
+	 !strcasecmp(pos, "rm") ||
 	 !strcasecmp(pos, "iso"))  /* maybe dvd */
 	return true;
+      return IsAudioFile(fname);
     }
   }
   return false;
@@ -128,12 +169,14 @@ bool config_t::IsImageFile(const char *fname)
   if(fname) {
     char *pos = strrchr(fname,'.');
     if(pos) {
-      if(!strcasecmp(pos, ".jpg") ||
-	 !strcasecmp(pos, ".jpeg") ||
-	 !strcasecmp(pos, ".gif") ||
-	 !strcasecmp(pos, ".tiff") || 
-	 !strcasecmp(pos, ".bmp") || 
-	 !strcasecmp(pos, ".png"))
+      pos++;
+      if(!strcasecmp(pos, "jpg") ||
+	 !strcasecmp(pos, "jpeg") ||
+	 !strcasecmp(pos, "gif") ||
+	 !strcasecmp(pos, "tiff") || 
+	 !strcasecmp(pos, "bmp") || 
+	 !strcasecmp(pos, "mng") ||
+	 !strcasecmp(pos, "png"))
 	return true;
     }
   }
