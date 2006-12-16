@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.23 2006-12-14 12:41:37 phintuka Exp $
+ * $Id: menu.c,v 1.24 2006-12-16 23:24:33 phintuka Exp $
  *
  */
 
@@ -272,6 +272,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
 	     m_CurrentDir, GetCurrent()->Name());
     strcpy(m_ConfigLastDir, f);
     StoreConfig();
+
     if(m_Mode != ShowImages) {
       /* video/audio */
       cControl::Shutdown();
@@ -350,7 +351,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
 	  // folders
           if (S_ISDIR(st.st_mode)) {
-	    if(m_Mode == ShowImages)
+	    if(m_Mode == ShowImages || m_Mode == ShowMusic)
 	      Add(new cFileListItem(e->d_name, true));
 	    else {
 	      // check if DVD
@@ -372,8 +373,17 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
           // regular files
           } else {
-	    // video/audio
-            if (m_Mode != ShowImages && xc.IsVideoFile(buffer)) {
+
+	    // audio
+	    if (m_Mode == ShowMusic && xc.IsAudioFile(buffer)) {
+	      Add(new cFileListItem(e->d_name, false));
+
+	    // images
+            } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
+	      Add(new cFileListItem(e->d_name, false));
+
+	    // video
+	    } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
 	      bool resume = false, subs = false, dvd = false;
 	      char *pos = strrchr(e->d_name, '.');
 
@@ -388,6 +398,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	      asprintf(&buffer, "%s/%s.resume", DirName, e->d_name);
 	      if (stat(buffer, &st) == 0)
 		resume = true;
+
 	      // separate subtitles ?
 	      *strrchr(buffer, '.') = 0;
 	      strcpy(strrchr(buffer,'.'), ".sub");
@@ -396,12 +407,14 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	      strcpy(strrchr(buffer,'.'), ".srt");
 	      if (stat(buffer, &st) == 0)
 		subs = true;
+	      strcpy(strrchr(buffer,'.'), ".txt");
+	      if (stat(buffer, &st) == 0)
+		subs = true;
+	      strcpy(strrchr(buffer,'.'), ".ssa");
+	      if (stat(buffer, &st) == 0)
+		subs = true;
 
 	      Add(new cFileListItem(e->d_name, false, resume, subs, dvd));
-
-	    // images
-            } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
-	      Add(new cFileListItem(e->d_name, false));
 	    }
           }
         }
