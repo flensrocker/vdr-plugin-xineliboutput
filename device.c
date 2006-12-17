@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.27 2006-12-15 23:18:59 phintuka Exp $
+ * $Id: device.c,v 1.28 2006-12-17 22:10:51 phintuka Exp $
  *
  */
 
@@ -207,8 +207,11 @@ cXinelibDevice::cXinelibDevice()
   m_CurrentDvdSpuTrack = -1;
   ClrAvailableDvdSpuTracks();
 
+  memset(m_MetaInfo, 0, sizeof(m_MetaInfo));
+    
   m_PlayMode = pmNone;
   m_LastTrack = ttAudioFirst;
+  m_AudioChannel = 0;
 
   m_liveMode    = false;
   m_TrickSpeed  = -1;
@@ -778,7 +781,6 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
 //
 // Data stream handling
 //
-
 int cXinelibDevice::PlayAny(const uchar *buf, int length) 
 {
   TRACEF("cXinelibDevice::PlayAny");
@@ -895,7 +897,7 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
     int Width, Height;
     if(GetVideoSize(buf, length, &Width, &Height)) {
       m_StreamStart = false;
-      LOGDBG("Detected video size %dx%d", Width, Height);
+      //LOGDBG("Detected video size %dx%d", Width, Height);
       ForEach(m_clients, &cXinelibThread::SetHDMode, (Width > 800));
     }
 #endif
@@ -1063,16 +1065,19 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
 {
   TRACEF("cXinelibDevice::SetAudioChannelDevice");
 
-  m_AudioChannel = AudioChannel;
+  if(m_AudioChannel != AudioChannel) {
 
-  switch(AudioChannel) {
-    default:
-    case 0: ConfigurePostprocessing("audiochannel", false, NULL); 
-            break;
-    case 1: ConfigurePostprocessing("audiochannel", true, "channel=0");
-            break;
-    case 2: ConfigurePostprocessing("audiochannel", true, "channel=1");
-            break;
+    m_AudioChannel = AudioChannel;
+
+    switch(AudioChannel) {
+      default:
+      case 0: ConfigurePostprocessing("audiochannel", false, NULL); 
+              break;
+      case 1: ConfigurePostprocessing("audiochannel", true, "channel=0");
+	      break;
+      case 2: ConfigurePostprocessing("audiochannel", true, "channel=1");
+	      break;
+    }
   }
 }
 
@@ -1324,5 +1329,31 @@ bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Cu
     return true;
   }
   return false;
+}
+
+//
+// Metainfo
+//
+
+const char *cXinelibDevice::GetMetaInfo(eMetainfoType Type)
+{
+  if(Type >= 0 && Type < mi_Count)
+    return m_MetaInfo[Type];
+
+  LOGMSG("cXinelibDevice::GetMetaInfo: unknown metainfo type");
+  return "";
+}
+
+void  cXinelibDevice::SetMetaInfo(eMetainfoType Type, const char *Value)
+{
+  if(Type >= 0 && Type < mi_Count) {
+    /* set to 0 first, so if player is accessing string in middle of 
+       copying it will always be 0-terminated (but truncated) */
+    memset(m_MetaInfo[Type], 0, sizeof(m_MetaInfo[Type]));
+    strncpy(m_MetaInfo[Type], Value, MAX_METAINFO_LEN);
+
+  } else {
+    LOGMSG("cXinelibDevice::SetMetaInfo: unknown metainfo type");
+  }
 }
 
