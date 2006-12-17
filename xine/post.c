@@ -772,7 +772,7 @@ int applugin_enable_post(post_plugins_t *fe, const char *initstr,
   const char *args = _pp_args(initstr);
   char *name = _pp_name(initstr);
 
-  int result = _vpplugin_enable_post(fe, name, args, found); 
+  int result = _applugin_enable_post(fe, name, args, found); 
 
   LOGDBG("  * enable post %s --> %s, %s", name,
 	 *found ? "found"   : "not found",
