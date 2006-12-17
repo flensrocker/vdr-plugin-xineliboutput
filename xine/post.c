@@ -374,12 +374,32 @@ void pplugin_parse_and_store_post(fe_t *fe, int plugin_type,
 
       (*_post_elements)[i] = NULL;
       (*_post_elements_num) += num;
-
     }
     else {
       *_post_elements     = posts;
       *_post_elements_num = num;
     }
+#if 1
+    if(SysLogLevel > 2) {
+      /* dump list of all loaded plugins */
+      int ptot = *_post_elements_num + num;
+      int i;
+      char s[4096]="";
+      for(i=0; i<ptot; i++)
+	if((*_post_elements)[i])
+	  if(((*_post_elements)[i])->post) {
+	    if(((*_post_elements)[i])->enable)
+	      strcat(s, "*");
+	    if(((*_post_elements)[i])->name)
+	      strcat(s, ((*_post_elements)[i])->name);
+	    else
+	      strcat(s, "<no name!>");
+	    strcat(s, " ");
+	    }
+      LOGDBG("    loaded plugins (type %d.%d): %s", 
+	     (plugin_type>>16), (plugin_type&0xffff), s);
+    }
+#endif
   }
 }
 
@@ -445,7 +465,9 @@ static void _vpplugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
 	vo_in = xine_post_input(post_elements[i + 1]->post, "video");
 	if( !vo_in )
 	  vo_in = xine_post_input(post_elements[i + 1]->post, "video in");
-	LOGDBG("        wiring %10s[out] -> [in]%-10s ", post_elements[i]->name, post_elements[i+1]->name);
+
+	LOGDBG("        wiring %10s[out] -> [in]%-10s ", 
+	       post_elements[i]->name, post_elements[i+1]->name);
 	err = xine_post_wire((xine_post_out_t *) vo_out, 
 			     (xine_post_in_t *) vo_in);	
       }
@@ -482,6 +504,7 @@ static void _applugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
       const xine_post_out_t *ao_out = xine_post_output(post_elements[i]->post, (char *) *outs);
 
       if(i == (post_elements_num - 1)) {
+	LOGDBG("        wiring %10s[out] -> [in]audio_out", post_elements[i]->name);
 	xine_post_wire_audio_port((xine_post_out_t *) ao_out, fe->audio_port);
       }
       else {
@@ -493,6 +516,8 @@ static void _applugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
 	if( !ao_in )
 	  ao_in = xine_post_input(post_elements[i + 1]->post, "audio in");
 	
+	LOGDBG("        wiring %10s[out] -> [in]%-10s ", 
+	       post_elements[i]->name, post_elements[i+1]->name);
 	err = xine_post_wire((xine_post_out_t *) ao_out, (xine_post_in_t *) ao_in);	
       }
     }
@@ -501,6 +526,7 @@ static void _applugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
       ao_source = xine_get_audio_source(fe->slave_stream);
     else
       ao_source = xine_get_audio_source(fe->stream);
+    LOGDBG("        wiring %10s[out] -> [in]%-10s", "stream", post_elements[0]->name);
     xine_post_wire_audio_port(ao_source, post_elements[0]->post->audio_input[0]);
   }
 }
@@ -567,7 +593,7 @@ static post_element_t **_pplugin_join_deinterlace_and_post_elements(fe_t *fe, in
 	  for(j=i; j>n; j--)
 	    post_elements[j] = post_elements[j-1];
 	  post_elements[n] = tmp;
-	  LOGMSG("      moved %s to post slot %d", order[p], n);
+	  LOGDBG("      moved %s to post slot %d", order[p], n);
 	}
 	n++;
 	break;
@@ -703,24 +729,30 @@ static int _pplugin_enable_post(post_plugins_t *fe, const char *name,
 static int _vpplugin_enable_post(post_plugins_t *fe, const char *name, 
 				 const char *args, int *found)
 {
-  return
-    _pplugin_enable_post(fe, name, args, fe->post_video_elements, 
-			 fe->post_video_elements_num, found) +
-    _pplugin_enable_post(fe, name, args, fe->post_pip_elements, 
-			 fe->post_pip_elements_num, found);
+  int result = 0;
+  if(!*found)
+    result = _pplugin_enable_post(fe, name, args, fe->post_video_elements, 
+				  fe->post_video_elements_num, found);
+  if(!*found)
+    result = _pplugin_enable_post(fe, name, args, fe->post_pip_elements, 
+				  fe->post_pip_elements_num, found);
+  return result;
 }
 
 static int _applugin_enable_post(post_plugins_t *fe, const char *name,
 				 const char *args, int *found)
 {
-  return
-    _pplugin_enable_post(fe, name, args, fe->post_audio_elements, 
-			 fe->post_audio_elements_num, found) +
-    _pplugin_enable_post(fe, name, args, fe->post_vis_elements, 
-			 fe->post_vis_elements_num, found);
+  int result = 0;
+  if(!*found)
+    result = _pplugin_enable_post(fe, name, args, fe->post_audio_elements, 
+				  fe->post_audio_elements_num, found);
+  if(!*found)
+    result = _pplugin_enable_post(fe, name, args, fe->post_vis_elements, 
+				  fe->post_vis_elements_num, found);
+  return result;
 }
 
-static char * _pp_name(const char *initstr)
+static char * _pp_name_strdup(const char *initstr)
 {
   char *name = strdup(initstr), *pt;
 
@@ -741,7 +773,7 @@ static const char * _pp_args(const char *initstr)
 int vpplugin_enable_post(post_plugins_t *fe, const char *initstr,
 			 int *found)
 {
-  char *name = _pp_name(initstr);
+  char *name = _pp_name_strdup(initstr);
   const char *args = _pp_args(initstr);
 
   int result = _vpplugin_enable_post(fe, name, args, found);
@@ -769,8 +801,8 @@ int vpplugin_enable_post(post_plugins_t *fe, const char *initstr,
 int applugin_enable_post(post_plugins_t *fe, const char *initstr,
 			 int *found)
 {
-  const char *args = _pp_args(initstr);
-  char *name = _pp_name(initstr);
+  const char * args = _pp_args(initstr);
+  char *name = _pp_name_strdup(initstr);
 
   int result = _applugin_enable_post(fe, name, args, found); 
 
@@ -786,7 +818,7 @@ int applugin_enable_post(post_plugins_t *fe, const char *initstr,
 	   *found ? "found"   : "not found",
 	   result ? "enabled" : "no action");    
   }
-  
+
   if(result) 
     _applugin_unwire(fe);
 
