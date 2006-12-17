@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.12 2006-10-18 08:41:08 phintuka Exp $
+ * $Id: frontend_local.c,v 1.13 2006-12-17 17:49:56 phintuka Exp $
  *
  */
 
@@ -220,8 +220,9 @@ int cXinelibLocal::Xine_Control(const char *cmd)
 extern "C" {
   static void keypress_handler(const char *keymap, const char *key)
   {
-    if(!strncmp("TRACKMAP", keymap, 8)) {
-
+    if(!strncmp("TRACKMAP", keymap, 8) ||
+       !strncmp("METAINFO", keymap, 8)) {
+      
       cXinelibThread::InfoHandler(keymap);
 
     } else if(!xc.use_x_keyboard || !key) {
