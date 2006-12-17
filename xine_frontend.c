@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.25 2006-10-19 10:06:57 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.26 2006-12-17 17:45:44 phintuka Exp $
  *
  */
 
@@ -866,8 +866,11 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
   LOGDBG("opening post plugin: %s", initstr);
 
   /* close old audio visualization plugin */
-  if(!strcmp(name,"goom") || !strcmp(name,"oscope") || 
-     !strcmp(name,"fftscope") || !strcmp(name,"fftgraph")) {
+  if(!strcmp(name,"goom") || 
+     !strcmp(name,"oscope") || 
+     !strcmp(name,"fftscope") || 
+     !strcmp(name,"fftgraph") ||
+     !strcmp(name,"fooviz")) {
 
     /* close if changed */
     if(posts->post_vis_elements_num && 
@@ -878,22 +881,36 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
       fe_post_close(this, NULL, POST_AUDIO_VIS);
     }
 
-    posts->post_vis_enable = 1;
-  }
+    if(!found && applugin_enable_post(posts, initstr, &found)) {
+      posts->post_vis_enable = 1;
+      applugin_rewire_posts(posts);
+    }
 
-  if(vpplugin_enable_post(posts, initstr, &found)) {
-    posts->post_video_enable = 1;
-    vpplugin_rewire_posts(posts);
-    return 1;
-  }
-  if(!found && applugin_enable_post(posts, initstr, &found)) {
-    posts->post_audio_enable = 1;
-    applugin_rewire_posts(posts);
-    return 1;
+  } else {
+
+    /* video filters */
+    if(strcmp(name, "audiochannel") &&
+       strcmp(name, "volnorm") && 
+       strcmp(name, "stretch") && 
+       strcmp(name, "upmix_mono") && 
+       strcmp(name, "upmix") &&
+       vpplugin_enable_post(posts, initstr, &found)) {
+
+      posts->post_video_enable = 1;
+      vpplugin_rewire_posts(posts);
+      /*return 1;*/
+    }
+
+    /* audio filters */
+    if(!found && applugin_enable_post(posts, initstr, &found)) {
+      posts->post_audio_enable = 1;
+      applugin_rewire_posts(posts);
+      /*return 1;*/
+    }
   }
 
   if(!found)
-    LOGERR("Can't load post plugin %s", name);
+    LOGMSG("Can't load post plugin %s", name);
   else
     LOGDBG("Post plugin %s loaded and wired", name);
     
