@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.12 2006-12-14 15:15:37 phintuka Exp $
+ * $Id: cxsocket.h,v 1.13 2006-12-17 17:47:20 phintuka Exp $
  *
  */
 
@@ -12,6 +12,25 @@
 #define __CXSOCKET_H
 
 #define CLOSESOCKET(fd) do { if(fd>=0) { close(fd); fd=-1; } } while(0)
+
+static char *ip2txt(uint32_t ip, unsigned int port, char *str) 
+{
+  // inet_ntoa is not thread-safe (?)
+  if(str) {
+    unsigned int iph =(unsigned int)ntohl(ip);
+    unsigned int porth =(unsigned int)ntohs(port);
+    if(!porth)
+      sprintf(str, "%d.%d.%d.%d", 
+	      ((iph>>24)&0xff), ((iph>>16)&0xff), 
+	      ((iph>>8)&0xff), ((iph)&0xff));
+    else
+      sprintf(str, "%u.%u.%u.%u:%u", 
+	      ((iph>>24)&0xff), ((iph>>16)&0xff), 
+	      ((iph>>8)&0xff), ((iph)&0xff),
+	      porth);
+  }
+  return str;
+}
 
 //
 // Set socket buffers
@@ -261,7 +280,7 @@ static inline int udp_discovery_broadcast(int fd_discovery, int m_Port)
     LOGERR("UDP broadcast send failed (discovery)");
     result = -1;
   } else {
-    LOGDBG("UDP broadcast send succeed (discovery)");
+    //LOGDBG("UDP broadcast send succeed (discovery)");
     result = 1;
   }
   free(test);
