@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.15 2006-12-15 22:59:33 phintuka Exp $
+ * $Id: device.h,v 1.16 2006-12-17 22:09:47 phintuka Exp $
  *
  */
 
@@ -19,6 +19,15 @@ class cXinelibStatusMonitor;
 class cXinelibThread;
 class cChannel;
 class cFunctor;
+
+typedef enum {
+  miTrack  = 0,
+  miArtist = 1,
+  miAlbum  = 2,
+  mi_Count = 3
+} eMetainfoType;
+
+#define MAX_METAINFO_LEN 63
 
 class cXinelibDevice : public cDevice 
 {
@@ -113,6 +122,8 @@ class cXinelibDevice : public cDevice
     tTrackId m_DvdSpuTrack[64];
     int      m_CurrentDvdSpuTrack;
 
+    char     m_MetaInfo[mi_Count][MAX_METAINFO_LEN+1];
+
   public:
     void ClrAvailableDvdSpuTracks(bool NotifyFrontend = true);
     bool SetAvailableDvdSpuTrack(int Type, const char *lang = NULL, bool Current = false);
@@ -124,6 +135,8 @@ class cXinelibDevice : public cDevice
     int   GetCurrentDvdSpuTrack(void) const { return m_CurrentDvdSpuTrack; }
     bool  SetCurrentDvdSpuTrack(int Type);
 
+    const char *GetMetaInfo(eMetainfoType Type);
+    void  SetMetaInfo(eMetainfoType Type, const char *Value);
 
   // Audio facilities
 
