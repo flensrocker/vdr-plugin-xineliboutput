@@ -1,4 +1,14 @@
 /*
+ * xine_post_autocrop.c: xine post plugin
+ *
+ * See the main source file 'xineliboutput.c' for copyright information and
+ * how to reach the author.
+ *
+ * $Id: xine_post_autocrop.c,v 1.10 2006-12-19 17:38:52 phintuka Exp $
+ *
+ */
+
+/*
  * Copyright (C) 2006 the xine project
  * 
  * This file is part of xine, a free video player.
@@ -17,7 +27,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.9 2006-10-07 18:57:17 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.10 2006-12-19 17:38:52 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -490,7 +500,7 @@ static int blank_line_YUY2_C(uint8_t *data, int length)
 #if defined(ENABLE_64BIT)
 static int blank_line_YUY2_C64(uint8_t *data, int length)
 {
-  uint64_t *data64 = (uint32_t*)((((long int)data) + 64 + 7) & (~7));
+  uint64_t *data64 = (uint64_t*)((((long int)data) + 64 + 7) & (~7));
   uint64_t r1 = 0, r2 = 0;
 
   length -= 128; /* skip borders (2 x 32 pixels, 2 bytes/pixel) */
@@ -547,7 +557,7 @@ static void autocrop_init_mm_accel(void)
     blank_line_YUY2 = blank_line_YUY2_sse;
     return;
   }
-# endif
+#endif
 #if defined(ENABLE_64BIT)
   if(ENABLE_64BIT) {
     INFO("autocrop_init_mm_accel: using 64-bit integer operations\n");
@@ -1392,17 +1402,32 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
       case 1:
 	/* menu overlay */
 	/* All overlays coming from VDR have this type */
-
-#ifdef USE_CROP
-	if(!event->object.overlay->unscaled) {
-	    event->object.overlay->y += this->start_line;//crop_total;
-	} else {
-	  caps = port->stream->video_out->get_capabilities (port->stream->video_out);
-	  if(!(caps & VO_CAP_UNSCALED_OVERLAY))
-	    event->object.overlay->y += this->start_line;//crop_total;
-	}
+	{
+#ifdef DVDTEST
+	  int dvd_menu = 0;
+	  if (stream->input_plugin) {
+	    if (stream->input_plugin->get_capabilities (stream->input_plugin) & 
+		INPUT_CAP_SPULANG) {
+	      *((int *)lang) = 0; /* channel */
+	      if (stream->input_plugin->get_optional_data (stream->input_plugin, lang,
+							   INPUT_OPTIONAL_DATA_SPULANG)
+		  == INPUT_OPTIONAL_SUCCESS)
+		if(!strcmp(lang, "menu"))
+		  dvd_menu = 1; /* -> cropping off */
+	      /* should turn on when not in menu ... -> where ? */
+	    }
+	  }
 #endif
-
+#ifdef USE_CROP
+	  if(!event->object.overlay->unscaled) {
+	    event->object.overlay->y += this->start_line;//crop_total;
+	  } else {
+	    caps = port->stream->video_out->get_capabilities (port->stream->video_out);
+	    if(!(caps & VO_CAP_UNSCALED_OVERLAY))
+	      event->object.overlay->y += this->start_line;//crop_total;
+	  }
+#endif
+	}
 	break;
       }
     }
