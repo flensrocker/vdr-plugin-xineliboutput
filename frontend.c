@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.20 2006-10-18 20:28:16 phintuka Exp $
+ * $Id: frontend.c,v 1.21 2006-12-19 08:41:48 phintuka Exp $
  *
  */
 
@@ -86,13 +86,13 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
 
 void cXinelibThread::InfoHandler(const char *info)
 {
-  char *pmap = strdup(info), *map = pmap;
+  char *pmap = strdup(info), *map = pmap, *pt;
 
-  if(strchr(map, '\r'))
-    *strchr(map, '\r') = 0;
+  if(NULL != (pt=strchr(map, '\r')))
+    *pt = 0;
 
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
-    map += 13;
+    map += 12;
     cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
     while(*map) {
       bool Current = false;
@@ -112,7 +112,7 @@ void cXinelibThread::InfoHandler(const char *info)
   }
 
   else if(!strncmp(info, "TRACKMAP AUDIO", 14)) {
-    map += 15;
+    map += 14;
     cXinelibDevice::Instance().ClrAvailableTracks();
     while(*map) {
       bool Current = false;
@@ -130,6 +130,29 @@ void cXinelibThread::InfoHandler(const char *info)
       cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, *lang ? lang : NULL);
       if(Current) 
 	cXinelibDevice::Instance().SetCurrentAudioTrack((eTrackType)(ttDolby+id));
+    }
+  }
+
+  else if(!strncmp(info, "METAINFO", 8)) {
+    map += 8;
+    while(*map) {
+      while(*map == ' ') map++;
+      char *next = strstr(map, "=\'");
+      if(!next)
+	break;
+      *next = 0;
+      next += 2;
+      char *end =  strstr(next, "\'");
+      if(!end)
+	break;
+      *end = 0;
+      if(strcmp(map, "title"))
+	cXinelibDevice::Instance().SetMetaInfo(miTrack, next);
+      if(strcmp(map, "album"))
+	cXinelibDevice::Instance().SetMetaInfo(miAlbum, next);
+      if(strcmp(map, "artist"))
+	cXinelibDevice::Instance().SetMetaInfo(miArtist, next);
+      map = end+1;
     }
   }
 
