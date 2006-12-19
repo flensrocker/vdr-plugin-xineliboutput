@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.11 2006-12-15 15:32:59 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.12 2006-12-19 16:36:46 phintuka Exp $
  *
  */
 
@@ -94,6 +94,7 @@ protected:
     // Data
 
     int  m_Port;
+    int  m_ServerId;
 
     int  fd_listen;
     int  fd_discovery;
