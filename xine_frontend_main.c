@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.17 2006-12-15 15:26:40 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.18 2006-12-19 08:49:48 phintuka Exp $
  *
  */
 
@@ -324,7 +324,12 @@ int main(int argc, char *argv[])
 	      printf("Post plugins: %s\n", static_post_plugins);
 	      break;
     case 'L': lirc_device_name = optarg ? : strdup("/dev/lircd");
-              printf("LIRC device:  %s\n", lirc_device_name);
+              if(strstr((char*)lirc_device_name, ",repeatemu")) {
+		*strstr((char*)lirc_device_name, ",repeatemu") = 0;
+		lirc_repeat_emu = 1;
+              }
+              printf("LIRC device:  %s%s\n", lirc_device_name,
+		     lirc_repeat_emu?", emulating key repeat":"");
 	      break;
     case 'v': verbose_xine_log = 1;
               SysLogLevel = 3;
