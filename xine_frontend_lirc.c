@@ -4,9 +4,9 @@
  * Forward (local) lirc keys to VDR (server)
  *
  *
- * Almost directly copied from vdr-1.3.34 (lirc.c : cLircRemote) 
+ * Almost directly copied from vdr-1.4.3-2 (lirc.c : cLircRemote) 
  *
- * $Id: xine_frontend_lirc.c,v 1.3 2006-09-12 14:52:31 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.4 2006-12-19 08:48:27 phintuka Exp $
  *
  */
 
@@ -15,17 +15,20 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define REPEATLIMIT       20 /* ms */
-#define REPEATDELAY      350 /* ms */
-#define KEYPRESSDELAY    150 /* ms */
+#define REPEATDELAY     350 /* ms */
+#define REPEATFREQ      100 /* ms */
+#define REPEATTIMEOUT   500 /* ms */
+#define RECONNECTDELAY 3000 /* ms */
+
 #define LIRC_KEY_BUF      30
 #define LIRC_BUFFER_SIZE 128 
 #define MIN_LIRCD_CMD_LEN  5
 
 /* static data */
-pthread_t lirc_thread;
-volatile char *lirc_device_name = NULL;
+static pthread_t lirc_thread;
+static volatile char *lirc_device_name = NULL;
 static volatile int fd_lirc = -1;
+static int lirc_repeat_emu = 0;
 
 static uint64_t time_ms()
 {
@@ -40,9 +43,38 @@ static uint64_t elapsed(uint64_t t)
   return time_ms() - t;
 }
 
-void *lirc_receiver_thread(void *fe)
+static void lircd_connect(void)
 {
   struct sockaddr_un addr;
+
+  if(fd_lirc >= 0) {
+    close(fd_lirc);
+    fd_lirc = -1;
+  }
+
+  if(!lirc_device_name) {
+    LOGDBG("no lirc device given");
+    return;
+  }
+
+  addr.sun_family = AF_UNIX;
+  strcpy(addr.sun_path, (char*)lirc_device_name);
+
+  if ((fd_lirc = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+    LOGERR("lirc error: socket() < 0");
+    return;
+  }
+
+  if (connect(fd_lirc, (struct sockaddr *)&addr, sizeof(addr))) {
+    LOGERR("lirc error: connect(%s) < 0", lirc_device_name);
+    close(fd_lirc);
+    fd_lirc = -1;
+    return;
+  }
+}
+
+void *lirc_receiver_thread(void *fe)
+{
   int timeout = -1;
   uint64_t FirstTime = time_ms();
   uint64_t LastTime = time_ms();
@@ -50,23 +82,10 @@ void *lirc_receiver_thread(void *fe)
   char LastKeyName[LIRC_KEY_BUF] = "";
   int repeat = 0;
 
-  if(!lirc_device_name) {
-    LOGDBG("no lirc device given");
-    goto out;
-  }
-
-  addr.sun_family = AF_UNIX;
-  strcpy(addr.sun_path, (char*)lirc_device_name);
-  if ((fd_lirc = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-    LOGERR("lirc error: socket() < 0");
-    goto out;
-  }
-  if (connect(fd_lirc, (struct sockaddr *)&addr, sizeof(addr))) {
-    LOGERR("lirc error: connect(%s) < 0", lirc_device_name);
-    goto out;
-  }
-
   LOGMSG("lirc forwarding started");
+
+  nice(-1);
+  lircd_connect();
 
   while(lirc_device_name && fd_lirc >= 0) {
     fd_set set;
@@ -89,8 +108,10 @@ void *lirc_receiver_thread(void *fe)
 
     if(ready < 0) {
       LOGMSG("LIRC connection lost ?");
-      goto out;
-    } else if(ready) {
+      break;
+    }
+    
+    if(ready) {
 
       do { 
 	errno = 0;
@@ -98,26 +119,39 @@ void *lirc_receiver_thread(void *fe)
       } while(ret < 0 && errno == EINTR);
 
       if (ret <= 0 ) {
+	/* try reconnecting */
 	LOGERR("LIRC connection lost");
-	break;
+	lircd_connect();
+	while(lirc_device_name && fd_lirc < 0) {
+	  sleep(RECONNECTDELAY/1000);
+	  lircd_connect();
+	}
+	if(fd_lirc >= 0)
+	  LOGMSG("LIRC reconnected");
+	continue;
       }
 
       if (ret >= MIN_LIRCD_CMD_LEN) {
         unsigned int count;
 	char KeyName[LIRC_KEY_BUF];
 	LOGDBG("LIRC: %s", buf);
+
 	if (sscanf(buf, "%*x %x %29s", &count, KeyName) != 2) { 
 	  /* '29' in '%29s' is LIRC_KEY_BUF-1! */
 	  LOGMSG("unparseable lirc command: %s", buf);
 	  continue;
 	}
 
+	if(lirc_repeat_emu)
+          if (strcmp(KeyName, LastKeyName) == 0 && elapsed(LastTime) < REPEATDELAY)
+	    count = repeat + 1;
+
         if (count == 0) {
-	  if (strcmp(KeyName, LastKeyName) == 0 && elapsed(FirstTime) < KEYPRESSDELAY)
+          if (strcmp(KeyName, LastKeyName) == 0 && elapsed(FirstTime) < REPEATDELAY) 
 	    continue; /* skip keys coming in too fast */
 	  if (repeat)
 	    if(find_input((fe_t*)fe))
-	      process_xine_keypress(((fe_t*)fe)->input, "LIRC", KeyName, 0, 1);
+	      process_xine_keypress(((fe_t*)fe)->input, "LIRC", LastKeyName, 0, 1);
 	  /* Put(LastKeyName, false, true);  code, repeat, release */
 	  strcpy(LastKeyName, KeyName);
 	  repeat = 0;
@@ -125,8 +159,14 @@ void *lirc_receiver_thread(void *fe)
 	  timeout = -1;
 	}
 	else {
-	  if (elapsed(FirstTime) < REPEATDELAY)
+	  if (elapsed(LastTime) < REPEATFREQ)
 	    continue; /* repeat function kicks in after a short delay */
+
+	  if (elapsed(FirstTime) < REPEATDELAY) {
+	    if(lirc_repeat_emu)
+	      LastTime = time_ms();
+	    continue; /* skip keys coming in too fast */
+	  }
 	  repeat = 1;
 	  timeout = REPEATDELAY;
 	}
@@ -135,16 +175,16 @@ void *lirc_receiver_thread(void *fe)
 
 	if(find_input((fe_t*)fe))
 	  process_xine_keypress(((fe_t*)fe)->input, "LIRC", KeyName, repeat, 0);
-	
+
 	/*Put(KeyName, repeat);*/
 
 
       }
       else if (repeat) { /* the last one was a repeat, so let's generate a release */
-	if (elapsed(LastTime) >= REPEATDELAY) {
-	  /* Put(LastKeyName, false, true); */
+	if (elapsed(LastTime) >= REPEATTIMEOUT) {
 	  if(find_input((fe_t*)fe))
 	    process_xine_keypress(((fe_t*)fe)->input, "LIRC", LastKeyName, 0, 1);
+	  /* Put(LastKeyName, false, true); */
 	  repeat = 0;
 	  *LastKeyName = 0;
 	  timeout = -1;
@@ -155,7 +195,6 @@ void *lirc_receiver_thread(void *fe)
   }
 
 
- out:
   if(fd_lirc >= 0)
     close(fd_lirc);
   fd_lirc = -1;
