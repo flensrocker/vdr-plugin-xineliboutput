@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.63 2006-12-15 16:43:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.64 2006-12-19 16:57:21 phintuka Exp $
  *
  */
 
@@ -104,7 +104,7 @@
 # define x_syslog syslog_with_tid
 #endif
 
-int iSysLogLevel  = 1;
+int iSysLogLevel  = 1; /* 0:none, 1:errors, 2:info, 3:debug */
 int bLogToSysLog  = 0;
 int bSymbolsFound = 0;
 
@@ -115,7 +115,7 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
   if(!bLogToSysLog) {
-    printf("[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
+    fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
   } else {
     syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }
@@ -131,7 +131,7 @@ static void SetupLogLevel(void)
     int *pLogToSyslog = (int*)dlsym(lib, "LogToSysLog");
     int *pSysLogLevel = (int*)dlsym(lib, "SysLogLevel");
     bLogToSysLog = pLogToSyslog && *pLogToSyslog;
-    iSysLogLevel = pSysLogLevel ? (*pSysLogLevel) : 2;
+    iSysLogLevel = pSysLogLevel ? (*pSysLogLevel) : iSysLogLevel;
     LOGDBG("Symbol SysLogLevel %s : value %d", 
 	   pSysLogLevel ? "found" : "not found", iSysLogLevel);
     LOGDBG("Symbol LogToSysLog %s : value %s", 
@@ -1079,6 +1079,12 @@ static char *FindSubFile(const char *fname)
       if (stat(subfile, &st) == 0)
 	return subfile;
       strcpy(dot, ".txt");
+      if (stat(subfile, &st) == 0)
+	return subfile;
+      strcpy(dot, ".smi");
+      if (stat(subfile, &st) == 0)
+	return subfile;
+      strcpy(dot, ".ssa");
       if (stat(subfile, &st) == 0)
 	return subfile;
     /*  dot--; */
@@ -2177,7 +2183,8 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
 {
   if(!this->stream_start) {
     /* suspend demuxer */
-    pthread_mutex_unlock( &this->lock ); /* to let demuxer return from vdr_plugin_read_* */
+    if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
+      LOGERR("pthread_mutex_unlock failed !");
     suspend_demuxer(this);
     pthread_mutex_lock( &this->lock );
 
@@ -2349,6 +2356,28 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
   return 0;
 }
 
+static void send_meta_info(vdr_input_plugin_t *this)
+{
+  if(this->slave_stream) {
+
+    /* send stream meta info */
+    char *meta   = NULL;
+    char *title  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TITLE);
+    char *artist = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ARTIST);
+    char *album  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
+
+    asprintf(&meta, "INFO METAINFO title=\'%s\' artist=\'%s\' album=\'%s\'\r\n",
+	     title?:"", artist?:"", album?:"");
+
+    if(this->fd_control < 0)
+      this->funcs.xine_input_event(meta, NULL);
+    else
+      write_control(this, meta);
+
+    free(meta);
+  }
+}
+
 static void vdr_event_cb (void *user_data, const xine_event_t *event);
 
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
@@ -2452,6 +2481,8 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 						 METRONOM_PREBUFFER, 90000);
 #endif
+	send_meta_info(this);
+
 	if(this->funcs.fe_control) {
 	  char tmp[128];
 	  int has_video;
@@ -2519,8 +2550,9 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
 
       /* grab takes long time and we don't want to lose data connection 
 	 or interrupt video ... */
-      pthread_mutex_unlock(&this->vdr_entry_lock);
-      
+      if(pthread_mutex_unlock(&this->vdr_entry_lock))
+	LOGERR("pthread_mutex_unlock failed");
+
       if(this->funcs.fe_control)
 	data = (grab_data_t*)(this->funcs.fe_control(this->funcs.fe_handle, cmd));
       
@@ -3334,7 +3366,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   
   /* Audio tracks */
   
-  strcpy(tracks, "TRACKMAP AUDIO ");
+  strcpy(tracks, "INFO TRACKMAP AUDIO ");
   current = xine_get_param(this->slave_stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
   for(i=0; i<32; i++)
     if(xine_get_audio_lang(this->slave_stream, i, lang)) {
@@ -3358,7 +3390,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   
   /* DVD SPU tracks */
   
-  strcpy(tracks, "TRACKMAP SPU ");
+  strcpy(tracks, "INFO TRACKMAP SPU ");
   current = xine_get_param(this->slave_stream, XINE_PARAM_SPU_CHANNEL);
   for(i=0; i<32; i++)
     if(xine_get_spu_lang(this->slave_stream, i, lang)) {
@@ -4967,9 +4999,7 @@ static int connect_udp_data_stream(vdr_input_plugin_t *this)
   /* allocate UDP socket */
   if((fd = alloc_udp_data_socket(DEFAULT_VDR_PORT, 20, &port)) < 0)
     return -1;
-
-  LOGDBG("my UDP port is: %d", port);
-
+  /*LOGDBG("my UDP port is: %d", port);*/
 
 retry_request:
 
@@ -4991,7 +5021,7 @@ retry_select:
     LOGDBG("Requesting UDP transport: UDP poll timeout");
     if(++retries < 4)
       goto retry_request;
-    LOGERR("Data stream connection timed out (UDP)");
+    LOGMSG("Data stream connection timed out (UDP)");
     close(fd);
     return -1;
   }
@@ -5157,12 +5187,11 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     /* try UDP ? */
 
     if(this->fd_data < 0 && !this->tcp) {
-      /*LOGMSG("Trying UDP connection ...", host);*/
       LOGMSG("Connecting (data) to udp://%s ...", host);
       /* flush control buffer (if RTP was tried first) */
       while(0 < read(this->fd_control, tmpbuf, 255)) ;
       if((this->fd_data = connect_udp_data_stream(this)) < 0) {
-	LOGMSG("connect_udp_data_stream failed");
+	LOGMSG("Data stream connection failed (UDP)");
 	this->udp = 0;
       } else {
 	this->udp = 1;
@@ -5224,7 +5253,6 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
   this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
 
   this->threads_initialized = 1;
-
   return 1;
 }
 
@@ -5351,7 +5379,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->udp_data = NULL;
 
   LOGDBG("vdr_class_get_instance done.");
-
   return &this->input_plugin;
 }
 
@@ -5372,7 +5399,6 @@ static const char *vdr_class_get_identifier (input_class_t *this_gen)
 static char **vdr_plugin_get_autplay_list(input_class_t *this_gen, int *num_files) 
 {
   vdr_input_class_t *this = (vdr_input_class_t *)this_gen;
-
   *num_files = 1;
 
   return this->mrls;
@@ -5395,12 +5421,23 @@ static void *init_class (xine_t *xine, void *data)
   vdr_input_class_t  *this;
   config_values_t     *config = xine->config;
 
+  SetupLogLevel();
+
+  if(!bSymbolsFound) {
+    if(xine->verbosity > 0) {
+      iSysLogLevel = xine->verbosity + 1;
+      LOGMSG("detected verbose logging xine->verbosity=%d, setting log level to %d:%s",
+	     xine->verbosity, iSysLogLevel, 
+	     iSysLogLevel==2?"INFO":"DEBUG");
+    }
+  }
+
   this = (vdr_input_class_t *) xine_xmalloc (sizeof (vdr_input_class_t));
 
   this->xine   = xine;
   
-  this->mrls[ 0 ] = config->register_string(config,
-                                            "media.xvdr.default_mrl",
+  this->mrls[ 0 ] = config->register_string(config,                 
+					    "media.xvdr.default_mrl",
                                             "xvdr://127.0.0.1#nocache;demux:mpeg_block",
                                             _("default VDR host"),
                                             _("The default VDR host"),
@@ -5426,8 +5463,6 @@ static void *init_class (xine_t *xine, void *data)
   this->input_class.get_autoplay_list  = vdr_plugin_get_autplay_list;
   this->input_class.dispose            = vdr_class_dispose;
   this->input_class.eject_media        = NULL;
-
-  SetupLogLevel();
 
   LOGDBG("init class succeeded");
 
