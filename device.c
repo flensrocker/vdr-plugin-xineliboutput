@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.28 2006-12-17 22:10:51 phintuka Exp $
+ * $Id: device.c,v 1.29 2006-12-19 17:47:15 phintuka Exp $
  *
  */
 
@@ -643,7 +643,11 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
     ForEach(m_clients, &cXinelibThread::BlankDisplay);
     ForEach(m_clients, &cXinelibThread::SetNoVideo, true);
   } else {
-    ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream && (!m_liveMode || m_AudioCount<1));
+    if(m_liveMode)
+      ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+    else
+      ForEach(m_clients, &cXinelibThread::SetNoVideo, 
+	      m_RadioStream && (m_AudioCount<1));
     ForEach(m_clients, &cXinelibThread::Clear);
   }
   
@@ -869,6 +873,7 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
 int cXinelibDevice::PlayVideo(const uchar *buf, int length) 
 {
   TRACEF("cXinelibDevice::PlayVideo");
+  TRACK_TIME(100);
 
   if(m_PlayMode == pmAudioOnlyBlack)
     return length;
@@ -962,6 +967,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id) 
 {
   TRACEF("cXinelibDevice::PlayAudio");
+  TRACK_TIME(100);
 
 #ifdef SKIP_AC3_AUDIO
     // skip AC3 audio
@@ -978,8 +984,10 @@ int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id)
   if(m_RadioStream) {
     if(m_AudioCount) {
       m_AudioCount--;
-      if(!m_AudioCount) 
+      if(!m_AudioCount) {
+	LOGDBG("PlayAudio detected radio stream");
 	ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+      }
     }
   }
 
@@ -1066,9 +1074,20 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
   TRACEF("cXinelibDevice::SetAudioChannelDevice");
 
   if(m_AudioChannel != AudioChannel) {
-
     m_AudioChannel = AudioChannel;
-
+    /*LOGDBG("cXinelibDevice::SetAudioChannelDevice --> %d", AudioChannel);*/
+#if 0
+    switch(AudioChannel) {
+      default:
+    //case 0: ConfigurePostprocessing("upmix_mono", false, NULL);
+      case 0: ConfigurePostprocessing("upmix_mono", true, "channel=-1");
+              break;
+      case 1: ConfigurePostprocessing("upmix_mono", true, "channel=0");
+	      break;
+      case 2: ConfigurePostprocessing("upmix_mono", true, "channel=1");
+	      break;
+    }
+#else
     switch(AudioChannel) {
       default:
       case 0: ConfigurePostprocessing("audiochannel", false, NULL); 
@@ -1078,6 +1097,7 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
       case 2: ConfigurePostprocessing("audiochannel", true, "channel=1");
 	      break;
     }
+#endif
   }
 }
 
