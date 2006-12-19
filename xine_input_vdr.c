@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.64 2006-12-19 16:57:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.65 2006-12-19 17:09:26 phintuka Exp $
  *
  */
 
@@ -661,7 +661,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
                  this->block_buffer->size(this->block_buffer);
   int num_free = this->buffer_pool->num_free(this->buffer_pool);
   int scr_tunning = this->scr_tunning;
-  int num_vbufs = 0;
+  /*int num_vbufs = 0;*/
 
   if(this->hd_stream && this->hd_buffer) {
     num_free += this->hd_buffer->num_free(this->hd_buffer);
@@ -706,17 +706,20 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    (if clock is not paused we will got a lot of discarded frames 
    as those are decoded too late according to running SCR)
 */
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+#if 0
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
     num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
 						      VO_PROP_BUFS_IN_FIFO);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
-
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
     if(num_vbufs < 3) {
       LOGSCR("SCR paused by adjust_speed (vbufs=%d)", num_vbufs);
+#endif
       scr_tunning_set_paused(this);
+#if 0
     } else {
-      LOGSCR("adjust_speed: no pause, enough vbufs queued");
+      LOGSCR("adjust_speed: no pause, enough vbufs queued (%d)", num_vbufs);
     }
+#endif
 
   /* If currently paused, revert to normal if buffer > 50% */
   } else if( scr_tunning == SCR_TUNNING_PAUSED) {
@@ -728,10 +731,12 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    - First I-frame can be delivered as soon as it is decoded 
    -> illusion of faster channel switches
 */
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+#if 0
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
     num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
 						      VO_PROP_BUFS_IN_FIFO);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+#endif
     this->paused_frames++;
 
     if( num_used/2 > num_free 
@@ -739,13 +744,13 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	|| this->paused_frames > 200
         || (this->paused_frames > 100 
 	    && this->pause_start + 400 < monotonic_time_ms())
-	|| num_vbufs > 5
+	/*|| num_vbufs > 5*/
 	|| this->still_mode
 	) {
 
       LOGSCR("SCR tunning resetted by adjust_speed, "
 	     "vbufs=%d (SCR was paused for %d bufs/%d ms)",
-	     num_vbufs, this->paused_frames, 
+	     /*num_vbufs*/0, this->paused_frames, 
 	     monotonic_time_ms() - this->pause_start);
 
       this->paused_frames = 0; 
@@ -959,25 +964,31 @@ static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
   va_end(argp);
 }
 
-static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
+static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen,
+			    int timeout)
 {
   int num_bytes = 0, total_bytes = 0, err;
 
   *buf = 0;
   while(total_bytes < maxlen-1 ) {
 
-    if(!this->control_running)
+    if(!this->control_running && timeout<0)
       return -1;
 
     pthread_testcancel();
     err = io_select_rd(this->fd_control);
     pthread_testcancel();
 
-    if(!this->control_running)
+    if(!this->control_running && timeout<0)
       return -1;
 
-    if(err == XIO_TIMEOUT) 
-      continue;   
+    if(err == XIO_TIMEOUT) {
+      if(timeout==0)
+	return 0;
+      if(timeout>0)
+	timeout--;
+      continue;
+    }
     if(err == XIO_ABORTED) {
       LOGERR("readline_control: XIO_ABORTED at [%d]", num_bytes);
       continue;
@@ -991,7 +1002,7 @@ static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen)
     num_bytes = read (this->fd_control, buf + total_bytes, 1);
     pthread_testcancel();
 
-    if(!this->control_running)
+    if(!this->control_running && timeout<0)
       return -1;
 
     if (num_bytes <= 0) {
@@ -2415,9 +2426,35 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       handle_control_playfile(this, "PLAYFILE 0");
 
     LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s %s)",
-	   loop, pos, *filename ? av:"", *filename ? filename : "<STOP>");
-      
-    subs = FindSubFile(filename);
+	   loop, pos, av, filename);
+    
+    /* check if it is really a file (not mrl) and try to access it */
+    if(filename[0] == '/') {
+      struct stat st;
+      errno = 0;
+      if(stat(filename, &st)) {
+	if(errno == EACCES || errno == ELOOP)
+	  LOGERR("Can't access file !");
+	if(errno == ENOENT || errno == ENOTDIR) 
+	  LOGERR("File not found !");
+	if(this->fd_control > 0) {
+	  char mrl[512];
+	  char *phost = strdup(strstr(this->mrl, "//") + 2);
+	  char *port = strchr(phost, ':');
+	  int iport;
+	  if(port) *port++ = 0;
+	  iport = port ? atoi(port) : DEFAULT_VDR_PORT;
+	  sprintf(mrl, "http://%s:%d/PLAYFILE", 
+		  phost, iport);
+	  free(phost);
+	  LOGMSG("  -> trying to stream from server (%s) ...", mrl);
+	  strcpy(filename, mrl);
+	}
+      } else {
+	subs = FindSubFile(filename);
+      }
+    }
+  
     if(subs) {
       LOGMSG("Found subtitles: %s", subs);
       strcat(filename, "#subtitle:");
@@ -3217,10 +3254,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     err = handle_control_substream(this, cmd);
 
   } else if(!strncasecmp(cmd, "POST ", 5)) {
+    /* lock demuxer thread out of adjust_realtime_speed */
+    pthread_mutex_lock(&this->lock);
     if(!this->funcs.fe_control)
       LOGMSG("No fe_control function! %s failed.", cmd);
     else
       this->funcs.fe_control(this->funcs.fe_handle, cmd);
+    pthread_mutex_unlock(&this->lock);
 
   } else if(!strncasecmp(cmd, "PLAYFILE ", 9)) {
     err = handle_control_playfile(this, cmd);
@@ -3319,7 +3359,7 @@ static void *vdr_control_thread(void *this_gen)
     /* read next command */
     line[0] = 0;
     pthread_testcancel();
-    if((err=readline_control(this, line, sizeof(line)-1)) <= 0) {
+    if((err=readline_control(this, line, sizeof(line)-1, -1)) <= 0) {
       if(err < 0)
 	break;
       continue;
@@ -4784,7 +4824,6 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
     this->fd_control = saved_fd;
     return -1;
   }
-  this->control_running = 1;
 
   /* request control connection */
   if(_x_io_tcp_write(this->stream, fd_control, "CONTROL\r\n", 9) < 0) {
@@ -4793,7 +4832,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
   }
 
   /* Check server greeting */
-  if(readline_control(this, tmpbuf, 256) <= 0) {
+  if(readline_control(this, tmpbuf, sizeof(tmpbuf)-1, 4) <= 0) {
     LOGMSG("Server not replying");
     close(fd_control);
     this->fd_control = saved_fd;
@@ -4821,9 +4860,9 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
   }
 
   /* Store our client-id */
-  if(readline_control(this, tmpbuf, 256) > 0 &&
+  if(readline_control(this, tmpbuf, sizeof(tmpbuf)-1, 4) > 0 &&
      !strncmp(tmpbuf, "CLIENT-ID ", 10)) {
-    LOGMSG("Got Client-ID: %s", tmpbuf+10);
+    LOGDBG("Got Client-ID: %s", tmpbuf+10);
     if(client_id)
       if(1 != sscanf(tmpbuf+10, "%d", client_id))
 	*client_id = -1;
@@ -4843,7 +4882,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
 
 static int connect_rtp_data_stream(vdr_input_plugin_t *this)
 {
-  char cmd[64];
+  char cmd[256];
   unsigned int ip0, ip1, ip2, ip3, port;
   int fd=-1, one = 1, retries = 0, n;
   struct sockaddr_in multicastAddress;
@@ -4868,7 +4907,7 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
   }
 
   cmd[0] = 0;
-  if(readline_control(this, cmd, 256) < 8 ||
+  if(readline_control(this, cmd, sizeof(cmd)-1, 4) < 8 ||
      strncmp(cmd, "RTP ", 4)) {
     LOGMSG("Server does not support RTP ? (%s)", cmd);
     return -1;
@@ -4977,7 +5016,7 @@ retry_recvfrom:
 
 static int connect_udp_data_stream(vdr_input_plugin_t *this)
 {
-  char cmd[64];
+  char cmd[256];
   struct sockaddr_in server_address, sin;
   socklen_t len = sizeof(sin);
   uint32_t  tmp_ip;
@@ -5010,6 +5049,13 @@ retry_request:
   if(_x_io_tcp_write(this->stream, this->fd_control, cmd, strlen(cmd)) < 0) {
     LOGERR("Control stream write error");
     close(fd);
+    return -1;
+  }
+
+  cmd[0] = 0;
+  if(readline_control(this, cmd, sizeof(cmd)-1, 4) < 6 ||
+     strncmp(cmd, "UDP OK", 6)) {
+    LOGMSG("Server does not support UDP ? (%s)", cmd);
     return -1;
   }
 
@@ -5059,8 +5105,11 @@ retry_recvfrom:
 static int connect_tcp_data_stream(vdr_input_plugin_t *this, const char *host, 
 				   int port)
 {
+  struct sockaddr_in sinc;
+  socklen_t len = sizeof(sinc);
+  uint32_t ipc;
   char tmpbuf[256];
-  int fd_data;
+  int fd_data, n;
 
   /* Connect to server */
   fd_data = _x_io_tcp_connect(this->stream, host, port);
@@ -5072,18 +5121,28 @@ static int connect_tcp_data_stream(vdr_input_plugin_t *this, const char *host,
     return -1;
   }
 
-  set_recv_buffer_size(fd_data, KILOBYTE(64));
+  set_recv_buffer_size(fd_data, KILOBYTE(128));
 
   /* request data connection */
-  sprintf(tmpbuf, "DATA %d\r\n", this->client_id);
+
+  getsockname(this->fd_control, (struct sockaddr *)&sinc, &len);
+  ipc = ntohl(sinc.sin_addr.s_addr);
+  sprintf(tmpbuf, 
+	  "DATA %d 0x%x:%u %d.%d.%d.%d\r\n", 
+	  this->client_id, 
+	  (unsigned int)ipc,
+	  (unsigned int)ntohs(sinc.sin_port),
+	  ((ipc>>24)&0xff), ((ipc>>16)&0xff), ((ipc>>8)&0xff), ((ipc)&0xff)
+	  );
   if(_x_io_tcp_write(this->stream, fd_data, tmpbuf, strlen(tmpbuf)) < 0) {
-    LOGERR("Data stream write error");
+    LOGERR("Data stream write error (TCP)");
   } else if( XIO_READY != io_select_rd(fd_data)) {
-    LOGERR("Data stream connection failed (TCP, select)");
-  } else if(read(fd_data, tmpbuf, 6) != 6) {
-    LOGERR("Data stream connection failed (TCP, read)");
-  } else if(strncmp(tmpbuf, "DATA\r\n", 6)) {
-    LOGMSG("Data stream connection failed (TCP, token). Got: %6s", tmpbuf);
+    LOGERR("Data stream poll failed (TCP)");
+  } else if((n=read(fd_data, tmpbuf, sizeof(tmpbuf))) <= 0) {
+    LOGERR("Data stream read failed (TCP)");
+  } else if(n<6 || strncmp(tmpbuf, "DATA\r\n", 6)) {
+    tmpbuf[n] = 0;
+    LOGMSG("Server does not support TCP ? (%s)", tmpbuf);
   } else {
     /* succeed */
     /* set socket to non-blocking mode */
@@ -5095,11 +5154,62 @@ static int connect_tcp_data_stream(vdr_input_plugin_t *this, const char *host,
   return -1;
 }
 
+static int connect_pipe_data_stream(vdr_input_plugin_t *this)
+{
+  char tmpbuf[256];
+  int fd_data = -1;
+
+  /* check if IP address matches */
+  if(!strstr(this->mrl, "127.0.0.1")) {
+    struct sockaddr_in sinc;
+    struct sockaddr_in sins;
+    socklen_t len = sizeof(sinc);
+    getsockname(this->fd_control, &sinc, &len);
+    getpeername(this->fd_control, &sins, &len);
+    if(sinc.sin_addr.s_addr != sins.sin_addr.s_addr) {
+      LOGMSG("connect_pipe_data_stream: client ip=0x%x != server ip=0x%x !",
+	     (unsigned int)sinc.sin_addr.s_addr, (unsigned int)sins.sin_addr.s_addr);
+#if 0
+      LOGMSG(" different host, pipe won't work");      
+      return -1;
+#endif
+    }
+  }
+
+  _x_io_tcp_write(this->stream, this->fd_control, "PIPE\r\n", 6);
+
+  if(readline_control(this, tmpbuf, sizeof(tmpbuf), 4) <= 0) {
+    LOGMSG("Pipe request failed");
+  } else if(strncmp(tmpbuf, "PIPE /", 6)) {
+    LOGMSG("Server does not support pipes ? (%s)", tmpbuf);
+  } else {
+
+    LOGMSG("Connecting (data) to pipe://%s", tmpbuf+5);
+    if((fd_data = open(tmpbuf+5, O_RDONLY|O_NONBLOCK)) < 0) {
+      if(errno == ENOENT)
+	LOGMSG("Pipe not found");
+      else
+	LOGERR("Pipe opening failed");
+    } else {
+      _x_io_tcp_write(this->stream, this->fd_control, "PIPE OPEN\r\n", 11);
+      if(readline_control(this, tmpbuf, sizeof(tmpbuf)-1, 4) >6 &&
+	 !strncmp(tmpbuf, "PIPE OK", 7)) {
+	fcntl (fd_data, F_SETFL, fcntl (fd_data, F_GETFL) | O_NONBLOCK);
+	return fd_data;
+      }
+      LOGMSG("Data stream connection failed (PIPE)");
+    } 
+  }
+
+  close(fd_data);
+  return -1;
+}
+
 static int vdr_plugin_open_net (input_plugin_t *this_gen) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int err;
   char tmpbuf[256];
+  int err;
 
   LOGDBG("vdr_plugin_open_net %s", this->mrl);
 
@@ -5140,42 +5250,21 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     /* try pipe ? */
 
     if(!this->tcp && !this->udp && !this->rtp) {
-      LOGMSG("Trying pipe (data) ...");
-      _x_io_tcp_write(this->stream, this->fd_control, "PIPE\r\n", 6);
-      *tmpbuf=0;
-      if(readline_control(this, tmpbuf, 256) >5 &&
-	 !strncmp(tmpbuf, "PIPE ", 5) &&
-	 strncmp(tmpbuf, "PIPE NONE", 9)) {
-	LOGMSG("Connecting (data) to pipe://%s", tmpbuf+5);
-	if((this->fd_data = open(tmpbuf+5, O_RDONLY|O_NONBLOCK)) >= 0) {
-	  _x_io_tcp_write(this->stream, this->fd_control, "PIPE OPEN\r\n", 11);
-	  if(readline_control(this, tmpbuf, 256) >6 &&
-	     !strncmp(tmpbuf, "PIPE OK", 7)) {
-	    fcntl (this->fd_data, F_SETFL, 
-		   fcntl (this->fd_data, F_GETFL) | O_NONBLOCK);
-	    this->tcp = this->udp = this->tcp = 0;
-	    LOGMSG("Pipe connected (data)");
-	  } else {
-	    close(this->fd_data);
-	    this->fd_data = -1;
-	    LOGMSG("Pipe connection failed.");
-	  }
-	} else {
-	  LOGERR("Pipe opening failed");
-	}
+      if((this->fd_data = connect_pipe_data_stream(this)) < 0) {
+	LOGMSG("Data stream connection failed (PIPE)");
       } else {
-	LOGMSG("Server does not support pipes.");
+	this->tcp = this->udp = this->tcp = 0;
+	LOGMSG("Data stream connected (PIPE)");
       }
     }
 
     /* try RTP ? */
 
     if(this->fd_data < 0 && !this->udp && !this->tcp) {
-      /*LOGMSG("Trying RTP connection ...");*/
       /* flush control buffer (if PIPE was tried first) */
       while(0 < read(this->fd_control, tmpbuf, 255)) ;
       if((this->fd_data = connect_rtp_data_stream(this)) < 0) {
-	LOGMSG("connect_rtp_data_stream failed");
+	LOGMSG("Data stream connection failed (RTP)");
 	this->rtp = 0;
       } else {
 	this->rtp = 1;
