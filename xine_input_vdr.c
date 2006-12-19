@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.65 2006-12-19 17:09:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.66 2006-12-19 17:18:24 phintuka Exp $
  *
  */
 
@@ -4279,12 +4279,14 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
 {
   /* from xine_input_dvd.c: */
   /* FIXME: Tricking the demux_mpeg_block plugin */
-  LOGMSG("vdr_plugin_read()");
-  buf[0] = 0;
-  buf[1] = 0;
-  buf[2] = 0x01;
-  buf[3] = 0xba;
-  return 1;
+  if(len > 3) {
+    buf[0] = 0;
+    buf[1] = 0;
+    buf[2] = 0x01;
+    buf[3] = 0xba;
+    return 4;
+  }
+  return 0;
 }
 
 //#define CACHE_FIRST_IFRAME
@@ -4487,7 +4489,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 static off_t vdr_plugin_seek (input_plugin_t *this_gen, off_t offset,
 			      int origin) 
 {
-  return -1; /*this->curpos;*/
+  return -1;
 }
 
 static off_t vdr_plugin_get_length (input_plugin_t *this_gen) 
@@ -4497,7 +4499,25 @@ static off_t vdr_plugin_get_length (input_plugin_t *this_gen)
 
 static uint32_t vdr_plugin_get_capabilities (input_plugin_t *this_gen) 
 {
-  return /*INPUT_CAP_PREVIEW |*/ INPUT_CAP_BLOCK;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+
+  if(!this->stream->demux_plugin) {
+
+    return
+      INPUT_CAP_PREVIEW |
+#ifdef INPUT_CAP_NOCACHE
+      INPUT_CAP_NOCACHE |
+#endif
+      INPUT_CAP_SEEKABLE | /* help demux detection */
+      INPUT_CAP_BLOCK;
+  }
+
+  return
+    INPUT_CAP_PREVIEW |
+#ifdef INPUT_CAP_NOCACHE
+    INPUT_CAP_NOCACHE |
+#endif
+    INPUT_CAP_BLOCK;
 }
 
 static uint32_t vdr_plugin_get_blocksize (input_plugin_t *this_gen) 
@@ -4706,12 +4726,35 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 static char* vdr_plugin_get_mrl (input_plugin_t *this_gen) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+
+  if(!this->stream->demux_plugin) {
+    /* help in demuxer selection */
+    static char fake[128] = "";
+    sprintf(fake, "%s/.vob", this->mrl);
+    return fake;
+  }
+
   return this->mrl;
 }
 
 static int vdr_plugin_get_optional_data (input_plugin_t *this_gen,
 					 void *data, int data_type) 
 {
+  if(data_type == INPUT_OPTIONAL_DATA_PREVIEW) {
+
+    static const uint8_t preview_data[] = {0x00,0x00,0x01,0xBA, /* sequence start */
+					   0x00,0x00,0x01,0xBE, /* padding */
+					   0x00,0x02,0xff,0xff};
+    if(MAX_PREVIEW_SIZE < sizeof(preview_data)) {
+      LOGMSG("MAX_PREVIEW_SIZE < 12 ?!?!?!?!");
+      memcpy(data, preview_data, MAX_PREVIEW_SIZE);
+      return MAX_PREVIEW_SIZE;
+    }
+
+    memcpy(data, preview_data, sizeof(preview_data));
+    return sizeof(preview_data);
+  }
+
   return INPUT_OPTIONAL_UNSUPPORTED;
 }
 
@@ -5428,6 +5471,24 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 			    (strlen(mrl)==7))
                           || (!strncasecmp(mrl, "xvdr:///", 8));
 
+  this->mrl          = strdup(mrl); 
+  if(!bSymbolsFound) {
+    /* not running under VDR or vdr-sxfe/vdr-fbfe */
+    if(local_mode) {
+      LOGDBG("vdr or vdr-??fe not detected, forcing remote mode");
+      local_mode = 0;
+    }
+    if(!strcasecmp(mrl, "xvdr:") ||
+       !strcasecmp(mrl, "xvdr:/") ||
+       !strcasecmp(mrl, "xvdr://") ||
+       !strcasecmp(mrl, "xvdr:///")) {
+      /* default to local host */
+      free(this->mrl);
+      asprintf(&this->mrl, "xvdr://127.0.0.1");
+      LOGMSG("Changed mrl from %s to %s", mrl, this->mrl);
+    }
+  }
+
   this->input_plugin.open = local_mode ? vdr_plugin_open_local 
                                        : vdr_plugin_open_net;
   this->input_plugin.get_mrl           = vdr_plugin_get_mrl;
@@ -5451,8 +5512,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   } else {
     this->funcs.input_control     = vdr_plugin_keypress;
   }
-  
-  this->mrl          = strdup(mrl);
   
   /* buffer */
   this->block_buffer = _x_fifo_buffer_new(4,0x10000+64); /* dummy buf to be used before first read and for big PES frames */
