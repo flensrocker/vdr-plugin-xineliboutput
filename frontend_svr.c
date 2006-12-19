@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.30 2006-12-15 16:58:05 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.31 2006-12-19 18:17:33 phintuka Exp $
  *
  */
 
@@ -62,8 +62,26 @@ enum {
   ctDetecting = 0,
   ctControl,
   ctHttp,
-  ctRtsp
+  ctHttpPlay,  // client can't access file that is just played -> stream over http 
+  ctRtsp,
+  ctRtspMux  // multiplexed RTSP control + RTP/RTCP data/control
 };
+
+// (data) connection types
+enum {
+  dtPipe    = 0x01,
+  dtTcp     = 0x02,
+  dtUdp     = 0x04,
+  dtRtp     = 0x08,
+  dtHttp    = 0x10,
+  dtRtspMux = 0x20,
+};
+
+// (data) connection properties
+#define DATA_STREAM(dt)    ((dt) & (dtPipe | dtTcp | dtHttp | dtRtspMux))
+#define DATA_DATAGRAM(dt)  ((dt) & (dtUdp | dtRtp))
+#define DATA_NOPOLL(dt)    ((dt) & (dtHttp | dtRtspMux))
+#define DATA_NOCONTROL(dt) ((dt) & (dtHttp | dtRtspMux))
 
 cXinelibServer::cXinelibServer(int listen_port) :
   cXinelibThread("Remote decoder/display server (cXinelibServer)") 
@@ -80,6 +98,7 @@ cXinelibServer::cXinelibServer(int listen_port) :
   }
 
   m_Port = listen_port;
+  m_ServerId = time(NULL) ^ getpid();
 
   fd_listen    = -1;
   fd_discovery = -1;
@@ -95,9 +114,9 @@ cXinelibServer::cXinelibServer(int listen_port) :
 
   cString Base(cPlugin::ConfigDirectory());
   if(*Base)
-    m_PipesDir = cString::sprintf("%s/xineliboutput/pipes", *Base);
+    m_PipesDir = cString::sprintf("%s/xineliboutput/pipes.%d", *Base, getpid());
   else
-    m_PipesDir = cString("/tmp/xineliboutput/pipes");
+    m_PipesDir = cString::sprintf("/tmp/xineliboutput/pipes.%d", getpid());
 
   m_Token = 1;
 }
@@ -740,8 +759,10 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
   Lock();
 
   /* Check if there are any clients */
-  if(!HasClients())
+  if(!HasClients()) {
+    Unlock();
     return NULL;
+  }
 
   sprintf(cmd, "GRAB %s %d %d %d\r\n", 
 	  Jpeg ? "JPEG" : "PNM", Quality, SizeX, SizeY);
@@ -794,7 +815,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 
   if(!xc.remote_usepipe) {
     LOGMSG("PIPE transport disabled in configuration");
-    write_cmd(fd_control[cli], "PIPE NONE\r\n");
+    write_cmd(fd_control[cli], "PIPE: Pipe transport disabled in config.\r\n");
     return;
   }
 
@@ -814,7 +835,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   if(i>=10) {
     LOGERR("Pipe creation failed (%s)", pipeName);
     RemoveFileOrDir(*m_PipesDir, false);
-    write_cmd(fd_control[cli], "PIPE NONE\r\n");
+    write_cmd(fd_control[cli], "PIPE: Pipe creation failed.\r\n");
     return;
   }
 
@@ -836,7 +857,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL)|O_NONBLOCK);
 
-  LOGDBG("cXinelibServer::Handle_Control: pipe %s open", pipeName);
+  //LOGDBG("cXinelibServer::Handle_Control: pipe %s open", pipeName);
 
   unlink(pipeName); /* safe to remove now, both ends are open or closed. */
   RemoveFileOrDir(*m_PipesDir, false);
@@ -850,63 +871,92 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 {
+  int clientId = -1, oldId = cli, fd = fd_control[cli];
+  unsigned int ipc, portc;
+
   LOGDBG("Data connection (TCP) requested");
 
   CloseDataConnection(cli);
 
   if(!xc.remote_usetcp) {
     LOGMSG("TCP transports disabled in configuration");
+    write_cmd(fd, "TCP: TCP transport disabled in config.\r\n");
     CloseConnection(cli); /* actually closes the new data connection */
     return;
   }
   
-  int clientId = -1, oldId = cli, fd = fd_control[cli];
-  if(1 == sscanf(arg, "%d", &clientId) &&
-     clientId >= 0 && clientId < MAXCLIENTS &&
-     fd_control[clientId] >= 0) {
-
-    CloseDataConnection(clientId);
-
-    fd_control[oldId] = -1;
-    cli = clientId;
-       
-    write_cmd(fd, "DATA\r\n");
-    
-    CREATE_NEW_WRITER;   
-
-    fd_data[cli] = fd;
-    
-    /* not anymore control connection, so dec primary device reference counter */
-    cXinelibDevice::Instance().ForcePrimaryDevice(false); 
-
+  /* validate client ID */
+  if(3 != sscanf(arg, "%d 0x%x:%d", &clientId, &ipc, &portc) ||
+     clientId < 0 || 
+     clientId >= MAXCLIENTS ||
+     fd_control[clientId] < 0) {
+    write_cmd(fd, "TCP: Error in request (ClientId).\r\n");
+    LOGDBG("Invalid data connection (TCP) request");
+    /* close only new data connection, no control connection */
+    CloseConnection(cli);
     return;
   }
 
-  LOGDBG("Invalid data connection (TCP) request"); /* closes new data conn., no ctrl conn. */
-  CloseConnection(cli);
+  /* check client IP's */
+  struct sockaddr_in sinc, sind;
+  socklen_t len = sizeof(sinc);
+  sinc.sin_addr.s_addr = 0;
+  sind.sin_addr.s_addr = ~0;
+  getpeername(fd_control[cli], (struct sockaddr *)&sind, &len);
+  getpeername(fd_control[clientId], (struct sockaddr *)&sinc, &len);
+  if(sinc.sin_addr.s_addr != sind.sin_addr.s_addr) {
+    write_cmd(fd, "TCP: Error in request (IP does not match).\r\n");
+    LOGMSG("Invalid data connection (TCP) request: IP does not match");
+    CloseConnection(cli);
+    return;
+  }
+  if(htonl(ipc) != sinc.sin_addr.s_addr || htons(portc) != sinc.sin_port) {
+    write_cmd(fd, "TCP: Error in request (invalid IP:port).\r\n");
+    LOGMSG("Invalid data connection (TCP) request: control IP:port does not match");
+    CloseConnection(cli);
+    return;
+  }
+
+  /* close old data connection */
+  CloseDataConnection(clientId);
+
+  /* change connection type */
+
+  fd_control[oldId] = -1;
+  cli = clientId;
+       
+  write_cmd(fd, "DATA\r\n");
+
+  CREATE_NEW_WRITER;   
+
+  fd_data[cli] = fd;
+    
+  /* not anymore control connection, so dec primary device reference counter */
+  cXinelibDevice::Instance().ForcePrimaryDevice(false); 
 }
 
 void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 {
-  if(xc.remote_usertp) {
-    char buf[256];
-    LOGDBG("Trying RTP connection ...");
+  char buf[256];
 
-    CloseDataConnection(cli);
+  LOGDBG("Trying RTP connection ...");
 
-    sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
-    write_cmd(fd_control[cli], buf);
+  CloseDataConnection(cli);
 
-    if(!m_iMulticastMask && !xc.remote_rtp_always_on)
-      m_Scheduler->AddRtp();
-
-    m_bMulticast[cli] = true;
-    m_iMulticastMask |= (1<<cli);
-    
-  } else {
+  if(!xc.remote_usertp) {
+    write_cmd(fd_control[cli], "RTP: RTP transport disabled in configuration.\r\n");
     LOGMSG("RTP transports disabled");
-    write_cmd(fd_control[cli], "RTP NONE\r\n");
+    return;
   }
+
+  sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
+  write_cmd(fd_control[cli], buf);
+
+  if(!m_iMulticastMask && !xc.remote_rtp_always_on)
+    m_Scheduler->AddRtp();
+
+  m_bMulticast[cli] = true;
+  m_iMulticastMask |= (1<<cli);
 }
 
 void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
@@ -916,18 +966,19 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   CloseDataConnection(cli);
 
   if(!xc.remote_useudp) {
-    LOGMSG("UDP transports disabled in configuration");
-    //CloseConnection(cli);
+    write_cmd(fd_control[cli], "UDP: UDP transport disabled in configuration.\r\n");
+    LOGMSG("UDP transport disabled in configuration");
     return;
   }
 
   int fd = sock_connect(fd_control[cli], atoi(arg), SOCK_DGRAM);
   if(fd < 0) {
     LOGERR("socket() for UDP failed");
-    //CloseConnection(cli);
+    write_cmd(fd_control[cli], "UDP: Socked failed.\r\n");
     return;
   }
 
+  write_cmd(fd_control[cli], "UDP OK\r\n");
   m_bUdp[cli] = true;
   fd_data[cli] = fd;
   m_Scheduler->AddHandle(fd);
@@ -935,34 +986,30 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
 {
-  char buf[256], buf2[256];
-  bool repeat=false, release=false;
+  TRACE("cXinelibServer received KEY " << buf);
 
   if(!xc.use_remote_keyboard) {
     LOGMSG("Handle_Control_KEY(%s): Remote keyboard disabled in config", arg);
     return;
   }
 
+  char buf[256], *pt, *key;
+  bool repeat = false, release = false;
   strcpy(buf, arg);
-  //*strstr(buf, "\r\n") = 0;
-  TRACE("cXinelibServer received KEY " << buf);
 
   int n = strlen(buf)-1;
-  while(buf[n]==' ') buf[n--]=0;
-
-  if(strchr(buf, ' ')) {
-    strcpy(buf2,strchr(buf, ' ')+1);
-    *strchr(buf, ' ') = 0;
-    
-    char *pt = strchr(buf, ' ');
-    if(pt) {
+  while(n && buf[n]==' ') buf[n--]=0; /* trailing spaces */
+  if(NULL != (key=strchr(buf, ' '))) {
+    while(*key == ' ')
+      *(key++) = 0;
+    if(NULL != (pt = strchr(key, ' '))) {
       *(pt++) = 0;
       if(strstr(pt, "Repeat"))
 	repeat = true;
       if(strstr(pt, "Release"))
 	release = true;
     }
-    cXinelibThread::KeypressHandler(buf, buf2, repeat, release);
+    cXinelibThread::KeypressHandler(buf, key, repeat, release);
   } else {
     cXinelibThread::KeypressHandler(NULL, buf, repeat, release);
   }
@@ -1186,9 +1233,9 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
       }
     }
 
-  } else if(!strncmp(cmd, "TRACKMAP ", 9)) {
+  } else if(!strncmp(cmd, "INFO ", 5)) {
     if(!*xc.local_frontend || strncmp(xc.local_frontend, "none", 4))
-      cXinelibThread::InfoHandler(cmd);
+      cXinelibThread::InfoHandler(cmd+5);
 
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     Handle_Control_GRAB(cli, cmd+5);
@@ -1217,7 +1264,7 @@ void cXinelibServer::Read_Control(int cli)
       return;
     }
 
-    if( m_CtrlBufPos[cli] > 2 &&
+    if( m_CtrlBufPos[cli] > 1 &&
 	m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] - 2 ] == '\r' &&
 	m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] - 1 ] == '\n') {
 
@@ -1237,6 +1284,7 @@ void cXinelibServer::Read_Control(int cli)
 
 void cXinelibServer::Handle_ClientConnected(int fd)
 {
+  char buf[64];
   struct sockaddr_in sin;
   socklen_t len = sizeof(sin);
   int cli;
@@ -1251,11 +1299,8 @@ void cXinelibServer::Handle_ClientConnected(int fd)
     return;
   }
 
-  uint32_t tmp = ntohl(sin.sin_addr.s_addr);
-  LOGMSG("Client %d connected: %d.%d.%d.%d:%d", cli,
-	 ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
-	 ((tmp>>8)&0xff), ((tmp)&0xff),
-	 ntohs(sin.sin_port));
+  LOGMSG("Client %d connected: %s", cli, 
+	 ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
 
   bool accepted = SVDRPhosts.Acceptable(sin.sin_addr.s_addr);
   if(!accepted) {
@@ -1289,53 +1334,46 @@ void cXinelibServer::Handle_ClientConnected(int fd)
 
 void cXinelibServer::Handle_Discovery_Broadcast()
 {
-  char buf[1024];
+  char buf[1024], ip[64];
   struct sockaddr_in from;
   socklen_t fromlen = sizeof(from);
+
+  if(!xc.remote_usebcast) {
+    LOGDBG("BROADCASTS disabled in configuration");
+    CLOSESOCKET(fd_discovery);
+    return;
+  }
+
   memset(&from, 0, sizeof(from));
   memset(buf, 0, sizeof(buf));
-  errno=0;
+  errno = 0;
 
   int n = recvfrom(fd_discovery, buf, 1023, 0,
 		   (struct sockaddr *)&from, &fromlen);
 
-  if(!xc.remote_usebcast) {
-    LOGDBG("BROADCASTS disabled in configuration");
-    return;
-  }
-
-  if(n==0) {
-    LOGDBG("fd_discovery recv() 0 bytes");
-    return;
-  } else if(n<0) {
-    LOGERR("fd_discovery recv() error");
+  if(n<=0) {
+    LOGDBG("fd_discovery recv() error");
     //CLOSESOCKET(fd_discovery);
     return;
   }
-	   
-  uint32_t tmp = ntohl(from.sin_addr.s_addr);
-  LOGDBG("BROADCAST: (%d bytes from %d.%d.%d.%d): %s", n, 
-	 ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
-	 ((tmp>>8)&0xff), ((tmp)&0xff),
-	 buf);
 
   char *id_string = DISCOVERY_1_0_HDR "Client:";
 
-  if(!strncmp(id_string, buf, strlen(id_string))) {	
-    LOGMSG("Received valid discovery message from %d.%d.%d.%d",
-	   ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
-	   ((tmp>>8)&0xff), ((tmp)&0xff));
-    if(udp_discovery_broadcast(fd_discovery, m_Port) < 0) {
-      //LOGERR("Discovery broadcast send error");
-    } else {
-      //LOGMSG("Discovery broadcast (announce) sent");
-    }
+  if(!strncmp(id_string, buf, strlen(id_string))) {
+    LOGMSG("Received valid discovery message from %s",
+	   ip2txt(from.sin_addr.s_addr, from.sin_port, ip));
+
+    if(udp_discovery_broadcast(fd_discovery, m_Port) < 0)
+      LOGERR("Discovery broadcast send error");
+  } else {
+    LOGDBG("BROADCAST: (%d bytes from %s): %s", n, 
+	   ip2txt(from.sin_addr.s_addr, from.sin_port, ip),
+	   buf);
   }
 }
 
 void cXinelibServer::Action(void) 
 {
-
   TRACEF("cXinelibServer::Action");
 
   int    i, fds=0;
