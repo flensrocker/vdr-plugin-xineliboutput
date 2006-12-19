@@ -1,3 +1,13 @@
+/*
+ * vdrlogo_32x32.c: 32x32 logo icon
+ *
+ * See the main source file 'xineliboutput.c' for copyright information and
+ * how to reach the author.
+ *
+ * $Id: vdrlogo_32x32.c,v 1.2 2006-12-19 17:27:49 phintuka Exp $
+ *
+ */
+
 /* GIMP RGBA C-Source image dump (vdrlogo_32x32.c) */
 
 static const struct {
