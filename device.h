@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.16 2006-12-17 22:09:47 phintuka Exp $
+ * $Id: device.h,v 1.17 2006-12-20 09:52:27 phintuka Exp $
  *
  */
 
@@ -21,10 +21,11 @@ class cChannel;
 class cFunctor;
 
 typedef enum {
-  miTrack  = 0,
-  miArtist = 1,
-  miAlbum  = 2,
-  mi_Count = 3
+  miTitle  = 0,
+  miTrack  = 1,
+  miArtist = 2,
+  miAlbum  = 3,
+  mi_Count = 4
 } eMetainfoType;
 
 #define MAX_METAINFO_LEN 63
