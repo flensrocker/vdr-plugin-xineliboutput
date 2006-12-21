@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.13 2006-12-17 17:47:20 phintuka Exp $
+ * $Id: cxsocket.h,v 1.14 2006-12-21 09:17:34 phintuka Exp $
  *
  */
 
@@ -13,7 +13,7 @@
 
 #define CLOSESOCKET(fd) do { if(fd>=0) { close(fd); fd=-1; } } while(0)
 
-static char *ip2txt(uint32_t ip, unsigned int port, char *str) 
+static inline char *ip2txt(uint32_t ip, unsigned int port, char *str) 
 {
   // inet_ntoa is not thread-safe (?)
   if(str) {
@@ -191,7 +191,7 @@ static inline ssize_t timed_read(int fd, void *buffer, size_t size,
   while (missing > 0) {
 
     if(!poller.Poll(timeout_ms)) {
-      LOGERR("timed_read: poll() failed at %d/%d", size-missing, size);
+      LOGERR("timed_read: poll() failed at %d/%d", (int)(size-missing), (int)size);
       return size-missing;
     }
 
@@ -203,7 +203,7 @@ static inline ssize_t timed_read(int fd, void *buffer, size_t size,
 	LOGDBG("timed_read: EINTR/EAGAIN during read(), retrying");
 	continue;
       }
-      LOGERR("timed_read: read() error at %d/%d", size-missing, size);
+      LOGERR("timed_read: read() error at %d/%d", (int)(size-missing), (int)size);
       return size-missing;
     }
 
