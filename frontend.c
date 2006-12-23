@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.23 2006-12-20 09:52:27 phintuka Exp $
+ * $Id: frontend.c,v 1.24 2006-12-23 20:22:30 phintuka Exp $
  *
  */
 
@@ -146,11 +146,12 @@ void cXinelibThread::InfoHandler(const char *info)
       if(!end)
 	break;
       *end = 0;
-      if(strcmp(map, "title"))
+
+      if(!strcmp(map, "title"))
 	cXinelibDevice::Instance().SetMetaInfo(miTrack, next);
-      if(strcmp(map, "album"))
+      if(!strcmp(map, "album"))
 	cXinelibDevice::Instance().SetMetaInfo(miAlbum, next);
-      if(strcmp(map, "artist"))
+      if(!strcmp(map, "artist"))
 	cXinelibDevice::Instance().SetMetaInfo(miArtist, next);
       map = end+1;
     }
@@ -293,8 +294,12 @@ void cXinelibThread::SetNoVideo(bool bVal)
 
   Xine_Control("NOVIDEO", m_bNoVideo ? 1 : 0);
 
+  char *opts = NULL;
+  if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+    opts = xc.audio_vis_goom_opts;
+
   if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
-    ConfigurePostprocessing(xc.audio_visualization, true, NULL);
+    ConfigurePostprocessing(xc.audio_visualization, true, opts);
   } else {
     ConfigurePostprocessing("AudioVisualization", false, NULL);
   }
@@ -624,10 +629,16 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 {
   TRACEF("cXinelibThread::PlayFile");
 
+  char vis[128];
+  if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+    sprintf(vis, "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
+  else
+    strcpy(vis, xc.audio_visualization);
+
   char buf[4096];
   m_bEndOfStreamReached = false;
   snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s\r\n",
-	   LoopPlay ? "Loop" : "", Position, xc.audio_visualization, FileName ? FileName : "");
+	   LoopPlay ? "Loop" : "", Position, vis, FileName ? FileName : "");
   buf[sizeof(buf)-1] = 0;
   int result = PlayFileCtrl(buf);
 
@@ -694,8 +705,11 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
   r = Xine_Control(buf) && r;
 
   if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
+    char *opts = NULL;
+    if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+      opts = xc.audio_vis_goom_opts;
     //fe->post_open(fe, xc.audio_visualization, NULL);
-    r = ConfigurePostprocessing(xc.audio_visualization, true, NULL) && r;
+    r = ConfigurePostprocessing(xc.audio_visualization, true, opts) && r;
   } else {
     //fe->post_close(fe, NULL, 0);
     r = ConfigurePostprocessing("AudioVisualization", false, NULL) && r;
