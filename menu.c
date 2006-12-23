@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.25 2006-12-23 09:44:45 phintuka Exp $
+ * $Id: menu.c,v 1.26 2006-12-23 16:01:35 phintuka Exp $
  *
  */
 
@@ -331,22 +331,15 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
     struct dirent *e;
     while ((e = readdir(d)) != NULL) {
       if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) {
-        char *buffer = NULL;
-        asprintf(&buffer, "%s/%s", DirName, e->d_name);
+	cString buffer = cString::sprintf("%s/%s", DirName, e->d_name);
         struct stat st;
         if (stat(buffer, &st) == 0) {
 
 	  // check symlink destination
           if (S_ISLNK(st.st_mode)) {
-	    char *old = buffer;
 	    buffer = ReadLink(buffer);
-	    free(old);
-	    if (!buffer)
+	    if (!*buffer || stat(buffer, &st))
 	      continue;
-	    if (stat(buffer, &st) != 0) {
-	      free(buffer);
-	      continue;
-	    }
 	  }
 
 	  // folders
@@ -356,15 +349,11 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    else {
 	      // check if DVD
               bool dvd = false;
-              free(buffer);
-              buffer = NULL;
-              asprintf(&buffer, "%s/%s/VIDEO_TS/VIDEO_TS.IFO", DirName, e->d_name);
+	      buffer = cString::sprintf("%s/%s/VIDEO_TS/VIDEO_TS.IFO", DirName, e->d_name);
               if (stat(buffer, &st) == 0)
                 dvd = true;
 	      else {
-		free(buffer);
-		buffer = NULL;
-		asprintf(&buffer, "%s/%s/video_ts/video_ts.ifo", DirName, e->d_name);
+		buffer = cString::sprintf("%s/%s/video_ts/video_ts.ifo", DirName, e->d_name);
 		if (stat(buffer, &st) == 0)
 		  dvd = true;
 	      }
@@ -372,7 +361,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    }
 
           // regular files
-          } else {
+          } else if(e->d_name[0] != '.') {
 
 	    // audio
 	    if (m_Mode == ShowMusic && xc.IsAudioFile(buffer)) {
@@ -386,39 +375,40 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
 	      bool resume = false, subs = false, dvd = false;
 	      char *pos = strrchr(e->d_name, '.');
+	      
+	      //free(buffer);
+	      //buffer = NULL;
 
-	      free(buffer);
-	      buffer = NULL;
+	      if(pos) {
+		// .iso image -> dvd
+		if(pos && !strcasecmp(pos, ".iso"))
+		  dvd = true;
 
-	      // .iso image -> dvd
-	      if(pos && !strcasecmp(pos, ".iso"))
-		dvd = true;
+		// separate subtitles ?
+		strcpy(strrchr(buffer,'.'), ".sub");
+		if (stat(buffer, &st) == 0)
+		  subs = true;
+		strcpy(strrchr(buffer,'.'), ".srt");
+		if (stat(buffer, &st) == 0)
+		  subs = true;
+		strcpy(strrchr(buffer,'.'), ".txt");
+		if (stat(buffer, &st) == 0)
+		  subs = true;
+		strcpy(strrchr(buffer,'.'), ".ssa");
+		if (stat(buffer, &st) == 0)
+		  subs = true;
+	      }
 
 	      // resume file ?
-	      asprintf(&buffer, "%s/%s.resume", DirName, e->d_name);
+	      buffer = cString::sprintf("%s/%s.resume", DirName, e->d_name);
 	      if (stat(buffer, &st) == 0)
 		resume = true;
-
-	      // separate subtitles ?
-	      *strrchr(buffer, '.') = 0;
-	      strcpy(strrchr(buffer,'.'), ".sub");
-	      if (stat(buffer, &st) == 0)
-		subs = true;
-	      strcpy(strrchr(buffer,'.'), ".srt");
-	      if (stat(buffer, &st) == 0)
-		subs = true;
-	      strcpy(strrchr(buffer,'.'), ".txt");
-	      if (stat(buffer, &st) == 0)
-		subs = true;
-	      strcpy(strrchr(buffer,'.'), ".ssa");
-	      if (stat(buffer, &st) == 0)
-		subs = true;
 
 	      Add(new cFileListItem(e->d_name, false, resume, subs, dvd));
 	    }
           }
         }
-        free(buffer);
+        //free(buffer);
       }
     }
     closedir(d);
