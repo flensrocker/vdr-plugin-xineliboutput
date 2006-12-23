@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.24 2006-12-16 23:24:33 phintuka Exp $
+ * $Id: menu.c,v 1.25 2006-12-23 09:44:45 phintuka Exp $
  *
  */
 
@@ -267,7 +267,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent)
   /* regular file */
   } else {
     char *f = NULL;
-    asprintf(&f, "%s/%s/%s", 
+    asprintf(&f, "%s%s/%s", 
 	     GetCurrent()->IsDvd() ? "dvd:" : "",
 	     m_CurrentDir, GetCurrent()->Name());
     strcpy(m_ConfigLastDir, f);
@@ -518,7 +518,6 @@ static cOsdItem *NewTitle(const char *s)
 }
 
 
-const char *decoderState[] = {"running", "paused", NULL};
 extern cOsdObject *g_PendingMenuAction;
 
 time_t cMenuXinelib::g_LastHotkeyTime = 0;
