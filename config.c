@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.19 2006-12-16 23:07:02 phintuka Exp $
+ * $Id: config.c,v 1.20 2006-12-24 09:52:15 phintuka Exp $
  *
  */
 
@@ -51,7 +51,7 @@ const char *config_t::s_videoDriversFB[] =
 const char *config_t::s_frontendNames[] =
   {"X11 (sxfe)", "Framebuffer (fbfe)", "Off", NULL};
 const char *config_t::s_frontends[] =
-  {"sxfe", "fbfe", "", NULL};
+  {"sxfe", "fbfe", "none", NULL};
 const char *config_t::s_frontend_files[] =
   {"lib" PLUGIN_NAME_I18N "-sxfe.so." XINELIBOUTPUT_VERSION, 
    "lib" PLUGIN_NAME_I18N "-fbfe.so." XINELIBOUTPUT_VERSION, 
@@ -98,8 +98,9 @@ bool config_t::IsPlaylistFile(const char *fname)
     if(pos) {
       pos++;
       if(!strcasecmp(pos, "pls") || 
-	 !strcasecmp(pos, "m3u") /*|| 
-	 !strcasecmp(pos, "asx")*/)
+	 !strcasecmp(pos, "m3u") || 
+	 !strcasecmp(pos, "ram") ||
+	 !strcasecmp(pos, "asx"))
 	return true;
     }
   }
@@ -124,8 +125,7 @@ bool config_t::IsAudioFile(const char *fname)
 	 !strcasecmp(pos, "wma") ||
 	 !strcasecmp(pos, "asf") ||
 	 !strcasecmp(pos, "wav") ||
-	 !strcasecmp(pos, "ra") ||
-	 !strcasecmp(pos, "ram"))
+	 !strcasecmp(pos, "ra"))
 	return true;
       return IsPlaylistFile(fname);
     }
@@ -270,12 +270,20 @@ config_t::config_t() {
   remote_usertp   = 1;
   remote_usepipe  = 1;
   remote_usebcast = 1;
+  remote_http_files    = 1; /* allow http streaming of media files to xineliboutput clients 
+			     * (currently replayed media file from xineliboutput media player) 
+			     *  - will be used if client can't access file directly (nfs etc.) */
 
   strcpy(remote_rtp_addr, "224.0.1.9");
   remote_rtp_port = LISTEN_PORT;
   remote_rtp_ttl = 1;
   remote_rtp_always_on = 0;
   remote_rtp_sap = 1;
+
+  remote_use_rtsp      = 1; /* allow generic rtsp for primary device. needs enabled udp or rtp */
+  remote_use_rtsp_ctrl = 0; /* allow rtsp to control primary device (play/pause/seek...) */
+  remote_use_http      = 1; /* allow generic http streaming (primary device output) */
+  remote_use_http_ctrl = 0; /* allow http to control primary device (play/pause/seek...) */
 
   use_x_keyboard = 1;
 
@@ -288,6 +296,8 @@ config_t::config_t() {
   strcpy(browse_files_dir,  "/video");
   strcpy(browse_music_dir,  "/video");
   strcpy(browse_images_dir, "/video");
+  cache_implicit_playlists = 1;
+  enable_id3_scanner = 1;
 
   main_menu_mode = ShowMenu;
   force_primary_device = 0;
@@ -407,8 +417,10 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 {
   char *pt;
   if(m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
-     *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ')
+     *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ') {
+    LOGDBG("Skipping configuration entry %s=%s (overridden in command line)", Name, Value);
     return true;
+  }
 
        if (!strcasecmp(Name, "Frontend"))           STRN0CPY(local_frontend, Value);
   else if (!strcasecmp(Name, "Modeline"))           STRN0CPY(modeline, Value);
@@ -450,6 +462,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.UseUdp"))       remote_useudp = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseRtp"))       remote_usertp = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UsePipe"))      remote_usepipe= atoi(Value);
+  else if (!strcasecmp(Name, "Remote.UseHttp"))      remote_http_files = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseBroadcast")) remote_usebcast = atoi(Value);
 
   else if (!strcasecmp(Name, "Remote.Rtp.Address"))  STRN0CPY(remote_rtp_addr, Value);
@@ -457,6 +470,11 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.Rtp.TTL"))      remote_rtp_ttl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.AlwaysOn")) remote_rtp_always_on = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.SapAnnouncements")) remote_rtp_sap = atoi(Value);
+
+  else if (!strcasecmp(Name, "Remote.AllowRtsp"))     remote_use_rtsp = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.AllowRtspCtrl")) remote_use_rtsp_ctrl = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.AllowHttp"))     remote_use_http = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.AllowHttpCtrl")) remote_use_http_ctrl = atoi(Value);
 
   else if (!strcasecmp(Name, "Decoder.Priority"))    decoder_priority=strstra(Value,s_decoderPriority,1);
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);
@@ -481,10 +499,16 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Mode"))      STRN0CPY(ffmpeg_pp_mode, Value);
-
+#if 1 // 1.0.0pre6
   else if (!strcasecmp(Name, "BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
   else if (!strcasecmp(Name, "BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
   else if (!strcasecmp(Name, "BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
+#endif
+  else if (!strcasecmp(Name, "Media.BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
+  else if (!strcasecmp(Name, "Media.BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
+  else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
+  else if (!strcasecmp(Name, "Media.CacheImplicitPlaylists")) cache_implicit_playlists = atoi(Value);
+  else if (!strcasecmp(Name, "Media.EnableID3Scanner"))  enable_id3_scanner = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
     sscanf(Value,"%d %d %d %d %d %d %d %d %d %d",
