@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.26 2006-12-23 16:01:35 phintuka Exp $
+ * $Id: menu.c,v 1.27 2006-12-24 09:43:59 phintuka Exp $
  *
  */
 
@@ -168,12 +168,18 @@ void cMenuBrowseFiles::Set(void)
 
 void cMenuBrowseFiles::StoreConfig(void)
 {
-  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseMusicDir",  
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.BrowseMusicDir",  
 							  xc.browse_music_dir);
-  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseFilesDir",  
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.BrowseFilesDir",  
 							  xc.browse_files_dir);
-  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseImagesDir", 
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.BrowseImagesDir", 
 							  xc.browse_images_dir);
+#if 1
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.CacheImplicitPlaylists", 
+							  xc.cache_implicit_playlists);
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.EnableID3Scanner", 
+							  xc.enable_id3_scanner);
+#endif
 }
 
 void cMenuBrowseFiles::SetHelpButtons(void)
@@ -533,6 +539,10 @@ cMenuXinelib::cMenuXinelib()
     Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
   else
     Add(new cOsdItem(tr("Play DVD disc >>"), osUser4));
+  if(xc.remote_mode)
+    Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
+  else
+    Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
     Add(new cOsdItem(tr("  Select DVD SPU track >>"), osUser5));
 
@@ -638,6 +648,10 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     case osUser4:
       cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
+      return osEnd;
+    case osUser6:
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibPlayerControl("cdda:/"));
       return osEnd;
     case osUser5:
       AddSubMenu(new cDvdSpuTrackSelect());
