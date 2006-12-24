@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.26 2006-12-17 17:45:44 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.27 2006-12-24 16:51:14 phintuka Exp $
  *
  */
 
@@ -54,7 +54,7 @@ static void x_syslog(int level, const char *fmt, ...)
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
   if(!LogToSysLog) {
-    printf("[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
+    fprintf(stderr, "[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
   } else {
     syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }
@@ -260,7 +260,8 @@ static void fe_frame_output_cb (void *data,
     this->video_height = video_height;
 
     /* trigger forced redraw to make cropping changes effective */
-    xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
+    if(this->cropping)
+      xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
   }
 }
 
@@ -838,6 +839,16 @@ static int fe_post_close(fe_t *this, const char *name, int which)
   return result;
 }
 
+static int get_opt_val(char *s, char *opt)
+{
+  int val = -1;
+  char *pt = strstr(s, opt);
+  if(pt) 
+    if(1 == sscanf(pt+strlen(opt)+1, "%d", &val))
+      return val;
+  return -1;
+}
+
 static int fe_post_open(fe_t *this, const char *name, const char *args)
 {
   post_plugins_t *posts = this->postplugins;
@@ -884,6 +895,19 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
     if(!found && applugin_enable_post(posts, initstr, &found)) {
       posts->post_vis_enable = 1;
       applugin_rewire_posts(posts);
+
+      // goom wants options thru config ...
+      if(args && !strcmp(name,"goom")) {
+	int val;
+	if((val = get_opt_val(initstr, "fps")) > 0)
+	  this->xine->config->update_num (this->xine->config, "effects.goom.fps", val );
+	if((val = get_opt_val(initstr, "width")) > 0)
+	  this->xine->config->update_num (this->xine->config, "effects.goom.width", val);  
+	if((val = get_opt_val(initstr, "height")) > 0)
+	  this->xine->config->update_num (this->xine->config, "effects.goom.height", val);
+	//if((val = get_opt_val(initstr, "csc_method"))>0)
+	//  this->xine->config->update_enum (this->xine->config, "effects.goom.csc_method", val);
+      }
     }
 
   } else {
@@ -1245,6 +1269,8 @@ static void *fe_control(void *fe_handle, const char *cmd)
     while(*args && *args == ' ')  /* skip whitespace between name and args */
       args++;
 
+    /*this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);*/
+    /* - locks local frontend at startup */
     if(!strncmp(args, "On", 2)) {
       args += 2;
       while(*args == ' ') 
@@ -1260,6 +1286,8 @@ static void *fe_control(void *fe_handle, const char *cmd)
     } else {
       LOGMSG("fe_control: POST: unknown command %s", cmd);
     }
+    /*this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);*/
+    /* - locks local frontend at startup */
     free(name);
     return NULL;
 
