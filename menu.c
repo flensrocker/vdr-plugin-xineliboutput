@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.27 2006-12-24 09:43:59 phintuka Exp $
+ * $Id: menu.c,v 1.28 2006-12-24 10:54:04 phintuka Exp $
  *
  */
 
@@ -651,7 +651,7 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       return osEnd;
     case osUser6:
       cControl::Shutdown();
-      cControl::Launch(new cXinelibPlayerControl("cdda:/"));
+      cControl::Launch(new cXinelibPlayerControl(ShowMusic, "cdda:/"));
       return osEnd;
     case osUser5:
       AddSubMenu(new cDvdSpuTrackSelect());
