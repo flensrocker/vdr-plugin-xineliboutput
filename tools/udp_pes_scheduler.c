@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.16 2006-12-24 15:58:38 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.17 2006-12-24 16:00:13 phintuka Exp $
  *
  */
 
@@ -691,7 +691,7 @@ static uint32_t get_local_address(int fd, char *ip_address)
   socklen_t len = sizeof(sin);
 
   if(!getsockname(fd, (struct sockaddr *)&sin, &len)) {
-    local_addr = sin->sin_addr.s_addr;
+    local_addr = sin.sin_addr.s_addr;
 
   } else {
     //LOGERR("getsockname failed");
