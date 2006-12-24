@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.18 2006-12-19 08:49:48 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.19 2006-12-24 17:19:43 phintuka Exp $
  *
  */
 
@@ -184,6 +184,8 @@ static char *strcatrealloc(char *dest, const char *src)
 }
 
 static const char *help_str = 
+"When server address is not given, server is searched from local network.\n"
+"If server is not found, localhost (127.0.0.1) is used as default.\n\n"
     "   --help                        Show (this) help message\n"
     "   --audio=audiodriver[:device]  Select audio driver and optional port\n"
     "                                 drivers: auto, alsa, oss, arts, esound, none\n"
@@ -271,7 +273,7 @@ int main(int argc, char *argv[])
   while ((c = getopt_long(argc, argv, "HL:A:V:d:a:fw:h:P:vslkbtur", long_options, NULL)) != -1) {
     switch (c) {
     default:  
-    case 'H': printf("\nUsage: %s [options] [xvdr:[udp:|tcp:|rtp:]//host:port] \n"
+    case 'H': printf("\nUsage: %s [options] [xvdr:[udp:|tcp:|rtp:][//host[:port]]] \n"
 		     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
 	      exit(0);
