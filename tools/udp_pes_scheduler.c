@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.15 2006-12-15 21:34:18 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.16 2006-12-24 15:58:38 phintuka Exp $
  *
  */
 
@@ -687,39 +687,47 @@ static uint32_t get_local_address(int fd, char *ip_address)
   struct ifreq buf[3];
   unsigned int n;
 
-  conf.ifc_len = sizeof(buf);
-  conf.ifc_req = buf;
-  memset(buf, 0, sizeof(buf));
+  struct sockaddr_in sin;
+  socklen_t len = sizeof(sin);
 
-  errno = 0;
-  if(ioctl(fd, SIOCGIFCONF, &conf) < 0)
-    LOGERR("can't obtain socket local address");
-  else {
-    for(n=0; n<conf.ifc_len/sizeof(struct ifreq); n++) {
-      struct sockaddr_in *in = (struct sockaddr_in *) &buf[n].ifr_addr;
-#if 0
-      uint32_t tmp = ntohl(in->sin_addr.s_addr);
-      LOGMSG("Local address %6s %d.%d.%d.%d", 
-	     conf.ifc_req[n].ifr_name,
-	     ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
-	     ((tmp>>8)&0xff), ((tmp)&0xff));
-#endif
-      if(n==0 || local_addr == htonl(INADDR_LOOPBACK)) 
-	local_addr = in->sin_addr.s_addr;
-      else
-	break;
+  if(!getsockname(fd, (struct sockaddr *)&sin, &len)) {
+    local_addr = sin->sin_addr.s_addr;
+
+  } else {
+    //LOGERR("getsockname failed");
+
+    // scan network interfaces
+
+    conf.ifc_len = sizeof(buf);
+    conf.ifc_req = buf;
+    memset(buf, 0, sizeof(buf));
+    
+    errno = 0;
+    if(ioctl(fd, SIOCGIFCONF, &conf) < 0)
+      LOGERR("can't obtain socket local address");
+    else {
+      for(n=0; n<conf.ifc_len/sizeof(struct ifreq); n++) {
+	struct sockaddr_in *in = (struct sockaddr_in *) &buf[n].ifr_addr;
+# if 0
+	uint32_t tmp = ntohl(in->sin_addr.s_addr);
+	LOGMSG("Local address %6s %d.%d.%d.%d", 
+	       conf.ifc_req[n].ifr_name,
+	       ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
+	       ((tmp>>8)&0xff), ((tmp)&0xff));
+# endif
+	if(n==0 || local_addr == htonl(INADDR_LOOPBACK)) 
+	  local_addr = in->sin_addr.s_addr;
+	else
+	  break;
+      }
     }
   }
 
   if(!local_addr)
     LOGERR("No local address found");
 
-  if(ip_address) {
-    uint32_t tmp = ntohl(local_addr);
-    sprintf(ip_address, "%d.%d.%d.%d", 
-	    ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
-	    ((tmp>>8)&0xff), ((tmp)&0xff));
-  }
+  if(ip_address)
+    ip2txt(local_addr, 0, ip_address);
 
   return local_addr;  
 }
@@ -920,8 +928,10 @@ void cUdpScheduler::Action(void)
       cnt = 0; 
       bytes = 0;
       if(dbg_timer+60000 <= cTimeMs::Now()) {
+# if 0
 	LOGDBG("UDP rate: %4d Kbps (queue %d)", dbg_bytes/(60*1024/8),
 	       m_QueuePending);
+# endif
 	dbg_bytes = 0;
 	dbg_timer = cTimeMs::Now();
       }
