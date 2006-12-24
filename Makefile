@@ -1,12 +1,15 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile,v 1.14 2006-10-29 19:45:57 phintuka Exp $
+# See the main source file 'xineliboutput.c' for copyright information and
+# how to reach the author.
+#
+# $Id: Makefile,v 1.15 2006-12-24 17:07:35 phintuka Exp $
+#
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
 # By default the main source file also carries this name.
-#
 
 PLUGIN = xineliboutput
 
@@ -72,10 +75,14 @@ CFLAGS ?= -O3 -pipe -Wall -fPIC -g
 ### The directory environment:
 ###
 
-VDRDIR = ../../..
-LIBDIR = ../../lib
-TMPDIR = /tmp
-BINDIR = /usr/bin
+VDRDIR  ?= ../../..
+LIBDIR  ?= ../../lib
+TMPDIR  ?= /tmp
+BINDIR  ?= /usr/bin
+DESTDIR ?= /
+
+INSTALL ?= install
+
 
 ###
 ### Allow user defined options to overwrite defaults:
@@ -216,7 +223,7 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
          i18n.o menuitems.o media_player.o equalizer.o \
          frontend_local.o frontend_svr.o \
          tools/cxsocket.o tools/udp_pes_scheduler.o \
-         tools/backgroundwriter.o
+         tools/backgroundwriter.o tools/playlist.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
   OBJS = 
@@ -373,30 +380,36 @@ endif
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-	@echo Installing $(XINEPLUGINDIR)/$(XINEINPUTVDR)
-	@-rm -rf $(XINEPLUGINDIR)/$(XINEINPUTVDR)
-	@cp $(XINEINPUTVDR) $(XINEPLUGINDIR)/
-	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-	@cp $(XINEPOSTAUTOCROP) $(XINEPLUGINDIR)/post/
-	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-	@cp $(XINEPOSTAUDIOCHANNEL) $(XINEPLUGINDIR)/post/
+	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+#	@cp $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/
+	@$(INSTALL) $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+#	@cp $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/
+	@$(INSTALL) -D -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+#	@cp $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/
+	@$(INSTALL) -D -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
-	@echo Installing $(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
-	@-rm -rf $(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
-	@cp $(XINEPOSTHEADPHONE) $(XINEPLUGINDIR)/post/
+	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
+	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
+#	@cp $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/
+	@$(INSTALL) -D -m 0644 $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 endif
 ifeq ($(XINELIBOUTPUT_FB), 1)
-	@echo Installing $(BINDIR)/vdr-fbfe
-	@-rm -rf $(BINDIR)/vdr-fbfe
-	@cp vdr-fbfe $(BINDIR)/
+	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-fbfe
+	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-fbfe
+#	@cp vdr-fbfe $(DESTDIR)/$(BINDIR)/
+	@$(INSTALL) -D -m 0755 vdr-fbfe $(DESTDIR)/$(BINDIR)/vdr-fbfe
 endif
 ifeq ($(XINELIBOUTPUT_X11), 1)
-	@echo Installing $(BINDIR)/vdr-sxfe
-	@-rm -rf $(BINDIR)/vdr-sxfe
-	@cp vdr-sxfe $(BINDIR)/
+	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-sxfe
+	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-sxfe
+#	@cp vdr-sxfe $(DESTDIR)/$(BINDIR)/
+	@$(INSTALL) -D -m 0755 vdr-sxfe $(DESTDIR)/$(BINDIR)/vdr-sxfe
 endif
 
 dist: clean
