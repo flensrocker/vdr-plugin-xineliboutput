@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.13 2006-12-16 23:07:02 phintuka Exp $
+ * $Id: config.h,v 1.14 2006-12-24 09:46:59 phintuka Exp $
  *
  */
 
@@ -12,6 +12,7 @@
 #define _XINELIB_CONFIG_H_
 
 #include <string.h>
+#include <stdint.h>
 
 // Decoder buffer size
 #define PES_BUFFERS_CUSTOM      0
@@ -214,6 +215,9 @@ class config_t {
     int  listen_port;
     int  use_remote_keyboard;
     int  remote_usetcp, remote_useudp, remote_usertp, remote_usepipe;
+    int  remote_http_files;    /* allow http streaming of media files to xineliboutput clients 
+				* (currently replayed media file from xineliboutput media player) 
+			        *  - will be used if client can't access file directly (nfs etc.) */
     int  remote_usebcast;
 
     char remote_rtp_addr[32]; //xxx.xxx.xxx.xxx\0
@@ -221,6 +225,11 @@ class config_t {
     int  remote_rtp_ttl;
     int  remote_rtp_always_on;
     int  remote_rtp_sap;
+
+    int  remote_use_rtsp;      /* allow generic rtsp for primary device. needs enabled udp or rtp */
+    int  remote_use_rtsp_ctrl; /* allow rtsp to control primary device (play/pause/seek...) */
+    int  remote_use_http;      /* allow generic http streaming (primary device output) */
+    int  remote_use_http_ctrl; /* allow http to control primary device (play/pause/seek...) */
 
     int  use_x_keyboard;
 
@@ -233,6 +242,8 @@ class config_t {
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];
+    int  cache_implicit_playlists; /* used in playlist.c */
+    int  enable_id3_scanner;       /* used in playlist.c */
     
     eMainMenuMode main_menu_mode;
     int  force_primary_device;
