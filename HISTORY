@@ -1,12 +1,37 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-- Added vidix(fb) to supported video drivers (Thanks to Antti Seppälä)
+- Added "Play Audio CD" / "Play remote Audio CD" entry to plugin menu
+- Makefile modified to allow overriding default directory environment.
+  Using "install" to install files. (Thanks to Timo Weingärtner)
+- Added metainfo caching to media player. Cached metainfo is stored to
+  ".xineliboutput-playlist.m3u" files by default.
+- Added support for playlists inside playlists
+  (ex. http://.../?.pls entries in playlists)
+- Added playlist HTTP download support to playlists (curl required)
+- lirc forwarding updated (synced with vdr-1.4.3-2): added re-connecting to lircd.
+- Lirc forwarding key repeat fixed (Thanks to Timo Ruottinen).
+- Display metainfo (ID3 etc) instead of file name in (audio)player
+- Fixed deadlock in audio post plugin loading and wiring
+  (in some cases plugins were loaded multiple times)
+- Fixed buffer overflow problems in xineliboutput device polling
+- Fixed buffer overflow problems in UDP packet scheduler queue
+- File types mov and wmv added to media player (sf feature request #1616405)
+- Subtitle type .ssa added
+- Parsing for .pls, .asx and .ram playlists added
+- Eliminated some warnings when compiling to 64bit (Thanks to Anssi Hannula)
+- Vidix(fb) added to supported video drivers (Thanks to Antti Seppälä)
+- Media player/audio file browser does not anymore show video files
+- When replaying music files, replay moves to next file automatically
+- Decoder setup menu moved to Local setup menu 
+  (decoder settings have effect on local frontend only)
+- Implemented simple RTSP streaming support (rtsp://vdr-host:xineliboutput-port/)
+- Implemented simple HTTP streaming support (http://vdr-host:xineliboutput-port/)
 - Fixed control channel disconnection detection in frontend_svr.c
-- Try to detect when navigating in DVD menus and change 
+- Media player: Try to detect when navigating in DVD menus and change
   functions of Up/Down/Left/Right/Ok/Back keys when in menus
 - Added RFC2974 SAP (Session Announcement Protocol) implementation
-- Now using RTP when multicasting
+- Now using RFC3550 RTP headers when multicasting
 
 2006-10-20: Version 1.0.0pre6
 
