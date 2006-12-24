@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.7 2006-12-19 08:53:37 phintuka Exp $
+ * $Id: media_player.h,v 1.8 2006-12-24 21:08:32 phintuka Exp $
  *
  */
 
@@ -19,27 +19,28 @@
 
 class cXinelibPlayer;
 class cSkinDisplayReplay;
-
 class cPlaylistMenu;
 
 class cXinelibPlayerControl : public cControl 
 {
   private:
-    static cXinelibPlayer *m_Player;
     static cMutex m_Lock;
 
     static cXinelibPlayer *OpenPlayer(const char *file);
 
  protected:
+    static cXinelibPlayer *m_Player;
+
     cSkinDisplayReplay *m_DisplayReplay;
     cPlaylistMenu *m_PlaylistMenu;
 
-    int   m_Speed;
-    bool  m_ShowModeOnly;
     eMainMenuMode m_Mode;
-    bool m_RandomPlay;
+    bool   m_ShowModeOnly;
+    bool   m_RandomPlay;
     time_t m_AutoShowStart;
-
+    int    m_CurrentPos;
+    int    m_CurrentLen;
+    bool   m_BlinkState;
     static int m_SubtitlePos;
 
   public:
@@ -49,6 +50,8 @@ class cXinelibPlayerControl : public cControl
     virtual void Show(void);
     virtual void Hide(void);
     virtual eOSState ProcessKey(eKeys Key);
+
+    virtual cOsdObject *GetInfo(void);
 
     static void Close(void);
     static bool IsOpen(void) {return m_Player != NULL;};
