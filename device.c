@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.29 2006-12-19 17:47:15 phintuka Exp $
+ * $Id: device.c,v 1.30 2006-12-24 17:03:18 phintuka Exp $
  *
  */
 
@@ -763,6 +763,8 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
       m_PlayingFile = true;
       StopOutput();
     }
+    for(int i = 0; i < mi_Count; i++) 
+      m_MetaInfo[i][0] = 0;
     if(m_server)
       result = m_server->PlayFile(FileName, Position, LoopPlay);
     if(m_local)
@@ -1075,7 +1077,7 @@ void cXinelibDevice::SetAudioChannelDevice(int AudioChannel)
 
   if(m_AudioChannel != AudioChannel) {
     m_AudioChannel = AudioChannel;
-    /*LOGDBG("cXinelibDevice::SetAudioChannelDevice --> %d", AudioChannel);*/
+    //LOGDBG("cXinelibDevice::SetAudioChannelDevice --> %d", AudioChannel);
 #if 0
     switch(AudioChannel) {
       default:
@@ -1371,7 +1373,6 @@ void  cXinelibDevice::SetMetaInfo(eMetainfoType Type, const char *Value)
        copying it will always be 0-terminated (but truncated) */
     memset(m_MetaInfo[Type], 0, sizeof(m_MetaInfo[Type]));
     strncpy(m_MetaInfo[Type], Value, MAX_METAINFO_LEN);
-
   } else {
     LOGMSG("cXinelibDevice::SetMetaInfo: unknown metainfo type");
   }
