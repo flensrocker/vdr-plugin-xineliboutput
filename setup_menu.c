@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.16 2006-12-14 12:42:14 phintuka Exp $
+ * $Id: setup_menu.c,v 1.17 2006-12-24 15:44:04 phintuka Exp $
  *
  */
 
@@ -866,7 +866,7 @@ void cMenuSetupDecoder::Set(void)
   Clear();
 
   Add(NewTitle(tr("Decoder")));
-  Add(new cMenuEditStraI18nItem(tr("Priority"), &xc.decoder_priority, 
+  Add(new cMenuEditStraI18nItem(tr("Priority"), &newconfig.decoder_priority, 
 				DECODER_PRIORITY_count, xc.s_decoderPriority));
   Add(ctrl_pes_buffers_ind = 
       new cMenuEditStraI18nItem(tr("Buffer size"), &pes_buffers_ind, 
@@ -910,7 +910,9 @@ void cMenuSetupDecoder::Store(void)
   int old_buffers = xc.pes_buffers;
   int old_priority = xc.decoder_priority;
 
-  memcpy(&xc, &newconfig, sizeof(config_t));
+  //memcpy(&xc, &newconfig, sizeof(config_t));
+  xc.pes_buffers = newconfig.pes_buffers;
+  xc.decoder_priority = newconfig.decoder_priority;
 
   if(pes_buffers_ind != PES_BUFFERS_CUSTOM)
     xc.pes_buffers = xc.i_pesBufferSize[pes_buffers_ind];
@@ -1012,6 +1014,8 @@ void cMenuSetupLocal::Set(void)
   }
 
   if(local_frontend != FRONTEND_NONE) {
+    cString tmp = cString::sprintf("%s >>", tr("Decoder"));
+    Add(new cOsdItem(tmp, osUser1));
     Add(NewTitle(tr("Video")));
   }
 
@@ -1077,7 +1081,6 @@ void cMenuSetupLocal::Set(void)
       Add(ctrl_audio_port = 
 	  new cMenuEditStrItem(tr("Port"), newconfig.audio_port, 31, 
 			       DriverNameChars));
-
   }
   
   if(current<1) current=1; /* first item is not selectable */
@@ -1093,6 +1096,9 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
   cOsdItem *item = Get(Current());
 
   eOSState state = cMenuSetupPage::ProcessKey(Key);
+
+  if(state == osUser1)
+    return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupDecoder);
 
   Key = NORMALKEY(Key);
 
@@ -1141,7 +1147,13 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
 
 void cMenuSetupLocal::Store(void)
 {
+  int old_buffers = xc.pes_buffers;
+  int old_priority = xc.decoder_priority;
+
   memcpy(&xc, &newconfig, sizeof(config_t));
+
+  xc.pes_buffers = old_buffers;
+  xc.decoder_priority = old_priority;
 
   strcpy(xc.audio_driver, xc.s_audioDrivers[audio_driver]);
   strcpy(xc.local_frontend, xc.s_frontends[local_frontend]);
@@ -1176,6 +1188,10 @@ class cMenuSetupRemote : public cMenuSetupPage
     cOsdItem *ctrl_remote_mode;
     cOsdItem *ctrl_usertp;
     cOsdItem *ctrl_rtp_addr;
+    cOsdItem *ctrl_use_http;
+    cOsdItem *ctrl_http_ctrl;
+    cOsdItem *ctrl_use_rtsp;
+    cOsdItem *ctrl_rtsp_ctrl;
 
   protected:
     virtual void Store(void);
@@ -1204,6 +1220,10 @@ void cMenuSetupRemote::Set(void)
 					       &newconfig.remote_mode));
   ctrl_usertp = NULL;
   ctrl_rtp_addr = NULL;
+  ctrl_use_http = NULL;
+  ctrl_use_rtsp = NULL;
+  ctrl_http_ctrl = NULL;
+  ctrl_rtsp_ctrl = NULL;
   if(newconfig.remote_mode) {
     Add(new cMenuEditIntItem( tr("  Listen port (TCP and broadcast)"), 
 			      &newconfig.listen_port,
@@ -1211,6 +1231,8 @@ void cMenuSetupRemote::Set(void)
     Add(new cMenuEditBoolItem(tr("  Remote keyboard"), 
 			      &newconfig.use_remote_keyboard));
 
+    Add(new cMenuEditBoolItem(tr("  PIPE transport"), 
+			      &newconfig.remote_usepipe));
     Add(new cMenuEditBoolItem(tr("  TCP transport"), 
 			      &newconfig.remote_usetcp));
     Add(new cMenuEditBoolItem(tr("  UDP transport"), 
@@ -1231,10 +1253,27 @@ void cMenuSetupRemote::Set(void)
       Add(new cMenuEditBoolItem(tr("    SAP announcements"), 
 				&newconfig.remote_rtp_sap));
     }
-    Add(new cMenuEditBoolItem(tr("  PIPE transport"), 
-			      &newconfig.remote_usepipe));
     Add(new cMenuEditBoolItem(tr("  Server announce broadcasts"), 
 			      &newconfig.remote_usebcast));
+
+    Add(new cMenuEditBoolItem(tr("  HTTP transport for media files"), 
+			      &newconfig.remote_http_files));
+
+    Add(NewTitle(tr("Additional network services")));
+    Add(ctrl_use_http =
+	new cMenuEditBoolItem(tr("HTTP server"),
+			      &newconfig.remote_use_http));
+    if(newconfig.remote_use_http)
+      Add(ctrl_http_ctrl = 
+	  new cMenuEditBoolItem(tr("HTTP clients can control VDR"), 
+				&newconfig.remote_use_http_ctrl));
+    Add(ctrl_use_rtsp =
+	new cMenuEditBoolItem(tr("RTSP server"),
+			      &newconfig.remote_use_rtsp));
+    if(newconfig.remote_use_rtsp)
+      Add(ctrl_rtsp_ctrl = 
+	  new cMenuEditBoolItem(tr("RTSP clients can control VDR"), 
+				&newconfig.remote_use_rtsp_ctrl));
   }
 
   if(current<1) current=1; /* first item is not selectable */
@@ -1267,6 +1306,20 @@ eOSState cMenuSetupRemote::ProcessKey(eKeys Key)
       Set();
     }
   }
+  if(item == ctrl_use_http) {
+    if(newconfig.remote_use_http && !ctrl_http_ctrl) {
+      Set();
+    } else if(!newconfig.remote_use_http && ctrl_http_ctrl) {
+      Set();
+    }
+  }
+  if(item == ctrl_use_rtsp) {
+    if(newconfig.remote_use_rtsp && !ctrl_rtsp_ctrl) {
+      Set();
+    } else if(!newconfig.remote_use_rtsp && ctrl_rtsp_ctrl) {
+      Set();
+    }
+  }
 
   return state;
 }
@@ -1279,17 +1332,24 @@ void cMenuSetupRemote::Store(void)
   SetupStore("Remote.ListenPort", xc.listen_port);
   SetupStore("Remote.Keyboard",   xc.use_remote_keyboard);
 
+  SetupStore("Remote.UsePipe",xc.remote_usepipe);
   SetupStore("Remote.UseTcp", xc.remote_usetcp);
   SetupStore("Remote.UseUdp", xc.remote_useudp);
   SetupStore("Remote.UseRtp", xc.remote_usertp);
-  SetupStore("Remote.UsePipe",xc.remote_usepipe);
   SetupStore("Remote.UseBroadcast", xc.remote_usebcast);
+
+  SetupStore("Remote.UseHttp", xc.remote_http_files);
 
   SetupStore("Remote.Rtp.Address",  xc.remote_rtp_addr);
   SetupStore("Remote.Rtp.Port",     xc.remote_rtp_port);
   SetupStore("Remote.Rtp.TTL",      xc.remote_rtp_ttl);
   SetupStore("Remote.Rtp.AlwaysOn", xc.remote_rtp_always_on);
   SetupStore("Remote.Rtp.SapAnnouncements", xc.remote_rtp_sap);
+
+  SetupStore("Remote.AllowRtsp", xc.remote_use_rtsp);
+  SetupStore("Remote.AllowRtspCtrl", xc.remote_use_rtsp_ctrl);
+  SetupStore("Remote.AllowHttp", xc.remote_use_http);
+  SetupStore("Remote.AllowHttpCtrl", xc.remote_use_http_ctrl);
 
   cXinelibDevice::Instance().Listen(xc.remote_mode, xc.listen_port);
 }
@@ -1557,7 +1617,7 @@ void cMenuSetupXinelib::Set(void)
   Add(new cOsdItem(hk(tr("Audio Equalizer")),osUser2));
   Add(new cOsdItem(hk(tr("Video")),          osUser3));
   Add(new cOsdItem(hk(tr("OSD")),            osUser4));
-  Add(new cOsdItem(hk(tr("Decoder")),        osUser5));
+  //Add(new cOsdItem(hk(tr("Decoder")),        osUser5));
   Add(new cOsdItem(hk(tr("Local Frontend")), osUser6));
   Add(new cOsdItem(hk(tr("Remote Clients")), osUser7));
   Add(new cOsdItem(hk(tr("Test Images")),    osUser8));
@@ -1578,8 +1638,8 @@ eOSState cMenuSetupXinelib::ProcessKey(eKeys Key)
       return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupVideo);
     case osUser4: 
       return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupOSD);
-    case osUser5: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupDecoder);
+    //case osUser5: 
+    //  return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupDecoder);
     case osUser6: 
       return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupLocal);
     case osUser7: 
