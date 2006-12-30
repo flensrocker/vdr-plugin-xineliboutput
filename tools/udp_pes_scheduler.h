@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.6 2006-12-14 15:18:16 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.7 2006-12-30 00:36:05 phintuka Exp $
  *
  */
 
@@ -102,11 +102,12 @@ class cUdpScheduler : public cThread
     uint32_t  m_Frames;
     uint32_t  m_Octets;
 
+    // Scheduling 
+
     int64_t last_delay_time;
+    bool    m_TrickSpeed;
 
     bool m_Master;   /* if true, we are master metronom for playback */
-
-    // Scheduling 
   
     int  calc_elapsed_vtime(int64_t pts, bool Audio);
     void Schedule(const uchar *Data, int Length);
