@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.67 2006-12-24 16:20:51 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.68 2006-12-30 03:14:37 phintuka Exp $
  *
  */
 
@@ -234,6 +234,7 @@ typedef struct vdr_input_plugin_s {
   int                 fixed_scr;
   int                 speed_before_pause;
   int                 is_paused;
+  int                 is_trickspeed;
 
   int                 I_frames;   /* amount of I-frames passed to demux */
   int                 B_frames;
@@ -624,7 +625,9 @@ static int64_t monotonic_time_ms (void)
 static void scr_tunning_set_paused(vdr_input_plugin_t *this)
 {
   if(this->scr_tunning != SCR_TUNNING_PAUSED &&
-     !this->slave_stream ) {
+     !this->slave_stream &&
+     !this->is_trickspeed) {
+
     this->scr_tunning = SCR_TUNNING_PAUSED;  /* marked as paused */
     if(this->scr)
       pvrscr_speed_tunning(this->scr, 1.0);
@@ -701,7 +704,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   /* If buffer is (almost) empty. pause it for a while */
   if( num_used < 1 && 
       scr_tunning != SCR_TUNNING_PAUSED && 
-      !this->no_video && !this->still_mode) {
+      !this->no_video && !this->still_mode && !this->is_trickspeed) {
 /* 
    #warning TODO:
    - First I-frame can be delivered as soon as it is decoded 
@@ -2352,6 +2355,13 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
   } else if(speed>64 || speed<-64) {
     pthread_mutex_unlock(&this->lock);
     return -2;
+  }
+
+  if(speed > 1 || speed < -1) {
+    reset_scr_tunning(this, -1);
+    this->is_trickspeed = 1;
+  } else {
+    this->is_trickspeed = 0;
   }
 
   if(speed>0)
@@ -4391,6 +4401,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #if 1
       if(!this->is_paused && 
 	 !this->still_mode &&
+	 !this->is_trickspeed &&
 	 !this->slave_stream /*&& 
 	 this->stream->video_fifo->fifo_size <= 0*/) {
 	this->padding_cnt++;
@@ -4469,7 +4480,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     int64_t pts = pts_from_pes(buf->content, buf->size);
     if(pts > 0) {
 #ifdef TEST_SCR_PAUSE
-      if(need_pause) 
+      if(need_pause)
 	scr_tunning_set_paused(this);
 #endif
       vdr_x_demux_control_newpts(this->stream, pts, 0);
