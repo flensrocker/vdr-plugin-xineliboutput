@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.31 2006-12-19 18:17:33 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.32 2006-12-31 22:36:47 phintuka Exp $
  *
  */
 
@@ -41,6 +41,8 @@
 
 #include "frontend_svr.h"
 #include "device.h"
+
+class cConnState {};
 
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
@@ -91,6 +93,7 @@ cXinelibServer::cXinelibServer(int listen_port) :
     fd_data[i] = -1;
     fd_control[i] = -1;
     m_Writer[i] = NULL;
+    m_State[i] = NULL;
     m_bMulticast[i] = 0;
     m_bConfigOk[i] = false;
     m_bUdp[i] = 0;
@@ -105,7 +108,8 @@ cXinelibServer::cXinelibServer(int listen_port) :
 
   m_iMulticastMask = 0;
   m_iUdpFlowMask   = 0;
-
+  m_MasterCli = -1;
+ 
   m_Master     = false;
 
   m_Scheduler  = new cUdpScheduler;
@@ -193,6 +197,10 @@ void cXinelibServer::CloseConnection(int cli)
   if(fd_control[cli]>=0) {
     LOGMSG("Closing connection %d", cli);
     CLOSESOCKET(fd_control[cli]);
+    if(m_State[cli]) {
+      delete m_State[cli];
+      m_State[cli] = NULL;
+    }
     cXinelibDevice::Instance().ForcePrimaryDevice(false);
   }
 }
@@ -256,13 +264,32 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 #else
 #  error __BYTE_ORDER not defined !
 #endif
+
+#ifdef HTTP_OSD
+    uint8_t *spudata = NULL;
+    int spulen;
+#endif
     
-    for(i=0; i<MAXCLIENTS; i++)
+    for(i=0; i<MAXCLIENTS; i++) {
       if(fd_control[i] >= 0 && 
 	 !write_osd_command(fd_control[i], &cmdnet)) {
 	LOGMSG("Send OSD command failed");
         CloseConnection(i);
       }
+#ifdef HTTP_OSD
+      if(m_ConnType[i] == ctHttp) {
+	if(m_Writer[i]) {
+	  if(!spudata)
+	    spudata = dvdspu_encode(cmd, &spulen);
+	  //m_Writer[i]->Queue(-1, spudata, spulen);
+	}
+      }
+#endif
+    }
+
+#ifdef HTTP_OSD
+    free(spudata);
+#endif
 
     free(cmdnet.data);
 
@@ -321,21 +348,13 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
 {
   int TcpClients = 0, UdpClients = 0, RtpClients = 0;
 
-  if(!m_bLiveMode && m_Master) {
-    // dvbplayer feeds multiple pes packets after each poll 
-    // (all frames between two pictures).
-    // So, we must poll here again to avoid overflows ...
-    static cPoller dummy;
-    if(!Poll(dummy, 3))
-      return 0;
-  }
-
   LOCK_THREAD; // Lock control thread out
 
   for(int i=0; i<MAXCLIENTS; i++) {
     if(fd_control[i] >= 0) {
       if((m_bConfigOk[i] && fd_data[i] >= 0) || 
-	 m_ConnType[i] == ctHttp) {
+	 m_ConnType[i] == ctHttp || 
+	 m_ConnType[i] == ctRtsp) {
 
 	if(m_bUdp[i]) {
 
@@ -363,7 +382,7 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
   if(UdpClients || RtpClients)
     if(! m_Scheduler->Queue(m_StreamPos, data, len))
       LOGMSG("cXinelibServer::Play_PES Buffer overflow (UDP/RTP)");
-  
+
   if(TcpClients || UdpClients || RtpClients) 
     cXinelibThread::Play_PES(data, len);
 
@@ -434,7 +453,6 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
     }
 
     /* select master timing source for replay mode */
-    static int sMaster = -1;
     int master = -1;
     if(Clients && !m_iMulticastMask && !Udp) {
       for(int i=0; i<MAXCLIENTS; i++) 
@@ -443,11 +461,12 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
 	  break;
 	}
     }
-    if(master != sMaster) {
-      Xine_Control("MASTER 0");
+    if(master != m_MasterCli) {
+      if(m_MasterCli >= 0)
+	Xine_Control("MASTER 0");
       if(master >= 0)
 	write_cmd(fd_control[master], "MASTER 1\r\n");
-      sMaster = master;
+      m_MasterCli = master;
     }
 
     Unlock();
@@ -488,8 +507,8 @@ bool cXinelibServer::Flush(int TimeoutMs)
     TimeoutMs  = 50;
 
   if(result) {
-    char tmp[64];
-    sprintf(tmp, "FLUSH %d %" PRIu64 " %d", TimeoutMs, m_StreamPos, m_Frames);
+    cString tmp = cString::sprintf("FLUSH %d %" PRIu64 " %d", 
+				   TimeoutMs, m_StreamPos, m_Frames);
     result = (PlayFileCtrl(tmp)) <= 0 && result;
   }
 
@@ -753,8 +772,12 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
 				 int Quality, int SizeX, int SizeY) 
 {
   cGrabReplyFuture future;
-  char  cmd[64];
   uchar *result = NULL;
+  cString cmd;
+
+  cmd = cString::sprintf("GRAB %s %d %d %d\r\n", 
+			 Jpeg ? "JPEG" : "PNM", 
+			 Quality, SizeX, SizeY);
 
   Lock();
 
@@ -763,9 +786,6 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
     Unlock();
     return NULL;
   }
-
-  sprintf(cmd, "GRAB %s %d %d %d\r\n", 
-	  Jpeg ? "JPEG" : "PNM", Quality, SizeX, SizeY);
 
   int token = AllocToken();
   m_Futures->Add(&future, token);
@@ -819,12 +839,12 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
     return;
   }
 
-  MakeDirs(*m_PipesDir, true);
+  MakeDirs(m_PipesDir, true);
 
   int i;
-  char pipeName[1024], buf[1024];
+  cString pipeName;
   for(i=0; i<10; i++) {
-    snprintf(pipeName, sizeof(pipeName), "%s/pipe.%d", *m_PipesDir, i);
+    pipeName = cString::sprintf("%s/pipe.%d", *m_PipesDir, i);
     if(mknod(pipeName, 0644|S_IFIFO, 0) < 0) {
       unlink(pipeName);
       continue;
@@ -833,16 +853,14 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
       break;
   }
   if(i>=10) {
-    LOGERR("Pipe creation failed (%s)", pipeName);
-    RemoveFileOrDir(*m_PipesDir, false);
+    LOGERR("Pipe creation failed (%s)", *pipeName);
+    RemoveFileOrDir(m_PipesDir, false);
     write_cmd(fd_control[cli], "PIPE: Pipe creation failed.\r\n");
     return;
   }
 
-  snprintf(buf, sizeof(buf), "PIPE %s\r\n", pipeName);
-  buf[sizeof(buf)-1] = 0;
-  write_cmd(fd_control[cli], buf);
-
+  printf_cmd(fd_control[cli], "PIPE %s\r\n", *pipeName);
+  
   cPoller poller(fd_control[cli],false);
   poller.Poll(500); /* quite short time ... */
 
@@ -851,7 +869,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
     LOGDBG("Pipe not opened by client");
     /*write_cmd(fd_control[cli], "PIPE NONE\r\n");*/
     unlink(pipeName); 
-    RemoveFileOrDir(*m_PipesDir, false);
+    RemoveFileOrDir(m_PipesDir, false);
     return;
   }
 
@@ -860,7 +878,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   //LOGDBG("cXinelibServer::Handle_Control: pipe %s open", pipeName);
 
   unlink(pipeName); /* safe to remove now, both ends are open or closed. */
-  RemoveFileOrDir(*m_PipesDir, false);
+  RemoveFileOrDir(m_PipesDir, false);
   write_cmd(fd_control[cli], "PIPE OK\r\n");
 
   CREATE_NEW_WRITER;
@@ -937,8 +955,6 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 {
-  char buf[256];
-
   LOGDBG("Trying RTP connection ...");
 
   CloseDataConnection(cli);
@@ -949,8 +965,8 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
     return;
   }
 
-  sprintf(buf, "RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
-  write_cmd(fd_control[cli], buf);
+  printf_cmd(fd_control[cli], "RTP %s:%d\r\n",
+	     xc.remote_rtp_addr, xc.remote_rtp_port);
 
   if(!m_iMulticastMask && !xc.remote_rtp_always_on)
     m_Scheduler->AddRtp();
@@ -1017,15 +1033,14 @@ void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_CONFIG(int cli)
 {
-  char buf[256];
-
   m_bConfigOk[cli] = true;
 
   int one = 1;
   setsockopt(fd_control[cli], IPPROTO_TCP, TCP_NODELAY, &one, sizeof(int));
 
-  sprintf(buf, "NOVIDEO %d\r\nLIVE %d\r\n", m_bNoVideo?1:0, m_bLiveMode?1:0); 
-  write_cmd(fd_control[cli], buf); 
+  printf_cmd(fd_control[cli], 
+	     "NOVIDEO %d\r\nLIVE %d\r\n", 
+	     m_bNoVideo?1:0, m_bLiveMode?1:0); 
 
   ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
   ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
@@ -1041,17 +1056,14 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
 #endif
 
-  if(m_bPlayingFile) {
-    char buf[2048];
+  if(m_bPlayingFile && m_FileName) {
     Unlock();
     int pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-    if(pos<0) pos=0;
-    sprintf(buf, "PLAYFILE %d ", pos/1000);
     Lock();
-    if(m_bPlayingFile) {
-      strcat(buf, m_FileName ? m_FileName : "");
-      strcat(buf, "\r\n");
-      write_cmd(fd_control[cli], buf);
+    if(m_bPlayingFile && m_FileName) {
+      printf_cmd(fd_control[cli], 
+		 "PLAYFILE %d %s %s\r\n", 
+		 (pos>0?pos/1000:0), xc.audio_visualization, m_FileName);
     }
   }
 }
@@ -1180,8 +1192,15 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
   /* Order of tests is significant !!!
      (example: UDP 2\r\n or UDP FULL 1\r\n) */
 
-  if(!strncasecmp(cmd, "GET ", 4) || 
-     m_ConnType[cli] == ctHttp) {
+  if(!strncasecmp(cmd, "OPTIONS ", 8) || 
+     !strncasecmp(cmd, "SETUP ", 6) || 
+     !strncasecmp(cmd, "DESCRIBE ", 9) || 
+     m_ConnType[cli] == ctRtsp) {
+    
+    Handle_Control_RTSP(cli, cmd);
+
+  } else if(!strncasecmp(cmd, "GET ", 4) || 
+	    m_ConnType[cli] == ctHttp) {
 
     Handle_Control_HTTP(cli, cmd);
 
@@ -1234,7 +1253,7 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
     }
 
   } else if(!strncmp(cmd, "INFO ", 5)) {
-    if(!*xc.local_frontend || strncmp(xc.local_frontend, "none", 4))
+    if(!*xc.local_frontend || !strncmp(xc.local_frontend, "none", 4))
       cXinelibThread::InfoHandler(cmd+5);
 
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
@@ -1300,7 +1319,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   }
 
   LOGMSG("Client %d connected: %s", cli, 
-	 ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
+	 cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
 
   bool accepted = SVDRPhosts.Acceptable(sin.sin_addr.s_addr);
   if(!accepted) {
@@ -1361,13 +1380,13 @@ void cXinelibServer::Handle_Discovery_Broadcast()
 
   if(!strncmp(id_string, buf, strlen(id_string))) {
     LOGMSG("Received valid discovery message from %s",
-	   ip2txt(from.sin_addr.s_addr, from.sin_port, ip));
+	   cxSocket::ip2txt(from.sin_addr.s_addr, from.sin_port, ip));
 
     if(udp_discovery_broadcast(fd_discovery, m_Port) < 0)
       LOGERR("Discovery broadcast send error");
   } else {
     LOGDBG("BROADCAST: (%d bytes from %s): %s", n, 
-	   ip2txt(from.sin_addr.s_addr, from.sin_port, ip),
+	   cxSocket::ip2txt(from.sin_addr.s_addr, from.sin_port, ip),
 	   buf);
   }
 }
