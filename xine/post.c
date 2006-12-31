@@ -52,8 +52,8 @@
      !defined(XINELIBOUTPUT_DEBUG_STDERR)
 
 #   undef x_syslog
-
-    static void x_syslog(int level, const char *fmt, ...)
+     static void x_syslog(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+     static void x_syslog(int level, const char *fmt, ...)
     {
       va_list argp;
       char buf[512];

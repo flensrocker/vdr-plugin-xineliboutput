@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.27 2006-12-24 16:51:14 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.28 2006-12-31 19:17:21 phintuka Exp $
  *
  */
 
@@ -47,6 +47,7 @@ typedef struct {
 
 #undef x_syslog
 
+static void x_syslog(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 static void x_syslog(int level, const char *fmt, ...)
 {
   va_list argp;
