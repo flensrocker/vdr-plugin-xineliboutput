@@ -4,33 +4,78 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.14 2006-12-21 09:17:34 phintuka Exp $
+ * $Id: cxsocket.h,v 1.15 2006-12-31 20:14:15 phintuka Exp $
  *
  */
 
 #ifndef __CXSOCKET_H
 #define __CXSOCKET_H
 
+#include <inttypes.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #define CLOSESOCKET(fd) do { if(fd>=0) { close(fd); fd=-1; } } while(0)
 
-static inline char *ip2txt(uint32_t ip, unsigned int port, char *str) 
-{
-  // inet_ntoa is not thread-safe (?)
-  if(str) {
-    unsigned int iph =(unsigned int)ntohl(ip);
-    unsigned int porth =(unsigned int)ntohs(port);
-    if(!porth)
-      sprintf(str, "%d.%d.%d.%d", 
-	      ((iph>>24)&0xff), ((iph>>16)&0xff), 
-	      ((iph>>8)&0xff), ((iph)&0xff));
-    else
-      sprintf(str, "%u.%u.%u.%u:%u", 
-	      ((iph>>24)&0xff), ((iph>>16)&0xff), 
-	      ((iph>>8)&0xff), ((iph)&0xff),
-	      porth);
-  }
-  return str;
-}
+class cxSocket {
+ private:
+  int m_fd;
+
+ public:
+
+  typedef enum {
+    estSTREAM = SOCK_STREAM,
+    estDGRAM  = SOCK_DGRAM
+  } eSockType;
+
+  cxSocket(int fd = -1) : m_fd(fd) {}
+  cxSocket(eSockType type) : m_fd(::socket(PF_INET, (int)type, 0)) {}
+
+  cxSocket(const cxSocket& s) : m_fd(s.m_fd) {}
+  cxSocket &operator=(const cxSocket &S) { m_fd = S.m_fd; return *this; };
+
+  operator int ()  const { return Handle(); }
+  operator bool () const { return IsOpen(); }
+
+  int  Handle(void) const { return m_fd; }
+  bool IsOpen(void) const { return m_fd>0; }
+  void Close(void)        { CLOSESOCKET(m_fd); }
+
+  ssize_t sendto(const void *buf, size_t size, 
+		 const struct sockaddr *to, socklen_t tolen);
+  ssize_t recvfrom(void *buf, size_t size,
+		   struct sockaddr *from, socklen_t *fromlen);
+  ssize_t read(void *buffer, size_t size, int timeout_ms = -1);
+  ssize_t write(const void *buffer, size_t size, int timeout_ms = -1);
+
+  ssize_t printf(const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+  ssize_t write_str(int fd, const char *str, int timeout_ms=-1, int len=0)
+  { return write(str, len ?: strlen(str), timeout_ms); }
+  ssize_t write_cmd(int fd, const char *str, int len=0)
+  { return write(str, len ?: strlen(str), 10); }
+  ssize_t readline(char *buf, int bufsize, int timeout=0, int bufpos=0);
+
+  bool SetBuffers(int Tx, int Rx);
+  bool SetMulticast(int ttl);
+
+  static char *ip2txt(uint32_t ip, unsigned int port, char *str);
+};
+
+#include <vdr/tools.h>
+
+class cxPoller : public cPoller {
+  public:
+    cxPoller(cxSocket& Sock, bool Out=false) : cPoller(Sock, Out) {};
+
+    cxPoller(cxSocket* Socks, int count, bool Out=false) 
+    {
+      for(int i=0; i<count; i++)
+	Add(Socks[i], Out);
+    }
+};
+
+
+//#warning TODO: use cxsocket and remove all other printf_cmd, write_cmd, ....
 
 //
 // Set socket buffers
@@ -68,7 +113,7 @@ static inline void set_socket_buffers(int s, int txbuf, int rxbuf)
 //
 static inline int set_multicast_options(int fd_multicast, int ttl)
 {
-  int iReuse = 1, iLoop = 1, iTtl = xc.remote_rtp_ttl;
+  int iReuse = 1, iLoop = 1, iTtl = ttl;
 
   errno = 0;
 
@@ -251,6 +296,83 @@ static inline ssize_t write_cmd(int fd, const char *str, int len=0)
   return write_str(fd, str, 10, len);
 }
 
+#include <stdarg.h>
+
+static inline ssize_t printf_cmd(int fd, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+
+static inline ssize_t printf_cmd(int fd, const char *fmt, ...)
+{
+  va_list argp;
+  char buf[256];
+  int r;
+
+  va_start(argp, fmt);
+  r = vsnprintf(buf, sizeof(buf), fmt, argp);
+  if(r<0)
+    LOGERR("printf_cmd: vsnprintf failed");
+  else if(r >= (int)sizeof(buf))
+    LOGMSG("printf_cmd: vsnprintf overflow (%20s)", buf);
+  else
+    return write_cmd(fd, buf, r);
+
+  return (ssize_t)-1;
+}
+
+/* return value:
+ *  maxsize   : buffer overflow
+ *  0         : 
+ *              if errno = EAGAIN : timeout
+ *  0...max-1 : succeed. (0 indicates empty line (\r\n))
+ *              if errno = EAGAIN line is not complete (there was timeout)
+ *  <0        : failed
+ */
+static int readline_cmd(int fd, char *buf, int bufsize, int timeout=0, int bufpos=0)
+{
+  int n = -1, cnt = bufpos;
+  cPoller p(fd);
+
+  do {
+    if(timeout>0 && !p.Poll(timeout)) {
+      errno = EAGAIN;
+      return cnt;
+    }
+
+    while((n = read(fd, buf+cnt, 1)) == 1) {
+      buf[++cnt] = 0;
+
+      if( cnt > 1 && buf[cnt - 2] == '\r' && buf[cnt - 1] == '\n') {
+	cnt -= 2;
+	buf[cnt] = 0;
+	errno = 0;
+	return cnt;
+      }
+
+      if( cnt >= bufsize) {
+	LOGMSG("readline_cmd: too long control message (%d bytes): %20s", cnt, buf);
+	errno = 0;
+	return bufsize;
+      }
+    }
+
+    /* connection closed ? */
+    if (n == 0) {
+      LOGMSG("readline_cmd: disconnected");
+      if(errno == EAGAIN)
+	errno = ENOTCONN;
+      return -1;
+    }
+
+  } while (timeout>0 && n<0 && errno == EAGAIN);
+
+  if(errno == EAGAIN)
+    return cnt;
+
+  LOGERR("readline_cmd: read failed");
+  return n;
+}
+
+#include "../config.h"
+#include "../xine_input_vdr_net.h"
 static inline int udp_discovery_broadcast(int fd_discovery, int m_Port)
 {
   if(!xc.remote_usebcast) {
