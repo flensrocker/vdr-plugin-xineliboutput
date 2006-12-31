@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.13 2006-12-24 17:01:35 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.14 2006-12-31 18:55:00 phintuka Exp $
  *
  */
 
@@ -105,6 +105,7 @@ protected:
     char m_CtrlBuf[MAXCLIENTS][1024+1];
     int  m_CtrlBufPos[MAXCLIENTS];
 
+    int  m_MasterCli;
     bool m_bUdp[MAXCLIENTS];
     int  m_ConnType[MAXCLIENTS];
     bool m_bMulticast[MAXCLIENTS];
