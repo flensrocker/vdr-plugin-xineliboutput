@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.15 2006-12-31 20:14:15 phintuka Exp $
+ * $Id: cxsocket.h,v 1.16 2006-12-31 20:19:32 phintuka Exp $
  *
  */
 
@@ -53,6 +53,14 @@ class cxSocket {
   { return write(str, len ?: strlen(str), timeout_ms); }
   ssize_t write_cmd(int fd, const char *str, int len=0)
   { return write(str, len ?: strlen(str), 10); }
+
+/* readline return value:
+ *   <0        : failed
+ *   >=maxsize : buffer overflow
+ *   >=0       : if errno = EAGAIN -> line is not complete (there was timeout)
+ *               if errno = 0      -> succeed
+ *               (return value 0 indicates empty line "\r\n")
+ */
   ssize_t readline(char *buf, int bufsize, int timeout=0, int bufpos=0);
 
   bool SetBuffers(int Tx, int Rx);
@@ -316,59 +324,6 @@ static inline ssize_t printf_cmd(int fd, const char *fmt, ...)
     return write_cmd(fd, buf, r);
 
   return (ssize_t)-1;
-}
-
-/* return value:
- *  maxsize   : buffer overflow
- *  0         : 
- *              if errno = EAGAIN : timeout
- *  0...max-1 : succeed. (0 indicates empty line (\r\n))
- *              if errno = EAGAIN line is not complete (there was timeout)
- *  <0        : failed
- */
-static int readline_cmd(int fd, char *buf, int bufsize, int timeout=0, int bufpos=0)
-{
-  int n = -1, cnt = bufpos;
-  cPoller p(fd);
-
-  do {
-    if(timeout>0 && !p.Poll(timeout)) {
-      errno = EAGAIN;
-      return cnt;
-    }
-
-    while((n = read(fd, buf+cnt, 1)) == 1) {
-      buf[++cnt] = 0;
-
-      if( cnt > 1 && buf[cnt - 2] == '\r' && buf[cnt - 1] == '\n') {
-	cnt -= 2;
-	buf[cnt] = 0;
-	errno = 0;
-	return cnt;
-      }
-
-      if( cnt >= bufsize) {
-	LOGMSG("readline_cmd: too long control message (%d bytes): %20s", cnt, buf);
-	errno = 0;
-	return bufsize;
-      }
-    }
-
-    /* connection closed ? */
-    if (n == 0) {
-      LOGMSG("readline_cmd: disconnected");
-      if(errno == EAGAIN)
-	errno = ENOTCONN;
-      return -1;
-    }
-
-  } while (timeout>0 && n<0 && errno == EAGAIN);
-
-  if(errno == EAGAIN)
-    return cnt;
-
-  LOGERR("readline_cmd: read failed");
-  return n;
 }
 
 #include "../config.h"
