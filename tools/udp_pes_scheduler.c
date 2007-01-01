@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.17 2006-12-24 16:00:13 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.18 2007-01-01 07:35:18 phintuka Exp $
  *
  */
 
@@ -111,11 +111,14 @@ int64_t cTimePts::Now(void)
     t.tv_usec += 1000000;
   }
   t.tv_usec -= tbegin.tv_usec;
-  
-  return ( ((int64_t)t.tv_sec) * ((int64_t)m_Multiplier) + 
-	   ((int64_t)t.tv_usec) * INT64_C(90) / INT64_C(1000) +
-	   begin) & MAX_SCR;
 
+  int64_t pts = 0;
+  pts += ((int64_t)t.tv_sec) * INT64_C(90000);
+  pts += ((int64_t)t.tv_usec) * INT64_C(90) / INT64_C(1000);
+  if(m_Multiplier != 90000)
+    pts = pts * m_Multiplier / INT64_C(90000);
+
+  return ( pts + begin ) & MAX_SCR;
 }
 
 void cTimePts::Set(int64_t Pts)
@@ -148,15 +151,20 @@ void cTimePts::Pause(void)
 
 void cTimePts::Resume(void)
 {
-  m_Paused = false;
+  if(m_Paused) {
+    Set(begin);
+    m_Paused = false;
+  }
 }
 
 void cTimePts::TrickSpeed(int Multiplier)
 {
+  Set(Now());
+
   if(Multiplier < 0)
-    m_Multiplier = 90000 / (-Multiplier);
+    m_Multiplier = 90000 * (-Multiplier);
   else if(Multiplier > 0)
-    m_Multiplier = 90000 * Multiplier;
+    m_Multiplier = 90000 / Multiplier;
   else
     LOGERR("cTimePts::SetSpeed: Multiplier=%d", Multiplier);
 }
@@ -183,8 +191,8 @@ const int HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
 // initial burst length after seek (500ms = ~13 video frames)
 const int64_t INITIAL_BURST_TIME  = (int64_t)(45000); // pts units (90kHz)
 
-// assume seek when when pts difference between two frames exceeds this (1.5 seconds)
-const int64_t JUMP_LIMIT_TIME = (int64_t)(3*90000/2); // pts units (90kHz)
+// assume seek when when pts difference between two frames exceeds this (2,5 seconds)
+const int64_t JUMP_LIMIT_TIME = (int64_t)(5*90000/2);   // pts units (90kHz)
 
 const int RTCP_MIN_INTERVAL = 45000; // max. twice in second
 
@@ -219,6 +227,8 @@ cUdpScheduler::cUdpScheduler()
 #endif
 
   last_delay_time = 0;
+  m_Master = false;
+  m_TrickSpeed = false;
 
   // RTP
 
@@ -516,6 +526,8 @@ void cUdpScheduler::Pause(bool On)
     MasterClock.Pause();
   else
     MasterClock.Resume();
+
+  m_TrickSpeed = false;
 }
 
 void cUdpScheduler::TrickSpeed(int Multiplier)
@@ -523,15 +535,17 @@ void cUdpScheduler::TrickSpeed(int Multiplier)
   cMutexLock ml(&m_Lock);
 
 #ifdef LOG_SCR
-  if(Multiplier == 1 || Multiplier == -1)
+  if(Multiplier == 1 || Multiplier == -1) {
     LOGMSG("UDP clock --> normal");
-  else if(Multiplier < 0)
+  } else if(Multiplier < 0)
     LOGMSG("UDP clock --> %dx", -Multiplier);
   else
     LOGMSG("UDP clock --> 1/%d", Multiplier);
 #endif
 
   MasterClock.TrickSpeed(Multiplier);
+
+  m_TrickSpeed = (Multiplier==-1 || Multiplier==1) ? false : true;
 }
 
 bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length) 
@@ -844,7 +858,7 @@ void cUdpScheduler::Action(void)
     // Request real-time scheduling
     sched_param temp;
     temp.sched_priority = 2;
-    
+
     if (!pthread_setschedparam(pthread_self(), SCHED_RR, &temp)) {
       LOGMSG("cUdpScheduler priority set successful SCHED_RR %d [%d,%d]",
 	     temp.sched_priority,
