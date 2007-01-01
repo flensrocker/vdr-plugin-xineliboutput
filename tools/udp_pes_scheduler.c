@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.19 2007-01-01 07:50:50 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.20 2007-01-01 08:09:11 phintuka Exp $
  *
  */
 
@@ -532,22 +532,28 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
 {
   int64_t diff = 0;
 
-  if(!Audio /*Video*/) {
-    /* #warning TODO: should be possible to use video pts too (if ac3 or muted ...) */
+  if(!Audio) {
     diff = pts - current_video_vtime;
-    if(diff < 0) diff = -diff;
-    if(diff > JUMP_LIMIT_TIME) { // 1 s (must be > GOP)
+    if(diff > JUMP_LIMIT_TIME || (-diff) > JUMP_LIMIT_TIME) { // 1 s (must be > GOP)
       // RESET
 #ifdef LOG_SCR
       LOGDBG("cUdpScheduler RESET (Video jump %lld->%lld)",
-	     current_audio_vtime, pts);
+	     current_video_vtime, pts);
       data_sent = frames_sent = 0;
 #endif
-      //diff = 0;
       current_video_vtime = pts;
+
+      // Use video pts for sync only in audioless trickspeeds
+      // (audio has smaller, constant and increasing intervals)
+      if(m_TrickSpeed)
+	MasterClock.Set(current_video_vtime + INITIAL_BURST_TIME);
+
       return -1;
     }
-    current_video_vtime = pts;
+    if(diff < 0)  /* ignore small negative differences (B/P frames are sent out-of-order) */
+      diff = 0;
+    else
+      current_video_vtime = pts;
     
   } else if(Audio) {
     diff = pts - current_audio_vtime;
@@ -559,7 +565,6 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
 	     current_audio_vtime, pts);
       data_sent = frames_sent = 0;
 #endif
-      //diff = 0;
       current_audio_vtime = pts;
 
       // Use audio pts for sync (audio has constant and increasing intervals)
@@ -579,7 +584,7 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
     data_sent = frames_sent = 0;
   }
 #endif
-  
+
   return (int) diff;
 }
 
