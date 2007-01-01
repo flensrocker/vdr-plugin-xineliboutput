@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.18 2007-01-01 07:35:18 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.19 2007-01-01 07:50:50 phintuka Exp $
  *
  */
 
@@ -241,8 +241,6 @@ cUdpScheduler::cUdpScheduler()
   m_Octets = 0;
   RtpScr.Set((int64_t)random());
 
-  m_fd_rtp = -1;
-  m_fd_rtcp = -1;
   m_fd_sap = -1;
 
   // Queuing
@@ -265,22 +263,18 @@ cUdpScheduler::cUdpScheduler()
 
 cUdpScheduler::~cUdpScheduler()
 {
-  if(m_fd_rtcp >= 0 || m_fd_rtp >= 0) {
-    Send_SAP(false);
-    close(m_fd_rtp);
-    m_fd_rtp = -1;
-    close(m_fd_rtcp);
-    m_fd_rtcp = -1;
-  }
-  close(m_fd_sap);
-  m_fd_sap = -1;
-
   m_Lock.Lock();
+
   m_Running = 0;
   m_Cond.Broadcast();
   m_Lock.Unlock();
 
   Cancel(3);
+
+  if(m_fd_rtcp || m_fd_rtp)
+    Send_SAP(false);
+
+  CLOSESOCKET(m_fd_sap);
 
   delete m_BackLog;
 }
@@ -289,24 +283,10 @@ bool cUdpScheduler::AddRtp(void)
 {
   cMutexLock ml(&m_Lock);
 
-  int fd_rtp = -1, fd_rtcp = -1;
-  struct sockaddr_in sin;
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(xc.remote_rtp_port);
-  sin.sin_addr.s_addr = inet_addr(xc.remote_rtp_addr);
-
-
-  if(m_fd_rtp >= 0) {
-    LOGERR("cUdpScheduler::AddHandle: RTP socket already open !");
-    Send_SAP(false);
-    close(m_fd_rtp);
-    m_fd_rtp = -1;
-  }
-
-  if(m_fd_rtcp >= 0) {
+  if(m_fd_rtcp) {
     LOGERR("cUdpScheduler::AddHandle: RTCP socket already open !");
-    close(m_fd_rtcp);
-    m_fd_rtcp = -1;
+    Send_SAP(false);
+    m_fd_rtcp.close();
   }
 
   /* need new ssrc */
@@ -316,75 +296,59 @@ bool cUdpScheduler::AddRtp(void)
   //
   // RTP
   //
-  if((fd_rtp = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if(! m_fd_rtp.create(cxSocket::estDGRAM)) {
     LOGERR("socket() failed (UDP/RTP multicast)");
     return false;
   }
 
   // Set buffer sizes
-  set_socket_buffers(fd_rtp, KILOBYTE(256), 2048);
+  m_fd_rtp.set_buffers(KILOBYTE(256), 2048);
 
   // Set multicast socket options
-  if(set_multicast_options(fd_rtp, xc.remote_rtp_ttl)) {
-    close(fd_rtp);
+  if(!m_fd_rtp.set_multicast(xc.remote_rtp_ttl)) {
+    m_fd_rtp.close();
     return false;
   }
 
   // Connect to multicast address
-  if(connect(fd_rtp, (struct sockaddr *)&sin, sizeof(sin)) == -1 && 
+  if(!m_fd_rtp.connect(xc.remote_rtp_addr, xc.remote_rtp_port) && 
      errno != EINPROGRESS) {
     LOGERR("connect(fd_rtp) failed. Address=%s, port=%d",
 	   xc.remote_rtp_addr, xc.remote_rtp_port);
-    close(fd_rtp);
+    m_fd_rtp.close();
     return false;
   }
-
-  // Set to non-blocking mode
-  if(fcntl (fd_rtp, F_SETFL, 
-	    fcntl (fd_rtp, F_GETFL) | O_NONBLOCK) == -1) 
-    LOGERR("can't put multicast socket in non-blocking mode");      
   
+  // Set to non-blocking mode
+  m_fd_rtp.set_blocking(false);
   
   //
   // RTCP
   //
-  if((fd_rtcp = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  if(! m_fd_rtcp.create(cxSocket::estDGRAM))
     LOGERR("socket() failed (RTCP multicast)");
-      
+    
+  m_fd_rtcp.set_buffers(16384, 16384);
+  if(!m_fd_rtcp.set_multicast(xc.remote_rtp_ttl))
+    m_fd_rtcp.close();
+
   /* RTCP port (RFC 1889) */
-  if(xc.remote_rtp_port & 1)
-    sin.sin_port = htons(xc.remote_rtp_port - 1);
-  else
-    sin.sin_port = htons(xc.remote_rtp_port + 1);
-      
-  set_socket_buffers(fd_rtcp, 16384, 16384);
-  if(set_multicast_options(fd_rtcp, xc.remote_rtp_ttl)) {
-    close(fd_rtcp);
-    fd_rtcp = -1;
-  }
-      
-  else if(connect(fd_rtcp, (struct sockaddr *)&sin, sizeof(sin))==-1 && 
+  else if(!m_fd_rtcp.connect(xc.remote_rtp_addr, xc.remote_rtp_port
+			     + ((xc.remote_rtp_port&1) ? -1 : 1)) &&
 	  errno != EINPROGRESS) {
     LOGERR("connect(fd_rtcp) failed. Address=%s, port=%d",
 	   xc.remote_rtp_addr, xc.remote_rtp_port +
 	   (xc.remote_rtp_port&1)?-1:1);
-    close(fd_rtcp);
-    fd_rtcp = -1;
+    m_fd_rtcp.close();
   }
 
   // Set to non-blocking mode
-  else if(fcntl (fd_rtcp, F_SETFL, 
-		 fcntl (fd_rtcp, F_GETFL) | O_NONBLOCK) == -1) 
-    LOGERR("can't put multicast socket in non-blocking mode");
+  m_fd_rtcp.set_blocking(false);
 
   // Finished
 
-  if(!AddHandle(fd_rtp)) {
+  if(!AddHandle(m_fd_rtp))
     LOGERR("cUdpScheduler::AddHandle(fd_rtp) failed");
-  }
-
-  m_fd_rtp = fd_rtp;
-  m_fd_rtcp = fd_rtcp;
 	
   Send_SAP(true);
 
@@ -420,17 +384,14 @@ void cUdpScheduler::RemoveRtp(void)
 {
   cMutexLock ml(&m_Lock);
 
-  if(m_fd_rtp >= 0 || m_fd_rtcp >= 0) {
+  if(m_fd_rtp || m_fd_rtcp) {
     Send_SAP(false);
 
     RemoveHandle(m_fd_rtp);
     
-    close(m_fd_rtp);
-    m_fd_rtp = -1;
-    close(m_fd_rtcp);
-    m_fd_rtcp = -1;
-    close(m_fd_sap);
-    m_fd_sap = -1;
+    m_fd_rtp.close();
+    m_fd_rtcp.close();
+    CLOSESOCKET(m_fd_sap);
   }
 }
 
@@ -624,7 +585,7 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
 
 void cUdpScheduler::Send_RTCP(void)
 {
-  if(m_fd_rtcp < 0)
+  if(!m_fd_rtcp)
     return;
 
   uint64_t scr = RtpScr.Now();
@@ -670,9 +631,9 @@ void cUdpScheduler::Send_RTCP(void)
 
     // Send
 #ifndef LOG_RTCP
-    (void) send(m_fd_rtcp, frame, content - frame, 0);
+    (void) m_fd_rtcp.send(frame, content - frame);
 #else
-    LOGMSG("RTCP send (%d)", send(m_fd_rtcp, frame, content - frame, 0));
+    LOGMSG("RTCP send (%d)", m_fd_rtcp.send(frame, content - frame));
     for(int i=0; i<content-frame; i+=16) 
       LOGMSG("%02X %02X %02X %02X %02X %02X %02X %02X  "
 	     "%02X %02X %02X %02X %02X %02X %02X %02X  "
@@ -691,67 +652,12 @@ void cUdpScheduler::Send_RTCP(void)
   }
 }
 
-#include <sys/ioctl.h>
-#include <net/if.h>
-
-static uint32_t get_local_address(int fd, char *ip_address)
-{
-  uint32_t local_addr = 0;
-  struct ifconf conf;
-  struct ifreq buf[3];
-  unsigned int n;
-
-  struct sockaddr_in sin;
-  socklen_t len = sizeof(sin);
-
-  if(!getsockname(fd, (struct sockaddr *)&sin, &len)) {
-    local_addr = sin.sin_addr.s_addr;
-
-  } else {
-    //LOGERR("getsockname failed");
-
-    // scan network interfaces
-
-    conf.ifc_len = sizeof(buf);
-    conf.ifc_req = buf;
-    memset(buf, 0, sizeof(buf));
-    
-    errno = 0;
-    if(ioctl(fd, SIOCGIFCONF, &conf) < 0)
-      LOGERR("can't obtain socket local address");
-    else {
-      for(n=0; n<conf.ifc_len/sizeof(struct ifreq); n++) {
-	struct sockaddr_in *in = (struct sockaddr_in *) &buf[n].ifr_addr;
-# if 0
-	uint32_t tmp = ntohl(in->sin_addr.s_addr);
-	LOGMSG("Local address %6s %d.%d.%d.%d", 
-	       conf.ifc_req[n].ifr_name,
-	       ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
-	       ((tmp>>8)&0xff), ((tmp)&0xff));
-# endif
-	if(n==0 || local_addr == htonl(INADDR_LOOPBACK)) 
-	  local_addr = in->sin_addr.s_addr;
-	else
-	  break;
-      }
-    }
-  }
-
-  if(!local_addr)
-    LOGERR("No local address found");
-
-  if(ip_address)
-    ip2txt(local_addr, 0, ip_address);
-
-  return local_addr;  
-}
 
 void cUdpScheduler::Send_SAP(bool Announce)
 {
-  if(xc.remote_rtp_sap && m_fd_rtp >= 0) {
+  if(xc.remote_rtp_sap && m_fd_rtp) {
     char ip[20] = "";
-    uint32_t local_addr = get_local_address(m_fd_rtp, ip);
-    
+    uint32_t local_addr = m_fd_rtp.get_local_address(ip);
     if(local_addr) {
       const char *sdp_descr = vdr_sdp_description(ip,
 						  2001,
@@ -777,10 +683,13 @@ void cUdpScheduler::Send_SAP(bool Announce)
       if(!sap_send_pdu(&m_fd_sap, pdu, 0))
 	LOGERR("SAP/SDP announce failed");
       free(pdu);
+
+      if(!Announce)
+	CLOSESOCKET(m_fd_sap);
     }
   }
 }
-
+  
 void cUdpScheduler::Schedule(const uchar *Data, int Length)
 {
   bool Audio=false, Video=false;
@@ -995,7 +904,7 @@ void cUdpScheduler::Action(void)
     m_Lock.Lock();
     m_Frames ++;
     m_Octets += PayloadSize;
-    if(m_fd_rtcp >= 0 && (m_Frames & 0xff) == 1) { // every 256th frame
+    if(m_fd_rtcp && (m_Frames & 0xff) == 1) { // every 256th frame
       Send_RTCP();
 #if 0
       if((m_Frames & 0xff00) == 0) // every 65536th frame (~ 2 min)

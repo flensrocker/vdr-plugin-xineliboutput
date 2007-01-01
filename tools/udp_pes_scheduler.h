@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.7 2006-12-30 00:36:05 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.8 2007-01-01 07:50:50 phintuka Exp $
  *
  */
 
@@ -40,6 +40,8 @@ class cTimePts
 
 //----------------------- cUdpPesScheduler ----------------------------------
 
+#include "cxsocket.h"
+
 #define MAX_UDP_HANDLES 16
 
 class cUdpBackLog;
@@ -56,6 +58,8 @@ class cUdpScheduler : public cThread
     void RemoveHandle(int fd);  /* UDP unicast */ 
     bool AddRtp(void);          /* UDP/RTP multicast */
     void RemoveRtp(void);       /* UDP/RTP multicast */
+    bool AddHandle(cxSocket& s) { return AddHandle(s.handle()); }
+    void RemoveHandle(cxSocket& s) { RemoveHandle(s.handle()); }
 
     bool Poll(int TimeoutMs, bool Master);
     bool Queue(uint64_t StreamPos, const uchar *Data, int Length);
@@ -78,8 +82,9 @@ class cUdpScheduler : public cThread
     // Clients
     int       m_Handles[MAX_UDP_HANDLES];
     int       m_wmem[MAX_UDP_HANDLES];  /* kernel buffer size */
-    int       m_fd_rtp;
-    int       m_fd_rtcp;
+
+    cxSocket  m_fd_rtp;
+    cxSocket  m_fd_rtcp;
 
     // Queue
     int m_QueueNextSeq;      /* next outgoing */
@@ -116,7 +121,9 @@ class cUdpScheduler : public cThread
     virtual void Action(void);
 
     void Send_RTCP(void);
+
     int  m_fd_sap;
+
     void Send_SAP(bool Announce = true);
 };
 
