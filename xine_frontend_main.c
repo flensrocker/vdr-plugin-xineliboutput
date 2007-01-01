@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.19 2006-12-24 17:19:43 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.20 2007-01-01 06:45:51 phintuka Exp $
  *
  */
 
@@ -13,6 +13,12 @@
 #include <syslog.h>
 #include <getopt.h>
 #include <signal.h>
+
+#include "tools/vdrdiscovery.h"
+
+/* include LIRC forwarding code */
+#include "xine_frontend_lirc.c"
+
 
 #if 0
 static void xine_log_cb(void *data, int section)
@@ -256,6 +262,8 @@ int main(int argc, char *argv[])
   frontend_t *fe = NULL;
   extern const fe_creator_f fe_creator;
   char *static_post_plugins = NULL;
+  char *lirc_dev = NULL;
+  int repeat_emu = 0;
   void *p;
   char *exec_name = argv[0];
 
@@ -325,13 +333,13 @@ int main(int argc, char *argv[])
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
 	      printf("Post plugins: %s\n", static_post_plugins);
 	      break;
-    case 'L': lirc_device_name = optarg ? : strdup("/dev/lircd");
-              if(strstr((char*)lirc_device_name, ",repeatemu")) {
-		*strstr((char*)lirc_device_name, ",repeatemu") = 0;
-		lirc_repeat_emu = 1;
+    case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
+              if(strstr((char*)lirc_dev, ",repeatemu")) {
+		*strstr((char*)lirc_dev, ",repeatemu") = 0;
+		repeat_emu = 1;
               }
-              printf("LIRC device:  %s%s\n", lirc_device_name,
-		     lirc_repeat_emu?", emulating key repeat":"");
+              printf("LIRC device:  %s%s\n", lirc_dev,
+		     repeat_emu?", emulating key repeat":"");
 	      break;
     case 'v': verbose_xine_log = 1;
               SysLogLevel = 3;
@@ -389,7 +397,7 @@ int main(int argc, char *argv[])
     char address[1024] = "";
     int port = -1;
     printf("VDR server not given, searching ...\n");
-    if(search_vdr_server(&port, &address[0])) {
+    if(udp_discovery_find_server(&port, &address[0])) {
       printf("Found VDR server: host %s, port %d\n", address, port);
       if(mrl) {
 	char *tmp = mrl;
@@ -471,14 +479,7 @@ int main(int argc, char *argv[])
   }
 
   /* Start LIRC forwarding */
-  if(lirc_device_name) {
-    if ((err = pthread_create (&lirc_thread,
-			       NULL, lirc_receiver_thread, 
-			       (void*)fe)) != 0) {
-      fprintf(stderr, "can't create new thread for lirc (%s)\n", 
-	      strerror(err));
-    }
-  }
+  lirc_start((fe_t*)fe, lirc_dev, repeat_emu);
 
   /* Start keyboard listener thread */
   if(!nokbd)
@@ -510,15 +511,7 @@ int main(int argc, char *argv[])
 
   printf("Terminating...\n");
 
-  if(lirc_device_name) {
-    /*free(lirc_device_name);*/    
-    lirc_device_name = NULL;
-    if(fd_lirc >= 0)
-      close(fd_lirc);
-    fd_lirc = -1;
-    pthread_cancel (lirc_thread);
-    pthread_join (lirc_thread, &p);
-  }
+  lirc_stop();
 
   if(!nokbd) {
     pthread_cancel (kbd_thread);
