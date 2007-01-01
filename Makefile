@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.16 2006-12-31 23:08:38 phintuka Exp $
+# $Id: Makefile,v 1.17 2007-01-01 06:53:39 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -223,7 +223,8 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
          i18n.o menuitems.o media_player.o equalizer.o \
          frontend_local.o frontend_svr.o \
          tools/cxsocket.o tools/udp_pes_scheduler.o \
-         tools/backgroundwriter.o tools/playlist.o tools/http.o
+         tools/backgroundwriter.o tools/playlist.o tools/http.o \
+         tools/vdrdiscovery.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
   OBJS = 
@@ -232,7 +233,7 @@ endif
 
 ifeq ($(XINELIBOUTPUT_X11), 1)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
-  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o
+  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o
 else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
@@ -240,7 +241,7 @@ endif
 
 ifeq ($(XINELIBOUTPUT_FB), 1)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
-  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o
+  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o
 else
   OBJS_FBFE_SO = 
   OBJS_FBFE = 
@@ -285,8 +286,14 @@ vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 
 xine_input_vdr.o: xine_input_vdr.c xine_input_vdr.h xine_osd_command.h nosignal_720x576.c logdefs.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_vdr.c
+xine_input_http.o: xine_input_http.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_http.c
 xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
+tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
+tools/vdrdiscovery_standalone.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
+	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
 xine_post_autocrop.o: xine_post_autocrop.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autocrop.c
 xine_post_audiochannel.o: xine_post_audiochannel.c
@@ -305,12 +312,12 @@ xine_fbfe_frontend.o: xine_fbfe_frontend.c xine_frontend.c xine_frontend.h \
 xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
 		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.c \
-		xine_frontend_lirc.c xineliboutput.c
+		xineliboutput.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_sxfe_frontend.c -o $@
 xine_fbfe_frontend_standalone.o: xine_fbfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
 		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.c \
-		xine_frontend_lirc.c xineliboutput.c
+		xineliboutput.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_fbfe_frontend.c -o $@
 
 
