@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.1 2007-01-01 06:17:48 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.2 2007-01-01 08:11:51 phintuka Exp $
  *
  */
 
@@ -21,10 +21,11 @@
 
 #ifdef FE_STANDALONE
 #  define LOG_MODULENAME "[discovery] "
+#else
+#  define LogToSysLog 1
 #endif
 
 #define NEED_x_syslog
-#define LogToSysLog 1
 #include "../logdefs.h"
 
 #include "vdrdiscovery.h"
@@ -210,7 +211,7 @@ int udp_discovery_find_server(int *port, char *address)
       while( (err = udp_discovery_recv(fd_discovery, buf, 500, &from)) > 0) {
 	
 	uint32_t tmp = ntohl(from.sin_addr.s_addr);
-  
+
 	buf[err] = 0;
 	LOGDBG("Reveived broadcast: %d bytes from %d.%d.%d.%d \n%s", 
 	       err,
