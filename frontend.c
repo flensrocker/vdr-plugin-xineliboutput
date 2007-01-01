@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.25 2006-12-24 16:22:35 phintuka Exp $
+ * $Id: frontend.c,v 1.26 2007-01-01 08:37:47 phintuka Exp $
  *
  */
 
@@ -463,31 +463,35 @@ int cXinelibThread::Play_Mpeg1_PES(const uchar *data1, int len)
 
 bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
 {
-  static uchar hdr[] = {0x00,0x00,0x01,0xe0, 0x00,0x00,0x80,0,0}; /* mpeg2 */
-  int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
-  uchar *frame = new uchar[PES_CHUNK_SIZE+32];
-
+  static uchar hdr_vid[] = {0x00,0x00,0x01,0xe0, 0x00,0x00,0x80,0x00,0x00}; /* mpeg2 */
   static uchar hdr_pts[] = {0x00,0x00,0x01,0xe0, 0x00,0x08,0x80,0x80,
                             0x05,0x00,0x00,0x00, 0x00,0x00}; /* mpeg2 */
+  static uchar seq_end[] = {0x00,0x00,0x01,0xe0, 0x00,0x07,0x80,0x00,
+			    0x00,
+			    0x00,0x00,0x01,0xB7}; /* mpeg2 */
+  int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
+  uchar *frame = new uchar[PES_CHUNK_SIZE+32];
+  cPoller p;
+
 
   hdr_pts[3] = (uchar)streamID;
+  Poll(p, 100);
   Play_PES(hdr_pts, sizeof(hdr_pts));
 
-  hdr[3] = (uchar)streamID;
+  hdr_vid[3] = (uchar)streamID;
   while(todo) {
     int blocklen = todo;
     if(blocklen > ((PES_CHUNK_SIZE - hdrlen) & 0xfffc))
       blocklen = (PES_CHUNK_SIZE - hdrlen) & 0xfffc;
-    hdr[4] = ((blocklen+3)&0xff00)>>8;
-    hdr[5] = ((blocklen+3)&0xff);
+    hdr_vid[4] = ((blocklen+3)&0xff00)>>8;
+    hdr_vid[5] = ((blocklen+3)&0xff);
 
-    memcpy(frame, hdr, hdrlen);
+    memcpy(frame, hdr_vid, hdrlen);
     memcpy(frame+hdrlen, data+done, blocklen);
 
     done += blocklen;
     todo -= blocklen;
 
-    cPoller p;
     Poll(p, 100);
 
     if(blocklen+hdrlen != Play_PES(frame,blocklen+hdrlen)) {      
@@ -498,11 +502,9 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
 
   // append sequence end code to video 
   if((streamID & 0xF0) == 0xE0) { 
-    static uchar seqend[] = {0x00,0x00,0x01,0xe0, 0x00,0x07,0x80,0x00,
-			     0x00,
-			     0x00,0x00,0x01,0xB7}; /* mpeg2 */
-    seqend[3] = (uchar)streamID;
-    Play_PES(seqend, 13);
+    seq_end[3] = (uchar)streamID;
+    Poll(p, 100);
+    Play_PES(seq_end, sizeof(seq_end));
   }
 
   delete[] frame;
@@ -646,18 +648,25 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
   snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s\r\n",
 	   LoopPlay ? "Loop" : "", Position, vis, FileName ? FileName : "");
   buf[sizeof(buf)-1] = 0;
+
+  if(FileName) {
+    Lock();
+    if(m_FileName)
+      free(m_FileName);
+    m_FileName = strdup(FileName);
+    m_bPlayingFile = true;
+    Unlock();
+  }
+
   int result = PlayFileCtrl(buf);
 
   if(!FileName || result != 0) {
+    Lock();
     m_bPlayingFile = false;
     if(m_FileName)
       free(m_FileName);
     m_FileName = NULL;
-  } else { 
-    if(m_FileName)
-      free(m_FileName);
-    m_FileName = strdup(FileName);
-    m_bPlayingFile = true; 
+    Unlock();
   }
 
   return (!GetStopSignal()) && (result==0);
