@@ -4,46 +4,64 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.4 2006-10-23 19:22:14 phintuka Exp $
+ * $Id: logdefs.h,v 1.5 2007-01-01 06:49:20 phintuka Exp $
  *
  */
 
 #ifndef _LOGDEFS_H_
 
+/*
+ * Default module name (goes to every log line)
+ */
+
 #ifndef LOG_MODULENAME
 #  define LOG_MODULENAME "[xine..put] "
 #endif
 
-#define TRACELINE LOGDBG("at %s:%d %s", __FILE__, __LINE__, __FUNCTION__)
+/*
+ * Logging functions, should not be used directly
+ */
 
-
-#if defined(XINELIBOUTPUT_DEBUG_STDOUT)
-#  /* logging --> stdout */
-#  include <stdio.h>
-#  define x_syslog(l,x...) do { printf(LOG_MODULENAME x); \
-                                printf("\n"); \
-                           } while(0)
-
-#elif defined(XINELIBOUTPUT_DEBUG_STDERR)
-#  /* logging --> stderr */
-#  include <stdio.h>
-#  define x_syslog(l,x...) do { fprintf(stderr, LOG_MODULENAME x); \
-                                fprintf(stderr,"\n"); \
-                           } while(0)
-
+#if defined(esyslog) || (defined(VDRVERSNUM) && VDRVERSNUM >= 10343)
+#  define x_syslog(l,x...) syslog_with_tid(l, LOG_MODULENAME x)
 #else
-#  /* logging --> syslog */
-#  include <syslog.h>
-#  if defined(VDRVERSNUM) && VDRVERSNUM >= 10343
-#    define x_syslog(l,x...) syslog_with_tid(l, LOG_MODULENAME x)
-#  else
-#    define x_syslog(l,x...) syslog(l, LOG_MODULENAME x)
+
+   /* from xine_frontend.c or vdr tools.c: */
+   extern int SysLogLevel; /* errors, info, debug */
+
+#  ifndef LogToSysLog
+   extern int LogToSysLog; /* xine_frontend_c, log to syslog instead of console */
 #  endif
-#endif
+
+#  if defined(NEED_x_syslog)
+#    include <syslog.h>
+#    include <sys/syscall.h>
+#    include <stdarg.h>
+     static void x_syslog(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+     static void x_syslog(int level, const char *fmt, ...)
+     { 
+       va_list argp;
+       char buf[512];
+       va_start(argp, fmt);
+       vsnprintf(buf, 512, fmt, argp);
+       if(!LogToSysLog) {
+	 fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
+       } else {
+	 syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
+       }
+       va_end(argp);
+     }
+#  endif /* NEED_x_syslog */
+#endif /* VDR */
+
+
+/*
+ * Macros used for logging
+ */
 
 #include <errno.h>
 
-#define LOG_ERRNO  x_syslog(LOG_ERR, "ERROR (%s,%d): %s", \
+#define LOG_ERRNO  x_syslog(LOG_ERR, "   (ERROR (%s,%d): %s)", \
                    __FILE__, __LINE__, strerror(errno))
 
 #define LOGERR(x...) do { \
@@ -56,6 +74,13 @@
 #define LOGMSG(x...) do{ if(SysLogLevel > 1) x_syslog(LOG_INFO,  x); } while(0)
 #define LOGDBG(x...) do{ if(SysLogLevel > 2) x_syslog(LOG_DEBUG, x); } while(0)
 
+#define TRACELINE LOGDBG("at %s:%d %s", __FILE__, __LINE__, __FUNCTION__)
+
+
+
+/*
+ * ASSERT
+ */
 
 #ifdef NDEBUG
 #  define ASSERT(expr)
@@ -71,6 +96,10 @@
       } while(0)
 #endif
 
+
+/*
+ * Plugin (call)trace
+ */
 
 #ifdef XINELIBOUTPUT_DEBUG
 # ifdef __cplusplus
@@ -103,6 +132,12 @@
 #  define TRACE(x)
 #  define TRACEF(x)
 #endif
+
+
+/*
+ * Execution time tracker: 
+ * log a message when function execution takes longer than expected
+ */
 
 #ifdef __cplusplus
 #  ifdef TRACK_EXEC_TIME
