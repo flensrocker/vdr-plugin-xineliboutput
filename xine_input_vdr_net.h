@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.5 2006-12-14 12:25:31 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.6 2007-01-01 23:37:28 phintuka Exp $
  *
  */
 
@@ -20,7 +20,7 @@
 #include <arpa/inet.h>
 #include <endian.h>
 
-#include "tools/rtp.h"
+#include "tools/rtp.h" /* generic RTP headers */
 
 
 /*
@@ -30,16 +30,6 @@
 #ifndef DEFAULT_VDR_PORT
 #  define DEFAULT_VDR_PORT 37890
 #endif
-#ifndef DISCOVERY_PORT
-#  define DISCOVERY_PORT 37890
-#endif
-
-/* discovery protocol strings (v1.0) */
-#define DISCOVERY_1_0_HDR     "VDR xineliboutput DISCOVERY 1.0" "\r\n"
-#define DISCOVERY_1_0_CLI     "Client: %s:%d" "\r\n"
-#define DISCOVERY_1_0_SVR     "Server port: %d" "\r\n"
-#define DISCOVERY_1_0_VERSION "Server version: vdr-" VDRVERSION "\r\n" \
-                              "\txineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
 
 /*
  * Byte-order conversions
