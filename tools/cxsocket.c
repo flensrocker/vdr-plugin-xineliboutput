@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.3 2006-12-31 20:29:22 phintuka Exp $
+ * $Id: cxsocket.c,v 1.4 2007-01-01 00:19:26 phintuka Exp $
  *
  */
 
@@ -22,7 +22,41 @@
 
 #include "cxsocket.h"
 
-bool cxSocket::SetBuffers(int Tx, int Rx)
+bool cxSocket::connect(struct sockaddr *addr, socklen_t len)
+{
+  return ::connect(m_fd, addr, len) == 0;
+}
+
+bool cxSocket::connect(const char *ip, int port)
+{
+  struct sockaddr_in sin;
+  sin.sin_family = AF_INET;
+  sin.sin_port = htons(port);
+  sin.sin_addr.s_addr = inet_addr(ip);
+
+  return connect((struct sockaddr *)&sin, sizeof(sin));
+}
+
+bool cxSocket::set_blocking(bool state)
+{
+  int flags = fcntl (m_fd, F_GETFL);
+
+  if(flags == -1) {
+    LOGERR("cxSocket::SetBlocking: fcntl(F_GETFL) failed");
+    return false;
+  }
+
+  flags = state ? (flags&(~O_NONBLOCK)) : (flags|O_NONBLOCK);
+
+  if(fcntl (m_fd, F_SETFL, flags) == -1) {
+    LOGERR("cxSocket::SetBlocking: fcntl(F_SETFL) failed");
+    return false;
+  }
+
+  return true;
+}
+
+bool cxSocket::set_buffers(int Tx, int Rx)
 {
   int max_buf = Tx;
   /*while(max_buf) {*/
@@ -52,7 +86,7 @@ bool cxSocket::SetBuffers(int Tx, int Rx)
   return true;
 }
 
-bool cxSocket::SetMulticast(int ttl)
+bool cxSocket::set_multicast(int ttl)
 {
   int iReuse = 1, iLoop = 1, iTtl = ttl;
 
@@ -79,18 +113,16 @@ bool cxSocket::SetMulticast(int ttl)
   return true;
 }
 
-ssize_t cxSocket::sendto(const void *buf, size_t size, 
-			 const struct sockaddr *to, socklen_t tolen)
+ssize_t cxSocket::send(const void *buf, size_t size, int flags,
+		       const struct sockaddr *to, socklen_t tolen)
 {
-  LOGMSG("cxSocket::sendto not implemented !");
-  return -1;
+  return ::sendto(m_fd, buf, size, flags, to, tolen);
 }
 
-ssize_t cxSocket::recvfrom(void *buf, size_t size,
-			   struct sockaddr *from, socklen_t *fromlen)
+ssize_t cxSocket::recv(void *buf, size_t size, int flags,
+		       struct sockaddr *from, socklen_t *fromlen)
 {
-  LOGMSG("cxSocket::recvfrom not implemented !");
-  return -1;
+  return ::recvfrom(m_fd, buf, size, flags, from, fromlen);
 }
 
 ssize_t cxSocket::write(const void *buffer, size_t size, 
@@ -226,6 +258,61 @@ ssize_t cxSocket::readline(char *buf, int bufsize, int timeout, int bufpos)
 
   LOGERR("cxSocket::readline: read failed");
   return n;
+}
+
+#include <sys/ioctl.h>
+#include <net/if.h>
+
+uint32_t cxSocket::get_local_address(char *ip_address)
+{
+  uint32_t local_addr = 0;
+  struct ifconf conf;
+  struct ifreq buf[3];
+  unsigned int n;
+
+  struct sockaddr_in sin;
+  socklen_t len = sizeof(sin);
+
+  if(!getsockname(m_fd, (struct sockaddr *)&sin, &len)) {
+    local_addr = sin.sin_addr.s_addr;
+
+  } else {
+    //LOGERR("getsockname failed");
+
+    // scan network interfaces
+
+    conf.ifc_len = sizeof(buf);
+    conf.ifc_req = buf;
+    memset(buf, 0, sizeof(buf));
+    
+    errno = 0;
+    if(ioctl(m_fd, SIOCGIFCONF, &conf) < 0)
+      LOGERR("cxSocket: can't obtain socket local address");
+    else {
+      for(n=0; n<conf.ifc_len/sizeof(struct ifreq); n++) {
+	struct sockaddr_in *in = (struct sockaddr_in *) &buf[n].ifr_addr;
+# if 0
+	uint32_t tmp = ntohl(in->sin_addr.s_addr);
+	LOGMSG("Local address %6s %d.%d.%d.%d", 
+	       conf.ifc_req[n].ifr_name,
+	       ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
+	       ((tmp>>8)&0xff), ((tmp)&0xff));
+# endif
+	if(n==0 || local_addr == htonl(INADDR_LOOPBACK)) 
+	  local_addr = in->sin_addr.s_addr;
+	else
+	  break;
+      }
+    }
+  }
+
+  if(!local_addr)
+    LOGERR("No local address found");
+
+  if(ip_address)
+    cxSocket::ip2txt(local_addr, 0, ip_address);
+
+  return local_addr;  
 }
 
 char *cxSocket::ip2txt(uint32_t ip, unsigned int port, char *str)
