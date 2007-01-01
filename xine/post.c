@@ -32,48 +32,16 @@
 
 #include "post.h"
 
-#if 1
-# include <sys/types.h>
-# include <sys/syscall.h>
-# include <unistd.h>
-# include <linux/unistd.h>
-# include <errno.h>
-# include <syslog.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#include <linux/unistd.h>
+#include <errno.h>
+#include <syslog.h>
 
-# define LOG_MODULENAME "[xine-post] "
-# include "../logdefs.h"
-
-  /* from xine_frontend.c or vdr tools.c: */
-  extern int SysLogLevel; /* errors and info, no debug */
-  /* from xine_frontend.c: */
-  extern int LogToSysLog; /* log to syslog instead of console */
-
-# if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
-     !defined(XINELIBOUTPUT_DEBUG_STDERR)
-
-#   undef x_syslog
-     static void x_syslog(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-     static void x_syslog(int level, const char *fmt, ...)
-    {
-      va_list argp;
-      char buf[512];
-      va_start(argp, fmt);
-      vsnprintf(buf, 512, fmt, argp);
-      if(!LogToSysLog) {
-	fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
-      } else {
-	syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
-      }
-      va_end(argp);
-    }
-# endif
-
-#else
-# define LOGERR(x...)
-# define LOGMSG(x...)
-# define LOGDBG(x...)
-# define TRACELINE (void)
-#endif
+#define NEED_x_syslog
+#define LOG_MODULENAME "[xine-post] "
+#include "../logdefs.h"
 
 #define fe_t post_plugins_t
 
