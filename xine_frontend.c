@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.28 2006-12-31 19:17:21 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.29 2007-01-01 06:41:43 phintuka Exp $
  *
  */
 
@@ -14,6 +14,7 @@
                              XINE_SUB_VERSION)
 #endif
 
+#define NEED_x_syslog
 #define LOG_MODULENAME "[vdr-fe]    "
 #include "logdefs.h"
 
@@ -26,8 +27,7 @@
 
   static int verbose_xine_log = 0;
 #else
-  extern int SysLogLevel; /* vdr tools.c */
-  int LogToSysLog __attribute__((visibility("default"))) = 1;    /* dynamically linked from input plugin */
+  int LogToSysLog __attribute__((visibility("default"))) = 1; /* dynamically linked from input plugin */
 #endif
 
 /* from vdr_input_plugin: */
@@ -37,32 +37,6 @@ typedef struct {
   /* ... */
 } vdr_input_plugin_t;
 
-
-/* 
- * logging 
- */
-
-#if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
-    !defined(XINELIBOUTPUT_DEBUG_STDERR)
-
-#undef x_syslog
-
-static void x_syslog(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-static void x_syslog(int level, const char *fmt, ...)
-{
-  va_list argp;
-  char buf[512];
-  va_start(argp, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, argp);
-  if(!LogToSysLog) {
-    fprintf(stderr, "[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
-  } else {
-    syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
-  }
-  va_end(argp);
-}
-
-#endif
 
 /*
  * detect input plugin 
@@ -1518,13 +1492,9 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 
 #ifdef FE_STANDALONE
 
-/* VDR discovery protocol code */
-#include "xine_frontend_vdrdiscovery.c"
-/* LIRC forwarding code */
-#include "xine_frontend_lirc.c"
 /* frontend main() */
-#include "xine_frontend_main.c"
 
+#include "xine_frontend_main.c"
 
 #endif /* #ifdef FE_STANDALONE */
 
