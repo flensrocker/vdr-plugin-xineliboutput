@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.16 2006-12-31 20:19:32 phintuka Exp $
+ * $Id: cxsocket.h,v 1.17 2007-01-01 08:16:21 phintuka Exp $
  *
  */
 
@@ -15,11 +15,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#define CLOSESOCKET(fd) do { if(fd>=0) { close(fd); fd=-1; } } while(0)
+#define CLOSESOCKET(fd) do { if(fd>=0) { ::close(fd); fd=-1; } } while(0)
 
 class cxSocket {
  private:
   int m_fd;
+
+  cxSocket(const cxSocket& s) ;//{ m_fd = s.m_fd>=0 ? dup(s.m_fd) : -1; }
+  cxSocket &operator=(const cxSocket &S)
+    ;// { close(); m_fd = S.m_fd >= 0 ? dup(S.m_fd) : -1; return *this; };
 
  public:
 
@@ -28,30 +32,33 @@ class cxSocket {
     estDGRAM  = SOCK_DGRAM
   } eSockType;
 
-  cxSocket(int fd = -1) : m_fd(fd) {}
+  cxSocket() : m_fd(-1) {}
   cxSocket(eSockType type) : m_fd(::socket(PF_INET, (int)type, 0)) {}
 
-  cxSocket(const cxSocket& s) : m_fd(s.m_fd) {}
-  cxSocket &operator=(const cxSocket &S) { m_fd = S.m_fd; return *this; };
+  ~cxSocket() { CLOSESOCKET(m_fd); }
 
-  operator int ()  const { return Handle(); }
-  operator bool () const { return IsOpen(); }
+  //operator int ()  const { return Handle(); }
+  operator bool () const { return open(); }
 
-  int  Handle(void) const { return m_fd; }
-  bool IsOpen(void) const { return m_fd>0; }
-  void Close(void)        { CLOSESOCKET(m_fd); }
+  int  handle(bool take_ownership=false)
+       { int r=m_fd; if(take_ownership) m_fd=-1; return r; }
+  void set_handle(int h) { if(h != m_fd) {close(); m_fd = h;} }
+  bool create(eSockType type) { close(); return (m_fd=::socket(PF_INET, (int)type, 0)) >= 0; }
+  bool open(void)   const { return m_fd>0; }
+  void close(void)        { CLOSESOCKET(m_fd); }
 
-  ssize_t sendto(const void *buf, size_t size, 
-		 const struct sockaddr *to, socklen_t tolen);
-  ssize_t recvfrom(void *buf, size_t size,
-		   struct sockaddr *from, socklen_t *fromlen);
+  ssize_t send(const void *buf, size_t size, int flags=0, 
+	       const struct sockaddr *to = NULL, socklen_t tolen = 0);
+  ssize_t recv(void *buf, size_t size, int flags = 0,
+	       struct sockaddr *from = NULL, socklen_t *fromlen = NULL);
+		   
   ssize_t read(void *buffer, size_t size, int timeout_ms = -1);
   ssize_t write(const void *buffer, size_t size, int timeout_ms = -1);
 
   ssize_t printf(const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-  ssize_t write_str(int fd, const char *str, int timeout_ms=-1, int len=0)
+  ssize_t write_str(const char *str, int timeout_ms=-1, int len=0)
   { return write(str, len ?: strlen(str), timeout_ms); }
-  ssize_t write_cmd(int fd, const char *str, int len=0)
+  ssize_t write_cmd(const char *str, int len=0)
   { return write(str, len ?: strlen(str), 10); }
 
 /* readline return value:
@@ -63,8 +70,14 @@ class cxSocket {
  */
   ssize_t readline(char *buf, int bufsize, int timeout=0, int bufpos=0);
 
-  bool SetBuffers(int Tx, int Rx);
-  bool SetMulticast(int ttl);
+  bool set_buffers(int Tx, int Rx);
+  bool set_multicast(int ttl);
+  bool set_blocking(bool state);
+  
+  bool connect(struct sockaddr *addr, socklen_t len);
+  bool connect(const char *ip, int port);
+
+  uint32_t get_local_address(char *ip_address);
 
   static char *ip2txt(uint32_t ip, unsigned int port, char *str);
 };
@@ -73,7 +86,7 @@ class cxSocket {
 
 class cxPoller : public cPoller {
   public:
-    cxPoller(cxSocket& Sock, bool Out=false) : cPoller(Sock, Out) {};
+    cxPoller(cxSocket& Sock, bool Out=false) : cPoller(Sock.handle(), Out) {};
 
     cxPoller(cxSocket* Socks, int count, bool Out=false) 
     {
@@ -306,8 +319,6 @@ static inline ssize_t write_cmd(int fd, const char *str, int len=0)
 
 #include <stdarg.h>
 
-static inline ssize_t printf_cmd(int fd, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-
 static inline ssize_t printf_cmd(int fd, const char *fmt, ...)
 {
   va_list argp;
@@ -325,44 +336,5 @@ static inline ssize_t printf_cmd(int fd, const char *fmt, ...)
 
   return (ssize_t)-1;
 }
-
-#include "../config.h"
-#include "../xine_input_vdr_net.h"
-static inline int udp_discovery_broadcast(int fd_discovery, int m_Port)
-{
-  if(!xc.remote_usebcast) {
-    LOGDBG("UDP broadcasts (discovery) disabled in configuration");
-    return -1;
-  }
-
-  struct sockaddr_in sin;
-
-  sin.sin_family = AF_INET;
-  sin.sin_port   = htons(DISCOVERY_PORT);
-  sin.sin_addr.s_addr = INADDR_BROADCAST;
-  
-  char *test = NULL;
-  asprintf(&test, 
-	   DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
-	   DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
-	   DISCOVERY_1_0_VERSION //"Server version: vdr-" VDRVERSION "\r\n"
-                                 //"\txineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
-	   "\r\n",
-	   m_Port);
-
-  int testlen = strlen(test);
-  int result;
-  if(testlen != sendto(fd_discovery, test, testlen, 0,
-		       (struct sockaddr *)&sin, sizeof(sin))) {
-    LOGERR("UDP broadcast send failed (discovery)");
-    result = -1;
-  } else {
-    //LOGDBG("UDP broadcast send succeed (discovery)");
-    result = 1;
-  }
-  free(test);
-  return result;
-}
-
 
 #endif // __CXSOCKET_H
