@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.32 2006-12-31 22:36:47 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.33 2007-01-01 08:50:53 phintuka Exp $
  *
  */
 
@@ -38,11 +38,11 @@
 #include "tools/future.h"
 #include "tools/backgroundwriter.h"
 #include "tools/udp_pes_scheduler.h"
+#include "tools/http.h"
+#include "tools/vdrdiscovery.h"
 
 #include "frontend_svr.h"
 #include "device.h"
-
-class cConnState {};
 
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
@@ -64,9 +64,9 @@ enum {
   ctDetecting = 0,
   ctControl,
   ctHttp,
-  ctHttpPlay,  // client can't access file that is just played -> stream over http 
-  ctRtsp,
-  ctRtspMux  // multiplexed RTSP control + RTP/RTCP data/control
+  //ctHttpPlay,  // client can't access file that is just played -> stream over http 
+  ctRtsp,      // TCP/RTSP + UDP/RTP
+  ctRtspMux    // TCP: multiplexed RTSP control + RTP/RTCP data/control
 };
 
 // (data) connection types
@@ -131,6 +131,8 @@ cXinelibServer::~cXinelibServer()
   
   CLOSESOCKET(fd_listen);
   CLOSESOCKET(fd_discovery);
+
+  cHttpStreamer::CloseAll();
   
   for(i=0; i<MAXCLIENTS; i++) 
     CloseConnection(i);
@@ -625,8 +627,10 @@ bool cXinelibServer::HasClients(void)
 int cXinelibServer::PlayFileCtrl(const char *Cmd)
 {
   /* Check if there are any clients */
-  if(!HasClients())
+  if(!HasClients()) {
+    cHttpStreamer::CloseAll();
     return -1;
+  }
 
   bool bPlayfile = false /*, bGet = false, bFlush = false*/;
   if((!strncmp(Cmd, "FLUSH", 5)    /*&& (bFlush=true)*/) ||
@@ -678,7 +682,10 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
     return future.Value();
   }
   
-  return cXinelibThread::PlayFileCtrl(Cmd);
+  bool result = cXinelibThread::PlayFileCtrl(Cmd);
+  if(!m_FileName)
+    cHttpStreamer::CloseAll();
+  return result;
 }
 
 
@@ -694,6 +701,7 @@ bool cXinelibServer::Listen(int listen_port)
     CLOSESOCKET(fd_discovery);
     if(m_Scheduler)
       m_Scheduler->RemoveRtp();
+    cHttpStreamer::CloseAll();
     LOGMSG("Not listening for remote connections");
     return false;
   }
@@ -730,27 +738,11 @@ bool cXinelibServer::Listen(int listen_port)
   // set listen for discovery messages
   CLOSESOCKET(fd_discovery);
   if(xc.remote_usebcast) {
-    struct sockaddr_in sin;
-    if ((fd_discovery = socket(PF_INET, SOCK_DGRAM, 0/*IPPROTO_TCP*/)) < 0) {
-      LOGERR("socket() failed (UDP discovery)");
-    } else {
-      int iBroadcast = 1, iReuse = 1;
-      setsockopt(fd_discovery, SOL_SOCKET, SO_BROADCAST, &iBroadcast, sizeof(int));
-      setsockopt(fd_discovery, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
-      sin.sin_family = AF_INET;
-      sin.sin_port   = htons(DISCOVERY_PORT);
-      sin.sin_addr.s_addr = htonl(INADDR_BROADCAST);  //INADDR_ANY grabs rtp too ...
-
-      if (bind(fd_discovery, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-	LOGERR("bind() failed (UDP discovery)");
-	CLOSESOCKET(fd_discovery);
-      } else {  
-	if(udp_discovery_broadcast(fd_discovery, m_Port) < 0)
-	  CLOSESOCKET(fd_discovery);
-	else
-	  LOGMSG("Listening for UDP broadcasts on port %d", m_Port);
-      }
-    }
+    fd_discovery = udp_discovery_init();
+    if(udp_discovery_broadcast(fd_discovery, m_Port) < 0)
+      CLOSESOCKET(fd_discovery);
+    else
+      LOGMSG("Listening for UDP broadcasts on port %d", m_Port);
   }
 
   // set up multicast sockets
@@ -1135,41 +1127,90 @@ void cXinelibServer::Handle_Control_GRAB(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_CONTROL(int cli, const char *arg)
 {
-  char str[256];
-  sprintf(str,
-	  "VDR-" VDRVERSION " "
-	  "xineliboutput-" XINELIBOUTPUT_VERSION " "
-	  "READY\r\nCLIENT-ID %d\r\n", cli);
-  write_cmd(fd_control[cli], str);
+  printf_cmd(fd_control[cli],
+	     "VDR-" VDRVERSION " "
+	     "xineliboutput-" XINELIBOUTPUT_VERSION " "
+	     "READY\r\nCLIENT-ID %d\r\n", cli);
   m_ConnType[cli] = ctControl;
 }
 
+
 void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 {
-  if(m_ConnType[cli] == ctDetecting) {
-    if(!strncmp(arg, "GET / HTTP/1.", 13)) {
-      LOGDBG("Accepted HTTP request: %s", arg);
-      
-      write_cmd(fd_control[cli], 
-		"HTTP/1.1 200 OK\r\n"
-		"Content-type: video/mp2p\r\n"
-		"Connection: Close\r\n"
-		"\r\n"
-		);
-      if(m_Writer[cli]) 
-	delete m_Writer[cli];
-      m_Writer[cli] = new cBackgroundWriter(fd_control[cli], KILOBYTE(1024), true);
-      m_ConnType[cli] = ctHttp;
-    }
-    else {
-      LOGMSG("Rejected HTTP request: %s", arg);
+  LOGDBG("HTTP(%d): %s", cli, arg);
+
+  if(m_ConnType[cli] == ctDetecting || !m_State[cli]) {
+    LOGDBG("HTTP request: %s", arg);
+    
+    DELETENULL(m_Writer[cli]);
+    DELETENULL(m_State[cli]);
+
+    m_State[cli] = new cConnState;
+    if( !m_State[cli]->SetCommand(arg) ||
+	strcmp(m_State[cli]->Name(), "GET")) {
+      LOGMSG("invalid HTTP request: %s", arg);
       CloseConnection(cli);
+      return;
     }
+
+    m_ConnType[cli] = ctHttp;
     return;
   }
 
   else if(m_ConnType[cli] == ctHttp) {
     LOGDBG("HTTP(%d): %s", cli, arg);
+
+    if(*arg) {
+      m_State[cli]->AddHeader(arg);
+      return;
+    }
+
+    LOGMSG("HTTP Request complete");
+
+    // primary device output
+    if(!strcmp(m_State[cli]->Uri(), "/")) {
+      LOGMSG("HTTP streaming primary device feed");
+      write_cmd(fd_control[cli], HTTP_REPLY_200_PRIMARY);
+#if 1
+      // pack header (scr 0, mux rate 0x6270)
+      write(fd_control[cli], 
+	    "\x00\x00\x01\xba" "\x44\x00\x04\x00"
+	    "\x04\x01\x01\x89" "\xc3\xf8", 14); 
+#endif
+#if 1
+      // system header
+      write(fd_control[cli], 
+	    "\x00\x00\x01\xbb" "\x00\x12"
+	    "\x80\xc4\xe1" "\x00\xe1" "\x7f"
+	    "\xb9\xe0\xe8" "\xb8\xc0\x20"
+	    "\xbd\xe0\x3a" "\xbf\xe0\x02", 24);
+#endif
+      m_Writer[cli] = new cBackgroundWriter(fd_control[cli], KILOBYTE(1024), true);
+      
+      DELETENULL(m_State[cli]);
+      return;
+    }
+
+    // currently playing media file
+    else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
+      if( m_FileName && m_bPlayingFile) {
+	LOGMSG("HTTP streaming media file");
+
+	new cHttpStreamer(fd_control[cli], m_FileName, m_State[cli]->Header("Range")->Value());
+	// detach socket
+	fd_control[cli] = -1;
+	CloseConnection(cli);	    
+	return;
+      }
+      else
+	LOGDBG("No currently playing file");
+    }
+
+    // nothing else will be served ...
+    LOGMSG("Rejected HTTP request for \'%s\'", *m_State[cli]->Uri());
+    write_cmd(fd_control[cli], HTTP_REPLY_401);
+    LOGDBG("HTTP Reply: HTTP/1.1 401 Unauthorized");
+    CloseConnection(cli);
   }
 }
 
@@ -1353,42 +1394,18 @@ void cXinelibServer::Handle_ClientConnected(int fd)
 
 void cXinelibServer::Handle_Discovery_Broadcast()
 {
-  char buf[1024], ip[64];
-  struct sockaddr_in from;
-  socklen_t fromlen = sizeof(from);
-
   if(!xc.remote_usebcast) {
     LOGDBG("BROADCASTS disabled in configuration");
     CLOSESOCKET(fd_discovery);
     return;
   }
 
-  memset(&from, 0, sizeof(from));
-  memset(buf, 0, sizeof(buf));
-  errno = 0;
+  char buf[DISCOVERY_MSG_MAXSIZE] = {0};
+  struct sockaddr_in from;
 
-  int n = recvfrom(fd_discovery, buf, 1023, 0,
-		   (struct sockaddr *)&from, &fromlen);
-
-  if(n<=0) {
-    LOGDBG("fd_discovery recv() error");
-    //CLOSESOCKET(fd_discovery);
-    return;
-  }
-
-  char *id_string = DISCOVERY_1_0_HDR "Client:";
-
-  if(!strncmp(id_string, buf, strlen(id_string))) {
-    LOGMSG("Received valid discovery message from %s",
-	   cxSocket::ip2txt(from.sin_addr.s_addr, from.sin_port, ip));
-
-    if(udp_discovery_broadcast(fd_discovery, m_Port) < 0)
-      LOGERR("Discovery broadcast send error");
-  } else {
-    LOGDBG("BROADCAST: (%d bytes from %s): %s", n, 
-	   cxSocket::ip2txt(from.sin_addr.s_addr, from.sin_port, ip),
-	   buf);
-  }
+  if(udp_discovery_recv(fd_discovery, buf, 0, &from) > 0)
+    if(udp_discovery_is_valid_search(buf))
+      udp_discovery_broadcast(fd_discovery, m_Port); 
 }
 
 void cXinelibServer::Action(void) 
