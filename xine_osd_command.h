@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.4 2007-01-01 23:39:02 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.5 2007-01-02 01:39:26 phintuka Exp $
  *
  */
 
@@ -13,8 +13,6 @@
 
 #ifndef PACKED
 #  define PACKED  __attribute__((packed))
-#else
-#  warning PACKED already defined
 #endif
 
 

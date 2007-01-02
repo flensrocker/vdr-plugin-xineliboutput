@@ -4,21 +4,19 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.6 2007-01-01 23:37:28 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.7 2007-01-02 01:39:26 phintuka Exp $
  *
  */
 
 #ifndef __XINE_INPUT_VDR_NET_H_
 #define __XINE_INPUT_VDR_NET_H_
 
-#ifndef PACKED
-#  define PACKED  __attribute__((packed))
-#else
-#  warning PACKED already defined
-#endif
-
 #include <arpa/inet.h>
 #include <endian.h>
+
+#ifndef PACKED
+#  define PACKED  __attribute__((packed))
+#endif
 
 #include "tools/rtp.h" /* generic RTP headers */
 
