@@ -4,21 +4,19 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sap.h,v 1.4 2007-01-01 23:40:33 phintuka Exp $
+ * $Id: sap.h,v 1.5 2007-01-02 01:22:53 phintuka Exp $
  *
  */
 
 #ifndef XINELIBOUTPUT_SAP_H_
 #define XINELIBOUTPUT_SAP_H_
 
-#ifndef PACKED
-#  define PACKED  __attribute__((packed))
-#else
-#  warning PACKED already defined
-#endif
-
 #include <arpa/inet.h>
 #include <endian.h>
+
+#ifndef PACKED
+#  define PACKED  __attribute__((packed))
+#endif
 
 /*#define LOG_SAP*/
 
