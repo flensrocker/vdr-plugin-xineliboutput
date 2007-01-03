@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.1 2006-12-24 16:01:28 phintuka Exp $
+ * $Id: playlist.c,v 1.2 2007-01-03 10:03:38 phintuka Exp $
  *
  */
 
@@ -25,7 +25,7 @@
 #  define PLAYLIST_CACHE ".xineliboutput-playlist.pls"
 #endif
 
-#define MAX_PLAYLIST_FILES  256
+#define MAX_PLAYLIST_FILES 1024
 
 
 //
@@ -74,16 +74,22 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
   const cPlaylistItem *o = (cPlaylistItem *)&ListObject;
 
   // Use Position (if defined in playlist file)
-  if(Position != o->Position) {
-    if(Position == -1)
-      return -1;
-    if(o->Position == -1)
-      return 1;
+  if(Position != o->Position) 
     return Position > o->Position ? 1 : -1;
-  }
 
-  /* same position or no positions definend -> alphabetical order */
+  // same position (or no positions definend) -> alphabetical order
+#if 0
   return strcmp(Track, o->Track);
+#else
+  // use filename, because:
+  //  - implicit playlist has no track names available when sorting 
+  //    (track names are read during playback), so track name is 
+  //    just file name without path.
+  //    using full path allows sorting of each album and tracks inside albums...
+  //  - "normal" playlist is ordered using Position,
+  //     so track names are never compared anyway ...
+  return strcmp(Filename, o->Filename);
+#endif
 }
 
 
@@ -106,7 +112,7 @@ class cID3Scanner : public cThread
   {
     cPlaylistItem *Item = NULL;
 
-    nice(10);
+    (void)nice(10);
     cCondWait::SleepMs(5000);
 
     LOGDBG("ID3Scanner Started");
@@ -127,17 +133,17 @@ class cID3Scanner : public cThread
 	  cReadLine r;
 	  char *pt;
 	  while(NULL != (pt = r.Read(p))) {
-	    if(!strncmp(pt, "Artist: ", 8))
+	    if(!strncmp(pt, "Artist: ", 8) && strlen(pt) > 9)
 	      Item->Artist = (pt+8);
-	    if(!strncmp(pt, "Album: ", 7))
+	    if(!strncmp(pt, "Album: ", 7) && strlen(pt) > 8)
 	      Item->Album = (pt+7);
-	    if(!strncmp(pt, "Track: ", 7))
+	    if(!strncmp(pt, "Track: ", 7) && strlen(pt) > 8)
 	      Item->Track = (pt+7);
 	  }
 	}
       }
     }
-    LOGDBG("ID3Scanner: Done.");
+    LOGDBG("ID3Scanner Done.");
 
     m_List.PlaylistChanged(Item);
     m_Done = true;
@@ -210,12 +216,12 @@ class cPlsReader : public cPlaylistReader
 	 1 == sscanf(line + 4, "%d=", &n)) {
 	m_Current = n;
 	m_Position = n;
-	if(t && *(t+1))
+	if(*(t+1))
 	  return t+1;
       }
       else if(!strncasecmp(line, "title", 5) && 
 	      1 == sscanf(line + 5, "%d=", &n)) {
-	if(t++) {
+	if(*(t+1)) {
 	  if(n == m_Current)
 	    Prev()->Track = t;
 	  else
@@ -391,10 +397,11 @@ bool cPlaylist::StoreCache(void)
 	}
 	entries++;
 	fprintf(f, "File%d=%s\r\n", entries, *Filename);
-	fprintf(f, "Title%d=%s\r\n", entries, *i->Track);
-	if(*i->Artist)
+	if(*i->Track && (*i->Track)[0])
+	  fprintf(f, "Title%d=%s\r\n", entries, *i->Track);
+	if(*i->Artist && (*i->Artist)[0])
 	  fprintf(f, "Artist%d=%s\r\n", entries, *i->Artist);
-	if(*i->Album)
+	if(*i->Album && (*i->Album)[0])
 	  fprintf(f, "Album%d=%s\r\n", entries, *i->Album);
       }
     }
@@ -407,6 +414,11 @@ bool cPlaylist::StoreCache(void)
   }
 
   return false; 
+}
+
+static const char *strchrnext(const char *s, char c)
+{
+  return (s = strchr(s, c)) ? ((*(s+1))?(s+1):NULL) : NULL;
 }
 
 bool cPlaylist::ReadCache(void) 
@@ -423,24 +435,23 @@ bool cPlaylist::ReadCache(void)
       while(NULL != (pt = r.Read(f))) {
 	if(!strncmp(pt, "File", 4)) {
 	  it = NULL;
-	  cString Filename = strchr(pt, '=');
-	  for(cPlaylistItem *i = First(); i; i=Next(i)) {
-	    if(!strncmp(i->Filename, m_Folder, len)) {
-	      if(!strcmp(*i->Filename + len, Filename)) {
-		it = i;
-		break;
+	  const char *Filename = strchrnext(pt+4, '=');
+	  if(Filename && *Filename) {
+	    for(cPlaylistItem *i = First(); i; i=Next(i)) {
+	      if(!strncmp(i->Filename, m_Folder, len)) {
+		if(!strcmp(*i->Filename + len, Filename)) {
+		  it = i;
+		  break;
+		}
 	      }
 	    }
 	  }
 	} else if(it && !strncmp(pt, "Title", 5)) {
-	  it->Track = strchr(pt, '=');
-LOGMSG("ReadCache: Track  -> %s", *it->Track);
+	  it->Track = strchrnext(pt, '=');
 	} else if(it && !strncmp(pt, "Artist", 6)) {
-	  it->Artist = strchr(pt, '=');
-LOGMSG("ReadCache: Artist -> %s", *it->Artist);
+	  it->Artist = strchrnext(pt, '=');
 	} else if(it && !strncmp(pt, "Album", 5)) {
-	  it->Album = strchr(pt, '=');
-LOGMSG("ReadCache: Album  -> %s", *it->Album);
+	  it->Album = strchrnext(pt, '=');
 	} else {
 	  /*it = NULL;*/
 	}
@@ -520,6 +531,7 @@ int cPlaylist::ScanFolder(const char *FolderName,
 {
   cMutexLock ml(&m_Lock);  
   static int depth = 0;
+
   DIR *d = opendir(FolderName);
 
   if (d) {
@@ -536,10 +548,16 @@ int cPlaylist::ScanFolder(const char *FolderName,
 	      LOGMSG("ScanFolder: Too deep directory tree");
 	    } else if(e->d_name[0]=='.') {
 	    } else {
-	      depth++; /* limit depth */
-	      Buffer = cString::sprintf("%s/", *Buffer);
-	      n += ScanFolder(Buffer);
-	      depth--;
+	      if(n<MAX_PLAYLIST_FILES) {
+		depth++; /* limit depth */
+		Buffer = cString::sprintf("%s/", *Buffer);
+		n += ScanFolder(Buffer, Recursive, Filter);
+		depth--;
+	      } else {
+		if(!++warn)
+		  LOGMSG("ScanFolder: Found over %d matching files, list truncated!", n);
+		break;
+	      }
 	    }
 	  }
 	} else /* == if(!S_ISDIR(st.st_mode))*/ {
@@ -552,11 +570,12 @@ int cPlaylist::ScanFolder(const char *FolderName,
 	      continue;
 	  }
 	  if((xc.*Filter)(Buffer)) {
+	    /* TODO: Should ScanDir add contents of playlist files ... ? */
 	    if(Filter == &config_t::IsPlaylistFile || !xc.IsPlaylistFile(Buffer)) {
 	      n++;
 	      if(n<MAX_PLAYLIST_FILES) {
 		Add(new cPlaylistItem(e->d_name, FolderName));
-		LOGDBG("ScanFolder: %s", e->d_name);
+		//LOGDBG("ScanFolder: %s", e->d_name);
 	      } else {
 		if(!++warn)
 		  LOGMSG("ScanFolder: Found over %d matching files, list truncated!", n);
@@ -567,7 +586,7 @@ int cPlaylist::ScanFolder(const char *FolderName,
 	}
       }
     }
-    LOGDBG("ScanFolder: Found %d matching files", n);
+    LOGDBG("ScanFolder: Found %d matching files from %s", n, FolderName);
     closedir(d);
 
     return n;
@@ -593,24 +612,24 @@ void cPlaylist::StartScanner(void)
   struct stat stf, stc;
   if(!stat(m_Folder, &stf)) {
     if(!stat(CacheName, &stc)) {
-      LOGMSG("Cache modified: %d, folder modified: %d, diff %d",
-	     (unsigned int)stc.st_mtime, (unsigned int)stf.st_mtime, 
-	     (unsigned int)(stc.st_mtime - stf.st_mtime));
-      if(stc.st_mtime < stf.st_mtime) {
-	LOGMSG("  -> using up-to-date cache");
+      //LOGDBG("ID3 Cache modified %d, folder modified %d, diff %d",
+      //       (unsigned int)stc.st_mtime, (unsigned int)stf.st_mtime, 
+      //       (unsigned int)(stc.st_mtime - stf.st_mtime));
+      if(stc.st_mtime >= stf.st_mtime) {
 	if(ReadCache()) {
-	  LOGMSG("  Cache read OK.");
+	  LOGDBG("cPlaylist: using up-to-date ID3 cache");
+	  //LOGMSG("  Cache read OK.");
 	  return;
 	}
-	LOGMSG("  Cache read FAILED");
+	LOGMSG("cPlaylist: ID3 cache read FAILED");
       } else {
-	LOGMSG("  -> using cache and scanning for changes");
+	LOGDBG("cPlaylist: ID3 cache not up-to-date, using old cache and scanning for changes");
 	ReadCache();
       }
-    } else 
-      LOGERR("stat(Cache) failed");
-  } else
-    LOGERR("stat(Folder) failed");
+    }
+    //else LOGERR("cPlaylist: stat(%s) failed");
+  }
+  //else LOGERR("cPlaylist: stat(%s) failed");
 
   if(xc.enable_id3_scanner) {
     m_Scanner = new cID3Scanner(*this);
@@ -629,9 +648,10 @@ int cPlaylist::ReadPlaylist(const char *file)
     f = fopen(file, "r");
   } else {
     // fetch playlist from server using curl
+    LOGDBG("cPlaylist: fetching remote playlist from %s", file);
     cString Cmd = cString::sprintf("curl %s", file);
     if(!p.Open(Cmd, "r")) {
-      LOGERR("CURL command (%s) failed", *Cmd);
+      LOGERR("cPlaylist: CURL command (%s) failed", *Cmd);
       return false;
     }
     // process as normal file
@@ -639,7 +659,7 @@ int cPlaylist::ReadPlaylist(const char *file)
   }
   
   if(f) {
-    LOGDBG("parse_playlist(%s)", file);
+    LOGDBG("cPlaylist: parsing %s", file);
     char *pt = strrchr(file, '.');
     if(!strcasecmp(pt, ".pls"))
       parser = new cPlsReader(*this);
@@ -659,9 +679,9 @@ int cPlaylist::ReadPlaylist(const char *file)
 
 	if(xc.IsPlaylistFile(pt)) {
 	  parser->ResetCache();
-	  LOGMSG("playlist inside playlist");
+	  LOGDBG("cPlaylist: found playlist inside playlist");
 	  if(depth > 4)
-	    LOGMSG("recursion too deep, skipped %s", pt);
+	    LOGMSG("cPlaylist: recursion too deep, skipped %s", pt);
 	  else {
 	    depth++;
 	    n += ReadPlaylist(pt);
@@ -682,7 +702,7 @@ int cPlaylist::ReadPlaylist(const char *file)
 	  }
 	  Last()->Position = parser->Position();
 	  parser->ResetCache();
-	  LOGDBG("read_playlist: %s", pt);
+	  //LOGDBG("read_playlist: %s", pt);
 	  n++;
 	}
       }
@@ -692,13 +712,26 @@ int cPlaylist::ReadPlaylist(const char *file)
       fclose(f);
 
     if(n >= MAX_PLAYLIST_FILES) 
-      LOGMSG("read_playlist: Found over %d matching files, list truncated!", n);
-    LOGDBG("read_playlist: Found %d matching files", n);
+      LOGMSG("cPlaylist: Found over %d matching files, list truncated!", n);
+    LOGDBG("cPlaylist: Found %d matching files", n);
     return n;
   }
 
-  LOGERR("read_playlist: Error opening %s", file);
+  LOGERR("cPlaylist: Error opening %s", file);
   return 0;
+}
+
+static cString LastDir(cString& path)
+{
+  cString tmp = strdup(path);
+  char *pt = strrchr(tmp, '/');
+  if(pt && pt > *tmp) {
+    *pt = 0;
+    pt = strrchr(tmp, '/');
+    if(pt)
+      return cString(pt+1);
+  }
+  return cString(NULL);
 }
 
 bool cPlaylist::Read(const char *PlaylistFile, bool Recursive) 
@@ -706,43 +739,53 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
   cMutexLock ml(&m_Lock);
   bool Result = true;
 
+  // extract playlist root folder
   m_Folder = PlaylistFile;
+  if(strrchr(m_Folder, '/'))
+    *(strrchr(m_Folder, '/') + 1) = 0;
+
 
   if(xc.IsPlaylistFile(PlaylistFile)) {
-    // Playlist file
-    char *pt = strrchr(PlaylistFile, '/');
-    m_Name = pt ? pt+1 : "";
-    *(strrchr(m_Name, '.')) = 0;
-    if(strrchr(m_Folder, '/'))
-      *(strrchr(m_Folder, '/') + 1) = 0;
-
+    // Read playlist file
     Result = ReadPlaylist(PlaylistFile);
     m_Origin = ePlaylist;
 
   } else if(PlaylistFile[strlen(PlaylistFile)-1] == '/') {
-    // Whole folder
-    m_Name = PlaylistFile;
-    if(strrchr(m_Name, '/'))
-      *(strrchr(m_Name, '/')) = 0;
-    if(strrchr(m_Name, '/'))
-      m_Name = strrchr(m_Name, '/')+1;
-
+    // Scan folder
     Result = ScanFolder(PlaylistFile, Recursive) > 0;
     m_Origin = eImplicit;
-
     Sort();
+
+    if(!*m_Name) {
+      m_Name = PlaylistFile;
+      *(strrchr(m_Name, '/')) = 0;
+      if(strrchr(m_Name, '/')) {
+	cString dir = LastDir(m_Name);
+	if(*dir)
+	  m_Name = cString::sprintf("%s - %s", *dir, strrchr(m_Name, '/')+1);
+	else
+	  m_Name = strrchr(m_Name, '/')+1;
+      }
+    }
 
   } else {
     // Single file
-    char *pt = strrchr(PlaylistFile, '/');
-    m_Name = pt;
-    if(strrchr(m_Name, '.'))
-      *(strrchr(m_Name, '.')) = 0;
-    if(strrchr(m_Folder, '/'))
-      *(strrchr(m_Folder, '/') + 1) = 0;
-
     Add(new cPlaylistItem(PlaylistFile));
     m_Origin = eImplicit;
+  }
+
+  if(!*m_Name) {
+    char *pt = strrchr(PlaylistFile, '/');
+    pt = pt ? pt+1 : NULL;
+
+    cString dir = LastDir(m_Folder);
+    if(*dir && pt)
+      m_Name = cString::sprintf("%s - %s", *dir, pt ?: "");
+    else
+      m_Name = pt ?: "";
+
+    if(strrchr(m_Name, '.'))
+      *(strrchr(m_Name, '.')) = 0;
   }
 
   if(Count() < 1) {
