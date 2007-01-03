@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.h,v 1.2 2006-12-24 00:19:18 phintuka Exp $
+ * $Id: playlist.h,v 1.3 2007-01-03 19:12:18 phintuka Exp $
  *
  */
 
@@ -107,6 +107,8 @@ class cPlaylist : protected cList<cPlaylistItem>
   // read playlist from file or create playlist from directory tree 
   bool Read(const char *PlaylistFile, bool Recursive = false);
   void StartScanner(void);
+  void Del(cPlaylistItem *it);
+
   void Sort(void);
   int  Count(void) const;
 
