@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.15 2006-12-28 15:09:01 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.16 2007-01-03 06:12:40 phintuka Exp $
  *
  */
 
@@ -45,7 +45,7 @@
 
 static const char *VERSION        = "1.0.0pre7";
 static const char *DESCRIPTION    = "X11/xine-lib output plugin";
-static const char *MAINMENUENTRY  = "Media Player (xine-lib)";
+static const char *MAINMENUENTRY  = "Media Player";
 
 cOsdObject *g_PendingMenuAction = NULL;
 
