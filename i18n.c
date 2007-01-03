@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.13 2006-12-24 15:42:00 phintuka Exp $
+ * $Id: i18n.c,v 1.14 2007-01-03 06:16:59 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -39,7 +39,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "Media Player (xine-lib)", // English
+    "Media Player", // English
     "Xine-lib", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -47,7 +47,7 @@ const tI18nPhrase Phrases[] = {
     "", // PortuguÍs
     "", // FranÁais
     "", // Norsk
-    "Mediasoitin (xine-lib)", // Suomi
+    "Mediasoitin", // Suomi
     "", // Polski
     "", // EspaÒol
     "", // Ellinika
@@ -1701,7 +1701,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Miksaa stereo 5.1-kanavaiseksi", // Suomi
+    "Miksaa stereo‰‰ni 5.1-kanavaiseksi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -1721,7 +1721,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Miksaa AC3 surroundiksi", // Suomi
+    "Miksaa AC3-‰‰ni surroundiksi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -1823,7 +1823,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Toista DVD et‰koneesta >>", // Suomi
+    "Toista DVD-levy et‰koneesta >>", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -1835,7 +1835,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "Play DVD Disc >>", // English
+    "Play DVD disc >>", // English
     "Spiele DVD-Disk", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -1843,7 +1843,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Toista DVD >>", // Suomi
+    "Toista DVD-levy >>", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -1863,7 +1863,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Leikkaa 4:3 letterbox 16:9:ksi", // Suomi
+    "Leikkaa 4:3-letterbox 16:9:ksi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2275,7 +2275,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "    Multicast address", // English
+    "    Address", // English
     "    Multicast-Adresse", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -2283,7 +2283,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "    Multicast osoite", // Suomi
+    "    Osoite", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2295,7 +2295,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "    Multicast port", // English
+    "    Port", // English
     "    Multicast-Port", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -2303,7 +2303,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "    Multicast portti", // Suomi
+    "    Portti", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2315,7 +2315,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "    Multicast TTL", // English
+    "    TTL", // English
     "    Multicast-TTL", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -2323,7 +2323,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "    Multicast TTL", // Suomi
+    "    TTL-aika", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2343,7 +2343,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "    Multicast-l‰hetys aina p‰‰ll‰", // Suomi
+    "    Pid‰ l‰hetys aina p‰‰ll‰", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2545,7 +2545,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Overscan (leikkaa kuvasta reunat)", // Suomi
+    "Leikkaa kuvan reunoja (overscan)", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2566,7 +2566,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "K‰yt‰ j‰lkik‰sittely‰ (ffmpeg)", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2606,7 +2606,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "  Moodi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2646,7 +2646,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "     Cheap-moodi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2666,7 +2666,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "     Pulldown", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2686,7 +2686,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "     P‰ivitysnopeus", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2706,7 +2706,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "     V‰rin‰npoisto", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2726,7 +2726,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "     K‰yt‰ progressiivisen kuvan lippua", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2746,7 +2746,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "     Chroma-suodatus", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2897,7 +2897,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "Kuulokkeiden toiminta", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2919,7 +2919,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "Miksaa kuulokkeille", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2960,7 +2960,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "", // Suomi
+    "Nyt toistetaan", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -3121,7 +3121,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "    SAP multicast-ilmoitukset", // Suomi
+    "    SAP-ilmoitukset", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -3141,7 +3141,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Toista CD et‰koneesta >>", // Suomi
+    "Toista CD-levy et‰koneesta >>", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -3161,7 +3161,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Toista CD >>", // Suomi
+    "Toista CD-levy >>", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -3282,6 +3282,26 @@ const tI18nPhrase Phrases[] = {
     "", // Fran<E7>ais
     "", // Norsk
     "Anna RTSP-asiakkaiden ohjata VDR:‰‰", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Button$Queue", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Lis‰‰", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
