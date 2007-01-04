@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.h,v 1.5 2006-10-13 12:47:18 phintuka Exp $
+ * $Id: menu.h,v 1.6 2007-01-04 08:42:47 phintuka Exp $
  *
  */
 
@@ -12,7 +12,6 @@
 #define __XINELIB_MENU_H
 
 #include <vdr/menuitems.h>
-
 
 class cMenuXinelib : public cMenuSetupPage 
 {
@@ -47,6 +46,8 @@ class cMenuXinelib : public cMenuSetupPage
     cMenuXinelib(void);
     virtual ~cMenuXinelib();
     virtual eOSState ProcessKey(eKeys Key);
+
+    static cOsdMenu *CreateMenuBrowseFiles(eMainMenuMode mode, bool Queue=true);
 };
 
 #endif //__XINELIB_SETUP_MENU_H
