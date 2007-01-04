@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.8 2006-12-24 21:08:32 phintuka Exp $
+ * $Id: media_player.h,v 1.9 2007-01-04 08:48:22 phintuka Exp $
  *
  */
 
@@ -26,7 +26,7 @@ class cXinelibPlayerControl : public cControl
   private:
     static cMutex m_Lock;
 
-    static cXinelibPlayer *OpenPlayer(const char *file);
+    static cXinelibPlayer *OpenPlayer(const char *file, bool Queue=false);
 
  protected:
     static cXinelibPlayer *m_Player;
@@ -55,6 +55,7 @@ class cXinelibPlayerControl : public cControl
 
     static void Close(void);
     static bool IsOpen(void) {return m_Player != NULL;};
+    static void Queue(const char *file);
 };
 
 
