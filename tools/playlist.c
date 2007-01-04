@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.3 2007-01-03 19:12:18 phintuka Exp $
+ * $Id: playlist.c,v 1.4 2007-01-04 08:32:02 phintuka Exp $
  *
  */
 
@@ -760,15 +760,27 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
   bool Result = true;
 
   // extract playlist root folder
-  m_Folder = PlaylistFile;
-  if(strrchr(m_Folder, '/'))
-    *(strrchr(m_Folder, '/') + 1) = 0;
-
+  if(!*m_Folder) {
+    m_Folder = PlaylistFile;
+    if(strrchr(m_Folder, '/'))
+      *(strrchr(m_Folder, '/') + 1) = 0;
+  }
 
   if(xc.IsPlaylistFile(PlaylistFile)) {
     // Read playlist file
     Result = ReadPlaylist(PlaylistFile);
     m_Origin = ePlaylist;
+
+    cString dir = LastDir(m_Folder);
+    char *name = strrchr(PlaylistFile, '/');
+    name = name ? name+1 : NULL;
+    if(*dir && name)
+      m_Name = cString::sprintf("%s - %s", *dir, name);
+    else
+      m_Name = name ?: "";
+
+    if(strrchr(m_Name, '.'))
+      *(strrchr(m_Name, '.')) = 0;
 
   } else if(PlaylistFile[strlen(PlaylistFile)-1] == '/') {
     // Scan folder
@@ -792,20 +804,12 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
     // Single file
     Add(new cPlaylistItem(PlaylistFile));
     m_Origin = eImplicit;
-  }
 
-  if(!*m_Name) {
-    char *pt = strrchr(PlaylistFile, '/');
-    pt = pt ? pt+1 : NULL;
-
-    cString dir = LastDir(m_Folder);
-    if(*dir && pt)
-      m_Name = cString::sprintf("%s - %s", *dir, pt ?: "");
-    else
-      m_Name = pt ?: "";
-
-    if(strrchr(m_Name, '.'))
-      *(strrchr(m_Name, '.')) = 0;
+    if(!*m_Name) {
+      m_Name = LastDir(m_Folder);
+      if(!*m_Name)
+	m_Name = "";
+    }
   }
 
   if(Count() < 1) {
