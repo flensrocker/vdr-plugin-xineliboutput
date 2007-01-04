@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.14 2007-01-03 06:16:59 phintuka Exp $
+ * $Id: i18n.c,v 1.15 2007-01-04 08:30:57 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -2468,7 +2468,7 @@ const tI18nPhrase Phrases[] = {
     "", // Espa<F1>ol
     "", // Ellinika
     "", // Svenska
-   "", // Romaneste
+    "", // Romaneste
     "", // Magyar
     "", // Catala
     "", // Russian
@@ -2646,7 +2646,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Cheap-moodi", // Suomi
+    "     K‰yt‰ Cheap-moodia", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2666,7 +2666,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Pulldown", // Suomi
+    "     Pulldown-moodi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2686,7 +2686,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     P‰ivitysnopeus", // Suomi
+    "     Ruudunp‰ivitys", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2706,7 +2706,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     V‰rin‰npoisto", // Suomi
+    "     K‰yt‰ t‰rin‰nkorjausta", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2726,7 +2726,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     K‰yt‰ progressiivisen kuvan lippua", // Suomi
+    "     Tunnista progressiivinen kuva", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2746,7 +2746,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Chroma-suodatus", // Suomi
+    "     K‰yt‰ Chroma-suodinta", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -3301,7 +3301,167 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
+    "Soittolistalle", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Button$Sort", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "J‰rjest‰", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Button$Remove", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Poista", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Button$Add files", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
     "Lis‰‰", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Button$Random", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Satunnaistoisto", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Button$Normal", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Normaali toisto", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Playlist", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Soittolista", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Add to playlist", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Lis‰‰ soittolistalle", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Queued to playlist", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Lis‰tty soittolistalle", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
