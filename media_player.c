@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.16 2007-01-04 08:48:22 phintuka Exp $
+ * $Id: media_player.c,v 1.17 2007-01-04 09:52:19 phintuka Exp $
  *
  */
 
@@ -338,13 +338,22 @@ eOSState cPlaylistMenu::ProcessKey(eKeys Key)
 	            return osContinue;
       case kGreen:  
                     return AddSubMenu(cMenuXinelib::CreateMenuBrowseFiles(ShowMusic));
-      case kYellow: {
-	            cPlaylistItem *i = m_Playlist.Current();
-		    if(i->Index() == Current())
-		      m_Playlist.Next();
-		    m_Playlist.Del(m_Playlist.Current());
-		    Set();
-	            return osContinue;
+      case kYellow: if(m_Playlist.Count() > 1) {
+	              eOSState result = osContinue;
+	              cPlaylistItem *i = m_Playlist.Current();
+		      if(i->Index() == Current()) {
+			if(i->Next())
+			  result = (eOSState)(os_User + i->Index()); /* forces jump to next item */
+			else
+			  result = (eOSState)(os_User + i->Index() - 1);/* forces jump to last item */
+		      }
+		      for(i = m_Playlist.First(); i && i->Index() != Current(); i = m_Playlist.Next(i));
+		      if(i)
+			m_Playlist.Del(i);
+		      if(Current() == Count()-1)
+			SetCurrent(Get(Current()-1));
+		      Set();
+	              return result;
                     }
       case kBlue:   
                     m_Playlist.Sort();
@@ -587,8 +596,10 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       m_AutoShowStart = time(NULL);
 
 #if VDRVERSNUM < 10338
+    cStatus::MsgReplaying(this, NULL);
     cStatus::MsgReplaying(this, *m_Player->File());
 #else
+    cStatus::MsgReplaying(this, NULL, NULL, false);
     cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, *m_Player->File(), true);
 #endif
   }
@@ -622,7 +633,15 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       case osEnd:   Hide(); break;
       default:      if(state >= os_User) {
 	              m_Player->NextFile( (int)state - (int)os_User - m_Player->CurrentFile());
-		      m_PlaylistMenu->SetCurrentExt(m_Player->CurrentFile());
+		      m_PlaylistMenu->SetCurrentExt(m_Player->CurrentFile()); 
+#if VDRVERSNUM < 10338
+		      cStatus::MsgReplaying(this, NULL);
+		      cStatus::MsgReplaying(this, *m_Player->File());
+#else
+		      cStatus::MsgReplaying(this, NULL, NULL, false);
+		      cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, 
+					    *m_Player->File(), true);
+#endif
                     }
 	            break;
     }
