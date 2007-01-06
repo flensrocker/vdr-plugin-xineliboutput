@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.17 2006-12-24 15:44:04 phintuka Exp $
+ * $Id: setup_menu.c,v 1.18 2007-01-06 04:43:34 phintuka Exp $
  *
  */
 
@@ -509,6 +509,9 @@ cMenuSetupVideo::~cMenuSetupVideo(void)
        "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "pp", xc.ffmpeg_pp ? true : false, xc.FfmpegPpOptions());
+  cXinelibDevice::Instance().ConfigurePostprocessing(
+        xc.deinterlace_method, xc.audio_delay, xc.audio_compression,
+        xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 }
 
 void cMenuSetupVideo::Set(void)
@@ -934,8 +937,11 @@ class cMenuSetupLocal : public cMenuSetupPage
     config_t newconfig;
 
     int local_frontend;
+    int local_frontend_orig;
     int audio_driver;
-    int video_driver;
+    int audio_driver_orig;
+    int video_driver;   
+    int video_driver_orig;
 
     cOsdItem *ctrl_scale;
     cOsdItem *ctrl_local_fe;
@@ -965,14 +971,15 @@ cMenuSetupLocal::cMenuSetupLocal(void)
 
   memcpy(&newconfig, &xc, sizeof(config_t));
 
-  local_frontend = strstra(xc.local_frontend, xc.s_frontends, 0);
-  audio_driver  = strstra(xc.audio_driver, xc.s_audioDrivers, 0);
+  local_frontend_orig = local_frontend = strstra(xc.local_frontend, xc.s_frontends, 0);
+  audio_driver_orig = audio_driver = strstra(xc.audio_driver, xc.s_audioDrivers, 0);
 
   video_driver = 0;
   if(local_frontend == FRONTEND_X11)
     video_driver = strstra(xc.video_driver, xc.s_videoDriversX11, 0);
   if(local_frontend == FRONTEND_FB)
     video_driver = strstra(xc.video_driver, xc.s_videoDriversFB, 0);
+  video_driver_orig = video_driver;
 
   Set();
 }
@@ -1024,7 +1031,6 @@ void cMenuSetupLocal::Set(void)
 	new cMenuEditStraI18nItem(tr("Driver"), &video_driver, 
 				  X11_DRIVER_count, 
 				  xc.s_videoDriverNamesX11));
-    strcpy(newconfig.video_port, "0.0");
     Add(new cMenuEditStrItem(tr("Display address"), newconfig.video_port, 
 			     31, DriverNameChars));
 
@@ -1033,7 +1039,6 @@ void cMenuSetupLocal::Set(void)
 	new cMenuEditStraI18nItem(tr("Driver"), &video_driver, 
 				  FB_DRIVER_count, 
 				  xc.s_videoDriverNamesFB));
-    strcpy(newconfig.video_port, "/dev/fb/0");
     Add(new cMenuEditStrItem(tr("Framebuffer device"), newconfig.video_port, 31, 
 			     DriverNameChars));
   }
@@ -1107,16 +1112,16 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
 
   if(item == ctrl_audio_driver) {
     if(prev_audio_driver != audio_driver) {
-      if(audio_driver == AUDIO_DRIVER_ALSA) {
+     
+      if(audio_driver == audio_driver_orig)
+        strcpy(newconfig.audio_port, xc.audio_port);
+      else if(audio_driver == AUDIO_DRIVER_ALSA)
         strcpy(newconfig.audio_port, "default");
-        Set();
-      } else if(audio_driver == AUDIO_DRIVER_OSS) {
+      else if(audio_driver == AUDIO_DRIVER_OSS)
         strcpy(newconfig.audio_port, "/dev/dsp0");
-        Set();
-      } else {
+      else
         strcpy(newconfig.audio_port, "");
-        Set();
-      }
+      Set();
     }
     else if((audio_driver != AUDIO_DRIVER_AUTO && 
 	     audio_driver != AUDIO_DRIVER_NONE) && 
@@ -1132,8 +1137,19 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
 	xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
 	newconfig.display_aspect, newconfig.scale_video, 
 	newconfig.field_order);
-  else if(item == ctrl_local_fe && local_frontend != prev_frontend) 
+  else if(item == ctrl_local_fe && local_frontend != prev_frontend) {
+
+    if(local_frontend == local_frontend_orig) {
+      video_driver = video_driver_orig;
+      strcpy(newconfig.video_port, xc.video_port);
+    }
+    else if(local_frontend == FRONTEND_FB)
+      strcpy(newconfig.video_port, "/dev/fb/0");
+    else if(local_frontend == FRONTEND_X11)
+      strcpy(newconfig.video_port, "0.0");
+
     Set();
+  }
   else if(item == ctrl_fullscreen) {
     if(!newconfig.fullscreen && !ctrl_window_width) {
       Set();
@@ -1167,6 +1183,11 @@ void cMenuSetupLocal::Store(void)
   SetupStore("Audio.Port",    xc.audio_port);
   SetupStore("Video.Driver",  xc.video_driver);
   SetupStore("Video.Port",    xc.video_port);
+#if 0
+  SetupStore("Video.Port",    NULL); /* should delete entry ? */
+  SetupStore("Video.Port.X11",xc.video_port_x11);
+  SetupStore("Video.Port.FB", xc.video_port_fb);
+#endif
   SetupStore("Video.Scale",   xc.scale_video);
   SetupStore("Video.FieldOrder", xc.field_order);
   SetupStore("Modeline",      xc.modeline);
@@ -1242,11 +1263,11 @@ void cMenuSetupRemote::Set(void)
 			      &newconfig.remote_usertp));
     if(newconfig.remote_usertp) {
       Add(ctrl_rtp_addr =
-	  new cMenuEditStrItem( tr("    Multicast address"), 
+	  new cMenuEditStrItem( tr("    Address"), 
 			        &newconfig.remote_rtp_addr[0], 16, "0123456789."));
-      Add(new cMenuEditIntItem( tr("    Multicast port"), 
+      Add(new cMenuEditIntItem( tr("    Port"), 
 				&newconfig.remote_rtp_port, 1000, 0xffff));
-      Add(new cMenuEditIntItem( tr("    Multicast TTL"), 
+      Add(new cMenuEditIntItem( tr("    TTL"), 
 				&newconfig.remote_rtp_ttl, 1, 10));
       Add(new cMenuEditBoolItem(tr("    Transmit always on"), 
 				&newconfig.remote_rtp_always_on));
