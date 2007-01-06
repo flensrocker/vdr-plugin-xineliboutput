@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.14 2006-12-19 16:34:31 phintuka Exp $
+ * $Id: frontend_local.c,v 1.15 2007-01-06 04:29:00 phintuka Exp $
  *
  */
 
@@ -358,7 +358,8 @@ void cXinelibLocal::Action(void)
       if(!curr_fe->fe_display_open(curr_fe, xc.width, xc.height, xc.fullscreen,
 				   xc.modeswitch, xc.modeline, 
 				   xc.display_aspect, keypress_handler, 
-				   xc.video_port, xc.scale_video, 
+				   xc.video_port, 
+				   xc.scale_video, 
 				   xc.field_order)) {
 	LOGMSG("cXinelibLocal: Error initializing display");
 	SetStopSignal();
@@ -433,9 +434,10 @@ void cXinelibLocal::Action(void)
     {
       LOCK_THREAD;
       Xine_Control("NOVIDEO 0");
-      Xine_Control("LIVE 0");
+      Xine_Control("LIVE 1");
+      Xine_Control("CLEAR");
       m_bNoVideo  = false;
-      m_bLiveMode = false;
+      m_bLiveMode = true;
       m_bReady    = true;
     }
 

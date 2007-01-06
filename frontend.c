@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.26 2007-01-01 08:37:47 phintuka Exp $
+ * $Id: frontend.c,v 1.27 2007-01-06 04:31:21 phintuka Exp $
  *
  */
 
@@ -180,7 +180,7 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_bReady = false;
   m_bIsFinished = false;
   m_bNoVideo = true;
-  m_bLiveMode = false;
+  m_bLiveMode = true; /* can't be replaying when there is no output device */
   m_StreamPos = 0;
   m_Frames = 0;
   m_bEndOfStreamReached = false;
@@ -276,14 +276,12 @@ void cXinelibThread::SetLiveMode(bool LiveModeOn)
   Unlock();
 
   Xine_Control("LIVE", m_bLiveMode ? 1 : 0);
-  Xine_Sync();
 }
 
 void cXinelibThread::SetStillMode(bool StillModeOn)
 {
   TRACEF("cXinelibThread::SetStillMode");
   Xine_Control("STILL", StillModeOn ? 1 : 0);
-  Xine_Sync();
 }
 
 void cXinelibThread::SetNoVideo(bool bVal)
