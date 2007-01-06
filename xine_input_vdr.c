@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.68 2006-12-30 03:14:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.69 2007-01-06 08:36:09 phintuka Exp $
  *
  */
 
@@ -97,17 +97,14 @@
 
 #include "logdefs.h"
 
-
-#if !defined(XINELIBOUTPUT_DEBUG_STDOUT) && \
-    !defined(XINELIBOUTPUT_DEBUG_STDERR)
-# undef  x_syslog
-# define x_syslog syslog_with_tid
-#endif
+#undef  x_syslog
+#define x_syslog syslog_with_tid
 
 int iSysLogLevel  = 1; /* 0:none, 1:errors, 2:info, 3:debug */
 int bLogToSysLog  = 0;
 int bSymbolsFound = 0;
 
+static void syslog_with_tid(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 static void syslog_with_tid(int level, const char *fmt, ...)
 {
   va_list argp;
@@ -173,6 +170,7 @@ static void SetupLogLevel(void)
 #endif
 
 
+//#define DEBUG_LOCKING
 #ifdef DEBUG_LOCKING
 # include "tools/debug_mutex.h"
 #endif
@@ -659,6 +657,7 @@ static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
       pvrscr_set_fine_speed((scr_plugin_t*)this->scr, XINE_FINE_SPEED_NORMAL);
     }
   }
+  this->pause_start = 0;
 }
 
 static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this) 
@@ -748,9 +747,12 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 
     if( num_used/2 > num_free 
 	|| (this->no_video && num_used > 5)
+#if 0
 	|| this->paused_frames > 200
-        || (this->paused_frames > 100 
-	    && this->pause_start + 400 < monotonic_time_ms())
+        || ( this->paused_frames > 100 
+	     && this->pause_start > 0
+	     && this->pause_start + 400 < monotonic_time_ms())
+#endif
 	/*|| num_vbufs > 5*/
 	|| this->still_mode
 	) {
@@ -794,6 +796,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	     scr_tunning_str(this->scr_tunning), 
 	     scr_tunning_str(scr_tunning), num_used, num_free );
       this->scr_tunning = scr_tunning;
+      this->pause_start = 0;
 
       /* make it play .5% / 1% faster or slower */
       if(this->scr)
@@ -1120,7 +1123,13 @@ static void queue_nosignal(vdr_input_plugin_t *this)
   char          *data = NULL, *tmp = NULL;
   int            datalen = 0, pos = 0;
   buf_element_t *buf = NULL;
-  char          *path, *home;
+  char *path, *home;
+
+  if(this->stream->video_fifo->num_free(this->stream->video_fifo) < 10) {
+    LOGMSG("queue_nosignal: not enough free buffers (%d) !", 
+	   this->stream->video_fifo->num_free(this->stream->video_fifo));
+    return;
+  }
 
   asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
   int fd = open(path=home, O_RDONLY);
@@ -1133,9 +1142,8 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     tmp = data = malloc(NOSIGNAL_MAX_SIZE);
     datalen = read(fd, data, NOSIGNAL_MAX_SIZE);
     if(datalen==NOSIGNAL_MAX_SIZE) {
-      LOGMSG("WARNING: custom \"no signal\" image %s too large", path);
+	LOGMSG("WARNING: custom \"no signal\" image %s too large", path);
     } else if(datalen<=0) {
-      free(tmp);
       LOGERR("error reading %s", path);
     } else {
       LOGMSG("using custom \"no signal\" image %s", path);
@@ -1143,7 +1151,7 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     close(fd);
   }
   free(home);
-  
+
   if(datalen<=0) {
     data    = (char*)&v_mpg_nosignal[0];
     datalen = v_mpg_nosignal_length;
@@ -1161,7 +1169,10 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       xine_fast_memcpy(buf->content, &data[pos], buf->size);
       pos += buf->size;
       this->stream->video_fifo->put(this->stream->video_fifo, buf);
-    } else break;
+    } else {
+      LOGMSG("Error: queue_nosignal: no buffers !");
+      break;
+    }
   }
 
   free(tmp);
@@ -1344,11 +1355,13 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
     }
   }
 
-  buf->content = buf->mem;
-  buf->size = 0;
-  buf->type = BUF_DEMUX_BLOCK;
+  if(buf) {
+    buf->content = buf->mem;
+    buf->size = 0;
+    buf->type = BUF_DEMUX_BLOCK;
 
-  buf->free_buffer = buffer_pool_free;
+    buf->free_buffer = buffer_pool_free;
+  }
 
   return buf;
 }
@@ -1377,11 +1390,13 @@ static buf_element_t *make_padding_frame(vdr_input_plugin_t *this)
   buf_element_t *buf;
 
   buf = get_buf_element(this, 8, 1);
-  if(!buf)
+
+  if(!buf && this->stream->audio_fifo)
     buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
 
   if(buf) {
     buf->size = 8;
+    buf->content = buf->mem;
     buf->type = BUF_DEMUX_BLOCK;
     memcpy(buf->content, padding, 8);
   }
@@ -1529,7 +1544,7 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
 
   sscanf(data+15, "%lx", &imaster);
   master = (vdr_input_plugin_t*)imaster;
-LOGMSG("master=%x",imaster);
+
   memset(slave, 0, sizeof(fifo_input_plugin_t));
   slave->master = (vdr_input_plugin_t*)master;
   slave->stream = stream;
@@ -2105,6 +2120,8 @@ static void suspend_demuxer(vdr_input_plugin_t *this)
 {
   this->stream->demux_action_pending = 1;
   signal_buffer_not_empty(this);
+  if(this->is_paused) 
+    LOGMSG("WARNING: called suspend_demuxer in paused mode !");
   pthread_mutex_lock( &this->stream->demux_lock );
   /* must be paired with resume_demuxer !!! */
 }
@@ -2315,7 +2332,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
     this->max_buffers >>= 1;
   this->max_buffers -= 10;
 
-  if(this->no_video) 
+  if(this->no_video)
     this->max_buffers = RADIO_MAX_BUFFERS;
 
   /* SCR tunning */
@@ -2404,6 +2421,19 @@ static void send_meta_info(vdr_input_plugin_t *this)
   }
 }
 
+static void send_cd_info(vdr_input_plugin_t *this)
+{
+  int count = 0;
+  input_class_t *c = this->slave_stream->input_plugin->input_class;
+  char **list = c->get_autoplay_list(c, &count);
+  if(list) {
+    int i;
+    LOGMSG("cdda: %d entries", count);
+    for(i=0; i<count && list[i]; i++)
+      LOGMSG("cdda: %d: %s", i, list[i]);
+  }
+}
+
 static void vdr_event_cb (void *user_data, const xine_event_t *event);
 
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
@@ -2455,12 +2485,14 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	if(this->fd_control > 0) {
 	  char mrl[512];
 	  char *phost = strdup(strstr(this->mrl, "//") + 2);
+	  char *pfile = strrchr(filename, '/');
 	  char *port = strchr(phost, ':');
 	  int iport;
 	  if(port) *port++ = 0;
 	  iport = port ? atoi(port) : DEFAULT_VDR_PORT;
-	  sprintf(mrl, "http://%s:%d/PLAYFILE", 
-		  phost, iport);
+	  sprintf(mrl, "http://%s:%d/PLAYFILE%s", 
+	  //sprintf(mrl, "httpseek://%s:%d/PLAYFILE%s", 
+		  phost?:"127.0.0.1", iport, pfile?:"");
 	  free(phost);
 	  LOGMSG("  -> trying to stream from server (%s) ...", mrl);
 	  strcpy(filename, mrl);
@@ -2534,6 +2566,9 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 						 METRONOM_PREBUFFER, 90000);
 #endif
 	send_meta_info(this);
+
+	if(!strncmp(filename, "cdda:", 5))
+	  send_cd_info(this);
 
 	if(this->funcs.fe_control) {
 	  char tmp[128];
@@ -2828,8 +2863,11 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
   pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
 
   if(timeout_ms > 0 && result <= 0) {
+    if(timeout_ms > 250) {
+      LOGMSG("vdr_plugin_poll: timeout too large (%d ms), forced to 250ms", timeout_ms);
+      timeout_ms = 250;
+    }
     create_timeout_time(&abstime, timeout_ms);
-
     pthread_mutex_lock(&this->lock);
     if(this->scr_tunning == SCR_TUNNING_PAUSED) {
       LOGSCR("scr tunning reset by POLL");
@@ -3103,6 +3141,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       this->no_video = tmp32;
       if(this->no_video) {
         this->max_buffers = RADIO_MAX_BUFFERS;
+LOGMSG("********************* no_video ***************************");
       } else {
         this->max_buffers = this->buffer_pool->buffer_pool_capacity;
         if(!this->live_mode && this->fd_control < 0) 
@@ -3309,6 +3348,20 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     int pos_stream=0, pos_time=0, length_time=0;
     xine_get_pos_length(stream, &pos_stream, &pos_time, &length_time);
     err = length_time/*/1000*/;
+    if(this->fd_control >= 0) {
+      printf_control(this, "RESULT %d %d\r\n", this->token, err);
+      err = CONTROL_OK;
+    }
+
+  } else if(!strncasecmp(cmd, "GETAUTOPLAYSIZE", 15)) {
+    char **list;
+    int count = 0;
+    if(this->slave_stream &&
+       this->slave_stream->input_plugin &&
+       this->slave_stream->input_plugin->input_class)
+      list = this->slave_stream->input_plugin->input_class->
+	get_autoplay_list(this->slave_stream->input_plugin->input_class, &count);
+    err = count;
     if(this->fd_control >= 0) {
       printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
@@ -4402,9 +4455,10 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       if(!this->is_paused && 
 	 !this->still_mode &&
 	 !this->is_trickspeed &&
-	 !this->slave_stream /*&& 
-	 this->stream->video_fifo->fifo_size <= 0*/) {
+	 !this->slave_stream && 
+	 this->stream->video_fifo->fifo_size <= 0) {
 	this->padding_cnt++;
+
 	if(this->padding_cnt > 16) {
 	  LOGMSG("No data in 8 seconds, queuing no signal image");
 	  queue_nosignal(this);
@@ -4413,7 +4467,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       } else {
 	this->padding_cnt = 0;
       }
-#endif 
+#endif
       if(NULL != (buf = make_padding_frame(this)))
 	return buf;
       LOGMSG("make_padding_frame FAILED");
