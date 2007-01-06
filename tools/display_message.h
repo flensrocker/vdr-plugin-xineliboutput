@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: display_message.h,v 1.1 2006-10-13 04:37:37 phintuka Exp $
+ * $Id: display_message.h,v 1.2 2007-01-06 04:28:08 phintuka Exp $
  *
  */
 
@@ -51,7 +51,6 @@ class cDisplayMessage : public cOsdObject
       return osEnd;
 
     if(Key != kNone) {
-LOGMSG("PutBack: %d , %s", (int)Key, cKey::ToString(Key));
       // put back and close
       cRemote::Put(Key, true);
       return osEnd;
@@ -62,7 +61,6 @@ LOGMSG("PutBack: %d , %s", (int)Key, cKey::ToString(Key));
 
   virtual void Show(void)
   {
-if(cRemote::HasKeys()) LOGMSG("Show, HasKeys");
     if(!displayMessage)
       displayMessage = Skins.Current()->DisplayMessage();
 
