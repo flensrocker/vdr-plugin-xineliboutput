@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.20 2007-01-01 08:09:11 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.21 2007-01-06 04:27:03 phintuka Exp $
  *
  */
 
@@ -18,158 +18,24 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <sys/time.h>
 #include <linux/unistd.h>
 
 #include <vdr/config.h>
 #include <vdr/tools.h>
 
-#include "../logdefs.h"
-
-#include "udp_buffer.h"
-#include "pes.h"
-
-#include "udp_pes_scheduler.h"
-
-#include "../xine_input_vdr_net.h" // frame headers and constants
+#include "../logdefs.h"            // logging
 #include "../config.h"             // configuration data
+#include "../xine_input_vdr_net.h" // frame headers and constants
 
+#include "pes.h"
+#include "udp_buffer.h"
+#include "udp_pes_scheduler.h"
+#include "time_pts.h"
 #include "cxsocket.h"
 #include "sap.h"  // SAP  - Session Announcement Protocol
 #include "sdp.h"  // SDP  - Session Description Protocol
 #include "rtcp.h" // RTCP
 
-//----------------------- cTimePts ------------------------------------------
-
-#include <time.h>
-
-cTimePts::cTimePts(void)
-{
-  m_Paused     = false;
-  m_Multiplier = 90000;
-  m_Monotonic  = false;
-
-#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
-  struct timespec resolution;   
-
-  if(clock_getres(CLOCK_MONOTONIC, &resolution)) {
-    LOGERR("cTimePts: clock_getres(CLOCK_MONOTONIC) failed");
-  } else {
-    LOGDBG("cTimePts: clock_gettime(CLOCK_MONOTONIC): clock resolution %d us",
-	   ((int)resolution.tv_nsec) / 1000);
-
-    if( resolution.tv_sec == 0 && resolution.tv_nsec <= 1000000 ) {
-      struct timespec tp;
-      if(clock_gettime(CLOCK_MONOTONIC, &tp)) {
-	LOGERR("cTimePts: clock_gettime(CLOCL_MONOTONIC) failed");
-      } else {
-	LOGDBG("cTimePts: using monotonic clock");
-	m_Monotonic = true;
-      }
-    }
-  }
-#else
-#  warning Posix monotonic clock not available
-#endif
-
-  Set();
-}
-
-int64_t cTimePts::Now(void)
-{
-  if(m_Paused)
-    return begin;
-
-  struct timeval t;
-
-#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
-  if(m_Monotonic) {
-    struct timespec tp;
-
-    if(clock_gettime(CLOCK_MONOTONIC, &tp)) {
-      LOGERR("cTimePts: clock_gettime(CLOCK_MONOTONIC) failed");
-      return -1;
-    }
-
-    t.tv_sec  = tp.tv_sec;
-    t.tv_usec = tp.tv_nsec/1000;
-
-  } else if (gettimeofday(&t, NULL)) {
-    LOGERR("cTimePts: gettimeofday() failed");
-    return -1;
-  }
-#else
-  if (gettimeofday(&t, NULL)) {
-    LOGERR("cTimePts: gettimeofday() failed");
-    return -1;
-  }
-#endif
-
-  t.tv_sec -= tbegin.tv_sec;
-  if(t.tv_usec < tbegin.tv_usec) {
-    t.tv_sec--;
-    t.tv_usec += 1000000;
-  }
-  t.tv_usec -= tbegin.tv_usec;
-
-  int64_t pts = 0;
-  pts += ((int64_t)t.tv_sec) * INT64_C(90000);
-  pts += ((int64_t)t.tv_usec) * INT64_C(90) / INT64_C(1000);
-  if(m_Multiplier != 90000)
-    pts = pts * m_Multiplier / INT64_C(90000);
-
-  return ( pts + begin ) & MAX_SCR;
-}
-
-void cTimePts::Set(int64_t Pts)
-{
-  begin = Pts;
-
-#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
-  if(m_Monotonic) {
-    struct timespec tp;
-
-    if(!clock_gettime(CLOCK_MONOTONIC, &tp)) {
-      tbegin.tv_sec  = tp.tv_sec;
-      tbegin.tv_usec = tp.tv_nsec/1000;
-      return;
-    }
-
-    LOGERR("cTimePts: clock_gettime(CLOCL_MONOTONIC) failed");
-    m_Monotonic = false;
-  }
-#endif
-
-  gettimeofday(&tbegin, NULL);
-}
-
-void cTimePts::Pause(void)
-{
-  Set(Now());
-  m_Paused = true;
-}
-
-void cTimePts::Resume(void)
-{
-  if(m_Paused) {
-    Set(begin);
-    m_Paused = false;
-  }
-}
-
-void cTimePts::TrickSpeed(int Multiplier)
-{
-  Set(Now());
-
-  if(Multiplier < 0)
-    m_Multiplier = 90000 * (-Multiplier);
-  else if(Multiplier > 0)
-    m_Multiplier = 90000 / Multiplier;
-  else
-    LOGERR("cTimePts::SetSpeed: Multiplier=%d", Multiplier);
-}
-
-//----------------------- cUdpScheduler -------------------------------------
 
 #ifdef LOG_RESEND
 #  define LOGRESEND LOGDBG
@@ -196,6 +62,7 @@ const int64_t JUMP_LIMIT_TIME = (int64_t)(5*90000/2);   // pts units (90kHz)
 
 const int RTCP_MIN_INTERVAL = 45000; // max. twice in second
 
+
 typedef enum {
   eScrDetect,
   eScrFromAudio,
@@ -203,12 +70,6 @@ typedef enum {
   eScrFromVideo
 } ScrSource_t;
 
-#ifdef LOG_SCR
-int data_sent;   /* in current time interval, bytes */
-int frames_sent; /* in current time interval */
-int frame_rate;  /* pes frames / second */
-int prev_frames;
-#endif
 
 cUdpScheduler::cUdpScheduler()
 {
@@ -219,14 +80,6 @@ cUdpScheduler::cUdpScheduler()
   current_video_vtime = 0;
   MasterClock.Set(INT64_C(0));
 
-#ifdef LOG_SCR
-  data_sent = 0; 
-  frames_sent = 0;
-  frame_rate = 2000;
-  prev_frames = 200;
-#endif
-
-  last_delay_time = 0;
   m_Master = false;
   m_TrickSpeed = false;
 
@@ -271,7 +124,7 @@ cUdpScheduler::~cUdpScheduler()
 
   Cancel(3);
 
-  if(m_fd_rtcp || m_fd_rtp)
+  if(m_fd_rtcp.open() || m_fd_rtp.open())
     Send_SAP(false);
 
   CLOSESOCKET(m_fd_sap);
@@ -283,7 +136,7 @@ bool cUdpScheduler::AddRtp(void)
 {
   cMutexLock ml(&m_Lock);
 
-  if(m_fd_rtcp) {
+  if(m_fd_rtcp.open()) {
     LOGERR("cUdpScheduler::AddHandle: RTCP socket already open !");
     Send_SAP(false);
     m_fd_rtcp.close();
@@ -384,7 +237,7 @@ void cUdpScheduler::RemoveRtp(void)
 {
   cMutexLock ml(&m_Lock);
 
-  if(m_fd_rtp || m_fd_rtcp) {
+  if(m_fd_rtp.open() || m_fd_rtcp.open()) {
     Send_SAP(false);
 
     RemoveHandle(m_fd_rtp);
@@ -539,7 +392,6 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
 #ifdef LOG_SCR
       LOGDBG("cUdpScheduler RESET (Video jump %lld->%lld)",
 	     current_video_vtime, pts);
-      data_sent = frames_sent = 0;
 #endif
       current_video_vtime = pts;
 
@@ -563,7 +415,6 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
 #ifdef LOG_SCR
       LOGDBG("cUdpScheduler RESET (Audio jump %lld->%lld)",
 	     current_audio_vtime, pts);
-      data_sent = frames_sent = 0;
 #endif
       current_audio_vtime = pts;
 
@@ -575,22 +426,12 @@ int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio)
     current_audio_vtime = pts;
   }
  
-#ifdef LOG_SCR
-  if(diff && Audio) {
-    frame_rate = (int)(90000*frames_sent/(int)diff);
-    LOGDBG("rate %d kbit/s (%d frames/s)",
-	   (int)(90*data_sent/((int)diff)*8), frame_rate);
-    prev_frames = frames_sent;
-    data_sent = frames_sent = 0;
-  }
-#endif
-
   return (int) diff;
 }
 
 void cUdpScheduler::Send_RTCP(void)
 {
-  if(!m_fd_rtcp)
+  if(!m_fd_rtcp.open())
     return;
 
   uint64_t scr = RtpScr.Now();
@@ -660,7 +501,7 @@ void cUdpScheduler::Send_RTCP(void)
 
 void cUdpScheduler::Send_SAP(bool Announce)
 {
-  if(xc.remote_rtp_sap && m_fd_rtp) {
+  if(xc.remote_rtp_sap && m_fd_rtp.open()) {
     char ip[20] = "";
     uint32_t local_addr = m_fd_rtp.get_local_address(ip);
     if(local_addr) {
@@ -674,7 +515,8 @@ void cUdpScheduler::Send_SAP(bool Announce)
 #if 1
       /* store copy of SDP data */
       if(m_fd_sap < 0) {
-	FILE *fp = fopen("/video/xineliboutput.sdp", "w");
+	cString fname = cString::sprintf("/video/xineliboutput@%s.sdp", ip);
+	FILE *fp = fopen(fname, "w");
 	fprintf(fp, "%s", sdp_descr);
 	fclose(fp);
       }
@@ -701,68 +543,62 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
   int64_t pts = pes_extract_pts(Data, Length, Audio, Video);
   int elapsed = pts>0 ? calc_elapsed_vtime(pts, Audio) : 0;
 
-#ifdef LOG_SCR
-  if(elapsed > 0)
-    LOGMSG("PTS: %lld  (%s) elapsed %d ms (PID %02x)", 
-	   pts, Video?"Video":Audio?"Audio":"?", elapsed/90, Data[3]);
-#endif
-
-  if(elapsed > 0 && Audio/*Video*/) {
+  if(elapsed > 0) {
     int64_t now = MasterClock.Now();
-    if(now > current_audio_vtime && (now - current_audio_vtime)>JUMP_LIMIT_TIME) {
-#ifdef LOG_SCR
-      LOGMSG("cUdpScheduler MasterClock init (was in past)");
-      elapsed = -1;
-#endif
-      MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
-    } else if(now < current_audio_vtime && (current_audio_vtime-now)>JUMP_LIMIT_TIME) {
-#ifdef LOG_SCR
-      LOGMSG("cUdpScheduler MasterClock init (was in future)");
-      elapsed = -1;
-#endif
-      MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
-    } else if(!last_delay_time) {
-      // first burst done, no delay yet ???
-      // (queue up to xxx bytes first)
-    } else {
-      if(current_audio_vtime > now) {
-	int delay_ms = (int)(current_audio_vtime - now)/90;
-#ifdef LOG_SCR
-	LOGDBG("cUdpScheduler sleeping %d ms "
-	       "(time reference: %s, beat interval %d ms)",
-	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed);
-#endif
-	if(delay_ms > 3) {
-	  //LOGMSG("sleep %d ms (%d f)", delay_ms, prev_frames);
-	  CondWait.Wait(delay_ms);
-	}
+    LOGSCR("PTS: %lld  (%s) elapsed %d ms (PID %02x)", 
+	   pts, Video?"Video":Audio?"Audio":"?", elapsed/90, Data[3]);
+
+    //
+    // Detect discontinuity
+    //
+    if(Audio) {
+      if(now > current_audio_vtime && (now - current_audio_vtime)>JUMP_LIMIT_TIME) {
+	LOGSCR("cUdpScheduler MasterClock init (was in past)");
+	MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
+      } else if(now < current_audio_vtime && (current_audio_vtime-now)>JUMP_LIMIT_TIME) {
+	LOGSCR("cUdpScheduler MasterClock init (was in future)");
+	MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
       }
     }
-    last_delay_time = now;
-  }
-  
-#if 0
-  static int win = 0;
-  static int64_t prev;
 
-  if(data_sent == 0 || elapsed < 0) {
-    win = 0;
-    prev = MasterClock.Now();
-  }
-  win ++;
-  int mrate = 3*frame_rate/2;
-  if(mrate < 100) mrate = 100;
-  if(mrate > 2000) mrate = 2000;
-  if(MasterClock.Now() - prev >= win*90000 / frame_rate) {
-    LOGMSG("sleep:3");
-    CondWait.Wait(3);
-  }
-#endif
+    else if(Video && m_TrickSpeed) {
+      if(now > current_video_vtime && (now - current_video_vtime)>JUMP_LIMIT_TIME) {
+	LOGSCR("cUdpScheduler MasterClock init (was in past) - VIDEO");
+	MasterClock.Set(current_video_vtime + INITIAL_BURST_TIME);
+      } else if(now < current_video_vtime && (current_video_vtime-now)>JUMP_LIMIT_TIME) {
+	LOGSCR("cUdpScheduler MasterClock init (was in future) - VIDEO");
+	MasterClock.Set(current_video_vtime + INITIAL_BURST_TIME);
+      }
+    }
 
-#ifdef LOG_SCR
-  data_sent += Length;
-  frames_sent ++;
-#endif
+    //
+    // Delay
+    //
+    int delay_ms = 0;
+    if(m_TrickSpeed ) {
+      if(current_video_vtime > now) {
+	delay_ms = (int)(current_video_vtime - now)/90;
+	LOGSCR("cUdpScheduler sleeping %d ms "
+	       "(time reference: %s, beat interval %d ms)",
+	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed/90);
+      }
+    } else {
+      if(current_audio_vtime > now) {
+	delay_ms = (int)(current_audio_vtime - now)/90;
+	LOGSCR("cUdpScheduler sleeping %d ms "
+	       "(time reference: %s, beat interval %d ms)",
+	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed/90);
+      }
+    }
+    while(delay_ms > 3) {
+      if(delay_ms > 20)
+	delay_ms = 20;
+      LOGSCR("  -> cUdpScheduler sleeping %d ms ", delay_ms);
+      CondWait.Wait(delay_ms);
+      now = MasterClock.Now();
+      delay_ms = (int)(current_video_vtime - now)/90;
+    }
+  }
 }
 
 void cUdpScheduler::Action(void)
@@ -894,7 +730,7 @@ void cUdpScheduler::Action(void)
 	CondWait.Wait(2);
       }
 
-      if(m_Handles[i] == m_fd_rtp) {
+      if(m_Handles[i] == m_fd_rtp.handle()) {
 	if(send(m_Handles[i], frame, RtpPacketLen, 0) <= 0)
 	  LOGERR("cUdpScheduler: UDP/RTP send() failed !");
       } else {
@@ -909,7 +745,7 @@ void cUdpScheduler::Action(void)
     m_Lock.Lock();
     m_Frames ++;
     m_Octets += PayloadSize;
-    if(m_fd_rtcp && (m_Frames & 0xff) == 1) { // every 256th frame
+    if(m_fd_rtcp.open() && (m_Frames & 0xff) == 1) { // every 256th frame
       Send_RTCP();
 #if 0
       if((m_Frames & 0xff00) == 0) // every 65536th frame (~ 2 min)
