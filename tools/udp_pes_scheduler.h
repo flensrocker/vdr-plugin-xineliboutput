@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.9 2007-01-01 09:44:42 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.10 2007-01-06 04:02:25 phintuka Exp $
  *
  */
 
@@ -16,31 +16,8 @@
 #include <vdr/tools.h>  // uchar
 #include <vdr/thread.h>
 
-//----------------------- cTimePts ------------------------------------------
-
-class cTimePts 
-{
-  private:
-    int64_t begin;          /* Start time (PTS) */
-    struct timeval tbegin;  /* Start time (real time) */
-    bool m_Paused;
-    int  m_Multiplier;
-    bool m_Monotonic;
-
-  public:
-    cTimePts(void);
-
-    int64_t Now(void);
-    void    Set(int64_t Pts = 0LL);
-
-    void Pause(void);
-    void Resume(void);
-    void TrickSpeed(int Multiplier);
-};
-
-//----------------------- cUdpPesScheduler ----------------------------------
-
 #include "cxsocket.h"
+#include "time_pts.h"
 
 #define MAX_UDP_HANDLES 16
 
@@ -110,10 +87,8 @@ class cUdpScheduler : public cThread
 
     // Scheduling 
 
-    int64_t last_delay_time;
-    bool    m_TrickSpeed;
-
-    bool m_Master;   /* if true, we are master metronom for playback */
+    bool m_TrickSpeed;
+    bool m_Master;     /* if true, we are master metronom for playback */
   
     int  calc_elapsed_vtime(int64_t pts, bool Audio);
     void Schedule(const uchar *Data, int Length);
