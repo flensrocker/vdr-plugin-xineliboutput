@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.17 2007-01-04 09:52:19 phintuka Exp $
+ * $Id: media_player.c,v 1.18 2007-01-07 12:08:27 phintuka Exp $
  *
  */
 
@@ -250,6 +250,16 @@ void cXinelibPlayer::Activate(bool On)
 	m_Playlist.Current()->Album = al;
       if(ar && ar[0])
 	m_Playlist.Current()->Artist = ar;
+
+      // cdda tracks
+      if(m_Playlist.Count() == 1 && !strcmp("cdda:/", m_Playlist.First()->Filename)) {
+	int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE");
+	if(count>1) {
+	  m_Playlist.Del(m_Playlist.First());
+	  for(int i=0; i<count; i++)
+	    m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
+	}
+      }
     }
   } else {
     if(m_UseResume && *m_ResumeFile) {
@@ -277,6 +287,11 @@ void cXinelibPlayer::Activate(bool On)
 //
 // cPlaylistMenu
 //
+
+//#define USE_ICONV
+#ifdef USE_ICONV
+#include <iconv.h>
+#endif
 
 class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
 {
@@ -323,6 +338,8 @@ void cPlaylistMenu::PlaylistChanged(const cPlaylistItem *item)
 
 eOSState cPlaylistMenu::ProcessKey(eKeys Key) 
 {
+  bool hadSubMenu = HasSubMenu();
+
   if(m_NeedsUpdate)
     Set();
 
@@ -362,6 +379,10 @@ eOSState cPlaylistMenu::ProcessKey(eKeys Key)
       default: break;
     }
   }
+
+  if(hadSubMenu && !HasSubMenu())
+     Set();
+
   return state;
 }
 
@@ -392,6 +413,12 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
 
   int currentPlaying = m_Playlist.Current()->Index();
   int j = 0;
+#ifdef USE_ICONV
+  iconv_t ic = iconv_open("ISO8859-1", "UTF-8"); // from vdr config ?
+  if(ic==(iconv_t)-1) 
+    LOGERR("iconv_open() failed");
+#endif
+
   for(cPlaylistItem *i = m_Playlist.First(); i; i = m_Playlist.Next(i), j++) {
     cString Title;
     if(*i->Artist || *i->Album)
@@ -405,9 +432,21 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
       Title = cString::sprintf("%c\t%s",
 			       j==currentPlaying ? '*':' ',
 			       *i->Track);
+#ifdef USE_ICONV
+    char   buf[1024], *out = buf, *in = (char*)*i->Title;
+    size_t inc = strlen(in), outc = 1023;
+    int    n = iconv(ic, &in, &inc, &out, &outc);
+    LOGMSG("iconv -> %d  (%d,%d) %s %s %s", n, inc, outc, in, out, buf);
+    Add(new cOsdItem( n!=(size_t)(-1) ? buf : *Title, (eOSState)(os_User + j)));
+#else
     Add(new cOsdItem( *Title, (eOSState)(os_User + j)));
+#endif
   }
-  
+
+#ifdef USE_ICONV
+  iconv_close(ic);  
+#endif
+
   if(setCurrentPlaying)
     SetCurrent(Get(currentPlaying));
   else
@@ -620,6 +659,13 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 	m_Player->Playlist().Current()->Album = al;
       if(ar && ar[0])
 	m_Player->Playlist().Current()->Artist = ar;
+#if VDRVERSNUM < 10338
+    cStatus::MsgReplaying(this, NULL);
+    cStatus::MsgReplaying(this, *m_Player->File());
+#else
+    cStatus::MsgReplaying(this, NULL, NULL, false);
+    cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, *m_Player->File(), true);
+#endif
     }
   }
 
@@ -881,9 +927,9 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     const char *l0 = cXinelibDevice::Instance().GetDvdSpuLang(0);
     const char *l1 = cXinelibDevice::Instance().GetDvdSpuLang(1);
     //const char *t  = cXinelibDevice::Instance().GetMetaInfo(miTitle);
-    const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
+    //const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
 
-    if((dt && !strcmp("0", dt)) ||
+    if(/*(dt && !strcmp("0", dt)) ||*/
        (l0 && !strcmp("menu", l0)) ||
        (l1 && !strcmp("menu", l1))) {
       MenuDomain = true;
