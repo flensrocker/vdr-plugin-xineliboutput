@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.h,v 1.3 2007-01-07 05:22:33 phintuka Exp $
+ * $Id: http.h,v 1.4 2007-01-07 05:28:36 phintuka Exp $
  *
  */
 
@@ -119,6 +119,7 @@ class cHttpStreamer : protected cListObject, cThread
     int64_t m_FileSize;
     int64_t m_Start;
     int64_t m_End;
+    bool    m_KeepOpen;
 
     cConnState        *m_ConnState;
 
