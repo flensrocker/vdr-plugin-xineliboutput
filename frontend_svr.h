@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.14 2006-12-31 18:55:00 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.15 2007-01-07 05:39:16 phintuka Exp $
  *
  */
 
@@ -18,7 +18,7 @@
 
 #define MAXCLIENTS 10
 
-class cBackgroundWriter;
+class cBackgroundWriterI;
 class cUdpScheduler;
 class cStcFuture;
 class cCmdFutures;
@@ -62,7 +62,6 @@ class cXinelibServer : public cXinelibThread
 
 protected:
     // Playback control
-    virtual void Xine_Sync(void);
     virtual int  Xine_Control(const char *cmd);  
     virtual int  Xine_Control_Sync(const char *cmd);  
 
@@ -99,7 +98,7 @@ protected:
 
     int  fd_listen;
     int  fd_discovery;
-    int  fd_control[MAXCLIENTS];
+    int fd_control[MAXCLIENTS];
     int  fd_data[MAXCLIENTS];
 
     char m_CtrlBuf[MAXCLIENTS][1024+1];
@@ -115,7 +114,7 @@ protected:
 
     cString m_PipesDir;
 
-    cBackgroundWriter *m_Writer[MAXCLIENTS]; // buffered output (pipe/tcp/http)
+    cBackgroundWriterI *m_Writer[MAXCLIENTS]; // buffered output (pipe/tcp/http)
     cConnState        *m_State[MAXCLIENTS];  // connection state (http/rtsp)
     cUdpScheduler     *m_Scheduler;
     bool               m_Master;
