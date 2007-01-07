@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.29 2007-01-04 08:42:47 phintuka Exp $
+ * $Id: menu.c,v 1.30 2007-01-07 11:41:48 phintuka Exp $
  *
  */
 
@@ -246,7 +246,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
       cControl::Launch(new cXinelibDvdPlayerControl(f));
       return osEnd;
     }
-    if(ForceOpen && GetCurrent()->IsDir()) {
+    if(ForceOpen && GetCurrent()->IsDir() && !GetCurrent()->IsDvd()) {
       /* play all files */ 
       if(m_Mode != ShowImages) {
 
@@ -261,7 +261,6 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
 	  cXinelibPlayerControl::Queue(f);
 	else 
 	  cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
-
 	return Queue ? osContinue : osEnd;
 
       } else {
@@ -451,7 +450,7 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
        case kPlay:   
        case kOk:     return Open(false, false, m_OnlyQueue);
        case kRed:    return Open(true);
-       case kGreen:  return Open(false, m_Mode != ShowMusic, 
+       case kGreen:  return Open(true, m_Mode != ShowMusic, 
 				 m_Mode==ShowMusic ? m_OnlyQueue=true : false);
        case kYellow: return Delete();
        case kBlue:   return Info();
