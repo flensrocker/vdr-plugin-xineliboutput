@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.c,v 1.2 2007-01-07 05:25:03 phintuka Exp $
+ * $Id: http.c,v 1.3 2007-01-07 09:49:59 phintuka Exp $
  *
  */
 
@@ -31,7 +31,7 @@ bool cHttpReq::SetCommand(const char *Command)
 
   m_Valid = false;
   if(pt) {
-    *pt = 0;
+    *pt++ = 0;
     m_Name = tmp;
 
     while(*pt && *pt == ' ') pt++;
@@ -65,6 +65,7 @@ void cHttpReq::AddHeader(const char *Header, bool Duplicate)
     char *val = strchr(name, ':');
     if(val) {
       *val++ = 0;
+      while(*val == ' ') val++;
       AddHeader(name, val, Duplicate);
     }
     free(name);
@@ -158,17 +159,20 @@ void cHttpStreamer::CloseAll(bool OnlyFinished)
   }
 }
 
-cHttpStreamer::cHttpStreamer(int fd_http, const char *filename, const char *Range)
+cHttpStreamer::cHttpStreamer(int fd_http, const char *filename, 
+			     cConnState *Request)
 {
   m_fds.set_handle(fd_http);
+  m_fds.set_cork(true);
   m_fdf = -1;
 
   m_Filename = filename;
   m_FileSize = -1;
   m_Start = 0;
   m_End = -1;
+  m_KeepOpen = true;
 
-  m_ConnState = NULL;
+  m_ConnState = Request;
 
   m_Finished = false;
 
@@ -185,8 +189,6 @@ cHttpStreamer::cHttpStreamer(int fd_http, const char *filename, const char *Rang
       m_Streamers.Del(m_Streamers.First());
     }
   }
-
-  ParseRange(Range);
 
   Start();
 }
@@ -206,16 +208,36 @@ void cHttpStreamer::ParseRange(const char *Range)
   m_Start = 0;
   m_End = -1;
   if(Range) {
-    LOGMSG("Range: %s", Range);
-    switch(sscanf(Range, "%" PRId64 "-%" PRId64, &m_Start, &m_End)) {
-    case 2: LOGMSG("Range: %s (%" PRId64 " - %" PRId64 ")", Range, m_Start, m_End);
+    LOGDBG("cHttpStreamer: Request range is \'%s\'", Range);
+    switch(sscanf(Range, "bytes=%" PRId64 "-%" PRId64, &m_Start, &m_End)) {
+    case 2: LOGMSG("  Range: %s (%" PRId64 " - %" PRId64 ")", Range, m_Start, m_End);
             break;
     case 1: m_End = -1;
-            LOGMSG("Range: %s (%" PRId64 " -)", Range, m_Start);
+            LOGMSG("  Range start: %s (%" PRId64 " - )", Range, m_Start);
+	    break;
+    default:
     case 0: m_Start = 0;
-    default: break;
+            m_End = -1;
+	    break;
     }
   }
+}
+
+bool cHttpStreamer::ParseRequest(void)
+{
+  cHeader *h;
+
+  if((h = m_ConnState->Header("Range")) != NULL)
+    ParseRange(h->Value());
+
+  m_KeepOpen = false;
+  if((h = m_ConnState->Header("Connection")) != NULL) {
+    m_KeepOpen = !strcasecmp(h->Value(), "keep-alive");
+    if(m_KeepOpen) 
+      LOGDBG("cHttpStreamer: client wants to keep connection open");
+  }
+
+  return true;
 }
 
 bool cHttpStreamer::Seek(void)
@@ -224,27 +246,33 @@ bool cHttpStreamer::Seek(void)
     m_fdf = open(m_Filename, O_RDONLY);
     if(m_fdf < 0) {
       LOGERR("cHttpStreamer: error opening %s", *m_Filename);
-      
-      m_fds.write_cmd("HTTP/1.1 401 Not Found\r\n");
-      m_fds.write_cmd("Connection: Close\r\n");
-      m_fds.write_cmd("\r\n");
+      m_fds.write_cmd(HTTP_REPLY_401); // 401 Not Found
+      return false;
+    }
+
+    m_FileSize = lseek(m_fdf, 0, SEEK_END);
+    if(m_FileSize <= 0) {
+      LOGERR("cHttpStreamer: error seeking %s to end", *m_Filename);
+      m_fds.write_cmd(HTTP_REPLY_401); // 401 Not Found
       return false;
     }
   }
 
-  off_t FileSize = lseek(m_fdf, 0, SEEK_END);
-  if(m_Start >= FileSize)
-    m_Start = FileSize - 1;
-
+  if(m_Start >= m_FileSize) {
+    LOGERR("cHttpStreamer: Requested range not available "
+	   "(%s:%" PRId64 "-%" PRId64 " ; len=%" PRIu64 ")", 
+	   *m_Filename, m_Start, m_End, (uint64_t)m_FileSize);
+    m_fds.write_cmd(HTTP_REPLY_416); // 416 Requested Range Not Satisfiable
+    return false;
+  }
+  
   if(m_Start > 0) {
-    if(m_End >= FileSize)
-      m_End = FileSize - 1;
+    if(m_End >= m_FileSize || m_End < 0)
+      m_End = m_FileSize-1;
 
     m_fds.write_cmd("HTTP/1.1 206 Partial Content\r\n");
-    if(m_End <= 0)
-      m_fds.printf("Range: %" PRId64 "-\r\n", m_Start);
-    else
-      m_fds.printf("Range: %" PRId64 "-%" PRId64 "\r\n", m_Start, m_End);
+    m_fds.printf("Content-Range: bytes %" PRId64 "-%" PRId64 "/%" PRIu64 "\r\n", 
+		 m_Start, m_End, (uint64_t)m_FileSize);
   } else {
     m_fds.write_cmd("HTTP/1.1 200 OK\r\n");
   }
@@ -262,16 +290,18 @@ bool cHttpStreamer::Seek(void)
     int64_t len = m_FileSize;
     if(m_End >= 0)
       len = m_End + 1;
-    else if(m_Start >= 0)
+    if(m_Start >= 0)
       len -= m_Start;
     m_fds.printf("Content-Length: %" PRId64 "\r\n", len);
   }
 
-  /* Connection */
-  m_fds.write_cmd("Connection: Keep-Alive\r\n");
-
-  /* End of reply */
-  m_fds.write_cmd("\r\n");
+  /* Connection and end of reply */
+  if(m_KeepOpen)
+    m_fds.write_cmd("Connection: Keep-Alive\r\n"
+		    "\r\n");
+  else
+    m_fds.write_cmd("Connection: Close\r\n"
+		    "\r\n");
 
   if(m_Start)
     lseek(m_fdf, (off_t)m_Start, SEEK_SET);
@@ -291,16 +321,19 @@ bool cHttpStreamer::ReadPipelined(void)
   m_ConnState = new cConnState;
 
   do {
-    r = m_fds.readline(buf, sizeof(buf), 100);
-    if(r < 0 || errno == EAGAIN || r >= (int)sizeof(buf))
+    r = m_fds.readline(buf, sizeof(buf), 1000);
+    if(r < 0 || errno == EAGAIN || r >= (int)sizeof(buf)) {
+      LOGMSG("cHttpStreamer: disconnected");
       return false;
+    }
 
-    LOGMSG("HTTP pipelined: %s", buf);
+    LOGMSG("cHttpStreamer: pipelined request: %s", buf);
 
     if(!*m_ConnState->Name()) {
       if(!m_ConnState->SetCommand(buf) ||
-	 !strcmp(m_ConnState->Name(), "GET") ||
-	 !strncmp(m_ConnState->Uri(), "/PLAYFILE", 9)) {
+	 strcmp(m_ConnState->Name(), "GET") ||
+	 strncmp(m_ConnState->Uri(), "/PLAYFILE", 9) ||
+	 strncmp(m_ConnState->Version(), "HTTP/1.", 7)) {
 	LOGMSG("Incorrect HTTP request: %s", buf);
 	return false;
       }
@@ -309,15 +342,74 @@ bool cHttpStreamer::ReadPipelined(void)
       m_ConnState->AddHeader(buf);
   } while(r>0);
 
-  if(m_ConnState->Header("Range"))
-    ParseRange(m_ConnState->Header("Range")->Value());
-
   return true;
 }
 
 void cHttpStreamer::Action(void)
 {
-  // not implemented
+  int      n = 0;
+  cxPoller p(m_fds);
+  bool     Disc = !(ParseRequest() && Seek());
+  uint64_t pos  = m_Start;
+  off_t    start = (off_t)m_Start;
+
+  while(Running() && !Disc) {
+
+    n = m_End>0 ? (m_End-start+1) : m_FileSize - start;
+    if(n > 0) {
+      errno = 0;
+      pthread_testcancel();
+      n = m_fds.sendfile(m_fdf, &start, n);
+      pthread_testcancel();
+      if(n <= 0) {
+	if(errno == EAGAIN || errno == EINTR) {
+	  p.Poll(100);
+	  pthread_testcancel();
+	} else {
+	  LOGERR("cHttpStreamer: sendfile() failed");
+	  Disc=true;
+	}
+      } else if(n == 0) {
+	LOGMSG("cHttpStreamer: disconnected at %" PRId64, (int64_t)start);
+	Disc = true;
+      }
+      continue;
+    }
+
+    LOGDBG("cHttpStreamer: Hit to EOF or end of requested range");
+
+    m_fds.flush_cork();
+
+    if(!m_KeepOpen) {
+      LOGMSG("cHttpStreamer: disconnecting (request complete)");
+      Disc = true;
+      continue;
+    }
+
+    // keep connection open for new range for max. 30 sec
+    n = 30; 
+    do {
+      pthread_testcancel();
+      //cxPoller p(m_fds);
+      LOGDBG("cHttpStreamer: Request complete, waiting...");
+      if(p.Poll(1000)) {
+	LOGDBG("cHttpStreamer: Reading pipelined request");
+	pthread_testcancel();
+	Disc = !(ReadPipelined() && ParseRequest() && Seek());
+	pos = m_Start;
+      }
+    } while(--n && Running() && !Disc);
+
+    if(n <= 0) {
+      LOGMSG("cHttpStreamer: Disconnecting (timeout)");
+      Disc = true;
+    }
+  }
+
+  close(m_fdf);
+  m_fdf = -1;
+
+  m_fds.close();
 
   m_Finished = true;
 }
