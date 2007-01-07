@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.17 2007-01-01 08:16:21 phintuka Exp $
+ * $Id: cxsocket.h,v 1.18 2007-01-07 06:43:21 phintuka Exp $
  *
  */
 
@@ -38,7 +38,8 @@ class cxSocket {
   ~cxSocket() { CLOSESOCKET(m_fd); }
 
   //operator int ()  const { return Handle(); }
-  operator bool () const { return open(); }
+  //operator bool () const { return open(); }
+  //bool operator==(const cxSocket &s) { return m_fd == s.m_fd; }
 
   int  handle(bool take_ownership=false)
        { int r=m_fd; if(take_ownership) m_fd=-1; return r; }
@@ -51,7 +52,8 @@ class cxSocket {
 	       const struct sockaddr *to = NULL, socklen_t tolen = 0);
   ssize_t recv(void *buf, size_t size, int flags = 0,
 	       struct sockaddr *from = NULL, socklen_t *fromlen = NULL);
-		   
+  ssize_t sendfile(int fd_file, off_t *offset, size_t count);
+
   ssize_t read(void *buffer, size_t size, int timeout_ms = -1);
   ssize_t write(const void *buffer, size_t size, int timeout_ms = -1);
 
@@ -73,7 +75,10 @@ class cxSocket {
   bool set_buffers(int Tx, int Rx);
   bool set_multicast(int ttl);
   bool set_blocking(bool state);
-  
+  bool set_cork(bool state);
+  bool flush_cork(void) { return set_nodelay(true); };
+  bool set_nodelay(bool state);
+
   bool connect(struct sockaddr *addr, socklen_t len);
   bool connect(const char *ip, int port);
 
@@ -91,12 +96,10 @@ class cxPoller : public cPoller {
     cxPoller(cxSocket* Socks, int count, bool Out=false) 
     {
       for(int i=0; i<count; i++)
-	Add(Socks[i], Out);
+	Add(Socks[i].handle(), Out);
     }
 };
 
-
-//#warning TODO: use cxsocket and remove all other printf_cmd, write_cmd, ....
 
 //
 // Set socket buffers
@@ -284,23 +287,23 @@ static inline ssize_t timed_read(int fd, void *buffer, size_t size,
 
 static inline int write_osd_command(int fd, osd_command_t *cmd)
 {
-  if(8 != timed_write(fd, "OSDCMD\r\n", 8, 200)) {
+  if(8 != timed_write(fd, "OSDCMD\r\n", 8, 500)) {
     LOGDBG("write_osd_command: write (command) failed");
     return 0;
   }
   if((ssize_t)sizeof(osd_command_t) != 
-     timed_write(fd, cmd, sizeof(osd_command_t), 200)) {
+     timed_write(fd, cmd, sizeof(osd_command_t), 500)) {
     LOGDBG("write_osd_command: write (data) failed");
     return 0;
   }
   if(cmd->palette && cmd->colors &&
      (ssize_t)(sizeof(xine_clut_t)*ntohl(cmd->colors)) != 
-     timed_write(fd, cmd->palette, sizeof(xine_clut_t)*ntohl(cmd->colors), 200)) {
+     timed_write(fd, cmd->palette, sizeof(xine_clut_t)*ntohl(cmd->colors), 500)) {
     LOGDBG("write_osd_command: write (palette) failed");
     return 0;
   }
   if(cmd->data && cmd->datalen &&
-     (ssize_t)ntohl(cmd->datalen) != timed_write(fd, cmd->data, ntohl(cmd->datalen), 1000)) {
+     (ssize_t)ntohl(cmd->datalen) != timed_write(fd, cmd->data, ntohl(cmd->datalen), 3000)) {
     LOGDBG("write_osd_command: write (bitmap) failed");
     return 0;
   }
