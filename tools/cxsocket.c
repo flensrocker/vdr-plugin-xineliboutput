@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.4 2007-01-01 00:19:26 phintuka Exp $
+ * $Id: cxsocket.c,v 1.5 2007-01-07 06:40:54 phintuka Exp $
  *
  */
 
@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/sendfile.h>
+#include <netinet/tcp.h>
 
 #include <vdr/config.h>
 #include <vdr/tools.h>
@@ -33,7 +35,6 @@ bool cxSocket::connect(const char *ip, int port)
   sin.sin_family = AF_INET;
   sin.sin_port = htons(port);
   sin.sin_addr.s_addr = inet_addr(ip);
-
   return connect((struct sockaddr *)&sin, sizeof(sin));
 }
 
@@ -92,24 +93,70 @@ bool cxSocket::set_multicast(int ttl)
 
   errno = 0;
 
-  if(setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, 
-		&iReuse, sizeof(int)) < 0) {
+  if(setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int)) < 0) {
     LOGERR("cxSocket: setsockopt(SO_REUSEADDR) failed");
     return false;
   }  
 
-  if(setsockopt(m_fd, IPPROTO_IP, IP_MULTICAST_TTL, 
-		&iTtl, sizeof(int))) {
+  if(setsockopt(m_fd, IPPROTO_IP, IP_MULTICAST_TTL, &iTtl, sizeof(int))) {
     LOGERR("cxSocket: setsockopt(IP_MULTICAST_TTL) failed");
     return false;
   }
       
-  if(setsockopt(m_fd, IPPROTO_IP, IP_MULTICAST_LOOP,
-		&iLoop, sizeof(int))) {
+  if(setsockopt(m_fd, IPPROTO_IP, IP_MULTICAST_LOOP, &iLoop, sizeof(int))) {
     LOGERR("cxSocket: setsockopt(IP_MULTICAST_LOOP) failed");
     return false;
   }
 
+  return true;
+}
+
+ssize_t cxSocket::sendfile(int fd_file, off_t *offset, size_t count)
+{
+  int r = ::sendfile(m_fd, fd_file, offset, count);
+  if(r<0 && (errno == ENOSYS || errno == EINVAL)) {
+    // fall back to read/write
+    cxPoller p(*this, true);
+    char buf[0x10000];
+    int todor = count, todow, done = 0;
+    if(offset)
+      if((r=::lseek(fd_file, *offset, SEEK_SET)) < 0)
+	return r;
+    todow = ::read(fd_file, buf, count>sizeof(buf) ? sizeof(buf) : count);
+    if(todow <= 0)
+      return todow;
+    todor -= todow;
+    while(todow > 0) {
+      if(p.Poll(100)) {
+	r = write(buf+done, todow);
+	if(r <= 0)
+	  return r;
+	todow -= r;
+	done += r;
+      }
+    }
+    return done;
+  }
+  return r;
+}
+
+bool cxSocket::set_cork(bool state)
+{
+  int iCork = state ? 1 : 0;
+  if(setsockopt(m_fd, IPPROTO_TCP, TCP_CORK, &iCork, sizeof(int))) {
+    LOGERR("cxSocket: setsockopt(TCP_CORK) failed");
+    return false;
+  }
+  return true;
+}
+
+bool cxSocket::set_nodelay(bool state)
+{
+  int i = state ? 1 : 0;
+  if(setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &i, sizeof(int))) {
+    LOGERR("cxSocket: setsockopt(TCP_NODELAY) failed");
+    return false;
+  }
   return true;
 }
 
