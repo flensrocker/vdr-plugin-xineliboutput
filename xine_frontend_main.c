@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.20 2007-01-01 06:45:51 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.21 2007-01-07 14:52:44 phintuka Exp $
  *
  */
 
@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
   if(!xine_check_version(1, 1, 0)) {
     fprintf(stderr,"ERROR: xine-lib is too old, require at least "
 	    "xine library version 1.1.0\n");
-    return 1;
+    return -1;
   }
 
   /* If server address not given, try to find server automatically */
@@ -434,7 +434,7 @@ int main(int argc, char *argv[])
     if (daemon(1, 0) == -1) {
       fprintf(stderr, "%s: %m\n", exec_name);
       LOGERR("daemon() failed");
-      return 2;
+      return -2;
     }
   }
 
@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
   fe = (*fe_creator)();
   if(!fe) {
     printf("Error initializing frontend\n");
-    return 3;
+    return -3;
   }
 
   /* Initialize display */
@@ -450,14 +450,14 @@ int main(int argc, char *argv[])
 			  "", aspect, NULL, video_port, scale_video, 0)) {
     printf("Error opening display\n");
     fe->fe_free(fe);
-    return 4;
+    return -4;
   }
 
   /* Initialize xine */
   if(!fe->xine_init(fe, adrv, adev, gdrv, 250, 1, static_post_plugins)) {
     printf("Error initializing xine\n");
     fe->fe_free(fe);
-    return 5;
+    return -5;
   }
 
   /* Connect to VDR xineliboutput server */
@@ -465,7 +465,7 @@ int main(int argc, char *argv[])
     /*print_xine_log(((fe_t *)fe)->xine);*/
     printf("Error opening %s\n", mrl);
     fe->fe_free(fe);
-    return 6;
+    return -6;
   }
 
   printf("\n\nPress Esc to exit\n\n");
@@ -475,7 +475,7 @@ int main(int argc, char *argv[])
     /*printf("Error playing %s//%s:%s\n", argv[1], host, port);*/
     printf("Error playing %s\n", argv[1]);
     fe->fe_free(fe);
-    return 7;
+    return -7;
   }
 
   /* Start LIRC forwarding */
@@ -521,5 +521,5 @@ int main(int argc, char *argv[])
   }
 
   fe->fe_free(fe); 
-  return 0;
+  return terminate_key_pressed ? 0 : 1;
 }
