@@ -158,6 +158,8 @@ Using remote frontends
 
     Automatically search for VDR server and use UDP transport
         vdr-fbfe xvdr:udp:
+      or
+        vdr-fbfe --udp
 
   Available transports for video/audio 
       pipe  Use local pipe; server and front-end must be running in 
@@ -213,6 +215,29 @@ Using with xine-ui (xine, fbxine, gxine, ...)
 
   Some configuration options are not available when using 
   third-party frontends.
+
+
+Using with other media players (mplayer, vlc, ...)
+
+  Primary device video and audio can be streamed from 
+  plugin control port to almost any media player using
+  http or rtsp.
+
+  Session Announcement Protocol (SAP) compatible players 
+  should detect stream automatically and add it to playlist 
+  or bookmarks when RTP transmission is active (tested with vlc).
+
+  Tested players: 
+
+    Linux: mplayer, vlc, xine
+    Windows: vlc
+
+  Examples:
+
+    mplayer http://192.168.1.3:37890
+    vlc http://192.168.1.3:37890
+    vlc rtsp://192.168.1.3:37890
+    vlc rtp://@224.0.1.9:37890
 
 
 Controlling VDR
@@ -271,25 +296,26 @@ Image viewer key bindings
 
 Media player key bindings
 
-  Back       Return to file list
-  Red        Open playlist / Jump to beginning of file
-  Green      Jump 1 min back
-  Yellow     Jump 1 min forward
-  Stop/Blue  Stop replay
-  0          Random play / normal play
-  1, User8   Jump 20 s back  
-  3, User9   Jump 20 s forward
-  2          Move subtitles up
-  5          Move subtitles down
-  Pause      Pause replay
-  Play       Play
-  Ok         Toggle replay display mode
-  Next/Right Skip to next file when replaying playlist
-  Prev/Left  Skip to previous file when replaying playlist
+  Back         Return to file list
+  Red          Open playlist (music) / Jump to beginning of file (video)
+  Green        Jump 1 min back
+  Yellow       Jump 1 min forward
+  Stop/Blue    Stop replay
+  0            Random play / normal play
+  1, User8     Jump 20 s back
+  3, User9     Jump 20 s forward
+  2            Move subtitles up
+  5            Move subtitles down
+  Pause        Pause replay
+  Play         Play
+  Ok           Toggle replay display mode
+  Next/Right   Skip to next file when replaying playlist
+  Prev/Left    Skip to previous file when replaying playlist
+  FastRew/FastFwd  Play faster/slower
 
 DVD player key bindings
 
-  Up/Down/Left/Right/Ok/Back  DVD menu navigation
+  Up/Down/Left/Right/Ok/Back  DVD menu navigation when DVD menu is active
   Red            Access DVD menu(s)
   Green          Jump 1 min back
   Yellow         Jump 1 min forward
@@ -393,7 +419,3 @@ VDR Logo
 
   The VDR logo was designed by Jan Grell.
 
-
-Notes
-
-  Current xine-lib does not support unscaled overlays with DirectFB.
