@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.33 2007-01-01 08:50:53 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.34 2007-01-07 06:20:35 phintuka Exp $
  *
  */
 
@@ -40,9 +40,12 @@
 #include "tools/udp_pes_scheduler.h"
 #include "tools/http.h"
 #include "tools/vdrdiscovery.h"
+#include "tools/sdp.h"
 
 #include "frontend_svr.h"
 #include "device.h"
+
+//#define HTTP_OSD
 
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
@@ -56,17 +59,16 @@ class cReplyFuture : public cFuture<int>, public cListObject {};
 class cGrabReplyFuture : public cFuture<grab_result_t>, public cListObject {};
 class cCmdFutures : public cHash<cReplyFuture> {};
 
+
 //----------------------------- cXinelibServer --------------------------------
 
 // (control) connection types
 enum {
-  ctNone = -1,
-  ctDetecting = 0,
-  ctControl,
-  ctHttp,
-  //ctHttpPlay,  // client can't access file that is just played -> stream over http 
-  ctRtsp,      // TCP/RTSP + UDP/RTP
-  ctRtspMux    // TCP: multiplexed RTSP control + RTP/RTCP data/control
+  ctDetecting = 0x00,
+  ctControl   = 0x01,
+  ctHttp      = 0x02,
+  ctRtsp      = 0x04, // TCP/RTSP + UDP/RTP
+  ctRtspMux   = 0x08  // TCP: multiplexed RTSP control + RTP/RTCP data/control
 };
 
 // (data) connection types
@@ -97,7 +99,7 @@ cXinelibServer::cXinelibServer(int listen_port) :
     m_bMulticast[i] = 0;
     m_bConfigOk[i] = false;
     m_bUdp[i] = 0;
-    m_ConnType[i] = ctNone;
+    m_ConnType[i] = ctDetecting;
   }
 
   m_Port = listen_port;
@@ -283,7 +285,8 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 	if(m_Writer[i]) {
 	  if(!spudata)
 	    spudata = dvdspu_encode(cmd, &spulen);
-	  //m_Writer[i]->Queue(-1, spudata, spulen);
+	  if(spudata)
+	    m_Writer[i]->Put(-1, spudata, spulen);
 	}
       }
 #endif
@@ -316,7 +319,6 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 #endif
   }
 }
-
 
 int64_t cXinelibServer::GetSTC(void)
 {
@@ -355,14 +357,14 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
   for(int i=0; i<MAXCLIENTS; i++) {
     if(fd_control[i] >= 0) {
       if((m_bConfigOk[i] && fd_data[i] >= 0) || 
-	 m_ConnType[i] == ctHttp || 
-	 m_ConnType[i] == ctRtsp) {
+	 m_ConnType[i] & (ctHttp|ctRtsp)) {
 
 	if(m_bUdp[i]) {
 
 	  UdpClients++;
 	  
 	} else if(m_Writer[i]) {
+
 	  int result = m_Writer[i]->Put(m_StreamPos, data, len);
 	  if(!result) {
 	    LOGMSG("cXinelibServer::Play_PES Write/Queue error (TCP/PIPE)");
@@ -406,57 +408,46 @@ void cXinelibServer::SetHDMode(bool On)
 #endif
 }
 
-void cXinelibServer::Xine_Sync(void)
-{
-#if 0
-  TRACEF("cXinelibServer::Xine_Sync");
-
-  bool foundReceivers=false;
-  SyncLock.Lock();
-  cXinelibThread::Xine_Control((const char *)"SYNC",m_StreamPos);
-  for(int i=0; i<MAXCLIENTS; i++)
-    if(fd_control[i] >= 0) {
-      wait_sync[i]=true;
-      foundReceivers=true;
-    }
-  Unlock();
-  if(foundReceivers) {
-    TRACE("cXinelibServer::Xine_Sync --> WAIT...");
-    SyncDone.Wait(SyncLock); 
-    TRACE("cXinelibServer::Xine_Sync --> WAIT DONE.");
-  }
-  SyncLock.Unlock();
-  Lock();
-#endif
-}
-
-
 bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs) 
 {
   // in live mode transponder clock is the master ... 
-  if((*xc.local_frontend && strncmp(xc.local_frontend, "none", 4)) || m_bLiveMode)
-    return m_Scheduler->Poll(TimeoutMs, m_Master=false);
+  // in replay mode local frontend (if present) is master
+  if(m_bLiveMode || (*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))) {
+    if(m_Scheduler->Clients()) 
+      return m_Scheduler->Poll(TimeoutMs, m_Master=false);
+    return true;
+  }
 
   // replay mode:
   do {
     Lock();
     m_Master = true;
-    int Free = 0xffff, Clients = 0, Udp = 0;
+    int Free = 0xffff, FreeHttp = 0xffff;
+    int Clients = 0, Http = 0, Udp = 0;
     for(int i=0; i<MAXCLIENTS; i++) {
-      if(fd_control[i]>=0 && m_bConfigOk[i]) {
-	if(fd_data[i]>=0 || m_bMulticast[i]) {
+      if(fd_control[i]>=0) {
+	if(m_bConfigOk[i]) {
 	  if(m_Writer[i])
 	    Free = min(Free, m_Writer[i]->Free());
 	  else if(m_bUdp[i])
 	    Udp++;
 	  Clients++;
+	} else if(m_ConnType[i] & (ctHttp|ctRtspMux)) {
+	  if(m_Writer[i]) {
+	    FreeHttp = min(FreeHttp, m_Writer[i]->Free());
+	    Http++;
+	  }
 	}
       }
+    }
+    if(m_iMulticastMask) {
+      Clients++;
+      Udp++;
     }
 
     /* select master timing source for replay mode */
     int master = -1;
-    if(Clients && !m_iMulticastMask && !Udp) {
+    if(Clients && !Udp) {
       for(int i=0; i<MAXCLIENTS; i++) 
 	if(fd_control[i]>=0 && m_bConfigOk[i] && m_Writer[i]) {
 	  master = i;
@@ -467,24 +458,30 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
       if(m_MasterCli >= 0)
 	Xine_Control("MASTER 0");
       if(master >= 0)
-	write_cmd(fd_control[master], "MASTER 1\r\n");
+       write_cmd(fd_control[master], "MASTER 1\r\n");
       m_MasterCli = master;
     }
 
     Unlock();
     
-    // replay is paused when no clients 
-    if(!Clients && !xc.remote_rtp_always_on) {
+    if(!Clients && !Http) {
+      if(m_bLiveMode)
+	return true;
+      // replay is paused when no clients 
       if(TimeoutMs>0)
 	cCondWait::SleepMs(TimeoutMs);
       return false;
     }
 
     // in replay mode cUdpScheduler is master timing source 
-    if(Free < 8128 || !m_Scheduler->Poll(TimeoutMs, true)) {
+    if(Free < 8128 || 
+       !m_Scheduler->Poll(TimeoutMs, true) ||
+       (!Clients && FreeHttp < 8128)) {
+
       if(TimeoutMs > 0)
 	cCondWait::SleepMs(min(TimeoutMs, 5));
       TimeoutMs -= 5;
+
     } else {
       return true;
     }
@@ -813,7 +810,7 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
 #define CREATE_NEW_WRITER \
   if(m_Writer[cli]) \
     delete m_Writer[cli]; \
-  m_Writer[cli] = new cBackgroundWriter(fd); 
+  m_Writer[cli] = new cTcpWriter(fd); 
 
 void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 {
@@ -1044,6 +1041,8 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 			  xc.AutocropOptions());
   ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
 			  xc.FfmpegPpOptions());
+  write_cmd(fd_control[cli], "CLEAR\r\n");
+
 #ifdef ENABLE_TEST_POSTPLUGINS
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
 #endif
@@ -1137,8 +1136,7 @@ void cXinelibServer::Handle_Control_CONTROL(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 {
-  LOGDBG("HTTP(%d): %s", cli, arg);
-
+  // Parse request
   if(m_ConnType[cli] == ctDetecting || !m_State[cli]) {
     LOGDBG("HTTP request: %s", arg);
     
@@ -1147,19 +1145,21 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 
     m_State[cli] = new cConnState;
     if( !m_State[cli]->SetCommand(arg) ||
+	strncmp(m_State[cli]->Version(), "HTTP/1.", 7) ||
 	strcmp(m_State[cli]->Name(), "GET")) {
       LOGMSG("invalid HTTP request: %s", arg);
       CloseConnection(cli);
       return;
     }
-
     m_ConnType[cli] = ctHttp;
     return;
   }
 
+  // Handle request
   else if(m_ConnType[cli] == ctHttp) {
     LOGDBG("HTTP(%d): %s", cli, arg);
 
+    // Collect headers
     if(*arg) {
       m_State[cli]->AddHeader(arg);
       return;
@@ -1167,36 +1167,64 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 
     LOGMSG("HTTP Request complete");
 
-    // primary device output
+    //
+    // primary device output (PES)
+    //
     if(!strcmp(m_State[cli]->Uri(), "/")) {
       LOGMSG("HTTP streaming primary device feed");
       write_cmd(fd_control[cli], HTTP_REPLY_200_PRIMARY);
-#if 1
+
       // pack header (scr 0, mux rate 0x6270)
       write(fd_control[cli], 
-	    "\x00\x00\x01\xba" "\x44\x00\x04\x00"
-	    "\x04\x01\x01\x89" "\xc3\xf8", 14); 
-#endif
-#if 1
-      // system header
-      write(fd_control[cli], 
+	    "\x00\x00\x01\xba"
+	    "\x44\x00\x04\x00" "\x04\x01\x01\x89" "\xc3\xf8", 14);
+      // system header (streams C0, E0, BD, BF)
+      write(fd_control[cli],
 	    "\x00\x00\x01\xbb" "\x00\x12"
 	    "\x80\xc4\xe1" "\x00\xe1" "\x7f"
-	    "\xb9\xe0\xe8" "\xb8\xc0\x20"
-	    "\xbd\xe0\x3a" "\xbf\xe0\x02", 24);
-#endif
-      m_Writer[cli] = new cBackgroundWriter(fd_control[cli], KILOBYTE(1024), true);
+	    "\xb9\xe0\xe8" "\xb8\xc0\x20" "\xbd\xe0\x3a" "\xbf\xe0\x02", 24);
+
+      m_Writer[cli] = new cRawWriter(fd_control[cli], KILOBYTE(1024));
       
       DELETENULL(m_State[cli]);
       return;
     }
 
+#if 0
+    //
+    // primary device output (TS)
+    //
+    if(!strcmp(m_State[cli]->Uri(), "/TS")) {
+      LOGMSG("HTTP streaming primary device feed (TS)");
+      write_cmd(fd_control[cli], HTTP_REPLY_200_PRIMARY_TS);
+      m_Writer[cli] = new cTsWriter(fd_control[cli], KILOBYTE(1024));
+      
+      DELETENULL(m_State[cli]);
+      return;
+    }
+#endif
+
+#if 0 /* for testing */
+    else if(!strcmp(m_State[cli]->Uri(), "/test.avi")) {
+	LOGMSG("HTTP streaming test file");
+	new cHttpStreamer(fd_control[cli], "/tmp/test.avi", 
+			  m_State[cli]->Header("Range")->Value());
+	// detach socket
+	fd_control[cli] = -1;
+	CloseConnection(cli);	    
+	return;
+    }
+#endif
+
+    //
     // currently playing media file
+    //
     else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
       if( m_FileName && m_bPlayingFile) {
 	LOGMSG("HTTP streaming media file");
 
-	new cHttpStreamer(fd_control[cli], m_FileName, m_State[cli]->Header("Range")->Value());
+	new cHttpStreamer(fd_control[cli], m_FileName, 
+			  m_State[cli]->Header("Range")->Value());
 	// detach socket
 	fd_control[cli] = -1;
 	CloseConnection(cli);	    
@@ -1206,7 +1234,9 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 	LOGDBG("No currently playing file");
     }
 
+    //
     // nothing else will be served ...
+    //
     LOGMSG("Rejected HTTP request for \'%s\'", *m_State[cli]->Uri());
     write_cmd(fd_control[cli], HTTP_REPLY_401);
     LOGDBG("HTTP Reply: HTTP/1.1 401 Unauthorized");
@@ -1214,8 +1244,183 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
   }
 }
 
+#define RTSP_200_OK "RTSP/1.0 200 OK\r\n" \
+                    "CSeq: %d\r\n"
+#define RTSP_415    "RTSP/1.0 415 Unsupported media type\r\n" \
+                    "CSeq: %d\r\n" RTSP_FIN
+#define RTSP_461    "RTSP/1.0 461 Unsupported transport\r\n" \
+                    "CSeq: %d\r\n" RTSP_FIN
+#define RTSP_501    "RTSP/1.0 501 Not implemented\r\n" \
+                    "CSeq: %d\r\n" RTSP_FIN
+#define RTSP_FIN    "\r\n", CSeq
+
+#define RTSPOUT(x...) do { printf_cmd(fd_control[cli], x); LOGMSG("RTSP TX:" x); } while(0)
+//#define RTSPOUT(x...) printf_cmd(fd_control[cli], x)
+
 void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
 {
+  //
+  // Minimal RTSP (RFC 2326) server implementation
+  //
+
+
+  //
+  // collect request and headers
+  //
+  if(m_ConnType[cli] == ctDetecting || !m_State[cli]) {
+    LOGDBG("RTSP request: %s", arg);
+    
+    DELETENULL(m_State[cli]);
+    m_State[cli] = new cConnState;
+
+    if( !m_State[cli]->SetCommand(arg) ||
+	strcmp(m_State[cli]->Version(), "RTSP/1.0")) {
+      LOGMSG("invalid RTSP request: %s", arg);
+      CloseConnection(cli);
+      return;
+    }
+    m_ConnType[cli] = ctRtsp;
+    return;
+  }
+
+  //
+  // Process complete request
+  //
+  else if(m_ConnType[cli] == ctRtsp) {
+    LOGDBG("RTSP(%d): %s", cli, arg);
+
+    if(*arg) {
+      m_State[cli]->AddHeader(arg);
+      return;
+    }
+
+    cHeader *cseq = m_State[cli]->Header("CSeq");
+    int CSeq = cseq ? cseq->IntValue() : -1;
+    LOGMSG("RTSP Request complete (cseq %d)", CSeq);
+
+    //
+    // OPTIONS rtsp://127.0.0.1:37890 RTSP/1.0
+    // CSeq: 1
+    //
+    if(!strcmp(m_State[cli]->Name(), "OPTIONS")) {
+      RTSPOUT(RTSP_200_OK
+	      "Public: DESCRIBE, SETUP, TEARDOWN, PLAY\r\n"
+	      RTSP_FIN);
+    } // OPTIONS
+
+    //
+    // DESCRIBE rtsp://127.0.0.1:37890 RTSP/1.0
+    // CSeq: 2
+    // Accept: application/sdp
+    //
+    else if(!strcmp(m_State[cli]->Name(), "DESCRIBE")) {
+      cHeader *accept = m_State[cli]->Header("Accept");
+      if(accept && strstr(accept->Value(), "application/sdp")) {
+	struct sockaddr_in sin;
+	socklen_t len = sizeof(sin);
+	char buf[64];
+	getsockname(fd_control[cli], (struct sockaddr *)&sin, &len);
+	const char *sdp_descr = vdr_sdp_description(cxSocket::ip2txt(sin.sin_addr.s_addr, 
+								     sin.sin_port, buf),
+						    2001,
+						    xc.listen_port,
+						    xc.remote_rtp_addr,
+						    /*m_ssrc*/0x4df73452,
+						    xc.remote_rtp_port,
+						    xc.remote_rtp_ttl);
+	int sdplen = strlen(sdp_descr);
+	RTSPOUT(RTSP_200_OK
+		"Content-Type: application/sdp\r\n"
+		"Content-Length: %d\r\n"
+		"\r\n",
+		CSeq, sdplen);
+	write_cmd(fd_control[cli], sdp_descr, sdplen);
+      } else {
+	RTSPOUT(RTSP_415 /*UNSUPPORTED_MEDIATYPE*/);
+      }
+    } // DESCRIBE
+
+    //
+    // SETUP rtsp://127.0.0.1:37890/ RTSP/1.0
+    // CSeq: 15
+    // Transport: RTP/AVP;unicast;client_port=37890-37891
+    // User-Agent: VLC media player (LIVE555 Streaming Media v2005.11.10)
+    //
+    else if(!strcmp(m_State[cli]->Name(), "SETUP")) {
+      cHeader *transport = m_State[cli]->Header("Transport");
+      int urtp=0, mrtp=0, tcp=0;
+      if(transport &&
+	 (strstr(transport->Value(), "RTP/AVP;multicast") && (mrtp=1)) ||
+	 (strstr(transport->Value(), "RTP/AVP;unicast") && (urtp=1)) ||
+	 (strstr(transport->Value(), "RTP/AVP;interleaved") && (tcp=1))) {
+	//if(!mrtp)
+	//  sprintf(buf, "RTSP/1.0 461 Unsupported transport\r\n" RTSP_H_CSEQ RTSP_OK_FIN);
+	//else 
+	RTSPOUT(RTSP_200_OK 
+		"Session: %u\r\n"
+		"Transport: RTP/AVP;multicast;destination=224.8.4.9;server_port=37890-37891\r\n" 
+		RTSP_FIN, 
+		cli);
+      } else {
+	RTSPOUT(RTSP_461 /*UNSUPPORTED_TRANSPORT*/ );
+      }
+    } // SETUP
+
+    //
+    // PLAY rtsp://127.0.0.1:37890 RTSP/1.0
+    // CSeq: 13
+    // Session: 0
+    // Range: npt=0.000-
+    // User-Agent: VLC media player (LIVE555 Streaming Media v2005.11.10)
+    //
+    else if(!strcmp(m_State[cli]->Name(), "PLAY")) {
+      RTSPOUT(RTSP_200_OK
+	      RTSP_FIN);
+
+      if(!m_iMulticastMask && !xc.remote_rtp_always_on)
+	m_Scheduler->AddRtp();
+      
+      m_bMulticast[cli] = true;
+      m_iMulticastMask |= (1<<cli);
+#if 0
+      //udp
+      int fd = sock_connect(fd_control[cli], atoi(arg), SOCK_DGRAM);
+      if(fd < 0) {
+	LOGERR("socket() for UDP failed");
+	write_cmd(fd_control[cli], "UDP: Socked failed.\r\n");
+	return;
+      }
+      m_bUdp[cli] = true;
+      fd_data[cli] = fd;
+      m_Scheduler->AddHandle(fd);
+#endif
+    } // PLAY
+  
+    //
+    // TEARDOWN rtsp://127.0.0.1:37890 RTSP/1.0
+    // CSeq: 39
+    // Session: 1
+    // User-Agent: VLC media player (LIVE555 Streaming Media v2005.11.10)
+    //
+    else if(!strcmp(m_State[cli]->Name(), "TEARDOWN")) {
+      RTSPOUT(RTSP_200_OK 
+	      RTSP_FIN);
+      CloseConnection(cli);
+    } // TEARDOWN
+
+    //
+    // unknown/unsupported request
+    //
+    else {
+      LOGMSG("Unsupported RTSP request: %s", *m_State[cli]->Name());
+      RTSPOUT(RTSP_501 /*NOT_IMPLEMENTED*/);
+    } // unsupported request
+
+
+    // dispose buffer
+    DELETENULL(m_State[cli]);
+
+  } // ConnectionType == ctRtsp
 }
 
 void cXinelibServer::Handle_Control(int cli, const char *cmd)
@@ -1417,8 +1622,6 @@ void cXinelibServer::Action(void)
 
   /* higher priority */
   SetPriority(-1); 
-  SetPriority(-2);
-  SetPriority(-3);
 
   sched_param temp;
   temp.sched_priority = 2;
