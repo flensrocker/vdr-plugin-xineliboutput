@@ -1,6 +1,10 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2007-01-07: Version 1.0.0pre7
+
+- Added possibility to add files to playlist
+- Added playlist menu to media player
 - Added "Play Audio CD" / "Play remote Audio CD" entry to plugin menu
 - Makefile modified to allow overriding default directory environment.
   Using "install" to install files. (Thanks to Timo Weingärtner)
@@ -16,7 +20,7 @@ VDR Plugin 'xineliboutput' Revision History
   (in some cases plugins were loaded multiple times)
 - Fixed buffer overflow problems in xineliboutput device polling
 - Fixed buffer overflow problems in UDP packet scheduler queue
-- File types mov and wmv added to media player (sf feature request #1616405)
+- Several new media file types added to media player
 - Subtitle type .ssa added
 - Parsing for .pls, .asx and .ram playlists added
 - Eliminated some warnings when compiling to 64bit (Thanks to Anssi Hannula)
