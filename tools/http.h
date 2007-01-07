@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.h,v 1.2 2007-01-01 23:41:02 phintuka Exp $
+ * $Id: http.h,v 1.3 2007-01-07 05:22:33 phintuka Exp $
  *
  */
 
@@ -96,8 +96,6 @@ class cConnState : public cHttpReq
 // cHttpStreamer
 //
 
-class cBackgroundWriter;
-
 #include <vdr/tools.h>
 #include <vdr/thread.h>
 
@@ -122,7 +120,6 @@ class cHttpStreamer : protected cListObject, cThread
     int64_t m_Start;
     int64_t m_End;
 
-    cBackgroundWriter *m_Writer;
     cConnState        *m_ConnState;
 
     bool m_Finished;
