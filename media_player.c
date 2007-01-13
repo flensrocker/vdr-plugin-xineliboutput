@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.18 2007-01-07 12:08:27 phintuka Exp $
+ * $Id: media_player.c,v 1.19 2007-01-13 12:27:19 phintuka Exp $
  *
  */
 
@@ -23,6 +23,7 @@
 
 #include "logdefs.h"
 
+#include "tools/iconv.h"
 
 #if VDRVERSNUM < 10400
 // Dirty hack to bring menu back ...
@@ -288,10 +289,6 @@ void cXinelibPlayer::Activate(bool On)
 // cPlaylistMenu
 //
 
-//#define USE_ICONV
-#ifdef USE_ICONV
-#include <iconv.h>
-#endif
 
 class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
 {
@@ -300,6 +297,7 @@ class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
     cPlaylist& m_Playlist;
     bool       m_NeedsUpdate;
     bool&      m_RandomPlay;
+    cIConv     ic;
 
   public:
 
@@ -318,10 +316,12 @@ class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
 };
 
 cPlaylistMenu::cPlaylistMenu(cPlaylist &Playlist, bool& RandomPlay) : 
-      cOsdMenu( cString::sprintf("%s: %s", tr("Playlist"), *Playlist.Name())), 
+     cOsdMenu(tr("Playlist")),
      m_Playlist(Playlist),
-      m_RandomPlay(RandomPlay)
+     m_RandomPlay(RandomPlay),
+     ic()
 {
+  SetTitle(cString::sprintf("%s: %s", tr("Playlist"), *ic.Translate(Playlist.Name())));
   Playlist.Listen(this);
   Set(true);
 }
@@ -413,11 +413,6 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
 
   int currentPlaying = m_Playlist.Current()->Index();
   int j = 0;
-#ifdef USE_ICONV
-  iconv_t ic = iconv_open("ISO8859-1", "UTF-8"); // from vdr config ?
-  if(ic==(iconv_t)-1) 
-    LOGERR("iconv_open() failed");
-#endif
 
   for(cPlaylistItem *i = m_Playlist.First(); i; i = m_Playlist.Next(i), j++) {
     cString Title;
@@ -432,20 +427,8 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
       Title = cString::sprintf("%c\t%s",
 			       j==currentPlaying ? '*':' ',
 			       *i->Track);
-#ifdef USE_ICONV
-    char   buf[1024], *out = buf, *in = (char*)*i->Title;
-    size_t inc = strlen(in), outc = 1023;
-    int    n = iconv(ic, &in, &inc, &out, &outc);
-    LOGMSG("iconv -> %d  (%d,%d) %s %s %s", n, inc, outc, in, out, buf);
-    Add(new cOsdItem( n!=(size_t)(-1) ? buf : *Title, (eOSState)(os_User + j)));
-#else
-    Add(new cOsdItem( *Title, (eOSState)(os_User + j)));
-#endif
+    Add(new cOsdItem( ic.Translate(Title), (eOSState)(os_User + j)));
   }
-
-#ifdef USE_ICONV
-  iconv_close(ic);  
-#endif
 
   if(setCurrentPlaying)
     SetCurrent(Get(currentPlaying));
@@ -577,7 +560,8 @@ void cXinelibPlayerControl::Show()
 				 *m_Player->Playlist().Current()->Artist ?: "",
 				 *m_Player->Playlist().Current()->Artist ? ": " : "",
 				 *m_Player->Playlist().Current()->Album ?: "");
-      m_DisplayReplay->SetTitle(Title);
+      cIConv ic;
+      m_DisplayReplay->SetTitle(ic.Translate(Title));
 
       m_DisplayReplay->SetProgress(Current, Total);
       sprintf(t, "%d:%02d:%02d", Total/3600, (Total%3600)/60, Total%60);
