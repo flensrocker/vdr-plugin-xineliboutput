@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.18 2007-01-06 03:23:11 phintuka Exp $
+# $Id: Makefile,v 1.19 2007-01-13 11:54:36 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -43,6 +43,7 @@ endif
 # Override configuration here or in ../../../Make.config
 #
 
+USE_ICONV = 1
 #XINELIBOUTPUT_X11        = 1
 #XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
@@ -199,6 +200,9 @@ ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
     DEFINES += -DENABLE_TEST_POSTPLUGINS
 endif
 
+ifdef USE_ICONV
+  DEFINES += -DUSE_ICONV=$(USE_ICONV)
+endif
 ifdef NOSIGNAL_IMAGE_FILE
   DEFINES += -DNOSIGNAL_IMAGE_FILE='"$(NOSIGNAL_IMAGE_FILE)"'
 endif
