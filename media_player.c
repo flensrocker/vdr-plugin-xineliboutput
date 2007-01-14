@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.19 2007-01-13 12:27:19 phintuka Exp $
+ * $Id: media_player.c,v 1.20 2007-01-14 17:30:22 phintuka Exp $
  *
  */
 
@@ -256,9 +256,9 @@ void cXinelibPlayer::Activate(bool On)
       if(m_Playlist.Count() == 1 && !strcmp("cdda:/", m_Playlist.First()->Filename)) {
 	int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE");
 	if(count>1) {
-	  m_Playlist.Del(m_Playlist.First());
 	  for(int i=0; i<count; i++)
 	    m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
+	  m_Playlist.Del(m_Playlist.First());
 	}
       }
     }
