@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.31 2007-01-06 15:12:24 phintuka Exp $
+ * $Id: device.c,v 1.32 2007-01-14 22:44:01 phintuka Exp $
  *
  */
 
@@ -777,10 +777,12 @@ void cXinelibDevice::Clear(void)
   if(m_Cleared && m_StreamStart && m_TrickSpeed == -1) {
     //LOGMSG("************ Double Clear ***************");
   } else {
+    //LOGMSG("************ FIRST  Clear ***************");
+    m_Cleared = true;
     m_StreamStart = true;
     TrickSpeed(-1);
     ForEach(m_clients, &cXinelibThread::Clear);
-    m_Cleared = true;
+    ForEach(m_clients, &cXinelibThread::SetStillMode, false);
   }
 }
 
@@ -1115,6 +1117,21 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 {
   TRACEF("cXinelibDevice::StillPicture");
 
+  // skip still images coming in too fast (ex. when moving cutting marks)
+  if(cRemote::HasKeys()) {
+    static int skipped = 0;
+    static uint64_t lastshow = 0;
+    uint64_t now = cTimeMs::Now();
+    if(now - lastshow < 500) {
+      skipped++;
+      //LOGMSG("Skipping still image (coming in too fast)");
+      return;
+    }
+    LOGDBG("Forcong still image - skipped %d images", skipped);
+    lastshow = now;
+    skipped = 0;
+  }
+
   bool isPes   = (!Data[0] && !Data[1] && Data[2] == 0x01 && 
 		  (Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
@@ -1135,6 +1152,8 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   m_TrickSpeed = -1; // to make Poll work ...
   m_SkipAudio = 1;   // enables audio and pts stripping
 
+if(m_TrickSpeedDelay) LOGMSG("StillPicture: TrickSpeedDelay is active !");
+
   for(i=0; i<STILLPICTURE_REPEAT_COUNT; i++)
     if(isMpeg1) {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg1_PES, Data, Length, 
@@ -1147,8 +1166,12 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	      &mand<bool>, true);
     }
 
+  // creates empty video PES with pseudo-pts
   ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
 	  Data, 0, VIDEO_STREAM,
+	  &mand<bool>, true);
+
+  ForEach(m_clients, &cXinelibThread::Flush, 60, 
 	  &mand<bool>, true);
 
   m_TrickSpeed = 0;
