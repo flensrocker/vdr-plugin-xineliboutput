@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.21 2007-01-06 04:27:03 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.22 2007-01-19 20:17:16 phintuka Exp $
  *
  */
 
@@ -517,8 +517,10 @@ void cUdpScheduler::Send_SAP(bool Announce)
       if(m_fd_sap < 0) {
 	cString fname = cString::sprintf("/video/xineliboutput@%s.sdp", ip);
 	FILE *fp = fopen(fname, "w");
-	fprintf(fp, "%s", sdp_descr);
-	fclose(fp);
+	if(fp) {
+	  fprintf(fp, "%s", sdp_descr);
+	  fclose(fp);
+	}
       }
 #endif
       sap_pdu_t *pdu = sap_create_pdu(local_addr,
