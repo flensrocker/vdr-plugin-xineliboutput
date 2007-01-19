@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.30 2007-01-14 18:41:29 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.31 2007-01-19 14:24:09 phintuka Exp $
  *
  */
 
@@ -502,6 +502,16 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     this->video_port = xine_open_video_driver(this->xine,
 					      video_driver,
 					      XINE_VISUAL_TYPE_NONE, 
+					      NULL);
+  else if(video_driver && !strcmp(video_driver, "dxr3"))
+    this->video_port = xine_open_video_driver(this->xine,
+					      video_driver,
+					      XINE_VISUAL_TYPE_X11, 
+					      NULL);
+  else if(video_driver && !strcmp(video_driver, "aadxr3"))
+    this->video_port = xine_open_video_driver(this->xine,
+					      video_driver,
+					      XINE_VISUAL_TYPE_AA, 
 					      NULL);
   else
     this->video_port = xine_open_video_driver(this->xine,
