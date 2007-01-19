@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.14 2006-12-24 09:46:59 phintuka Exp $
+ * $Id: config.h,v 1.15 2007-01-19 14:21:48 phintuka Exp $
  *
  */
 
@@ -60,8 +60,9 @@
 #define AUDIO_DRIVER_OSS         2
 #define AUDIO_DRIVER_NONE        3
 #define AUDIO_DRIVER_ARTS        4
-#define AUDIO_DRIVER_ESOUND      5
-#define AUDIO_DRIVER_count       6
+#define AUDIO_DRIVER_ESD         5
+#define AUDIO_DRIVER_JACK        6
+#define AUDIO_DRIVER_count       7
 
 // Video driver
 #define X11_DRIVER_AUTO          0
@@ -70,15 +71,19 @@
 #define X11_DRIVER_XVMC          3
 #define X11_DRIVER_XXMC          4
 #define X11_DRIVER_VIDIX         5
-#define X11_DRIVER_NONE          6
-#define X11_DRIVER_count         7
+#define X11_DRIVER_DIRECTFB      6
+#define X11_DRIVER_OPENGL        7
+#define X11_DRIVER_SDL           8
+#define X11_DRIVER_NONE          9
+#define X11_DRIVER_count         10
 
 #define FB_DRIVER_AUTO           0
 #define FB_DRIVER_FB             1
 #define FB_DRIVER_DIRECTFB       2
 #define FB_DRIVER_VIDIXFB        3
-#define FB_DRIVER_NONE           4
-#define FB_DRIVER_count          5
+#define FB_DRIVER_DXR3           4
+#define FB_DRIVER_NONE           5
+#define FB_DRIVER_count          6
 
 // Local frontend
 #define FRONTEND_X11             0
@@ -197,7 +202,6 @@ class config_t {
 
     char local_frontend[64];
     char modeline[64];
-    
     int  fullscreen;
     int  modeswitch;
     int  width;

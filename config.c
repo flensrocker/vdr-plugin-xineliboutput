@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.21 2007-01-07 03:35:04 phintuka Exp $
+ * $Id: config.c,v 1.22 2007-01-19 14:21:48 phintuka Exp $
  *
  */
 
@@ -37,17 +37,17 @@ const char *config_t::s_decoderPriority[] =
 const char *config_t::s_fieldOrder[] =
   {"normal", "inverted", NULL};
 const char *config_t::s_audioDriverNames[] =
-  {"automatic","Alsa","OSS","no audio","Arts","ESound",NULL};
+  {"automatic", "Alsa", "OSS", "no audio", "Arts", "ESD", "Jack", NULL};
 const char *config_t::s_audioDrivers[] =
-  {"auto","alsa","oss","none","arts","esound",NULL};
+  {"auto",      "alsa", "oss", "none",     "arts", "esd", "jack", NULL};
 const char *config_t::s_videoDriverNamesX11[] =
-  {"automatic","XShm","Xv","XvMC","XvMC+VLD","Vidix","no video",NULL};
+  {"automatic", "XShm", "Xv", "XvMC", "XvMC+VLD", "Vidix", "XDirectFB", "OpenGL", "SDL", "no video",NULL};
 const char *config_t::s_videoDriversX11[] =
-  {"auto","X11","xv","xvmc","xxmc","vidix","none",NULL};
+  {"auto",      "X11",  "xv", "xvmc", "xxmc",     "vidix", "DirectFB",  "opengl", "sdl", "none",    NULL};
 const char *config_t::s_videoDriverNamesFB[] =
-  {"automatic","Framebuffer","DirectFB","VidixFB","No Video",NULL};
+  {"automatic", "Framebuffer", "DirectFB", "VidixFB", "DXR3",   "No Video", NULL};
 const char *config_t::s_videoDriversFB[] =
-  {"auto","fb","DirectFB","vidixfb","none",NULL};
+  {"auto",      "fb",          "DirectFB", "vidixfb", "aadxr3", "none",     NULL};
 const char *config_t::s_frontendNames[] =
   {"X11 (sxfe)", "Framebuffer (fbfe)", "Off", NULL};
 const char *config_t::s_frontends[] =
