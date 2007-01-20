@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.36 2007-01-20 17:24:07 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.37 2007-01-20 18:57:47 phintuka Exp $
  *
  */
 
@@ -241,8 +241,9 @@ static int write_osd_command(cxSocket& s, osd_command_t *cmd)
                  (ssize_t)(sizeof(xine_clut_t) * ntohl(cmd->colors)) + 
                  (ssize_t)(ntohl(cmd->datalen));
 
-  if(max >= 0 && max < size) {
-    LOGMSG("write_osd_command: socket buffer full, OSD send skipped");
+  if(max > 0 && max < size) {
+    LOGMSG("write_osd_command: socket buffer full, OSD send skipped (got %d ; need %d",
+	   (int)max, (int)size);
     return 0;
   }
 
@@ -1522,7 +1523,9 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 
 #ifdef LOG_CONTROL_MESSAGES
   static FILE *flog = fopen("/video/control.log","w");
-  fprintf(flog,"CTRL (%d): %s\n",cli,cmd); fflush(flog);
+  if (flog) {
+    fprintf(flog,"CTRL (%d): %s\n",cli,cmd); fflush(flog);
+  }
 #endif
 
   //LOGDBG("Server received %s", cmd);
@@ -1687,7 +1690,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   m_CtrlBuf[cli][0] = 0;
   m_ConnType[cli] = ctDetecting;
   fd_control[cli].set_handle(fd);
-
+  fd_control[cli].set_buffers(KILOBYTE(128), KILOBYTE(128));
   cXinelibDevice::Instance().ForcePrimaryDevice(true);
 }
 
