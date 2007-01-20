@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.27 2007-01-06 04:31:21 phintuka Exp $
+ * $Id: frontend.c,v 1.28 2007-01-20 18:22:33 phintuka Exp $
  *
  */
 
@@ -58,7 +58,9 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
 {
 #ifdef XINELIBOUTPUT_LOG_KEYS
   static FILE *flog = fopen("/video/keys.log","w");
-  fprintf(flog,"KEY %s %s %d %d\n",keymap,key,repeat,release);fflush(flog);
+  if (flog) {
+    fprintf(flog,"KEY %s %s %d %d\n",keymap,key,repeat,release); fflush(flog);
+  }
 #endif
 
   TRACE("keypress_handler: " << (keymap?keymap:"") << " " << key);
