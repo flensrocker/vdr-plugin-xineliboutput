@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.21 2007-01-07 14:52:44 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.22 2007-01-20 17:56:32 phintuka Exp $
  *
  */
 
@@ -163,6 +163,16 @@ static void *kbd_receiver_thread(void *fe)
   return NULL; /* never reached */
 }
 
+static void kbd_stop(void)
+{
+  void *p;
+
+  pthread_cancel (kbd_thread);
+  pthread_join (kbd_thread, &p);
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+}
+
 static void SignalHandler(int signum)
 {
   if (signum != SIGPIPE)
@@ -216,6 +226,7 @@ static const char *help_str =
     "   --nokbd                       Disable kayboard input\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
+    "   --reconnect                   Automatically reconnect when connection has been lost"
     "   --tcp                         Use TCP transport\n"
     "   --udp                         Use UDP transport\n"
     "   --rtp                         Use RTP transport\n\n"
@@ -242,9 +253,10 @@ static const struct option long_options[] = {
   { "nokbd",   no_argument,  NULL, 'k' },
   { "daemon",  no_argument,  NULL, 'b' },
   
-  { "tcp",     no_argument,  NULL, 't' },
-  { "udp",     no_argument,  NULL, 'u' },
-  { "rtp",     no_argument,  NULL, 'r' },
+  { "reconnect", no_argument,  NULL, 'R' },
+  { "tcp",       no_argument,  NULL, 't' },
+  { "udp",       no_argument,  NULL, 'u' },
+  { "rtp",       no_argument,  NULL, 'r' },
   { NULL }
 };
  
@@ -252,7 +264,7 @@ static const struct option long_options[] = {
 int main(int argc, char *argv[])
 {
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
-  int ftcp = 0, fudp = 0, frtp = 0;
+  int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0;
@@ -264,7 +276,6 @@ int main(int argc, char *argv[])
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
   int repeat_emu = 0;
-  void *p;
   char *exec_name = argv[0];
 
   if(strrchr(argv[0],'/'))
@@ -357,6 +368,9 @@ int main(int argc, char *argv[])
 	      break;
     case 'b': nokbd = daemon_mode = 1;
               printf("Keyboard input disabled\n");
+	      break;
+    case 'R': reconnect = 1;
+              printf("Automatic reconnection enabled\n");
 	      break;
     case 't': ftcp = 1;
               printf("Protocol: TCP\n");
@@ -460,36 +474,6 @@ int main(int argc, char *argv[])
     return -5;
   }
 
-  /* Connect to VDR xineliboutput server */
-  if(!fe_xine_open(fe, mrl)) {
-    /*print_xine_log(((fe_t *)fe)->xine);*/
-    printf("Error opening %s\n", mrl);
-    fe->fe_free(fe);
-    return -6;
-  }
-
-  printf("\n\nPress Esc to exit\n\n");
-
-  if(!fe->xine_play(fe)) {
-    /*print_xine_log(((fe_t *)fe)->xine);*/
-    /*printf("Error playing %s//%s:%s\n", argv[1], host, port);*/
-    printf("Error playing %s\n", argv[1]);
-    fe->fe_free(fe);
-    return -7;
-  }
-
-  /* Start LIRC forwarding */
-  lirc_start((fe_t*)fe, lirc_dev, repeat_emu);
-
-  /* Start keyboard listener thread */
-  if(!nokbd)
-    if ((err = pthread_create (&kbd_thread,
-  			       NULL, kbd_receiver_thread, 
-			       (void*)fe)) != 0) {
-      fprintf(stderr, "can't create new thread for keyboard (%s)\n", 
-	      strerror(err));
-  }
-
   /* signal handlers */
 
   if (signal(SIGHUP,  SignalHandler) == SIG_IGN) signal(SIGHUP,  SIG_IGN);
@@ -497,28 +481,74 @@ int main(int argc, char *argv[])
   if (signal(SIGTERM, SignalHandler) == SIG_IGN) signal(SIGTERM, SIG_IGN);
   if (signal(SIGPIPE, SignalHandler) == SIG_IGN) signal(SIGPIPE, SIG_IGN);
 
-  /* Main loop */
+  /* Start LIRC forwarding */
+  lirc_start((fe_t*)fe, lirc_dev, repeat_emu);
+  
+  printf("\n\nPress Esc to exit\n\n");
+  
+  /* Start keyboard listener thread */
+  if(!nokbd) {
+    if ((err = pthread_create (&kbd_thread,
+			       NULL, kbd_receiver_thread, 
+			       (void*)fe)) != 0) {
+      fprintf(stderr, "can't create new thread for keyboard (%s)\n", 
+	      strerror(err));
+    }
+  }
+  
+  do {
 
-  sleep(2);  /* give input_vdr some time to establish connection */
+    if(!firsttry) {
+      printf("Connection to server lost. Reconnecting after two seconds...\n");
+      sleep(2);
+      printf("Reconnecting...\n");
+    }
 
-  fflush(stdout);
-  fflush(stderr);
+    /* Connect to VDR xineliboutput server */
+    if(!fe_xine_open(fe, mrl)) {
+      /*print_xine_log(((fe_t *)fe)->xine);*/
+      printf("Error opening %s\n", mrl);
+      if(!firsttry)
+	continue;
+      lirc_stop();
+      if(!nokbd) kbd_stop();
+      fe->fe_free(fe);
+      return -6;
+    }
+  
+    if(!fe->xine_play(fe)) {
+      /*print_xine_log(((fe_t *)fe)->xine);*/
+      /*printf("Error playing %s//%s:%s\n", argv[1], host, port);*/
+      printf("Error playing %s\n", argv[1]);
+      if(!firsttry)
+	continue;
+      lirc_stop();
+      if(!nokbd) kbd_stop();
+      fe->fe_free(fe);
+      return -7;
+    }
+  
+    /* Main loop */
 
-  while(fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed) 
-    pthread_yield();
+    sleep(2);  /* give input_vdr some time to establish connection */
+
+    fflush(stdout);
+    fflush(stderr);
+
+    while(fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed) 
+      pthread_yield();
+
+    fe->xine_close(fe);
+    firsttry = 0;
+
+  } while(!terminate_key_pressed && reconnect);
 
   /* Clean up */
 
   printf("Terminating...\n");
 
   lirc_stop();
-
-  if(!nokbd) {
-    pthread_cancel (kbd_thread);
-    pthread_join (kbd_thread, &p);
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  }
+  if(!nokbd) kbd_stop();
 
   fe->fe_free(fe); 
   return terminate_key_pressed ? 0 : 1;
