@@ -204,6 +204,8 @@ static void __pplugin_update_parameters(xine_post_t *post, char *args)
 	      }
 	      break;
 	    }
+	  } else {
+	    LOGMSG("Unknown post plugin parameter %s !", param);
 	  }
 	}
       } 
