@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.35 2007-01-07 09:44:53 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.36 2007-01-20 17:24:07 phintuka Exp $
  *
  */
 
@@ -47,6 +47,7 @@
 
 //#define HTTP_OSD
 
+#define MAX_OSD_TIMEOUTS  (25*5)      /* max. rate 25 updates/s -> at least 5 seconds */
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
 typedef struct {
@@ -93,7 +94,7 @@ cXinelibServer::cXinelibServer(int listen_port) :
   int i;
   for(i=0; i<MAXCLIENTS; i++) {
     fd_data[i] = -1;
-    fd_control[i] = -1;
+    m_OsdTimeouts[i] = 0;
     m_Writer[i] = NULL;
     m_State[i] = NULL;
     m_bMulticast[i] = 0;
@@ -169,8 +170,8 @@ void cXinelibServer::Clear(void)
 
   cXinelibThread::Clear();
 
-  for(int i=0; i<MAXCLIENTS; i++) 
-    if(fd_control[i] >= 0 && m_Writer[i]) 
+  for(int i = 0; i < MAXCLIENTS; i++) 
+    if(fd_control[i].open() && m_Writer[i]) 
       m_Writer[i]->Clear();
 
   if(m_Scheduler)
@@ -198,9 +199,9 @@ void cXinelibServer::Clear(void)
 void cXinelibServer::CloseConnection(int cli)
 {
   CloseDataConnection(cli);
-  if(fd_control[cli]>=0) {
+  if(fd_control[cli].open()) {
     LOGMSG("Closing connection %d", cli);
-    CLOSESOCKET(fd_control[cli]);
+    fd_control[cli].close();
     if(m_State[cli]) {
       delete m_State[cli];
       m_State[cli] = NULL;
@@ -225,6 +226,92 @@ static int recompress_osd_net(uint8_t *raw, xine_rle_elem_t *data, int elems)
   }
   return (raw-raw0);
 }
+
+static int write_osd_command(cxSocket& s, osd_command_t *cmd)
+{
+  cxPoller p(s, true);
+  if(!p.Poll(100)) {
+    LOGMSG("write_osd_command: poll failed, OSD send skipped");
+    return 0;
+  }
+
+  ssize_t max  = s.tx_buffer_free();
+  ssize_t size = (ssize_t)8 + 
+                 (ssize_t)(sizeof(osd_command_t)) + 
+                 (ssize_t)(sizeof(xine_clut_t) * ntohl(cmd->colors)) + 
+                 (ssize_t)(ntohl(cmd->datalen));
+
+  if(max >= 0 && max < size) {
+    LOGMSG("write_osd_command: socket buffer full, OSD send skipped");
+    return 0;
+  }
+
+  if(8 != s.write("OSDCMD\r\n", 8, 100)) {
+    LOGDBG("write_osd_command: write (command) failed");
+    return -1;
+  }
+  if((ssize_t)sizeof(osd_command_t) != 
+     s.write(cmd, sizeof(osd_command_t), 100)) {
+    LOGDBG("write_osd_command: write (data) failed");
+    return -1;
+  }
+  if(cmd->palette && cmd->colors &&
+     (ssize_t)(sizeof(xine_clut_t)*ntohl(cmd->colors)) != 
+     s.write(cmd->palette, sizeof(xine_clut_t)*ntohl(cmd->colors), 100)) {
+    LOGDBG("write_osd_command: write (palette) failed");
+    return -1;
+  }
+  if(cmd->data && cmd->datalen &&
+     (ssize_t)ntohl(cmd->datalen) != s.write(cmd->data, ntohl(cmd->datalen), 300)) {
+    LOGDBG("write_osd_command: write (bitmap) failed");
+    return -1;
+  }
+  return 1;
+}
+
+#ifdef HTTP_OSD
+#include "dvdauthor/rgb.h"
+#include "dvdauthor/subgen-encode.c"
+#include "dvdauthor/subgen.c"
+//subgen-image: palette generation, image divided to buttons --> 16-col palette
+static uint8_t *dvdspu_encode(osd_command_t *cmd, int *spulen)
+{
+#if 0
+  stinfo st;
+  st.x0 = cmd->x;
+  st.y0 = cmd->y;
+  st.xd = cmd->w;
+  st.yd = cmd->h;
+
+  st.spts = 0; /* start pts */
+  st.sd   = 0; /* duration */
+  st.forced     = 0;
+  st.numbuttons = 0; 
+  st.numpal     = 0;
+
+  st.autooutline = 0;
+  st.outlinewidth = 0;
+  st.autoorder = 0;
+
+  st.img =; /* img */
+  st.hlt =; /* img */
+  st.sel =; /* img */
+  st.fimg = NULL;
+
+  st.pal[4] = ; /* palt */
+  st.masterpal[16] = ; /* palt */
+  st.transparentc = ; /* palt */
+
+  st.numgroups = ;
+  st.groupmap[3][4] = ;
+  st.buttons = ; /* button * */
+
+  dvd_encode(&st);
+#endif
+  return NULL;
+
+}
+#endif
 
 void cXinelibServer::OsdCmd(void *cmd_gen)
 {
@@ -273,12 +360,21 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
     uint8_t *spudata = NULL;
     int spulen;
 #endif
-    
-    for(i=0; i<MAXCLIENTS; i++) {
-      if(fd_control[i] >= 0 && 
-	 !write_osd_command(fd_control[i], &cmdnet)) {
-	LOGMSG("Send OSD command failed");
-        CloseConnection(i);
+
+    for(i = 0; i < MAXCLIENTS; i++) {
+      if(fd_control[i].open()) {
+	int r = write_osd_command(fd_control[i], &cmdnet);
+	if(r < 0) {
+	  LOGMSG("Send OSD command failed, closing connection");
+	  CloseConnection(i);
+	} else if(r == 0) {
+	  if(m_OsdTimeouts[i]++ > MAX_OSD_TIMEOUTS) {
+	    LOGMSG("Too many OSD timeouts, dropping client");
+	    CloseConnection(i);
+	  }
+	} else {
+	  m_OsdTimeouts[i] = 0;	
+	}
       }
 #ifdef HTTP_OSD
       if(m_ConnType[i] == ctHttp) {
@@ -355,7 +451,7 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
   LOCK_THREAD; // Lock control thread out
 
   for(int i=0; i<MAXCLIENTS; i++) {
-    if(fd_control[i] >= 0) {
+    if(fd_control[i].open()) {
       if((m_bConfigOk[i] && fd_data[i] >= 0) || 
 	 m_ConnType[i] & (ctHttp|ctRtsp)) {
 
@@ -396,8 +492,8 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
 void cXinelibServer::SetHDMode(bool On) 
 {
   cXinelibThread::SetHDMode(On);
-  // TODO
 #if 0
+  /*#warning TODO*/
   LOCK_THREAD;
 
   int i;
@@ -425,7 +521,7 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
     int Free = 0xffff, FreeHttp = 0xffff;
     int Clients = 0, Http = 0, Udp = 0;
     for(int i=0; i<MAXCLIENTS; i++) {
-      if(fd_control[i]>=0) {
+      if(fd_control[i].open()) {
 	if(m_bConfigOk[i]) {
 	  if(m_Writer[i])
 	    Free = min(Free, m_Writer[i]->Free());
@@ -449,7 +545,7 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
     int master = -1;
     if(Clients && !Udp) {
       for(int i=0; i<MAXCLIENTS; i++) 
-	if(fd_control[i]>=0 && m_bConfigOk[i] && m_Writer[i]) {
+	if(fd_control[i].open() && m_bConfigOk[i] && m_Writer[i]) {
 	  master = i;
 	  break;
 	}
@@ -458,7 +554,7 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
       if(m_MasterCli >= 0)
 	Xine_Control("MASTER 0");
       if(master >= 0)
-       write_cmd(fd_control[master], "MASTER 1\r\n");
+	fd_control[master].write_cmd("MASTER 1\r\n");
       m_MasterCli = master;
     }
 
@@ -499,7 +595,7 @@ bool cXinelibServer::Flush(int TimeoutMs)
     result = m_Scheduler->Flush(TimeoutMs) && result;
   
   for(int i=0; i<MAXCLIENTS; i++) 
-    if(fd_control[i]>=0 && fd_data[i]>=0 && m_Writer[i])
+    if(fd_control[i].open() && fd_data[i]>=0 && m_Writer[i])
       result = m_Writer[i]->Flush(TimeoutMs) && result;
 
   if(TimeoutMs > 50)
@@ -529,8 +625,8 @@ int cXinelibServer::Xine_Control(const char *cmd)
     LOCK_THREAD;
 
     for(int i=0; i<MAXCLIENTS; i++)
-      if(fd_control[i]>=0 && (fd_data[i]>=0 || m_bMulticast[i]) && m_bConfigOk[i])
-	if(len != timed_write(fd_control[i], buf, len, 100)) {
+      if(fd_control[i].open() && (fd_data[i]>=0 || m_bMulticast[i]) && m_bConfigOk[i])
+	if(len != fd_control[i].write(buf, len, 100)) {
 	  LOGMSG("Control send failed (%s), dropping client", cmd);
 	  CloseConnection(i);
 	}
@@ -556,7 +652,7 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
     LOCK_THREAD;
 
     for(i=0; i<MAXCLIENTS; i++)
-      if(fd_control[i]>=0 && m_bConfigOk[i]) {
+      if(fd_control[i].open() && m_bConfigOk[i]) {
 	if(fd_data[i] >= 0) {
 	  if(m_bUdp[i])
 	    UdpClients++;
@@ -615,7 +711,7 @@ bool cXinelibServer::HasClients(void)
 
   int i;
   for(i=0; i<MAXCLIENTS; i++) 
-    if(fd_control[i]>=0 && m_bConfigOk[i])  
+    if(fd_control[i].open() && m_bConfigOk[i])  
       return true;
 
   return false;
@@ -824,7 +920,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 
   if(!xc.remote_usepipe) {
     LOGMSG("PIPE transport disabled in configuration");
-    write_cmd(fd_control[cli], "PIPE: Pipe transport disabled in config.\r\n");
+    fd_control[cli].write_cmd("PIPE: Pipe transport disabled in config.\r\n");
     return;
   }
 
@@ -844,13 +940,13 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   if(i>=10) {
     LOGERR("Pipe creation failed (%s)", *pipeName);
     RemoveFileOrDir(m_PipesDir, false);
-    write_cmd(fd_control[cli], "PIPE: Pipe creation failed.\r\n");
+    fd_control[cli].write_cmd("PIPE: Pipe creation failed.\r\n");
     return;
   }
 
-  printf_cmd(fd_control[cli], "PIPE %s\r\n", *pipeName);
+  fd_control[cli].printf("PIPE %s\r\n", *pipeName);
   
-  cPoller poller(fd_control[cli],false);
+  cxPoller poller(fd_control[cli]);
   poller.Poll(500); /* quite short time ... */
 
   int fd;
@@ -868,7 +964,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 
   unlink(pipeName); /* safe to remove now, both ends are open or closed. */
   RemoveFileOrDir(m_PipesDir, false);
-  write_cmd(fd_control[cli], "PIPE OK\r\n");
+  fd_control[cli].write_cmd("PIPE OK\r\n");
 
   CREATE_NEW_WRITER;
 
@@ -878,7 +974,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 {
-  int clientId = -1, oldId = cli, fd = fd_control[cli];
+  int clientId = -1;
   unsigned int ipc, portc;
 
   LOGDBG("Data connection (TCP) requested");
@@ -887,7 +983,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 
   if(!xc.remote_usetcp) {
     LOGMSG("TCP transports disabled in configuration");
-    write_cmd(fd, "TCP: TCP transport disabled in config.\r\n");
+    fd_control[cli].write_cmd("TCP: TCP transport disabled in config.\r\n");
     CloseConnection(cli); /* actually closes the new data connection */
     return;
   }
@@ -896,8 +992,8 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
   if(3 != sscanf(arg, "%d 0x%x:%d", &clientId, &ipc, &portc) ||
      clientId < 0 || 
      clientId >= MAXCLIENTS ||
-     fd_control[clientId] < 0) {
-    write_cmd(fd, "TCP: Error in request (ClientId).\r\n");
+     !fd_control[clientId].open()) {
+    fd_control[cli].write_cmd("TCP: Error in request (ClientId).\r\n");
     LOGDBG("Invalid data connection (TCP) request");
     /* close only new data connection, no control connection */
     CloseConnection(cli);
@@ -909,17 +1005,21 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
   socklen_t len = sizeof(sinc);
   sinc.sin_addr.s_addr = 0;
   sind.sin_addr.s_addr = ~0;
-  getpeername(fd_control[cli], (struct sockaddr *)&sind, &len);
-  getpeername(fd_control[clientId], (struct sockaddr *)&sinc, &len);
+  fd_control[cli].getpeername((struct sockaddr *)&sind, &len);
+  fd_control[clientId].getpeername((struct sockaddr *)&sinc, &len);
   if(sinc.sin_addr.s_addr != sind.sin_addr.s_addr) {
-    write_cmd(fd, "TCP: Error in request (IP does not match).\r\n");
-    LOGMSG("Invalid data connection (TCP) request: IP does not match");
+    fd_control[cli].write_cmd("TCP: Error in request (IP does not match).\r\n");
+    LOGMSG("Invalid data connection (TCP) request: IP does not match: ctrl %x, data %x",
+	   (unsigned int)sinc.sin_addr.s_addr, (unsigned int)sind.sin_addr.s_addr);
     CloseConnection(cli);
     return;
   }
   if(htonl(ipc) != sinc.sin_addr.s_addr || htons(portc) != sinc.sin_port) {
-    write_cmd(fd, "TCP: Error in request (invalid IP:port).\r\n");
-    LOGMSG("Invalid data connection (TCP) request: control IP:port does not match");
+    fd_control[cli].write_cmd("TCP: Error in request (invalid IP:port).\r\n");
+    LOGMSG("Invalid data connection (TCP) request: control IP:port does not match"
+	   "control: %x:%d client: %x:%d",
+	   (unsigned int)sinc.sin_addr.s_addr, (unsigned int)sinc.sin_port,
+	   (unsigned int)htonl(ipc), (unsigned int)htons(portc));
     CloseConnection(cli);
     return;
   }
@@ -929,14 +1029,14 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 
   /* change connection type */
 
-  fd_control[oldId] = -1;
+  fd_control[cli].write_cmd("DATA\r\n");
+  fd_data[clientId] = fd_control[cli].handle(true);
+
   cli = clientId;
-       
-  write_cmd(fd, "DATA\r\n");
 
-  CREATE_NEW_WRITER;   
-
-  fd_data[cli] = fd;
+  if(m_Writer[cli])
+    delete m_Writer[cli];
+  m_Writer[cli] = new cTcpWriter(fd_data[cli]); 
     
   /* not anymore control connection, so dec primary device reference counter */
   cXinelibDevice::Instance().ForcePrimaryDevice(false); 
@@ -949,13 +1049,12 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
   CloseDataConnection(cli);
 
   if(!xc.remote_usertp) {
-    write_cmd(fd_control[cli], "RTP: RTP transport disabled in configuration.\r\n");
+    fd_control[cli].write_cmd("RTP: RTP transport disabled in configuration.\r\n");
     LOGMSG("RTP transports disabled");
     return;
   }
 
-  printf_cmd(fd_control[cli], "RTP %s:%d\r\n",
-	     xc.remote_rtp_addr, xc.remote_rtp_port);
+  fd_control[cli].printf("RTP %s:%d\r\n", xc.remote_rtp_addr, xc.remote_rtp_port);
 
   if(!m_iMulticastMask && !xc.remote_rtp_always_on)
     m_Scheduler->AddRtp();
@@ -971,19 +1070,19 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   CloseDataConnection(cli);
 
   if(!xc.remote_useudp) {
-    write_cmd(fd_control[cli], "UDP: UDP transport disabled in configuration.\r\n");
+    fd_control[cli].write_cmd("UDP: UDP transport disabled in configuration.\r\n");
     LOGMSG("UDP transport disabled in configuration");
     return;
   }
 
-  int fd = sock_connect(fd_control[cli], atoi(arg), SOCK_DGRAM);
+  int fd = sock_connect(fd_control[cli].handle(), atoi(arg), SOCK_DGRAM);
   if(fd < 0) {
     LOGERR("socket() for UDP failed");
-    write_cmd(fd_control[cli], "UDP: Socked failed.\r\n");
+    fd_control[cli].write_cmd("UDP: Socked failed.\r\n");
     return;
   }
 
-  write_cmd(fd_control[cli], "UDP OK\r\n");
+  fd_control[cli].write_cmd("UDP OK\r\n");
   m_bUdp[cli] = true;
   fd_data[cli] = fd;
   m_Scheduler->AddHandle(fd);
@@ -1024,12 +1123,10 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 {
   m_bConfigOk[cli] = true;
 
-  int one = 1;
-  setsockopt(fd_control[cli], IPPROTO_TCP, TCP_NODELAY, &one, sizeof(int));
+  fd_control[cli].set_nodelay(true);
 
-  printf_cmd(fd_control[cli], 
-	     "NOVIDEO %d\r\nLIVE %d\r\n", 
-	     m_bNoVideo?1:0, m_bLiveMode?1:0); 
+  fd_control[cli].printf("NOVIDEO %d\r\nLIVE %d\r\n", 
+			 m_bNoVideo?1:0, m_bLiveMode?1:0); 
 
   ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
   ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
@@ -1041,7 +1138,7 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 			  xc.AutocropOptions());
   ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
 			  xc.FfmpegPpOptions());
-  write_cmd(fd_control[cli], "CLEAR\r\n");
+  fd_control[cli].write_cmd("CLEAR\r\n");
 
 #ifdef ENABLE_TEST_POSTPLUGINS
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
@@ -1052,9 +1149,8 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
     int pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
     Lock();
     if(m_bPlayingFile && m_FileName) {
-      printf_cmd(fd_control[cli], 
-		 "PLAYFILE %d %s %s\r\n", 
-		 (pos>0?pos/1000:0), xc.audio_visualization, m_FileName);
+      fd_control[cli].printf("PLAYFILE %d %s %s\r\n", 
+			     (pos>0?pos/1000:0), xc.audio_visualization, m_FileName);
     }
   }
 }
@@ -1096,7 +1192,7 @@ void cXinelibServer::Handle_Control_GRAB(int cli, const char *arg)
     if(size > 0) {
       uchar *result = (uchar*)malloc(size);
       Unlock(); /* may take a while ... */
-      ssize_t n = timed_read(fd_control[cli], result, size, 1000);
+      ssize_t n = fd_control[cli].read(result, size, 1000);
       Lock();
       if(n == size) {
 	if(NULL != (f = (cGrabReplyFuture*)m_Futures->Get(token))) {
@@ -1126,10 +1222,9 @@ void cXinelibServer::Handle_Control_GRAB(int cli, const char *arg)
 
 void cXinelibServer::Handle_Control_CONTROL(int cli, const char *arg)
 {
-  printf_cmd(fd_control[cli],
-	     "VDR-" VDRVERSION " "
-	     "xineliboutput-" XINELIBOUTPUT_VERSION " "
-	     "READY\r\nCLIENT-ID %d\r\n", cli);
+  fd_control[cli].printf("VDR-" VDRVERSION " "
+			 "xineliboutput-" XINELIBOUTPUT_VERSION " "
+			 "READY\r\nCLIENT-ID %d\r\n", cli);
   m_ConnType[cli] = ctControl;
 }
 
@@ -1172,19 +1267,19 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     //
     if(!strcmp(m_State[cli]->Uri(), "/")) {
       LOGMSG("HTTP streaming primary device feed");
-      write_cmd(fd_control[cli], HTTP_REPLY_200_PRIMARY);
+      fd_control[cli].write_cmd(HTTP_REPLY_200_PRIMARY);
 
       // pack header (scr 0, mux rate 0x6270)
-      write(fd_control[cli], 
+      fd_control[cli].write(
 	    "\x00\x00\x01\xba"
 	    "\x44\x00\x04\x00" "\x04\x01\x01\x89" "\xc3\xf8", 14);
       // system header (streams C0, E0, BD, BF)
-      write(fd_control[cli],
+      fd_control[cli].write(
 	    "\x00\x00\x01\xbb" "\x00\x12"
 	    "\x80\xc4\xe1" "\x00\xe1" "\x7f"
 	    "\xb9\xe0\xe8" "\xb8\xc0\x20" "\xbd\xe0\x3a" "\xbf\xe0\x02", 24);
 
-      m_Writer[cli] = new cRawWriter(fd_control[cli], KILOBYTE(1024));
+      m_Writer[cli] = new cRawWriter(fd_control[cli].handle(), KILOBYTE(1024));
       
       DELETENULL(m_State[cli]);
       return;
@@ -1196,9 +1291,8 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     //
     if(!strcmp(m_State[cli]->Uri(), "/TS")) {
       LOGMSG("HTTP streaming primary device feed (TS)");
-      write_cmd(fd_control[cli], HTTP_REPLY_200_PRIMARY_TS);
-      m_Writer[cli] = new cTsWriter(fd_control[cli], KILOBYTE(1024));
-      
+      fd_control[cli].write_cmd(HTTP_REPLY_200_PRIMARY_TS);
+      m_Writer[cli] = new cTsWriter(fd_control[cli].handle(), KILOBYTE(1024));     
       DELETENULL(m_State[cli]);
       return;
     }
@@ -1206,13 +1300,13 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 
 #if 0 /* for testing */
     else if(!strcmp(m_State[cli]->Uri(), "/test.avi")) {
-	LOGMSG("HTTP streaming test file");
-	new cHttpStreamer(fd_control[cli], "/tmp/test.avi", 
-			  m_State[cli]->Header("Range")->Value());
-	// detach socket
-	fd_control[cli] = -1;
-	CloseConnection(cli);	    
-	return;
+      LOGMSG("HTTP streaming test file");
+
+      // detach socket
+      new cHttpStreamer(fd_control[cli].handle(true), "/tmp/test.avi", m_State[cli]);
+      m_State[cli] = NULL;
+      CloseConnection(cli);	    
+      return;
     }
 #endif
 
@@ -1223,11 +1317,9 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
       if( m_FileName && m_bPlayingFile) {
 	LOGMSG("HTTP streaming media file");
 
-	new cHttpStreamer(fd_control[cli], m_FileName, m_State[cli]);
-
 	// detach socket
+	new cHttpStreamer(fd_control[cli].handle(true), m_FileName, m_State[cli]);
 	m_State[cli] = NULL;
-	fd_control[cli] = -1;
 	CloseConnection(cli);	    
 	return;
       }
@@ -1239,7 +1331,7 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     // nothing else will be served ...
     //
     LOGMSG("Rejected HTTP request for \'%s\'", *m_State[cli]->Uri());
-    write_cmd(fd_control[cli], HTTP_REPLY_404);
+    fd_control[cli].write_cmd(HTTP_REPLY_404);
     LOGDBG("HTTP Reply: HTTP/1.1 404 Not Found");
     CloseConnection(cli);
   }
@@ -1255,8 +1347,8 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
                     "CSeq: %d\r\n" RTSP_FIN
 #define RTSP_FIN    "\r\n", CSeq
 
-#define RTSPOUT(x...) do { printf_cmd(fd_control[cli], x); LOGMSG("RTSP TX:" x); } while(0)
-//#define RTSPOUT(x...) printf_cmd(fd_control[cli], x)
+#define RTSPOUT(x...) do { fd_control[cli].printf(x); LOGMSG("RTSP TX:" x); } while(0)
+//#define RTSPOUT(x...) fd_control[cli].printf_cmd(x)
 
 void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
 {
@@ -1320,7 +1412,7 @@ void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
 	struct sockaddr_in sin;
 	socklen_t len = sizeof(sin);
 	char buf[64];
-	getsockname(fd_control[cli], (struct sockaddr *)&sin, &len);
+	fd_control[cli].getsockname((struct sockaddr *)&sin, &len);
 	const char *sdp_descr = vdr_sdp_description(cxSocket::ip2txt(sin.sin_addr.s_addr, 
 								     sin.sin_port, buf),
 						    2001,
@@ -1335,7 +1427,7 @@ void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
 		"Content-Length: %d\r\n"
 		"\r\n",
 		CSeq, sdplen);
-	write_cmd(fd_control[cli], sdp_descr, sdplen);
+	fd_control[cli].write_cmd(sdp_descr, sdplen);
       } else {
 	RTSPOUT(RTSP_415 /*UNSUPPORTED_MEDIATYPE*/);
       }
@@ -1518,7 +1610,7 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 void cXinelibServer::Read_Control(int cli)
 {
   int n;
-  while((n = read(fd_control[cli], &m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ], 1)) == 1) {
+  while((n = fd_control[cli].recv(&m_CtrlBuf[ cli ][ m_CtrlBufPos[cli] ], 1)) == 1) {
 
     ++m_CtrlBufPos[cli];
 
@@ -1556,7 +1648,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   int cli;
 
   for(cli=0; cli<MAXCLIENTS; cli++)
-    if(fd_control[cli]<0)
+    if(!fd_control[cli].open())
       break;
 
   if(getpeername(fd, (struct sockaddr *)&sin, &len)) {
@@ -1571,7 +1663,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   bool accepted = SVDRPhosts.Acceptable(sin.sin_addr.s_addr);
   if(!accepted) {
     LOGMSG("Address not allowed to connect (svdrphosts.conf).");
-    write_cmd(fd, "Access denied.\r\n");
+    write(fd, "Access denied.\r\n", 16);
     CLOSESOCKET(fd);  
     return;    
   }
@@ -1590,10 +1682,11 @@ void cXinelibServer::Handle_ClientConnected(int fd)
 
   CloseDataConnection(cli);
 
+  m_OsdTimeouts[cli] = 0;
   m_CtrlBufPos[cli] = 0;
   m_CtrlBuf[cli][0] = 0;
   m_ConnType[cli] = ctDetecting;
-  fd_control[cli] = fd;
+  fd_control[cli].set_handle(fd);
 
   cXinelibDevice::Instance().ForcePrimaryDevice(true);
 }
@@ -1659,8 +1752,8 @@ void cXinelibServer::Action(void)
       }
 
       for(i=0; i<MAXCLIENTS; i++) {
-        if(fd_control[i]>=0) {
-          pfd[fds].fd = fd_control[i];
+        if(fd_control[i].open()) {
+          pfd[fds].fd = fd_control[i].handle();
           pfd[fds++].events = POLLIN;
         }
         if(fd_data[i]>=0) {
@@ -1701,7 +1794,7 @@ void cXinelibServer::Action(void)
 
             else /* fd_data[] / fd_control[] */ {
 	      for(i=0; i<MAXCLIENTS; i++) {
-		if(pfd[f].fd == fd_data[i] || pfd[f].fd == fd_control[i]) {
+		if(pfd[f].fd == fd_data[i] || pfd[f].fd == fd_control[i].handle()) {
 		  LOGMSG("Client %d disconnected", i);
 		  CloseConnection(i);
 		}
@@ -1728,7 +1821,7 @@ void cXinelibServer::Action(void)
 	    // Control data
 	    else {
 	      for(i=0; i<MAXCLIENTS; i++) {
-		if(pfd[f].fd == fd_control[i]) {
+		if(pfd[f].fd == fd_control[i].handle()) {
 		  Read_Control(i);
 		  break;
 		}		
