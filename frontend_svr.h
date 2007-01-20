@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.15 2007-01-07 05:39:16 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.16 2007-01-20 16:58:08 phintuka Exp $
  *
  */
 
@@ -23,6 +23,8 @@ class cUdpScheduler;
 class cStcFuture;
 class cCmdFutures;
 class cConnState;
+
+#include "tools/cxsocket.h"
 
 class cXinelibServer : public cXinelibThread 
 {
@@ -98,9 +100,11 @@ protected:
 
     int  fd_listen;
     int  fd_discovery;
-    int fd_control[MAXCLIENTS];
-    int  fd_data[MAXCLIENTS];
 
+    cxSocket fd_control[MAXCLIENTS];
+    int      fd_data[MAXCLIENTS];
+
+    int  m_OsdTimeouts[MAXCLIENTS];
     char m_CtrlBuf[MAXCLIENTS][1024+1];
     int  m_CtrlBufPos[MAXCLIENTS];
 
