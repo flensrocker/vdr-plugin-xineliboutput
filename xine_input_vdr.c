@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.70 2007-01-19 12:53:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.71 2007-01-20 20:13:49 phintuka Exp $
  *
  */
 
@@ -138,6 +138,7 @@ static void SetupLogLevel(void)
   }
 }
 
+#define LOG_UDP
 
 #ifdef LOG_SCR
 #  define LOGSCR(x...) LOGMSG("SCR: " x)
@@ -771,7 +772,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	|| this->still_mode
 	|| this->is_trickspeed
 	|| ( this->I_frames > 0
-	     && (this->I_frames > 1 || this->P_frames > 2 ))
+	     && (this->I_frames > 1 || this->P_frames > 3 ))
 	) {
       LOGSCR("I %d B %d P %d", this->I_frames, this->B_frames, this->P_frames);
       LOGSCR("SCR tunning resetted by adjust_speed, "
@@ -1483,13 +1484,21 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
     }
 
     if(img) {
-      memset( img->base[0], 0x00, width * height);
-      memset( img->base[1], 0x80, width * height / 4 );
-      memset( img->base[2], 0x80, width * height / 4 );
-      img->duration  = 3600;
-      img->pts       = 3600;
-      img->bad_frame = 0;
-      img->draw(img, this->stream);
+      if(img->format == XINE_IMGFMT_YV12 && img->base[0] && img->base[1] && img->base[2]) {
+	if(img->pitches[0] < width)
+	  width = img->pitches[0];
+	if(img->width < width)
+	  width = img->width;
+	if(img->height < height)
+	  height = img->height;
+	memset( img->base[0], 0x00, width * height);
+	memset( img->base[1], 0x80, width * height / 4 );
+	memset( img->base[2], 0x80, width * height / 4 );
+	img->duration  = 3600;
+	img->pts       = 3600;
+	img->bad_frame = 0;
+	img->draw(img, this->stream);
+      }
       img->free(img);
     }
   }
@@ -3765,9 +3774,9 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
-  int cnt = 0, todo = 0, n, result;
+  int cnt = 0, todo = 0, n, result, retry = 0;
 
-  while(XIO_READY == (result = io_select_rd(this->fd_data))) {
+  do { while(XIO_READY == (result = io_select_rd(this->fd_data))) {
 
     if(!this->control_running)
       break;
@@ -3858,6 +3867,11 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
   }
 
   if(read_buffer) {
+    if(cnt && this->control_running && result == XIO_TIMEOUT && (++retry < 10)) {
+      LOGMSG("TCP: Warning: long delay (>500ms) !");
+      continue;
+    }
+
     read_buffer->free_buffer(read_buffer);
     read_buffer = NULL;
     if(cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
@@ -3866,6 +3880,8 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       return XIO_ERROR;
     }
   }
+
+  } while(0);
 
   return result;
 }
@@ -4543,14 +4559,18 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     if(buf->type == CONTROL_BUF_BLANK) {
       buf->free_buffer(buf);
       buf = NULL;
-      if(!this->stream_start)
+
+      pthread_mutex_lock(&this->lock);
+      if(!this->stream_start) {
 	LOGMSG("BLANK in middle of stream! bufs queue %d , video_fifo %d", 
 	       this->block_buffer->fifo_size,
 	       this->stream->video_fifo->fifo_size);
-      else {
+      } else {
 	_x_demux_control_newpts(this->stream, 0, 0);
 	queue_blank_yv12(this);
       }
+      pthread_mutex_unlock(&this->lock);
+
       continue;
     }
 
@@ -5034,6 +5054,8 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
     this->fd_control = saved_fd;
     return -1;
   }
+
+  set_recv_buffer_size(fd_control, KILOBYTE(128));
 
   /* request control connection */
   if(_x_io_tcp_write(this->stream, fd_control, "CONTROL\r\n", 9) < 0) {
