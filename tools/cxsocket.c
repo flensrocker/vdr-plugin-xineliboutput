@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.6 2007-01-20 16:50:47 phintuka Exp $
+ * $Id: cxsocket.c,v 1.7 2007-01-20 17:24:39 phintuka Exp $
  *
  */
 
@@ -187,6 +187,16 @@ ssize_t cxSocket::tx_buffer_free(void)
   return (ssize_t)(wmem - size);
 }
 
+int cxSocket::getsockname(struct sockaddr *name, socklen_t *namelen)
+{
+  return ::getsockname(m_fd, name, namelen);
+}
+
+int cxSocket::getpeername(struct sockaddr *name, socklen_t *namelen)
+{
+  return ::getpeername(m_fd, name, namelen);
+}
+
 ssize_t cxSocket::send(const void *buf, size_t size, int flags,
 		       const struct sockaddr *to, socklen_t tolen)
 {
@@ -347,7 +357,7 @@ uint32_t cxSocket::get_local_address(char *ip_address)
   struct sockaddr_in sin;
   socklen_t len = sizeof(sin);
 
-  if(!getsockname(m_fd, (struct sockaddr *)&sin, &len)) {
+  if(!getsockname((struct sockaddr *)&sin, &len)) {
     local_addr = sin.sin_addr.s_addr;
 
   } else {

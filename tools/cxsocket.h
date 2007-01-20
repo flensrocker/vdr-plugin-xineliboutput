@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.19 2007-01-20 16:50:47 phintuka Exp $
+ * $Id: cxsocket.h,v 1.20 2007-01-20 17:24:40 phintuka Exp $
  *
  */
 
@@ -80,6 +80,9 @@ class cxSocket {
   bool set_nodelay(bool state);
   ssize_t tx_buffer_size(void);
   ssize_t tx_buffer_free(void);
+  int getsockname(struct sockaddr *name, socklen_t *namelen);
+  int getpeername(struct sockaddr *name, socklen_t *namelen);
+
 
   bool connect(struct sockaddr *addr, socklen_t len);
   bool connect(const char *ip, int port);
