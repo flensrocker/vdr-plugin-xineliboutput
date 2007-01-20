@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.h,v 1.18 2007-01-07 06:43:21 phintuka Exp $
+ * $Id: cxsocket.h,v 1.19 2007-01-20 16:50:47 phintuka Exp $
  *
  */
 
@@ -78,6 +78,8 @@ class cxSocket {
   bool set_cork(bool state);
   bool flush_cork(void) { return set_nodelay(true); };
   bool set_nodelay(bool state);
+  ssize_t tx_buffer_size(void);
+  ssize_t tx_buffer_free(void);
 
   bool connect(struct sockaddr *addr, socklen_t len);
   bool connect(const char *ip, int port);
@@ -86,6 +88,7 @@ class cxSocket {
 
   static char *ip2txt(uint32_t ip, unsigned int port, char *str);
 };
+
 
 #include <vdr/tools.h>
 
@@ -99,7 +102,6 @@ class cxPoller : public cPoller {
 	Add(Socks[i].handle(), Out);
     }
 };
-
 
 //
 // Set socket buffers
@@ -130,36 +132,6 @@ static inline void set_socket_buffers(int s, int txbuf, int rxbuf)
 
   max_buf = rxbuf;
   setsockopt(s, SOL_SOCKET, SO_RCVBUF, &max_buf, sizeof(int));
-}
-
-//
-// Set multicast options
-//
-static inline int set_multicast_options(int fd_multicast, int ttl)
-{
-  int iReuse = 1, iLoop = 1, iTtl = ttl;
-
-  errno = 0;
-
-  if(setsockopt(fd_multicast, SOL_SOCKET, SO_REUSEADDR, 
-		&iReuse, sizeof(int)) < 0) {
-    LOGERR("setsockopt(SO_REUSEADDR) failed");
-    return -1;
-  }  
-
-  if(setsockopt(fd_multicast, IPPROTO_IP, IP_MULTICAST_TTL, 
-		&iTtl, sizeof(int))) {
-    LOGERR("setsockopt(IP_MULTICAST_TTL) failed");
-    return -1;
-  }
-      
-  if(setsockopt(fd_multicast, IPPROTO_IP, IP_MULTICAST_LOOP,
-		&iLoop, sizeof(int))) {
-    LOGERR("setsockopt(IP_MULTICAST_LOOP) failed");
-    return -1;
-  }
-
-  return 0;
 }
 
 //
@@ -215,129 +187,6 @@ static inline int sock_connect(int fd_control, int port, int type)
   }
 
   return s;
-}
-
-static inline ssize_t timed_write(int fd, const void *buffer, size_t size, 
-				  int timeout_ms)
-{
-  ssize_t written = (ssize_t)size;
-  const unsigned char *ptr = (const unsigned char *)buffer;
-  cPoller poller(fd, true);
-
-  while (size > 0) {
-    errno = 0;
-    if(!poller.Poll(timeout_ms)) {
-      LOGERR("timed_write: poll() failed");
-      return written-size;
-    }
-
-    errno = 0;
-    ssize_t p = write(fd, ptr, size);
-
-    if (p <= 0) {
-      if (errno == EINTR || errno == EAGAIN) {
-	LOGDBG("timed_write: EINTR during write(), retrying");
-	continue;
-      }
-      LOGERR("timed_write: write() error");
-      return p;
-    }
-
-    ptr  += p;
-    size -= p;    
-  }
-
-  return written;
-}
-
-static inline ssize_t timed_read(int fd, void *buffer, size_t size, 
-				 int timeout_ms)
-{
-  ssize_t missing = (ssize_t)size;
-  unsigned char *ptr = (unsigned char *)buffer;
-  cPoller poller(fd);
-
-  while (missing > 0) {
-
-    if(!poller.Poll(timeout_ms)) {
-      LOGERR("timed_read: poll() failed at %d/%d", (int)(size-missing), (int)size);
-      return size-missing;
-    }
-
-    errno = 0;
-    ssize_t p = read(fd, ptr, missing);
-
-    if (p <= 0) {
-      if (errno == EINTR || errno == EAGAIN) {
-	LOGDBG("timed_read: EINTR/EAGAIN during read(), retrying");
-	continue;
-      }
-      LOGERR("timed_read: read() error at %d/%d", (int)(size-missing), (int)size);
-      return size-missing;
-    }
-
-    ptr  += p;
-    missing -= p;    
-  }
-
-  return size;
-}
-
-#include "../xine_osd_command.h"
-
-static inline int write_osd_command(int fd, osd_command_t *cmd)
-{
-  if(8 != timed_write(fd, "OSDCMD\r\n", 8, 500)) {
-    LOGDBG("write_osd_command: write (command) failed");
-    return 0;
-  }
-  if((ssize_t)sizeof(osd_command_t) != 
-     timed_write(fd, cmd, sizeof(osd_command_t), 500)) {
-    LOGDBG("write_osd_command: write (data) failed");
-    return 0;
-  }
-  if(cmd->palette && cmd->colors &&
-     (ssize_t)(sizeof(xine_clut_t)*ntohl(cmd->colors)) != 
-     timed_write(fd, cmd->palette, sizeof(xine_clut_t)*ntohl(cmd->colors), 500)) {
-    LOGDBG("write_osd_command: write (palette) failed");
-    return 0;
-  }
-  if(cmd->data && cmd->datalen &&
-     (ssize_t)ntohl(cmd->datalen) != timed_write(fd, cmd->data, ntohl(cmd->datalen), 3000)) {
-    LOGDBG("write_osd_command: write (bitmap) failed");
-    return 0;
-  }
-  return 1;
-}
-
-static inline ssize_t write_str(int fd, const char *str, int timeout_ms=-1, int len=0)
-{
-  return timed_write(fd, str, len ? : strlen(str), timeout_ms);
-}
-
-static inline ssize_t write_cmd(int fd, const char *str, int len=0)
-{
-  return write_str(fd, str, 10, len);
-}
-
-#include <stdarg.h>
-
-static inline ssize_t printf_cmd(int fd, const char *fmt, ...)
-{
-  va_list argp;
-  char buf[256];
-  int r;
-
-  va_start(argp, fmt);
-  r = vsnprintf(buf, sizeof(buf), fmt, argp);
-  if(r<0)
-    LOGERR("printf_cmd: vsnprintf failed");
-  else if(r >= (int)sizeof(buf))
-    LOGMSG("printf_cmd: vsnprintf overflow (%20s)", buf);
-  else
-    return write_cmd(fd, buf, r);
-
-  return (ssize_t)-1;
 }
 
 #endif // __CXSOCKET_H

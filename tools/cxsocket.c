@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.5 2007-01-07 06:40:54 phintuka Exp $
+ * $Id: cxsocket.c,v 1.6 2007-01-20 16:50:47 phintuka Exp $
  *
  */
 
@@ -12,8 +12,11 @@
 #include <inttypes.h>
 
 #include <stdlib.h>
+#include <stdarg.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <sys/sendfile.h>
 #include <netinet/tcp.h>
 
@@ -116,6 +119,7 @@ ssize_t cxSocket::sendfile(int fd_file, off_t *offset, size_t count)
   int r = ::sendfile(m_fd, fd_file, offset, count);
   if(r<0 && (errno == ENOSYS || errno == EINVAL)) {
     // fall back to read/write
+LOGERR("sendfile failed - using simple read/write");
     cxPoller p(*this, true);
     char buf[0x10000];
     int todor = count, todow, done = 0;
@@ -158,6 +162,29 @@ bool cxSocket::set_nodelay(bool state)
     return false;
   }
   return true;
+}
+
+ssize_t cxSocket::tx_buffer_size(void)
+{
+  socklen_t l = sizeof(int);
+  int wmem = -1;
+  if(getsockopt(m_fd, SOL_SOCKET, SO_SNDBUF, &wmem, &l)) {
+    LOGERR("getsockopt(SO_SNDBUF) failed");
+    return (ssize_t)-1;
+  }
+  return (ssize_t)wmem;
+}
+
+ssize_t cxSocket::tx_buffer_free(void)
+{
+  int wmem = tx_buffer_size();
+  int size = -1;
+  if(ioctl(m_fd, TIOCOUTQ, &size)) {
+    LOGERR("ioctl(TIOCOUTQ) failed");
+    return (ssize_t)-1;
+  }
+
+  return (ssize_t)(wmem - size);
 }
 
 ssize_t cxSocket::send(const void *buf, size_t size, int flags,
