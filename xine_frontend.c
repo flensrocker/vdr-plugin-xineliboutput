@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.31 2007-01-19 14:24:09 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.32 2007-01-20 14:21:03 phintuka Exp $
  *
  */
 
@@ -278,117 +278,134 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
 #define SURROUND71    11
 #define A52_PASSTHRU  12 
 
+#define x_reg_num(x...)  xine_config_register_num(this->xine, x)
+#define x_reg_str(x...)  xine_config_register_string(this->xine, x)
+#define x_reg_enum(x...) xine_config_register_enum(this->xine, x)
+#define x_reg_bool(x...) xine_config_register_bool(this->xine, x)
+
+#define x_upd_num(x...)  this->xine->config->update_num(this->xine->config, x)
+#define x_upd_str(x...)  this->xine->config->update_string(this->xine->config, x)
+
 static void configure_audio_out(fe_t *this, const char *audio_driver, const char *audio_port)
 {
-  /* define possible speaker arrangements */
-  /* xine audio_alsa_out.c */
-  static char *speaker_arrangement[] = 
-    {"Mono 1.0", "Stereo 2.0", "Headphones 2.0", "Stereo 2.1",
-     "Surround 3.0", "Surround 4.0", "Surround 4.1", 
-     "Surround 5.0", "Surround 5.1", "Surround 6.0",
-     "Surround 6.1", "Surround 7.1", "Pass Through", NULL};
-  
-  if(!strcmp("alsa", audio_driver) && strlen(audio_port) > 0) {
+  /*
+   * alsa 
+   */
+  if(!strcmp("alsa", audio_driver) && audio_port && strlen(audio_port) > 0) {
     
-    xine_config_register_string(this->xine,
-				"audio.device.alsa_default_device",
-				"default",
-				_("device used for mono output"),
-				_("xine will use this alsa device "
-				  "to output mono sound.\n"
-				  "See the alsa documentation "
-				  "for information on alsa devices."),
-				10, NULL, NULL);
-    xine_config_register_string(this->xine,
-				"audio.device.alsa_front_device",
-				"plug:front:default",
-				_("device used for stereo output"),
-				_("xine will use this alsa device "
-				  "to output stereo sound.\n"
-				  "See the alsa documentation "
-				  "for information on alsa devices."),
-				10, NULL, NULL);
-    xine_config_register_string(this->xine,
-				"audio.device.alsa_surround51_device",
-				"plug:surround51:0",
-				_("device used for 5.1-channel output"),
-				_("xine will use this alsa device to output "
-				  "5 channel plus LFE (5.1) surround sound.\n"
-				  "See the alsa documentation for information "
-				  "on alsa devices."),
-				10,  NULL, NULL);
-    xine_config_register_string(this->xine,
-				"audio.device.alsa_passthrough_device",
-				"iec958:AES0=0x6,AES1=0x82,AES2=0x0,AES3=0x2",
-				_("device used for 5.1-channel output"),
-				_("xine will use this alsa device to output "
-				  "undecoded digital surround sound. This can "
-				  "be used be external surround decoders.\nSee the "
-				  "alsa documentation for information on alsa "
-				  "devices."),
-				10, NULL, NULL);
-    xine_config_register_enum(this->xine,
-       "audio.output.speaker_arrangement",
-       STEREO,
-       speaker_arrangement,
-       _("speaker arrangement"),
-       _("Select how your speakers are arranged, "
-         "this determines which speakers xine uses for sound output. "
-         "The individual values are:\n\n"
-         "Mono 1.0: You have only one speaker.\n"
-         "Stereo 2.0: You have two speakers for left and right channel.\n"
-         "Headphones 2.0: You use headphones.\n"
-         "Stereo 2.1: You have two speakers for left and right channel, and one "
-         "subwoofer for the low frequencies.\n"
-         "Surround 3.0: You have three speakers for left, right and rear channel.\n"
-         "Surround 4.0: You have four speakers for front left and right and rear "
-         "left and right channels.\n"
-         "Surround 4.1: You have four speakers for front left and right and rear "
-         "left and right channels, and one subwoofer for the low frequencies.\n"
-         "Surround 5.0: You have five speakers for front left, center and right and "
-         "rear left and right channels.\n"
-         "Surround 5.1: You have five speakers for front left, center and right and "
-         "rear left and right channels, and one subwoofer for the low frequencies.\n"
-         "Surround 6.0: You have six speakers for front left, center and right and "
-         "rear left, center and right channels.\n"
-         "Surround 6.1: You have six speakers for front left, center and right and "
-         "rear left, center and right channels, and one subwoofer for the low frequencies.\n"
-         "Surround 7.1: You have seven speakers for front left, center and right, "
-         "left and right and rear left and right channels, and one subwoofer for the "
-         "low frequencies.\n"
-         "Pass Through: Your sound system will receive undecoded digital sound from xine. "
-         "You need to connect a digital surround decoder capable of decoding the "
-         "formats you want to play to your sound card's digital output."),
-       10, NULL, NULL);
+    /* define possible speaker arrangements */
+    /* From xine audio_alsa_out.c ; must be synchronized ! */
+    static char *speaker_arrangement[] = 
+      {"Mono 1.0", "Stereo 2.0", "Headphones 2.0", "Stereo 2.1",
+       "Surround 3.0", "Surround 4.0", "Surround 4.1", 
+       "Surround 5.0", "Surround 5.1", "Surround 6.0",
+       "Surround 6.1", "Surround 7.1", "Pass Through", NULL};
+    
+    x_reg_enum("audio.output.speaker_arrangement",
+	       STEREO,
+	       speaker_arrangement,
+	       _("speaker arrangement"),
+	       _("Select how your speakers are arranged, "
+		 "this determines which speakers xine uses for sound output. "
+		 "The individual values are:\n\n"
+		 "Mono 1.0: You have only one speaker.\n"
+		 "Stereo 2.0: You have two speakers for left and right channel.\n"
+		 "Headphones 2.0: You use headphones.\n"
+		 "Stereo 2.1: You have two speakers for left and right channel, and one "
+		 "subwoofer for the low frequencies.\n"
+		 "Surround 3.0: You have three speakers for left, right and rear channel.\n"
+		 "Surround 4.0: You have four speakers for front left and right and rear "
+		 "left and right channels.\n"
+		 "Surround 4.1: You have four speakers for front left and right and rear "
+		 "left and right channels, and one subwoofer for the low frequencies.\n"
+		 "Surround 5.0: You have five speakers for front left, center and right and "
+		 "rear left and right channels.\n"
+		 "Surround 5.1: You have five speakers for front left, center and right and "
+		 "rear left and right channels, and one subwoofer for the low frequencies.\n"
+		 "Surround 6.0: You have six speakers for front left, center and right and "
+		 "rear left, center and right channels.\n"
+		 "Surround 6.1: You have six speakers for front left, center and right and "
+		 "rear left, center and right channels, and one subwoofer for the low frequencies.\n"
+		 "Surround 7.1: You have seven speakers for front left, center and right, "
+		 "left and right and rear left and right channels, and one subwoofer for the "
+		 "low frequencies.\n"
+		 "Pass Through: Your sound system will receive undecoded digital sound from xine. "
+		 "You need to connect a digital surround decoder capable of decoding the "
+		 "formats you want to play to your sound card's digital output."),
+	       10, NULL, NULL);
 
-    this->xine->config->update_string(this->xine->config,
-				      "audio.device.alsa_front_device",
-				      audio_port);
-    this->xine->config->update_string(this->xine->config,
-				      "audio.device.alsa_default_device",
-				      audio_port);
-    this->xine->config->update_string(this->xine->config,
-				      "audio.device.alsa_surround51_device",
-				      audio_port);
+    x_reg_str("audio.device.alsa_default_device",
+	      "default",
+	      _("device used for mono output"),
+	      _("xine will use this alsa device "
+		"to output mono sound.\n"
+		"See the alsa documentation "
+		"for information on alsa devices."),
+	      10, NULL, NULL);
+    x_reg_str("audio.device.alsa_front_device",
+	      "plug:front:default",
+	      _("device used for stereo output"),
+	      _("xine will use this alsa device "
+		"to output stereo sound.\n"
+		"See the alsa documentation "
+		"for information on alsa devices."),
+	      10, NULL, NULL);
+    x_reg_str("audio.device.alsa_surround51_device",
+	      "plug:surround51:0",
+	      _("device used for 5.1-channel output"),
+	      _("xine will use this alsa device to output "
+		"5 channel plus LFE (5.1) surround sound.\n"
+		"See the alsa documentation for information "
+		"on alsa devices."),
+	      10,  NULL, NULL);
+    x_reg_str("audio.device.alsa_passthrough_device",
+	      "iec958:AES0=0x6,AES1=0x82,AES2=0x0,AES3=0x2",
+	      _("device used for 5.1-channel output"),
+	      _("xine will use this alsa device to output "
+		"undecoded digital surround sound. This can "
+		"be used be external surround decoders.\nSee the "
+		"alsa documentation for information on alsa "
+		"devices."),
+	      10, NULL, NULL);
+    x_upd_str("audio.device.alsa_front_device",      audio_port);
+    x_upd_str("audio.device.alsa_default_device",    audio_port);
+    x_upd_str("audio.device.alsa_surround51_device", audio_port);
     if(strstr(audio_port, "iec") ||
        strstr(audio_port, "spdif")) {
-      this->xine->config->update_string(this->xine->config,
-					"audio.device.alsa_passthrough_device",
-					audio_port);
-      this->xine->config->update_num(this->xine->config,
-				     "audio.output.speaker_arrangement",
-				     A52_PASSTHRU);
+      x_upd_str("audio.device.alsa_passthrough_device",	audio_port);
+      x_upd_num("audio.output.speaker_arrangement",     A52_PASSTHRU);
     } else {
-      this->xine->config->update_num(this->xine->config,
-				     "audio.output.speaker_arrangement",
-				     strstr(audio_port, "surround") ? SURROUND51 : STEREO);
+      x_upd_num("audio.output.speaker_arrangement",
+		strstr(audio_port, "surround") ? SURROUND51 : STEREO);
     }
   }
 
-  if(!strcmp("oss", audio_driver) && !strncmp("/dev/dsp", audio_port, 8)) {
-    int num = 0;
-    sscanf(audio_port+8,"%d",&num);
-    this->xine->config->update_num(this->xine->config,"audio.device.oss_device_num",num);
+
+  /* 
+   * OSS 
+   */
+  if(!strcmp("oss", audio_driver) && audio_port) {
+    int devnum = -2;
+    if(!strcmp("default", audio_port))
+      devnum = -1;
+    if(!strncmp("/dev/dsp", audio_port, 8) &&
+       sscanf(audio_port+8, "%d", &devnum) < 1)
+      devnum = -1;
+    if(!strncmp("/dev/sound/dsp", audio_port, 14) &&
+       sscanf(audio_port+14, "%d", &devnum) < 1)
+      devnum = -1;
+    if(devnum > -2) {
+      x_reg_num("audio.device.oss_device_number", -1,
+		_("OSS audio device number, -1 for none"),
+		_("The full audio device name is created by concatenating the "
+		  "OSS device name and the audio device number.\n"
+		  "If you do not need a number because you are happy with "
+		  "your system's default audio device, set this to -1.\n"
+		  "The range of this value is -1 or 0-15. This setting is "
+		  "ignored, when the OSS audio device name is set to \"auto\"."),
+		10, NULL, NULL);
+      x_upd_num("audio.device.oss_device_num", devnum);
+    }
   }
 }
 
@@ -435,35 +452,33 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   
   xine_config_load (this->xine, this->configfile);
 
-  xine_config_register_num (this->xine,
-			    "engine.buffers.video_num_buffers",
-			    500,
-			    _("number of video buffers"),
-			    _("The number of video buffers "
-			      "(each is 8k in size) "
-			      "xine uses in its internal queue. "
-			      "Higher values "
-			      "mean smoother playback for unreliable "
-			      "inputs, but "
-			      "also increased latency and memory "
-			      "consumption."),
-			    20, NULL, NULL);
-  xine_config_register_bool(this->xine,
-			    "gui.osd_use_unscaled",
-			    0,
-			    _("Use unscaled OSD"),
-			    _("Use unscaled (full screen resolution) OSD if possible"),
-			    10, NULL, NULL);
+  x_reg_num ("engine.buffers.video_num_buffers",
+	     500,
+	     _("number of video buffers"),
+	     _("The number of video buffers "
+	       "(each is 8k in size) "
+	       "xine uses in its internal queue. "
+	       "Higher values "
+	       "mean smoother playback for unreliable "
+	       "inputs, but "
+	       "also increased latency and memory "
+	       "consumption."),
+	     20, NULL, NULL);
+  x_reg_bool("gui.osd_use_unscaled",
+	     0,
+	     _("Use unscaled OSD"),
+	     _("Use unscaled (full screen resolution) OSD if possible"),
+	     10, NULL, NULL);
 
   xine_init (this->xine);
 
-  this->xine->config->update_num(this->xine->config,"video.device.xv_double_buffer", 1);
-  this->xine->config->update_num(this->xine->config,"engine.buffers.video_num_buffers", pes_buffers);
+  x_upd_num("video.device.xv_double_buffer", 1);
+  x_upd_num("engine.buffers.video_num_buffers", pes_buffers);
 
 #ifdef IS_FBFE
   if(fbdev) {
     if(!strcmp(video_driver, "fb"))
-      this->xine->config->update_string(this->xine->config,"video.device.fb_device", fbdev);
+      x_upd_str("video.device.fb_device", fbdev);
     else if(!strcmp(video_driver, "DirectFB")) { 
       /* DirectFBInit (NULL, NULL); */
       /* DirectFBSetOption ("fbdev", video_port); */
@@ -537,14 +552,15 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   if(audio_driver && audio_port) 
     configure_audio_out(this, audio_driver, audio_port);
 
-  if(audio_driver && !strcmp(audio_driver, "auto"))
+  if(audio_driver && !strcmp(audio_driver, "auto")) {
     this->audio_port = xine_open_audio_driver (this->xine, NULL, NULL);
-  if(audio_driver && !strcmp(audio_driver, "none")) {
+  } else if(audio_driver && !strcmp(audio_driver, "none")) {
     this->audio_port = _x_ao_new_port (this->xine, NULL, 1);
     this->audio_port->set_property(this->audio_port, AO_PROP_DISCARD_BUFFERS, 1);
-  } else
+  } else {
     this->audio_port = xine_open_audio_driver (this->xine, audio_driver, NULL);
-  
+  }
+
   if(!this->audio_port && (audio_driver && !!strcmp(audio_driver, "none"))) {
     LOGMSG("fe_xine_init: xine_open_audio_driver(\"%s%s%s\") failed",
 	   audio_driver?audio_driver:"(NULL)", 
@@ -664,9 +680,8 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 				 "video.output.xv_double_buffer",
 				 1);
 #endif
-  this->xine->config->update_num(this->xine->config,
-				 "engine.buffers.video_num_buffers",
-				 this->pes_buffers);  
+  x_upd_num("engine.buffers.video_num_buffers", this->pes_buffers);  
+
   return result;
 }
 
@@ -890,11 +905,11 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
       if(args && !strcmp(name,"goom")) {
 	int val;
 	if((val = get_opt_val(initstr, "fps")) > 0)
-	  this->xine->config->update_num (this->xine->config, "effects.goom.fps", val );
+	  x_upd_num ("effects.goom.fps", val );
 	if((val = get_opt_val(initstr, "width")) > 0)
-	  this->xine->config->update_num (this->xine->config, "effects.goom.width", val);  
+	  x_upd_num ("effects.goom.width", val);  
 	if((val = get_opt_val(initstr, "height")) > 0)
-	  this->xine->config->update_num (this->xine->config, "effects.goom.height", val);
+	  x_upd_num ("effects.goom.height", val);
 	//if((val = get_opt_val(initstr, "csc_method"))>0)
 	//  this->xine->config->update_enum (this->xine->config, "effects.goom.csc_method", val);
       }
