@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.15 2007-01-06 04:29:00 phintuka Exp $
+ * $Id: frontend_local.c,v 1.16 2007-01-20 17:33:09 phintuka Exp $
  *
  */
 
@@ -57,6 +57,8 @@ cXinelibLocal::~cXinelibLocal()
 {
   TRACEF("cXinelibLocal::~cXinelibLocal");
   
+  m_bReady = false;
+
   Stop();
   if(fe) {
     fe->fe_free(fe);
@@ -75,7 +77,7 @@ void cXinelibLocal::Stop(void)
 
   if(1) {
     LOCK_FE;
-    m_bReady=false;
+    m_bReady = false;
     if(fe)
       fe->fe_interrupt(fe);
   }
@@ -91,8 +93,7 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
 {
   TRACEF("cXinelibLocal::Play_PES");
   LOCK_FE;
-  if(fe) {
-    //m_bLoopPlay = false;
+  if(fe && m_bReady) {
     int done = fe->xine_queue_pes_packet(fe, (char*)data, len);
     if(done>0) {
       Lock();
@@ -110,11 +111,9 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
 void cXinelibLocal::OsdCmd(void *cmd)
 {
   TRACEF("cXinelibLocal::OsdCmd");
-  if(cmd) {
-    LOCK_FE;
-    if(fe)
-      fe->xine_osd_command(fe, (struct osd_command_s*)cmd);
-  }
+  LOCK_FE;
+  if(cmd && fe && m_bReady)
+    fe->xine_osd_command(fe, (struct osd_command_s*)cmd);
 }
 
 uchar *cXinelibLocal::GrabImage(int &Size, bool Jpeg, 
@@ -123,7 +122,7 @@ uchar *cXinelibLocal::GrabImage(int &Size, bool Jpeg,
 {
   uchar *data;
   LOCK_FE;
-  if(fe && fe->grab)
+  if(fe && fe->grab && m_bReady)
     if((data = (uchar*)fe->grab(fe, &Size, Jpeg, Quality, SizeX, SizeY)))
       return data;
   return NULL;
@@ -138,7 +137,7 @@ int64_t cXinelibLocal::GetSTC()
   strcpy(buf, "GETSTC\r\n");
 
   LOCK_FE;
-  if(fe)
+  if(fe && m_bReady)
     if(0 == fe->xine_control(fe, (char*)buf))
       //if(*((int64_t *)buf) < MAX_SCR)
       //  if(*((int64_t *)buf) >= 0LL)
@@ -153,7 +152,7 @@ int64_t cXinelibLocal::GetSTC()
 bool cXinelibLocal::EndOfStreamReached(void) 
 {
   LOCK_THREAD;
-  if(fe->xine_is_finished(fe, 1))
+  if(fe && fe->xine_is_finished(fe, 1))
     return true;
   return cXinelibThread::EndOfStreamReached();
 }
@@ -182,8 +181,8 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers, int priority)
     xc.decoder_priority = priority;
     if(!fe)
       return;    
-    m_bReady=false;
-    m_bReconfigRequest=true;
+    m_bReady = false;
+    m_bReconfigRequest = true;
     fe->fe_interrupt(fe);    
   }
 
@@ -202,7 +201,7 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers, int priority)
 int cXinelibLocal::Xine_Control(const char *cmd)
 {
   TRACEF("cXinelibLocal::Xine_Control");
-  if(cmd && *cmd) {
+  if(cmd && *cmd && !GetStopSignal()) {
     char buf[4096];
     snprintf(buf, sizeof(buf), "%s\r\n", cmd);
     buf[sizeof(buf)-1] = 0;
