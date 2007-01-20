@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.18 2007-01-06 04:43:34 phintuka Exp $
+ * $Id: setup_menu.c,v 1.19 2007-01-20 18:21:27 phintuka Exp $
  *
  */
 
@@ -1118,7 +1118,7 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
       else if(audio_driver == AUDIO_DRIVER_ALSA)
         strcpy(newconfig.audio_port, "default");
       else if(audio_driver == AUDIO_DRIVER_OSS)
-        strcpy(newconfig.audio_port, "/dev/dsp0");
+        strcpy(newconfig.audio_port, "/dev/dsp");
       else
         strcpy(newconfig.audio_port, "");
       Set();
