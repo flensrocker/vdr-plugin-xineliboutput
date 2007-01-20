@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.30 2007-01-07 11:41:48 phintuka Exp $
+ * $Id: menu.c,v 1.31 2007-01-20 18:20:49 phintuka Exp $
  *
  */
 
@@ -15,6 +15,7 @@
 #include <vdr/interface.h>
 #include <vdr/menu.h>
 #include <vdr/plugin.h>
+#include <vdr/videodir.h>
 
 #include "logdefs.h"
 #include "config.h"
@@ -132,7 +133,7 @@ void cMenuBrowseFiles::Set(void)
 
   if(m_CurrentDir[0] != '/') {
     free(m_CurrentDir);
-    m_CurrentDir = strdup("/video");
+    m_CurrentDir = strdup(VideoDirectory);
   }
 
   // find deepest accessible directory from path

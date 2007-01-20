@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.22 2007-01-19 14:21:48 phintuka Exp $
+ * $Id: config.c,v 1.23 2007-01-20 18:20:49 phintuka Exp $
  *
  */
 
@@ -14,6 +14,7 @@
 #include <getopt.h>
 
 #include <vdr/config.h>
+#include <vdr/videodir.h>
 
 #include "logdefs.h"
 #include "config.h"
@@ -297,9 +298,9 @@ config_t::config_t() {
   brightness   = -1; 
   overscan = 0;
 
-  strcpy(browse_files_dir,  "/video");
-  strcpy(browse_music_dir,  "/video");
-  strcpy(browse_images_dir, "/video");
+  strcpy(browse_files_dir,  VideoDirectory);
+  strcpy(browse_music_dir,  VideoDirectory);
+  strcpy(browse_images_dir, VideoDirectory);
   cache_implicit_playlists = 1;
   enable_id3_scanner = 1;
 
