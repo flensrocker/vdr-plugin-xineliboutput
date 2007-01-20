@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.15 2006-09-03 13:59:22 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.16 2007-01-20 14:14:30 phintuka Exp $
  *
  */
 
@@ -829,9 +829,10 @@ static int sxfe_run(frontend_t *this_gen)
 	  else
 #endif
 #ifdef FE_STANDALONE
-	  if(/*ks == XK_q || ks == XK_Q ||*/ ks == XK_Escape)
+	  if(/*ks == XK_q || ks == XK_Q ||*/ ks == XK_Escape) {
+	    terminate_key_pressed = 1;
 	    keep_going = 0;
-	  else if(this->input || find_input(this))
+	  } else if(this->input || find_input(this))
 	    process_xine_keypress(this->input, "XKeySym",ksname, 0, 0);
 #else
 	  if(this->keypress) 
