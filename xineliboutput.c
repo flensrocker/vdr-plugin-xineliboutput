@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.16 2007-01-03 06:12:40 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.17 2007-01-22 22:59:16 phintuka Exp $
  *
  */
 
@@ -102,7 +102,8 @@ const char cmdLineHelp[] =
 "                           Supported values:\n"
 "                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc,\n"
 "                                     vidix, none\n"
-"                           for fbfe: auto, fb, DirectFB, vidixfb, none\n"
+"                           for fbfe: auto, fb, DirectFB, vidixfb,\n"
+"                                     dxr3, aadxr3, none\n"
 #if 0
 "  -L        --nolocal      No local frontend, only remote frontends\n"
 "  -m M      --modeline=M   Use modeline M for local frontend\n"
