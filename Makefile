@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.20 2007-01-19 12:09:21 phintuka Exp $
+# $Id: Makefile,v 1.21 2007-01-22 18:37:21 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -20,10 +20,10 @@ PLUGIN = xineliboutput
 
 XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
-XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >& /dev/null && echo "1") || echo "0")
+XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0")
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINELIBOUTPUT_FB  = $(XINELIBOUTPUT_XINEPLUGIN)
-    XINELIBOUTPUT_X11 = $(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >&/dev/null) && echo "1") || echo "0" ; rm -f testx.* >/dev/null)
+    XINELIBOUTPUT_X11 = $(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null)
 
     ifeq ($(XINELIBOUTPUT_X11), 1)
         #$(warning Detected X11)
@@ -57,7 +57,7 @@ USE_ICONV = 1
 ### The version number of this plugin (taken from the main source file):
 ###
 
-VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ print $$6 }' | sed -e 's/[";]//g')
+VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | cut -d'"' -f2)
 
 
 ###
@@ -191,7 +191,7 @@ DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
 
 # check for yaegp patch
-DEFINES += $(shell grep 'vidWin' \$(VDRINCDIR)/vdr/osd.h >& /dev/null && echo "-DYAEGP_PATCH")
+DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     CFLAGS += $(shell xine-config --cflags) 
