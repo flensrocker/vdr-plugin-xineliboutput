@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.71 2007-01-20 20:13:49 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.72 2007-01-22 23:11:50 phintuka Exp $
  *
  */
 
@@ -772,7 +772,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	|| this->still_mode
 	|| this->is_trickspeed
 	|| ( this->I_frames > 0
-	     && (this->I_frames > 1 || this->P_frames > 3 ))
+	     && (this->I_frames > 2 || this->P_frames > 6 ))
 	) {
       LOGSCR("I %d B %d P %d", this->I_frames, this->B_frames, this->P_frames);
       LOGSCR("SCR tunning resetted by adjust_speed, "
@@ -780,6 +780,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	     /*num_vbufs*/0, this->paused_frames, 
 	     monotonic_time_ms() - this->pause_start);
 
+      this->I_frames = 0;
       this->paused_frames = 0; 
       this->pause_start = 0;
       reset_scr_tunning(this, this->speed_before_pause);
@@ -2292,8 +2293,8 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
   } else if(!strncasecmp(method_name,"onefield_xv",11)) { method = 5;
   } else if(!strncasecmp(method_name,"linearblend",11)) { method = 6;
   } else if(!strncasecmp(method_name,"none",4)) {         method = 0;
-  } else if(!*method_name) {                          method = 0;
-  } else if(!strncasecmp(method_name,"tvtime",6)) {       method = 0; 
+  } else if(!*method_name) {                              method = 0;
+  } else if(!strncasecmp(method_name,"tvtime",6)) {       method = -1;
   /* old deinterlacing system must be switched off.
      tvtime will be configured as all other post plugins with 
      "POST tvtime ..." control message  */
@@ -2301,7 +2302,7 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
   
   this->stream->xine->config->update_num(this->stream->xine->config,
 					 "video.output.xv_deinterlace_method",
-					 method);
+					 method >= 0 ? method : 0);
   xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, method ? 1 : 0);
   
   return 0;
@@ -4449,7 +4450,6 @@ static void update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
 
   if(!this->I_frames)
     this->P_frames = this->B_frames = 0;
-
   i += data[i] + 1;   // possible additional header bytes
   for (; i < Length-5; i++) {
     if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 0) {
@@ -4664,7 +4664,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     }
   }
 
-  if(this->live_mode && this->I_frames < 3 && 
+  if(this->live_mode && this->I_frames < 4 && 
      buf->content[3] == 0xe0 && buf->size > 32)
     update_frames(this, buf->content, buf->size);
 
