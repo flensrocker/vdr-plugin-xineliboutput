@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.20 2007-01-20 23:36:09 phintuka Exp $
+ * $Id: setup_menu.c,v 1.21 2007-01-22 23:05:18 phintuka Exp $
  *
  */
 
@@ -447,7 +447,7 @@ struct tvtime_s {
     static char buf[256];
     sprintf(buf, "method=%s,cheap_mode=%d,pulldown=%s,framerate_mode=%s,"
 	    "judder_correction=%d,use_progressive_frame_flag=%d,"
-	    "chroma_filter=%d",
+	    "chroma_filter=%d,enable=1",
 	    tvtime_method[method], cheap_mode, tvtime_pulldown[pulldown],
 	    tvtime_framerate[framerate], judder_correction, 
 	    use_progressive_frame_flag, chroma_filter);
