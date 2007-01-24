@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.3 2006-08-16 21:46:34 phintuka Exp $
+ * $Id: frontend_local.h,v 1.4 2007-01-24 01:06:09 phintuka Exp $
  *
  */
 
@@ -36,7 +36,6 @@ class cXinelibLocal : public cXinelibThread
   public:
 
     // Data transfer
-    //virtual bool Poll(cPoller &Poller, int TimeoutMs);
     virtual int  Play_PES(const uchar *buf, int len);
     virtual void OsdCmd(void *cmd);
     virtual int64_t GetSTC();
