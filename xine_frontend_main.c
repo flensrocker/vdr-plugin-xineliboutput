@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.23 2007-01-22 22:59:16 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.24 2007-01-24 13:05:05 phintuka Exp $
  *
  */
 
@@ -148,6 +148,24 @@ static void *kbd_receiver_thread(void *fe)
       terminate_key_pressed = 1;
       break;
     }
+#ifdef XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN
+# ifndef IS_FBFE
+    if(code == 'f' || code == 'F') {
+      fe_t *this = (fe_t*)fe;
+      this->fe.fe_display_config((frontend_t *)fe, this->origwidth, this->origheight, 
+				 this->fullscreen ? 0 : 1, 
+				 this->vmode_switch, this->modeline, 
+				 this->aspect, this->scale_video, this->field_order);
+      continue;
+    } else
+# endif
+    if(code == 'd' || code == 'D') {
+      fe_t *this = (fe_t*)fe;
+      xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
+		     xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+      continue;
+    } else
+#endif
     if(code == 0xffff) 
       break;
 
