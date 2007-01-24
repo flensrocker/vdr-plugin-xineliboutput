@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.25 2007-01-24 04:29:04 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.26 2007-01-24 04:35:07 phintuka Exp $
  *
  */
 
@@ -300,7 +300,7 @@ bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
       m_Cond.TimedWait(m_Lock, 5);
   }
 
-  return min(limit - m_QueuePending, 0);
+  return max(limit - m_QueuePending, 0);
 }
 
 bool cUdpScheduler::Flush(int TimeoutMs)
