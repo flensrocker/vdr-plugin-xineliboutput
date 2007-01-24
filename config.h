@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.15 2007-01-19 14:21:48 phintuka Exp $
+ * $Id: config.h,v 1.16 2007-01-24 04:29:03 phintuka Exp $
  *
  */
 
@@ -132,6 +132,8 @@
   (xc.IsOptionHidden(xc.opt))
 #define READONLY_OPTION(opt) \
   (xc.IsOptionReadOnly(xc.opt))
+
+#define DEFAULT_POLL_SIZE     16
 
 typedef enum {
   ShowMenu   = 0,

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.24 2007-01-24 01:04:08 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.25 2007-01-24 04:29:04 phintuka Exp $
  *
  */
 
@@ -285,7 +285,7 @@ bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
 
   if(m_Handles[0] < 0) {
     // no clients, so we can eat all data we are given ...
-    return 1;
+    return DEFAULT_POLL_SIZE;
   }
   
   int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
