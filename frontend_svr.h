@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.16 2007-01-20 16:58:08 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.17 2007-01-24 04:33:53 phintuka Exp $
  *
  */
 
@@ -44,7 +44,7 @@ class cXinelibServer : public cXinelibThread
     virtual void TrickSpeed(int Speed);
 
     // Data transfer
-    virtual bool Poll(cPoller &Poller, int TimeoutMs);
+    virtual int  Poll(cPoller &Poller, int TimeoutMs);
     virtual bool Flush(int TimeoutMs);
     virtual void Clear(void);
     virtual int  Play_PES(const uchar *buf, int len);

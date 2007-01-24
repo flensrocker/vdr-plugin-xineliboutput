@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.37 2007-01-20 18:57:47 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.38 2007-01-24 04:33:53 phintuka Exp $
  *
  */
 
@@ -242,6 +242,9 @@ static int write_osd_command(cxSocket& s, osd_command_t *cmd)
                  (ssize_t)(ntohl(cmd->datalen));
 
   if(max > 0 && max < size) {
+/* #warning TODO: buffer latest failed OSD and retry 
+                  -> skipped OSDs can be left out but 
+		  latest will be always delivered */
     LOGMSG("write_osd_command: socket buffer full, OSD send skipped (got %d ; need %d",
 	   (int)max, (int)size);
     return 0;
@@ -505,21 +508,21 @@ void cXinelibServer::SetHDMode(bool On)
 #endif
 }
 
-bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs) 
+int cXinelibServer::Poll(cPoller &Poller, int TimeoutMs) 
 {
   // in live mode transponder clock is the master ... 
   // in replay mode local frontend (if present) is master
   if(m_bLiveMode || (*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))) {
     if(m_Scheduler->Clients()) 
-      return m_Scheduler->Poll(TimeoutMs, m_Master=false);
-    return true;
+      return m_Scheduler->Poll(TimeoutMs, m_Master = false);
+    return DEFAULT_POLL_SIZE;
   }
 
   // replay mode:
   do {
     Lock();
     m_Master = true;
-    int Free = 0xffff, FreeHttp = 0xffff;
+    int Free = 0xfffff, FreeHttp = 0xfffff, FreeUdp = 0;
     int Clients = 0, Http = 0, Udp = 0;
     for(int i=0; i<MAXCLIENTS; i++) {
       if(fd_control[i].open()) {
@@ -562,30 +565,33 @@ bool cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
     Unlock();
     
     if(!Clients && !Http) {
+      // live mode runs even if there are no clients
       if(m_bLiveMode)
-	return true;
+	return DEFAULT_POLL_SIZE;
       // replay is paused when no clients 
       if(TimeoutMs>0)
 	cCondWait::SleepMs(TimeoutMs);
-      return false;
+      return 0;
     }
 
     // in replay mode cUdpScheduler is master timing source 
-    if(Free < 8128 || 
-       !m_Scheduler->Poll(TimeoutMs, true) ||
-       (!Clients && FreeHttp < 8128)) {
-
+    if( Free < 8128 || 
+	((FreeUdp = m_Scheduler->Poll(TimeoutMs, true)) < 1) ||
+	(!Clients && FreeHttp < 8128)) {
+      
       if(TimeoutMs > 0)
 	cCondWait::SleepMs(min(TimeoutMs, 5));
       TimeoutMs -= 5;
-
+      
     } else {
-      return true;
+      Free = min(Free, FreeHttp) / 2070;
+      Free = min(Free, FreeUdp);
+      return max(0, Free);
     }
     
   } while(TimeoutMs > 0);
   
-  return false;
+  return 0;
 }
 
 bool cXinelibServer::Flush(int TimeoutMs) 
