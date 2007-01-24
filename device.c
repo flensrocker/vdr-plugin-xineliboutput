@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.32 2007-01-14 22:44:01 phintuka Exp $
+ * $Id: device.c,v 1.33 2007-01-24 05:12:26 phintuka Exp $
  *
  */
 
@@ -222,7 +222,7 @@ cXinelibDevice::cXinelibDevice()
   m_StreamStart = true;
   m_RadioStream = false;
   m_AudioCount  = 0;
-  m_Polled = false;
+  m_FreeBufs = 0;
   m_Cleared = true;
 }
 
@@ -555,7 +555,6 @@ void cXinelibDevice::OsdCmd(void *cmd)
 //
 // Play mode control
 //
-
 void cXinelibDevice::StopOutput(void)
 {
   TRACEF("cXinelibDevice::StopOutput");
@@ -563,7 +562,6 @@ void cXinelibDevice::StopOutput(void)
 
   m_RadioStream = false;
   m_AudioCount  = 0;
-
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   Clear();
   ForEach(m_clients, &cXinelibThread::QueueBlankDisplay);
@@ -780,6 +778,7 @@ void cXinelibDevice::Clear(void)
     //LOGMSG("************ FIRST  Clear ***************");
     m_Cleared = true;
     m_StreamStart = true;
+    m_FreeBufs = 0;
     TrickSpeed(-1);
     ForEach(m_clients, &cXinelibThread::Clear);
     ForEach(m_clients, &cXinelibThread::SetStillMode, false);
@@ -1024,15 +1023,13 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   //    -> frame(s) are either lost immediately (last client(s)) 
   //       or duplicated after next poll (first client(s))
   //
-  if(!m_Polled) {
-    /*#warning TODO: modify poll to return count of free bufs and store min() here ? */
+  if(m_FreeBufs < 1) {
     cPoller Poller;
     if(!Poll(Poller,0)) {
       errno = EAGAIN;
       return 0;
     }
   }
-  m_Polled = false;
 
   bool isMpeg1 = false;
 
@@ -1048,6 +1045,7 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     pes_strip_pts((uchar*)buf, length);
   }
   m_Cleared = false;
+  m_FreeBufs --;
 
   if(m_local) {
     length = (isMpeg1 ? m_local->Play_Mpeg1_PES(buf,length) : 
@@ -1127,7 +1125,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
       //LOGMSG("Skipping still image (coming in too fast)");
       return;
     }
-    LOGDBG("Forcong still image - skipped %d images", skipped);
+    LOGDBG("Forcing still image - skipped %d images", skipped);
     lastshow = now;
     skipped = 0;
   }
@@ -1262,16 +1260,18 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
     return false;
   }
 
-  bool result = true;
+  if(m_FreeBufs < 1) {
+    int result = DEFAULT_POLL_SIZE;
 
-  if(m_local)
-    result = result && m_local->Poll(Poller, TimeoutMs);
-  if(m_server)
-    result = result && m_server->Poll(Poller, TimeoutMs);
+    if(m_local)
+      result = min(result, m_local->Poll(Poller, TimeoutMs));
+    if(m_server)
+      result = min(result, m_server->Poll(Poller, TimeoutMs));
 
-  m_Polled = true;
-
-  return result /*|| Poller.Poll(0)*/;
+    m_FreeBufs = max(result, 0);
+  }
+  
+  return m_FreeBufs > 0 /*|| Poller.Poll(0)*/;
 }
 
 //
