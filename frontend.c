@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.28 2007-01-20 18:22:33 phintuka Exp $
+ * $Id: frontend.c,v 1.29 2007-01-24 01:05:34 phintuka Exp $
  *
  */
 
@@ -347,16 +347,13 @@ bool cXinelibThread::Flush(int TimeoutMs)
   return Xine_Control("FLUSH", TimeoutMs) <= 0;
 }
 
-bool cXinelibThread::Poll(cPoller& Poller, int TimeoutMs) 
+int cXinelibThread::Poll(cPoller& Poller, int TimeoutMs) 
 {
   TRACEF("cXinelibThread::Poll");
 
   int n = Xine_Control("POLL", TimeoutMs);
 
-  if(n>0)
-    return true;
-
-  return false; // Poller.Poll(TimeoutMs);
+  return min(n, 0);
 }
 
 //
