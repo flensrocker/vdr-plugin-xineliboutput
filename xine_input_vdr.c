@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.72 2007-01-22 23:11:50 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.73 2007-01-24 05:57:10 phintuka Exp $
  *
  */
 
@@ -2620,6 +2620,18 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	  sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
 	  this->funcs.fe_control(this->funcs.fe_handle, tmp);
 	  has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
+
+	  if(has_video) {
+	    int stream_width, stream_height;
+	    stream_width = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_VIDEO_WIDTH);
+	    stream_height = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
+
+	    if(stream_width != this->video_width || stream_height != this->video_height) {
+	      this->video_width = stream_width;
+	      this->video_height = stream_height;
+	      this->video_changed = 1;
+	    }
+	  }
 	  this->funcs.fe_control(this->funcs.fe_handle, 
 				 has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
 	  if(!has_video && *av && strcmp(av, "none")) {
@@ -2644,7 +2656,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
     this->loop_play = 0;
     if(this->slave_stream) {
-
+      int stream_width, stream_height;
       xine_stop(this->slave_stream);
 
       if (this->slave_event_queue) {
@@ -2662,6 +2674,15 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 
       if(this->funcs.fe_control)
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE CLOSED\r\n");
+
+      stream_width = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
+      stream_height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
+
+      if(stream_width != this->video_width || stream_height != this->video_height) {
+	this->video_width = stream_width;
+	this->video_height = stream_height;
+	this->video_changed = 1;
+      }
 
       _x_demux_control_start(this->stream);
     }
@@ -3709,7 +3730,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	       frame_change->width, frame_change->height, 
 	       frame_change->aspect);
 	if(!frame_change->aspect) /* from frontend */
-	  if(this->rescale_osd) 
+	  if(this->rescale_osd)
 	    vdr_scale_osds(this, frame_change->width, frame_change->height);
 #if 0
 	if(frame_change->aspect)
