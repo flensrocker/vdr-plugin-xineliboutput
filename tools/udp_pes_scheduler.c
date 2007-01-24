@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.26 2007-01-24 04:35:07 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.27 2007-01-24 04:51:46 phintuka Exp $
  *
  */
 
@@ -277,7 +277,7 @@ void cUdpScheduler::RemoveHandle(int fd)
   }
 }
 
-bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
+int cUdpScheduler::Poll(int TimeoutMs, bool Master)
 {
   cMutexLock ml(&m_Lock);
 
@@ -565,8 +565,6 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 	MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
       }
     }
-#warning yle audio pts once in 8 pes ... -> 220ms?
-#warning how to detect audio pes time ?
 
     else if(Video && m_TrickSpeed) {
       if(now > current_video_vtime && (now - current_video_vtime)>JUMP_LIMIT_TIME) {
