@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.23 2007-01-20 18:23:28 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.24 2007-01-24 01:04:08 phintuka Exp $
  *
  */
 
@@ -285,7 +285,7 @@ bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
 
   if(m_Handles[0] < 0) {
     // no clients, so we can eat all data we are given ...
-    return true;
+    return 1;
   }
   
   int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
@@ -300,7 +300,7 @@ bool cUdpScheduler::Poll(int TimeoutMs, bool Master)
       m_Cond.TimedWait(m_Lock, 5);
   }
 
-  return m_QueuePending < limit;
+  return min(limit - m_QueuePending, 0);
 }
 
 bool cUdpScheduler::Flush(int TimeoutMs)
@@ -565,6 +565,8 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 	MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
       }
     }
+#warning yle audio pts once in 8 pes ... -> 220ms?
+#warning how to detect audio pes time ?
 
     else if(Video && m_TrickSpeed) {
       if(now > current_video_vtime && (now - current_video_vtime)>JUMP_LIMIT_TIME) {

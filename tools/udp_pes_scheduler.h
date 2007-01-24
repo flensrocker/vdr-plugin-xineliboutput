@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.10 2007-01-06 04:02:25 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.11 2007-01-24 01:04:09 phintuka Exp $
  *
  */
 
@@ -39,7 +39,7 @@ class cUdpScheduler : public cThread
     void RemoveHandle(cxSocket& s) { RemoveHandle(s.handle()); }
 
     bool Clients(void) { return m_Handles[0] >= 0; }
-    bool Poll(int TimeoutMs, bool Master);
+    int  Poll(int TimeoutMs, bool Master);
     bool Queue(uint64_t StreamPos, const uchar *Data, int Length);
     void ReSend(int fd, uint64_t Pos, int Seq1, int Seq2);
 
