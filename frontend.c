@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.29 2007-01-24 01:05:34 phintuka Exp $
+ * $Id: frontend.c,v 1.30 2007-01-24 04:32:15 phintuka Exp $
  *
  */
 
@@ -353,7 +353,7 @@ int cXinelibThread::Poll(cPoller& Poller, int TimeoutMs)
 
   int n = Xine_Control("POLL", TimeoutMs);
 
-  return min(n, 0);
+  return max(n, 0);
 }
 
 //
