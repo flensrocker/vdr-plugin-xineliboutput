@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.24 2007-01-24 13:05:05 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.25 2007-01-26 16:00:11 phintuka Exp $
  *
  */
 
@@ -122,6 +122,10 @@ static uint64_t read_key_seq(void)
   return k;
 }
 
+#ifndef IS_FBFE
+static void sxfe_toggle_fullscreen(sxfe_t *this);
+#endif
+
 static void *kbd_receiver_thread(void *fe) 
 {
   uint64_t code = 0;
@@ -151,11 +155,7 @@ static void *kbd_receiver_thread(void *fe)
 #ifdef XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN
 # ifndef IS_FBFE
     if(code == 'f' || code == 'F') {
-      fe_t *this = (fe_t*)fe;
-      this->fe.fe_display_config((frontend_t *)fe, this->origwidth, this->origheight, 
-				 this->fullscreen ? 0 : 1, 
-				 this->vmode_switch, this->modeline, 
-				 this->aspect, this->scale_video, this->field_order);
+      sxfe_toggle_fullscreen((sxfe_t*)fe);
       continue;
     } else
 # endif

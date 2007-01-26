@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.17 2007-01-24 06:31:25 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.18 2007-01-26 16:00:11 phintuka Exp $
  *
  */
 
@@ -650,6 +650,28 @@ static int sxfe_display_config(frontend_t *this_gen,
   return 1;
 }
 
+static void sxfe_toggle_fullscreen(sxfe_t *this)
+{
+  int force = this->fullscreen_state_forced;
+  this->fullscreen_state_forced = 0;
+
+  if(!this->fullscreen) {
+    this->origwidth  = this->width;
+    this->origheight = this->height;
+    this->origxpos = this->xpos;
+    this->origypos = this->ypos;
+  } else {
+    this->xpos = this->origxpos;
+    this->ypos = this->origypos;
+  }
+
+  this->fe.fe_display_config((frontend_t*)this, this->origwidth, this->origheight,
+			     this->fullscreen ? 0 : 1, 
+			     this->vmode_switch, this->modeline, 
+			     this->aspect, this->scale_video, this->field_order);
+  
+  this->fullscreen_state_forced = !force;
+}
 
 /*
  *   X event loop
@@ -767,23 +789,8 @@ static int sxfe_run(frontend_t *this_gen)
 	  static Time prev_time = 0;
 	  if(bev->time - prev_time < DOUBLECLICK_TIME) {
 	    /* Toggle fullscreen */
-	    int force = this->fullscreen_state_forced;
-	    this->fullscreen_state_forced = 0;
-	    if(!this->fullscreen) {
-	      this->origwidth  = this->width;
-	      this->origheight = this->height;
-	      this->origxpos = this->xpos;
-	      this->origypos = this->ypos;
-	    } else {
-	      this->xpos = this->origxpos;
-	      this->ypos = this->origypos;
-	    }
-	    sxfe_display_config(this_gen, this->origwidth, this->origheight,
-				this->fullscreen ? 0 : 1, 
-				this->vmode_switch, this->modeline, 
-				this->aspect, this->scale_video, this->field_order);
+	    sxfe_toggle_fullscreen(this);
 	    prev_time = 0; /* don't react to third click ... */
-	    this->fullscreen_state_forced = !force;
 	  } else {
 	    prev_time = bev->time;
 	    if(!this->fullscreen && this->no_border && !dragging) {
@@ -822,10 +829,7 @@ static int sxfe_run(frontend_t *this_gen)
 	  ksname = XKeysymToString(ks);
 #ifdef XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN
 	  if(ks == XK_f || ks == XK_F) {
-	    sxfe_display_config(this_gen, this->origwidth, this->origheight, 
-				this->fullscreen ? 0 : 1, 
-				this->vmode_switch, this->modeline, 
-				this->aspect, this->scale_video, this->field_order);
+	    sxfe_toggle_fullscreen(this);
 	  } else if(ks == XK_d || ks == XK_D) {
 	    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
 			   xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
