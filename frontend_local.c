@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.17 2007-01-24 07:17:31 phintuka Exp $
+ * $Id: frontend_local.c,v 1.18 2007-01-26 16:48:42 phintuka Exp $
  *
  */
 
@@ -75,7 +75,7 @@ void cXinelibLocal::Stop(void)
 
   SetStopSignal();
 
-  if(1) {
+  {
     LOCK_FE;
     m_bReady = false;
     if(fe)
@@ -92,20 +92,22 @@ void cXinelibLocal::Stop(void)
 int cXinelibLocal::Play_PES(const uchar *data, int len)
 {
   TRACEF("cXinelibLocal::Play_PES");
-  LOCK_FE;
-  if(fe) {
-    int done = m_bReady ? fe->xine_queue_pes_packet(fe, (char*)data, len) : 0;
-    if(done>0) {
-      Lock();
-      m_StreamPos += done;
-      Unlock();
-    } else {
-      cCondWait::SleepMs(5);
+
+  {
+    LOCK_FE;
+    if(fe && m_bReady) {
+      int done = fe->xine_queue_pes_packet(fe, (char*)data, len);
+      if(done>0) {
+	Lock();
+	m_StreamPos += done;
+	Unlock();
+	return done;
+      }
     }
-    return done;
   }
 
-  return 0;
+  //cCondWait::SleepMs(5);
+  return len;
 }
 
 void cXinelibLocal::OsdCmd(void *cmd)
