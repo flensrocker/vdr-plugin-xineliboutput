@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.30 2007-01-24 04:32:15 phintuka Exp $
+ * $Id: frontend.c,v 1.31 2007-01-26 18:12:40 phintuka Exp $
  *
  */
 
@@ -194,6 +194,7 @@ cXinelibThread::~cXinelibThread()
 {
   TRACEF("cXinelibThread::~cXinelibThread");
 
+  m_bStopThread = true;
   if(Active())
     Cancel();
   if(m_FileName)
@@ -350,6 +351,13 @@ bool cXinelibThread::Flush(int TimeoutMs)
 int cXinelibThread::Poll(cPoller& Poller, int TimeoutMs) 
 {
   TRACEF("cXinelibThread::Poll");
+
+  if(!m_bReady) {
+    if(TimeoutMs>0)
+      cCondWait::SleepMs(TimeoutMs);
+    if(!m_bReady)
+      return 0;
+  }
 
   int n = Xine_Control("POLL", TimeoutMs);
 
