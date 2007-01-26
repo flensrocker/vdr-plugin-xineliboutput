@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.33 2007-01-24 05:12:26 phintuka Exp $
+ * $Id: device.c,v 1.34 2007-01-26 16:07:01 phintuka Exp $
  *
  */
 
@@ -285,11 +285,26 @@ void cXinelibDevice::StopDevice(void)
     m_spuDecoder = NULL;
   }
 
+  cXinelibThread *server = m_server;
+  cXinelibThread *local  = m_local;
+  m_local = m_server = NULL;
+
+  cControl::Shutdown();
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   TrickSpeed(-1);
-  ForEach(m_clients, &cXinelibThread::Stop);
+
+  if(local)  m_clients.Del(local,  false);
+  if(server) m_clients.Del(server, false);
+
+  if(server) {
+    server->Stop();
+    delete server;
+  }
+  if(local) {
+    local->Stop();
+    delete local;
+  }
  
-  m_local = m_server = NULL;
   m_clients.Clear();
 }
 
