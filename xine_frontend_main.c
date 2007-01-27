@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.25 2007-01-26 16:00:11 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.26 2007-01-27 17:48:41 phintuka Exp $
  *
  */
 
@@ -143,8 +143,11 @@ static void *kbd_receiver_thread(void *fe)
     tcsetattr(STDIN_FILENO, TCSANOW, &tm);
   }
 
+  system("setterm -cursor off");
+  system("setterm -blank off");
+
   do {
-    errno = 0;    
+    errno = 0;
     code = read_key_seq();
     if(code == 0)
       continue;
@@ -177,6 +180,8 @@ static void *kbd_receiver_thread(void *fe)
   
   LOGDBG("Keyboard thread terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  system("setterm -cursor on");
+
   pthread_exit(NULL);
   return NULL; /* never reached */
 }
@@ -189,6 +194,7 @@ static void kbd_stop(void)
   pthread_join (kbd_thread, &p);
 
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  system("setterm -cursor on");
 }
 
 static void SignalHandler(int signum)
@@ -280,6 +286,7 @@ static const struct option long_options[] = {
   { NULL }
 };
  
+#define PRINTF(x...) do { if(SysLogLevel>1) printf(x); } while(0)
 
 int main(int argc, char *argv[])
 {
@@ -311,7 +318,7 @@ int main(int argc, char *argv[])
   /* Parse arguments */
   while ((c = getopt_long(argc, argv, "HL:A:V:d:a:fw:h:P:vslkbtur", long_options, NULL)) != -1) {
     switch (c) {
-    default:  
+    default:
     case 'H': printf("\nUsage: %s [options] [xvdr:[udp:|tcp:|rtp:][//host[:port]]] \n"
 		     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
@@ -320,18 +327,18 @@ int main(int argc, char *argv[])
               adev = strchr(adrv, ':');
 	      if(adev)
 	        *(adev++) = 0;
-	      printf("Audio driver: %s\n",adrv);
+	      PRINTF("Audio driver: %s\n",adrv);
 	      if(adev)
-		printf("Audio device: %s\n",adev);
+		PRINTF("Audio device: %s\n",adev);
 	      break;
     case 'V': gdrv = strdup(optarg);
               if(strchr(gdrv, ':')) {
 		video_port = strchr(gdrv, ':');
 		*video_port = 0;
 		video_port++;
-		printf("Video port: %s\n",video_port);
+		PRINTF("Video port: %s\n",video_port);
 	      }
-              printf("Video driver: %s\n",gdrv);
+              PRINTF("Video driver: %s\n",gdrv);
               break;
     case 'd': video_port = strdup(optarg);
               break;
@@ -343,76 +350,76 @@ int main(int argc, char *argv[])
 		aspect = 3;
 	      if(!strncmp(optarg, "16:10", 5))
 		aspect = 4;
-	      printf("Aspect ratio: %s\n", 
+	      PRINTF("Aspect ratio: %s\n", 
 		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
 		     aspect==4?"16:10":"Default");
 	      break;
     case 'f': fullscreen=1;
-              printf("Fullscreen mode\n");
+              PRINTF("Fullscreen mode\n");
 	      break;
     case 'w': width = atoi(optarg);
-              printf("Width: %d\n", width);
+              PRINTF("Width: %d\n", width);
 	      break;
     case 'h': height = atoi(optarg);
-              printf("Height: %d\n", height);
+              PRINTF("Height: %d\n", height);
 	      break;
     case 'n': scale_video = 0;
-              printf("Video scaling disabled\n");
+              PRINTF("Video scaling disabled\n");
 	      break;
     case 'P': if(static_post_plugins)
                 strcatrealloc(static_post_plugins, ";");
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
-	      printf("Post plugins: %s\n", static_post_plugins);
+	      PRINTF("Post plugins: %s\n", static_post_plugins);
 	      break;
     case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
               if(strstr((char*)lirc_dev, ",repeatemu")) {
 		*strstr((char*)lirc_dev, ",repeatemu") = 0;
 		repeat_emu = 1;
               }
-              printf("LIRC device:  %s%s\n", lirc_dev,
+              PRINTF("LIRC device:  %s%s\n", lirc_dev,
 		     repeat_emu?", emulating key repeat":"");
 	      break;
     case 'v': verbose_xine_log = 1;
               SysLogLevel = 3;
-	      printf("Verbose mode\n");
+	      PRINTF("Verbose mode\n");
 	      break;
     case 's': verbose_xine_log = 0;
               SysLogLevel = 1;
-	      printf("Silent mode\n");
+	      PRINTF("Silent mode\n");
 	      break;
     case 'l': LogToSysLog = 1;
               openlog(exec_name, LOG_PID|LOG_CONS, LOG_USER);
 	      break;
     case 'k': nokbd = 1;
-              printf("Keyboard input disabled\n");
+              PRINTF("Keyboard input disabled\n");
 	      break;
     case 'b': nokbd = daemon_mode = 1;
-              printf("Keyboard input disabled\n");
+              PRINTF("Keyboard input disabled\n");
 	      break;
     case 'R': reconnect = 1;
-              printf("Automatic reconnection enabled\n");
+              PRINTF("Automatic reconnection enabled\n");
 	      break;
     case 't': ftcp = 1;
-              printf("Protocol: TCP\n");
+              PRINTF("Protocol: TCP\n");
 	      break;
     case 'u': fudp = 1;
-              printf("Protocol: UDP\n");
+              PRINTF("Protocol: UDP\n");
 	      break;
     case 'r': frtp = 1;
-              printf("Protocol: RTP\n");
+              PRINTF("Protocol: RTP\n");
 	      break;
-    case 1: printf("arg 1 (%s)\n", long_options[optind].name);exit(0);
+    case 1:   printf("arg 1 (%s)\n", long_options[optind].name); exit(0);
     }
   }
 
   if (optind < argc) {
     mrl = strdup(argv[optind]);
-    printf("VDR Server: %s\n", mrl);
+    PRINTF("VDR Server: %s\n", mrl);
     while (++optind < argc)
-      printf ("Unknown argument: %s\n", argv[optind]);
+      printf("Unknown argument: %s\n", argv[optind]);
   }
 
-  printf ("\n");
+  PRINTF("\n");
 
   /* check xine-lib version */
   if(!xine_check_version(1, 1, 0)) {
@@ -430,9 +437,9 @@ int main(int argc, char *argv[])
      !strcmp(mrl, "xvdr:pipe:")) {
     char address[1024] = "";
     int port = -1;
-    printf("VDR server not given, searching ...\n");
+    PRINTF("VDR server not given, searching ...\n");
     if(udp_discovery_find_server(&port, &address[0])) {
-      printf("Found VDR server: host %s, port %d\n", address, port);
+      PRINTF("Found VDR server: host %s, port %d\n", address, port);
       if(mrl) {
 	char *tmp = mrl;
 	mrl = NULL;
@@ -441,7 +448,7 @@ int main(int argc, char *argv[])
       } else
 	asprintf(&mrl, "xvdr://%s:%d", address, port);
     } else {
-      printf("---------------------------------------------------------------\n"
+      PRINTF("---------------------------------------------------------------\n"
 	     "WARNING: MRL not given and server not found from local network.\n"
 	     "         Trying to connect to default port on local host.\n"
 	     "---------------------------------------------------------------\n");
@@ -464,7 +471,7 @@ int main(int argc, char *argv[])
   }
 
   if(daemon_mode) {
-    printf("Entering daemon mode\n\n");
+    PRINTF("Entering daemon mode\n\n");
     if (daemon(1, 0) == -1) {
       fprintf(stderr, "%s: %m\n", exec_name);
       LOGERR("daemon() failed");
@@ -475,21 +482,21 @@ int main(int argc, char *argv[])
   /* Create front-end */
   fe = (*fe_creator)();
   if(!fe) {
-    printf("Error initializing frontend\n");
+    fprintf(stderr, "Error initializing frontend\n");
     return -3;
   }
 
   /* Initialize display */
   if(!fe->fe_display_open(fe, width, height, fullscreen, 0, 
 			  "", aspect, NULL, video_port, scale_video, 0)) {
-    printf("Error opening display\n");
+    fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);
     return -4;
   }
 
   /* Initialize xine */
   if(!fe->xine_init(fe, adrv, adev, gdrv, 250, 1, static_post_plugins)) {
-    printf("Error initializing xine\n");
+    fprintf(stderr, "Error initializing xine\n");
     fe->fe_free(fe);
     return -5;
   }
@@ -504,14 +511,14 @@ int main(int argc, char *argv[])
   /* Start LIRC forwarding */
   lirc_start((fe_t*)fe, lirc_dev, repeat_emu);
   
-  printf("\n\nPress Esc to exit\n\n");
+  PRINTF("\n\nPress Esc to exit\n\n");
   
   /* Start keyboard listener thread */
   if(!nokbd) {
     if ((err = pthread_create (&kbd_thread,
 			       NULL, kbd_receiver_thread, 
 			       (void*)fe)) != 0) {
-      fprintf(stderr, "can't create new thread for keyboard (%s)\n", 
+      fprintf(stderr, "Can't create new thread for keyboard (%s)\n", 
 	      strerror(err));
     }
   }
@@ -519,17 +526,19 @@ int main(int argc, char *argv[])
   do {
 
     if(!firsttry) {
-      printf("Connection to server lost. Reconnecting after two seconds...\n");
+      PRINTF("Connection to server lost. Reconnecting after two seconds...\n");
       sleep(2);
-      printf("Reconnecting...\n");
+      PRINTF("Reconnecting...\n");
     }
 
     /* Connect to VDR xineliboutput server */
     if(!fe_xine_open(fe, mrl)) {
       /*print_xine_log(((fe_t *)fe)->xine);*/
-      printf("Error opening %s\n", mrl);
-      if(!firsttry)
+      if(!firsttry) {
+	PRINTF("Error opening %s\n", mrl);
 	continue;
+      }
+      fprintf(stderr, "Error opening %s\n", mrl);
       lirc_stop();
       if(!nokbd) kbd_stop();
       fe->fe_free(fe);
@@ -539,9 +548,11 @@ int main(int argc, char *argv[])
     if(!fe->xine_play(fe)) {
       /*print_xine_log(((fe_t *)fe)->xine);*/
       /*printf("Error playing %s//%s:%s\n", argv[1], host, port);*/
-      printf("Error playing %s\n", argv[1]);
-      if(!firsttry)
+      if(!firsttry) {
+	PRINTF("Error playing %s\n", argv[1]);
 	continue;
+      }
+      fprintf(stderr, "Error playing %s\n", argv[1]);
       lirc_stop();
       if(!nokbd) kbd_stop();
       fe->fe_free(fe);
@@ -565,7 +576,7 @@ int main(int argc, char *argv[])
 
   /* Clean up */
 
-  printf("Terminating...\n");
+  PRINTF("Terminating...\n");
 
   lirc_stop();
   if(!nokbd) kbd_stop();
