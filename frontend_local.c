@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.18 2007-01-26 16:48:42 phintuka Exp $
+ * $Id: frontend_local.c,v 1.19 2007-01-27 14:15:25 phintuka Exp $
  *
  */
 
@@ -95,7 +95,7 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
 
   {
     LOCK_FE;
-    if(fe && m_bReady) {
+    if(fe && !m_bStopThread) {
       int done = fe->xine_queue_pes_packet(fe, (char*)data, len);
       if(done>0) {
 	Lock();
