@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.20 2007-01-14 17:30:22 phintuka Exp $
+ * $Id: media_player.c,v 1.21 2007-02-28 10:01:45 phintuka Exp $
  *
  */
 
@@ -279,6 +279,7 @@ void cXinelibPlayer::Activate(bool On)
       } else {
 	unlink(m_ResumeFile);
       }
+      m_ResumeFile = NULL;
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
     m_Replaying = false;
