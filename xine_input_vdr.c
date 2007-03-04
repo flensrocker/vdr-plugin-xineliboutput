@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.73 2007-01-24 05:57:10 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.74 2007-03-04 13:06:38 phintuka Exp $
  *
  */
 
@@ -171,7 +171,7 @@ static void SetupLogLevel(void)
 #endif
 
 
-//#define DEBUG_LOCKING
+/*#define DEBUG_LOCKING*/
 #ifdef DEBUG_LOCKING
 # include "tools/debug_mutex.h"
 #endif
@@ -975,14 +975,14 @@ static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t
       if(ret == 0) {
 	LOGMSG("write_control: disconnected");
       } else if(errno == EAGAIN) {
-	LOGERR("write_control failed (%d) EAGAIN", ret);
+	LOGERR("write_control failed: EAGAIN");
 	continue;
       } else if(errno == EINTR) {
-	LOGERR("write_control failed (%d) EINTR", ret);
+	LOGERR("write_control failed: EINTR");
 	pthread_testcancel();
         continue;
       } else {
-	LOGERR("write_control failed (%d)", ret);
+	LOGERR("write_control failed");
       }
       this->control_running = 0;
       return;
@@ -1295,6 +1295,7 @@ static buf_element_t *fifo_buffer_try_get(fifo_buffer_t *fifo)
   return buf;
 }
 
+#if 0
 static int fifo_buffer_clear(fifo_buffer_t *fifo)
 {
   int bytes = 0;
@@ -1327,6 +1328,7 @@ static int fifo_buffer_clear(fifo_buffer_t *fifo)
 
   return bytes;
 }
+#endif
 
 static void signal_buffer_pool_not_empty(vdr_input_plugin_t *this)
 {
@@ -1503,7 +1505,9 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
       img->free(img);
     }
   }
+
   this->still_mode = 0;
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
 }
 
 
@@ -1532,7 +1536,11 @@ static off_t fifo_seek (input_plugin_t *this_gen, off_t offset, int origin)
 { return offset; }
 static int   fifo_get_optional_data (input_plugin_t *this_gen, void *data, int data_type) 
 { return INPUT_OPTIONAL_UNSUPPORTED; }
+#if XINE_VERSION_CODE > 10103
+static const char* fifo_get_mrl (input_plugin_t *this_gen)
+#else
 static char* fifo_get_mrl (input_plugin_t *this_gen)
+#endif
 { return "xvdr:slave:"; }
 
 static off_t fifo_read (input_plugin_t *this_gen, char *buf, off_t len) 
@@ -1547,7 +1555,7 @@ static buf_element_t *fifo_read_block (input_plugin_t *this_gen,
 				       fifo_buffer_t *fifo, off_t todo) 
 {
   fifo_input_plugin_t *this = (fifo_input_plugin_t *) this_gen;
-  //LOGDBG("fifo_read_block");
+  /*LOGDBG("fifo_read_block");*/
 
   while(!this->stream->demux_action_pending) {
     buf_element_t *buf = fifo_buffer_try_get(this->buffer);
@@ -1657,9 +1665,21 @@ static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
   return data;
 }
 
+
+/*#define NEW_SCALING*/
+#ifdef NEW_SCALING
+#include "tools/rle.h"
+#else
+typedef enum {
+  scale_fast = 0,         /* simple pixel doubling/dropping */
+  scale_good_BW = 1,      /* linear interpolation, palette re-generation */
+} scale_mode_t;
+#endif
+
 /* re-scale compressed RLE image */
 static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
-					int new_w, int new_h)
+                                        int new_w, int new_h, 
+					scale_mode_t mode)
 {
   #define FACTORBASE      0x100
   #define FACTOR2PIXEL(f) ((f)>>8)
@@ -1675,6 +1695,17 @@ static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
   xine_rle_elem_t *new_rle_start, *new_rle, *tmp;
   int rle_size = 8128;
   int num_rle = 0;
+
+#ifdef NEW_SCALING
+  /* try better quality grayscale 100%...200% */
+  if(mode != scale_fast &&
+     old_w <= new_w && old_w*2 >= new_w &&
+     old_h <= new_h && old_h*2 >= new_h) {
+    tmp = upscale_grayscale_rle_image(osdcmd, new_w, new_h);
+    if(tmp)
+      return tmp;
+  }
+#endif
 
   new_rle_start = new_rle = (xine_rle_elem_t*)malloc(4*rle_size);  
 
@@ -1872,7 +1903,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	ovl_manager->flush_events(ovl_manager);
 	continue;
       }
-    } while(0);
+      break;
+    } while(1);
 
     this->last_changed_vpts[cmd->wnd] = 0;
 
@@ -1992,7 +2024,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	    this->osddata[cmd->wnd].datalen = cmd->datalen;
 	    
 	    rle_scaled = 1;
-	    scale_rle_image(cmd, new_w, new_h);
+	    scale_rle_image(cmd, new_w, new_h, this->cls->fast_osd_scaling ? 0 : 1);
 	  } else {
 	    LOGOSD("osd_command: size out of margins, using UNSCALED");
 	    use_unscaled = unscaled_supported;
@@ -2029,7 +2061,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	      this->osddata[cmd->wnd].datalen = cmd->datalen;
 	    
 	      rle_scaled = 1;
-	      scale_rle_image(cmd, new_w, new_h);
+	      scale_rle_image(cmd, new_w, new_h, this->cls->fast_osd_scaling ? 0 : 1);
 	    }
 	  }
 	}
@@ -2072,7 +2104,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	ovl_manager->flush_events(ovl_manager);
 	continue;
       }
-    } while(0);
+      break;
+    } while(1);
 
     this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(this->stream);
 
@@ -2177,6 +2210,7 @@ static void resume_demuxer(vdr_input_plugin_t *this)
   pthread_mutex_unlock( &this->stream->demux_lock );
 }
 
+#if 0
 static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t *this) 
 {
   buf_element_t *buf;
@@ -2232,10 +2266,11 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
 
   stream->xine->port_ticket->release(stream->xine->port_ticket, 1);
 }
+#endif
 
 static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts, 
-					uint32_t flags ) {
-
+					uint32_t flags ) 
+{
   buf_element_t *buf;
 
   buf = stream->audio_fifo->buffer_pool_try_alloc (stream->audio_fifo);
@@ -2260,27 +2295,38 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
 
 static void vdr_flush_engine(vdr_input_plugin_t *this)
 {
-  if(!this->stream_start) {
-    /* suspend demuxer */
-    if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
-      LOGERR("pthread_mutex_unlock failed !");
-    suspend_demuxer(this);
-    pthread_mutex_lock( &this->lock );
+  if(this->stream_start)
+    return;
 
-    reset_scr_tunning(this, this->speed_before_pause);
-
-    vdr_x_demux_flush_engine (this->stream, this);
-
-#if 0
-    /* disabled _x_demux_control_start as it causes alsa output driver to exit now and then ...*/
-    _x_demux_control_start(this->stream);
-#endif
-    this->stream_start = 1;
-
-    resume_demuxer(this);
-  } else {
-    /*LOGMSG("vdr_flush_engine: stream_start=true, skipped flush");*/
+  if(this->curpos > this->discard_index) {
+    if(this->curpos < this->guard_index) {
+      LOGMSG("Guard > current position, decoder flush skipped");
+      return;
+    }
   }
+
+  /* suspend demuxer */
+  if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
+    LOGERR("pthread_mutex_unlock failed !");
+  suspend_demuxer(this);
+  pthread_mutex_lock( &this->lock );
+
+  reset_scr_tunning(this, this->speed_before_pause);
+
+  _x_demux_flush_engine (this->stream);
+
+  /* _x_demux_control_headers_done resets demux_action_pending */
+  this->stream->demux_action_pending = 1;
+  this->prev_audio_stream_id = 0;
+
+#if XINE_VERSION_CODE < 10104
+  /* disabled _x_demux_control_start as it causes alsa output driver to exit now and then ... */
+#else
+  _x_demux_control_start(this->stream);
+#endif
+  this->stream_start = 1;
+
+  resume_demuxer(this);
 }
 
 static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_name)
@@ -2391,6 +2437,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
   }
 
   this->still_mode = 0;
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
 
   pthread_mutex_unlock(&this->lock);
 
@@ -2424,6 +2471,8 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
   } else {
     this->is_trickspeed = 0;
   }
+
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode || speed==0);
 
   if(speed>0)
     speed = this->speed_before_pause = XINE_FINE_SPEED_NORMAL/speed;
@@ -2535,7 +2584,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	  if(port) *port++ = 0;
 	  iport = port ? atoi(port) : DEFAULT_VDR_PORT;
 	  sprintf(mrl, "http://%s:%d/PLAYFILE%s", 
-	  //sprintf(mrl, "httpseek://%s:%d/PLAYFILE%s", 
+	  /*sprintf(mrl, "httpseek://%s:%d/PLAYFILE%s", */
 		  phost?:"127.0.0.1", iport, pfile?:"");
 	  free(phost);
 	  LOGMSG("  -> trying to stream from server (%s) ...", mrl);
@@ -2954,7 +3003,6 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 	       (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
     }
     pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
-
     VDR_ENTRY_LOCK(0);
   }
 
@@ -3149,7 +3197,6 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       err = set_deinterlace_method(this, cmd+12);
 
   } else if(!strncasecmp(cmd, "EVENT ", 6)) {
-    //#warning  //    err = handle_event(this, cmd);
     int i=0;
     char *pt = strchr(cmd, '\n');
     if(pt) *pt=0;
@@ -3252,6 +3299,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 	this->still_mode = tmp32;
 	if(this->still_mode)
 	  reset_scr_tunning(this, this->speed_before_pause);
+	_x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
 	this->stream_start = 1;
       } else
 	err = CONTROL_PARAM_ERROR;
@@ -3260,6 +3308,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
     this->still_mode = 0;
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
     err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ?
            set_live_mode(this, tmp32) : -2 ;
     
@@ -3796,9 +3845,10 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
-  int cnt = 0, todo = 0, n, result, retry = 0;
+  int cnt = 0, todo = 0, n, result, retries = 0;
 
-  do { while(XIO_READY == (result = io_select_rd(this->fd_data))) {
+ retry:
+  while(XIO_READY == (result = io_select_rd(this->fd_data))) {
 
     if(!this->control_running)
       break;
@@ -3889,9 +3939,9 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
   }
 
   if(read_buffer) {
-    if(cnt && this->control_running && result == XIO_TIMEOUT && (++retry < 10)) {
+    if(cnt && this->control_running && result == XIO_TIMEOUT && (++retries < 10)) {
       LOGMSG("TCP: Warning: long delay (>500ms) !");
-      continue;
+      goto retry;
     }
 
     read_buffer->free_buffer(read_buffer);
@@ -3902,8 +3952,6 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       return XIO_ERROR;
     }
   }
-
-  } while(0);
 
   return result;
 }
@@ -4224,15 +4272,15 @@ static void *vdr_data_thread(void *this_gen)
 
   (void)nice(-1);
 
-  if(this->udp||this->rtp) {
+  if(this->udp || this->rtp) {
     while(this->control_running) {
-      if(vdr_plugin_read_net_udp(this)==XIO_ERROR)
+      if(vdr_plugin_read_net_udp(this) == XIO_ERROR)
         break;
       pthread_testcancel();
     }
   } else {
     while(this->control_running) {
-      if(vdr_plugin_read_net_tcp(this)==XIO_ERROR)
+      if(vdr_plugin_read_net_tcp(this) == XIO_ERROR)
         break;
       pthread_testcancel();
     }
@@ -4260,7 +4308,7 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
     LOGMSG("  pip substream: no stream !");
     return -1;
   }
-  //LOGMSG("  pip substream open, queuing data");
+  /*LOGMSG("  pip substream open, queuing data");*/
 
   slave = (fifo_input_plugin_t*)this->pip_stream->input_plugin;  
   if(!slave) {
@@ -4269,7 +4317,7 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
   }
 
   if(slave->buffer_pool->num_free(slave->buffer_pool) < 20) {
-    //LOGMSG("  pip substream: fifo almost full !");
+    /*LOGMSG("  pip substream: fifo almost full !");*/
     xine_usec_sleep(3000);
     return 0;
   }
@@ -4459,7 +4507,7 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
   return 0;
 }
 
-//#define CACHE_FIRST_IFRAME
+/*#define CACHE_FIRST_IFRAME*/
 #ifdef CACHE_FIRST_IFRAME
 #  include "cache_iframe.c"
 #endif
@@ -4471,7 +4519,7 @@ static void update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
 
   if(!this->I_frames)
     this->P_frames = this->B_frames = 0;
-  i += data[i] + 1;   // possible additional header bytes
+  i += data[i] + 1;   /* possible additional header bytes */
   for (; i < Length-5; i++) {
     if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 0) {
       switch ((data[i + 5] >> 3) & 0x07) {
@@ -4495,6 +4543,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   TRACE("vdr_plugin_read_block");
 
+  /* check for disconnection/termination */
   if(!this->funcs.push_input_write /* reading from socket */ &&
      !this->control_running) {
     LOGMSG("read_block: no data source, returning NULL");
@@ -4511,11 +4560,19 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     return NULL; /* disconnected ? */
   }
 
+  /* Return immediately if demux_action_pending flag is set */
+  if(this->stream->demux_action_pending) {
+    if(NULL != (buf = make_padding_frame(this)))
+      return buf;
+    LOGMSG("vdr_plugin_read_block: demux_action_pending, make_padding_frame failed");
+  }
+
 #ifdef CACHE_FIRST_IFRAME
   if(NULL != (buf = get_cached_iframe(this)))
     return buf;
 #endif
 
+  /* adjust SCR speed */
 #ifdef ADJUST_SCR_SPEED
   if(pthread_mutex_lock(&this->lock)) {
     LOGERR("read_block: pthread_mutex_lock failed");
@@ -4528,16 +4585,16 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     if(this->scr_tunning)
       reset_scr_tunning(this, this->speed_before_pause);
   } else {
-#ifdef TEST_SCR_PAUSE
+# ifdef TEST_SCR_PAUSE
     if(this->stream_start || this->send_pts) {
       reset_scr_tunning(this, this->speed_before_pause);
       need_pause = 1;
     } else {
-#endif
+# endif
       vdr_adjust_realtime_speed(this);
-#ifdef TEST_SCR_PAUSE
+# ifdef TEST_SCR_PAUSE
     }
-#endif
+# endif
   }
   pthread_mutex_unlock(&this->lock); 
 #endif
@@ -4587,7 +4644,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	       this->block_buffer->fifo_size,
 	       this->stream->video_fifo->fifo_size);
       } else {
-	_x_demux_control_newpts(this->stream, 0, 0);
+	vdr_x_demux_control_newpts(this->stream, 0, 0);
 	queue_blank_yv12(this);
       }
       pthread_mutex_unlock(&this->lock);
@@ -4689,7 +4746,6 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
      buf->content[3] == 0xe0 && buf->size > 32)
     update_frames(this, buf->content, buf->size);
 
-
   TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
   return buf;
 }
@@ -4710,7 +4766,6 @@ static uint32_t vdr_plugin_get_capabilities (input_plugin_t *this_gen)
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
 
   if(!this->stream->demux_plugin) {
-
     return
       INPUT_CAP_PREVIEW |
 #ifdef INPUT_CAP_NOCACHE
@@ -4843,7 +4898,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     pthread_mutex_unlock(&this->lock);
   }
   while(pthread_mutex_destroy(&this->fd_control_lock) == EBUSY) {
-    LOGMSG("lock busy ...");
+    LOGMSG("fd_control_lock busy ...");
     pthread_mutex_lock(&this->fd_control_lock);
     pthread_mutex_unlock(&this->fd_control_lock);
   }
@@ -4931,7 +4986,11 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   LOGDBG("dispose done.");
 }
 
+#if XINE_VERSION_CODE > 10103
+static const char* vdr_plugin_get_mrl (input_plugin_t *this_gen) 
+#else
 static char* vdr_plugin_get_mrl (input_plugin_t *this_gen) 
+#endif
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
 
@@ -5744,7 +5803,11 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
  * vdr input plugin class stuff
  */
 
+#if XINE_VERSION_CODE > 10103
+static const char *vdr_class_get_description (input_class_t *this_gen) 
+#else
 static char *vdr_class_get_description (input_class_t *this_gen) 
+#endif
 {
   return _("VDR (Video Disk Recorder) input plugin");
 }
