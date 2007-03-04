@@ -395,18 +395,18 @@ Shortcut key macros
   Supported settings and corresponding key sequences in VDR 
   keymacros.conf format are:
 
-    Start replaying DVD                  (User? @xineliboutput kRed 0)
-    Start replaying Title 1 from DVD     (User? @xineliboutput kRed 1)
-    Next DVD SPU track                   (User? @xineliboutput kRed 2)
-    Toggle aspect ratio                  (User? @xineliboutput kRed 3)
-    Toggle letterbox -> 16:9 cropping    (User? @xineliboutput kRed 4)
-    Toggle stereo -> 5.1 upmix           (User? @xineliboutput kRed 5)
-    Toggle 5.1 -> surround downmix       (User? @xineliboutput kRed 6)
-    Toggle de-interlacing                (User? @xineliboutput kRed 7)
-    Toggle local frontend on/off         (User? @xineliboutput kRed 8)
+    Start replaying DVD                  (User? @xineliboutput Red 0)
+    Start replaying Title 1 from DVD     (User? @xineliboutput Red 1)
+    Next DVD SPU track                   (User? @xineliboutput Red 2)
+    Toggle aspect ratio                  (User? @xineliboutput Red 3)
+    Toggle letterbox -> 16:9 cropping    (User? @xineliboutput Red 4)
+    Toggle stereo -> 5.1 upmix           (User? @xineliboutput Red 5)
+    Toggle 5.1 -> surround downmix       (User? @xineliboutput Red 6)
+    Toggle de-interlacing                (User? @xineliboutput Red 7)
+    Toggle local frontend on/off         (User? @xineliboutput Red 8)
     Start replaying default playlist or file pointed by symlink 
     $(CONFDIR)/plugins/xineliboutput/default_playlist
-                                         (User? @xineliboutput kRed 9)
+                                         (User? @xineliboutput Red 9)
 
 
 Xine-specific settings
