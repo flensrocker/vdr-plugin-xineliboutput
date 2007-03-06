@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.31 2007-01-20 18:20:49 phintuka Exp $
+ * $Id: menu.c,v 1.32 2007-03-06 17:39:14 phintuka Exp $
  *
  */
 
@@ -43,6 +43,8 @@
 				      symlink $(CONFDIR)/plugins/xineliboutput/default_playlist */
 #endif
 
+//#define OLD_SPU_MENU
+//#define OLD_TOGGLE_FE
 
 #define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
 
@@ -369,6 +371,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
 	  // folders
           if (S_ISDIR(st.st_mode)) {
+
 	    if(m_Mode == ShowImages || m_Mode == ShowMusic)
 	      Add(new cFileListItem(e->d_name, true));
 	    else {
@@ -400,9 +403,6 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
 	      bool resume = false, subs = false, dvd = false;
 	      char *pos = strrchr(e->d_name, '.');
-	      
-	      //free(buffer);
-	      //buffer = NULL;
 
 	      if(pos) {
 		// .iso image -> dvd
@@ -433,7 +433,6 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    }
           }
         }
-        //free(buffer);
       }
     }
     closedir(d);
@@ -471,6 +470,7 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 
 //-------------------------- cDvdSpuTrackSelect ------------------------------
 
+#ifdef OLD_SPU_MENU
 class cDvdSpuTrackSelect : public cOsdMenu
 {
   public:
@@ -478,9 +478,8 @@ class cDvdSpuTrackSelect : public cOsdMenu
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-/* #warning TODO: use SelectAudioTrack skin display */
 cDvdSpuTrackSelect::cDvdSpuTrackSelect(void) : 
-      cOsdMenu(tr("Select DVD SPU Track")) 
+      cOsdMenu(tr("Select subtitle track")) 
 {
   int count = cXinelibDevice::Instance().NumDvdSpuTracks();
   int id = 0;
@@ -521,6 +520,135 @@ eOSState cDvdSpuTrackSelect::ProcessKey(eKeys Key)
   }
   return state;
 }
+#else
+
+//
+// cDisplaySpuTracks : almost identical copy of VDR 1.4.5 cDisplayTracks
+//
+
+#define TRACKTIMEOUT 5000 //ms
+
+class cDisplaySpuTracks : public cOsdObject {
+private:
+  cSkinDisplayTracks *displayTracks;
+  cTimeMs timeout;
+  eTrackType types[64+2];
+  char *descriptions[64+2];
+  int numTracks, track;
+  static cDisplaySpuTracks *currentDisplayTracks;
+  virtual void Show(void);
+  cDisplaySpuTracks(void);
+public:
+  virtual ~cDisplaySpuTracks();
+  static bool IsOpen(void) { return currentDisplayTracks != NULL; }
+  static cDisplaySpuTracks *Create(void);
+  static void Process(eKeys Key);
+  eOSState ProcessKey(eKeys Key);
+  };
+
+cDisplaySpuTracks *cDisplaySpuTracks::currentDisplayTracks = NULL;
+
+cDisplaySpuTracks::cDisplaySpuTracks(void) : cOsdObject(true)
+{
+  currentDisplayTracks = this;
+  numTracks = track = 0;
+  int CurrentTrack = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
+
+  track = numTracks;
+  types[numTracks] = eTrackType(-1);
+  descriptions[numTracks] = strdup("(none)");
+  numTracks++;
+
+  for (int i = 0; i <= 63; i++) {
+      const tTrackId *TrackId = cXinelibDevice::Instance().GetDvdSpuTrack(i);
+      if (TrackId && TrackId->id) {
+         types[numTracks] = eTrackType(i);
+         descriptions[numTracks] = strdup(*TrackId->description ? TrackId->description : *TrackId->language ? TrackId->language : *itoa(i));
+         if (i == CurrentTrack)
+            track = numTracks;
+         numTracks++;
+         }
+      }
+  timeout.Set(TRACKTIMEOUT);
+  displayTracks = NULL;
+}
+
+cDisplaySpuTracks::~cDisplaySpuTracks()
+{
+  delete displayTracks;
+  currentDisplayTracks = NULL;
+  for (int i = 0; i < numTracks; i++)
+      free(descriptions[i]);
+}
+
+void cDisplaySpuTracks::Show(void)
+{
+  if(!displayTracks)
+    displayTracks = Skins.Current()->DisplayTracks(tr("Subtitles"), numTracks, descriptions);
+
+  displayTracks->SetTrack(track, descriptions);
+  displayTracks->SetAudioChannel(-1);
+  displayTracks->Flush();
+}
+
+cDisplaySpuTracks *cDisplaySpuTracks::Create(void)
+{
+  if (cXinelibDevice::Instance().NumDvdSpuTracks() > 0) {
+     if (!currentDisplayTracks)
+        new cDisplaySpuTracks;
+     return currentDisplayTracks;
+     }
+  return NULL;
+}
+
+void cDisplaySpuTracks::Process(eKeys Key)
+{
+  if (currentDisplayTracks)
+     currentDisplayTracks->ProcessKey(Key);
+}
+
+eOSState cDisplaySpuTracks::ProcessKey(eKeys Key)
+{
+  if(!displayTracks) {
+    Show();
+  }
+
+  int oldTrack = track;
+  switch (Key) {
+    case kUp|k_Repeat:
+    case kUp:
+    case kDown|k_Repeat:
+    case kDown:
+         if (NORMALKEY(Key) == kUp && track > 0)
+            track--;
+         else if (NORMALKEY(Key) == kDown && track < numTracks - 1)
+            track++;
+         timeout.Set(TRACKTIMEOUT);
+         break;
+    case kNext:
+    //case kSubtitle|k_Repeat:
+    //case kSubtitle:
+         if (++track >= numTracks)
+            track = 0;
+         timeout.Set(TRACKTIMEOUT);
+         break;
+    case kOk:
+         if (track != cXinelibDevice::Instance().GetCurrentDvdSpuTrack())
+            oldTrack = -1; // make sure we explicitly switch to that track
+         timeout.Set();
+         break;
+    case kNone: break;
+    default: if ((Key & k_Release) == 0)
+                return osEnd;
+    }
+  if (track != oldTrack)
+     Show();
+  if (track != oldTrack) {
+     cXinelibDevice::Instance().SetCurrentDvdSpuTrack(types[track]);
+     }
+  return timeout.TimedOut() ? osEnd : osContinue;
+}
+#endif
 
 //----------------------------- cMenuXinelib ---------------------------------
 
@@ -565,7 +693,7 @@ cMenuXinelib::cMenuXinelib()
   else
     Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
-    Add(new cOsdItem(tr("  Select DVD SPU track >>"), osUser5));
+    Add(new cOsdItem(tr("Select subtitle track >>"), osUser5));
 
   Add(NewTitle(tr("Video settings")));
   Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
@@ -680,8 +808,16 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cControl::Launch(new cXinelibPlayerControl(ShowMusic, "cdda:/"));
       return osEnd;
     case osUser5:
+#ifdef OLD_SPU_MENU
       AddSubMenu(new cDvdSpuTrackSelect());
       return osContinue;
+#else
+      if(!g_PendingMenuAction) {
+	g_PendingMenuAction = cDisplaySpuTracks::Create();
+	return osPlugin;
+      }
+      return osContinue;
+#endif
     case osUser7:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cEqualizer();
@@ -756,7 +892,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       break;
 
     case HOTKEY_DVD_SPU:
-      /* use audio track display menu ? */
+#ifdef OLD_SPU_MENU
       {
 	int count = cXinelibDevice::Instance().NumDvdSpuTracks();
 	int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
@@ -768,23 +904,61 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	}
 	const char *lang = cXinelibDevice::Instance().GetDvdSpuLang(current); 
 	if(current == -1) lang = "default";
+	if(count<1)
+	  asprintf(&Message, "%s", tr("No subtitles available!"));
 	if(lang && lang[0])
-	  asprintf(&Message, "%s %s %s (%d)", tr("DVD SPU Track"), 
+	  asprintf(&Message, "%s %s %s (%d)", tr("Subtitles"), 
 		   OnlyInfo ? ":" : "->",
 		   lang, current);
 	else
-	  asprintf(&Message, "%s %s %d", tr("DVD SPU Track"), 
+	  asprintf(&Message, "%s %s %d", tr("Subtitles"), 
 		   OnlyInfo ? ":" : "->", 
 		   current);
       }
+#else
+      /* use audio track display menu */
+      if(!g_PendingMenuAction) {
+	bool WasOpen = cDisplaySpuTracks::IsOpen();
+	g_PendingMenuAction = cDisplaySpuTracks::Create();
+	if(g_PendingMenuAction) {
+	  cRemote::CallPlugin("xineliboutput");
+	  if(WasOpen || !OnlyInfo) cRemote::Put(kNext);
+	} else {
+	  asprintf(&Message, "%s", tr("No subtitles available!"));
+	}
+      }
+#endif
       break;
 
     case HOTKEY_LOCAL_FE:
       /* off, on */
       {
 	int local_frontend = strstra(xc.local_frontend, xc.s_frontends, 0);
+
+#ifndef OLD_TOGGLE_FE
+	if(local_frontend==FRONTEND_NONE)
+	  // no need to show current frontend if there is no output device ...
+	  OnlyInfo = false;
+#endif
 	if(!OnlyInfo) {
+#ifndef OLD_TOGGLE_FE
+	  static int orig_frontend = -1;
+	  if(orig_frontend < 0)
+	    orig_frontend = local_frontend;
+
+	  if(orig_frontend == FRONTEND_NONE) {
+	    // no frontends were loaded at startup -> loop thru all frontends
+	    local_frontend++;
+	  } else {
+	    // frontend was loaded at startup -> toggle it on/off 
+	    if(local_frontend == FRONTEND_NONE)
+	      local_frontend = orig_frontend;
+	    else
+	      local_frontend = FRONTEND_NONE;
+	  }
+#else
 	  local_frontend++;
+#endif
 	  if(local_frontend >= FRONTEND_count)
 	    local_frontend = 0;
 	  strcpy(xc.local_frontend, xc.s_frontends[local_frontend]);
