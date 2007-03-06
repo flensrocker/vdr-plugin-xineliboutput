@@ -313,6 +313,10 @@ Media player key bindings
   Prev/Left    Skip to previous file when replaying playlist
   FastRew/FastFwd  Play faster/slower
 
+  If media file includes multiple subtitles (DVD, .mkv file, ...),
+  subtitle language can be selected from xineliboutput plugin menu 
+  or with "Select subtitle track" key macro.
+
 DVD player key bindings
 
   Up/Down/Left/Right/Ok/Back  DVD menu navigation when DVD menu is active
@@ -365,8 +369,10 @@ DVD playback
 
   Audio track can be selected from VDR audio track menu 
   (keys "Menu" + "Green" or "Audio") or from DVD menu.
+
   Subtitle track can be selected from xineliboutput plugin 
-  menu, DVD menu or with keys "2" and "5".
+  menu, from DVD menu, with keys "2" and "5" or from subtitle
+  menu (using "Select subtitle track" key macro).
 
 
 Aspect ratio setting
@@ -397,7 +403,7 @@ Shortcut key macros
 
     Start replaying DVD                  (User? @xineliboutput Red 0)
     Start replaying Title 1 from DVD     (User? @xineliboutput Red 1)
-    Next DVD SPU track                   (User? @xineliboutput Red 2)
+    Select subtitle track                (User? @xineliboutput Red 2)
     Toggle aspect ratio                  (User? @xineliboutput Red 3)
     Toggle letterbox -> 16:9 cropping    (User? @xineliboutput Red 4)
     Toggle stereo -> 5.1 upmix           (User? @xineliboutput Red 5)
@@ -407,6 +413,10 @@ Shortcut key macros
     Start replaying default playlist or file pointed by symlink 
     $(CONFDIR)/plugins/xineliboutput/default_playlist
                                          (User? @xineliboutput Red 9)
+
+  Defining "Select subtitle track" macro key enables VDR-style
+  subtitle track menu (identical to audio track selection
+  with VDR "Audio" key).
 
 
 Xine-specific settings
