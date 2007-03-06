@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.15 2007-01-04 08:30:57 phintuka Exp $
+ * $Id: i18n.c,v 1.16 2007-03-06 17:40:23 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -2808,7 +2808,7 @@ const tI18nPhrase Phrases[] = {
   },
 #endif
   {
-    "Select DVD SPU Track", // English
+    "Select subtitle track", // English
     "", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -2816,7 +2816,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "Valitse tekstityskieli (DVD)", // Suomi
+    "Valitse tekstityskieli", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2828,7 +2828,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "  Select DVD SPU track >>", // English
+    "Select subtitle track >>", // English
     "", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -2836,7 +2836,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "  Valitse tekstityskieli (DVD) >>", // Suomi
+    "Valitse tekstityskieli >>", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2848,7 +2848,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   {
-    "DVD SPU Track", // English
+    "Subtitles", // English
     "", // Deutsch
     "", // Slovenski
     "", // Italiano
@@ -2856,7 +2856,7 @@ const tI18nPhrase Phrases[] = {
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "DVD-tekstityskieli", // Suomi
+    "Tekstitys", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -3402,6 +3402,26 @@ const tI18nPhrase Phrases[] = {
     "", // Fran<E7>ais
     "", // Norsk
     "Normaali toisto", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "No subtitles available!", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Ei tekstitystä", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
