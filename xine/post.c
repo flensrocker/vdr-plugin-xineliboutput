@@ -35,7 +35,6 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <linux/unistd.h>
 #include <errno.h>
 #include <syslog.h>
 
