@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.27 2007-01-24 04:51:46 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.28 2007-03-08 13:53:54 phintuka Exp $
  *
  */
 
@@ -18,7 +18,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <linux/unistd.h>
 
 #include <vdr/config.h>
 #include <vdr/tools.h>
