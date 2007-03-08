@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.26 2007-01-27 17:48:41 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.27 2007-03-08 13:33:18 phintuka Exp $
  *
  */
 
@@ -133,6 +133,9 @@ static void *kbd_receiver_thread(void *fe)
 
   terminate_key_pressed = 0;
 
+  system("setterm -cursor off");
+  system("setterm -blank off");
+
   /* Set stdin to deliver keypresses without buffering whole lines */
   tcgetattr(STDIN_FILENO, &saved_tm);
   if (tcgetattr(STDIN_FILENO, &tm) == 0) {
@@ -142,9 +145,6 @@ static void *kbd_receiver_thread(void *fe)
     tm.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &tm);
   }
-
-  system("setterm -cursor off");
-  system("setterm -blank off");
 
   do {
     errno = 0;
@@ -521,6 +521,7 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Can't create new thread for keyboard (%s)\n", 
 	      strerror(err));
     }
+    sleep(1);
   }
   
   do {
@@ -567,7 +568,11 @@ int main(int argc, char *argv[])
     fflush(stderr);
 
     while(fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed) 
+#ifdef __APPLE__
+      sched_yield();
+#else
       pthread_yield();
+#endif
 
     fe->xine_close(fe);
     firsttry = 0;
