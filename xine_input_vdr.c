@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.74 2007-03-04 13:06:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.75 2007-03-08 12:52:26 phintuka Exp $
  *
  */
 
@@ -34,6 +34,14 @@
 #include <linux/unistd.h> /* gettid() */
 #include <sys/resource.h> /* setpriority() */
 #include <syslog.h>
+
+#define DVD_STREAMING_SPEED
+
+#ifdef DVD_STREAMING_SPEED
+#include <linux/cdrom.h>
+#include <scsi/sg.h>
+#include <sys/stat.h>
+#endif
 
 #include <xine/xine_internal.h>
 #include <xine/xineutils.h>
@@ -1653,6 +1661,17 @@ static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
   xine_rle_elem_t *data = (xine_rle_elem_t*)malloc(elems*sizeof(xine_rle_elem_t));
   int i;
 
+  /*
+   * xine-lib rle format: 
+   * - palette index and length are uint16_t
+   *
+   * network format: 
+   * - palette entry is uint8_t
+   * - length is uint8_t for lengths <=0x7f and uint16_t for lengths >0x7f
+   * - high-order bit of first byte is used to signal size of length field:
+   *   bit=0 -> 7-bit, bit=1 -> 15-bit
+   */
+
   for(i=0; i<elems; i++) {
     if((*raw) & 0x80) {
       data[i].len = ((*(raw++)) & 0x7f) << 8;
@@ -2527,6 +2546,97 @@ static void send_cd_info(vdr_input_plugin_t *this)
   }
 }
 
+#ifdef DVD_STREAMING_SPEED
+static void dvd_set_speed(const char *device, int speed)
+{
+  /*
+   * Original idea & code from mplayer-dev-eng mailing list:
+   * Date: Sun, 17 Dec 2006 09:15:30 +0100
+   * From: Tobias Diedrich <ranma@xxxxxxxxxxxx>
+   * Subject: [MPlayer-dev-eng] Re: [PATCH] Add "-dvd-speed", use SET_STREAMING command to quieten DVD drives
+   * (http://lists-archives.org/mplayer-dev-eng/14383-add-dvd-speed-use-set_streaming-command-to-quieten-dvd-drives.html)
+   */
+#if defined(__linux__) && defined(SG_IO) && defined(GPCMD_SET_STREAMING)
+  unsigned char buffer[28], cmd[16], sense[16];
+  struct sg_io_hdr sghdr;
+  struct stat st;
+  int fd;
+
+  memset(&sghdr, 0, sizeof(sghdr));
+  memset(buffer, 0, sizeof(buffer));
+  memset(sense, 0, sizeof(sense));
+  memset(cmd, 0, sizeof(cmd));
+  memset(&st, 0, sizeof(st));
+
+  /* remember previous device so we can restore default speed */
+  static int dvd_speed = 0;
+  static const char *dvd_dev = NULL;
+  if (speed < 0 && dvd_speed == 0) return; /* we haven't touched the speed setting */
+  if (!device) device = dvd_dev; /* use previous device */
+  if (!device) return;
+  if (!speed) return;
+
+  if (stat(device, &st) == -1) return;
+
+  if (!S_ISBLK(st.st_mode)) return; /* not a block device */
+  
+  if ((fd = open(device, O_RDWR | O_NONBLOCK)) == -1) {
+    LOGMSG("set_dvd_speed: error opening DVD device %s for read/write", device);
+    return;
+  }
+
+  if(speed < 0) {
+    /* restore default value */
+    speed = 0;
+    buffer[0] = 4; /* restore default */
+    LOGMSG("Setting DVD streaming speed to <default>");
+  } else {
+    /* limit to <speed> KB/s */
+    LOGMSG("Setting DVD streaming speed to %d", speed);
+  }
+
+  sghdr.interface_id = 'S';
+  sghdr.timeout      = 5000;
+  sghdr.dxfer_direction = SG_DXFER_TO_DEV;
+  sghdr.mx_sb_len = sizeof(sense);
+  sghdr.dxfer_len = sizeof(buffer);
+  sghdr.cmd_len   = sizeof(cmd);
+  sghdr.sbp       = sense;
+  sghdr.dxferp    = buffer;
+  sghdr.cmdp      = cmd;
+
+  cmd[0]     = GPCMD_SET_STREAMING;
+  cmd[10]    = 28;
+
+  buffer[8]  = 0xff;
+  buffer[9]  = 0xff;
+  buffer[10] = 0xff;
+  buffer[11] = 0xff;
+
+  buffer[12] = buffer[20] = (speed >> 24) & 0xff; /* <speed> kilobyte */
+  buffer[13] = buffer[21] = (speed >> 16) & 0xff;
+  buffer[14] = buffer[22] = (speed >> 8)  & 0xff;
+  buffer[15] = buffer[23] = speed & 0xff;
+
+  buffer[18] = buffer[26] = 0x03; /* 1 second */
+  buffer[19] = buffer[27] = 0xe8;
+
+  if (ioctl(fd, SG_IO, &sghdr) < 0)
+    LOGERR("Failed setting DVD streaming speed to %d", speed);
+  else if(speed > 0)
+    LOGMSG("DVD streaming speed set to %d", speed);
+  else
+    LOGMSG("DVD streaming speed set to <default>");
+
+  dvd_speed = speed;
+  dvd_dev = device;
+  close(fd);
+#else
+# warning Changing DVD streaming speed not supported
+#endif
+}
+#endif
+
 static void vdr_event_cb (void *user_data, const xine_event_t *event);
 
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
@@ -2602,6 +2712,19 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       free(subs);
     } else {
       LOGDBG("Subtitles not found for %s", filename);
+
+      if(!strcmp(filename,"dvd:/")) {
+#if 0
+	/* input/media_helper.c */
+	eject_media(0);	/* DVD tray in */
+#endif
+#ifdef DVD_STREAMING_SPEED
+	  xine_cfg_entry_t device;
+	  if (xine_config_lookup_entry(this->stream->xine,
+				       "media.dvd.device", &device))
+	    dvd_set_speed(device.str_value, 2700);
+#endif
+      }
     }
 
     if(!this->slave_stream) {
@@ -2734,6 +2857,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       }
 
       _x_demux_control_start(this->stream);
+
+#ifdef DVD_STREAMING_SPEED
+      dvd_set_speed(NULL, -1);
+#endif
     }
   }
 
