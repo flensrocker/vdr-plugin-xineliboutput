@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.20 2007-03-04 19:48:08 phintuka Exp $
+ * $Id: frontend_local.c,v 1.21 2007-03-08 13:57:48 phintuka Exp $
  *
  */
 
@@ -191,10 +191,8 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers, int priority)
     fe->fe_interrupt(fe);    
   }
 
-  while(!m_bReady && !GetStopSignal()) {
+  while(!m_bReady && !GetStopSignal())
     cCondWait::SleepMs(100);
-    pthread_yield();
-  }
 
   cCondWait::SleepMs(100);
 }
