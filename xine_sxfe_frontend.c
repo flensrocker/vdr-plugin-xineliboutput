@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.18 2007-01-26 16:00:11 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.19 2007-03-08 13:12:55 phintuka Exp $
  *
  */
 
@@ -25,7 +25,6 @@
 #include <pthread.h>
 #include <sched.h>
 #include <poll.h>
-#include <linux/unistd.h> /* gettid() */
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
