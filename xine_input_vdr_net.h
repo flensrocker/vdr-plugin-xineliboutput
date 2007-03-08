@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.7 2007-01-02 01:39:26 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.8 2007-03-08 13:17:34 phintuka Exp $
  *
  */
 
@@ -12,7 +12,15 @@
 #define __XINE_INPUT_VDR_NET_H_
 
 #include <arpa/inet.h>
-#include <endian.h>
+#ifdef __APPLE__
+# ifdef __i386__
+#  include <i386/endian.h>
+# else
+#  include <ppc/endian.h>
+# endif
+#else
+# include <endian.h>
+#endif
 
 #ifndef PACKED
 #  define PACKED  __attribute__((packed))
