@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.5 2007-01-01 06:49:20 phintuka Exp $
+ * $Id: logdefs.h,v 1.6 2007-03-08 13:50:48 phintuka Exp $
  *
  */
 
@@ -26,6 +26,10 @@
 #  define x_syslog(l,x...) syslog_with_tid(l, LOG_MODULENAME x)
 #else
 
+#  ifndef __APPLE__
+#    include <linux/unistd.h> /* syscall(__NR_gettid) */
+#  endif
+
    /* from xine_frontend.c or vdr tools.c: */
    extern int SysLogLevel; /* errors, info, debug */
 
@@ -44,11 +48,19 @@
        char buf[512];
        va_start(argp, fmt);
        vsnprintf(buf, 512, fmt, argp);
+#    ifndef __APPLE__
        if(!LogToSysLog) {
 	 fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
        } else {
 	 syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
        }
+#    else
+       if(!LogToSysLog) {
+	 fprintf(stderr, LOG_MODULENAME "%s\n", buf);
+       } else {
+	 syslog(level, LOG_MODULENAME "%s", buf);
+       }
+#    endif
        va_end(argp);
      }
 #  endif /* NEED_x_syslog */
