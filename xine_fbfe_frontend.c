@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.10 2006-09-20 06:58:43 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.11 2007-03-08 13:42:05 phintuka Exp $
  *
  */
 
@@ -22,7 +22,6 @@
 #include <time.h>
 #include <pthread.h>
 #include <sched.h>
-#include <linux/unistd.h> /* gettid() */
 
 #ifdef boolean
 # define HAVE_BOOLEAN
@@ -210,7 +209,6 @@ static int fbfe_display_config(frontend_t *this_gen, int width, int height, int 
   this->aspect = aspect;
   this->scale_video = scale_video;
   this->field_order = field_order ? 1 : 0;
-
   return 1;
 }
 
