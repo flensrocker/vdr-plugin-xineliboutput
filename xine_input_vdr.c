@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.75 2007-03-08 12:52:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.76 2007-03-08 13:24:35 phintuka Exp $
  *
  */
 
@@ -31,16 +31,17 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <dlfcn.h>
-#include <linux/unistd.h> /* gettid() */
 #include <sys/resource.h> /* setpriority() */
+#include <sys/stat.h>
 #include <syslog.h>
 
-#define DVD_STREAMING_SPEED
+#ifndef __APPLE__
+# define DVD_STREAMING_SPEED
+#endif
 
 #ifdef DVD_STREAMING_SPEED
-#include <linux/cdrom.h>
-#include <scsi/sg.h>
-#include <sys/stat.h>
+# include <linux/cdrom.h>
+# include <scsi/sg.h>
 #endif
 
 #include <xine/xine_internal.h>
@@ -119,11 +120,19 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   char buf[512];
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
+#ifdef __APPLE__
+  if(!bLogToSysLog) {
+    fprintf(stderr, LOG_MODULENAME "%s\n", buf);
+  } else {
+    syslog(level, LOG_MODULENAME "%s", buf);
+  }
+#else
   if(!bLogToSysLog) {
     fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
   } else {
     syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
   }
+#endif
   va_end(argp);
 }
 
@@ -879,8 +888,10 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this,
 
 /******************************* TOOLS ***********************************/
 
-#define MIN(a,b) ((a)<(b)?(a):(b))
-#define MAX(a,b) ((a)>(b)?(a):(b))
+#ifndef __APPLE__
+# define MIN(a,b) ((a)<(b)?(a):(b))
+# define MAX(a,b) ((a)>(b)?(a):(b))
+#endif
 
 static int64_t pts_from_pes(const uint8_t *buf, int size)
 {
@@ -3141,7 +3152,11 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
     data source has higher priority than control source */
   if(result <= 0) {
     result = 0;
+#ifdef __APPLE__
+    sched_yield();
+#else
     pthread_yield();
+#endif
     xine_usec_sleep(3*1000);
   }
 
