@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.23 2007-01-20 18:20:49 phintuka Exp $
+ * $Id: config.c,v 1.24 2007-03-13 15:23:33 phintuka Exp $
  *
  */
 
@@ -18,6 +18,14 @@
 
 #include "logdefs.h"
 #include "config.h"
+
+#define STRN0CPY(dst, src) \
+  do { \
+    strn0cpy(dst, src, sizeof(dst)-1); \
+    if(strlen(src) > sizeof(dst)-1) \
+      LOGMSG("WARNING: Setting %s truncated to %s !", Name, dst); \
+  } while(0)
+
 
 #define DEFAULT_DEINTERLACE_OPTS "method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
 
@@ -191,9 +199,10 @@ bool config_t::IsImageFile(const char *fname)
 const char *config_t::AutocropOptions(void)
 {
   if(autocrop) {
-    static char buffer[128];
-    sprintf(buffer, "enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
-	    autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
+    static char buffer[256];
+    snprintf(buffer, sizeof(buffer),
+	     "enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
+	     autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
     return buffer;
   }
   return NULL;
@@ -204,9 +213,9 @@ const char *config_t::FfmpegPpOptions(void)
   if(ffmpeg_pp) {
     static char buffer[128];
     if(*ffmpeg_pp_mode)
-      sprintf(buffer, "quality=%d,mode=%s", ffmpeg_pp_quality, ffmpeg_pp_mode);
+      snprintf(buffer, sizeof(buffer), "quality=%d,mode=%s", ffmpeg_pp_quality, ffmpeg_pp_mode);
     else
-      sprintf(buffer, "quality=%d", ffmpeg_pp_quality);
+      snprintf(buffer, sizeof(buffer), "quality=%d", ffmpeg_pp_quality);
     return buffer;
   }
   return NULL;
@@ -215,13 +224,13 @@ const char *config_t::FfmpegPpOptions(void)
 config_t::config_t() {
   memset(this, 0, sizeof(config_t));
 
-  strcpy(local_frontend, s_frontends[FRONTEND_X11]);
-  strcpy(video_driver  , s_videoDriversX11[X11_DRIVER_XV]);
-  strcpy(video_port    , "0.0");
-  strcpy(modeline      , "");
+  strn0cpy(local_frontend, s_frontends[FRONTEND_X11],        sizeof(local_frontend));
+  strn0cpy(video_driver  , s_videoDriversX11[X11_DRIVER_XV], sizeof(video_driver));
+  strn0cpy(video_port    , "0.0", sizeof(video_port));
+  strn0cpy(modeline      , "",    sizeof(modeline));
 
-  strcpy(audio_driver , s_audioDrivers[AUDIO_DRIVER_ALSA]);
-  strcpy(audio_port   , "default");
+  strn0cpy(audio_driver , s_audioDrivers[AUDIO_DRIVER_ALSA], sizeof(audio_driver));
+  strn0cpy(audio_port   , "default", sizeof(audio_port));
   speaker_type = SPEAKERS_STEREO;
 
   post_plugins = NULL;
@@ -229,8 +238,8 @@ config_t::config_t() {
   audio_delay       = 0;
   audio_compression = 0;
   memset(audio_equalizer,0,sizeof(audio_equalizer));
-  strcpy(audio_visualization, "goom");
-  strcpy(audio_vis_goom_opts, "fps:25,width:720,height:576");
+  strn0cpy(audio_visualization, "goom", sizeof(audio_visualization));
+  strn0cpy(audio_vis_goom_opts, "fps:25,width:720,height:576", sizeof(audio_vis_goom_opts));
 
   headphone = 0;
   audio_upmix = 0;
@@ -238,11 +247,11 @@ config_t::config_t() {
 
   decoder_priority     = DECODER_PRIORITY_NORMAL;
   pes_buffers          = i_pesBufferSize[PES_BUFFERS_SMALL_250];
-  strcpy(deinterlace_method, s_deinterlaceMethods[DEINTERLACE_NONE]);
-  strcpy(deinterlace_opts, DEFAULT_DEINTERLACE_OPTS);
+  strn0cpy(deinterlace_method, s_deinterlaceMethods[DEINTERLACE_NONE], sizeof(deinterlace_method));
+  strn0cpy(deinterlace_opts, DEFAULT_DEINTERLACE_OPTS, sizeof(deinterlace_opts));
   ffmpeg_pp            = 0;
   ffmpeg_pp_quality    = 3;
-  strcpy(ffmpeg_pp_mode, "de");
+  strn0cpy(ffmpeg_pp_mode, "de", sizeof(ffmpeg_pp_mode));
   display_aspect       = 0;     /* auto */
 
   hide_main_menu       = 0;
@@ -279,7 +288,7 @@ config_t::config_t() {
 			     * (currently replayed media file from xineliboutput media player) 
 			     *  - will be used if client can't access file directly (nfs etc.) */
 
-  strcpy(remote_rtp_addr, "224.0.1.9");
+  strn0cpy(remote_rtp_addr, "224.0.1.9", sizeof(remote_rtp_addr));
   remote_rtp_port = LISTEN_PORT;
   remote_rtp_ttl = 1;
   remote_rtp_always_on = 0;
@@ -298,9 +307,9 @@ config_t::config_t() {
   brightness   = -1; 
   overscan = 0;
 
-  strcpy(browse_files_dir,  VideoDirectory);
-  strcpy(browse_music_dir,  VideoDirectory);
-  strcpy(browse_images_dir, VideoDirectory);
+  strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
+  strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
+  strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
   cache_implicit_playlists = 1;
   enable_id3_scanner = 1;
 
@@ -320,8 +329,8 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
   char *s = m_ProcessedArgs;
   m_ProcessedArgs = NULL;
   if(SetupParse(Name, Value)) {
-    m_ProcessedArgs = s ? s : strcpy(new char[4096], " ");
-    strcat(strcat(m_ProcessedArgs, Name), " ");
+    asprintf(&m_ProcessedArgs, "%s%s ", s?s:" ", Name);
+    free(s);
     return true;
   }
   m_ProcessedArgs = s;
@@ -410,13 +419,6 @@ bool config_t::ProcessArgs(int argc, char *argv[])
   }
   return true;
 }
-
-#define STRN0CPY(dst, src) \
-  do { \
-    strn0cpy(dst, src, sizeof(dst)-1); \
-    if(strlen(src) > sizeof(dst)-1) \
-      LOGMSG("WARNING: Setting %s truncated to %s !", Name, dst); \
-  } while(0)
 
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
