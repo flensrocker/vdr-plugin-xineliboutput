@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.22 2007-03-14 11:57:08 phintuka Exp $
+ * $Id: media_player.c,v 1.23 2007-03-14 14:39:48 phintuka Exp $
  *
  */
 
@@ -564,6 +564,10 @@ void cXinelibPlayerControl::Show()
 				 *m_Player->Playlist().Current()->Artist ?: "",
 				 *m_Player->Playlist().Current()->Artist ? ": " : "",
 				 *m_Player->Playlist().Current()->Album ?: "");
+      else if (cXinelibDevice::Instance().GetMetaInfo(miTitle)[0])
+	Title = cString::sprintf("%s (%s)", *Title, 
+				 cXinelibDevice::Instance().GetMetaInfo(miTitle));
+
       cIConv ic;
       m_DisplayReplay->SetTitle(ic.Translate(Title));
 
