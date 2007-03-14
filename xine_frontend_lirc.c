@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.6 2007-01-01 06:43:46 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.7 2007-03-14 11:58:42 phintuka Exp $
  *
  */
 /*
@@ -20,7 +20,7 @@
  *
  * LIRC support added by Carsten Koch <Carsten.Koch@icem.de>  2000-06-16.
  *
- * $Id: xine_frontend_lirc.c,v 1.6 2007-01-01 06:43:46 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.7 2007-03-14 11:58:42 phintuka Exp $
  */
 
 
@@ -72,7 +72,7 @@ static void lircd_connect(void)
   }
 
   addr.sun_family = AF_UNIX;
-  strcpy(addr.sun_path, (char*)lirc_device_name);
+  strn0cpy(addr.sun_path, (char*)lirc_device_name, sizeof(addr.sun_path));
 
   if ((fd_lirc = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
     LOGERR("lirc error: socket() < 0");
