@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sap.h,v 1.5 2007-01-02 01:22:53 phintuka Exp $
+ * $Id: sap.h,v 1.6 2007-03-14 11:46:28 phintuka Exp $
  *
  */
 
@@ -80,7 +80,8 @@ static inline sap_pdu_t *sap_create_pdu(uint32_t src_ip,
   if(payload_type)
     length += strlen(payload_type);
 
-  pdu = (sap_pdu_t*)malloc(length);
+  if(! (pdu = (sap_pdu_t*)malloc(length)))
+    return NULL;
 
   memset(pdu, 0, sizeof(sap_pdu_t));
   pdu->version    = 1;  /* SAP v1 / v2 */
