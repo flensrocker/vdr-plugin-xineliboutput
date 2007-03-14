@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.21 2007-02-28 10:01:45 phintuka Exp $
+ * $Id: media_player.c,v 1.22 2007-03-14 11:57:08 phintuka Exp $
  *
  */
 
@@ -492,6 +492,9 @@ cXinelibPlayerControl::~cXinelibPlayerControl()
 
 void cXinelibPlayerControl::Queue(const char *file)
 {
+  if(!file)
+    return;
+
   m_Lock.Lock();
 
   LOGMSG("cXinelibPlayerControl::Queue(%s)", file);
@@ -1236,7 +1239,7 @@ void cXinelibImagesControl::Seek(int Rel)
 
   m_Player->ShowImage(m_Files[m_Index]);
   m_LastShowTime = time(NULL);
-  strcpy(xc.browse_images_dir, m_Files[m_Index]);
+  strn0cpy(xc.browse_images_dir, m_Files[m_Index], sizeof(xc.browse_images_dir));
 }
 
 void cXinelibImagesControl::Show(void)
