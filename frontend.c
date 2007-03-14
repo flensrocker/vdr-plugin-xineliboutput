@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.31 2007-01-26 18:12:40 phintuka Exp $
+ * $Id: frontend.c,v 1.32 2007-03-14 11:30:34 phintuka Exp $
  *
  */
 
@@ -337,7 +337,7 @@ void cXinelibThread::Clear(void)
   Unlock();
 
   char buf[128];
-  sprintf(buf, "DISCARD %" PRId64 " %d", tmp1, tmp2);
+  snprintf(buf, sizeof(buf), "DISCARD %" PRId64 " %d", tmp1, tmp2);
   Xine_Control(buf);
 }
 
@@ -616,24 +616,33 @@ bool cXinelibThread::NoSignalDisplay(void)
 int cXinelibThread::Xine_Control(const char *cmd, int p1)
 {
   char buf[128];
-  snprintf(buf, sizeof(buf), "%s %d", cmd, p1);
-  buf[sizeof(buf)-1] = 0;
+  if(snprintf(buf, sizeof(buf), "%s %d", cmd, p1) >= (int)sizeof(buf)) {
+    LOGMSG("Xine_Control %s: message too long !", cmd);
+    return 0;
+  }
+  //buf[sizeof(buf)-1] = 0;
   return Xine_Control(buf);
 }
 
 int cXinelibThread::Xine_Control(const char *cmd, int64_t p1)
 {
   char buf[128];
-  snprintf(buf, sizeof(buf), "%s %" PRId64, cmd, p1);
-  buf[sizeof(buf)-1] = 0;
+  if(snprintf(buf, sizeof(buf), "%s %" PRId64, cmd, p1) >= (int)sizeof(buf)) {
+    LOGMSG("Xine_Control %s: message too long !", cmd);
+    return 0;
+  }
+  //buf[sizeof(buf)-1] = 0;
   return Xine_Control(buf);
 }
 
 int cXinelibThread::Xine_Control(const char *cmd, const char *p1)
 {
   char buf[1024];
-  snprintf(buf, sizeof(buf), "%s %s", cmd, p1);
-  buf[sizeof(buf)-1] = 0;
+  if(snprintf(buf, sizeof(buf), "%s %s", cmd, p1) >= (int)sizeof(buf)) {
+    LOGMSG("Xine_Control %s: message too long !", cmd);
+    return 0;
+  }
+  //buf[sizeof(buf)-1] = 0;
   return Xine_Control(buf);
 }
 
@@ -642,17 +651,21 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 {
   TRACEF("cXinelibThread::PlayFile");
 
-  char vis[128];
+  char vis[256];
   if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
-    sprintf(vis, "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
+    snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
   else
-    strcpy(vis, xc.audio_visualization);
+    strn0cpy(vis, xc.audio_visualization, sizeof(vis));
+  vis[sizeof(vis)-1] = 0;
 
   char buf[4096];
   m_bEndOfStreamReached = false;
-  snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s\r\n",
-	   LoopPlay ? "Loop" : "", Position, vis, FileName ? FileName : "");
-  buf[sizeof(buf)-1] = 0;
+  if(snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s",
+	      LoopPlay ? "Loop" : "", Position, vis, FileName ? FileName : "")
+     >= 4096) {
+    LOGMSG("PlayFile: message too long !");
+    return 0;
+  }
 
   if(FileName) {
     Lock();
@@ -744,16 +757,23 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 int cXinelibThread::ConfigurePostprocessing(const char *name, bool on, const char *args)
 {
   char buf[1024];  
+  int l;
+
   if(on) 
-    snprintf(buf, sizeof(buf), "POST %s On %s", (name&&*name)?name:"0", args?args:"");
+    l = snprintf(buf, sizeof(buf), "POST %s On %s", (name&&*name)?name:"0", args?args:"");
   else 
     // 0 - audio vis.
     // 1 - audio post
     // 2 - video post
     //return fe->post_close(fe, name, -1);
-    snprintf(buf, sizeof(buf), "POST %s Off", (name&&*name)?name:"0");
+    l = snprintf(buf, sizeof(buf), "POST %s Off", (name&&*name)?name:"0");
 
-  buf[sizeof(buf)-1] = 0;
+  if(l >= (int)sizeof(buf)) {
+    LOGMSG("ConfigurePostprocessing %s: message too long !", name);
+    return 0;
+  }
+  //buf[sizeof(buf)-1] = 0;
+
   return Xine_Control(buf);
 }
 
@@ -763,7 +783,8 @@ int cXinelibThread::ConfigureVideo(int hue, int saturation,
 {
   char cmd[128];
   Xine_Control("OVERSCAN", overscan);
-  sprintf(cmd, "VIDEO_PROPERTIES %d %d %d %d", 
+  snprintf(cmd, sizeof(cmd),
+	   "VIDEO_PROPERTIES %d %d %d %d", 
 	  hue, saturation, brightness, contrast);
   return Xine_Control(cmd);
 }
