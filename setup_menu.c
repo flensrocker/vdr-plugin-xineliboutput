@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.21 2007-01-22 23:05:18 phintuka Exp $
+ * $Id: setup_menu.c,v 1.22 2007-03-14 11:54:52 phintuka Exp $
  *
  */
 
@@ -83,7 +83,8 @@ static cOsdItem *NewTitle(const char *s)
 {
   char str[128];
   cOsdItem *tmp;
-  sprintf(str,"----- %s -----", s);
+  snprintf(str, sizeof(str), "----- %s -----", s);
+  str[sizeof(str)-1] = 0;
   tmp = new cOsdItem(str);
   tmp->SetSelectable(false);
   return tmp;
@@ -265,9 +266,12 @@ void cMenuSetupAudio::Store(void)
 {
   memcpy(&xc, &newconfig, sizeof(config_t));
 
-  strcpy(xc.audio_visualization, xc.s_audioVisualizations[visualization]);
-  sprintf(xc.audio_vis_goom_opts, "width=%d,height=%d,fps=%d",
-	  goom_width, goom_height, goom_fps);
+  strn0cpy(xc.audio_visualization, xc.s_audioVisualizations[visualization], 
+	   sizeof(xc.audio_visualization));
+  snprintf(xc.audio_vis_goom_opts, sizeof(xc.audio_vis_goom_opts),
+	   "width=%d,height=%d,fps=%d",
+	   goom_width, goom_height, goom_fps);
+  xc.audio_vis_goom_opts[sizeof(xc.audio_vis_goom_opts)-1] = 0;
 
   SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
   SetupStore("Audio.Delay",    xc.audio_delay);
@@ -346,7 +350,7 @@ void cMenuSetupAudioEq::Store(void)
 {
   memcpy(&xc, &newconfig, sizeof(config_t));
 
-  char tmp[255];
+  char tmp[256];
   sprintf(tmp,"%d %d %d %d %d %d %d %d %d %d",
 	  xc.audio_equalizer[0], xc.audio_equalizer[1],
 	  xc.audio_equalizer[2], xc.audio_equalizer[3],
@@ -445,12 +449,14 @@ struct tvtime_s {
   const char *ToString(void)
   {
     static char buf[256];
-    sprintf(buf, "method=%s,cheap_mode=%d,pulldown=%s,framerate_mode=%s,"
+    snprintf(buf, sizeof(buf),
+	     "method=%s,cheap_mode=%d,pulldown=%s,framerate_mode=%s,"
 	    "judder_correction=%d,use_progressive_frame_flag=%d,"
 	    "chroma_filter=%d,enable=1",
 	    tvtime_method[method], cheap_mode, tvtime_pulldown[pulldown],
 	    tvtime_framerate[framerate], judder_correction, 
 	    use_progressive_frame_flag, chroma_filter);
+    buf[sizeof(buf)-1] = 0;
     return buf;
   }
 };
@@ -663,8 +669,8 @@ void cMenuSetupVideo::Store(void)
   xc.brightness = INDEX_TO_CONTROL(xc.brightness);
 #endif
 
-  strcpy(xc.deinterlace_method, xc.s_deinterlaceMethods[deinterlace]);
-  strcpy(xc.deinterlace_opts, tvtime.ToString());
+  strn0cpy(xc.deinterlace_method, xc.s_deinterlaceMethods[deinterlace], sizeof(xc.deinterlace_method));
+  strn0cpy(xc.deinterlace_opts, tvtime.ToString(), sizeof(xc.deinterlace_opts));
   SetupStore("Video.Deinterlace", xc.deinterlace_method);
   SetupStore("Video.DeinterlaceOptions", xc.deinterlace_opts);
 
@@ -1171,12 +1177,12 @@ void cMenuSetupLocal::Store(void)
   xc.pes_buffers = old_buffers;
   xc.decoder_priority = old_priority;
 
-  strcpy(xc.audio_driver, xc.s_audioDrivers[audio_driver]);
-  strcpy(xc.local_frontend, xc.s_frontends[local_frontend]);
+  strn0cpy(xc.audio_driver, xc.s_audioDrivers[audio_driver], sizeof(xc.audio_driver));
+  strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));
   if(local_frontend == FRONTEND_X11)
-    strcpy(xc.video_driver, xc.s_videoDriversX11[video_driver]);
+    strn0cpy(xc.video_driver, xc.s_videoDriversX11[video_driver], sizeof(xc.video_driver));
   if(local_frontend == FRONTEND_FB)
-    strcpy(xc.video_driver, xc.s_videoDriversFB[video_driver]);
+    strn0cpy(xc.video_driver, xc.s_videoDriversFB[video_driver], sizeof(xc.video_driver));
 
   SetupStore("Frontend",      xc.local_frontend);
   SetupStore("Audio.Driver",  xc.audio_driver);
@@ -1589,9 +1595,13 @@ void cMenuTestImages::Set(void)
   
   SetHasHotkeys();
   Add(new cOsdItem(tr("Grayscale"), osUser1));
-  sprintf(buf, "%s 1bit", tr("Bitmap"));
+
+  snprintf(buf, sizeof(buf), "%s 1bit", tr("Bitmap"));
+  buf[sizeof(buf)-1] = 0;
   Add(new cOsdItem(buf, osUser2));
-  sprintf(buf, "%s 4bit", tr("Bitmap"));
+
+  snprintf(buf, sizeof(buf), "%s 4bit", tr("Bitmap"));
+  buf[sizeof(buf)-1] = 0;
   Add(new cOsdItem(buf, osUser3));
       
   Display();
