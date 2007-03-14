@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: debug_mutex.h,v 1.2 2006-12-21 08:07:24 phintuka Exp $
+ * $Id: debug_mutex.h,v 1.3 2007-03-14 11:50:08 phintuka Exp $
  *
  */
 
@@ -39,6 +39,7 @@
 static struct {
   pthread_mutex_t *lock;
   int line;
+  int tid;
 } dbgdata[MAX_DBG_MUTEX+1] = {{NULL,0}};
 
 static void dbg_setdata(pthread_mutex_t *mutex, int line)
@@ -47,14 +48,16 @@ static void dbg_setdata(pthread_mutex_t *mutex, int line)
   for(i=0; i<MAX_DBG_MUTEX; i++)
     if(dbgdata[i].lock == mutex) {
       dbgdata[i].line = line;
+      dbgdata[i].tid = syscall(__NR_gettid);
       return;
     }
 
-  LOGMSG("********** dbg_setdata: new entry (0x%x at %d)", (unsigned long int)mutex, line);
+  LOGMSG("********** dbg_setdata: new entry (0x%lx at %d)", (unsigned long int)mutex, line);
   for(i=0; i<MAX_DBG_MUTEX; i++)
     if(!dbgdata[i].lock) {
       dbgdata[i].lock = mutex;
       dbgdata[i].line = line;
+      dbgdata[i].tid = syscall(__NR_gettid);
       return;
     }
 
@@ -184,6 +187,9 @@ static int dbg_unlock(pthread_mutex_t *mutex, int line)
   if(r) 
     LOGERR("********** dbg_unlock: pthread_mutex_unlock FAILED at %d (last locket at %d)", 
 	   line, dbg_getdata(mutex, line));
+
+  //else
+  //  dbg_setdata(mutex, 0);
 
   return r;
 }
