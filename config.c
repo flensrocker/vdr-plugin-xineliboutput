@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.27 2007-03-14 17:08:07 phintuka Exp $
+ * $Id: config.c,v 1.28 2007-03-14 17:39:38 phintuka Exp $
  *
  */
 
@@ -21,8 +21,8 @@
 
 #define STRN0CPY(dst, src) \
   do { \
-    strn0cpy(dst, src, sizeof(dst)-1); \
-    if(strlen(src) > sizeof(dst)-1) \
+    strn0cpy(dst, src, sizeof(dst)); \
+    if(strlen(src) >= sizeof(dst)) \
       LOGMSG("WARNING: Setting %s truncated to %s !", Name, dst); \
   } while(0)
 
