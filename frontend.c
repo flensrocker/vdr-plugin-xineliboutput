@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.32 2007-03-14 11:30:34 phintuka Exp $
+ * $Id: frontend.c,v 1.33 2007-03-14 14:21:11 phintuka Exp $
  *
  */
 
@@ -103,13 +103,15 @@ void cXinelibThread::InfoHandler(const char *info)
 	Current = true;
 	map++;
       }
-      int id = atoi(map);
-      while(*map && *map != ':') map++;
-      if(*map == ':') map++;
-      char *lang = map;
-      while(*map && *map != ' ') map++;
-      if(*map == ' ') { *map = 0; map++; };
-      cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, *lang ? lang : NULL, Current);
+      if(*map >= '0' && *map <= '9') {
+	int id = atoi(map);
+	while(*map && *map != ':') map++;
+	if(*map == ':') map++;
+	char *lang = map;
+	while(*map && *map != ' ') map++;
+	if(*map == ' ') { *map = 0; map++; };
+	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, *lang ? lang : NULL, Current);
+      }
     }
   }
 
