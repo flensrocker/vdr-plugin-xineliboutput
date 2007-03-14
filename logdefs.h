@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.6 2007-03-08 13:50:48 phintuka Exp $
+ * $Id: logdefs.h,v 1.7 2007-03-14 11:57:48 phintuka Exp $
  *
  */
 
@@ -48,6 +48,7 @@
        char buf[512];
        va_start(argp, fmt);
        vsnprintf(buf, 512, fmt, argp);
+       buf[sizeof(buf)-1] = 0;
 #    ifndef __APPLE__
        if(!LogToSysLog) {
 	 fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
