@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.24 2007-03-13 15:23:33 phintuka Exp $
+ * $Id: config.c,v 1.25 2007-03-14 11:29:11 phintuka Exp $
  *
  */
 
@@ -203,6 +203,7 @@ const char *config_t::AutocropOptions(void)
     snprintf(buffer, sizeof(buffer),
 	     "enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
 	     autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
+    buffer[sizeof(buffer)-1] = 0;
     return buffer;
   }
   return NULL;
@@ -216,6 +217,7 @@ const char *config_t::FfmpegPpOptions(void)
       snprintf(buffer, sizeof(buffer), "quality=%d,mode=%s", ffmpeg_pp_quality, ffmpeg_pp_mode);
     else
       snprintf(buffer, sizeof(buffer), "quality=%d", ffmpeg_pp_quality);
+    buffer[sizeof(buffer)-1] = 0;
     return buffer;
   }
   return NULL;
