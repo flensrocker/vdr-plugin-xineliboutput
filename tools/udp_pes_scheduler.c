@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.28 2007-03-08 13:53:54 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.29 2007-03-14 11:47:44 phintuka Exp $
  *
  */
 
@@ -441,8 +441,10 @@ void cUdpScheduler::Send_RTCP(void)
     char hostname[64] = "";
     rtcp_packet_t  *msg = (rtcp_packet_t *)content;
     struct timeval tv;
+
     gettimeofday(&tv, NULL);
-    gethostname(hostname, 63);
+    gethostname(hostname, sizeof(hostname)-1);
+    hostname[sizeof(hostname)-1] = 0;
 
     // SR (Sender report)
     msg->hdr.raw[0] = 0x81;     // RTP version = 2, Report count = 1 */
@@ -502,7 +504,7 @@ void cUdpScheduler::Send_RTCP(void)
 void cUdpScheduler::Send_SAP(bool Announce)
 {
   if(xc.remote_rtp_sap && m_fd_rtp.open()) {
-    char ip[20] = "";
+    char ip[64] = "";
     uint32_t local_addr = m_fd_rtp.get_local_address(ip);
     if(local_addr) {
       const char *sdp_descr = vdr_sdp_description(ip,
@@ -786,7 +788,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     sprintf((udp_ctrl+sizeof(stream_udp_header_t)),
 	    "UDP MISSING %d-%d %" PRIu64,
 	    Seq1, (Seq2 & UDP_BUFFER_MASK), Pos);
-    send(fd, udp_ctrl, 64, 0);
+    send(fd, udp_ctrl, sizeof(udp_ctrl), 0);
     return;
   }
 
@@ -840,6 +842,6 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 	    "UDP MISSING %d-%d %" PRIu64,
 	    Seq0, (Seq1 & UDP_BUFFER_MASK), Pos);
 
-    send(fd, udp_ctrl, 64, 0);
+    send(fd, udp_ctrl, sizeof(udp_ctrl), 0);
   }
 }
