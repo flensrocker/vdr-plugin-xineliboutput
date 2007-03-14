@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.32 2007-03-06 17:39:14 phintuka Exp $
+ * $Id: menu.c,v 1.33 2007-03-14 14:05:39 phintuka Exp $
  *
  */
 
@@ -167,7 +167,7 @@ void cMenuBrowseFiles::Set(void)
   }
   free(lastParent);
 
-  strcpy(m_ConfigLastDir, m_CurrentDir);
+  strn0cpy(m_ConfigLastDir, m_CurrentDir, sizeof(xc.browse_files_dir));
   StoreConfig();
 
   SetHelpButtons();
@@ -285,7 +285,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
     cString f = cString::sprintf("%s%s/%s", 
 				 GetCurrent()->IsDvd() ? "dvd:" : "",
 				 m_CurrentDir, GetCurrent()->Name());
-    strcpy(m_ConfigLastDir, f);
+    strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
     StoreConfig();
 
     if(m_Mode != ShowImages) {
@@ -410,18 +410,16 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 		  dvd = true;
 
 		// separate subtitles ?
-		strcpy(strrchr(buffer,'.'), ".sub");
-		if (stat(buffer, &st) == 0)
-		  subs = true;
-		strcpy(strrchr(buffer,'.'), ".srt");
-		if (stat(buffer, &st) == 0)
-		  subs = true;
-		strcpy(strrchr(buffer,'.'), ".txt");
-		if (stat(buffer, &st) == 0)
-		  subs = true;
-		strcpy(strrchr(buffer,'.'), ".ssa");
-		if (stat(buffer, &st) == 0)
-		  subs = true;
+		cString sub = cString::sprintf("%s/%s____", DirName, e->d_name);
+		char *p = strrchr(sub, '.');
+		if( p ) {
+		  int i;
+		  for(i=0; xc.s_subExts[i] && !subs; i++) {
+		    strcpy(p, xc.s_subExts[i]);
+		    if (stat(sub, &st) == 0)
+		      subs = true;
+		  }
+		}
 	      }
 
 	      // resume file ?
@@ -961,7 +959,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 #endif
 	  if(local_frontend >= FRONTEND_count)
 	    local_frontend = 0;
-	  strcpy(xc.local_frontend, xc.s_frontends[local_frontend]);
+	  strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));
 	  cXinelibDevice::Instance().ConfigureWindow(
 	      xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
 	      xc.display_aspect, xc.scale_video, xc.field_order);
