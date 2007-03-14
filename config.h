@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.17 2007-03-14 13:55:04 phintuka Exp $
+ * $Id: config.h,v 1.18 2007-03-14 17:08:07 phintuka Exp $
  *
  */
 
@@ -203,6 +203,9 @@ class config_t {
     int  unscaled_osd_lowresvideo;
     int  alpha_correction;
     int  alpha_correction_abs;
+
+    int  spu_autoshow;
+    char spu_lang[4][4];
 
     char local_frontend[64];
     char modeline[64];

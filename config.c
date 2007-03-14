@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.26 2007-03-14 13:55:04 phintuka Exp $
+ * $Id: config.c,v 1.27 2007-03-14 17:08:07 phintuka Exp $
  *
  */
 
@@ -267,6 +267,13 @@ config_t::config_t() {
   unscaled_osd_opaque  = 0;
   unscaled_osd_lowresvideo = 1;
 
+  spu_autoshow = 0;
+  memset(spu_lang, 0, sizeof(spu_lang));
+  strn0cpy(spu_lang[0], "en", sizeof(spu_lang[0]));
+  strn0cpy(spu_lang[2], "de", sizeof(spu_lang[2]));
+  strn0cpy(spu_lang[1], "fi", sizeof(spu_lang[1]));
+  //strn0cpy(spu_lang[3], "" , sizeof(spu_lang[3]));
+
   alpha_correction     = 0;
   alpha_correction_abs = 0;
 
@@ -467,6 +474,12 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 
   else if (!strcasecmp(Name, "OSD.AlphaCorrection"))    alpha_correction = atoi(Value);
   else if (!strcasecmp(Name, "OSD.AlphaCorrectionAbs")) alpha_correction_abs = atoi(Value);
+
+  else if (!strcasecmp(Name, "OSD.SpuAutoSelect")) spu_autoshow = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.SpuLang0")) STRN0CPY(spu_lang[0], Value);
+  else if (!strcasecmp(Name, "OSD.SpuLang1")) STRN0CPY(spu_lang[1], Value);
+  else if (!strcasecmp(Name, "OSD.SpuLang2")) STRN0CPY(spu_lang[2], Value);
+  else if (!strcasecmp(Name, "OSD.SpuLang3")) STRN0CPY(spu_lang[3], Value);
 
   else if (!strcasecmp(Name, "RemoteMode"))          remote_mode = atoi(Value);
   else if (!strcasecmp(Name, "Remote.ListenPort"))   listen_port = atoi(Value);
