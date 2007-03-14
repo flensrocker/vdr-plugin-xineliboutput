@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.6 2006-10-29 19:43:06 phintuka Exp $
+ * $Id: osd.c,v 1.7 2007-03-14 17:51:01 phintuka Exp $
  *
  */
 
@@ -15,7 +15,7 @@
 #include "osd.h"
 #include "config.h"
 
-#define LIMIT_OSD_REFRESH_RATE
+//#define LIMIT_OSD_REFRESH_RATE
 
 #include "xine_osd_command.h"
 
