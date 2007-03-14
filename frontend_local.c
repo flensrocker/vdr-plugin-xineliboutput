@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.21 2007-03-08 13:57:48 phintuka Exp $
+ * $Id: frontend_local.c,v 1.22 2007-03-14 11:44:30 phintuka Exp $
  *
  */
 
@@ -206,8 +206,12 @@ int cXinelibLocal::Xine_Control(const char *cmd)
   TRACEF("cXinelibLocal::Xine_Control");
   if(cmd && *cmd && !GetStopSignal()) {
     char buf[4096];
-    snprintf(buf, sizeof(buf), "%s\r\n", cmd);
-    buf[sizeof(buf)-1] = 0;
+    if(snprintf(buf, sizeof(buf), "%s\r\n", cmd) >= sizeof(buf)) {
+      buf[sizeof(buf)-1] = 0;
+      LOGMSG("Xine_Control: message too long ! (%s)", buf);
+      return 0;
+    }
+    //buf[sizeof(buf)-1] = 0;
     LOCK_FE;
     if(fe)
       return fe->xine_control(fe, (char*)buf);
@@ -267,14 +271,14 @@ frontend_t *cXinelibLocal::load_frontend(const char *fe_name)
     fe_try = true;
   }
 
-  strcpy(libname, info.dli_fname);
+  strn0cpy(libname, info.dli_fname, sizeof(libname) - 128);
   if(strrchr(libname, '/')) 
     *(strrchr(libname, '/')+1) = 0;
   
   LOGDBG("Searching frontend %s from %s", xc.s_frontends[fe_ind], libname);
 
   do {
-    strcat(libname, xc.s_frontend_files[fe_ind]);
+    strncat(libname, xc.s_frontend_files[fe_ind], 64);
     LOGDBG("Probing %s", libname);
 
     if (stat(libname, &statbuffer)) {
