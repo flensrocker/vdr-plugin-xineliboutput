@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.22 2007-03-14 11:54:52 phintuka Exp $
+ * $Id: setup_menu.c,v 1.23 2007-03-14 17:24:03 phintuka Exp $
  *
  */
 
@@ -32,6 +32,8 @@ const char *DriverNameChars =
   " abcdefghijklmnopqrstuvwxyz0123456789-.,#~:;";
 const char *OptionsChars = 
   "=.,abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const char *LangNameChars = 
+  "abcdefghijklmnopqrstuvwxyz";
 
 const char *controls[] =
   { "Off",
@@ -706,6 +708,7 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_scale;
     cOsdItem *ctrl_downscale;
     cOsdItem *ctrl_lowres;
+    cOsdItem *ctrl_spulang0;
   
   protected:
     virtual void Store(void);
@@ -747,6 +750,7 @@ void cMenuSetupOSD::Set(void)
   ctrl_lowres = NULL;
   ctrl_alpha = NULL;
   ctrl_alpha_abs = NULL;
+  ctrl_spulang0 = NULL;
 
   Add(NewTitle(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
@@ -778,6 +782,21 @@ void cMenuSetupOSD::Set(void)
 				&newconfig.alpha_correction_abs, -0xff, 0xff,
 				tr("Off")));
   
+  Add(NewTitle(tr("Subtitles")));
+  Add(new cMenuEditBoolItem(tr("Setup.EPG$Preferred languages"), 
+			    &newconfig.spu_autoshow));
+  if(newconfig.spu_autoshow) {
+    Add(ctrl_spulang0 =
+	new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+			     newconfig.spu_lang[0], 4, LangNameChars));
+    Add(new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+			     newconfig.spu_lang[1], 4, LangNameChars));
+    Add(new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+			     newconfig.spu_lang[2], 4, LangNameChars));
+    Add(new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+			     newconfig.spu_lang[3], 4, LangNameChars));
+  }
+
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
   //SetCurrent(Get(1));
@@ -811,6 +830,10 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
     Set();
   if(newconfig.unscaled_osd && ctrl_lowres)
     Set();
+  if(newconfig.spu_autoshow && !ctrl_spulang0)
+    Set();
+  if(!newconfig.spu_autoshow && ctrl_spulang0)
+    Set();
 
   return state;
 }
@@ -830,6 +853,12 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.UnscaledLowRes", xc.unscaled_osd_lowresvideo);
   SetupStore("OSD.AlphaCorrection", xc.alpha_correction);
   SetupStore("OSD.AlphaCorrectionAbs", xc.alpha_correction_abs);
+
+  SetupStore("OSD.SpuAutoSelect", xc.spu_autoshow);
+  SetupStore("OSD.SpuLang0", xc.spu_lang[0]);
+  SetupStore("OSD.SpuLang1", xc.spu_lang[1]);
+  SetupStore("OSD.SpuLang2", xc.spu_lang[2]);
+  SetupStore("OSD.SpuLang3", xc.spu_lang[3]);
 }
 
 
