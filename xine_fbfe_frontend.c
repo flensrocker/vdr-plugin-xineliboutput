@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.11 2007-03-08 13:42:05 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.12 2007-03-14 10:26:39 phintuka Exp $
  *
  */
 
@@ -45,6 +45,7 @@
 
 #include "xine_frontend.h"
 #include "xine/post.h"
+
 
 /*
  * data
@@ -158,7 +159,7 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->field_order     = 0/*field_order ? 1 : 0*/;
   this->scale_video     = scale_video;
   this->overscan        = 0;
-  strcpy(this->modeline, modeline);
+  strn0cpy(this->modeline, modeline, sizeof(this->modeline));
   this->display_ratio   = 1.0;
 
   this->xine_visual_type = XINE_VISUAL_TYPE_FB;
@@ -198,7 +199,7 @@ static int fbfe_display_config(frontend_t *this_gen, int width, int height, int 
   }
 
   if(!modeswitch && strcmp(modeline, this->modeline)) {
-    strcpy(this->modeline, modeline);
+    strn0cpy(this->modeline, modeline, sizeof(this->modeline));
     /* XXX TODO - switch vmode */
 #ifdef LOG
     LOGDBG("fbfe_display_config: TODO: switch vmode\n");fflush(stdout);

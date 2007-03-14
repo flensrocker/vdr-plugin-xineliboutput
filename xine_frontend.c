@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.32 2007-01-20 14:21:03 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.33 2007-03-14 10:23:15 phintuka Exp $
  *
  */
 
@@ -37,6 +37,14 @@ typedef struct {
   /* ... */
 } vdr_input_plugin_t;
 
+
+static inline char *strn0cpy(char *dest, const char *src, int n) 
+{
+  char *s = dest;
+  for ( ; --n && (*dest = *src) != 0; dest++, src++) ;
+  *dest = 0;
+  return s;
+}
 
 /*
  * detect input plugin 
@@ -291,7 +299,7 @@ static void configure_audio_out(fe_t *this, const char *audio_driver, const char
   /*
    * alsa 
    */
-  if(!strcmp("alsa", audio_driver) && audio_port && strlen(audio_port) > 0) {
+  if(audio_driver && !strcmp("alsa", audio_driver) && audio_port && strlen(audio_port) > 0) {
     
     /* define possible speaker arrangements */
     /* From xine audio_alsa_out.c ; must be synchronized ! */
@@ -300,7 +308,7 @@ static void configure_audio_out(fe_t *this, const char *audio_driver, const char
        "Surround 3.0", "Surround 4.0", "Surround 4.1", 
        "Surround 5.0", "Surround 5.1", "Surround 6.0",
        "Surround 6.1", "Surround 7.1", "Pass Through", NULL};
-    
+
     x_reg_enum("audio.output.speaker_arrangement",
 	       STEREO,
 	       speaker_arrangement,
@@ -367,6 +375,7 @@ static void configure_audio_out(fe_t *this, const char *audio_driver, const char
 		"alsa documentation for information on alsa "
 		"devices."),
 	      10, NULL, NULL);
+
     x_upd_str("audio.device.alsa_front_device",      audio_port);
     x_upd_str("audio.device.alsa_default_device",    audio_port);
     x_upd_str("audio.device.alsa_surround51_device", audio_port);
@@ -447,7 +456,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   /*xine_register_log_cb(this->xine, xine_log_cb, this);*/
 
   /* TODO: use different config file ? (vdr conf.dir/xine/config_vdr ?) */
-  sprintf(this->configfile, "%s%s", xine_get_homedir(), 
+  snprintf(this->configfile, sizeof(this->configfile),
+	   "%s%s", xine_get_homedir(), 
 	  "/.xine/config_xineliboutput");
   
   xine_config_load (this->xine, this->configfile);
@@ -477,9 +487,9 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
 #ifdef IS_FBFE
   if(fbdev) {
-    if(!strcmp(video_driver, "fb"))
+    if(video_driver && !strcmp(video_driver, "fb"))
       x_upd_str("video.device.fb_device", fbdev);
-    else if(!strcmp(video_driver, "DirectFB")) { 
+    else if(video_driver && !strcmp(video_driver, "DirectFB")) { 
       /* DirectFBInit (NULL, NULL); */
       /* DirectFBSetOption ("fbdev", video_port); */
       char *orig = getenv("DFBARGS"), *head = NULL, *tail = NULL, *tmp = NULL;
@@ -860,7 +870,7 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
   char initstr[1024];
   int found = 0;
 
-  if(!this || !this->xine || !this->stream)
+  if(!this || !this->xine || !this->stream || !name)
     return 0;
 
   /* pip */
@@ -877,7 +887,7 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
     snprintf(initstr, sizeof(initstr), "%s:%s", name, args);
     initstr[sizeof(initstr)-1] = 0;
   } else
-    strncpy(initstr, name, sizeof(initstr));
+    strn0cpy(initstr, name, sizeof(initstr));
 
   LOGDBG("opening post plugin: %s", initstr);
 
