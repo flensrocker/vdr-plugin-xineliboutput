@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.4 2006-11-05 16:37:10 phintuka Exp $
+ * $Id: menuitems.c,v 1.5 2007-03-14 11:52:01 phintuka Exp $
  *
  */
 
@@ -42,6 +42,7 @@ void cMenuEditTypedIntItem::Set(void)
     SetValue(maxString);
   else {
     snprintf(buf, sizeof(buf), "%d %s", *value, type);
+    buf[sizeof(buf)-1] = 0;
     SetValue(buf);
   }
 }
