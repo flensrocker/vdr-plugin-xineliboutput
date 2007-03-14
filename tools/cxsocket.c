@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.7 2007-01-20 17:24:39 phintuka Exp $
+ * $Id: cxsocket.c,v 1.8 2007-03-14 11:48:42 phintuka Exp $
  *
  */
 
@@ -277,7 +277,7 @@ ssize_t cxSocket::read(void *buffer, size_t size, int timeout_ms)
 ssize_t cxSocket::printf(const char *fmt, ...)
 {
   va_list argp;
-  char buf[256];
+  char buf[1024];
   int r;
 
   va_start(argp, fmt);
