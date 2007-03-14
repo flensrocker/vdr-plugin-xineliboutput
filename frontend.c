@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.33 2007-03-14 14:21:11 phintuka Exp $
+ * $Id: frontend.c,v 1.34 2007-03-14 17:40:38 phintuka Exp $
  *
  */
 
@@ -113,6 +113,7 @@ void cXinelibThread::InfoHandler(const char *info)
 	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, *lang ? lang : NULL, Current);
       }
     }
+    cXinelibDevice::Instance().EnsureDvdSpuTrack();
   }
 
   else if(!strncmp(info, "TRACKMAP AUDIO", 14)) {

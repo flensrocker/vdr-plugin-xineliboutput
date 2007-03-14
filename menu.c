@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.33 2007-03-14 14:05:39 phintuka Exp $
+ * $Id: menu.c,v 1.34 2007-03-14 17:40:38 phintuka Exp $
  *
  */
 
@@ -642,7 +642,7 @@ eOSState cDisplaySpuTracks::ProcessKey(eKeys Key)
   if (track != oldTrack)
      Show();
   if (track != oldTrack) {
-     cXinelibDevice::Instance().SetCurrentDvdSpuTrack(types[track]);
+     cXinelibDevice::Instance().SetCurrentDvdSpuTrack(types[track], true);
      }
   return timeout.TimedOut() ? osEnd : osContinue;
 }

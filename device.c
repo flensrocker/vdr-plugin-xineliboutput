@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.34 2007-01-26 16:07:01 phintuka Exp $
+ * $Id: device.c,v 1.35 2007-03-14 17:40:38 phintuka Exp $
  *
  */
 
@@ -22,7 +22,6 @@
 //#define XINELIBOUTPUT_DEBUG
 //#define XINELIBOUTPUT_DEBUG_STDERR
 //#define TRACK_EXEC_TIME
-#define HD_MODE_TEST
 //#define SKIP_DVDSPU
 //#define FORWARD_DVD_SPUS
 //#define DEBUG_SWITCHING_TIME
@@ -204,6 +203,7 @@ cXinelibDevice::cXinelibDevice()
   m_spuPresent  = false;
 
   m_CurrentDvdSpuTrack = -1;
+  m_ForcedDvdSpuTrack = false;
   ClrAvailableDvdSpuTracks();
 
   memset(m_MetaInfo, 0, sizeof(m_MetaInfo));
@@ -582,6 +582,7 @@ void cXinelibDevice::StopOutput(void)
   ForEach(m_clients, &cXinelibThread::QueueBlankDisplay);
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
   ClrAvailableDvdSpuTracks();
+  m_ForcedDvdSpuTrack = false;
 }
 
 void cXinelibDevice::SetTvMode(cChannel *Channel)
@@ -1104,14 +1105,12 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
     }
 #endif
 
-#if defined(HD_MODE_TEST)
     int Width, Height;
     if(GetVideoSize(buf, length, &Width, &Height)) {
       m_StreamStart = false;
       //LOGDBG("Detected video size %dx%d", Width, Height);
       ForEach(m_clients, &cXinelibThread::SetHDMode, (Width > 800));
     }
-#endif
   }
 
 #ifdef DEBUG_SWITCHING_TIME
@@ -1165,8 +1164,6 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   m_TrickSpeed = -1; // to make Poll work ...
   m_SkipAudio = 1;   // enables audio and pts stripping
 
-if(m_TrickSpeedDelay) LOGMSG("StillPicture: TrickSpeedDelay is active !");
-
   for(i=0; i<STILLPICTURE_REPEAT_COUNT; i++)
     if(isMpeg1) {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg1_PES, Data, Length, 
@@ -1195,6 +1192,9 @@ int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id)
 {
   TRACEF("cXinelibDevice::PlayAudio");
   TRACK_TIME(100);
+
+  if(!buf || length < 6)
+    return length;
 
 #ifdef SKIP_AC3_AUDIO
     // skip AC3 audio
@@ -1230,6 +1230,9 @@ int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id)
 #ifdef SKIP_DVDSPU
   return length;
 #else
+  if(!buf || length < 6)
+    return length;
+
   if(((unsigned char *)buf)[3] == PRIVATE_STREAM1) {
 
     if(!m_spuPresent) {
@@ -1525,7 +1528,7 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
 // Available DVD SPU tracks
 //
 
-bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type)
+bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type, bool Force)
 {
   if(Type == -1 || 
      ( Type >= 0 && 
@@ -1533,6 +1536,8 @@ bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type)
        m_DvdSpuTrack[Type].id != 0xffff)) {
     m_CurrentDvdSpuTrack = Type;
     ForEach(m_clients, &cXinelibThread::SpuStreamChanged, Type);
+    if(Force)
+      m_ForcedDvdSpuTrack = true;
     return true;
   }
   return false;
@@ -1577,16 +1582,54 @@ const char *cXinelibDevice::GetDvdSpuLang(int Type) const
 bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Current)
 {
   if(Type >= 0 && Type < 64) {
+
     m_DvdSpuTrack[Type].id = Type;
     m_DvdSpuTrack[Type].language[0] = '\0';
     if(lang) 
       strn0cpy(m_DvdSpuTrack[Type].language, lang, MAXLANGCODE2);
-    //m_DvdSpuTracks++;
     if(Current)
       m_CurrentDvdSpuTrack = Type;
+
     return true;
   }
   return false;
+}
+
+void cXinelibDevice::EnsureDvdSpuTrack(void)
+{
+  if(!m_ForcedDvdSpuTrack &&
+     NumDvdSpuTracks() > 0 &&
+     (m_DvdSpuTrack[0].id == 0xffff ||
+      strcmp(m_DvdSpuTrack[0].language, "menu"))) {
+
+    if(xc.spu_autoshow) {
+      int pref, len, track;
+      for(pref = 0; pref < 4; pref++)
+	for(track = 0; track < 64; track++)
+	  if(m_DvdSpuTrack[track].id != 0xffff)    
+	    if((len=strlen(xc.spu_lang[pref])) > 0)
+	      //if(!strncmp(m_DvdSpuTrack[track].language,
+	      //            xc.spu_lang[pref], len)) {
+	      if(!strcmp(m_DvdSpuTrack[track].language,
+			 xc.spu_lang[pref])) {
+		if(m_CurrentDvdSpuTrack != track) {
+		  LOGMSG("Auto-selecting %d. SPU track \'%s\'  (%d. preferred language is \'%s\')", 
+			 track, m_DvdSpuTrack[track].language, pref+1, xc.spu_lang[pref]);
+		  cXinelibDevice::SetCurrentDvdSpuTrack(track);
+		  cString msg = cString::sprintf("Subtitles: %s", m_DvdSpuTrack[track].language);
+		  Skins.QueueMessage(mtInfo, msg);
+		}
+		m_spuPresent = true;
+		track = 64;
+		pref = 99;
+	      }
+    }
+
+    if(!m_spuPresent) {
+      Skins.QueueMessage(mtInfo, "Subtitles present");
+      m_spuPresent = true;
+    }
+  }
 }
 
 //
@@ -1608,7 +1651,7 @@ void  cXinelibDevice::SetMetaInfo(eMetainfoType Type, const char *Value)
     /* set to 0 first, so if player is accessing string in middle of 
        copying it will always be 0-terminated (but truncated) */
     memset(m_MetaInfo[Type], 0, sizeof(m_MetaInfo[Type]));
-    strncpy(m_MetaInfo[Type], Value, MAX_METAINFO_LEN);
+    strn0cpy(m_MetaInfo[Type], Value, MAX_METAINFO_LEN);
   } else {
     LOGMSG("cXinelibDevice::SetMetaInfo: unknown metainfo type");
   }

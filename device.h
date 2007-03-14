@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.21 2007-01-24 05:12:26 phintuka Exp $
+ * $Id: device.h,v 1.22 2007-03-14 17:40:38 phintuka Exp $
  *
  */
 
@@ -125,7 +125,7 @@ class cXinelibDevice : public cDevice
     // (DVD) SPU tracks, -> cDevice
     tTrackId m_DvdSpuTrack[64];
     int      m_CurrentDvdSpuTrack;
-
+    bool     m_ForcedDvdSpuTrack;
     char     m_MetaInfo[mi_Count][MAX_METAINFO_LEN+1];
 
   public:
@@ -137,7 +137,8 @@ class cXinelibDevice : public cDevice
     const char *GetDvdSpuLang(int Type) const;
 
     int   GetCurrentDvdSpuTrack(void) const { return m_CurrentDvdSpuTrack; }
-    bool  SetCurrentDvdSpuTrack(int Type);
+    bool  SetCurrentDvdSpuTrack(int Type, bool Force=false);
+    void  EnsureDvdSpuTrack(void);
 
     const char *GetMetaInfo(eMetainfoType Type);
     void  SetMetaInfo(eMetainfoType Type, const char *Value);
