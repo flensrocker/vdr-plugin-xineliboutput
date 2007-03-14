@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.19 2007-03-08 13:12:55 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.20 2007-03-14 10:25:32 phintuka Exp $
  *
  */
 
@@ -384,7 +384,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->scale_video     = scale_video;
   this->overscan        = 0;
   this->fullscreen_state_forced = 0;
-  strcpy(this->modeline, modeline);
+  strn0cpy(this->modeline, modeline, sizeof(this->modeline));
 
   /*
    * init x11 stuff
@@ -407,6 +407,12 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 	     video_port);
   }
   if(!this->display) {
+    video_port = ":0.0";
+    if(!(this->display = XOpenDisplay(video_port)))
+      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
+	     video_port);
+  }
+  if(!this->display) {
     video_port = "127.0.0.1:0.0";
     if(!(this->display = XOpenDisplay(video_port)))
       LOGERR("sxfe_display_open: failed to connect to X server (%s)",
@@ -416,7 +422,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->display = XOpenDisplay(NULL);
   }
   if (!this->display) {
-    LOGERR("sxfe_display_open: failed to connect to X server");
+    LOGERR("sxfe_display_open: failed to connect to X server.");
+    LOGMSG("If X server is running, try running \"xhost +\" in xterm window");
     /*free(this);*/
     return 0;
   }
@@ -629,7 +636,7 @@ static int sxfe_display_config(frontend_t *this_gen,
   }
 
   if(!modeswitch && strcmp(modeline, this->modeline)) {
-    strcpy(this->modeline, modeline);
+    strn0cpy(this->modeline, modeline, sizeof(this->modeline));
     /* #warning TODO - switch vmode */
   }
 
