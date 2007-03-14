@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.25 2007-03-14 11:29:11 phintuka Exp $
+ * $Id: config.c,v 1.26 2007-03-14 13:55:04 phintuka Exp $
  *
  */
 
@@ -83,6 +83,10 @@ const char *config_t::s_speakerArrangements[] =
    "Surround 5.0", "Surround 5.1", "Surround 6.0",
    "Surround 6.1", "Surround 7.1", "Pass Through", 
    NULL};
+
+const char *config_t::s_subExts[] = {".sub", ".srt", ".txt", ".ssa", 
+				     ".SUB", ".SRT", ".TXT", ".SSA", 
+				     NULL};
 
 static char *strcatrealloc(char *dest, const char *src)
 {

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.16 2007-01-24 04:29:03 phintuka Exp $
+ * $Id: config.h,v 1.17 2007-03-14 13:55:04 phintuka Exp $
  *
  */
 
@@ -166,6 +166,8 @@ class config_t {
     static const char *s_audioVisualizations[];
     static const char *s_audioVisualizationNames[];
     static const char *s_speakerArrangements[];
+
+    static const char *s_subExts[];
 
   public:
     char video_driver[32];
