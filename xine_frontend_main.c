@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.27 2007-03-08 13:33:18 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.28 2007-03-15 21:41:16 phintuka Exp $
  *
  */
 
@@ -186,6 +186,57 @@ static void *kbd_receiver_thread(void *fe)
   return NULL; /* never reached */
 }
 
+static void *slave_receiver_thread(void *fe) 
+{
+  char str[128], *pt;
+
+  terminate_key_pressed = 0;
+  tcgetattr(STDIN_FILENO, &saved_tm);
+
+  do {
+
+    errno = 0;
+    str[0] = 0;
+
+    if(!fgets(str, sizeof(str), stdin))
+      break;
+
+    if(NULL != (pt = strchr(str, '\r')))
+      *pt = 0;
+    if(NULL != (pt = strchr(str, '\n')))
+      *pt = 0;
+
+    if(!strncasecmp(str, "QUIT", 4)) {
+      break;
+
+#ifndef IS_FBFE
+    } else if(!strncasecmp(str, "FULLSCREEN", 10)) {
+      sxfe_toggle_fullscreen((sxfe_t*)fe);
+#endif
+
+    } else if(!strncasecmp(str, "DEINTERLACE ", 12)) {
+      fe_t *this = (fe_t*)fe;
+      int val = atoi(str+12);
+      xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, val ? 1 : 0);
+
+    } else if(!strncasecmp(str, "HITK ", 5)) {
+      if(find_input((fe_t*)fe))
+	process_xine_keypress(((fe_t*)fe)->input, NULL, str+5, 0, 0);
+
+    } else {
+      LOGMSG("Unknown slave mode command: %s", str);
+    }
+
+  } while(!terminate_key_pressed);
+  
+  LOGDBG("Slave mode receiver terminated");
+  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  terminate_key_pressed = 1;
+
+  pthread_exit(NULL);
+  return NULL; /* never reached */
+}
+
 static void kbd_stop(void)
 {
   void *p;
@@ -252,6 +303,7 @@ static const char *help_str =
     "   --nokbd                       Disable kayboard input\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
+    "   --slave                       Enable slave mode (read commands from stdin)\r\n"
     "   --reconnect                   Automatically reconnect when connection has been lost"
     "   --tcp                         Use TCP transport\n"
     "   --udp                         Use UDP transport\n"
@@ -278,6 +330,7 @@ static const struct option long_options[] = {
   { "syslog",  no_argument,  NULL, 'l' },
   { "nokbd",   no_argument,  NULL, 'k' },
   { "daemon",  no_argument,  NULL, 'b' },
+  { "slave",   no_argument,  NULL, 'S' },
   
   { "reconnect", no_argument,  NULL, 'R' },
   { "tcp",       no_argument,  NULL, 't' },
@@ -294,7 +347,7 @@ int main(int argc, char *argv[])
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
-  int daemon_mode = 0, nokbd = 0;
+  int daemon_mode = 0, nokbd = 0, slave_mode = 0;
   char *video_port = NULL;
   int xmajor, xminor, xsub;
   int err, c;
@@ -387,6 +440,9 @@ int main(int argc, char *argv[])
               SysLogLevel = 1;
 	      PRINTF("Silent mode\n");
 	      break;
+    case 'S': slave_mode = 1;
+	      PRINTF("Slave mode\n");
+	      break;
     case 'l': LogToSysLog = 1;
               openlog(exec_name, LOG_PID|LOG_CONS, LOG_USER);
 	      break;
@@ -470,6 +526,13 @@ int main(int argc, char *argv[])
     }
   }
 
+  if(mrl && strncmp(mrl, "xvdr:", 5)) {
+    char *mrl2 = mrl;
+    PRINTF("WARNING: MRL does not start with \'xvdr:\' (%s)", mrl);
+    asprintf(&mrl, "xvdr://%s", mrl);
+    free(mrl2);
+  }
+
   if(daemon_mode) {
     PRINTF("Entering daemon mode\n\n");
     if (daemon(1, 0) == -1) {
@@ -516,7 +579,8 @@ int main(int argc, char *argv[])
   /* Start keyboard listener thread */
   if(!nokbd) {
     if ((err = pthread_create (&kbd_thread,
-			       NULL, kbd_receiver_thread, 
+			       NULL, 
+			       slave_mode ? slave_receiver_thread : kbd_receiver_thread, 
 			       (void*)fe)) != 0) {
       fprintf(stderr, "Can't create new thread for keyboard (%s)\n", 
 	      strerror(err));
