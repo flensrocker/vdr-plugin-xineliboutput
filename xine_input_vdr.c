@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.76 2007-03-08 13:24:35 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.77 2007-03-15 17:14:00 phintuka Exp $
  *
  */
 
@@ -120,6 +120,7 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   char buf[512];
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
+  buf[sizeof(buf)-1] = 0;
 #ifdef __APPLE__
   if(!bLogToSysLog) {
     fprintf(stderr, LOG_MODULENAME "%s\n", buf);
@@ -893,6 +894,14 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this,
 # define MAX(a,b) ((a)>(b)?(a):(b))
 #endif
 
+static char *strn0cpy(char *dest, const char *src, int n) 
+{
+  char *s = dest;
+  for ( ; --n && (*dest = *src) != 0; dest++, src++) ;
+  *dest = 0;
+  return s;
+}
+
 static int64_t pts_from_pes(const uint8_t *buf, int size)
 {
   int64_t pts = -1;
@@ -1023,8 +1032,11 @@ static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
 {
   va_list argp;
   char buf[512];
+
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
+  buf[sizeof(buf)-1] = 0;
+
   write_control(this, buf);
   va_end(argp);
 }
@@ -2675,8 +2687,8 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   *pt2 = 0;
   while(*pt == ' ') pt++;
 
-  strncpy(filename, pt, sizeof(filename));
-  filename[sizeof(filename)-1] = 0;
+  strn0cpy(filename, pt, sizeof(filename));
+  /*filename[sizeof(filename)-1] = 0;*/
 
   if(*filename) {
     this->loop_play = 0;
@@ -2697,19 +2709,20 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	if(errno == ENOENT || errno == ENOTDIR) 
 	  LOGERR("File not found !");
 	if(this->fd_control > 0) {
-	  char mrl[512];
+	  char mrl[sizeof(filename)];
 	  char *phost = strdup(strstr(this->mrl, "//") + 2);
 	  char *pfile = strrchr(filename, '/');
 	  char *port = strchr(phost, ':');
 	  int iport;
 	  if(port) *port++ = 0;
 	  iport = port ? atoi(port) : DEFAULT_VDR_PORT;
-	  sprintf(mrl, "http://%s:%d/PLAYFILE%s", 
+	  snprintf(mrl, sizeof(mrl), "http://%s:%d/PLAYFILE%s", 
 	  /*sprintf(mrl, "httpseek://%s:%d/PLAYFILE%s", */
 		  phost?:"127.0.0.1", iport, pfile?:"");
+	  mrl[sizeof(mrl)-1] = 0;
 	  free(phost);
 	  LOGMSG("  -> trying to stream from server (%s) ...", mrl);
-	  strcpy(filename, mrl);
+	  strn0cpy(filename, mrl, sizeof(filename));
 	}
       } else {
 	subs = FindSubFile(filename);
@@ -2717,9 +2730,11 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     }
   
     if(subs) {
-      LOGMSG("Found subtitles: %s", subs);
-      strcat(filename, "#subtitle:");
-      strcat(filename, subs);
+      if(strlen(subs)+strlen(filename)+12 < sizeof(filename)) {
+	LOGMSG("Found subtitles: %s", subs);
+	strcat(filename, "#subtitle:");
+	strcat(filename, subs);
+      }
       free(subs);
     } else {
       LOGDBG("Subtitles not found for %s", filename);
@@ -3187,7 +3202,11 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 
   if(this->live_mode /*&& this->fd_control < 0*/) {
     /* No flush in live mode */
+#ifdef __APPLE__
     sched_yield();
+#else
+    pthread_yield();
+#endif
     return 1; 
   }
 
@@ -3729,61 +3748,66 @@ static void *vdr_control_thread(void *this_gen)
 
 static void slave_track_maps_changed(vdr_input_plugin_t *this)
 {
-  char tracks[1024], lang[128], tmp[64];
-  int i, current, n=0;
+  char tracks[1024], lang[128];
+  int i, current, n = 0, cnt;
   
   /* Audio tracks */
   
   strcpy(tracks, "INFO TRACKMAP AUDIO ");
+  cnt = strlen(tracks);
   current = xine_get_param(this->slave_stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
-  for(i=0; i<32; i++)
+  for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_audio_lang(this->slave_stream, i, lang)) {
       while(lang[0]==' ') strcpy(lang, lang+1);
-      sprintf(tmp, "%s%d:%s ", i==current?"*":"", i, lang);
-      strcat(tracks, tmp);
+      cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32, 
+		      "%s%d:%s ", i==current?"*":"", i, lang);
       n++;
     }
+  tracks[sizeof(tracks)-1] = 0;
   if(n>1)
     LOGDBG("%s", tracks);
-  strcat(tracks,"\r\n");
 
   if(this->funcs.xine_input_event) {
     /* local mode: -> VDR */
     this->funcs.xine_input_event(tracks, NULL);
-  }
-  else {
+  } else {
     /* remote mode: -> connection -> VDR */
+    strcpy(tracks+cnt, "\r\n");
     write_control(this, tracks);
   }
   
   /* DVD SPU tracks */
-  
+
+  n = 0;  
   strcpy(tracks, "INFO TRACKMAP SPU ");
+  cnt = strlen(tracks);
   current = xine_get_param(this->slave_stream, XINE_PARAM_SPU_CHANNEL);
-  for(i=0; i<32; i++)
+  for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_spu_lang(this->slave_stream, i, lang)) {
       while(lang[0]==' ') strcpy(lang, lang+1);
-      sprintf(tmp, "%s%d:%s ", i==current?"*":"", i, lang);
-      strcat(tracks, tmp);
+      cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
+		      "%s%d:%s ", i==current?"*":"", i, lang);
       n++;
     }
+  tracks[sizeof(tracks)-1] = 0;
   if(n>1)
     LOGDBG("%s", tracks);
-  strcat(tracks,"\r\n");
   
-  if(this->funcs.xine_input_event)
+  if(this->funcs.xine_input_event) {
     this->funcs.xine_input_event(tracks, NULL);
-  else
+  } else {
+    strcpy(tracks+cnt, "\r\n");
     write_control(this, tracks);
+  }
 
   i = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
   if(i >= 0) {
-    sprintf(tmp, "INFO DVDTITLE %d\r\n", i);
+    sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
     if(this->funcs.xine_input_event)
-      this->funcs.xine_input_event(tmp, NULL);
+      this->funcs.xine_input_event(tracks, NULL);
     else
-      write_control(this, tmp);
-    LOGDBG(tmp);
+      write_control(this, tracks);
+    LOGDBG(tracks);
   }
 }
 
@@ -3900,7 +3924,8 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	LOGMSG("XINE_EVENT_UI_SET_TITLE: %s", data->str);
 
 	tt = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
-	sprintf(msg, "INFO TITLE %s\r\nINFO DVDTITLE %d\r\n", data->str, tt);
+	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\nINFO DVDTITLE %d\r\n", data->str, tt);
+	msg[sizeof(msg)-1] = 0;
 	if(this->funcs.xine_input_event) 
 	  this->funcs.xine_input_event(msg, NULL);
 	else
@@ -5138,8 +5163,9 @@ static char* vdr_plugin_get_mrl (input_plugin_t *this_gen)
 
   if(!this->stream->demux_plugin) {
     /* help in demuxer selection */
-    static char fake[128] = "";
-    sprintf(fake, "%s/.vob", this->mrl);
+    static char fake[128] = {0};
+    snprintf(fake, sizeof(fake)-1, "%s/.vob", this->mrl);
+    fake[sizeof(fake)-1] = 0;
     return fake;
   }
 
@@ -5682,7 +5708,8 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     int one = 1;
     if(port) *port++ = 0;
     iport = port ? atoi(port) : DEFAULT_VDR_PORT;
-    strncpy(host, phost, 254);
+    strn0cpy(host, phost, 254);
+    /*host[sizeof(host)-1] = 0;*/
     free(phost);
     /* TODO: use multiple input plugins - tcp/udp/file */
 
