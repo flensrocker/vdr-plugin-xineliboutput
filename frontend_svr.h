@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.17 2007-01-24 04:33:53 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.18 2007-03-15 13:29:04 phintuka Exp $
  *
  */
 
@@ -89,6 +89,7 @@ protected:
     void Handle_Control_HTTP(int cli, const char *arg);
     void Handle_Control_RTSP(int cli, const char *arg);
 
+    void CloseDataConnection(int cli);
     void CloseConnection(int cli);
 
 protected:

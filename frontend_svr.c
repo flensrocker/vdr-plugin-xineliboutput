@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.38 2007-01-24 04:33:53 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.39 2007-03-15 13:29:04 phintuka Exp $
  *
  */
 
@@ -178,23 +178,28 @@ void cXinelibServer::Clear(void)
     m_Scheduler->Clear();
 }
 
-#define CloseDataConnection(cli)       \
-  do {                                 \
-    if(m_bUdp[cli] && fd_data[cli]>=0) \
-      m_Scheduler->RemoveHandle(fd_data[cli]); \
-    CLOSESOCKET(fd_data[cli]);         \
-    if(m_Writer[cli]) {                \
-      delete m_Writer[cli];            \
-      m_Writer[cli] = NULL;            \
-    }                                  \
-    m_iUdpFlowMask &= ~(1<<cli);       \
-    m_iMulticastMask &= ~(1<<cli);     \
-    if(!m_iMulticastMask && !xc.remote_rtp_always_on) \
-      m_Scheduler->RemoveRtp();        \
-    m_bUdp[cli] = false;               \
-    m_bMulticast[cli] = false;         \
-    m_bConfigOk[cli] = false;          \
-  } while(0)
+void cXinelibServer::CloseDataConnection(int cli)
+{
+  if(m_bUdp[cli] && fd_data[cli]>=0)
+    m_Scheduler->RemoveHandle(fd_data[cli]);
+
+  CLOSESOCKET(fd_data[cli]);         
+
+  if(m_Writer[cli]) {                
+    delete m_Writer[cli];            
+    m_Writer[cli] = NULL;            
+  }                                  
+
+  m_bUdp[cli] = false;               
+  m_bMulticast[cli] = false;         
+  m_bConfigOk[cli] = false;          
+
+  m_iUdpFlowMask &= ~(1<<cli);       
+  m_iMulticastMask &= ~(1<<cli);     
+
+  if(!m_iMulticastMask && !xc.remote_rtp_always_on) 
+    m_Scheduler->RemoveRtp();        
+}
 
 void cXinelibServer::CloseConnection(int cli)
 {
@@ -277,6 +282,7 @@ static int write_osd_command(cxSocket& s, osd_command_t *cmd)
 #include "dvdauthor/rgb.h"
 #include "dvdauthor/subgen-encode.c"
 #include "dvdauthor/subgen.c"
+#include "dvdauthor/subgen-image.c"
 //subgen-image: palette generation, image divided to buttons --> 16-col palette
 static uint8_t *dvdspu_encode(osd_command_t *cmd, int *spulen)
 {
@@ -293,7 +299,7 @@ static uint8_t *dvdspu_encode(osd_command_t *cmd, int *spulen)
   st.numbuttons = 0; 
   st.numpal     = 0;
 
-  st.autooutline = 0;
+  st.autooutline = 0; /* -> 1 -> imgfix calls detectbuttons(s); */
   st.outlinewidth = 0;
   st.autoorder = 0;
 
@@ -310,7 +316,8 @@ static uint8_t *dvdspu_encode(osd_command_t *cmd, int *spulen)
   st.groupmap[3][4] = ;
   st.buttons = ; /* button * */
 
-  dvd_encode(&st);
+  if(imgfix(&st)) 
+    dvd_encode(&st);
 #endif
   return NULL;
 
@@ -362,7 +369,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 
 #ifdef HTTP_OSD
     uint8_t *spudata = NULL;
-    int spulen;
+    int spulen = 0;
 #endif
 
     for(i = 0; i < MAXCLIENTS; i++) {
@@ -626,7 +633,8 @@ int cXinelibServer::Xine_Control(const char *cmd)
     int len = snprintf(buf, sizeof(buf), "%s\r\n", cmd);
     if(len >= (int)sizeof(buf)) {
       LOGMSG("Xine_Control: command truncated !");
-      len = sizeof(buf);
+      //len = sizeof(buf);
+      return 0;
     }
     
     LOCK_THREAD;
@@ -1106,7 +1114,7 @@ void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
 
   char buf[256], *pt, *key;
   bool repeat = false, release = false;
-  strcpy(buf, arg);
+  strn0cpy(buf, arg, sizeof(buf));
 
   int n = strlen(buf)-1;
   while(n && buf[n]==' ') buf[n--]=0; /* trailing spaces */
@@ -1275,7 +1283,7 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     if(!strcmp(m_State[cli]->Uri(), "/")) {
       LOGMSG("HTTP streaming primary device feed");
       fd_control[cli].write_cmd(HTTP_REPLY_200_PRIMARY);
-
+#if 0
       // pack header (scr 0, mux rate 0x6270)
       fd_control[cli].write(
 	    "\x00\x00\x01\xba"
@@ -1285,7 +1293,7 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 	    "\x00\x00\x01\xbb" "\x00\x12"
 	    "\x80\xc4\xe1" "\x00\xe1" "\x7f"
 	    "\xb9\xe0\xe8" "\xb8\xc0\x20" "\xbd\xe0\x3a" "\xbf\xe0\x02", 24);
-
+#endif
       m_Writer[cli] = new cRawWriter(fd_control[cli].handle(), KILOBYTE(1024));
       
       DELETENULL(m_State[cli]);
@@ -1428,7 +1436,7 @@ void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
 						    /*m_ssrc*/0x4df73452,
 						    xc.remote_rtp_port,
 						    xc.remote_rtp_ttl);
-	int sdplen = strlen(sdp_descr);
+	int sdplen = sdp_descr ? strlen(sdp_descr) : 0;
 	RTSPOUT(RTSP_200_OK
 		"Content-Type: application/sdp\r\n"
 		"Content-Length: %d\r\n"
@@ -1623,7 +1631,7 @@ void cXinelibServer::Read_Control(int cli)
 
     ++m_CtrlBufPos[cli];
 
-    if( m_CtrlBufPos[cli] > 256) {
+    if( m_CtrlBufPos[cli] > 512) {
       LOGMSG("Received too long control message from client %d (%d bytes)", 
 	     cli, m_CtrlBufPos[cli]);
       LOGMSG("%81s",m_CtrlBuf[cli]);
