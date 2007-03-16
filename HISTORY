@@ -1,6 +1,33 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2007-03-17: Version 1.0.0rc1
+
+- PLUGIN HOMEPAGE CHANGED
+
+- Adapted for xine-lib 1.1.4
+- Adapted for vdr-1.5.1 (Thanks to Rolf Ahrenberg)
+- Mac OS X compability fixes (Thanks to Tero Siironen)
+- DXR3 added to list of output devices (experimental; Thanks to Ville Skyttä)
+- Subtitle selection menu updated to use VDR audio menu skin
+- New subtitle macro key handling (identical to VDR kAudio)
+- Added preferred subtitle language selection for media player
+- Updated trick speed modes and still image handling
+- Remote mode can now survive longer network delays
+- Fixed tvtime options (Thanks to Petri Helin)
+- Fixed using video driver "none"
+- Simple "slave mode" for remote frontends
+- Added automatic re-connection to remote frontends (--reconnect option)
+- Slow down DVD drive speed
+- Initialize video size from stream info when playing slave streams,
+  (Thanks to Antti Seppälä)
+- Makefile shell scripts modified to run in dash (Ubuntu). 
+  (Thanks to realKano@directbox.com)
+- Increased frame-based buffering time after channel changes
+- Use iconv to translate id3 tags from utf8 to VDR charset
+- Use /dev/dsp as OSS default device (Thanks to Ville Skyttä)
+- Lot of small fixes and enhancements, complete log in CVS
+
 2007-01-07: Version 1.0.0pre7
 
 - Added possibility to add files to playlist
