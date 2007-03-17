@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.28 2007-03-15 21:41:16 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.29 2007-03-17 12:14:37 phintuka Exp $
  *
  */
 
@@ -282,9 +282,9 @@ static const char *help_str =
     "                                 drivers: auto, alsa, oss, arts, esound, none\n"
     "   --video=videodriver[:device]  Select video driver and optional port\n"
     "                                 X11: auto, x11, xshm, xv, xvmc, xxmc, vidix,\n"
-    "                                      none\n"
+    "                                      sdl, opengl, none\n"
     "                                 framebuffer: auto, fb, DirectFB, vidixfb,\n"
-    "                                      dxr3, aadxr3, none\n"
+    "                                      sdl, dxr3, aadxr3, none\n"
     "   --display=displayaddress      X11 display address\n"
     "   --aspect=[auto|4:3|16:9|16:10|default] Display aspect ratio\n"
     "   --fullscreen                  Fullscreen mode\n"

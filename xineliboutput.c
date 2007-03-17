@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.18 2007-03-16 16:44:29 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.19 2007-03-17 12:14:37 phintuka Exp $
  *
  */
 
@@ -101,9 +101,9 @@ const char cmdLineHelp[] =
 "  -V NAME   --video=NAME   Use video driver NAME for local frontend\n"
 "                           Supported values:\n"
 "                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc,\n"
-"                                     vidix, none\n"
+"                                     vidix, sdl, opengl, none\n"
 "                           for fbfe: auto, fb, DirectFB, vidixfb,\n"
-"                                     dxr3, aadxr3, none\n"
+"                                     sdl, dxr3, aadxr3, none\n"
 #if 0
 "  -L        --nolocal      No local frontend, only remote frontends\n"
 "  -m M      --modeline=M   Use modeline M for local frontend\n"
