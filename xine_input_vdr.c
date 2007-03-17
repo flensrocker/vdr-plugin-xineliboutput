@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.77 2007-03-15 17:14:00 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.78 2007-03-17 17:11:02 phintuka Exp $
  *
  */
 
@@ -2558,6 +2558,8 @@ static void send_meta_info(vdr_input_plugin_t *this)
 
 static void send_cd_info(vdr_input_plugin_t *this)
 {
+#if 0
+  // get_autoplay_list stops replay ...
   int count = 0;
   input_class_t *c = this->slave_stream->input_plugin->input_class;
   char **list = c->get_autoplay_list(c, &count);
@@ -2567,6 +2569,7 @@ static void send_cd_info(vdr_input_plugin_t *this)
     for(i=0; i<count && list[i]; i++)
       LOGMSG("cdda: %d: %s", i, list[i]);
   }
+#endif
 }
 
 #ifdef DVD_STREAMING_SPEED
