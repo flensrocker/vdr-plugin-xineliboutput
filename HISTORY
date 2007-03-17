@@ -5,6 +5,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 - PLUGIN HOMEPAGE CHANGED
 
+- Fixed audio CD replay (cdda:/)
 - Adapted for xine-lib 1.1.4
 - Adapted for vdr-1.5.1 (Thanks to Rolf Ahrenberg)
 - Mac OS X compability fixes (Thanks to Tero Siironen)
