@@ -1,33 +1,35 @@
 This is a "plugin" for the Video Disk Recorder (VDR).
 
-Written by:                  Petri Hintukainen <Petri.Hintukainen@hut.fi>
+Written by:                  Petri Hintukainen <phintuka@users.sourceforge.net>
 
-Project's homepage:          http://www.hut.fi/u/phintuka/vdr/
+Project's homepage:          http://www.sourceforge.net/projects/xineliboutput
 
-Latest version available at: http://www.hut.fi/u/phintuka/vdr/
+Latest version available at: http://prdownloads.sourceforge.net/xineliboutput/
+
 
 See the file COPYING for license information.
 
 
 Description
 
-  Simple framebuffer and/or X11 front-end for VDR.
-  (displays OSD and video in raw X/Xv/XvMC window or 
-  Linux framebuffer/DirectFB/vidixfb/DXR3).
+  X11 and Linux framebuffer front-end for VDR.
+  Plugin displays video and OSD in X/Xv/XvMC window,
+  Linux framebuffer/DirectFB/vidixfb or DXR3 card.
 
   Support for local and remote frontends.
 
-  Built-in image and media player supports playback of most known media
-  files (avi/mp3/divx/jpeg/...) and network radio/video streams
+  Built-in image and media player supports playback of most known 
+  media files (avi/mp3/divx/jpeg/...), DVDs and radio/video streams
   (http, rtsp, ...) directly from VDR.
 
 
 Requirements
 
   - vdr-1.4.0 or later
+    (vdr is required only at server side)
   - xine-lib 1.1.1 or later
     (xine-lib is not required for server in network-only usage)
-  - Enough CPU power and memory to decode streams 
+  - Enough CPU power and memory to decode streams
     (PII 400Mhz + 64M should be enough with Xv or DirectFB)
 
 
@@ -56,10 +58,6 @@ Public CVS
   CVS checkout command:
   cvs -d:pserver:anonymous@xineliboutput.cvs.sourceforge.net:/cvsroot/xineliboutput co vdr-xineliboutput
 
-  Distribution package includes public CVS repository information.
-  Updating to latest CVS version should be possible by just running 
-  "cvs update" in plugin source directory.
-
 
 Buildtime options
 
@@ -82,7 +80,9 @@ Buildtime options
   or changing corresponding lines in plugin's Makefile.
 
   It is possible to compile only remote frontends with command 
-  "make frontends".
+  "make frontends". Building frontends is possible without VDR.
+  Only xine-lib (and corresponding development package or headers)
+  are required.
 
 
 Installing - IMPORTANT
@@ -97,6 +97,7 @@ Installing - IMPORTANT
   Installing binaries and libraries usually requires root
   permissions.
 
+  PLUGIN WILL NOT WORK UNLESS ALL FILES HAVE BEEN INSTALLED !
 
   To be able to use remote frontends each client's IP address
   must be defined in VDR's svdrphosts.conf.
@@ -115,7 +116,7 @@ Usage examples (VDR plugin)
     vdr -P"xineliboutput --local=sxfe --video=xv --audio=alsa --remote=none"
 
   Only local frontend, (slow) X11 video, oss audio:
-    vdr -P"xineliboutput --local=sxfe --video=x11 --audio=oss --remote=none"
+    vdr -P"xineliboutput --local=sxfe --video=xshm --audio=oss --remote=none"
 
   Only local frontend, DirectFB: 
     vdr -P"xineliboutput --local=fbfe --video=DirectFB --remote=none"
@@ -176,30 +177,36 @@ Using remote frontends
 
   Audio driver
     Use alsa:
-     vdr-fbfe --audio alsa
+      vdr-fbfe --audio alsa
     Use alsa (and specific card/sub-device):
-     vdr-fbfe --audio alsa:plughw:1,1
+      vdr-fbfe --audio alsa:plughw:1,1
 
   Video driver (and display / device):
     With X11 frontend (vdr-sxfe):
-        vdr-sxfe --video x11 | xshm | xv | xvmc | xxmc [:display]
+        vdr-sxfe --video [xshm | xv | xvmc | xxmc | vidix |
+                          XDirectFB | opengl | sdl | none [:display]]
       Examples:
         --video xv
         --video xvmc:127.0.0.1:1.0
 
     With framebuffer frontend (vdr-fbfe):
-      --video [fb | DirectFB | vidixfb | dxr3 | aadxr3 ] [:fb_device]
-      examples:
-      --video DirectFB
-      --video fb:/dev/fb/1
-      --video vidixfb
+        --video [fb | DirectFB | sdl | vidixfb | dxr3 | aadxr3 | none [:fb_device]]
+      Examples:
+        --video DirectFB
+        --video fb:/dev/fb/1
+        --video vidixfb
+        --video aadxr3
 
   De-interlacing
-    De-interlacing can be switched on with command-line option
-      --post tvtime
+    If deinterlacing post plugin options are not given at command line, 
+    deinterlacing is controlled by VDR plugin configuration menu settings.
+
+    De-interlacing can also be forced on or off with command-line option --post tvtime.
     Examples:
       vdr-sxfe --post tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1
       vdr -P"xineliboutput --post=tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
+    Disable deinterlacing:
+      vdr-sxfe --post tvtime:enable=0
 
 
 Using with xine-ui (xine, fbxine, gxine, ...)
@@ -219,9 +226,9 @@ Using with xine-ui (xine, fbxine, gxine, ...)
 
 Using with other media players (mplayer, vlc, ...)
 
-  Primary device video and audio can be streamed from 
-  plugin control port to almost any media player using
-  http or rtsp.
+  Primary device video and audio (without OSD or subtitles) 
+  can be streamed from plugin control port to almost any media 
+  player using http or rtsp.
 
   Session Announcement Protocol (SAP) compatible players 
   should detect stream automatically and add it to playlist 
@@ -254,14 +261,15 @@ Controlling VDR
 
     It should be possible to use VDR's remote controller learning
     mode by pressing some key just after VDR has been started.
+    Learning mode does not work with remote frontends.
 
     Keyboard input can be disabled in configuration menu. There
     are separate entries for local and remote frontends.
 
   With xine-ui:
 
-    Keyboard shortcuts and remote events from menus are automatically 
-    forwarded to VDR and translated to VDR keys.
+    Keyboard shortcuts and remote events from xine menus are 
+    automatically forwarded to VDR and translated to VDR keys.
     Translation to VDR keys is static and defined in xine_input_vdr.c.
 
 
@@ -377,8 +385,6 @@ DVD playback
 
 Aspect ratio setting
 
-  There are 4 possible aspect ratio settings for display:
-
     default  Aspect ratio is calculated from display resolution.
 
     4:3      4:3 video is scaled to fill whole window; 
@@ -387,10 +393,10 @@ Aspect ratio setting
     16:9     16:9 video is scaled to fill whole window; 
              4:3 video has black bars at left and right.
 
-    auto     4:3 and 16:9 are displayed as is; 
-             wider than 16:9 is displayed as 16:9.
-             (useful with 16:9 TV if TV can switch between 
-             16:9 and 4:3 -> 16:9 smart scaling)
+    16:10
+
+    auto     4:3 and 16:9 are scaled to fill whole window.
+             (useful if TV can "smart scale" 4:3 video to 16:9)
 
 
 Shortcut key macros
@@ -415,8 +421,8 @@ Shortcut key macros
                                          (User? @xineliboutput Red 9)
 
   Defining "Select subtitle track" macro key enables VDR-style
-  subtitle track menu (identical to audio track selection
-  with VDR "Audio" key).
+  subtitle track menu for media player (identical to audio track 
+  selection with VDR "Audio" key).
 
 
 Xine-specific settings
