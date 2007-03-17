@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.29 2007-03-17 12:14:37 phintuka Exp $
+ * $Id: config.c,v 1.30 2007-03-17 15:48:21 phintuka Exp $
  *
  */
 
@@ -52,7 +52,7 @@ const char *config_t::s_audioDrivers[] =
 const char *config_t::s_videoDriverNamesX11[] =
   {"automatic", "XShm", "Xv", "XvMC", "XvMC+VLD", "Vidix", "XDirectFB", "OpenGL", "SDL", "no video",NULL};
 const char *config_t::s_videoDriversX11[] =
-  {"auto",      "xshm", "xv", "xvmc", "xxmc",     "vidix", "DirectFB",  "opengl", "sdl", "none",    NULL};
+  {"auto",      "xshm", "xv", "xvmc", "xxmc",     "vidix", "XDirectFB", "opengl", "sdl", "none",    NULL};
 const char *config_t::s_videoDriverNamesFB[] =
   {"automatic", "Framebuffer", "DirectFB", "SDL", "VidixFB", "DXR3",   "No Video", NULL};
 const char *config_t::s_videoDriversFB[] =
@@ -312,6 +312,9 @@ config_t::config_t() {
   remote_use_http      = 1; /* allow generic http streaming (primary device output) */
   remote_use_http_ctrl = 0; /* allow http to control primary device (play/pause/seek...) */
 
+  remote_iface[0] = 0;   /* use only this interface - undefined -> any/all */
+  remote_address[0] = 0; /* bind locally to this IP - undefined -> any/all */
+
   use_x_keyboard = 1;
 
   hue          = -1; 
@@ -501,6 +504,9 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.AllowRtspCtrl")) remote_use_rtsp_ctrl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.AllowHttp"))     remote_use_http = atoi(Value);
   else if (!strcasecmp(Name, "Remote.AllowHttpCtrl")) remote_use_http_ctrl = atoi(Value);
+
+  else if (!strcasecmp(Name, "Remote.Iface"))     STRN0CPY(remote_iface,   Value);
+  else if (!strcasecmp(Name, "Remote.LocalIP"))   STRN0CPY(remote_address, Value);
 
   else if (!strcasecmp(Name, "Decoder.Priority"))    decoder_priority=strstra(Value,s_decoderPriority,1);
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);

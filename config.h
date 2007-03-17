@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.19 2007-03-17 12:14:37 phintuka Exp $
+ * $Id: config.h,v 1.20 2007-03-17 15:48:21 phintuka Exp $
  *
  */
 
@@ -242,6 +242,9 @@ class config_t {
     int  remote_use_rtsp_ctrl; /* allow rtsp to control primary device (play/pause/seek...) */
     int  remote_use_http;      /* allow generic http streaming (primary device output) */
     int  remote_use_http_ctrl; /* allow http to control primary device (play/pause/seek...) */
+
+    char remote_iface[32];   /* use only this interface */
+    char remote_address[32]; /* bind locally to this IP */
 
     int  use_x_keyboard;
 
