@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.20 2007-03-17 15:48:21 phintuka Exp $
+ * $Id: config.h,v 1.21 2007-03-25 02:39:26 phintuka Exp $
  *
  */
 
@@ -186,6 +186,7 @@ class config_t {
     int  audio_surround;
     int  headphone;
     int  audio_upmix;
+    int  sw_volume_control; /* software (xine-lib) or hardware (alsa) volume control and muting */
     
     int  decoder_priority;
     int  pes_buffers;
