@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.8 2007-03-14 11:48:42 phintuka Exp $
+ * $Id: cxsocket.c,v 1.9 2007-03-26 14:16:51 phintuka Exp $
  *
  */
 
@@ -102,7 +102,7 @@ bool cxSocket::set_multicast(int ttl)
   }  
 
   if(setsockopt(m_fd, IPPROTO_IP, IP_MULTICAST_TTL, &iTtl, sizeof(int))) {
-    LOGERR("cxSocket: setsockopt(IP_MULTICAST_TTL) failed");
+    LOGERR("cxSocket: setsockopt(IP_MULTICAST_TTL, %d) failed", iTtl);
     return false;
   }
       
