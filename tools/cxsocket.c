@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.9 2007-03-26 14:16:51 phintuka Exp $
+ * $Id: cxsocket.c,v 1.10 2007-03-27 02:40:07 phintuka Exp $
  *
  */
 
@@ -17,7 +17,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <sys/sendfile.h>
+#ifndef __APPLE__
+# include <sys/sendfile.h>
+#endif
 #include <netinet/tcp.h>
 
 #include <vdr/config.h>
@@ -116,10 +118,13 @@ bool cxSocket::set_multicast(int ttl)
 
 ssize_t cxSocket::sendfile(int fd_file, off_t *offset, size_t count)
 {
-  int r = ::sendfile(m_fd, fd_file, offset, count);
+  int r; 
+#ifndef __APPLE__
+  r = ::sendfile(m_fd, fd_file, offset, count);
   if(r<0 && (errno == ENOSYS || errno == EINVAL)) {
     // fall back to read/write
-LOGERR("sendfile failed - using simple read/write");
+    LOGERR("sendfile failed - using simple read/write");
+#endif
     cxPoller p(*this, true);
     char buf[0x10000];
     int todor = count, todow, done = 0;
@@ -140,8 +145,10 @@ LOGERR("sendfile failed - using simple read/write");
       }
     }
     return done;
+#ifndef __APPLE__
   }
   return r;
+#endif
 }
 
 bool cxSocket::set_cork(bool state)
