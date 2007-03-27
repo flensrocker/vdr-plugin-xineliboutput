@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sap.h,v 1.6 2007-03-14 11:46:28 phintuka Exp $
+ * $Id: sap.h,v 1.7 2007-03-27 02:33:09 phintuka Exp $
  *
  */
 
@@ -12,7 +12,16 @@
 #define XINELIBOUTPUT_SAP_H_
 
 #include <arpa/inet.h>
-#include <endian.h>
+#ifdef __APPLE__
+# ifdef __i386__
+#  include <i386/endian.h>
+# else
+#  include <ppc/endian.h>
+# endif
+#else
+# include <endian.h>
+#endif
+
 
 #ifndef PACKED
 #  define PACKED  __attribute__((packed))
