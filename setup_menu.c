@@ -4,13 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.23 2007-03-14 17:24:03 phintuka Exp $
+ * $Id: setup_menu.c,v 1.24 2007-03-28 06:58:43 phintuka Exp $
  *
  */
 
 #include <vdr/config.h>
 #include <vdr/i18n.h>
 #include <vdr/plugin.h>
+#include <vdr/remote.h>
 
 #include "setup_menu.h"
 #include "device.h"
@@ -102,6 +103,7 @@ class cMenuSetupAudio : public cMenuSetupPage
     int goom_width, goom_height, goom_fps;
 
     cOsdItem *audio_ctrl_speakers;
+    cOsdItem *audio_ctrl_volume;
     cOsdItem *audio_ctrl_delay;
     cOsdItem *audio_ctrl_compression;
     cOsdItem *audio_ctrl_upmix;
@@ -166,6 +168,12 @@ void cMenuSetupAudio::Set(void)
   Add(audio_ctrl_speakers =
       new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type, 
 				SPEAKERS_count, xc.s_speakerArrangements));
+
+  Add(audio_ctrl_volume =
+      new cMenuEditBoolItem(tr("Volume control"), 
+			    &newconfig.sw_volume_control,
+			    tr("Hardware"), tr("Software")));
+
   Add(audio_ctrl_delay = 
       new cMenuEditTypedIntItem(tr("Delay"), tr("ms"), &newconfig.audio_delay,
 				-3000, 3000, tr("Off")));
@@ -245,6 +253,11 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
       Set();
     }
   }
+  else if(item == audio_ctrl_volume) {
+    // trigger volume control message by toggling mute
+    cRemote::Put(kMute);
+    cRemote::Put(kMute);
+  }
   else if(item == audio_ctrl_upmix) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	  "upmix", newconfig.audio_upmix ? true : false, NULL);
@@ -283,6 +296,7 @@ void cMenuSetupAudio::Store(void)
   SetupStore("Audio.Headphone",    xc.headphone);
   SetupStore("Audio.Visualization",xc.audio_visualization);
   SetupStore("Audio.Visualization.GoomOpts",xc.audio_vis_goom_opts);
+  SetupStore("Audio.SoftwareVolumeControl", xc.sw_volume_control);
 }
 
 //--- cMenuSetupAudioEq ------------------------------------------------------
@@ -1406,6 +1420,9 @@ void cMenuSetupRemote::Store(void)
   SetupStore("Remote.AllowRtspCtrl", xc.remote_use_rtsp_ctrl);
   SetupStore("Remote.AllowHttp", xc.remote_use_http);
   SetupStore("Remote.AllowHttpCtrl", xc.remote_use_http_ctrl);
+
+  SetupStore("Remote.Iface",   xc.remote_iface);
+  SetupStore("Remote.LocalIP", xc.remote_address);
 
   cXinelibDevice::Instance().Listen(xc.remote_mode, xc.listen_port);
 }
