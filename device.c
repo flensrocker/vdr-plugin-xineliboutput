@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.35 2007-03-14 17:40:38 phintuka Exp $
+ * $Id: device.c,v 1.36 2007-03-28 14:40:10 phintuka Exp $
  *
  */
 
@@ -241,11 +241,16 @@ bool cXinelibDevice::StartDevice()
 
   // if(dynamic_cast<cXinelibLocal*>(it))
   if(m_local) {
+    int timer = 0;
     m_local->Start();
     while(!m_local->IsReady()) {
       cCondWait::SleepMs(100);
       if(m_local->IsFinished()) {
         LOGMSG("cXinelibDevice::Start(): Local frontend init failed");
+        return false;
+      }
+      if(++timer >= 7*10) {
+        LOGMSG("cXinelibDevice::Start(): Local frontend init timeout");
         return false;
       }
     }
@@ -254,11 +259,16 @@ bool cXinelibDevice::StartDevice()
   }
 
   if(m_server) {
+    int timer = 0;
     m_server->Start();
     while(!m_server->IsReady()) {
       cCondWait::SleepMs(100);
       if(m_server->IsFinished()) {
         LOGMSG("cXinelibDevice::Start(): Server init failed");
+        return false;
+      }
+      if(++timer >= 5*10) {
+        LOGMSG("cXinelibDevice::Start(): Server init timeout");
         return false;
       }
     }
