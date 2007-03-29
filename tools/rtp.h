@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rtp.h,v 1.2 2007-03-27 02:33:09 phintuka Exp $
+ * $Id: rtp.h,v 1.3 2007-03-29 14:22:31 phintuka Exp $
  *
  */
 
@@ -12,11 +12,7 @@
 #define XINELIBOUTPUT_RTP_H_
 
 #ifdef __APPLE__
-# ifdef __i386__
-#  include <i386/endian.h>
-# else
-#  include <ppc/endian.h>
-# endif
+# include <machine/endian.h>
 #else
 # include <endian.h>
 #endif
