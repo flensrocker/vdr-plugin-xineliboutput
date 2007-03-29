@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.29 2007-03-14 11:47:44 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.30 2007-03-29 12:45:43 phintuka Exp $
  *
  */
 
@@ -268,8 +268,11 @@ void cUdpScheduler::RemoveHandle(int fd)
     // Flush all buffers
     m_QueueNextSeq = 0;
     m_QueuePending = 0;
+
+    m_BackLogDeleteMutex.Lock();
     delete m_BackLog; 
     m_BackLog = new cUdpBackLog;
+    m_BackLogDeleteMutex.Unlock();
 
     m_Frames = 0;
     m_Octets = 0;
@@ -674,7 +677,7 @@ void cUdpScheduler::Action(void)
     m_QueuePending--;
 
     m_Cond.Broadcast();
- 
+    m_BackLogDeleteMutex.Lock(); /* ensure frame will not be deleted from queue */
     m_Lock.Unlock();
 
     // Schedule frame
@@ -748,7 +751,9 @@ void cUdpScheduler::Action(void)
       }
     }
 
+    m_BackLogDeleteMutex.Unlock(); /* release queue */
     m_Lock.Lock();
+
     m_Frames ++;
     m_Octets += PayloadSize;
     if(m_fd_rtcp.open() && (m_Frames & 0xff) == 1) { // every 256th frame

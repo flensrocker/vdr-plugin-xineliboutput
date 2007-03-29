@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.11 2007-01-24 01:04:09 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.12 2007-03-29 12:45:43 phintuka Exp $
  *
  */
 
@@ -68,6 +68,7 @@ class cUdpScheduler : public cThread
     int m_QueueNextSeq;      /* next outgoing */
     int m_QueuePending;      /* outgoing queue size */
     cUdpBackLog *m_BackLog;  /* queue for incoming data (not yet send) and retransmissions */
+    cMutex m_BackLogDeleteMutex;
 
     // Data for scheduling algorithm
     cTimePts  MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
