@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.17 2007-03-25 02:38:54 phintuka Exp $
+ * $Id: i18n.c,v 1.18 2007-04-02 15:36:25 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -40,7 +40,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Media Player", // English
-    "Xine-lib", // Deutsch
+    "Medien...", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -466,7 +466,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Deinterlacing", // English
-    "De-Interlacing", // Deutsch
+    "Deinterlacing", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1816,7 +1816,7 @@ const tI18nPhrase Phrases[] = {
   // 1.0.0pre2:
   {
     "Play remote DVD >>", // English
-    "Spiele Fern-DVD >>", // Deutsch
+    "Entfernte DVD abspielen >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -1836,7 +1836,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play DVD disc >>", // English
-    "Spiele DVD-Disk", // Deutsch
+    "DVD abspielen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2559,7 +2559,7 @@ const tI18nPhrase Phrases[] = {
   // Missing texts 2006-09-20
   {
     "Post processing (ffmpeg)", // English
-    "", // Deutsch
+    "Nachbearbeitung (ffmpeg)", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2579,7 +2579,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // ffmpeg post processing
     "  Quality", // English
-    "", // Deutsch
+    "  Qualität", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2599,7 +2599,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // ffmpeg post processing
     "  Mode", // English
-    "", // Deutsch
+    "  Modus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2619,7 +2619,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Method", // English
-    "", // Deutsch
+    "     Methode", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2639,7 +2639,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Cheap mode", // English
-    "", // Deutsch
+    "     einfacher Modus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2659,7 +2659,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Pulldown", // English
-    "", // Deutsch
+    "     Pulldown", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2679,7 +2679,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Frame rate", // English
-    "", // Deutsch
+    "     Bildrate", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2699,7 +2699,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Judder Correction", // English
-    "", // Deutsch
+    "     Ruckel-Korrektur", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2719,7 +2719,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Use progressive frame flag", // English
-    "", // Deutsch
+    "     Nutze progressive frame flag", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2739,7 +2739,7 @@ const tI18nPhrase Phrases[] = {
   },
   { // tvtime de-interlacing
     "     Chroma Filter", // English
-    "", // Deutsch
+    "     Chrominanz-Filter", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2809,7 +2809,7 @@ const tI18nPhrase Phrases[] = {
 #endif
   {
     "Select subtitle track", // English
-    "", // Deutsch
+    "Wähle Untertitel", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2829,7 +2829,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Select subtitle track >>", // English
-    "", // Deutsch
+    "Wähle Untertitel >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2849,7 +2849,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Subtitles", // English
-    "", // Deutsch
+    "Untertitel", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2869,7 +2869,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Aspect ratio", // English
-    "", // Deutsch
+    "Seitenverhältnis", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2890,7 +2890,7 @@ const tI18nPhrase Phrases[] = {
 #if 0
   {
     "Headphone audio mode", // English
-    "", // Deutsch
+    "Kopfhörer Audio-Modus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2912,7 +2912,7 @@ const tI18nPhrase Phrases[] = {
 #if 0
   {
     "Mix to headphones", // English
-    "", // Deutsch
+    "Mixe für Kopfhörer", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2933,7 +2933,7 @@ const tI18nPhrase Phrases[] = {
 #endif
   {
     "Play music", // English
-    "", // Deutsch
+    "Musik abspielen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2953,7 +2953,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Now playing", // English
-    "", // Deutsch
+    "Zurzeit wiedergegeben", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2973,7 +2973,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Random play", // English
-    "", // Deutsch
+    "Zufallswiedergabe", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -2993,7 +2993,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Normal play", // English
-    "", // Deutsch
+    "Normale Wiedergabe", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3013,7 +3013,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Frontend initialization failed", // English
-    "", // Deutsch
+    "Initialisierung des Frontends fehlgeschlagen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3033,7 +3033,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Server initialization failed", // English
-    "", // Deutsch
+    "Initialisierung des Servers fehlgeschlagen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3054,7 +3054,7 @@ const tI18nPhrase Phrases[] = {
   // Goom options
   {
     "  Width", // English
-    "", // Deutsch
+    "  Breite", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3074,7 +3074,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Height", // English
-    "", // Deutsch
+    "  Höhe", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3094,7 +3094,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  Speed", // English
-    "", // Deutsch
+    "  Bildrate", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3114,7 +3114,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "    SAP announcements", // English
-    "", // Deutsch
+    "    SAP-Ankündigungen", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3134,7 +3134,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play remote CD >>", // English
-    "", // Deutsch
+    "Entfernte CD abspielen >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3154,7 +3154,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Play audio CD >>", // English
-    "", // Deutsch
+    "Musik-CD abspielen >>", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3174,7 +3174,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "  HTTP transport for media files", // English
-    "", // Deutsch
+    "  HTTP-Verbindung für Medien-Dateien", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3194,7 +3194,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Additional network services", // English
-    "", // Deutsch
+    "Zusätzliche Netzwerk-Services", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3214,7 +3214,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "HTTP server", // English
-    "", // Deutsch
+    "HTTP-Server", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3234,7 +3234,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "RTSP server", // English
-    "", // Deutsch
+    "RTSP-Server", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3254,7 +3254,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "HTTP clients can control VDR", // English
-    "", // Deutsch
+    "HTTP-Clients können VDR kontrollieren", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3274,7 +3274,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "RTSP clients can control VDR", // English
-    "", // Deutsch
+    "RTSP-Clients können VDR kontrollieren", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3294,7 +3294,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Button$Queue", // English
-    "", // Deutsch
+    "Button$Warteschlange", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3314,7 +3314,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Button$Sort", // English
-    "", // Deutsch
+    "Button$Sortiere", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3334,7 +3334,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Button$Remove", // English
-    "", // Deutsch
+    "Button$Entferne", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3354,7 +3354,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Button$Add files", // English
-    "", // Deutsch
+    "Button$Füge Dateien hinzu", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3374,7 +3374,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Button$Random", // English
-    "", // Deutsch
+    "Button$Zufall", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3394,7 +3394,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Button$Normal", // English
-    "", // Deutsch
+    "Button$Normal", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3414,7 +3414,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "No subtitles available!", // English
-    "", // Deutsch
+    "Keine Untertitel verfügbar!", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3434,7 +3434,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Playlist", // English
-    "", // Deutsch
+    "Wiedergabeliste", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3454,7 +3454,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Add to playlist", // English
-    "", // Deutsch
+    "Füge zur Wiedergabeliste hinzu", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
@@ -3474,7 +3474,7 @@ const tI18nPhrase Phrases[] = {
   },
   {
     "Queued to playlist", // English
-    "", // Deutsch
+    "Hänge an Wiedergabeliste an", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
