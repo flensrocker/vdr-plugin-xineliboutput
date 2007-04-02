@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.21 2007-01-22 18:37:21 phintuka Exp $
+# $Id: Makefile,v 1.22 2007-04-02 13:52:49 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -38,6 +38,7 @@ else
     $(warning ********************************************************)
 endif
 
+APPLE_DARWIN = $(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0")
 
 #
 # Override configuration here or in ../../../Make.config
@@ -66,10 +67,20 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | cut -d'"' 
 
 CXX      ?= g++
 OPTFLAGS ?= 
-CXXFLAGS ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g 
+#CXXFLAGS ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g 
 
 CC     ?= gcc 
-CFLAGS ?= -O3 -pipe -Wall -fPIC -g
+#CFLAGS ?= -O3 -pipe -Wall -fPIC -g
+
+ifeq ($(APPLE_DARWIN), 1)
+    CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
+    CFLAGS     ?= -O3 -pipe -Wall -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
+    LDFLAGS_SO ?= -fvisibility=hidden
+else
+    CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g 
+    CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
+    LDFLAGS_SO ?= -shared -fvisibility=hidden 
+endif
 
 
 ###
@@ -97,15 +108,20 @@ VDRINCDIR ?= $(VDRDIR)/include
 ### check for VDR
 ###
 
-VDRVERSION = $(shell sed -ne '/define VDRVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
+ifeq ($(APPLE_DARWIN), 1)
+    VDRVERSION = $(shell sed -ne '/define VDRVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
+    APIVERSION = $(shell sed -ne '/define APIVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
+else
+    VDRVERSION = $(shell sed -ne '/define VDRVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
+    APIVERSION = $(shell sed -ne '/define APIVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
+endif
+
 ifeq ($(strip $(VDRVERSION)),)
     $(warning ********************************************************)
     $(warning VDR not detected ! VDR plugin will not be compiled.     )
     $(warning ********************************************************)
     XINELIBOUTPUT_VDRPLUGIN = 0
 else
-    ### The version number of VDR's plugin API (taken from VDR's "config.h"):
-    APIVERSION = $(shell sed -ne '/define APIVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
     ifeq ($(strip $(APIVERSION)),)
         $(warning VDR APIVERSION missing, using VDRVERSION $(VDRVERSION) )
         APIVERSION = $(VDRVERSION)
@@ -184,7 +200,13 @@ INCLUDES  += -I$(VDRINCDIR)
 LIBS_XINE += $(shell xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 
-LIBS      += -lrt
+ifeq ($(APPLE_DARWIN), 1)
+    INCLUDES  += -I/sw/include
+    LIBDIRS   += -L/sw/lib
+    LIBS      += $(LIBDIRS) -ljpeg -liconv
+else
+    LIBS      += -lrt
+endif
 
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
@@ -354,14 +376,14 @@ frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
 
 ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
 $(VDRPLUGIN_SO): $(OBJS) $(OBJS_MPG)
-	$(CXX) $(CXXFLAGS) -shared -fvisibility=hidden $(OBJS) $(OBJS_MPG) $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) -o $@
 	@-rm -rf $(LIBDIR)/$@.$(APIVERSION)
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 endif
 
 ifeq ($(XINELIBOUTPUT_X11), 1)
 $(VDRPLUGIN_SXFE_SO): $(OBJS_SXFE_SO)
-	$(CC) $(CFLAGS) -shared -fvisibility=hidden $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
@@ -370,7 +392,7 @@ endif
 
 ifeq ($(XINELIBOUTPUT_FB), 1)
 $(VDRPLUGIN_FBFE_SO): $(OBJS_FBFE_SO)
-	$(CC) $(CFLAGS) -shared -fvisibility=hidden $(OBJS_FBFE_SO) $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
@@ -379,15 +401,15 @@ endif
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 $(XINEINPUTVDR_SO): xine_input_vdr.o
-	$(CC) -g -shared -fvisibility=hidden xine_input_vdr.o $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_input_vdr.o $(LIBS_XINE) -o $@
 $(XINEPOSTAUTOCROP_SO): xine_post_autocrop.o
-	$(CC) -g -shared -fvisibility=hidden xine_post_autocrop.o $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_autocrop.o $(LIBS_XINE) -o $@
 $(XINEPOSTAUDIOCHANNEL_SO): xine_post_audiochannel.o
-	$(CC) -g -shared -fvisibility=hidden xine_post_audiochannel.o $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_audiochannel.o $(LIBS_XINE) -o $@
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
 $(XINEPOSTHEADPHONE_SO): xine_post_headphone.o
-	$(CC) -g -shared -fvisibility=hidden xine_post_headphone.o $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_headphone.o $(LIBS_XINE) -o $@
 endif
 
 install: all
