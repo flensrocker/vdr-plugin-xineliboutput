@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.23 2007-03-14 14:39:48 phintuka Exp $
+ * $Id: media_player.c,v 1.24 2007-04-02 14:36:18 phintuka Exp $
  *
  */
 
@@ -228,7 +228,7 @@ bool cXinelibPlayer::NextFile(int step)
 
 void cXinelibPlayer::Activate(bool On)
 {
-  int pos = 0, fd = -1;
+  int pos = 0, len = 0, fd = -1;
   if(On) {
     if(m_UseResume && !*m_ResumeFile)
       m_ResumeFile = cString::sprintf("%s.resume", *m_File);
@@ -265,8 +265,9 @@ void cXinelibPlayer::Activate(bool On)
   } else {
     if(m_UseResume && *m_ResumeFile) {
       pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-      if(pos>=0) {
-	pos /= 1000;
+      len = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
+      if(pos>=0 && pos < (len-10000)) {
+	pos = (pos/1000) - 10; // skip back 10 seconds ("VDR style")
 	if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
 			   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
 	  if(write(fd, &pos, sizeof(int)) != sizeof(int)) {
