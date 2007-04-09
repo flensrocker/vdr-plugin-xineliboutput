@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.34 2007-04-09 00:54:56 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.35 2007-04-09 16:15:16 phintuka Exp $
  *
  */
 
@@ -1440,8 +1440,6 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
                                               frame->width, frame->height,
                                               frame->ratio, XINE_IMGFMT_YV12, 
                                               VO_BOTH_FIELDS);
-    if(img)
-      img->lock(img);
     this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
 
     if(!img) {
