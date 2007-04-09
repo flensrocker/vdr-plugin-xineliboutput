@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.24 2007-04-02 14:36:18 phintuka Exp $
+ * $Id: media_player.c,v 1.25 2007-04-09 16:22:40 phintuka Exp $
  *
  */
 
@@ -266,7 +266,7 @@ void cXinelibPlayer::Activate(bool On)
     if(m_UseResume && *m_ResumeFile) {
       pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
       len = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
-      if(pos>=0 && pos < (len-10000)) {
+      if(pos>10000 && pos < (len-10000)) {
 	pos = (pos/1000) - 10; // skip back 10 seconds ("VDR style")
 	if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
 			   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
