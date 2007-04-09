@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.33 2007-03-14 10:23:15 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.34 2007-04-09 00:54:56 phintuka Exp $
  *
  */
 
@@ -459,7 +459,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   snprintf(this->configfile, sizeof(this->configfile),
 	   "%s%s", xine_get_homedir(), 
 	  "/.xine/config_xineliboutput");
-  
+  this->configfile[sizeof(this->configfile)-1] = 0;
   xine_config_load (this->xine, this->configfile);
 
   x_reg_num ("engine.buffers.video_num_buffers",
@@ -1402,7 +1402,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   tJpegCompressData jcd;
 
   fe_t *this = (fe_t*)this_gen;
-  vo_frame_t *frame;
+  vo_frame_t *frame, *img;
 
 #ifndef PPM_SUPPORTED
   if(!jpeg) {
@@ -1419,8 +1419,10 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   LOGDBG("fe_grab: grabbing %s %d %dx%d", 
 	 jpeg ? "JPEG" : "PNM", quality, width, height);
 
-  if (quality < 0 || quality > 100)
-    quality = 100; /* -1 defaults to 100 */
+  if (quality < 0)
+    quality = 0;
+  else if(quality > 100)
+    quality = 100;
 
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
   frame = this->stream->video_out->get_last_frame (this->stream->video_out);
@@ -1430,6 +1432,34 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 
   if(!frame)
     return NULL;
+
+  // convert yuy2 frames to yv12
+  if (frame->format == XINE_IMGFMT_YUY2) {
+    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
+    img = this->stream->video_out->get_frame (this->stream->video_out,
+                                              frame->width, frame->height,
+                                              frame->ratio, XINE_IMGFMT_YV12, 
+                                              VO_BOTH_FIELDS);
+    if(img)
+      img->lock(img);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+
+    if(!img) {
+      LOGMSG("fe_grab: get_frame failed");
+      frame->free(frame);
+      return NULL;
+    } 
+
+    init_yuv_conversion();
+    yuy2_to_yv12(frame->base[0], frame->pitches[0], 
+                 img->base[0], img->pitches[0],
+                 img->base[1], img->pitches[1],
+                 img->base[2], img->pitches[2],
+                 frame->width, frame->height);     
+    
+    frame->free(frame);
+    frame = img;
+  }
 
   /* #warning TODO: no scaling implemented */
   if(width != frame->width)
@@ -1450,12 +1480,9 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   cinfo.client_data = &jcd;
   cinfo.image_width = width;
   cinfo.image_height = height;
-  cinfo.input_components = 3;
-  /*cinfo.in_color_space = JCS_RGB;*/
-  cinfo.in_color_space = JCS_YCbCr;
 
-  jpeg_set_defaults(&cinfo);
-  jpeg_set_quality(&cinfo, quality, TRUE);
+  cinfo.input_components = 3;
+  cinfo.in_color_space = JCS_YCbCr;
 
   switch (frame->format) {
     case XINE_IMGFMT_YV12: {
@@ -1464,9 +1491,13 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
       JSAMPROW *rpU = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
       JSAMPROW *rpV = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
       int k;
+
+      jpeg_set_defaults(&cinfo);
+      jpeg_set_quality(&cinfo, quality, TRUE);
       cinfo.raw_data_in = TRUE;
+
       jpeg_set_colorspace(&cinfo, JCS_YCbCr);
-      cinfo.comp_info[0].h_samp_factor =
+      cinfo.comp_info[0].h_samp_factor = 
       cinfo.comp_info[0].v_samp_factor = 2;
       cinfo.comp_info[1].h_samp_factor =
       cinfo.comp_info[1].v_samp_factor =
@@ -1491,23 +1522,17 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
       free(rpV);
       break;
     }
-    case XINE_IMGFMT_YUY2: {
-      JSAMPROW *rp = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
-      int rs, k;
-      jpeg_start_compress(&cinfo, TRUE);
-      rs = frame->pitches[0];
-      for (k = 0; k < height; k++)
-	rp[k] = frame->base[0] + k*rs;
-      jpeg_write_scanlines(&cinfo, rp, height);
-      free(rp);
-      break;
-    }
 #if 0
     case XINE_IMGFMT_RGB: {
       JSAMPROW rp[height];
       int rs, k;
+
       cinfo.in_color_space = JCS_RGB;
+
+      jpeg_set_defaults(&cinfo);
+      jpeg_set_quality(&cinfo, quality, TRUE);
       jpeg_start_compress(&cinfo, TRUE);
+
       rs = frame->pitches[0];
       for (k = 0; k < height; k++)
 	rp[k] = frame->base[0] + k*rs;
