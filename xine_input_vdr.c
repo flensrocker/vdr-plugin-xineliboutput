@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.78 2007-03-17 17:11:02 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.79 2007-04-12 20:49:55 phintuka Exp $
  *
  */
 
@@ -242,8 +242,8 @@ typedef struct vdr_input_plugin_s {
   int                 hd_stream;  /* true if current stream is HD */
 
   int                 audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
-  int                 reset_audio_cnt;
   int                 prev_audio_stream_id;
+  int                 sw_volume_control;
 
   /* SCR */
   pvrscr_t           *scr;
@@ -257,9 +257,6 @@ typedef struct vdr_input_plugin_s {
   int                 B_frames;
   int                 P_frames;
 
-  int64_t             pause_start;
-  int                 paused_frames;
-
   /* Network */
   pthread_t           control_thread;
   pthread_t           data_thread;
@@ -269,13 +266,11 @@ typedef struct vdr_input_plugin_s {
   volatile int        fd_data;
   volatile int        fd_control;
   int                 tcp, udp, rtp;
-  buf_element_t      *read_buffer;   /* used when reading from socket */
   udp_data_t         *udp_data;
   int                 client_id;
   int                 token;
 
   /* buffer */
-  buf_element_t      *curr_buffer;   /* used in read */
   fifo_buffer_t      *block_buffer;  /* blocks to be demuxed */
   fifo_buffer_t      *buffer_pool;   /* stream's video fifo */
   fifo_buffer_t      *big_buffer;    /* for jumbo PES */
@@ -657,8 +652,6 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this)
 #else
     _x_set_fine_speed(this->stream, 1000000 / 1000); /* -> speed to 0.1%  */
 #endif
-    this->pause_start = monotonic_time_ms(); 
-    this->paused_frames = 0;
     this->I_frames = this->P_frames = this->B_frames = 0;
   }
 }
@@ -677,7 +670,6 @@ static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
       pvrscr_set_fine_speed((scr_plugin_t*)this->scr, XINE_FINE_SPEED_NORMAL);
     }
   }
-  this->pause_start = 0;
 }
 
 static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this) 
@@ -776,31 +768,18 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 						      VO_PROP_BUFS_IN_FIFO);
     this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
 #endif
-    this->paused_frames++;
 
     if( num_used/2 > num_free 
 	|| (this->no_video && num_used > 5)
-#if 0
-	|| this->paused_frames > 200
-        || ( this->paused_frames > 100 
-	     && this->pause_start > 0
-	     && this->pause_start + 400 < monotonic_time_ms())
-#endif
-	/*|| num_vbufs > 5*/
 	|| this->still_mode
 	|| this->is_trickspeed
 	|| ( this->I_frames > 0
 	     && (this->I_frames > 2 || this->P_frames > 6 ))
 	) {
-      LOGSCR("I %d B %d P %d", this->I_frames, this->B_frames, this->P_frames);
       LOGSCR("SCR tunning resetted by adjust_speed, "
-	     "vbufs=%d (SCR was paused for %d bufs/%lld ms)",
-	     /*num_vbufs*/0, this->paused_frames, 
-	     monotonic_time_ms() - this->pause_start);
+             "I %d B %d P %d", this->I_frames, this->B_frames, this->P_frames);
 
       this->I_frames = 0;
-      this->paused_frames = 0; 
-      this->pause_start = 0;
       reset_scr_tunning(this, this->speed_before_pause);
     }
 
@@ -846,7 +825,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	     scr_tunning_str(this->scr_tunning), 
 	     scr_tunning_str(scr_tunning), num_used, num_free );
       this->scr_tunning = scr_tunning;
-      this->pause_start = 0;
 
       /* make it play .5% / 1% faster or slower */
       if(this->scr)
@@ -3477,13 +3455,30 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
            set_live_mode(this, tmp32) : -2 ;
     
   } else if(!strncasecmp(cmd, "MASTER ", 7)) {
-    if(1 != sscanf(cmd, "MASTER %d", &this->fixed_scr))
+    if(1 == sscanf(cmd, "MASTER %d", &tmp32))
+      this->fixed_scr = tmp32 ? 1 : 0;
+    else
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "VOLUME ", 7)) {
     if(1 == sscanf(cmd, "VOLUME %d", &tmp32)) {
-      xine_set_param(stream, XINE_PARAM_AUDIO_VOLUME, tmp32);
-      xine_set_param(stream, XINE_PARAM_AUDIO_MUTE, tmp32<=0 ? 1 : 0);
+      int sw = strstr(cmd, "SW") ? 1 : 0;
+      if(!sw) {
+	xine_set_param(stream, XINE_PARAM_AUDIO_VOLUME, tmp32);
+	xine_set_param(stream, XINE_PARAM_AUDIO_MUTE, tmp32<=0 ? 1 : 0);
+      } else {
+	xine_set_param(stream, XINE_PARAM_AUDIO_AMP_LEVEL, tmp32);
+	xine_set_param(stream, XINE_PARAM_AUDIO_AMP_MUTE, tmp32<=0 ? 1 : 0);
+      }
+      if(sw != this->sw_volume_control) {
+	this->sw_volume_control = sw;
+	if(sw) {
+	  xine_set_param(stream, XINE_PARAM_AUDIO_MUTE, 0);
+	} else {
+	  xine_set_param(stream, XINE_PARAM_AUDIO_AMP_LEVEL, 100);
+	  xine_set_param(stream, XINE_PARAM_AUDIO_AMP_MUTE, 0);
+	}
+      }
     } else
       err = CONTROL_PARAM_ERROR;
 
@@ -3519,9 +3514,6 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       int ac3 = strncmp(cmd+12, "AC3", 3) ? 0 : 1;
       if(1 == sscanf(cmd+12 + 4*ac3, "%d", &tmp32)) {
 	pthread_mutex_lock(&this->lock);
-	if(this->reset_audio_cnt < 0)
-	  this->reset_audio_cnt = 0;
-	this->reset_audio_cnt++;
 	this->audio_stream_id = tmp32;
 	pthread_mutex_unlock(&this->lock);
       } else {
@@ -4653,11 +4645,6 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
 #endif
 #if 0
     LOGMSG("VDR-Given stream: %04x", this->audio_stream_id);
-    if(this->reset_audio_cnt < 1)
-      LOGMSG("audio changed, reset cnt still < 1");
-    this->reset_audio_cnt --;
-    if(this->reset_audio_cnt > 0)
-      LOGMSG("audio resetted, reset cnt still > 0");
 #endif
   }
 }
@@ -5125,8 +5112,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* need to get all buffer elements back before disposing own buffers ... */
   LOGDBG("Disposing fifos");
-  if(this->read_buffer)
-    this->read_buffer->free_buffer(this->read_buffer);
   if(this->stream && this->stream->audio_fifo)
     this->stream->audio_fifo->clear(this->stream->audio_fifo);
   if(this->stream && this->stream->video_fifo)
@@ -5292,7 +5277,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
 {
   char tmpbuf[256];
   int fd_control;
-  int saved_fd = this->fd_control;
+  int saved_fd = this->fd_control, one = 1;
 
   /* Connect to server */
   this->fd_control = fd_control = _x_io_tcp_connect(this->stream, host, port);
@@ -5357,6 +5342,10 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
 
   /* set socket to non-blocking mode */
   fcntl (fd_control, F_SETFL, fcntl (fd_control, F_GETFL) | O_NONBLOCK);
+
+  /* set control socket to deliver data immediately 
+     instead of waiting for full TCP segments */
+  setsockopt(fd_control, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(int));
 
   this->fd_control = saved_fd;
   return fd_control;
@@ -5877,10 +5866,8 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->fd_control   = -1;
   this->udp          = 0;
   this->control_running = 0;
-  this->read_buffer  = NULL;
 
   this->block_buffer = NULL;
-  this->curr_buffer  = NULL;
   this->discard_index= 0;
   this->guard_index  = 0;
   this->curpos       = 0;
