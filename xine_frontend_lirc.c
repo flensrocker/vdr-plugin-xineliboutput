@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.7 2007-03-14 11:58:42 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.8 2007-04-12 19:27:50 phintuka Exp $
  *
  */
 /*
@@ -20,7 +20,7 @@
  *
  * LIRC support added by Carsten Koch <Carsten.Koch@icem.de>  2000-06-16.
  *
- * $Id: xine_frontend_lirc.c,v 1.7 2007-03-14 11:58:42 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.8 2007-04-12 19:27:50 phintuka Exp $
  */
 
 
@@ -43,6 +43,10 @@ static pthread_t lirc_thread;
 static volatile char *lirc_device_name = NULL;
 static volatile int fd_lirc = -1;
 static int lirc_repeat_emu = 0;
+
+#ifndef IS_FBFE
+static void sxfe_toggle_fullscreen(sxfe_t *this);
+#endif
 
 static uint64_t time_ms()
 {
@@ -187,6 +191,19 @@ static void *lirc_receiver_thread(void *fe)
 	LastTime = time_ms();
 
 
+#ifdef XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN
+# ifndef IS_FBFE
+        if(!strcmp(KeyName, "Fullscreen")) {
+          if(!repeat)
+            sxfe_toggle_fullscreen((sxfe_t*)fe);
+        } else 
+# endif
+        if(!strcmp(KeyName, "Deinterlace")) {
+          fe_t *this = (fe_t*)fe;
+          xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
+                         xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+        } else 
+#endif
 	if(find_input((fe_t*)fe))
 	  process_xine_keypress(((fe_t*)fe)->input, "LIRC", KeyName, repeat, 0);
 
