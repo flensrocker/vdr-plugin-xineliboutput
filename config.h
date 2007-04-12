@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.21 2007-03-25 02:39:26 phintuka Exp $
+ * $Id: config.h,v 1.22 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -43,12 +43,6 @@
 #define DEINTERLACE_LINEARLEND   6
 #define DEINTERLACE_TVTIME       7
 #define DEINTERLACE_count        8
-
-// Decoder priority
-#define DECODER_PRIORITY_LOW     0
-#define DECODER_PRIORITY_NORMAL  1
-#define DECODER_PRIORITY_HIGH    2
-#define DECODER_PRIORITY_count   3
 
 #define FIELD_ORDER_NORMAL       0
 #define FIELD_ORDER_INVERTED     1
@@ -152,7 +146,6 @@ class config_t {
     static const char *s_aspects[];
     static const char *s_deinterlaceMethods[];
     static const char *s_deinterlaceMethodNames[];
-    static const char *s_decoderPriority[];
     static const char *s_fieldOrder[];
     static const char *s_audioDriverNames[];
     static const char *s_audioDrivers[];
@@ -188,7 +181,6 @@ class config_t {
     int  audio_upmix;
     int  sw_volume_control; /* software (xine-lib) or hardware (alsa) volume control and muting */
     
-    int  decoder_priority;
     int  pes_buffers;
     char deinterlace_method[32];
     char deinterlace_opts[256];

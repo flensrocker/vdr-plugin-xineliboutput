@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.31 2007-03-25 02:39:26 phintuka Exp $
+ * $Id: config.c,v 1.32 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -41,8 +41,6 @@ const char *config_t::s_deinterlaceMethods[] =
 const char *config_t::s_deinterlaceMethodNames[] =
   {"off", "Bob", "Weave", "Greedy", "One Field", "One Field XV", 
    "Linear Blend", "TvTime", NULL};
-const char *config_t::s_decoderPriority[] =
-  {"low", "normal", "high", 0};
 const char *config_t::s_fieldOrder[] =
   {"normal", "inverted", NULL};
 const char *config_t::s_audioDriverNames[] =
@@ -252,7 +250,6 @@ config_t::config_t() {
   audio_surround = 0;
   sw_volume_control = 0;
 
-  decoder_priority     = DECODER_PRIORITY_NORMAL;
   pes_buffers          = i_pesBufferSize[PES_BUFFERS_SMALL_250];
   strn0cpy(deinterlace_method, s_deinterlaceMethods[DEINTERLACE_NONE], sizeof(deinterlace_method));
   strn0cpy(deinterlace_opts, DEFAULT_DEINTERLACE_OPTS, sizeof(deinterlace_opts));
@@ -510,7 +507,6 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.Iface"))     STRN0CPY(remote_iface,   Value);
   else if (!strcasecmp(Name, "Remote.LocalIP"))   STRN0CPY(remote_address, Value);
 
-  else if (!strcasecmp(Name, "Decoder.Priority"))    decoder_priority=strstra(Value,s_decoderPriority,1);
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);
 
   else if (!strcasecmp(Name, "Video.Driver"))      STRN0CPY(video_driver, Value);

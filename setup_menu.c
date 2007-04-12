@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.24 2007-03-28 06:58:43 phintuka Exp $
+ * $Id: setup_menu.c,v 1.25 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -918,8 +918,6 @@ void cMenuSetupDecoder::Set(void)
   Clear();
 
   Add(NewTitle(tr("Decoder")));
-  Add(new cMenuEditStraI18nItem(tr("Priority"), &newconfig.decoder_priority, 
-				DECODER_PRIORITY_count, xc.s_decoderPriority));
   Add(ctrl_pes_buffers_ind = 
       new cMenuEditStraI18nItem(tr("Buffer size"), &pes_buffers_ind, 
 				PES_BUFFERS_count, xc.s_bufferSize));
@@ -960,21 +958,17 @@ eOSState cMenuSetupDecoder::ProcessKey(eKeys Key)
 void cMenuSetupDecoder::Store(void)
 {
   int old_buffers = xc.pes_buffers;
-  int old_priority = xc.decoder_priority;
 
   //memcpy(&xc, &newconfig, sizeof(config_t));
   xc.pes_buffers = newconfig.pes_buffers;
-  xc.decoder_priority = newconfig.decoder_priority;
 
   if(pes_buffers_ind != PES_BUFFERS_CUSTOM)
     xc.pes_buffers = xc.i_pesBufferSize[pes_buffers_ind];
 
-  SetupStore("Decoder.Priority", xc.s_decoderPriority[xc.decoder_priority]);
   SetupStore("Decoder.PesBuffers",    xc.pes_buffers);
 
-  if(xc.pes_buffers != old_buffers || xc.decoder_priority != old_priority)
-    cXinelibDevice::Instance().ConfigureDecoder(xc.pes_buffers, 
-						xc.decoder_priority);
+  if(xc.pes_buffers != old_buffers)
+    cXinelibDevice::Instance().ConfigureDecoder(xc.pes_buffers);
 }
 
 
@@ -1213,12 +1207,10 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
 void cMenuSetupLocal::Store(void)
 {
   int old_buffers = xc.pes_buffers;
-  int old_priority = xc.decoder_priority;
 
   memcpy(&xc, &newconfig, sizeof(config_t));
 
   xc.pes_buffers = old_buffers;
-  xc.decoder_priority = old_priority;
 
   strn0cpy(xc.audio_driver, xc.s_audioDrivers[audio_driver], sizeof(xc.audio_driver));
   strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));

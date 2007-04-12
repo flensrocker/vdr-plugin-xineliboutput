@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.23 2007-03-14 13:21:08 phintuka Exp $
+ * $Id: frontend_local.c,v 1.24 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -177,13 +177,12 @@ void cXinelibLocal::ConfigureWindow(int fullscreen, int width, int height,
 			  aspect, scale_video, field_order);
 }
 
-void cXinelibLocal::ConfigureDecoder(int pes_buffers, int priority)
+void cXinelibLocal::ConfigureDecoder(int pes_buffers)
 {
   // needs xine restart
   {
     LOCK_FE;
     xc.pes_buffers = pes_buffers;
-    xc.decoder_priority = priority;
     if(!fe)
       return;    
     m_bReady = false;
@@ -334,24 +333,6 @@ void cXinelibLocal::Action(void)
   TRACEF("cXinelibLocal::Action");
 
   SetPriority(2); /* lower priority */
-#if 0
-  // set priority
-  sched_param temp;
-  temp.sched_priority = 2;
-
-  if (!pthread_setschedparam(pthread_self(), SCHED_RR, &temp)) {
-    TRACE("cXinelibLocal("<<getpid()<<"): priority set successful to "
-	  << temp.sched_priority << 
-	  " [" << sched_get_priority_min(SCHED_RR) << ","
-	  << sched_get_priority_max(SCHED_RR) << "]");
-  } else {
-    TRACE("cXinelibLocal(" << getpid() << "): Error: can't set priority to "
-	  << temp.sched_priority << " [" 
-	  << sched_get_priority_min(SCHED_RR)
-	  << "," << sched_get_priority_max(SCHED_RR) << "]");
-  }
-  errno = 0;
-#endif
 
   // init frontend
   if(!curr_fe) {
@@ -387,7 +368,7 @@ void cXinelibLocal::Action(void)
       if(m_bReconfigRequest) {
 	if(!fe->xine_init(fe, xc.audio_driver, xc.audio_port,
 			  xc.video_driver,
-			  xc.pes_buffers, xc.decoder_priority,
+			  xc.pes_buffers, 0,
 			  xc.post_plugins)) {
 	  LOGMSG("cXinelibLocal: Error initializing frontend");
 	  break;

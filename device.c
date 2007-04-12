@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.36 2007-03-28 14:40:10 phintuka Exp $
+ * $Id: device.c,v 1.37 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -469,14 +469,14 @@ void cXinelibDevice::ConfigureVideo(int hue, int saturation, int brightness, int
     m_server->ConfigureVideo(hue, saturation, brightness, contrast, overscan);
 }
 
-void cXinelibDevice::ConfigureDecoder(int pes_buffers, int priority)
+void cXinelibDevice::ConfigureDecoder(int pes_buffers)
 {
   TRACEF("cXinelibDevice::ConfigureDecoder");
 
   if(m_local)
-    m_local->ConfigureDecoder(pes_buffers, priority);
+    m_local->ConfigureDecoder(pes_buffers);
   //if(m_server)
-  //  m_server->ConfigureDecoder(pes_buffers, priority);
+  //  m_server->ConfigureDecoder(pes_buffers);
 
   cXinelibOsdProvider::RefreshOsd();
 }

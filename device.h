@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.22 2007-03-14 17:40:38 phintuka Exp $
+ * $Id: device.h,v 1.23 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -222,7 +222,7 @@ class cXinelibDevice : public cDevice
     void ConfigureWindow(int fullscreen, int width, int height, 
 			 int modeswitch, const char *modeline, 
 			 int aspect, int scale_video, int field_order);
-    void ConfigureDecoder(int pes_buffers, int priority);
+    void ConfigureDecoder(int pes_buffers);
     // remote mode:
     void Listen(bool activate, int port);
 

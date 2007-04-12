@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.13 2007-01-24 01:05:34 phintuka Exp $
+ * $Id: frontend.h,v 1.14 2007-04-12 22:53:36 phintuka Exp $
  *
  */
 
@@ -122,7 +122,7 @@ class cXinelibThread : public cThread, public cListObject
 				 int modeswitch, const char *modeline, 
 				 int aspect, int scale_video, 
 				 int field_order) {};
-    virtual void ConfigureDecoder(int pes_buffers, int priority) {};
+    virtual void ConfigureDecoder(int pes_buffers) {};
     // Remote frontend server:
     virtual bool Listen(int port) { return false; }
 

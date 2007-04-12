@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.18 2007-04-02 15:36:25 phintuka Exp $
+ * $Id: i18n.c,v 1.19 2007-04-12 22:53:36 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -56,46 +56,6 @@ const tI18nPhrase Phrases[] = {
     "", // Magyar
     "", // Catala
     "Xine-lib", // Russian
-    "", // Croatian
-  },
-  {
-    "high", // English
-    "Hoch", // Deutsch
-    "", // Slovenski
-    "", // Italiano
-    "", // Nederlands
-    "", // Português
-    "", // Français
-    "", // Norsk
-    "korkea", // Suomi
-    "", // Polski
-    "", // Español
-    "", // Ellinika
-    "", // Svenska
-    "", // Romaneste
-    "", // Magyar
-    "", // Catala
-    "²ëáŞÚØÙ", // Russian
-    "", // Croatian
-  },
-  {
-    "low", // English
-    "Niedrig", // Deutsch
-    "", // Slovenski
-    "", // Italiano
-    "", // Nederlands
-    "", // Português
-    "", // Français
-    "", // Norsk
-    "matala", // Suomi
-    "", // Polski
-    "", // Español
-    "", // Ellinika
-    "", // Svenska
-    "", // Romaneste
-    "", // Magyar
-    "", // Catala
-    "½Ø×ÚØÙ", // Russian
     "", // Croatian
   },
   {
@@ -602,26 +562,6 @@ const tI18nPhrase Phrases[] = {
     "", // Magyar
     "", // Catala
     "  PES ßĞÚÕâŞÒ", // Russian
-    "", // Croatian
-  },
-  {
-    "Priority", // English
-    "Priorität", // Deutsch
-    "", // Slovenski
-    "", // Italiano
-    "", // Nederlands
-    "", // Português
-    "", // Français
-    "", // Norsk
-    "Prioriteetti", // Suomi
-    "", // Polski
-    "", // Español
-    "", // Ellinika
-    "", // Svenska
-    "", // Romaneste
-    "", // Magyar
-    "", // Catala
-    "¿àØŞàØâÕâ", // Russian
     "", // Croatian
   },
   {
