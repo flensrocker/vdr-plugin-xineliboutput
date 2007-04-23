@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.25 2007-04-09 16:22:40 phintuka Exp $
+ * $Id: media_player.c,v 1.26 2007-04-23 14:00:52 phintuka Exp $
  *
  */
 
@@ -971,7 +971,6 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
       case kBack:  xc.main_menu_mode = m_Mode;
 	           Hide(); 
 		   Close(); 
-		   BackToMenu();
 		   return osEnd;
       default:     break;
     }
