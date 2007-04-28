@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.79 2007-04-12 20:49:55 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.80 2007-04-28 14:04:34 phintuka Exp $
  *
  */
 
@@ -3795,6 +3795,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
     write_control(this, tracks);
   }
 
+#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
   i = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
   if(i >= 0) {
     sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
@@ -3804,6 +3805,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
       write_control(this, tracks);
     LOGDBG(tracks);
   }
+#endif
 }
 
 /* Map some xine input events to vdr input (remote key names) */
@@ -3913,13 +3915,15 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
   switch (event->type) {
     case XINE_EVENT_UI_SET_TITLE:
       if(event->stream==this->slave_stream) {
-	int tt;
-	char msg[256];
+	char msg[256], titlen[64] = "";
 	xine_ui_data_t *data = (xine_ui_data_t *)event->data;
 	LOGMSG("XINE_EVENT_UI_SET_TITLE: %s", data->str);
 
-	tt = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
-	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\nINFO DVDTITLE %d\r\n", data->str, tt);
+#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
+	int tt = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+	snprintf(titlen, sizeof(titlen), "INFO DVDTITLE %d\r\n", tt);
+#endif
+	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n%s", data->str, titlen);
 	msg[sizeof(msg)-1] = 0;
 	if(this->funcs.xine_input_event) 
 	  this->funcs.xine_input_event(msg, NULL);
@@ -3962,7 +3966,11 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	  int logs = xine_get_log_section_count(xine);
 	  const char * const * names = xine_get_log_names(xine);
 	  for(i=0; i<logs; i++) {
+#if XINE_VERSION_CODE < 10105
 	    const char * const * lines = xine_get_log(xine, i);
+#else
+	    char * const * lines = xine_get_log(xine, i);
+#endif
 	    if(lines[0]) {
 	      printf("\nLOG: %s\n",names[i]);
 	      for(j=0; lines[j] && *lines[j]; j++)
