@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.27 2007-05-14 18:28:50 phintuka Exp $
+ * $Id: media_player.c,v 1.28 2007-05-14 19:45:56 phintuka Exp $
  *
  */
 
@@ -152,7 +152,6 @@ cXinelibPlayer::~cXinelibPlayer()
 
 void cXinelibPlayer::SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
 {
-  /*LOGMSG("cXinelibPlayer::SetAudioTrack(%d)",(int)Type);*/
   if(IS_DOLBY_TRACK(Type))
     Control("AUDIOSTREAM AC3 %d", (int)(Type - ttDolbyFirst));
   if(IS_AUDIO_TRACK(Type))
