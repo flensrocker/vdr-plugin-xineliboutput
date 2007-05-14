@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.9 2007-01-04 08:48:22 phintuka Exp $
+ * $Id: media_player.h,v 1.10 2007-05-14 18:04:33 phintuka Exp $
  *
  */
 
@@ -26,7 +26,7 @@ class cXinelibPlayerControl : public cControl
   private:
     static cMutex m_Lock;
 
-    static cXinelibPlayer *OpenPlayer(const char *file, bool Queue=false);
+    static cXinelibPlayer *OpenPlayer(const char *File, bool Queue = false);
 
  protected:
     static cXinelibPlayer *m_Player;
@@ -43,8 +43,10 @@ class cXinelibPlayerControl : public cControl
     bool   m_BlinkState;
     static int m_SubtitlePos;
 
+    void MsgReplaying(const char *Title, const char *File);
+
   public:
-    cXinelibPlayerControl(eMainMenuMode Mode, const char *file);
+    cXinelibPlayerControl(eMainMenuMode Mode, const char *File);
     virtual ~cXinelibPlayerControl();
 
     virtual void Show(void);
@@ -54,8 +56,8 @@ class cXinelibPlayerControl : public cControl
     virtual cOsdObject *GetInfo(void);
 
     static void Close(void);
-    static bool IsOpen(void) {return m_Player != NULL;};
-    static void Queue(const char *file);
+    static bool IsOpen(void) { return m_Player != NULL; };
+    static void Queue(const char *File);
 };
 
 
@@ -68,8 +70,8 @@ class cXinelibDvdPlayerControl : public cXinelibPlayerControl
     cDvdMenu *Menu;
 
   public:
-    cXinelibDvdPlayerControl(const char *file) : 
-      cXinelibPlayerControl(ShowFiles, file), Menu(NULL)
+    cXinelibDvdPlayerControl(const char *File) : 
+      cXinelibPlayerControl(ShowFiles, File), Menu(NULL)
       {}
     virtual ~cXinelibDvdPlayerControl();
  
@@ -98,7 +100,7 @@ class cXinelibImagesControl : public cControl
     int m_LastShowTime;
     bool m_ShowModeOnly;
 
-    static cXinelibImagePlayer *OpenPlayer(const char *file);
+    static cXinelibImagePlayer *OpenPlayer(const char *File);
 
   protected:
     void Seek(int Rel);
