@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.26 2007-04-23 14:00:52 phintuka Exp $
+ * $Id: media_player.c,v 1.27 2007-05-14 18:28:50 phintuka Exp $
  *
  */
 
@@ -74,7 +74,7 @@ class cXinelibPlayer : public cPlayer
     virtual void Activate(bool On);
 
   public:
-    cXinelibPlayer(const char *file, bool Queue=false);
+    cXinelibPlayer(const char *File, bool Queue = false);
     virtual ~cXinelibPlayer();
 
     // cPlayer
@@ -103,35 +103,35 @@ class cXinelibPlayer : public cPlayer
     int  Files(void) { return m_Playlist.Count(); }
 };
 
-cXinelibPlayer::cXinelibPlayer(const char *file, bool Queue) 
+cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue) 
 {
   m_ResumeFile = NULL;
   m_UseResume = true;
   m_Replaying = false;
   m_Speed = 1;
 
-  if(file) {
-    int len = strlen(file);
-    if(len && file[len-1] == '/') { 
+  if(File) {
+    int len = strlen(File);
+    if(len && File[len-1] == '/') { 
       // whole directory, create temporary playlist
-      m_Playlist.Read(file, true);
+      m_Playlist.Read(File, true);
       m_Playlist.Sort();
-    } else if(xc.IsPlaylistFile(file)) {
-      m_Playlist.Read(file);
-    } else if(xc.IsAudioFile(file) && !Queue) {
+    } else if(xc.IsPlaylistFile(File)) {
+      m_Playlist.Read(File);
+    } else if(xc.IsAudioFile(File) && !Queue) {
       // one audio file, create temporary playlist
-      cString folder(file);
+      cString folder(File);
       *(strrchr(*folder, '/') + 1) = 0;
       m_Playlist.Read(*folder);
       m_Playlist.Sort();
       // search start position
       m_Playlist.SetCurrent(NULL);
       for(cPlaylistItem *i = m_Playlist.First(); i; i = m_Playlist.Next(i))
-	if(!strcmp(file, *(i->Filename)))
+	if(!strcmp(File, *(i->Filename)))
 	  m_Playlist.SetCurrent(i);
     } else {
       // not audio or playlist file, create playlist with only one item
-      m_Playlist.Read(file);
+      m_Playlist.Read(File);
     }
 
     if(m_Playlist.Count() < 1)
@@ -464,11 +464,7 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
 
   m_Player->m_UseResume = (Mode==ShowFiles);
 
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, *m_Player->File());
-#else
-  cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, *m_Player->File(), true);
-#endif
+  MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
 }
 
 cXinelibPlayerControl::~cXinelibPlayerControl()
@@ -482,33 +478,41 @@ cXinelibPlayerControl::~cXinelibPlayerControl()
     m_DisplayReplay = NULL;
   }
 
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, NULL);
-#else
-  cStatus::MsgReplaying(this, NULL, NULL, false);
-#endif
-
+  MsgReplaying(NULL, NULL);
   Close();
 }
 
-void cXinelibPlayerControl::Queue(const char *file)
+void cXinelibPlayerControl::MsgReplaying(const char *Title, const char *File)
 {
-  if(!file)
+#if VDRVERSNUM < 10338
+  cStatus::MsgReplaying(this, NULL);
+  if(File)
+    cStatus::MsgReplaying(this, File);
+#else
+  cStatus::MsgReplaying(this, NULL, NULL, false);
+  if(Title || File)
+    cStatus::MsgReplaying(this, Title, File, true);
+#endif
+}
+
+void cXinelibPlayerControl::Queue(const char *File)
+{
+  if(!File)
     return;
 
   m_Lock.Lock();
 
-  LOGMSG("cXinelibPlayerControl::Queue(%s)", file);
+  LOGMSG("cXinelibPlayerControl::Queue(%s)", File);
 
   if(!m_Player) {
-    OpenPlayer(file, true);
+    OpenPlayer(File, true);
     cControl::Launch(new cXinelibPlayerControl(ShowMusic, NULL));
   } else {
-    int len = strlen(file);
-    if(len && file[len-1] == '/')
-      m_Player->Playlist().Read(file, true);
+    int len = strlen(File);
+    if(len && File[len-1] == '/')
+      m_Player->Playlist().Read(File, true);
     else
-      m_Player->Playlist().Read(file);
+      m_Player->Playlist().Read(File);
   }
 
   Skins.Message(mtInfo, tr("Queued to playlist"));
@@ -627,13 +631,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
     if(!m_DisplayReplay)
       m_AutoShowStart = time(NULL);
 
-#if VDRVERSNUM < 10338
-    cStatus::MsgReplaying(this, NULL);
-    cStatus::MsgReplaying(this, *m_Player->File());
-#else
-    cStatus::MsgReplaying(this, NULL, NULL, false);
-    cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, *m_Player->File(), true);
-#endif
+    MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
   }
 
   else {
@@ -652,13 +650,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 	m_Player->Playlist().Current()->Album = al;
       if(ar && ar[0])
 	m_Player->Playlist().Current()->Artist = ar;
-#if VDRVERSNUM < 10338
-    cStatus::MsgReplaying(this, NULL);
-    cStatus::MsgReplaying(this, *m_Player->File());
-#else
-    cStatus::MsgReplaying(this, NULL, NULL, false);
-    cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, *m_Player->File(), true);
-#endif
+      MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
     }
   }
 
@@ -673,22 +665,11 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       default:      if(state >= os_User) {
 	              m_Player->NextFile( (int)state - (int)os_User - m_Player->CurrentFile());
 		      m_PlaylistMenu->SetCurrentExt(m_Player->CurrentFile()); 
-#if VDRVERSNUM < 10338
-		      cStatus::MsgReplaying(this, NULL);
-		      cStatus::MsgReplaying(this, *m_Player->File());
-#else
-		      cStatus::MsgReplaying(this, NULL, NULL, false);
-		      cStatus::MsgReplaying(this, *m_Player->Playlist().Current()->Track, 
-					    *m_Player->File(), true);
-#endif
+		      MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
                     }
 	            break;
     }
 
-#if 0
-    if(Key != k0 || state != osContinue)
-      return osContinue;
-#endif
     if(state != osUnknown)
       return osContinue;
   }
@@ -733,10 +714,22 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                   m_Player->Control("SUBTITLES %d", m_SubtitlePos);
                   break;
     case kNext:
-    case kRight:  m_Player->NextFile(1);
+    case kRight:  if(m_RandomPlay) {
+                    srand((unsigned int)time(NULL));
+                    m_Player->NextFile((random() % m_Player->Files()) - m_Player->CurrentFile());
+                  }
+                  else {
+                    m_Player->NextFile(1);
+                  }
+                  if(!m_DisplayReplay)
+                    m_AutoShowStart = time(NULL);
+                  MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
                   break;
     case kPrev:
     case kLeft:   m_Player->NextFile(-1);
+                  if(!m_DisplayReplay)
+                    m_AutoShowStart = time(NULL);
+                  MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
                   break;
     case kDown:
     case kPause:  if(m_Player->Speed()) {
@@ -756,55 +749,25 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 		  m_ShowModeOnly = false;
                   break;
     case kFastFwd:
-#if 1
                   {
-                    int speeds[] = { -3, -2, 1, 2, -4, 2, 3, 4, 4 };
+                    static const int speeds[] = { -3, -2, 1, 2, -4, 2, 3, 4, 4 };
 		    m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                    if(m_Player->Speed() != 1)
+                      Show();
+                    else 
+                      Hide();
+                    break;
 		  }
-#else
-                  switch(m_Player->Speed()) {
-                    case  0: m_Player->SetSpeed(-4); break;
-                    case -4: m_Player->SetSpeed(-3); break;
-		    case -3: m_Player->SetSpeed(-2); break;
-		    default:
-		    case -2: m_Player->SetSpeed( 1); break;
-		    case  1: m_Player->SetSpeed( 2); break;
-		    case  2: m_Player->SetSpeed( 3); break;
-		    case  3: 
-		    case  4: m_Player->SetSpeed( 4); break;
-                  }
-#endif
-                  if(m_Player->Speed() != 1) {
-		    Show();
-		  } else { 
-		    Hide();
-		  }
-		  break;
     case kFastRew:
-#if 1
                   {
-                    int speeds[] = { 0, -4, -3, -2, 0, -2, 1, 2, 3 };
+                    static const int speeds[] = { 0, -4, -3, -2, 0, -2, 1, 2, 3 };
 		    m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                    if(m_Player->Speed() != 1 || !m_ShowModeOnly)
+                      Show();
+                    else 
+                      Hide();
+                    break;
 		  }
-#else
-                  switch(m_Player->Speed()) {
-                    case  0: 
-                    case -4: m_Player->SetSpeed( 0); break;
-		    case -3: m_Player->SetSpeed(-4); break;
-		    case -2: m_Player->SetSpeed(-3); break;
-		    case  1: m_Player->SetSpeed(-2); break;
-		    default:
-		    case  2: m_Player->SetSpeed( 1); break;
-		    case  3: m_Player->SetSpeed( 2); break;
-		    case  4: m_Player->SetSpeed( 3); break;
-                  }
-#endif
-                  if(m_Player->Speed() != 1 || !m_ShowModeOnly) {
-		    Show();
-		  } else {
-		    Hide();
-		  }
-		  break;
     case kOk:     
                   m_AutoShowStart = 0;
                   if(m_Player->Speed() != 1) {
@@ -1011,55 +974,25 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     case kPrev:   m_Player->Control("EVENT XINE_EVENT_INPUT_PREVIOUS CHAPTER"); break;
 
     case kFastFwd:
-#if 1
                   {
-                    int speeds[] = { -3, -2, 1, 2, -4, 2, 3, 4, 4 };
+                    static const int speeds[] = { -3, -2, 1, 2, -4, 2, 3, 4, 4 };
 		    m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                    if(m_Player->Speed() != 1)
+                      Show();
+                    else
+                      Hide();
+                    break;
 		  }
-#else
-		  switch(m_Player->Speed()) {
-                    case  0: m_Player->SetSpeed(-4); break;
-                    case -4: m_Player->SetSpeed(-3); break;
-		    case -3: m_Player->SetSpeed(-2); break;
-		    default:
-		    case -2: m_Player->SetSpeed( 1); break;
-		    case  1: m_Player->SetSpeed( 2); break;
-		    case  2: m_Player->SetSpeed( 3); break;
-		    case  3: 
-		    case  4: m_Player->SetSpeed( 4); break;
-                  }
-#endif
-                  if(m_Player->Speed() != 1) {
-		    Show();
-		  } else { 
-		    Hide();
-		  }
-		  break;
     case kFastRew:
-#if 1
                   {
-                    int speeds[] = { 0, -4, -3, -2, 0, -2, 1, 2, 3 };
+                    static const int speeds[] = { 0, -4, -3, -2, 0, -2, 1, 2, 3 };
 		    m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                    if(m_Player->Speed() != 1 || !m_ShowModeOnly)
+                      Show();
+                    else
+                      Hide();
+                    break;
 		  }
-#else
-                  switch(m_Player->Speed()) {
-                    case  0: 
-                    case -4: m_Player->SetSpeed( 0); break;
-		    case -3: m_Player->SetSpeed(-4); break;
-		    case -2: m_Player->SetSpeed(-3); break;
-		    case  1: m_Player->SetSpeed(-2); break;
-		    default:
-		    case  2: m_Player->SetSpeed( 1); break;
-		    case  3: m_Player->SetSpeed( 2); break;
-		    case  4: m_Player->SetSpeed( 3); break;
-                  }
-#endif
-                  if(m_Player->Speed() != 1 || !m_ShowModeOnly) {
-		    Show();
-		  } else {
-		    Hide();
-		  }
-		  break;
     case kInfo:   if(m_DisplayReplay) {
                     Hide();
                   } else {
@@ -1097,15 +1030,15 @@ class cXinelibImagePlayer : public cPlayer {
     virtual void Activate(bool On);
 
   public:
-    cXinelibImagePlayer(const char *file); 
+    cXinelibImagePlayer(const char *File); 
     virtual ~cXinelibImagePlayer();
 
-    bool ShowImage(char *file);
+    bool ShowImage(const char *File);
 };
 
-cXinelibImagePlayer::cXinelibImagePlayer(const char *file) 
+cXinelibImagePlayer::cXinelibImagePlayer(const char *File) 
 {
-  m_File = file;
+  m_File = File;
   m_Active = false;
 }
 
@@ -1126,9 +1059,9 @@ void cXinelibImagePlayer::Activate(bool On)
   }
 }
 
-bool cXinelibImagePlayer::ShowImage(char *file)
+bool cXinelibImagePlayer::ShowImage(const char *File)
 {
-  m_File = file;
+  m_File = File;
   if(m_Active)
     return cXinelibDevice::Instance().PlayFile(m_File, 0, true);
   return true;
@@ -1230,9 +1163,9 @@ void cXinelibImagesControl::Seek(int Rel)
   char *pt;
   free(m_File);
   m_File = strdup(m_Files[m_Index]);
-  if(NULL != (pt=strrchr(m_File,'/')))
+  if(NULL != (pt=strrchr(m_File, '/')))
     strcpy(m_File, pt+1); 
-  if(NULL != (pt=strrchr(m_File,'.')))
+  if(NULL != (pt=strrchr(m_File, '.')))
     *pt = 0;
 
 #if VDRVERSNUM < 10338
@@ -1326,9 +1259,9 @@ eOSState cXinelibImagesControl::ProcessKey(eKeys Key)
     default:       break;
   }
 
-  static const int Speed2Time[] = {0,5,3,1};
+  static const int Speed2Time[] = { 0, 5, 3, 1 };
   if(m_Speed > 3)
-     m_Speed = 3;
+    m_Speed = 3;
   if(m_Speed < -3)
     m_Speed = -3;
 
