@@ -1,6 +1,25 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2007-03-17: Version 1.0.0rc2
+
+- Workaround for xine-lib demux_mpeg_block PTS wrap issue
+  (this should fix daily picture freezes)
+- Fixed media player random play kNext (next file) handling (Thanks to Petri Helin)
+- Fixed media player MsgReplaying status messages (Thanks to Petri Helin)
+- Fixed closing DVD player with Back key (Thanks to Petri Helin)
+- Improved media player resume file creation
+- Fixed UDP segfault
+- Mac OS X build fixes (Thanks to Tero Siironen)
+- Updated remote.conf example
+- Added support for xine-lib software volume control 
+  (useful with digital audio output)
+- Removed (unused) decoder priority setting
+- Fixed yuy2 frame grabbing
+- Adapted for xine-lib 1.1.5
+- Added vdr-sxfe fullscreen and de-interlace toggling with lirc keys 
+  "Fullscreen" and "Deinterlace"
+
 2007-03-17: Version 1.0.0rc1
 
 - PLUGIN HOMEPAGE CHANGED
