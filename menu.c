@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.34 2007-03-14 17:40:38 phintuka Exp $
+ * $Id: menu.c,v 1.35 2007-05-17 13:36:40 phintuka Exp $
  *
  */
 
@@ -305,7 +305,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
     } else {
       /* image */
       char **files = new char*[Count()+1];
-      int i=0, index = 0;
+      int i = 0, index = 0;
       memset(files, 0, sizeof(char*)*(Count()+1));
       for(cFileListItem *it = (cFileListItem*)First(); it; it=(cFileListItem*)Next(it)) {
 	if(it==Get(Current()))
