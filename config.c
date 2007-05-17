@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.34 2007-05-17 16:09:49 phintuka Exp $
+ * $Id: config.c,v 1.35 2007-05-17 19:04:40 phintuka Exp $
  *
  */
 
@@ -231,12 +231,12 @@ const char *config_t::UnsharpOptions(void)
   if(unsharp) {
     static char buffer[128];
     snprintf(buffer, sizeof(buffer),
-             "luma_matrix_width=%d,luma_matrix_height=%d,luma_amount=%d.%d,"
-             "chroma_matrix_width=%d,chroma_matrix_height=%d,chroma_amount=%d.%d",
+             "luma_matrix_width=%d,luma_matrix_height=%d,luma_amount=%1.1f,"
+             "chroma_matrix_width=%d,chroma_matrix_height=%d,chroma_amount=%1.1f",
              unsharp_luma_matrix_width, unsharp_luma_matrix_height,
-             (unsharp_luma_amount/10), (unsharp_luma_amount%10),
+             ((float)unsharp_luma_amount)/10.0,
              unsharp_chroma_matrix_width, unsharp_chroma_matrix_height,
-             (unsharp_chroma_amount/10), (unsharp_chroma_amount%10));
+             ((float)unsharp_chroma_amount)/10.0);
     buffer[sizeof(buffer)-1] = 0;
     return buffer;
   }
@@ -248,10 +248,10 @@ const char *config_t::Denoise3dOptions(void)
   if(denoise3d) {
     static char buffer[128];
     snprintf(buffer, sizeof(buffer),
-             "luma=%d.%d,chroma=%d.%d,time=%d.%d",
-             (denoise3d_luma/10), (denoise3d_luma%10),
-             (denoise3d_chroma/10), (denoise3d_chroma%10),
-             (denoise3d_time/10), (denoise3d_time%10));
+             "luma=%1.1f,chroma=%1.1f,time=%1.1f",
+             ((float)denoise3d_luma)/10.0,
+             ((float)denoise3d_chroma)/10.0,
+             ((float)denoise3d_time)/10.0);
     buffer[sizeof(buffer)-1] = 0;
     return buffer;
   }
