@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.25 2007-05-17 17:04:20 phintuka Exp $
+ * $Id: frontend_local.c,v 1.26 2007-05-17 17:07:13 phintuka Exp $
  *
  */
 
@@ -45,6 +45,29 @@ class cRwLockBlock
 
 #define LOCK_FE     cRwLockBlock(m_feLock, false)
 #define LOCK_FE_WR  cRwLockBlock(m_feLock, true)
+
+//----------------- keyboard control handler (C callback) --------------------
+
+extern "C" {
+  static void keypress_handler(const char *keymap, const char *key)
+  {
+    if(!strncmp("INFO ", keymap, 5)) {
+      
+      cXinelibThread::InfoHandler(keymap+5);
+
+    } else if(!xc.use_x_keyboard || !key) {
+
+      /* Only X11 key events came this way in local mode.
+	 Keyboard is handled by vdr. */
+      LOGMSG("keypress_handler(%s): X11 Keyboard disabled in config", key);
+
+    } else {
+
+      cXinelibThread::KeypressHandler(keymap, key, false, false);
+
+    }
+  }
+};
 
 //----------------------------- cXinelibLocal --------------------------------
 
@@ -210,38 +233,12 @@ int cXinelibLocal::Xine_Control(const char *cmd)
       LOGMSG("Xine_Control: message too long ! (%s)", buf);
       return 0;
     }
-    //buf[sizeof(buf)-1] = 0;
     LOCK_FE;
     if(fe)
       return fe->xine_control(fe, (char*)buf);
   }
   return 0;
 }
-
-//
-// keyboard control handler (C callback)
-//
-
-extern "C" {
-  static void keypress_handler(const char *keymap, const char *key)
-  {
-    if(!strncmp("INFO ", keymap, 5)) {
-      
-      cXinelibThread::InfoHandler(keymap+5);
-
-    } else if(!xc.use_x_keyboard || !key) {
-
-      /* Only X11 key events came this way in local mode.
-	 Keyboard is handled by vdr. */
-      LOGMSG("keypress_handler(%s): X11 Keyboard disabled in config", key);
-
-    } else {
-
-      cXinelibThread::KeypressHandler(keymap, key, false, false);
-
-    }
-  }
-};
 
 //
 // Frontend loader
