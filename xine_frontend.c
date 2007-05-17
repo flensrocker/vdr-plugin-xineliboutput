@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.35 2007-04-09 16:15:16 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.36 2007-05-17 22:49:51 phintuka Exp $
  *
  */
 
@@ -486,9 +486,9 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   x_upd_num("engine.buffers.video_num_buffers", pes_buffers);
 
 #ifdef IS_FBFE
-  if(fbdev) {
+  if(this->fb_dev) {
     if(video_driver && !strcmp(video_driver, "fb"))
-      x_upd_str("video.device.fb_device", fbdev);
+      x_upd_str("video.device.fb_device", this->fb_dev);
     else if(video_driver && !strcmp(video_driver, "DirectFB")) { 
       /* DirectFBInit (NULL, NULL); */
       /* DirectFBSetOption ("fbdev", video_port); */
@@ -502,15 +502,15 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 	  else
 	    *head = 0;
 	  asprintf(&tmp, "%sfbdev=%s%s",
-		   head ? orig : "", fbdev, tail ? tail : "");
+		   head ? orig : "", this->fb_dev, tail ? tail : "");
 	} else {
-	  asprintf(&tmp, "fbdev=%s%s%s", fbdev, orig?",":"", orig?orig:"");
+	  asprintf(&tmp, "fbdev=%s%s%s", this->fb_dev, orig?",":"", orig?orig:"");
 	}
 	LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
 	       tmp, getenv("DFBARGS"));
 	free(orig);
       } else {
-	asprintf(&tmp, "fbdev=%s", fbdev);
+	asprintf(&tmp, "fbdev=%s", this->fb_dev);
 	LOGMSG("setting environment variable DFBARGS to %s", tmp);
       }
       setenv("DFBARGS", tmp, 1);
@@ -667,23 +667,6 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
     return 0;
   }
   free(url);
-
-#if 0
-  /* priority */
-  {
-    struct sched_param temp;
-    temp.sched_priority = this->priority;
-    if(!pthread_setschedparam(this->stream->demux_thread, SCHED_RR, &temp))
-      LOGERR("pthread_setschedparam(demux_thread, SCHED_RR, %d) failed", 
-	     temp.sched_priority);
-    if(!pthread_setschedparam(this->stream->video_thread, SCHED_RR, &temp))
-      LOGERR("pthread_setschedparam(video_thread, SCHED_RR, %d) failed", 
-	     temp.sched_priority);
-    if(!pthread_setschedparam(this->stream->audio_thread, SCHED_RR, &temp))
-      LOGERR("pthread_setschedparam(audio_thread, SCHED_RR, %d) failed", 
-	     temp.sched_priority);
-  }
-#endif
 
 #if 0
   this->xine->config->update_num(this->xine->config,
@@ -1075,11 +1058,9 @@ static void fe_xine_exit(frontend_t *this_gen)
 
 static void fe_free(frontend_t *this_gen) 
 {
-  fe_t *this = (fe_t*)this_gen;
-
-  if (this) {
-    if(this->display)
-      this->fe.fe_display_close(this_gen);
+  if (this_gen) {
+    fe_t *this = (fe_t*)this_gen;
+    this->fe.fe_display_close(this_gen);
     free(this);
   }
 }

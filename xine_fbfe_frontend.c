@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.12 2007-03-14 10:26:39 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.13 2007-05-17 22:49:51 phintuka Exp $
  *
  */
 
@@ -68,6 +68,7 @@ typedef struct fbfe_t {
   xine_event_queue_t *event_queue;
 
   post_plugins_t     *postplugins;
+  char               *fb_dev;
 
   char                configfile[256];
 
@@ -105,7 +106,6 @@ typedef struct fbfe_t {
 } fe_t;
 
 #define IS_FBFE
-static char *fbdev = NULL;
 
 /* Common (non-X11/FB) frontend functions */
 #include "xine_frontend.c"
@@ -168,9 +168,10 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   this->update_display_size = fbfe_update_display_size;
 
-  if(video_port && *video_port && !strncmp(video_port, "/dev/", 5)) {
-    fbdev = strdup(video_port);
-  }
+  if(video_port && !strncmp(video_port, "/dev/", 5))
+    this->fb_dev = strdup(video_port);
+  else
+    this->fb_dev = NULL;
 
   return 1;
 }
@@ -238,8 +239,10 @@ static void fbfe_display_close(frontend_t *this_gen)
   fe_t *this = (fe_t*)this_gen;
 
   if(this) {
-    this->display = 0;
-
+    if(this->fb_dev) {
+      free(this->fb_dev);
+      this->fb_dev = NULL;
+    }
     if(this->xine)
       this->fe.xine_exit(this_gen);
   }
