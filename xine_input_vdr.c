@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.81 2007-05-17 17:28:11 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.82 2007-05-17 17:36:26 phintuka Exp $
  *
  */
 
@@ -286,6 +286,7 @@ typedef struct vdr_input_plugin_s {
   uint64_t            curpos;        /* current position (demux side) */
   int                 curframe;      
   int                 max_buffers;   /* max no. of non-demuxed buffers */
+  int64_t             last_delivered_vid_pts; /* detect PTS wraps */
 
   /* saved video properties */
   int   video_properties_saved;
@@ -880,7 +881,7 @@ static char *strn0cpy(char *dest, const char *src, int n)
 static int64_t pts_from_pes(const uint8_t *buf, int size)
 {
   int64_t pts = -1;
-  if(size>13 && buf[7] & 0x80) { /* pts avail */
+  if(size > 13 && buf[7] & 0x80) { /* pts avail */
     pts  = ((int64_t)( buf[ 9] & 0x0E)) << 29;
     pts |=  (int64_t)( buf[10]         << 22 );
     pts |=  (int64_t)((buf[11] & 0xFE) << 14 );
@@ -888,6 +889,18 @@ static int64_t pts_from_pes(const uint8_t *buf, int size)
     pts |=  (int64_t)((buf[13] & 0xFE) >>  1 );
   }
   return pts;
+}
+
+static void pes_strip_pts(uint8_t *buf, int size)
+{
+  if(size > 13 && buf[7] & 0x80) { /* pts avail */
+    if ((buf[6] & 0xC0) != 0x80)
+      return;
+    if ((buf[6] & 0x30) != 0)
+      return;
+    buf[7] &= ~0x80; /* clear pts flag */
+    memmove(buf+9, buf+14, size-14);
+  }
 }
 
 static void create_timeout_time(struct timespec *abstime, int timeout_ms)
@@ -2955,9 +2968,10 @@ LOGMSG("  pip stream created");
 
 static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
 {
-  int err = CONTROL_OK;
+  int err = CONTROL_OK, tmp;
   pthread_mutex_lock(&this->osd_lock);
-  if(1 == sscanf(cmd, "OSDSCALING %d", &this->rescale_osd)) {
+  if(1 == sscanf(cmd, "OSDSCALING %d", &tmp)) {
+    this->rescale_osd = tmp ? 1 : 0;
     this->rescale_osd_downscale = strstr(cmd, "NoDownscale") ? 0 : 1;
     this->unscaled_osd = strstr(cmd, "UnscaledAlways") ? 1 : 0;
     this->unscaled_osd_opaque = strstr(cmd, "UnscaledOpaque") ? 1 : 0;
@@ -4829,6 +4843,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     /* Handle discard */
     if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
+      this->last_delivered_vid_pts = INT64_C(-1);
       pthread_mutex_unlock(&this->lock);
       buf->free_buffer(buf);
       buf = NULL;
@@ -4843,6 +4858,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     /* Send current PTS ? */
     if(this->stream_start) {
+      this->last_delivered_vid_pts = INT64_C(-1);
       this->send_pts = 1;
       this->stream_start = 0;
       pthread_mutex_lock (&this->stream->first_frame_lock);
@@ -4859,6 +4875,26 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #endif
 
   track_audio_stream_change(this, buf);
+
+#if 1
+  /* PTS wrap workaround for mpeg_block demuxer */
+  {
+    int64_t pts = pts_from_pes(buf->content, buf->size);
+    if(pts >= 0) {
+      int video = ( buf->content[3] >= 0xe0 && buf->content[3] <= 0xef );
+      if(video)
+        this->last_delivered_vid_pts = pts;
+      if(!video) {
+        if(pts > 0x40400000 && 
+           this->last_delivered_vid_pts < 0x40000000 && 
+           this->last_delivered_vid_pts > 0) {
+          LOGMSG("VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, pts);
+          pes_strip_pts(buf->content, buf->size);
+        }
+      }
+    }
+  }
+#endif
 
   /* Send current PTS ? */
   if(this->send_pts) {
@@ -5878,6 +5914,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->guard_index  = 0;
   this->curpos       = 0;
   this->max_buffers  = 10;
+  this->last_delivered_vid_pts = INT64_C(-1);
 
   this->scr          = NULL;
 
