@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.80 2007-04-28 14:04:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.81 2007-05-17 17:28:11 phintuka Exp $
  *
  */
 
@@ -315,27 +315,24 @@ typedef struct vdr_input_plugin_s {
 
 struct udp_data_s {
 
-  /* receiving queue for re-ordering and re-transmissions */
-  buf_element_t *queue[UDP_SEQ_MASK+1];
-  int queued;   /* count of frames in queue */
-
-  /* expected sequence number of next incoming packet */
-  int next_seq;
-
-  /* for re-send requests */
-  uint64_t queue_input_pos;  /* stream position of next incoming byte */
-  int      resend_requested;
-  int      queue_full_signaled;
-
-  /* missing frames ratio statistics */
-  int missed_frames;
-  int received_frames; 
-
-  /* SCR adjust */
-  int scr_jump_done;
-
   /* Server address (used to validate incoming packets) */
   struct sockaddr_in server_address;
+  uint32_t           ssrc;
+
+  /* receiving queue for re-ordering and re-transmissions */
+  buf_element_t *queue[UDP_SEQ_MASK+1];
+  uint64_t       queue_input_pos;  /* stream position of next incoming byte */
+  uint16_t       queued;   /* count of frames in queue */
+  uint16_t       next_seq; /* expected sequence number of next incoming packet */
+
+  /* missing frames ratio statistics */
+  int16_t  missed_frames;
+  int16_t  received_frames; 
+
+  /* SCR adjust */
+  uint8_t  scr_jump_done;
+
+  int resend_requested : 1;
 };
 
 /* UDP sequence number handling */
@@ -5369,7 +5366,7 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
   struct ip_mreq mreq;
   struct sockaddr_in server_address, sin;
   socklen_t len = sizeof(sin);
-  stream_udp_header_t tmp_udp;
+  stream_rtp_header_impl_t tmp_rtp;
 
   /* get server IP address */
   if(getpeername(this->fd_control, (struct sockaddr *)&server_address, &len)) {
@@ -5467,7 +5464,7 @@ retry_recvfrom:
 
   /* check sender address */
 
-  n = recvfrom(fd, &tmp_udp, sizeof(tmp_udp), 0, &sin, &len);
+  n = recvfrom(fd, &tmp_rtp, sizeof(tmp_rtp), 0, &sin, &len);
   if(sin.sin_addr.s_addr != server_address.sin_addr.s_addr) {
     uint32_t tmp_ip = ntohl(sin.sin_addr.s_addr);
     LOGMSG("Received UDP/RTP multicast from unknown sender: %d.%d.%d.%d:%d",
@@ -5489,6 +5486,7 @@ retry_recvfrom:
 
   /* store server address */
   memcpy(&this->udp_data->server_address, &sin, sizeof(sin));
+  this->udp_data->ssrc = tmp_rtp.rtp_hdr.ssrc;
   
   return fd;
 }
@@ -5696,9 +5694,9 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
   if(strchr(this->mrl, '#')) 
     *strchr(this->mrl, '#') = 0;
 
-  if((!strncasecmp(this->mrl, "xvdr:tcp://", 11) && 1==(this->tcp=1)) ||
-      (!strncasecmp(this->mrl, "xvdr:udp://", 11) && 1==(this->udp=1)) ||
-      (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && 1==(this->rtp=1)) ||
+  if((!strncasecmp(this->mrl, "xvdr:tcp://", 11)  && (this->tcp=1)) ||
+      (!strncasecmp(this->mrl, "xvdr:udp://", 11) && (this->udp=1)) ||
+      (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && (this->rtp=1)) ||
       (!strncasecmp(this->mrl, "xvdr://", 7))) {
 
     char *phost = strdup(strstr(this->mrl, "//") + 2);
