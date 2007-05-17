@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.39 2007-03-15 13:29:04 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.40 2007-05-17 17:04:20 phintuka Exp $
  *
  */
 
@@ -1153,6 +1153,11 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 			  xc.AutocropOptions());
   ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
 			  xc.FfmpegPpOptions());
+  ConfigurePostprocessing("unsharp",xc.unsharp ? true : false,
+                            xc.UnsharpOptions());
+  ConfigurePostprocessing("denoise3d",xc.denoise3d ? true : false,
+                          xc.Denoise3dOptions());
+
   fd_control[cli].write_cmd("CLEAR\r\n");
 
 #ifdef ENABLE_TEST_POSTPLUGINS
@@ -1708,7 +1713,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   cXinelibDevice::Instance().ForcePrimaryDevice(true);
 }
 
-void cXinelibServer::Handle_Discovery_Broadcast()
+void cXinelibServer::Handle_Discovery_Broadcast(void)
 {
   if(!xc.remote_usebcast) {
     LOGDBG("BROADCASTS disabled in configuration");

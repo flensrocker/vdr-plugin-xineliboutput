@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.24 2007-04-12 22:53:36 phintuka Exp $
+ * $Id: frontend_local.c,v 1.25 2007-05-17 17:04:20 phintuka Exp $
  *
  */
 
@@ -409,6 +409,11 @@ void cXinelibLocal::Action(void)
 			    xc.AutocropOptions());
     ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
 			    xc.FfmpegPpOptions());
+    ConfigurePostprocessing("unsharp",xc.unsharp ? true : false, 
+                            xc.UnsharpOptions());
+    ConfigurePostprocessing("denoise3d",xc.denoise3d ? true : false, 
+                            xc.Denoise3dOptions());
+
 
 #ifdef ENABLE_TEST_POSTPLUGINS
     ConfigurePostprocessing("headphone", xc.headphone ? true : false, NULL);
