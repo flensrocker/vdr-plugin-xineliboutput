@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.5 2007-03-14 11:52:01 phintuka Exp $
+ * $Id: menuitems.c,v 1.6 2007-05-17 16:13:23 phintuka Exp $
  *
  */
 
@@ -45,6 +45,57 @@ void cMenuEditTypedIntItem::Set(void)
     buf[sizeof(buf)-1] = 0;
     SetValue(buf);
   }
+}
+// --- cMenuEditOddIntItem ------------------------------------------------------
+cMenuEditOddIntItem::cMenuEditOddIntItem(const char *Name, int *Value, int Min, int Max, const char *MinString, const char *MaxString)
+:cMenuEditIntItem(Name,Value,Min,Max,MinString,MaxString)
+{
+  value = Value;
+  min = Min;
+  max = Max;
+  minString = MinString;
+  maxString = MaxString;
+  if (*value < min)
+     *value = min;
+  else if (*value > max)
+     *value = max;
+  Set();
+}
+
+eOSState cMenuEditOddIntItem::ProcessKey(eKeys Key)
+{
+  eOSState state = cMenuEditItem::ProcessKey(Key);
+
+  if (state == osUnknown) {
+     int newValue = *value;
+     bool IsRepeat = Key & k_Repeat;
+     Key = NORMALKEY(Key);
+     switch (Key) {
+       case kNone: break;
+       case kLeft:
+            newValue = *value - 2;
+            fresh = true;
+            if (!IsRepeat && newValue < min && max != INT_MAX)
+               newValue = max;
+            break;
+       case kRight:
+            newValue = *value + 2;
+            fresh = true;
+            if (!IsRepeat && newValue > max && min != INT_MIN)
+               newValue = min;
+            break;
+       default:
+            if (*value < min) { *value = min; Set(); }
+            if (*value > max) { *value = max; Set(); }
+            return state;
+       }
+     if (newValue != *value && (!fresh || min <= newValue) && newValue <= max) {
+        *value = newValue;
+        Set();
+        }
+     state = osContinue;
+     }
+  return state;
 }
 
 // --- cMenuEditStraI18nItem -------------------------------------------------

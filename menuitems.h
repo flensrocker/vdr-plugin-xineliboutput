@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.3 2006-09-19 08:24:09 phintuka Exp $
+ * $Id: menuitems.h,v 1.4 2007-05-17 16:13:23 phintuka Exp $
  *
  */
 
@@ -29,6 +29,16 @@ class cMenuEditTypedIntItem : public cMenuEditIntItem
 			  const char *MinString = NULL, const char *MaxString = NULL);
     ~cMenuEditTypedIntItem();
 };
+
+// --- cMenuEditOddIntItem -------------------------------------------------
+
+class cMenuEditOddIntItem : public cMenuEditIntItem
+{
+  public:
+    cMenuEditOddIntItem(const char *Name, int *Value, int Min = 1, int Max = INT_MAX, const char *MinString = NULL, const char *MaxString = NULL);
+    eOSState ProcessKey(eKeys Key);
+};
+
 
 // --- cMenuEditStraI18nItem -------------------------------------------------
 
