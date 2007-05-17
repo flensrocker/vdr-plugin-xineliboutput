@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.4 2007-05-17 16:13:23 phintuka Exp $
+ * $Id: menuitems.h,v 1.5 2007-05-17 21:41:52 phintuka Exp $
  *
  */
 
@@ -37,6 +37,26 @@ class cMenuEditOddIntItem : public cMenuEditIntItem
   public:
     cMenuEditOddIntItem(const char *Name, int *Value, int Min = 1, int Max = INT_MAX, const char *MinString = NULL, const char *MaxString = NULL);
     eOSState ProcessKey(eKeys Key);
+};
+
+
+// --- cMenuEditFpIntItem -------------------------------------------------
+
+// Fixed-point decimal number
+
+class cMenuEditFpIntItem : public cMenuEditIntItem
+{
+  protected:
+    int decimals;
+    char *zeroString;
+
+    virtual void Set(void);
+
+  public:
+    cMenuEditFpIntItem(const char *Name, int *Value, int Min = 1, int Max = INT_MAX,
+                       int Decimals = 1, const char *ZeroString = NULL,
+                       const char *MinString = NULL, const char *MaxString = NULL);
+    ~cMenuEditFpIntItem();
 };
 
 

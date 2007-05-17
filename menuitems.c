@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.6 2007-05-17 16:13:23 phintuka Exp $
+ * $Id: menuitems.c,v 1.7 2007-05-17 21:41:52 phintuka Exp $
  *
  */
+
+#include <math.h>
 
 #include <vdr/i18n.h>
 
@@ -46,7 +48,9 @@ void cMenuEditTypedIntItem::Set(void)
     SetValue(buf);
   }
 }
+
 // --- cMenuEditOddIntItem ------------------------------------------------------
+
 cMenuEditOddIntItem::cMenuEditOddIntItem(const char *Name, int *Value, int Min, int Max, const char *MinString, const char *MaxString)
 :cMenuEditIntItem(Name,Value,Min,Max,MinString,MaxString)
 {
@@ -96,6 +100,39 @@ eOSState cMenuEditOddIntItem::ProcessKey(eKeys Key)
      state = osContinue;
      }
   return state;
+}
+
+// --- cMenuEditFpIntItem ----------------------------------------------------
+
+cMenuEditFpIntItem::cMenuEditFpIntItem(const char *Name, int *Value, int Min, int Max,
+                                       int Decimals, const char *ZeroString,
+                                       const char *MinString, const char *MaxString)
+:cMenuEditIntItem(Name,Value,Min,Max,MinString,MaxString)
+{
+  decimals = Decimals;
+  zeroString = ZeroString ? strdup(ZeroString) : NULL;
+  Set();
+}
+
+cMenuEditFpIntItem::~cMenuEditFpIntItem()
+{
+  if(zeroString)
+    free(zeroString);
+}
+
+void cMenuEditFpIntItem::Set(void)
+{
+  char buf[64];
+  if(zeroString && *value == 0) 
+    SetValue(zeroString);
+  else if (minString && *value == min)
+    SetValue(minString);
+  else if (maxString && *value == max)
+    SetValue(maxString);
+  else {
+    snprintf(buf, sizeof(buf), "%1.1f", ((float)(*value)) / exp10f(decimals));
+    SetValue(buf);
+  }
 }
 
 // --- cMenuEditStraI18nItem -------------------------------------------------
