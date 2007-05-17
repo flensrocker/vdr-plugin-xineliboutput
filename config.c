@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.33 2007-05-16 09:17:17 phintuka Exp $
+ * $Id: config.c,v 1.34 2007-05-17 16:09:49 phintuka Exp $
  *
  */
 
@@ -226,6 +226,38 @@ const char *config_t::FfmpegPpOptions(void)
   return NULL;
 }
 
+const char *config_t::UnsharpOptions(void)
+{
+  if(unsharp) {
+    static char buffer[128];
+    snprintf(buffer, sizeof(buffer),
+             "luma_matrix_width=%d,luma_matrix_height=%d,luma_amount=%d.%d,"
+             "chroma_matrix_width=%d,chroma_matrix_height=%d,chroma_amount=%d.%d",
+             unsharp_luma_matrix_width, unsharp_luma_matrix_height,
+             (unsharp_luma_amount/10), (unsharp_luma_amount%10),
+             unsharp_chroma_matrix_width, unsharp_chroma_matrix_height,
+             (unsharp_chroma_amount/10), (unsharp_chroma_amount%10));
+    buffer[sizeof(buffer)-1] = 0;
+    return buffer;
+  }
+  return NULL;
+}
+
+const char *config_t::Denoise3dOptions(void)
+{
+  if(denoise3d) {
+    static char buffer[128];
+    snprintf(buffer, sizeof(buffer),
+             "luma=%d.%d,chroma=%d.%d,time=%d.%d",
+             (denoise3d_luma/10), (denoise3d_luma%10),
+             (denoise3d_chroma/10), (denoise3d_chroma%10),
+             (denoise3d_time/10), (denoise3d_time%10));
+    buffer[sizeof(buffer)-1] = 0;
+    return buffer;
+  }
+  return NULL;
+}
+
 config_t::config_t() {
   memset(this, 0, sizeof(config_t));
 
@@ -257,6 +289,20 @@ config_t::config_t() {
   ffmpeg_pp            = 0;
   ffmpeg_pp_quality    = 3;
   strn0cpy(ffmpeg_pp_mode, "de", sizeof(ffmpeg_pp_mode));
+
+  unsharp = 0;
+  unsharp_luma_matrix_width = 5;
+  unsharp_luma_matrix_height = 5;
+  unsharp_luma_amount = 0;
+  unsharp_chroma_matrix_width = 3;
+  unsharp_chroma_matrix_height = 3;
+  unsharp_chroma_amount = 0;
+  
+  denoise3d = 0;
+  denoise3d_luma = 40;
+  denoise3d_chroma = 30;
+  denoise3d_time = 60;
+
   display_aspect       = 0;     /* auto */
 
   hide_main_menu       = 0;
@@ -530,6 +576,17 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Mode"))      STRN0CPY(ffmpeg_pp_mode, Value);
+  else if (!strcasecmp(Name, "Post.unsharp.Enable"))               unsharp                      = atoi(Value);
+  else if (!strcasecmp(Name, "Post.unsharp.luma_matrix_width"))    unsharp_luma_matrix_width    = atoi(Value);
+  else if (!strcasecmp(Name, "Post.unsharp.luma_matrix_height"))   unsharp_luma_matrix_height   = atoi(Value);
+  else if (!strcasecmp(Name, "Post.unsharp.luma_amount"))          unsharp_luma_amount          = atoi(Value);
+  else if (!strcasecmp(Name, "Post.unsharp.chroma_matrix_width"))  unsharp_chroma_matrix_width  = atoi(Value);
+  else if (!strcasecmp(Name, "Post.unsharp.chroma_matrix_height")) unsharp_chroma_matrix_height = atoi(Value);
+  else if (!strcasecmp(Name, "Post.unsharp.chroma_amount"))        unsharp_chroma_amount        = atoi(Value);
+  else if (!strcasecmp(Name, "Post.denoise3d.Enable"))  denoise3d        = atoi(Value);
+  else if (!strcasecmp(Name, "Post.denoise3d.luma"))    denoise3d_luma   = atoi(Value);
+  else if (!strcasecmp(Name, "Post.denoise3d.chroma"))  denoise3d_chroma = atoi(Value);
+  else if (!strcasecmp(Name, "Post.denoise3d.time"))    denoise3d_time   = atoi(Value);
 #if 1 // 1.0.0pre6
   else if (!strcasecmp(Name, "BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
   else if (!strcasecmp(Name, "BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);

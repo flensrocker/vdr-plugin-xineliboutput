@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.22 2007-04-12 22:53:36 phintuka Exp $
+ * $Id: config.h,v 1.23 2007-05-17 16:09:49 phintuka Exp $
  *
  */
 
@@ -187,6 +187,17 @@ class config_t {
     int  ffmpeg_pp;  
     int  ffmpeg_pp_quality;   // 0...6
     char ffmpeg_pp_mode[256];
+    int  unsharp;
+    int  unsharp_luma_matrix_width; // 3..11, should be an odd number
+    int  unsharp_luma_matrix_height; // 3..11, should be an odd number
+    int  unsharp_luma_amount; // Actually a double between -2.0 and 2.0, but handled as a int between -20 and 20
+    int  unsharp_chroma_matrix_width; // 3..11, should be an odd number
+    int  unsharp_chroma_matrix_height; // 3..11, should be an odd number
+    int  unsharp_chroma_amount; // Actually a double between -2.0 and 2.0, but handled as a int between -20 and 20
+    int  denoise3d;
+    int  denoise3d_luma; // Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
+    int  denoise3d_chroma; // Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
+    int  denoise3d_time; // Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
     int  display_aspect;
     
     int  hide_main_menu;
@@ -268,6 +279,8 @@ class config_t {
 
     const char *AutocropOptions(void);
     const char *FfmpegPpOptions(void);
+    const char *UnsharpOptions(void);
+    const char *Denoise3dOptions(void);
 
     template<typename T> bool IsOptionHidden(T & option)
       { return hidden_options[(int)((long int)&option - (long int)this)];};
