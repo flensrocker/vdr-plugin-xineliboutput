@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.25 2007-04-12 22:53:36 phintuka Exp $
+ * $Id: setup_menu.c,v 1.26 2007-05-17 22:05:40 phintuka Exp $
  *
  */
 
@@ -491,6 +491,8 @@ class cMenuSetupVideo : public cMenuSetupPage
     cOsdItem *ctrl_pp;
     cOsdItem *ctrl_deinterlace;
     cOsdItem *ctrl_deinterlace_opts;
+    cOsdItem *ctrl_unsharp;
+    cOsdItem *ctrl_denoise3d;
 
     int deinterlace;
     struct tvtime_s tvtime;
@@ -531,6 +533,10 @@ cMenuSetupVideo::~cMenuSetupVideo(void)
        "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "pp", xc.ffmpeg_pp ? true : false, xc.FfmpegPpOptions());
+  cXinelibDevice::Instance().ConfigurePostprocessing(
+       "unsharp", xc.unsharp ? true : false, xc.UnsharpOptions());
+  cXinelibDevice::Instance().ConfigurePostprocessing(
+       "denoise3d", xc.denoise3d ? true : false, xc.Denoise3dOptions());
   cXinelibDevice::Instance().ConfigurePostprocessing(
         xc.deinterlace_method, xc.audio_delay, xc.audio_compression,
         xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
@@ -598,6 +604,37 @@ void cMenuSetupVideo::Set(void)
 			      &tvtime.chroma_filter));
   }
 
+  Add(ctrl_unsharp = new cMenuEditBoolItem(tr("Sharpen / Blur"),
+                                      &newconfig.unsharp));
+  if(newconfig.unsharp) {
+    Add(new cMenuEditOddIntItem( tr("  Width of the luma matrix"),
+                                 &newconfig.unsharp_luma_matrix_width, 3, 11));
+    Add(new cMenuEditOddIntItem( tr("  Height of the luma matrix"),
+                                 &newconfig.unsharp_luma_matrix_height, 3, 11));
+    Add(new cMenuEditFpIntItem( tr("  Amount of luma sharpness/blur"),
+                                &newconfig.unsharp_luma_amount, -20, 20, 1,
+                                tr("Off")));
+    Add(new cMenuEditOddIntItem( tr("  Width of the chroma matrix"),
+                              &newconfig.unsharp_chroma_matrix_width, 3, 11));
+    Add(new cMenuEditOddIntItem( tr("  Height of the chroma matrix"),
+                              &newconfig.unsharp_chroma_matrix_height, 3, 11));
+    Add(new cMenuEditFpIntItem( tr("  Amount of chroma sharpness/blur"),
+                                &newconfig.unsharp_chroma_amount, -20, 20, 1,
+                                tr("Off")));
+  }
+
+  Add(ctrl_denoise3d = new cMenuEditBoolItem(tr("3D Denoiser"),
+                                      &newconfig.denoise3d));
+  if(newconfig.denoise3d) {
+    Add(new cMenuEditFpIntItem( tr("  Spatial luma strength"),
+                                &newconfig.denoise3d_luma, 0, 100, 1));
+    Add(new cMenuEditFpIntItem( tr("  Spatial chroma strength"),
+                                &newconfig.denoise3d_chroma, 0, 100, 1));
+    Add(new cMenuEditFpIntItem( tr("  Temporal strength"),
+                                &newconfig.denoise3d_time, 0, 100, 1));
+  }
+
+
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
   Add(new cMenuEditIntItem(tr("HUE"), &newconfig.hue, -1, 0xffff));
   Add(new cMenuEditIntItem(tr("Saturation"), &newconfig.saturation,-1,0xffff));
@@ -662,7 +699,20 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
 	 "pp", newconfig.ffmpeg_pp ? true : false, 
 	 newconfig.FfmpegPpOptions());
     Set();
-  } else if(item == ctrl_deinterlace) {
+  }
+  else if(item == ctrl_unsharp) {
+    cXinelibDevice::Instance().ConfigurePostprocessing(
+         "unsharp", newconfig.unsharp ? true : false, 
+         newconfig.UnsharpOptions());
+    Set();
+  } 
+  else if(item == ctrl_denoise3d) {
+    cXinelibDevice::Instance().ConfigurePostprocessing(
+         "denoise3d", newconfig.denoise3d ? true : false, 
+         newconfig.Denoise3dOptions());
+    Set();
+  } 
+  else if(item == ctrl_deinterlace) {
     if(deinterlace == DEINTERLACE_TVTIME && !ctrl_deinterlace_opts) {
       Set();
     } else if(deinterlace != DEINTERLACE_TVTIME && ctrl_deinterlace_opts) {
@@ -703,6 +753,17 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Post.pp.Enable",   xc.ffmpeg_pp);
   SetupStore("Post.pp.Quality",  xc.ffmpeg_pp_quality);
   SetupStore("Post.pp.Mode",     xc.ffmpeg_pp_mode);
+  SetupStore("Post.unsharp.Enable",               xc.unsharp);
+  SetupStore("Post.unsharp.luma_matrix_width",    xc.unsharp_luma_matrix_width);
+  SetupStore("Post.unsharp.luma_matrix_height",   xc.unsharp_luma_matrix_height);
+  SetupStore("Post.unsharp.luma_amount",          xc.unsharp_luma_amount);
+  SetupStore("Post.unsharp.chroma_matrix_width",  xc.unsharp_chroma_matrix_width);
+  SetupStore("Post.unsharp.chroma_matrix_height", xc.unsharp_chroma_matrix_height);
+  SetupStore("Post.unsharp.chroma_amount",        xc.unsharp_chroma_amount);
+  SetupStore("Post.denoise3d.Enable",   xc.denoise3d);
+  SetupStore("Post.denoise3d.luma",     xc.denoise3d_luma);
+  SetupStore("Post.denoise3d.chroma",   xc.denoise3d_chroma);
+  SetupStore("Post.denoise3d.time",     xc.denoise3d_time);
 }
 
 

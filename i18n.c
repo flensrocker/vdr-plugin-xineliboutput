@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.19 2007-04-12 22:53:36 phintuka Exp $
+ * $Id: i18n.c,v 1.20 2007-05-17 22:05:40 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -3492,7 +3492,226 @@ const tI18nPhrase Phrases[] = {
     "", // Russian
     "", // Croatian
   },
-
+  {
+    "3D Denoiser", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "3D kohinanpoisto", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // 3D Denoiser
+    "  Spatial luma strength", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Luman tilavoimakkuus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // 3D Denoiser
+    "  Spatial chroma strength", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Chroman tilavoimakkuus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // 3D Denoiser
+    "  Temporal strength", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Ajallinen voimakkuus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  {
+    "Sharpen / Blur", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "Terävöinti / Sumennus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // Unsharp mask
+    "  Width of the luma matrix", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Luma-matriisin leveys", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // Unsharp mask
+    "  Height of the luma matrix", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Luma-matriisin korkeus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // Unsharp mask
+    "  Amount of luma sharpness/blur", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Luma-terävöinti/-sumennus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // Unsharp mask
+    "  Width of the chroma matrix", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Chroma-matriisin leveys", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // Unsharp mask
+    "  Height of the chroma matrix", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Chroma-matriisin korkeus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
+  { // Unsharp mask
+    "  Amount of chroma sharpness/blur", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Chroma-terävöinti/-sumennus", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+  },
 #if 0
   {
     "", // English
