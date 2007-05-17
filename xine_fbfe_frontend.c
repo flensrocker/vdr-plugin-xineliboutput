@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.13 2007-05-17 22:49:51 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.14 2007-05-17 23:09:30 phintuka Exp $
  *
  */
 
@@ -13,6 +13,8 @@
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +24,10 @@
 #include <time.h>
 #include <pthread.h>
 #include <sched.h>
+
+#if defined(__linux__)
+# include <linux/kd.h>
+#endif
 
 #ifdef boolean
 # define HAVE_BOOLEAN
@@ -92,7 +98,7 @@ typedef struct fbfe_t {
   fe_keypress_f       keypress;
 
   /* display */
-  int                 display;
+  int                 fd_tty;
   int                 fullscreen;
   int                 vmode_switch;
   int                 field_order;
@@ -136,10 +142,9 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
   if(!this)
     return 0;
 
-  if(this->display)
+  if(this->fd_tty >= 0)
     this->fe.fe_display_close(this_gen);
 
-  this->display = 1;
   if(keyfunc) {
     this->keypress = keyfunc;
     this->keypress("KBD", "");
@@ -172,6 +177,21 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->fb_dev = strdup(video_port);
   else
     this->fb_dev = NULL;
+
+#if defined(KDSETMODE) && defined(KD_GRAPHICS)
+  if (isatty(STDIN_FILENO))
+    this->fd_tty = dup(STDIN_FILENO);
+  else
+    this->fd_tty = open("/dev/tty", O_RDWR);
+  
+  if(this->fd_tty < 0)
+    LOGERR("fbfe_display_open: error opening /dev/tty");
+  else if (ioctl(this->fd_tty, KDSETMODE, KD_GRAPHICS) == -1)
+    LOGERR("fbfe_display_open: failed to set /dev/tty to graphics mode");
+#else
+# warning No support for console graphics mode
+  this->fd_tty = -1;
+#endif
 
   return 1;
 }
@@ -245,6 +265,15 @@ static void fbfe_display_close(frontend_t *this_gen)
     }
     if(this->xine)
       this->fe.xine_exit(this_gen);
+
+    if (this->fd_tty >= 0) {
+#if defined(KDSETMODE) && defined(KD_TEXT)
+      if(ioctl(this->fd_tty, KDSETMODE, KD_TEXT) == -1)
+        LOGERR("fbfe_display_close: failed to set /dev/tty to text mode");
+#endif
+      close(this->fd_tty);
+      this->fd_tty = -1;
+    }
   }
 }
 
@@ -252,6 +281,8 @@ static frontend_t *fbfe_get_frontend(void)
 {
   fe_t *this = malloc(sizeof(fe_t));
   memset(this, 0, sizeof(fe_t));
+
+  this->fd_tty = -1;
 
   this->fe.fe_display_open   = fbfe_display_open;
   this->fe.fe_display_config = fbfe_display_config;
