@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.15 2007-05-18 15:06:26 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.16 2007-05-18 15:21:37 phintuka Exp $
  *
  */
 
@@ -63,6 +63,9 @@ typedef struct fbfe_t {
   frontend_t         fe;
   void (*update_display_size)(frontend_t*);
 
+  /* vdr */
+  fe_keypress_f       keypress;
+
   /* xine stuff */
   xine_t             *xine;
   xine_stream_t      *stream;
@@ -77,38 +80,32 @@ typedef struct fbfe_t {
   char               *fb_dev;
   char               *aspect_controller;
 
-  char                configfile[256];
-
   int                 xine_visual_type;
   fb_visual_t         vis;
 
-  double              display_ratio;
-  int                 overscan;
-
-  int                 pes_buffers;
-  int                 aspect;
-  int                 cropping;
-  int                 scale_video;
-  int                 priority;
-
-  /* frontend */
-  int                 playback_finished;
-  int                 slave_playback_finished;
-
-  /* vdr */
-  fe_keypress_f       keypress;
+  uint16_t            pes_buffers;
 
   /* display */
-  int                 fd_tty;
-  int                 fullscreen;
-  int                 vmode_switch;
-  int                 field_order;
-  char                modeline[256];
+  int         fd_tty;
 
-  int                 xpos, ypos;
-  int                 width, height;
+  /* frontend */
+  double      display_ratio;
+  uint16_t    xpos, ypos;
+  uint16_t    width, height;
+  uint16_t    video_width, video_height;
+  uint8_t     overscan;
+  uint8_t     playback_finished;
+  uint8_t     slave_playback_finished;
+  uint8_t     aspect;
+  uint8_t     cropping;
+  uint8_t     scale_video;
+  uint8_t     fullscreen;
+  uint8_t     vmode_switch;
+  uint8_t     field_order;
 
-  int                 video_width, video_height;
+  /* strings */
+  char        configfile[256];
+  char        modeline[256];
 
 } fe_t;
 
