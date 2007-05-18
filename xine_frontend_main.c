@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.31 2007-05-18 14:43:00 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.32 2007-05-18 15:14:20 phintuka Exp $
  *
  */
 
@@ -285,12 +285,15 @@ static const char *help_str =
     "                                      auto, x11, xshm, xv, xvmc, xxmc, vidix,\n"
     "                                      sdl, opengl, none\n"
     "   --display=displayaddress      X11 display address\n"
+    "   --wid=id                      Use existing X11 window\n"
 #else
     "                                      auto, fb, DirectFB, vidixfb,\n"
     "                                      sdl, dxr3, aadxr3, none\n"
 #endif
     "   --aspect=[auto|4:3|16:9|16:10|default]\n"
     "                                 Display aspect ratio\n"
+    "                                 Use script to control HW aspect ratio:\n"
+    "                                   --aspect=auto:path_to_script\n"
     "   --fullscreen                  Fullscreen mode\n"
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
@@ -321,6 +324,7 @@ static const struct option long_options[] = {
   { "audio",      required_argument, NULL, 'A' },
   { "video",      required_argument, NULL, 'V' },
   { "display",    required_argument, NULL, 'd' },
+  { "wid",        required_argument, NULL, 'W' },
   { "aspect",     required_argument, NULL, 'a' },
   { "fullscreen", no_argument,       NULL, 'f' },
   { "width",      required_argument, NULL, 'w' },
@@ -353,12 +357,16 @@ int main(int argc, char *argv[])
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, slave_mode = 0;
   char *video_port = NULL;
+#ifndef IS_FBFE
+  int window_id = -1;
+#endif
   int xmajor, xminor, xsub;
   int err, c;
   frontend_t *fe = NULL;
   extern const fe_creator_f fe_creator;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
+  char *aspect_controller = NULL;
   int repeat_emu = 0;
   char *exec_name = argv[0];
 
@@ -397,8 +405,12 @@ int main(int argc, char *argv[])
 	      }
               PRINTF("Video driver: %s\n",gdrv);
               break;
+#ifndef IS_FBFE
+    case 'W': window_id = atoi(optarg);
+              break;
     case 'd': video_port = strdup(optarg);
               break;
+#endif
     case 'a': if(!strncmp(optarg, "auto", 4))
                 aspect = 0;
               if(!strncmp(optarg, "4:3", 3))
@@ -407,9 +419,14 @@ int main(int argc, char *argv[])
 		aspect = 3;
 	      if(!strncmp(optarg, "16:10", 5))
 		aspect = 4;
+              if(aspect == 0 && optarg[5] == ':')
+                aspect_controller = strdup(optarg+5);
 	      PRINTF("Aspect ratio: %s\n", 
 		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
 		     aspect==4?"16:10":"Default");
+              if(aspect_controller)
+                PRINTF("Using %s to switch aspect ratio\n", 
+                       aspect_controller);
 	      break;
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
@@ -552,6 +569,10 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Error initializing frontend\n");
     return -3;
   }
+#ifndef IS_FBFE
+  ((fe_t*)fe)->window_id = window_id;
+#endif
+  ((fe_t*)fe)->aspect_controller = aspect_controller;
 
   /* Initialize display */
   if(!fe->fe_display_open(fe, width, height, fullscreen, 0, 
@@ -562,7 +583,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize xine */
-  if(!fe->xine_init(fe, adrv, adev, gdrv, 250, 1, static_post_plugins)) {
+  if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
     fprintf(stderr, "Error initializing xine\n");
     fe->fe_free(fe);
     return -5;
