@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.26 2007-05-17 17:07:13 phintuka Exp $
+ * $Id: frontend_local.c,v 1.27 2007-05-18 15:09:42 phintuka Exp $
  *
  */
 
@@ -365,7 +365,7 @@ void cXinelibLocal::Action(void)
       if(m_bReconfigRequest) {
 	if(!fe->xine_init(fe, xc.audio_driver, xc.audio_port,
 			  xc.video_driver,
-			  xc.pes_buffers, 0,
+			  xc.pes_buffers,
 			  xc.post_plugins)) {
 	  LOGMSG("cXinelibLocal: Error initializing frontend");
 	  break;

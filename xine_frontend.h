@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.5 2006-08-23 05:27:11 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.6 2007-05-18 15:09:42 phintuka Exp $
  *
  */
 
@@ -66,7 +66,7 @@ struct frontend_s {
 		    const char *audio_driver, 
 		    const char *audio_port, 
 		    const char *video_driver, 
-		    int pes_buffers, int priority, 
+		    int pes_buffers,
 		    const char *static_post);
   int  (*xine_open)(frontend_t*, const char *mrl);
   int  (*xine_play)(frontend_t*);
