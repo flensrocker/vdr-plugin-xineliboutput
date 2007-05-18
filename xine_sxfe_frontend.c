@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.22 2007-05-18 14:28:42 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.23 2007-05-18 14:33:02 phintuka Exp $
  *
  */
 
@@ -411,24 +411,19 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 	     video_port);
   }
   if(!this->display) {
-    video_port = ":0.0";
-    if(!(this->display = XOpenDisplay(video_port)))
-      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
-	     video_port);
-  }
-  if(!this->display) {
-    video_port = "127.0.0.1:0.0";
-    if(!(this->display = XOpenDisplay(video_port)))
-      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
-	     video_port);
-  }
-  if(!this->display) {
     this->display = XOpenDisplay(NULL);
+  }
+  if(!this->display) {
+    if(!(this->display = XOpenDisplay(":0.0")))
+      LOGERR("sxfe_display_open: failed to connect to X server (:0.0)");
+  }
+  if(!this->display) {
+    if(!(this->display = XOpenDisplay("127.0.0.1:0.0")))
+      LOGERR("sxfe_display_open: failed to connect to X server (127.0.0.1:0.0");
   }
   if (!this->display) {
     LOGERR("sxfe_display_open: failed to connect to X server.");
     LOGMSG("If X server is running, try running \"xhost +\" in xterm window");
-    /*free(this);*/
     return 0;
   }
 
