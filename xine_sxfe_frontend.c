@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.20 2007-03-14 10:25:32 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.21 2007-05-18 14:00:28 phintuka Exp $
  *
  */
 
@@ -85,76 +85,67 @@ typedef struct sxfe_s {
   frontend_t              fe;
   void (*update_display_size)(frontend_t*);
 
-  /* xine stuff */
-  xine_t                  *xine;
-  xine_stream_t           *stream;
-  input_plugin_t          *input;
-  xine_video_port_t       *video_port;
-  xine_video_port_t       *video_port_none;
-  xine_audio_port_t       *audio_port;
-  xine_audio_port_t       *audio_port_none;
-  xine_event_queue_t      *event_queue;
-
-  post_plugins_t          *postplugins;
-
-  char                     configfile[256];
-
-  int                      xine_visual_type;
-  x11_visual_t             vis;
-
-  int                      pes_buffers;
-  int                      aspect;
-  int                      cropping;
-  int                      scale_video;
-  int                      priority;
-
-
-  double                   display_ratio;
-  int                      overscan;
-
-  /* frontend */
-  int                      playback_finished;
-  int                      slave_playback_finished;
-
   /* vdr */
-  fe_keypress_f          keypress;
+  fe_keypress_f        keypress;
 
   /* X11 */
-  Display                 *display;
-  int                      screen;
-  Window                   window[2];
-  int                      fullscreen;
-  int                      vmode_switch;
-  int                      field_order;
-  char                     modeline[256];
-
-  int                      fullscreen_state_forced;
-
+  Display *display;
+  Window   window[2];
+  int      screen;
+  int      window_id;        /* output to another window */
+  int      completion_event;
 #ifdef HAVE_XF86VIDMODE
-  /* XF86VidMode Extension */
+  int      XF86_modelines_count;
   XF86VidModeModeInfo**  XF86_modelines;
-  int                    XF86_modelines_count;
 #endif
 
-  int     completion_event;
+  /* Atoms */
+  Atom     atom_wm_delete_window;
+  Atom     atom_sxfe_interrupt;
+  Atom     atom_wm_hints, atom_win_layer;
+  Atom     atom_state, atom_state_add, atom_state_del;
+  Atom     atom_state_above, atom_state_fullscreen, atom_state_on_top;
 
-  int     xpos, ypos;
-  int     origxpos, origypos;
-  int     width, height;
-  int     origwidth, origheight;
-  int     stay_above;
-  int     no_border;
+  /* xine stuff */
+  xine_t              *xine;
+  xine_stream_t       *stream;
+  input_plugin_t      *input;
+  xine_video_port_t   *video_port;
+  xine_video_port_t   *video_port_none;
+  xine_audio_port_t   *audio_port;
+  xine_audio_port_t   *audio_port_none;
+  xine_event_queue_t  *event_queue;
 
-  Atom    atom_wm_delete_window;
-  Atom    atom_sxfe_interrupt;
+  post_plugins_t      *postplugins;
 
-  Atom    atom_wm_hints, atom_win_layer;
+  x11_visual_t         vis;
+  int                  xine_visual_type;
 
-  Atom    atom_state;
-  Atom    atom_state_add, atom_state_del;
-  Atom    atom_state_above, atom_state_fullscreen, atom_state_on_top;
+  uint16_t             pes_buffers;
 
-  int     video_width, video_height;
+  /* frontend */
+  double    display_ratio;
+  uint16_t  video_width, video_height;
+  uint16_t  xpos, ypos;
+  uint16_t  width, height;
+  uint16_t  origxpos, origypos;
+  uint16_t  origwidth, origheight;
+  uint8_t   aspect;
+  uint8_t   cropping;
+  uint8_t   scale_video;
+  uint8_t   overscan;
+  uint8_t   playback_finished;
+  uint8_t   slave_playback_finished;
+  uint8_t   fullscreen;
+  uint8_t   vmode_switch;
+  uint8_t   field_order;
+  uint8_t   fullscreen_state_forced;
+  uint8_t   stay_above;
+  uint8_t   no_border;
+
+  /* strings */
+  char    configfile[256];
+  char    modeline[256];
 
 } fe_t, sxfe_t;
 
