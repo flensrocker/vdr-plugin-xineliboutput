@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.14 2007-05-17 23:09:30 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.15 2007-05-18 15:06:26 phintuka Exp $
  *
  */
 
@@ -75,6 +75,7 @@ typedef struct fbfe_t {
 
   post_plugins_t     *postplugins;
   char               *fb_dev;
+  char               *aspect_controller;
 
   char                configfile[256];
 
