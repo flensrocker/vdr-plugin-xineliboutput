@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.24 2007-05-18 15:06:26 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.25 2007-05-18 15:49:02 phintuka Exp $
  *
  */
 
@@ -125,6 +125,7 @@ typedef struct sxfe_s {
 
   /* frontend */
   double    display_ratio;
+  double    video_aspect;
   char     *aspect_controller;
   int       xpos, ypos;
   uint16_t  video_width, video_height;

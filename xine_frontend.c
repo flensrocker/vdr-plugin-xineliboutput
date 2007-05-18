@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.37 2007-05-18 15:09:42 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.38 2007-05-18 15:49:02 phintuka Exp $
  *
  */
 
@@ -245,6 +245,21 @@ static void fe_frame_output_cb (void *data,
     /* trigger forced redraw to make cropping changes effective */
     if(this->cropping)
       xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
+  }
+
+  if(this->aspect_controller) {
+    double video_aspect = (video_pixel_aspect * (double)video_width / (double)video_height);
+    double aspect_diff = video_aspect - this->video_aspect;
+    if ((aspect_diff > 0.05) || (aspect_diff < -0.05)) {
+      char cmd[4096];
+      if(snprintf(cmd, sizeof(cmd), "%s %d", 
+                  this->aspect_controller, (int)(video_aspect * 10000.0)) 
+         < sizeof(cmd)) {
+        LOGDBG("Aspect ratio changed, executing %s", cmd);
+        system(cmd);
+        this->video_aspect = video_aspect;
+      }
+    }
   }
 }
 

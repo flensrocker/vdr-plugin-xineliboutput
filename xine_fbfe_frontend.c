@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.16 2007-05-18 15:21:37 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.17 2007-05-18 15:49:02 phintuka Exp $
  *
  */
 
@@ -90,6 +90,7 @@ typedef struct fbfe_t {
 
   /* frontend */
   double      display_ratio;
+  double      video_aspect;
   uint16_t    xpos, ypos;
   uint16_t    width, height;
   uint16_t    video_width, video_height;
