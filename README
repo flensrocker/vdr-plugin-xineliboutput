@@ -431,6 +431,19 @@ Xine-specific settings
   $(HOME)/.xine/config_xineliboutput.
 
 
+Slave mode
+
+  vdr-sxfe and vdr-fbfe implement simple slave mode. Slave mode is 
+  activated with command-line option --slave. In slave mode program reads 
+  CRLF-terminated commands from standard input instead of using keyboard
+  as VDR remote controller. Supported commands are:
+
+  HITK <vdrkey>    Send key press event to VDR
+  FULLSCREEN       Toggle fullscreen state
+  DEINTERLACE      Toggle deinterlacing
+  QUIT             Close program
+
+
 VDR Logo
 
   The VDR logo was designed by Jan Grell.
