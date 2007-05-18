@@ -5,6 +5,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 - Workaround for xine-lib demux_mpeg_block PTS wrap issue
   (this should fix daily picture freezes)
+- Support for denoise3d and unsharp post plugins (Thanks to Petri Helin)
 - Fixed media player random play kNext (next file) handling (Thanks to Petri Helin)
 - Fixed media player MsgReplaying status messages (Thanks to Petri Helin)
 - Fixed closing DVD player with Back key (Thanks to Petri Helin)
