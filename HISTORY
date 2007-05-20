@@ -1,7 +1,7 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2007-03-17: Version 1.0.0rc2
+2007-05-17: Version 1.0.0rc2
 
 - Workaround for xine-lib demux_mpeg_block PTS wrap issue
   (this should fix daily picture freezes)
