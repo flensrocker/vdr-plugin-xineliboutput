@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.82 2007-05-17 17:36:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.83 2007-05-30 07:05:36 phintuka Exp $
  *
  */
 
@@ -894,11 +894,16 @@ static int64_t pts_from_pes(const uint8_t *buf, int size)
 static void pes_strip_pts(uint8_t *buf, int size)
 {
   if(size > 13 && buf[7] & 0x80) { /* pts avail */
+    int pes_len = (buf[4] << 8) | buf[5];
     if ((buf[6] & 0xC0) != 0x80)
       return;
     if ((buf[6] & 0x30) != 0)
       return;
-    buf[7] &= ~0x80; /* clear pts flag */
+    pes_len -= 5;     /* update packet len */
+    buf[4]   = pes_len >> 8;   /* packet len (hi) */
+    buf[5]   = pes_len & 0xff; /* packet len (lo) */
+    buf[7]  &= 0x7f;  /* clear pts flag */
+    buf[8]  -= 5;     /* update header len */
     memmove(buf+9, buf+14, size-14);
   }
 }
@@ -1416,6 +1421,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
     buf->content = buf->mem;
     buf->size = 0;
     buf->type = BUF_DEMUX_BLOCK;
+    buf->pts  = 0;
 
     buf->free_buffer = buffer_pool_free;
   }
