@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.83 2007-05-30 07:05:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.84 2007-05-30 08:13:24 phintuka Exp $
  *
  */
 
@@ -57,6 +57,12 @@
 #include "xine_osd_command.h"
 
 /***************************** DEFINES *********************************/
+
+/* Support for ffmpeg mpeg2 decoder. 
+   Priority must be increased in $HOME/.xine/config_xineliboutput:
+       engine.decoder_priorities.ffmpegvideo:1
+*/
+#define FFMPEG_DEC
 
 /*#define LOG_UDP*/
 /*#define LOG_OSD*/
@@ -244,6 +250,7 @@ typedef struct vdr_input_plugin_s {
   int                 audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
   int                 prev_audio_stream_id;
   int                 sw_volume_control;
+  int                 ffmpeg_video_decoder;
 
   /* SCR */
   pvrscr_t           *scr;
@@ -4694,7 +4701,7 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen,
 #  include "cache_iframe.c"
 #endif
 
-static void update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
+static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
 {
   int Length = len;
   int i = 8;
@@ -4704,14 +4711,17 @@ static void update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
   i += data[i] + 1;   /* possible additional header bytes */
   for (; i < Length-5; i++) {
     if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 0) {
-      switch ((data[i + 5] >> 3) & 0x07) {
+      uint8_t type = ((data[i + 5] >> 3) & 0x07);
+      switch (type) {
         case 1: this->I_frames++; LOGSCR("I"); break;
         case 2: this->P_frames++; LOGSCR("P"); break;
         case 3: this->B_frames++; LOGSCR("B"); break;
-        default: return;
+        default: return 0;
       }
+      return type;
     }
   }
+  return 0;
 }
 
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
@@ -4946,9 +4956,30 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     }
   }
 
-  if(this->live_mode && this->I_frames < 4 && 
-     buf->content[3] == 0xe0 && buf->size > 32)
-    update_frames(this, buf->content, buf->size);
+#ifndef FFMPEG_DEC
+  if(this->live_mode && this->I_frames < 4)
+    if(buf->content[3] == 0xe0 && buf->size > 32)
+      update_frames(this, buf->content, buf->size);
+#else /* FFMPEG_DEC */
+  if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
+    if(buf->content[3] == 0xe0 && buf->size > 32) {
+      int type = update_frames(this, buf->content, buf->size);
+      if(type && this->ffmpeg_video_decoder) {
+	buf_element_t *cbuf = get_buf_element(this, 0, 1);
+	/* signal FRAME_END to decoder */
+	if(cbuf) {
+	  cbuf->type = BUF_VIDEO_MPEG;
+	  cbuf->decoder_flags = BUF_FLAG_FRAME_END;
+	  this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
+	}
+	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
+	 * (B-frame pts's are smaller than in previous P-frame) 
+	 * Anyway, without this block of code B frames with pts are dropped. */
+	if(type == 3 && pts_from_pes(buf->content, buf->size) > INT64_C(0))
+	  pes_strip_pts(buf->content, buf->size);
+      }
+    }
+#endif
 
   TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
   return buf;
@@ -5931,6 +5962,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   this->still_mode   = 0;
   this->stream_start = 1;
   this->send_pts     = 0;
+  this->ffmpeg_video_decoder = -1;
 
   this->rescale_osd  = 0;
   this->unscaled_osd = 0;
@@ -6002,6 +6034,23 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   pthread_mutex_init (&this->fd_control_lock, NULL);
 
   this->udp_data = NULL;
+
+#ifdef FFMPEG_DEC
+  if(this->ffmpeg_video_decoder < 0) {
+    xine_cfg_entry_t ffmpegprio, mpeg2prio;
+    this->ffmpeg_video_decoder = 0;
+    if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.ffmpegvideo", &ffmpegprio)) {
+      LOGMSG("ffmpeg video decoder priority: %d", ffmpegprio.num_value);
+      this->ffmpeg_video_decoder = 1;
+      if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.mpeg2", &mpeg2prio)) {
+	LOGMSG("libmpeg2 video decoder priority: %d", mpeg2prio.num_value);
+	if (mpeg2prio.num_value > ffmpegprio.num_value)
+	  this->ffmpeg_video_decoder = 0;
+      }
+      LOGMSG(" --> using %s mpeg2 video decoder", this->ffmpeg_video_decoder?"ffmpeg":"libmpeg2");
+    }
+  }
+#endif
 
   LOGDBG("vdr_class_get_instance done.");
   return &this->input_plugin;
