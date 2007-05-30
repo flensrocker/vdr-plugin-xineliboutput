@@ -351,7 +351,7 @@ void pplugin_parse_and_store_post(fe_t *fe, int plugin_type,
 #if 1
     if(SysLogLevel > 2) {
       /* dump list of all loaded plugins */
-      int ptot = *_post_elements_num + num;
+      int ptot = *_post_elements_num;
       int i;
       char s[4096]="";
       for(i=0; i<ptot; i++)
