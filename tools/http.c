@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.c,v 1.3 2007-01-07 09:49:59 phintuka Exp $
+ * $Id: http.c,v 1.4 2007-06-06 20:06:13 phintuka Exp $
  *
  */
 
@@ -107,8 +107,8 @@ void cHttpReq::Reset(void)
 static const char *mimetype(const char *ext)
 {
   static const struct {
-    char *ext;
-    char *mime;
+    const char *ext;
+    const char *mime;
   } ext2mime[] = {
     {"avi",  "video/avi"},
     {"vob",  "video/mpeg"},
