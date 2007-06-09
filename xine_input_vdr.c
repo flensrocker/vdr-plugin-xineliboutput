@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.84 2007-05-30 08:13:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.85 2007-06-09 15:24:44 phintuka Exp $
  *
  */
 
@@ -1575,7 +1575,11 @@ static char* fifo_get_mrl (input_plugin_t *this_gen)
 #endif
 { return "xvdr:slave:"; }
 
+#if XINE_VERSION_CODE < 10200
 static off_t fifo_read (input_plugin_t *this_gen, char *buf, off_t len) 
+#else
+static off_t fifo_read (input_plugin_t *this_gen, void *buf, off_t len) 
+#endif
 {
   int got = 0;
   LOGERR("fifo_input_plugin::fifo_read() not implemented !");
@@ -4681,12 +4685,16 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   }
 }
 
-static off_t vdr_plugin_read (input_plugin_t *this_gen,
-			      char *buf, off_t len) 
+#if XINE_VERSION_CODE < 10200
+static off_t vdr_plugin_read (input_plugin_t *this_gen, char *buf_gen, off_t len)
+#else
+static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len)
+#endif
 {
   /* from xine_input_dvd.c: */
   /* FIXME: Tricking the demux_mpeg_block plugin */
   if(len > 3) {
+    uint8_t *buf = (uint8_t*)buf_gen;
     buf[0] = 0;
     buf[1] = 0;
     buf[2] = 0x01;
