@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.2 2007-01-01 08:11:51 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.3 2007-06-11 16:40:43 phintuka Exp $
  *
  */
 
@@ -18,6 +18,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <arpa/inet.h>
 
 #ifdef FE_STANDALONE
 #  define LOG_MODULENAME "[discovery] "
@@ -40,8 +41,9 @@
 
 /* discovery protocol strings (v1.0) */
 #define DISCOVERY_1_0_HDR     "VDR xineliboutput DISCOVERY 1.0" "\r\n"
-#define DISCOVERY_1_0_CLI     "Client: %s:%d" "\r\n"
-#define DISCOVERY_1_0_SVR     "Server port: %d" "\r\n"
+#define DISCOVERY_1_0_CLI     "Client: %s:%d"      "\r\n"
+#define DISCOVERY_1_0_SVR     "Server port: %d"    "\r\n"
+#define DISCOVERY_1_0_ADDR    "Server address: %s" "\r\n"
 #define DISCOVERY_1_0_VERSION "Server version: " /*vdr-" VDRVERSION "\r\n\t"*/ \
                               "xineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
 
@@ -219,13 +221,41 @@ int udp_discovery_find_server(int *port, char *address)
 	       ((tmp>>8)&0xff), ((tmp)&0xff),
 	       buf);
 	if(!strncmp(mystring, buf, strlen(mystring))) {
+          char *iploc;
 	  LOGDBG("Valid discovery message");
 	  close(fd_discovery);
+
+	  // default: use broadcast source address
 	  sprintf(address, "%d.%d.%d.%d",
 		  ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
 		  ((tmp>>8)&0xff), ((tmp)&0xff));
-	  if(1 == sscanf(buf + strlen(mystring), "%d", port))
+
+	  // Check if announce message includes alternative server address
+	  iploc = strstr(buf + strlen(mystring), "Server address: ");
+	  if(iploc) {
+	    uint32_t svraddr;
+	    iploc += strlen("Server address: ");
+	    svraddr = inet_addr(iploc);
+	    if(svraddr == INADDR_NONE) {
+	      LOGMSG("Server provided invalid address !");
+	    } else {
+	      svraddr = ntohl(svraddr);
+	      sprintf(address, "%d.%d.%d.%d",
+		      ((svraddr>>24)&0xff), ((svraddr>>16)&0xff), 
+		      ((svraddr>>8)&0xff), ((svraddr)&0xff));
+	      LOGMSG("Replacing broadcast source address %d.%d.%d.%d "
+		     "with server-given address %s",
+		     ((tmp>>24)&0xff), ((tmp>>16)&0xff), 
+		     ((tmp>>8)&0xff), ((tmp)&0xff),
+		     address);
+	    }
+	  }
+
+	  *port = -1;
+	  if(1 == sscanf(buf + strlen(mystring), "%d", port) && 
+	     *port >= 1000 && *port <= 0xffff)
 	    return 1;
+	  LOGMSG("Server-given port is invalid !");
 	} else {
 	  LOGDBG("NOT valid discovery message");
 	}
