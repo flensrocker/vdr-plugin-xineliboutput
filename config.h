@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.23 2007-05-17 16:09:49 phintuka Exp $
+ * $Id: config.h,v 1.24 2007-06-11 19:03:14 phintuka Exp $
  *
  */
 
@@ -229,7 +229,7 @@ class config_t {
     
     int  remote_mode;
     int  listen_port;
-    int  use_remote_keyboard;
+    int  remote_keyboard;
     int  remote_usetcp, remote_useudp, remote_usertp, remote_usepipe;
     int  remote_http_files;    /* allow http streaming of media files to xineliboutput clients 
 				* (currently replayed media file from xineliboutput media player) 

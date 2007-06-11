@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.28 2007-06-11 17:27:51 phintuka Exp $
+ * $Id: setup_menu.c,v 1.29 2007-06-11 19:03:14 phintuka Exp $
  *
  */
 
@@ -1349,7 +1349,7 @@ void cMenuSetupRemote::Set(void)
 			      &newconfig.listen_port,
 			      0, 0xffff));
     Add(new cMenuEditBoolItem(tr("  Remote keyboard"), 
-			      &newconfig.use_remote_keyboard));
+			      &newconfig.remote_keyboard));
 
     Add(new cMenuEditBoolItem(tr("  PIPE transport"), 
 			      &newconfig.remote_usepipe));
@@ -1450,7 +1450,7 @@ void cMenuSetupRemote::Store(void)
 
   SetupStore("RemoteMode",        xc.remote_mode);
   SetupStore("Remote.ListenPort", xc.listen_port);
-  SetupStore("Remote.Keyboard",   xc.use_remote_keyboard);
+  SetupStore("Remote.Keyboard",   xc.remote_keyboard);
 
   SetupStore("Remote.UsePipe",xc.remote_usepipe);
   SetupStore("Remote.UseTcp", xc.remote_usetcp);

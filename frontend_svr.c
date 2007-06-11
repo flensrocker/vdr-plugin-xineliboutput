@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.40 2007-05-17 17:04:20 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.41 2007-06-11 19:03:14 phintuka Exp $
  *
  */
 
@@ -1107,7 +1107,7 @@ void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
 {
   TRACE("cXinelibServer received KEY " << buf);
 
-  if(!xc.use_remote_keyboard) {
+  if(!xc.remote_keyboard) {
     LOGMSG("Handle_Control_KEY(%s): Remote keyboard disabled in config", arg);
     return;
   }
