@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.30 2007-03-29 12:45:43 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.31 2007-06-11 21:44:02 phintuka Exp $
  *
  */
 
@@ -163,6 +163,23 @@ bool cUdpScheduler::AddRtp(void)
     return false;
   }
 
+  if(xc.remote_local_ip[0]) {
+    struct sockaddr_in name;
+    name.sin_family = AF_INET;
+    name.sin_addr.s_addr = inet_addr(xc.remote_local_ip);
+    name.sin_port = htons(xc.remote_rtp_port);
+    if (bind(m_fd_rtp.handle(), (struct sockaddr *)&name, sizeof(name)) < 0)
+      LOGERR("bind(%s:%d) failed for udp/rtp multicast", xc.remote_local_ip, xc.remote_rtp_port);
+#if 0
+    struct ip_mreqn mreqn;
+    mreqn.imr_multiaddr.s_addr = inet_addr(xc.remote_rtp_addr);
+    mreqn.imr_address.s_addr = inet_addr(xc.remote_local_ip);  /* IP address of local interface */
+    //mreqn.imr_ifindex = ; /* interface index */
+    if(setsockopt(m_fd_rtp.handle(), IPPROTO_IP, IP_MULTICAST_IF, &mreqn, sizeof(mreqn)))
+      LOGERR("setting multicast source address/interface failed");
+#endif
+  }
+
   // Connect to multicast address
   if(!m_fd_rtp.connect(xc.remote_rtp_addr, xc.remote_rtp_port) && 
      errno != EINPROGRESS) {
@@ -185,10 +202,26 @@ bool cUdpScheduler::AddRtp(void)
   if(!m_fd_rtcp.set_multicast(xc.remote_rtp_ttl))
     m_fd_rtcp.close();
 
+  if(xc.remote_local_ip[0]) {
+    struct sockaddr_in name;
+    name.sin_family = AF_INET;
+    name.sin_addr.s_addr = inet_addr(xc.remote_local_ip);
+    name.sin_port = htons(xc.remote_rtp_port+1);
+    if (bind(m_fd_rtcp.handle(), (struct sockaddr *)&name, sizeof(name)) < 0)
+      LOGERR("bind(%s:%d) failed for udp/rtp multicast", xc.remote_local_ip, xc.remote_rtp_port);
+#if 0
+    struct ip_mreqn mreqn;
+    mreqn.imr_multiaddr.s_addr = inet_addr(xc.remote_rtp_addr);
+    mreqn.imr_address.s_addr = inet_addr(xc.remote_local_ip);  /* IP address of local interface */
+    //mreqn.imr_ifindex = ; /* interface index */
+    if(setsockopt(m_fd_rtp.handle(), IPPROTO_IP, IP_MULTICAST_IF, &mreqn, sizeof(mreqn)))
+      LOGERR("setting multicast source address/interface failed");
+#endif
+  }
+
   /* RTCP port (RFC 1889) */
-  else if(!m_fd_rtcp.connect(xc.remote_rtp_addr, xc.remote_rtp_port
-			     + ((xc.remote_rtp_port&1) ? -1 : 1)) &&
-	  errno != EINPROGRESS) {
+  if(!m_fd_rtcp.connect(xc.remote_rtp_addr, xc.remote_rtp_port + 1) &&
+     errno != EINPROGRESS) {
     LOGERR("connect(fd_rtcp) failed. Address=%s, port=%d",
 	   xc.remote_rtp_addr, xc.remote_rtp_port +
 	   (xc.remote_rtp_port&1)?-1:1);
