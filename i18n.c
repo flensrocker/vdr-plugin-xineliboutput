@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.20 2007-05-17 22:05:40 phintuka Exp $
+ * $Id: i18n.c,v 1.21 2007-06-11 16:59:59 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -2194,6 +2194,7 @@ const tI18nPhrase Phrases[] = {
     "", // Russian
     "", // Croatian
   },
+#if 0
   {
     "   Options", // English
     "   Optionen", // Deutsch
@@ -2214,6 +2215,7 @@ const tI18nPhrase Phrases[] = {
     "", // Russian
     "", // Croatian
   },
+#endif
   {
     "    Address", // English
     "    Multicast-Adresse", // Deutsch
@@ -2558,15 +2560,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Method", // English
-    "     Methode", // Deutsch
+    "  Method", // English
+    "  Methode", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Menetelmä", // Suomi
+    "  Menetelmä", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2578,15 +2580,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Cheap mode", // English
-    "     einfacher Modus", // Deutsch
+    "  Cheap mode", // English
+    "  einfacher Modus", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Käytä Cheap-moodia", // Suomi
+    "  Käytä Cheap-moodia", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2598,15 +2600,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Pulldown", // English
-    "     Pulldown", // Deutsch
+    "  Pulldown", // English
+    "  Pulldown", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Pulldown-moodi", // Suomi
+    "  Pulldown-moodi", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2618,15 +2620,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Frame rate", // English
-    "     Bildrate", // Deutsch
+    "  Frame rate", // English
+    "  Bildrate", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Ruudunpäivitys", // Suomi
+    "  Ruudunpäivitys", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2638,15 +2640,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Judder Correction", // English
-    "     Ruckel-Korrektur", // Deutsch
+    "  Judder Correction", // English
+    "  Ruckel-Korrektur", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Käytä tärinänkorjausta", // Suomi
+    "  Käytä tärinänkorjausta", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2658,15 +2660,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Use progressive frame flag", // English
-    "     Nutze progressive frame flag", // Deutsch
+    "  Use progressive frame flag", // English
+    "  Nutze progressive frame flag", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Tunnista progressiivinen kuva", // Suomi
+    "  Tunnista progressiivinen kuva", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika
@@ -2678,15 +2680,15 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { // tvtime de-interlacing
-    "     Chroma Filter", // English
-    "     Chrominanz-Filter", // Deutsch
+    "  Chroma Filter", // English
+    "  Chrominanz-Filter", // Deutsch
     "", // Slovenski
     "", // Italiano
     "", // Nederlands
     "", // Portugu<EA>s
     "", // Fran<E7>ais
     "", // Norsk
-    "     Käytä Chroma-suodinta", // Suomi
+    "  Käytä Chroma-suodinta", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.26 2007-05-17 22:05:40 phintuka Exp $
+ * $Id: setup_menu.c,v 1.27 2007-06-11 16:59:59 phintuka Exp $
  *
  */
 
@@ -490,7 +490,7 @@ class cMenuSetupVideo : public cMenuSetupPage
     cOsdItem *ctrl_overscan;
     cOsdItem *ctrl_pp;
     cOsdItem *ctrl_deinterlace;
-    cOsdItem *ctrl_deinterlace_opts;
+    cOsdItem *ctrl_tvtime_method;
     cOsdItem *ctrl_unsharp;
     cOsdItem *ctrl_denoise3d;
 
@@ -584,23 +584,20 @@ void cMenuSetupVideo::Set(void)
 				DEINTERLACE_count, 
 				xc.s_deinterlaceMethodNames));
 
-  ctrl_deinterlace_opts = NULL;
+  ctrl_tvtime_method = NULL;
   if(deinterlace == DEINTERLACE_TVTIME) {
-    Add(ctrl_deinterlace_opts = new cMenuEditStrItem(tr("   Options"), 
-						     newconfig.deinterlace_opts, 
-						     254, OptionsChars));
-
-    Add(new cMenuEditStraI18nItem(tr("     Method"), &tvtime.method,
+    Add(ctrl_tvtime_method =
+	new cMenuEditStraI18nItem(tr("  Method"), &tvtime.method,
 				  tvtime_methods_count, tvtime_method_name));
-    Add(new cMenuEditBoolItem(tr("     Cheap mode"), &tvtime.cheap_mode));
-    Add(new cMenuEditStraI18nItem(tr("     Pulldown"), &tvtime.pulldown,
+    Add(new cMenuEditBoolItem(tr("  Cheap mode"), &tvtime.cheap_mode));
+    Add(new cMenuEditStraI18nItem(tr("  Pulldown"), &tvtime.pulldown,
 				  2, tvtime_pulldown_name));
-    Add(new cMenuEditStraI18nItem(tr("     Frame rate"), &tvtime.framerate,
+    Add(new cMenuEditStraI18nItem(tr("  Frame rate"), &tvtime.framerate,
 				  3, tvtime_framerate_name));
-    Add(new cMenuEditBoolItem(tr("     Judder Correction"), &tvtime.judder_correction));
-    Add(new cMenuEditBoolItem(tr("     Use progressive frame flag"), 
+    Add(new cMenuEditBoolItem(tr("  Judder Correction"), &tvtime.judder_correction));
+    Add(new cMenuEditBoolItem(tr("  Use progressive frame flag"), 
 			      &tvtime.use_progressive_frame_flag));
-    Add(new cMenuEditBoolItem(tr("     Chroma Filter"), 
+    Add(new cMenuEditBoolItem(tr("  Chroma Filter"), 
 			      &tvtime.chroma_filter));
   }
 
@@ -713,9 +710,9 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
     Set();
   } 
   else if(item == ctrl_deinterlace) {
-    if(deinterlace == DEINTERLACE_TVTIME && !ctrl_deinterlace_opts) {
+    if(deinterlace == DEINTERLACE_TVTIME && !ctrl_tvtime_method) {
       Set();
-    } else if(deinterlace != DEINTERLACE_TVTIME && ctrl_deinterlace_opts) {
+    } else if(deinterlace != DEINTERLACE_TVTIME && ctrl_tvtime_method) {
       Set();
     }
   }
