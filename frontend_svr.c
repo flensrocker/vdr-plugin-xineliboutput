@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.41 2007-06-11 19:03:14 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.42 2007-06-11 19:26:39 phintuka Exp $
  *
  */
 
@@ -1463,9 +1463,9 @@ void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
       cHeader *transport = m_State[cli]->Header("Transport");
       int urtp=0, mrtp=0, tcp=0;
       if(transport &&
-	 (strstr(transport->Value(), "RTP/AVP;multicast") && (mrtp=1)) ||
-	 (strstr(transport->Value(), "RTP/AVP;unicast") && (urtp=1)) ||
-	 (strstr(transport->Value(), "RTP/AVP;interleaved") && (tcp=1))) {
+	 ( (strstr(transport->Value(), "RTP/AVP;multicast") && (mrtp=1)) ||
+	   (strstr(transport->Value(), "RTP/AVP;unicast") && (urtp=1)) ||
+	   (strstr(transport->Value(), "RTP/AVP;interleaved") && (tcp=1)))) {
 	//if(!mrtp)
 	//  sprintf(buf, "RTSP/1.0 461 Unsupported transport\r\n" RTSP_H_CSEQ RTSP_OK_FIN);
 	//else 
