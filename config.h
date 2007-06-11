@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.25 2007-06-11 19:12:18 phintuka Exp $
+ * $Id: config.h,v 1.26 2007-06-11 19:20:34 phintuka Exp $
  *
  */
 
@@ -164,42 +164,49 @@ class config_t {
     static const char *s_subExts[];
 
   public:
+
+    // Force xineliboutput to be the primary device
+    int  force_primary_device;
+
+    // local frontend settings
+    char local_frontend[64];
     char video_driver[32];
     char video_port[32];     // X11: DISPLAY=...
     char audio_driver[32];
     char audio_port[64];
-    int  speaker_type;
-    char *post_plugins;      // from command line options
+    char *post_plugins;      // static post plugins from command line options
+    int  pes_buffers;
 
+    char modeline[64];
+    int  fullscreen;
+    int  modeswitch;
+    int  width;
+    int  height;
+    int  display_aspect;
+    int  scale_video;
+    int  field_order;
+    int  exit_on_close;    // Terminate VDR when local frontend is closed
+    int  use_x_keyboard;   // Use X11 keyboard to control VDR (console kbd is handled by VDR)
+
+    // Audio settings
+    int  speaker_type;
     int  audio_delay;        // in ms
     int  audio_compression;  // 100%(=off)...500%
     int  audio_equalizer[AUDIO_EQ_count];
-    char audio_visualization[64];
-    char audio_vis_goom_opts[256];
-    int  audio_surround;
-    int  headphone;
-    int  audio_upmix;
-    int  sw_volume_control; /* software (xine-lib) or hardware (alsa) volume control and muting */
-    
-    int  pes_buffers;
-    char deinterlace_method[32];
-    char deinterlace_opts[256];
-    int  ffmpeg_pp;  
-    int  ffmpeg_pp_quality;   // 0...6
-    char ffmpeg_pp_mode[256];
-    int  unsharp;
-    int  unsharp_luma_matrix_width; // 3..11, should be an odd number
-    int  unsharp_luma_matrix_height; // 3..11, should be an odd number
-    int  unsharp_luma_amount; // Actually a double between -2.0 and 2.0, but handled as a int between -20 and 20
-    int  unsharp_chroma_matrix_width; // 3..11, should be an odd number
-    int  unsharp_chroma_matrix_height; // 3..11, should be an odd number
-    int  unsharp_chroma_amount; // Actually a double between -2.0 and 2.0, but handled as a int between -20 and 20
-    int  denoise3d;
-    int  denoise3d_luma; // Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
-    int  denoise3d_chroma; // Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
-    int  denoise3d_time; // Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
-    int  display_aspect;
-    
+    int  audio_surround;    // downmix multichannel audio to stereo surround
+    int  headphone;         // mix audio for headphones
+    int  audio_upmix;       // upmix stereo to 5.1
+    int  sw_volume_control; // software (xine-lib) or hardware (alsa) volume control and muting
+
+    // Video settings
+    int  overscan;            // %
+    int  hue;                 // 0...0xffff, -1 == off
+    int  saturation;          // 0...0xffff, -1 == off
+    int  contrast;            // 0...0xffff, -1 == off
+    int  brightness;          // 0...0xffff, -1 == off
+
+    // OSD settings 
+    eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
     int  hide_main_menu;
     int  prescale_osd;
     int  prescale_osd_downscale;
@@ -209,63 +216,78 @@ class config_t {
     int  alpha_correction;
     int  alpha_correction_abs;
 
-    int  spu_autoshow;
+    // Media player
+    int  spu_autoshow;    // Preferred SPU language(s) for media player
     char spu_lang[4][4];
+    char browse_files_dir[4096];
+    char browse_music_dir[4096];
+    char browse_images_dir[4096];
+    int  cache_implicit_playlists; // used in playlist.c
+    int  enable_id3_scanner;       // used in playlist.c
 
-    char local_frontend[64];
-    char modeline[64];
-    int  fullscreen;
-    int  modeswitch;
-    int  width;
-    int  height;
-    int  scale_video;
-    int  field_order;
-    int  autocrop;
+    // Audio visualization
+    char audio_visualization[64];
+    char audio_vis_goom_opts[256];
+
+    // deinterlacing post plugin
+    char deinterlace_method[32];
+    char deinterlace_opts[256];
+
+    // ffmpeg post processing
+    int  ffmpeg_pp;           // enable / disable
+    int  ffmpeg_pp_quality;   // 0...6
+    char ffmpeg_pp_mode[256];
+
+    // automatic 4:3 letterbox -> 16:9 cropping post plugin
+    int  autocrop;            // enable / disable
     int  autocrop_autodetect;
     int  autocrop_soft;
     int  autocrop_fixedsize;
     int  autocrop_subs;
-    int  exit_on_close;
-    
-    int  remote_mode;
-    int  listen_port;
-    int  remote_keyboard;
-    int  remote_usetcp, remote_useudp, remote_usertp, remote_usepipe;
-    int  remote_http_files;    /* allow http streaming of media files to xineliboutput clients 
-				* (currently replayed media file from xineliboutput media player) 
-			        *  - will be used if client can't access file directly (nfs etc.) */
-    int  remote_usebcast;
 
+    // sharpen / soften post plugin
+    int  unsharp;                      // enable / disable
+    int  unsharp_luma_matrix_width;    //  3..11, should be an odd number
+    int  unsharp_luma_matrix_height;   //  3..11, should be an odd number
+    int  unsharp_luma_amount;          //  Actually a double between -2.0 and 2.0, but handled as a int between -20 and 20
+    int  unsharp_chroma_matrix_width;  //  3..11, should be an odd number
+    int  unsharp_chroma_matrix_height; //  3..11, should be an odd number
+    int  unsharp_chroma_amount;        //  Actually a double between -2.0 and 2.0, but handled as a int between -20 and 20
+
+    // 3D noise reduction post plugin
+    int  denoise3d;        // enable / disable
+    int  denoise3d_luma;   //  Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
+    int  denoise3d_chroma; //  Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
+    int  denoise3d_time;   //  Actually a double between 0.0 and 10.0, but handled as a int between 0 and 100
+    int  volnorm;          // enable/disable volnorm post plugin (normalize audio volume)
+    
+    // Remote server settings
+    int  remote_mode;         // Allow remote clients (vdr-sxfe, vdr-fbfe, ...)
+    int  listen_port;         // Port of remote server
+    char remote_local_if[32]; // Listen only on this interface
+    char remote_local_ip[32]; // Bind locally to this IP
+    int  remote_keyboard;     // Allow remote client to control VDR with keyboard, LIRC, etc.
+
+    int  remote_usebcast;     // Use proadcasts to find servers automatically
+    int  remote_usepipe;      // enable local pipes for video transport
+    int  remote_usertp;       // enable RTP multicast for video transport
+    int  remote_useudp;       // enable UDP unicast for video transport
+    int  remote_usetcp;       // enable TCP streams for video transport
+    int  remote_http_files;   // allow http streaming of media files to xineliboutput clients 
+                              // (=currently replayed media file from xineliboutput media player) 
+			      // streaming is used only if client can't access file directly (nfs etc.)
+    int  remote_use_rtsp;     // allow generic rtsp for primary device. needs enabled udp or rtp
+    int  remote_use_rtsp_ctrl;// allow rtsp to control primary device (play/pause/seek...)
+    int  remote_use_http;     // allow generic http streaming (primary device output)
+    int  remote_use_http_ctrl;// allow http to control primary device (play/pause/seek...)
+
+    // RTP parameters
     char remote_rtp_addr[32]; //xxx.xxx.xxx.xxx\0
     int  remote_rtp_port;
     int  remote_rtp_ttl;
     int  remote_rtp_always_on;
     int  remote_rtp_sap;
 
-    int  remote_use_rtsp;      /* allow generic rtsp for primary device. needs enabled udp or rtp */
-    int  remote_use_rtsp_ctrl; /* allow rtsp to control primary device (play/pause/seek...) */
-    int  remote_use_http;      /* allow generic http streaming (primary device output) */
-    int  remote_use_http_ctrl; /* allow http to control primary device (play/pause/seek...) */
-
-    char remote_local_if[32];  /* use only this interface */
-    char remote_local_ip[32];  /* bind locally to this IP */
-
-    int  use_x_keyboard;
-
-    int  hue;                 // 0...0xffff, -1 == off
-    int  saturation;          // 0...0xffff, -1 == off
-    int  contrast;            // 0...0xffff, -1 == off
-    int  brightness;          // 0...0xffff, -1 == off
-    int  overscan;            // %
-
-    char browse_files_dir[4096];
-    char browse_music_dir[4096];
-    char browse_images_dir[4096];
-    int  cache_implicit_playlists; /* used in playlist.c */
-    int  enable_id3_scanner;       /* used in playlist.c */
-    
-    eMainMenuMode main_menu_mode;
-    int  force_primary_device;
 
     config_t();
 
