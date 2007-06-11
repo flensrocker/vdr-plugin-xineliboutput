@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.35 2007-05-17 19:04:40 phintuka Exp $
+ * $Id: config.c,v 1.36 2007-06-11 17:27:51 phintuka Exp $
  *
  */
 
@@ -347,7 +347,7 @@ config_t::config_t() {
 			     *  - will be used if client can't access file directly (nfs etc.) */
 
   strn0cpy(remote_rtp_addr, "224.0.1.9", sizeof(remote_rtp_addr));
-  remote_rtp_port = LISTEN_PORT;
+  remote_rtp_port = (LISTEN_PORT) & (0xfffe); /* even ports only */
   remote_rtp_ttl = 1;
   remote_rtp_always_on = 0;
   remote_rtp_sap = 1;
@@ -541,7 +541,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.UseBroadcast")) remote_usebcast = atoi(Value);
 
   else if (!strcasecmp(Name, "Remote.Rtp.Address"))  STRN0CPY(remote_rtp_addr, Value);
-  else if (!strcasecmp(Name, "Remote.Rtp.Port"))     remote_rtp_port = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.Rtp.Port"))     remote_rtp_port = (atoi(Value)) & (0xfffe);
   else if (!strcasecmp(Name, "Remote.Rtp.TTL"))      remote_rtp_ttl = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.AlwaysOn")) remote_rtp_always_on = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Rtp.SapAnnouncements")) remote_rtp_sap = atoi(Value);
