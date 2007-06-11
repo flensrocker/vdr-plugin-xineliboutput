@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.29 2007-06-11 19:03:14 phintuka Exp $
+ * $Id: setup_menu.c,v 1.30 2007-06-11 19:12:18 phintuka Exp $
  *
  */
 
@@ -1450,6 +1450,8 @@ void cMenuSetupRemote::Store(void)
 
   SetupStore("RemoteMode",        xc.remote_mode);
   SetupStore("Remote.ListenPort", xc.listen_port);
+  SetupStore("Remote.Iface",      xc.remote_local_if);
+  SetupStore("Remote.LocalIP",    xc.remote_local_ip);
   SetupStore("Remote.Keyboard",   xc.remote_keyboard);
 
   SetupStore("Remote.UsePipe",xc.remote_usepipe);
@@ -1470,9 +1472,6 @@ void cMenuSetupRemote::Store(void)
   SetupStore("Remote.AllowRtspCtrl", xc.remote_use_rtsp_ctrl);
   SetupStore("Remote.AllowHttp", xc.remote_use_http);
   SetupStore("Remote.AllowHttpCtrl", xc.remote_use_http_ctrl);
-
-  SetupStore("Remote.Iface",   xc.remote_iface);
-  SetupStore("Remote.LocalIP", xc.remote_address);
 
   cXinelibDevice::Instance().Listen(xc.remote_mode, xc.listen_port);
 }

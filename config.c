@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.37 2007-06-11 19:03:14 phintuka Exp $
+ * $Id: config.c,v 1.38 2007-06-11 19:12:18 phintuka Exp $
  *
  */
 
@@ -352,13 +352,13 @@ config_t::config_t() {
   remote_rtp_always_on = 0;
   remote_rtp_sap = 1;
 
-  remote_use_rtsp      = 1; /* allow generic rtsp for primary device. needs enabled udp or rtp */
-  remote_use_rtsp_ctrl = 0; /* allow rtsp to control primary device (play/pause/seek...) */
-  remote_use_http      = 1; /* allow generic http streaming (primary device output) */
-  remote_use_http_ctrl = 0; /* allow http to control primary device (play/pause/seek...) */
+  remote_use_rtsp      = 1; // allow generic rtsp for primary device. needs enabled udp or rtp
+  remote_use_rtsp_ctrl = 0; // allow rtsp to control primary device (play/pause/seek...)
+  remote_use_http      = 1; // allow generic http streaming (primary device output)
+  remote_use_http_ctrl = 0; // allow http to control primary device (play/pause/seek...)
 
-  remote_iface[0] = 0;   /* use only this interface - undefined -> any/all */
-  remote_address[0] = 0; /* bind locally to this IP - undefined -> any/all */
+  remote_local_if[0] = 0;   // use only this interface - undefined -> any/all
+  remote_local_ip[0] = 0;   // bind locally to this IP - undefined -> any/all
 
   use_x_keyboard = 1;
 
@@ -551,8 +551,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Remote.AllowHttp"))     remote_use_http = atoi(Value);
   else if (!strcasecmp(Name, "Remote.AllowHttpCtrl")) remote_use_http_ctrl = atoi(Value);
 
-  else if (!strcasecmp(Name, "Remote.Iface"))     STRN0CPY(remote_iface,   Value);
-  else if (!strcasecmp(Name, "Remote.LocalIP"))   STRN0CPY(remote_address, Value);
+  else if (!strcasecmp(Name, "Remote.Iface"))     STRN0CPY(remote_local_if, Value);
+  else if (!strcasecmp(Name, "Remote.LocalIP"))   STRN0CPY(remote_local_ip, Value);
 
   else if (!strcasecmp(Name, "Decoder.PesBuffers"))  pes_buffers=atoi(Value);
 
