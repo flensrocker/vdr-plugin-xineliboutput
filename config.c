@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.38 2007-06-11 19:12:18 phintuka Exp $
+ * $Id: config.c,v 1.39 2007-06-11 19:18:41 phintuka Exp $
  *
  */
 
@@ -445,8 +445,19 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     //case 'm': ProcessArg("Modeline", optarg);
     //          break;
     case 'r': if(strcmp(optarg, "none")) {
-                ProcessArg("Remote.ListenPort", optarg);
-                ProcessArg("RemoteMode", listen_port>0 ? "1" : "0");
+                if(strchr(optarg, ':')) {
+		  char *tmp = strdup(optarg);
+		  char *pt = strchr(tmp,':');
+		  *pt++ = 0;
+		  ProcessArg("Remote.ListenPort", pt);
+		  ProcessArg("RemoteMode", listen_port>0 ? "1" : "0");
+		  ProcessArg("Remote.LocalIP", tmp);
+		  free(tmp);
+		  LOGMSG("Listening on address \'%s\' port %d", remote_local_ip, listen_port);
+		} else {
+		  ProcessArg("Remote.ListenPort", optarg);
+		  ProcessArg("RemoteMode", listen_port>0 ? "1" : "0");
+		}
               } else
                 ProcessArg("RemoteMode", "0");
               break;
