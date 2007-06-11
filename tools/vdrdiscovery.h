@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.h,v 1.2 2007-01-01 06:17:11 phintuka Exp $
+ * $Id: vdrdiscovery.h,v 1.3 2007-06-11 19:39:06 phintuka Exp $
  *
  */
 
@@ -24,7 +24,7 @@ extern "C" {
 int udp_discovery_find_server(int *port, char *address);
 #else
 int udp_discovery_init(void);
-int udp_discovery_broadcast(int fd_discovery, int server_port);
+int udp_discovery_broadcast(int fd_discovery, int server_port, const char *server_address);
 int udp_discovery_recv(int fd_discovery, char *buf, int timeout,
 		       struct sockaddr_in *source);
 int udp_discovery_is_valid_search(const char *buf);

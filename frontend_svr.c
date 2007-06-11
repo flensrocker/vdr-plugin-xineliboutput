@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.43 2007-06-11 19:34:04 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.44 2007-06-11 19:39:06 phintuka Exp $
  *
  */
 
@@ -858,7 +858,7 @@ bool cXinelibServer::Listen(int listen_port)
   CLOSESOCKET(fd_discovery);
   if(xc.remote_usebcast) {
     fd_discovery = udp_discovery_init();
-    if(udp_discovery_broadcast(fd_discovery, m_Port) < 0)
+    if(udp_discovery_broadcast(fd_discovery, m_Port, xc.remote_local_ip) < 0)
       CLOSESOCKET(fd_discovery);
     else
       LOGMSG("Listening for UDP broadcasts on port %d", m_Port);
@@ -1737,7 +1737,7 @@ void cXinelibServer::Handle_Discovery_Broadcast(void)
 
   if(udp_discovery_recv(fd_discovery, buf, 0, &from) > 0)
     if(udp_discovery_is_valid_search(buf))
-      udp_discovery_broadcast(fd_discovery, m_Port); 
+      udp_discovery_broadcast(fd_discovery, m_Port, xc.remote_local_ip); 
 }
 
 void cXinelibServer::Action(void) 

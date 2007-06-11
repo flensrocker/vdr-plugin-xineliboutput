@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.3 2007-06-11 16:40:43 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.4 2007-06-11 19:39:06 phintuka Exp $
  *
  */
 
@@ -106,17 +106,26 @@ static inline int udp_discovery_send(int fd_discovery, int port, char *msg)
 }
 
 #ifndef FE_STANDALONE
-int udp_discovery_broadcast(int fd_discovery, int server_port)
+int udp_discovery_broadcast(int fd_discovery, int server_port, const char *server_address)
 {
   char *msg = NULL;
   int result;
 
-  asprintf(&msg,
-	   DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
-	   DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
-	   DISCOVERY_1_0_VERSION //"Server version: xineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
-	   "\r\n",
-	   server_port);
+  if(server_address && *server_address)
+    asprintf(&msg,
+	     DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
+	     DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
+	     DISCOVERY_1_0_ADDR    //"Server Address: %d.%d.%d.%d \r\n"
+	     DISCOVERY_1_0_VERSION //"Server version: xineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
+	     "\r\n",
+	     server_port, server_address);
+  else
+    asprintf(&msg,
+	     DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
+	     DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
+	     DISCOVERY_1_0_VERSION //"Server version: xineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
+	     "\r\n",
+	     server_port);
  
   result = udp_discovery_send(fd_discovery, DISCOVERY_PORT, msg);
 
