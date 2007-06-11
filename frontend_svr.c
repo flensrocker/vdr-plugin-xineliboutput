@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.42 2007-06-11 19:26:39 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.43 2007-06-11 19:34:04 phintuka Exp $
  *
  */
 
@@ -824,11 +824,22 @@ bool cXinelibServer::Listen(int listen_port)
     name.sin_addr.s_addr = htonl(INADDR_ANY);
     name.sin_port = htons(m_Port);
 
+    if(xc.remote_local_ip[0]) {
+      uint32_t ip = inet_addr(xc.remote_local_ip);
+      if(ip != INADDR_NONE) {
+	char txt[128];
+	name.sin_addr.s_addr = ip;
+	LOGDBG("Binding server to %s", cxSocket::ip2txt(name.sin_addr.s_addr, htons(m_Port), txt));
+      } else {
+	LOGERR("Local interface address %s is invalid !", xc.remote_local_ip);
+      }
+    }
     fd_listen = socket(PF_INET,SOCK_STREAM,0);
     setsockopt(fd_listen, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int));
 
     if (bind(fd_listen, (struct sockaddr *)&name, sizeof(name)) < 0) {
-      LOGERR("cXinelibServer: bind error (port %d): %s", 
+      LOGERR("cXinelibServer: bind error %s port %d: %s", 
+	     xc.remote_local_ip[0] ? xc.remote_local_ip : "", 
 	     m_Port, strerror(errno));
       CLOSESOCKET(fd_listen);
     } else if(listen(fd_listen, MAXCLIENTS)) {
