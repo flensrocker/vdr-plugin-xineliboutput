@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: iconv.h,v 1.2 2007-03-27 02:38:44 phintuka Exp $
+ * $Id: iconv.h,v 1.3 2007-06-11 19:41:07 phintuka Exp $
  *
  */
 
@@ -83,7 +83,7 @@ cString cIConv::Translate(const char *Text) const
     return cString(buf, true);
   }
 
-  LOGERR("cIConv: iconv(%s) failed", Text);
+  LOGERR("cIConv: iconv(%s) failed at %d", Text, (int)(in - Text));
   free(buf);
 #endif
 
