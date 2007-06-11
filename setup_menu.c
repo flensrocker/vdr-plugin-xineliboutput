@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.30 2007-06-11 19:12:18 phintuka Exp $
+ * $Id: setup_menu.c,v 1.31 2007-06-11 19:14:02 phintuka Exp $
  *
  */
 
@@ -1348,6 +1348,8 @@ void cMenuSetupRemote::Set(void)
     Add(new cMenuEditIntItem( tr("  Listen port (TCP and broadcast)"), 
 			      &newconfig.listen_port,
 			      0, 0xffff));
+    Add(new cMenuEditStrItem( tr("  Listen address"), 
+			      &newconfig.remote_local_ip[0], 16, "0123456789."));
     Add(new cMenuEditBoolItem(tr("  Remote keyboard"), 
 			      &newconfig.remote_keyboard));
 
