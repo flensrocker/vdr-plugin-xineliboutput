@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.31 2007-06-11 19:14:02 phintuka Exp $
+ * $Id: setup_menu.c,v 1.32 2007-06-12 18:55:50 phintuka Exp $
  *
  */
 
@@ -297,6 +297,7 @@ void cMenuSetupAudio::Store(void)
   SetupStore("Audio.Visualization",xc.audio_visualization);
   SetupStore("Audio.Visualization.GoomOpts",xc.audio_vis_goom_opts);
   SetupStore("Audio.SoftwareVolumeControl", xc.sw_volume_control);
+  Setup.Save();
 }
 
 //--- cMenuSetupAudioEq ------------------------------------------------------
@@ -374,6 +375,7 @@ void cMenuSetupAudioEq::Store(void)
 	  xc.audio_equalizer[6], xc.audio_equalizer[7],
 	  xc.audio_equalizer[8], xc.audio_equalizer[9]);
   SetupStore("Audio.Equalizer", tmp);
+  Setup.Save();
 }
 
 //--- cMenuSetupVideo --------------------------------------------------------
@@ -761,6 +763,7 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Post.denoise3d.luma",     xc.denoise3d_luma);
   SetupStore("Post.denoise3d.chroma",   xc.denoise3d_chroma);
   SetupStore("Post.denoise3d.time",     xc.denoise3d_time);
+  Setup.Save();
 }
 
 
@@ -931,6 +934,7 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.SpuLang1", xc.spu_lang[1]);
   SetupStore("OSD.SpuLang2", xc.spu_lang[2]);
   SetupStore("OSD.SpuLang3", xc.spu_lang[3]);
+  Setup.Save();
 }
 
 
@@ -1027,6 +1031,7 @@ void cMenuSetupDecoder::Store(void)
 
   if(xc.pes_buffers != old_buffers)
     cXinelibDevice::Instance().ConfigureDecoder(xc.pes_buffers);
+  Setup.Save();
 }
 
 
@@ -1296,6 +1301,7 @@ void cMenuSetupLocal::Store(void)
   SetupStore("X11.WindowWidth",  xc.width);
   SetupStore("X11.WindowHeight", xc.height);
   SetupStore("X11.UseKeyboard",  xc.use_x_keyboard);
+  Setup.Save();
 }
 
 //--- cMenuSetupRemote -------------------------------------------------------
@@ -1476,6 +1482,7 @@ void cMenuSetupRemote::Store(void)
   SetupStore("Remote.AllowHttpCtrl", xc.remote_use_http_ctrl);
 
   cXinelibDevice::Instance().Listen(xc.remote_mode, xc.listen_port);
+  Setup.Save();
 }
 
 } // namespace
