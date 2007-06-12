@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.5 2007-05-17 21:41:52 phintuka Exp $
+ * $Id: menuitems.h,v 1.6 2007-06-12 15:11:19 phintuka Exp $
  *
  */
 
@@ -80,8 +80,9 @@ class cMenuEditStraI18nItem : public cMenuEditIntItem
 class cFileListItem : public cOsdItem 
 {
   private:
-    char *m_Name;
-    bool  m_IsDir, m_HasResume, m_HasSubs, m_ShowFlags, m_Up;
+    cString m_Name;
+    cString m_SubFile;
+    bool  m_IsDir, m_HasResume, m_ShowFlags, m_Up;
     bool  m_IsDvd;
 
   protected:
@@ -89,12 +90,12 @@ class cFileListItem : public cOsdItem
 
   public:
     cFileListItem(const char *name, bool isDir, 
-		  bool HasResume, bool HasSubs,
+		  bool HasResume, const char *subfile,
 		  bool IsDvd = false);
     cFileListItem(const char *name, bool isDir);
-    ~cFileListItem();
 
-    const char *Name(void) { return m_Name; }
+    const char *Name(void)    { return m_Name; }
+    const char *SubFile(void) { return m_SubFile; }
     bool IsDir(void)       { return m_IsDir; }
     bool IsDvd(void)       { return m_IsDvd; }
 

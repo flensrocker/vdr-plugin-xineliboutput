@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.7 2007-05-17 21:41:52 phintuka Exp $
+ * $Id: menuitems.c,v 1.8 2007-06-12 15:11:19 phintuka Exp $
  *
  */
 
@@ -153,33 +153,28 @@ void cMenuEditStraI18nItem::Set(void)
 
 cFileListItem::cFileListItem(const char *name, bool isDir)
 {
-  m_Name = strdup(name);
+  m_Name = name;
   m_IsDir = isDir;
   m_IsDvd = false;
   m_HasResume = false;
-  m_HasSubs   = false;
+  m_SubFile   = NULL;
   m_ShowFlags = false;
   m_Up = m_IsDir && !strcmp(m_Name, "..");
   Set();
 }
 
 cFileListItem::cFileListItem(const char *name, bool IsDir, 
-			     bool HasResume, bool HasSubs,
+			     bool HasResume, const char *subfile,
 			     bool IsDvd)
 {
-  m_Name = strdup(name);
+  m_Name = name;
   m_IsDir = IsDir;
   m_IsDvd = IsDvd;
   m_HasResume = HasResume;
-  m_HasSubs   = HasSubs;
+  m_SubFile   = subfile;
   m_ShowFlags = true;
   m_Up = m_IsDir && !strcmp(m_Name, "..");
   Set();
-}
-
-cFileListItem::~cFileListItem()
-{
-  free(m_Name);
 }
 
 void cFileListItem::Set(void)
@@ -188,19 +183,19 @@ void cFileListItem::Set(void)
   if(m_ShowFlags) {
     if(m_IsDir) {
       if(m_IsDvd) 
-	asprintf(&txt, "\tD\t[%s] ", m_Name); // text2skin requires space at end of string to display item correctly ...
+	asprintf(&txt, "\tD\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
       else
-	asprintf(&txt, "\t\t[%s] ", m_Name); // text2skin requires space at end of string to display item correctly ...
+	asprintf(&txt, "\t\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
     } else {
-      asprintf(&txt, "%c\t%c\t%s", m_HasResume ? ' ' : '*', m_HasSubs ? 'S' : m_IsDvd ? 'D' : ' ', m_Name);
+      asprintf(&txt, "%c\t%c\t%s", m_HasResume ? ' ' : '*', *m_SubFile ? 'S' : m_IsDvd ? 'D' : ' ', *m_Name);
       if(NULL != (pt = strrchr(txt,'.')))
 	*pt = 0;
     }
   } else {
     if(m_IsDir) {
-      asprintf(&txt, "[%s] ", m_Name); // text2skin requires space at end of string to display item correctly ...
+      asprintf(&txt, "[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
     } else {
-      asprintf(&txt, "%s", m_Name);
+      asprintf(&txt, "%s", *m_Name);
       if(NULL != (pt = strrchr(txt,'.')))
 	*pt = 0;
     }
@@ -220,7 +215,7 @@ int cFileListItem::Compare(const cListObject &ListObject) const
     return -1;
   if(!m_Up && other->m_Up)
     return 1;
-  return strcmp(m_Name,other->m_Name);
+  return strcmp(m_Name, other->m_Name);
 }
 
 bool cFileListItem::operator< (const cListObject &ListObject)
@@ -235,5 +230,5 @@ bool cFileListItem::operator< (const cListObject &ListObject)
     return true;
   if(!m_Up && other->m_Up)
     return false;
-  return strcmp(m_Name,other->m_Name) < 0;
+  return strcmp(m_Name, other->m_Name) < 0;
 }

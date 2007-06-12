@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.35 2007-05-17 13:36:40 phintuka Exp $
+ * $Id: menu.c,v 1.36 2007-06-12 15:11:19 phintuka Exp $
  *
  */
 
@@ -403,6 +403,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
 	      bool resume = false, subs = false, dvd = false;
 	      char *pos = strrchr(e->d_name, '.');
+	      cString subfile;
 
 	      if(pos) {
 		// .iso image -> dvd
@@ -410,13 +411,13 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 		  dvd = true;
 
 		// separate subtitles ?
-		cString sub = cString::sprintf("%s/%s____", DirName, e->d_name);
-		char *p = strrchr(sub, '.');
+		subfile = cString::sprintf("%s/%s____", DirName, e->d_name);
+		char *p = strrchr(subfile, '.');
 		if( p ) {
 		  int i;
 		  for(i=0; xc.s_subExts[i] && !subs; i++) {
 		    strcpy(p, xc.s_subExts[i]);
-		    if (stat(sub, &st) == 0)
+		    if (stat(subfile, &st) == 0)
 		      subs = true;
 		  }
 		}
@@ -427,7 +428,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	      if (stat(buffer, &st) == 0)
 		resume = true;
 
-	      Add(new cFileListItem(e->d_name, false, resume, subs, dvd));
+	      Add(new cFileListItem(e->d_name, false, resume, subs?*subfile:NULL, dvd));
 	    }
           }
         }
