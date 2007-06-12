@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.25 2007-05-18 15:49:02 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.26 2007-06-12 20:55:11 phintuka Exp $
  *
  */
 
@@ -251,13 +251,26 @@ static void set_above(sxfe_t *this, int stay_above)
   if(this->window_id > 0)
     return;
 
-  this->stay_above = stay_above;
-
+  if(this->stay_above != stay_above) {
 #ifdef FE_STANDALONE
-  XStoreName(this->display, this->window[0], stay_above ? "VDR (top)" : "VDR");
+    char *name, *newname = NULL;
+    if(XFetchName(this->display, this->window[0], &name) && name) {
+      if(strstr(name, " (top)"))
+	*strstr(name, " (top)") = 0;
+      if(stay_above)
+	asprintf(&newname, "%s (top)", name);
+      XStoreName(this->display, this->window[0], newname ?: name);
+      XStoreName(this->display, this->window[1], newname ?: name);
+      XFree(name);
+      free(newname);
+    } else {
+      XStoreName(this->display, this->window[0], stay_above ? "VDR - (top)" : "VDR");
+    }
 #else
-  XStoreName(this->display, this->window[0], stay_above ? "Local VDR (top)" : "Local VDR");
+    XStoreName(this->display, this->window[0], stay_above ? "Local VDR (top)" : "Local VDR");
 #endif
+    this->stay_above = stay_above;
+  }
 
   memset(&ev, 0, sizeof(ev));
   ev.type                 = ClientMessage;
