@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.85 2007-06-09 15:24:44 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.86 2007-06-12 19:28:37 phintuka Exp $
  *
  */
 
@@ -3682,6 +3682,16 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       else
 	err = CONTROL_PARAM_ERROR;
     }
+
+  } else if(!strncasecmp(cmd, "EXTSUBSIZE ", 11)) {
+    int size = 0;
+    if(1 == sscanf(cmd, "EXTSUBSIZE %d", &size))
+      /* size of separate subtitles :
+	 -1 = xine default 
+	 0...6 = { tiny  small  normal  large  very large  huge } */
+      stream->xine->config->update_num(stream->xine->config, "subtitles.separate.subtitle_size", size);
+    else
+      err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     handle_control_grab(this, cmd);

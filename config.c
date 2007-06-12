@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.39 2007-06-11 19:18:41 phintuka Exp $
+ * $Id: config.c,v 1.40 2007-06-12 19:28:37 phintuka Exp $
  *
  */
 
@@ -81,6 +81,8 @@ const char *config_t::s_speakerArrangements[] =
    "Surround 5.0", "Surround 5.1", "Surround 6.0",
    "Surround 6.1", "Surround 7.1", "Pass Through", 
    NULL};
+
+const char *config_t::s_subtitleSizes[] = {"default", "tiny", "small", "medium", "large", "very large", "huge", NULL };
 
 const char *config_t::s_subExts[] = {".sub", ".srt", ".txt", ".ssa", 
 				     ".SUB", ".SRT", ".TXT", ".SSA", 
@@ -318,6 +320,7 @@ config_t::config_t() {
   strn0cpy(spu_lang[2], "de", sizeof(spu_lang[2]));
   strn0cpy(spu_lang[1], "fi", sizeof(spu_lang[1]));
   //strn0cpy(spu_lang[3], "" , sizeof(spu_lang[3]));
+  extsub_size = -1;
 
   alpha_correction     = 0;
   alpha_correction_abs = 0;
@@ -540,6 +543,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.SpuLang1")) STRN0CPY(spu_lang[1], Value);
   else if (!strcasecmp(Name, "OSD.SpuLang2")) STRN0CPY(spu_lang[2], Value);
   else if (!strcasecmp(Name, "OSD.SpuLang3")) STRN0CPY(spu_lang[3], Value);
+  else if (!strcasecmp(Name, "OSD.ExtSubSize"))    extsub_size = atoi(Value);
 
   else if (!strcasecmp(Name, "RemoteMode"))          remote_mode = atoi(Value);
   else if (!strcasecmp(Name, "Remote.ListenPort"))   listen_port = atoi(Value);

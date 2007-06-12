@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.26 2007-06-11 19:20:34 phintuka Exp $
+ * $Id: config.h,v 1.27 2007-06-12 19:28:37 phintuka Exp $
  *
  */
 
@@ -123,6 +123,8 @@
 #define SPEAKERS_A52_PASSTHRU  12 
 #define SPEAKERS_count         13 
 
+#define SUBTITLESIZE_count     7
+
 #define HIDDEN_OPTION(opt) \
   (xc.IsOptionHidden(xc.opt))
 #define READONLY_OPTION(opt) \
@@ -160,7 +162,7 @@ class config_t {
     static const char *s_audioVisualizations[];
     static const char *s_audioVisualizationNames[];
     static const char *s_speakerArrangements[];
-
+    static const char *s_subtitleSizes[];
     static const char *s_subExts[];
 
   public:
@@ -215,6 +217,7 @@ class config_t {
     int  unscaled_osd_lowresvideo;
     int  alpha_correction;
     int  alpha_correction_abs;
+    int  extsub_size; /* size of separate subtitles ( -1 = xine default ; 0...6 = { tiny  small  normal  large  very large  huge } */
 
     // Media player
     int  spu_autoshow;    // Preferred SPU language(s) for media player

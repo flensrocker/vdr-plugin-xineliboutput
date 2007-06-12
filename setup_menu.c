@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.32 2007-06-12 18:55:50 phintuka Exp $
+ * $Id: setup_menu.c,v 1.33 2007-06-12 19:28:37 phintuka Exp $
  *
  */
 
@@ -801,6 +801,7 @@ cMenuSetupOSD::cMenuSetupOSD(void)
   memcpy(&newconfig, &xc, sizeof(config_t));
   orig_alpha_correction     = xc.alpha_correction;
   orig_alpha_correction_abs = xc.alpha_correction_abs;
+  newconfig.extsub_size++;
 
   Set();
 }
@@ -872,6 +873,9 @@ void cMenuSetupOSD::Set(void)
 			     newconfig.spu_lang[3], 4, LangNameChars));
   }
 
+  Add(new cMenuEditStraI18nItem(tr("External subtitle size"),
+				&newconfig.extsub_size, SUBTITLESIZE_count, xc.s_subtitleSizes));
+
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
   //SetCurrent(Get(1));
@@ -915,8 +919,13 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
 
 void cMenuSetupOSD::Store(void)
 {
-  memcpy(&xc, &newconfig, sizeof(config_t));
+  newconfig.extsub_size --;
+  if(newconfig.extsub_size != xc.extsub_size) {
+    cString tmp = cString::sprintf("EXTSUBSIZE %d", newconfig.extsub_size);
+    cXinelibDevice::Instance().PlayFileCtrl(tmp);
+  }
 
+  memcpy(&xc, &newconfig, sizeof(config_t));
   orig_alpha_correction = xc.alpha_correction;
   orig_alpha_correction_abs = xc.alpha_correction_abs;
 
@@ -929,6 +938,7 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.AlphaCorrection", xc.alpha_correction);
   SetupStore("OSD.AlphaCorrectionAbs", xc.alpha_correction_abs);
 
+  SetupStore("OSD.ExtSubSize", xc.extsub_size);
   SetupStore("OSD.SpuAutoSelect", xc.spu_autoshow);
   SetupStore("OSD.SpuLang0", xc.spu_lang[0]);
   SetupStore("OSD.SpuLang1", xc.spu_lang[1]);

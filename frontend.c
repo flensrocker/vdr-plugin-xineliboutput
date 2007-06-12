@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.35 2007-03-28 06:52:09 phintuka Exp $
+ * $Id: frontend.c,v 1.36 2007-06-12 19:28:37 phintuka Exp $
  *
  */
 
@@ -690,6 +690,9 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
       free(m_FileName);
     m_FileName = NULL;
     Unlock();
+  } else {
+    if(xc.extsub_size >= 0)
+      Xine_Control("EXTSUBSIZE", xc.extsub_size);
   }
 
   return (!GetStopSignal()) && (result==0);
