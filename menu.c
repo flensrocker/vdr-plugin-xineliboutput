@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.36 2007-06-12 15:11:19 phintuka Exp $
+ * $Id: menu.c,v 1.37 2007-06-17 08:44:25 phintuka Exp $
  *
  */
 
@@ -560,7 +560,7 @@ cDisplaySpuTracks::cDisplaySpuTracks(void) : cOsdObject(true)
 
   for (int i = 0; i <= 63; i++) {
       const tTrackId *TrackId = cXinelibDevice::Instance().GetDvdSpuTrack(i);
-      if (TrackId && TrackId->id) {
+      if (TrackId && TrackId->id >= 0) {
          types[numTracks] = eTrackType(i);
          descriptions[numTracks] = strdup(*TrackId->description ? TrackId->description : *TrackId->language ? TrackId->language : *itoa(i));
          if (i == CurrentTrack)
