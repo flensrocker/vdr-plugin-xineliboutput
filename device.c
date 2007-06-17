@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.37 2007-04-12 22:53:36 phintuka Exp $
+ * $Id: device.c,v 1.38 2007-06-17 09:11:22 phintuka Exp $
  *
  */
 
@@ -1633,6 +1633,15 @@ void cXinelibDevice::EnsureDvdSpuTrack(void)
 		track = 64;
 		pref = 99;
 	      }
+      if(pref < 99) {
+	for(track = 0; track < 64; track++)
+	  if(m_DvdSpuTrack[track].id != 0xffff)
+	    if(m_CurrentDvdSpuTrack != track) {
+	      LOGMSG("Auto-selecting (non-matching) %d. SPU track \'%s\'",
+		     track, m_DvdSpuTrack[track].language);
+	      cXinelibDevice::SetCurrentDvdSpuTrack(track);
+	    }
+      }
     }
 
     if(!m_spuPresent) {
