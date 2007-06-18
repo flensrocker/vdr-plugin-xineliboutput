@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.28 2007-05-14 19:45:56 phintuka Exp $
+ * $Id: media_player.c,v 1.29 2007-06-18 11:43:59 phintuka Exp $
  *
  */
 
@@ -448,7 +448,6 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
 
 cXinelibPlayer *cXinelibPlayerControl::m_Player = NULL;
 cMutex cXinelibPlayerControl::m_Lock;
-int cXinelibPlayerControl::m_SubtitlePos = 0;
 
 cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *File) :
   cControl(OpenPlayer(File))
@@ -708,9 +707,9 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
     case kUser8:  m_Player->Control("SEEK -20");  break;
     case k3:
     case kUser9:  m_Player->Control("SEEK +20");  break;
-    case k2:      m_SubtitlePos -= 10;
-    case k5:      m_SubtitlePos += 5;
-                  m_Player->Control("SUBTITLES %d", m_SubtitlePos);
+    case k2:      xc.subtitle_vpos -= 10;
+    case k5:      xc.subtitle_vpos += 5;
+                  m_Player->Control("SUBTITLES %d", xc.subtitle_vpos);
                   break;
     case kNext:
     case kRight:  if(m_RandomPlay) {
