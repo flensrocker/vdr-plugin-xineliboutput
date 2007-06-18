@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.6 2007-06-18 08:53:31 phintuka Exp $
+ * $Id: playlist.c,v 1.7 2007-06-18 10:48:03 phintuka Exp $
  *
  */
 
@@ -74,8 +74,9 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
   const cPlaylistItem *o = (cPlaylistItem *)&ListObject;
 
   // Use Position (if defined in playlist file)
+  // compare as unsigned --> -1 goes to last position
   if(Position != o->Position) 
-    return Position > o->Position ? 1 : -1;
+    return ((unsigned int)Position) > ((unsigned int)o->Position) ? 1 : -1;
 
   // same position (or no positions definend) -> alphabetical order
 #if 0
@@ -97,36 +98,80 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
 // cID3Scanner
 //
 
+static const char *shell_escape(const cString& src, char ch)
+{
+  static char buf[4096];
+  const char *pt = *src;
+  int n = 0;
+
+  if(pt) {
+    while(*pt && n < (int)(sizeof(buf)-2)) {
+      if(*pt == ch || *pt == '\\' /*|| *pt == '\"' || *pt == '\''*/) {
+        buf[n++] = '\\';
+      }
+      buf[n++] = *pt++;
+    }
+    buf[n] = 0;
+    return buf;
+  }
+  return "";
+}
+
 class cID3Scanner : public cThread 
 {
  public:
   cPlaylist& m_List;
-  cID3Scanner(cPlaylist& List) : m_List(List), m_Done(false) {};
+  cID3Scanner(cPlaylist& List) : cThread("Metadata scanner"), m_List(List), m_Done(false) {};
+  cCondWait wait;
   
-  void CancelScanner(void) { Cancel(3); }
+  void CancelScanner(void) { wait.Signal(); Cancel(3); }
 
  private:
   bool m_Done;
 
-  virtual void Action(void) 
+  virtual void Action(void)
   {
     cPlaylistItem *Item = NULL;
 
     (void)nice(10);
-    cCondWait::SleepMs(5000);
+    wait.Wait(5000);
 
     LOGDBG("ID3Scanner Started");
     while(Running()) {
       if(!(Item = m_List.Next(Item)))
 	break;
-      // id3 tags can be in other files too (eg. flac)
-      /*if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 4, ".mp3")) {*/
-      if(xc.IsAudioFile(Item->Filename)) {
+
+      if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 5, ".flac")) {
+        cString Cmd = cString::sprintf("metaflac "
+                                       " --show-tag=TITLE "
+                                       " --show-tag=ALBUM "
+                                       " --show-tag=ARTIST "
+                                       " --show-tag=TRACKNUMBER "
+                                       " \"%s\"",
+                                       shell_escape(Item->Filename, '\"'));
+        cPipe p;
+        if(p.Open(*Cmd, "r")) {
+          cMutexLock ml(&m_List.m_Lock);
+          cReadLine r;
+          char *pt;
+          while(NULL != (pt = r.Read(p))) {
+            if(!strncasecmp(pt, "ARTIST=", 7) && strlen(pt) > 8)
+              Item->Artist = (pt+7);
+            else if(!strncasecmp(pt, "ALBUM=", 6) && strlen(pt) > 7)
+              Item->Album = (pt+6);
+            else if(!strncasecmp(pt, "TITLE=", 6) && strlen(pt) > 7)
+              Item->Track = (pt+6);
+            else if(!strncasecmp(pt, "TRACKNUMBER=", 12) && strlen(pt) > 12)
+              Item->Position = atoi(pt+12);
+          }
+        }
+      } else if(xc.IsAudioFile(Item->Filename)) {
 	cString Cmd = cString::sprintf("mp3info -p \""
 				       "Artist: %%a\\r\\n"
 				       "Album: %%l\\r\\n"
-				       "Track: %%t\\r\\n\" \'%s\'",
-				       *Item->Filename);
+				       "Track: %%t\\r\\n\""
+				       " \"%s\"",
+				       shell_escape(Item->Filename, '\"'));
 	cPipe p;
 	if(p.Open(*Cmd, "r")) {
 	  cMutexLock ml(&m_List.m_Lock);
@@ -321,6 +366,8 @@ void cPlaylist::Listen(cPlaylistChangeNotify *Menu)
 void cPlaylist::PlaylistChanged(const cPlaylistItem *Item)
 {
   cMutexLock ml(&m_Lock);
+  /*if(m_Origin == eImplicit)*/
+    Sort();
   if(m_Menu)
     m_Menu->PlaylistChanged(Item);
 }
