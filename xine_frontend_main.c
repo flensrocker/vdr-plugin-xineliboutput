@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.32 2007-05-18 15:14:20 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.33 2007-06-18 06:01:28 phintuka Exp $
  *
  */
 
@@ -39,6 +39,36 @@ static void print_xine_log(xine_t *xine)
   }
 }
 #endif
+
+static void list_plugins_type(xine_t *xine, const char *msg, typeof (xine_list_audio_output_plugins) list_func)
+{
+  static xine_t *tmp_xine = NULL;
+  if(!xine) {
+    if(!tmp_xine)
+      xine_init(tmp_xine = xine_new());
+    xine = tmp_xine;
+  }
+  const char *const *list = list_func(xine);
+
+  printf("%s", msg);
+  while(list && *list)
+    printf(" %s", *list++);
+  printf("\n");
+}
+
+static void list_plugins(xine_t *xine, int verbose)
+{
+  list_plugins_type (xine, "Available video drivers:", xine_list_video_output_plugins);
+  list_plugins_type (xine, "Available audio drivers:", xine_list_audio_output_plugins); 
+  if(verbose) {
+    list_plugins_type (xine, "Available post plugins: ", xine_list_post_plugins); 
+    list_plugins_type (xine, "Available input plugins:", xine_list_input_plugins);
+    list_plugins_type (xine, "Available demux plugins:", xine_list_demuxer_plugins);
+    list_plugins_type (xine, "Available audio decoder plugins:", xine_list_audio_decoder_plugins);
+    list_plugins_type (xine, "Available video decoder plugins:", xine_list_video_decoder_plugins);
+    list_plugins_type (xine, "Available SPU decoder plugins:  ", xine_list_spu_plugins);
+  }
+}
 
 /* static data */
 pthread_t kbd_thread;
@@ -279,16 +309,10 @@ static const char *help_str =
 "If server is not found, localhost (127.0.0.1) is used as default.\n\n"
     "   --help                        Show (this) help message\n"
     "   --audio=audiodriver[:device]  Select audio driver and optional port\n"
-    "                                 drivers: auto, alsa, oss, arts, esound, none\n"
     "   --video=videodriver[:device]  Select video driver and optional port\n"
 #ifndef IS_FBFE
-    "                                      auto, x11, xshm, xv, xvmc, xxmc, vidix,\n"
-    "                                      sdl, opengl, none\n"
     "   --display=displayaddress      X11 display address\n"
     "   --wid=id                      Use existing X11 window\n"
-#else
-    "                                      auto, fb, DirectFB, vidixfb,\n"
-    "                                      sdl, dxr3, aadxr3, none\n"
 #endif
     "   --aspect=[auto|4:3|16:9|16:10|default]\n"
     "                                 Display aspect ratio\n"
@@ -387,6 +411,7 @@ int main(int argc, char *argv[])
     case 'H': printf("\nUsage: %s [options] [xvdr:[udp:|tcp:|rtp:][//host[:port]]] \n"
 		     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
+	      list_plugins(NULL, verbose_xine_log);
 	      exit(0);
     case 'A': adrv = strdup(optarg);
               adev = strchr(adrv, ':');
@@ -586,8 +611,11 @@ int main(int argc, char *argv[])
   if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
     fprintf(stderr, "Error initializing xine\n");
     fe->fe_free(fe);
+    list_plugins(NULL, verbose_xine_log);
     return -5;
   }
+  if(SysLogLevel>2)
+    list_plugins(((fe_t*)fe)->xine, verbose_xine_log);
 
   /* signal handlers */
 
