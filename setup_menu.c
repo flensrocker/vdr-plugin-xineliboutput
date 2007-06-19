@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.33 2007-06-12 19:28:37 phintuka Exp $
+ * $Id: setup_menu.c,v 1.34 2007-06-19 06:06:22 phintuka Exp $
  *
  */
 
@@ -653,6 +653,11 @@ void cMenuSetupVideo::Set(void)
 			    controls));
 #endif
 
+#ifdef DEVICE_SUPPORTS_IBP_TRICKSPEED
+  Add(new cMenuEditBoolItem(tr("Smooth fast forward"),
+			    &newconfig.ibp_trickspeed));
+#endif
+
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
   //SetCurrent(Get(1));
@@ -749,6 +754,7 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.Contrast",   xc.contrast);
   SetupStore("Video.Brightness", xc.brightness);
   SetupStore("Video.Overscan",   xc.overscan);
+  SetupStore("Video.IBPTrickSpeed", xc.ibp_trickspeed);
   SetupStore("Post.pp.Enable",   xc.ffmpeg_pp);
   SetupStore("Post.pp.Quality",  xc.ffmpeg_pp_quality);
   SetupStore("Post.pp.Mode",     xc.ffmpeg_pp_mode);

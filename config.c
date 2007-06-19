@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.41 2007-06-18 11:43:59 phintuka Exp $
+ * $Id: config.c,v 1.42 2007-06-19 06:06:22 phintuka Exp $
  *
  */
 
@@ -15,6 +15,7 @@
 
 #include <vdr/config.h>
 #include <vdr/videodir.h>
+#include <vdr/device.h>
 
 #include "logdefs.h"
 #include "config.h"
@@ -367,6 +368,11 @@ config_t::config_t() {
   use_x_keyboard = 1;
 
   // video settings
+#ifdef DEVICE_SUPPORTS_IBP_TRICKSPEED
+  ibp_trickspeed = 1;
+#else
+  ibp_trickspeed = 0;
+#endif
   overscan       = 0;
   hue          = -1; 
   saturation   = -1; 
@@ -589,6 +595,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Contrast"))    contrast = atoi(Value);
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
   else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
+  else if (!strcasecmp(Name, "Video.IBPTrickSpeed"))  ibp_trickspeed = atoi(Value);
 
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);

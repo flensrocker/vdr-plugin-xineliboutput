@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.28 2007-06-18 11:43:59 phintuka Exp $
+ * $Id: config.h,v 1.29 2007-06-19 06:06:22 phintuka Exp $
  *
  */
 
@@ -201,6 +201,7 @@ class config_t {
     int  sw_volume_control; // software (xine-lib) or hardware (alsa) volume control and muting
 
     // Video settings
+    int  ibp_trickspeed;
     int  overscan;            // %
     int  hue;                 // 0...0xffff, -1 == off
     int  saturation;          // 0...0xffff, -1 == off
