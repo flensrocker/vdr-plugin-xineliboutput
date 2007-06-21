@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.c,v 1.5 2007-06-21 09:07:00 phintuka Exp $
+ * $Id: http.c,v 1.6 2007-06-21 09:12:52 phintuka Exp $
  *
  */
 
@@ -133,7 +133,7 @@ static const char *mimetype(const char *ext)
   return NULL;
 }
 
-char *unescape_uri(const char *uri)
+static char *unescape_uri(const char *uri)
 {
   char *d = strdup(uri), *s = d, *result = d;
   while(*s) {
@@ -185,7 +185,7 @@ cHttpStreamer::cHttpStreamer(int fd_http, const char *filename,
   m_fds.set_cork(true);
   m_fdf = -1;
 
-  m_Filename = filename;
+  //m_Filename = filename;
   m_FileSize = -1;
   m_Start = 0;
   m_End = -1;
