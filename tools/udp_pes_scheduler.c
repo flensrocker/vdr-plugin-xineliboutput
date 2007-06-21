@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.31 2007-06-11 21:44:02 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.32 2007-06-21 09:08:59 phintuka Exp $
  *
  */
 
@@ -167,6 +167,8 @@ bool cUdpScheduler::AddRtp(void)
     struct sockaddr_in name;
     name.sin_family = AF_INET;
     name.sin_addr.s_addr = inet_addr(xc.remote_local_ip);
+    if(name.sin_addr.s_addr == INADDR_NONE)
+      LOGERR("Local address %s is invalid", xc.remote_local_ip);
     name.sin_port = htons(xc.remote_rtp_port);
     if (bind(m_fd_rtp.handle(), (struct sockaddr *)&name, sizeof(name)) < 0)
       LOGERR("bind(%s:%d) failed for udp/rtp multicast", xc.remote_local_ip, xc.remote_rtp_port);
