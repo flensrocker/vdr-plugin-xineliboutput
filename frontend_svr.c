@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.45 2007-06-21 09:49:57 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.46 2007-06-21 13:22:06 phintuka Exp $
  *
  */
 
@@ -1259,6 +1259,19 @@ void cXinelibServer::Handle_Control_CONTROL(int cli, const char *arg)
   m_ConnType[cli] = ctControl;
 }
 
+static int strcmp_escaped(const char *s1, const char *s2)
+{
+  while(*s1 && *s2) {
+    int c1 = *s1;
+    int c2 = *s2;
+    if(c1 == '%' && s1[1] && s1[2] && 1 == sscanf(s1+1, "%02x", &c1)) s1 += 2;
+    if(c2 == '%' && s2[1] && s2[2] && 1 == sscanf(s2+1, "%02x", &c2)) s2 += 2;
+    if(c1 < c2) return -1;
+    if(c1 > c2) return 1;
+    s1++; s2++;
+  }
+  return *s1 ? -1 : *s2 ? 1 : 0;
+}
 
 void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 {
@@ -1345,14 +1358,23 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     // currently playing media file
     //
     else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
-      if( *m_FileName && m_bPlayingFile) {
-	LOGMSG("HTTP streaming media file");
 
-	// detach socket
-	new cHttpStreamer(fd_control[cli].handle(true), m_FileName, m_State[cli]);
-	m_State[cli] = NULL;
-	CloseConnection(cli);	    
-	return;
+      if( *m_FileName && m_bPlayingFile) {
+	char *pos = strstr(m_FileName, "#subtitle:");
+	if(pos) *pos = 0;
+	bool Allow = ( !strcmp_escaped(m_FileName, m_State[cli]->Uri() + 9)
+		       || (pos && !strcmp_escaped(pos + 10, m_State[cli]->Uri() + 9)));
+	if(pos) *pos = '#';
+	if(Allow) {
+	  LOGMSG("HTTP streaming media file");
+
+	  // detach socket
+	  new cHttpStreamer(fd_control[cli].handle(true), m_State[cli]->Uri() + 9, m_State[cli]);
+	  m_State[cli] = NULL;
+	  CloseConnection(cli);	    
+	  return;
+	}
+	LOGDBG("HTTP Unauthorized request: %s", *m_State[cli]->Uri());
       }
       else 
 	LOGDBG("No currently playing file");
