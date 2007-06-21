@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_audiochannel.c,v 1.2 2006-12-19 17:35:52 phintuka Exp $
+ * $Id: xine_post_audiochannel.c,v 1.3 2007-06-21 08:02:38 phintuka Exp $
  *
  */
 
@@ -70,26 +70,38 @@ typedef struct audioch_post_plugin_s
 /*
  *    Port functions
  */
-
+#if XINE_VERSION_CODE < 10200
 static int audioch_port_open(xine_audio_port_t *port_gen, xine_stream_t *stream,
-			      uint32_t bits, uint32_t rate, int mode) 
+                             uint32_t bits, uint32_t rate, int mode) 
+#else
+static int audioch_port_open(xine_audio_port_t *port_gen, xine_stream_t *stream,
+			     ao_format_t format)
+#endif
 {
   post_audio_port_t  *port = (post_audio_port_t *)port_gen;
   audioch_post_plugin_t *this = (audioch_post_plugin_t *)port->post;
-  uint32_t capabilities;
 
   _x_post_rewire(&this->post_plugin);
   _x_post_inc_usage(port);
   
   port->stream = stream;
+#if XINE_VERSION_CODE < 10200
   port->bits = bits;
   port->rate = rate;
   port->mode = mode;
-  capabilities = port->original_port->get_capabilities(port->original_port);
-  
+
   this->channels = _x_ao_mode2channels(mode);
 
   return port->original_port->open(port->original_port, stream, bits, rate, mode );
+#else
+  port->format = format;
+
+  this->num_channels = _x_ao_mode2channels(format.mode);
+  
+  return port->original_port->open(port->original_port, stream, format);
+#endif
+
+
 }
 
 static void audioch_port_put_buffer (xine_audio_port_t *port_gen, 
@@ -100,34 +112,43 @@ static void audioch_port_put_buffer (xine_audio_port_t *port_gen,
   int i;
 
   if(this->channels == 2) {
+#if XINE_VERSION_CODE < 10200
+    int step = buf->format.bits / 8;
+#else
+    int step = sample_bytes_table[buf->format.sample_format];
+#endif
     audio_buffer_t *newbuf = port->original_port->get_buffer(port->original_port); 
     newbuf->num_frames = buf->num_frames;
     newbuf->vpts = buf->vpts;
     newbuf->frame_header_count = buf->frame_header_count;
     newbuf->first_access_unit = buf->first_access_unit;
+#if XINE_VERSION_CODE < 10200
     newbuf->format.bits = buf->format.bits;
     newbuf->format.rate = buf->format.rate;
     newbuf->format.mode = buf->format.mode;
+#else
+    newbuf->format = buf->format;
+#endif
     _x_extra_info_merge( newbuf->extra_info, buf->extra_info);
 
-    switch(buf->format.bits) {
-    case 8:
+    switch(step) {
+    case 1:
       for(i=0; i<buf->num_frames; i++)
 	newbuf->mem[i*2+1] = newbuf->mem[i*2] = buf->mem[i*2+this->channel];
       break;
-    case 16:
+    case 2:
       for(i=0; i<buf->num_frames; i++)
 	((uint16_t*)newbuf->mem)[i*2+1] =
 	  ((uint16_t*)newbuf->mem)[i*2] = ((uint16_t*)buf->mem)[i*2+this->channel];
       break;
-    case 24:
+    case 3:
       for(i=0; i<buf->num_frames*3; i+=3) {
 	newbuf->mem[i*2+0] =  newbuf->mem[i*2+3] = buf->mem[i*2+0+3*this->channel];
 	newbuf->mem[i*2+1] =  newbuf->mem[i*2+4] = buf->mem[i*2+1+3*this->channel];
 	newbuf->mem[i*2+2] =  newbuf->mem[i*2+5] = buf->mem[i*2+2+3*this->channel];
       }
       break;
-    case 32:
+    case 4:
       for(i=0; i<buf->num_frames; i++)
 	((uint32_t*)newbuf->mem)[i*2+1] =
 	  ((uint32_t*)newbuf->mem)[i*2] = ((uint32_t*)buf->mem)[i*2+this->channel];
