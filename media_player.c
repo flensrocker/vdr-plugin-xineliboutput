@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.30 2007-06-21 09:19:56 phintuka Exp $
+ * $Id: media_player.c,v 1.31 2007-06-21 12:40:22 phintuka Exp $
  *
  */
 
@@ -239,7 +239,15 @@ void cXinelibPlayer::Activate(bool On)
 	pos = 0;
       close(fd);
     }
-    m_Replaying = cXinelibDevice::Instance().PlayFile(m_File, pos);
+    // escape file name and join subtitle file
+    // Maybe mrls from playlist files should not be escaped ?
+    // (those may contain #subtitle, #volnorm etc. directives)
+    cString mrl;
+    if(*m_SubFile)
+      mrl = cString::sprintf("%s#subtitle:%s", *cPlaylist::EscapeMrl(m_File), *cPlaylist::EscapeMrl(m_SubFile));
+    else /*if((*m_File)[0] == '/')*/
+      mrl = cPlaylist::EscapeMrl(m_File);
+    m_Replaying = cXinelibDevice::Instance().PlayFile(mrl, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Replaying?"OK":"FAIL");
 
     if(m_Replaying) {
