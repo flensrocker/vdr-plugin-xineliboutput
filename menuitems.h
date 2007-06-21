@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.6 2007-06-12 15:11:19 phintuka Exp $
+ * $Id: menuitems.h,v 1.7 2007-06-21 10:00:29 phintuka Exp $
  *
  */
 
@@ -18,8 +18,8 @@
 class cMenuEditTypedIntItem : public cMenuEditIntItem 
 {
   protected:
-    char *type;
-    char *zeroString;
+    cString type;
+    cString zeroString;
 
     virtual void Set(void);
 
@@ -27,7 +27,6 @@ class cMenuEditTypedIntItem : public cMenuEditIntItem
     cMenuEditTypedIntItem(const char *Name, const char *Type, int *Value, 
 			  int Min = 0, int Max = INT_MAX, const char *ZeroString = NULL,
 			  const char *MinString = NULL, const char *MaxString = NULL);
-    ~cMenuEditTypedIntItem();
 };
 
 // --- cMenuEditOddIntItem -------------------------------------------------
@@ -48,7 +47,7 @@ class cMenuEditFpIntItem : public cMenuEditIntItem
 {
   protected:
     int decimals;
-    char *zeroString;
+    cString zeroString;
 
     virtual void Set(void);
 
@@ -56,7 +55,6 @@ class cMenuEditFpIntItem : public cMenuEditIntItem
     cMenuEditFpIntItem(const char *Name, int *Value, int Min = 1, int Max = INT_MAX,
                        int Decimals = 1, const char *ZeroString = NULL,
                        const char *MinString = NULL, const char *MaxString = NULL);
-    ~cMenuEditFpIntItem();
 };
 
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.8 2007-06-12 15:11:19 phintuka Exp $
+ * $Id: menuitems.c,v 1.9 2007-06-21 10:00:29 phintuka Exp $
  *
  */
 
@@ -21,29 +21,22 @@ cMenuEditTypedIntItem::cMenuEditTypedIntItem(const char *Name, const char *Type,
 					     const char *MinString, const char *MaxString)
 :cMenuEditIntItem(Name,Value,Min,Max,MinString,MaxString)
 {
-  type = strdup(Type?Type:"");
-  zeroString = ZeroString ? strdup(ZeroString) : NULL;
+  type = Type ? Type : "";
+  zeroString = ZeroString ? ZeroString : NULL;
   Set();
-}
-
-cMenuEditTypedIntItem::~cMenuEditTypedIntItem()
-{
-  free(type);
-  if(zeroString)
-    free(zeroString);
 }
 
 void cMenuEditTypedIntItem::Set(void)
 {
   char buf[64];
-  if(zeroString && *value == 0) 
+  if(*value == 0 && *zeroString) 
     SetValue(zeroString);
   else if (minString && *value == min)
     SetValue(minString);
   else if (maxString && *value == max)
     SetValue(maxString);
   else {
-    snprintf(buf, sizeof(buf), "%d %s", *value, type);
+    snprintf(buf, sizeof(buf), "%d %s", *value, *type);
     buf[sizeof(buf)-1] = 0;
     SetValue(buf);
   }
@@ -110,20 +103,14 @@ cMenuEditFpIntItem::cMenuEditFpIntItem(const char *Name, int *Value, int Min, in
 :cMenuEditIntItem(Name,Value,Min,Max,MinString,MaxString)
 {
   decimals = Decimals;
-  zeroString = ZeroString ? strdup(ZeroString) : NULL;
+  zeroString = ZeroString ? ZeroString : NULL;
   Set();
-}
-
-cMenuEditFpIntItem::~cMenuEditFpIntItem()
-{
-  if(zeroString)
-    free(zeroString);
 }
 
 void cMenuEditFpIntItem::Set(void)
 {
   char buf[64];
-  if(zeroString && *value == 0) 
+  if(*value == 0 && *zeroString) 
     SetValue(zeroString);
   else if (minString && *value == min)
     SetValue(minString);
