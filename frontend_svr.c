@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.44 2007-06-11 19:39:06 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.45 2007-06-21 09:49:57 phintuka Exp $
  *
  */
 
@@ -791,7 +791,7 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
   }
   
   bool result = cXinelibThread::PlayFileCtrl(Cmd);
-  if(!m_FileName)
+  if(!*m_FileName)
     cHttpStreamer::CloseAll();
   return result;
 }
@@ -1175,13 +1175,13 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
 #endif
 
-  if(m_bPlayingFile && m_FileName) {
+  if(m_bPlayingFile && *m_FileName) {
     Unlock();
     int pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
     Lock();
-    if(m_bPlayingFile && m_FileName) {
+    if(m_bPlayingFile && *m_FileName) {
       fd_control[cli].printf("PLAYFILE %d %s %s\r\n", 
-			     (pos>0?pos/1000:0), xc.audio_visualization, m_FileName);
+			     (pos>0?pos/1000:0), xc.audio_visualization, *m_FileName);
     }
   }
 }
@@ -1345,7 +1345,7 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     // currently playing media file
     //
     else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
-      if( m_FileName && m_bPlayingFile) {
+      if( *m_FileName && m_bPlayingFile) {
 	LOGMSG("HTTP streaming media file");
 
 	// detach socket
