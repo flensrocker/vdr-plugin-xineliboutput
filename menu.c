@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.37 2007-06-17 08:44:25 phintuka Exp $
+ * $Id: menu.c,v 1.38 2007-06-21 09:19:56 phintuka Exp $
  *
  */
 
@@ -299,7 +299,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
       if(!cXinelibPlayerControl::IsOpen())
 	cControl::Launch(GetCurrent()->IsDvd()
 			 ? new cXinelibDvdPlayerControl(f)
-			 : new cXinelibPlayerControl(m_Mode, f));
+			 : new cXinelibPlayerControl(m_Mode, f, GetCurrent()->SubFile()));
       if(Queue)
 	return osContinue;
     } else {
@@ -484,7 +484,6 @@ cDvdSpuTrackSelect::cDvdSpuTrackSelect(void) :
   int id = 0;
   int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
   Add(new cOsdItem("None", osUser1));
-
   while(count && id < 64) {
     const tTrackId *track = cXinelibDevice::Instance().GetDvdSpuTrack(id);
     if(track) {

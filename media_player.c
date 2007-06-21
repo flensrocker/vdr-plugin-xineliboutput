@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.29 2007-06-18 11:43:59 phintuka Exp $
+ * $Id: media_player.c,v 1.30 2007-06-21 09:19:56 phintuka Exp $
  *
  */
 
@@ -64,6 +64,7 @@ class cXinelibPlayer : public cPlayer
   private:
     cString m_File;
     cString m_ResumeFile;
+    cString m_SubFile;
 
     cPlaylist m_Playlist;
 
@@ -74,7 +75,7 @@ class cXinelibPlayer : public cPlayer
     virtual void Activate(bool On);
 
   public:
-    cXinelibPlayer(const char *File, bool Queue = false);
+    cXinelibPlayer(const char *File, bool Queue = false, const char *SubFile = NULL);
     virtual ~cXinelibPlayer();
 
     // cPlayer
@@ -103,7 +104,7 @@ class cXinelibPlayer : public cPlayer
     int  Files(void) { return m_Playlist.Count(); }
 };
 
-cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue) 
+cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile) 
 {
   m_ResumeFile = NULL;
   m_UseResume = true;
@@ -141,6 +142,7 @@ cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue)
       m_Playlist.StartScanner();
 
     m_File = m_Playlist.Current()->Filename;
+    m_SubFile = SubFile;
   }
 }
 
@@ -215,7 +217,8 @@ bool cXinelibPlayer::NextFile(int step)
       LOGERR("!m_Playlist.Get(m_CurrInd)");
     m_File = *m_Playlist.Current()->Filename;
     m_ResumeFile = NULL;
-    
+    m_SubFile = NULL;
+
     Activate(true);
     if(!m_Replaying)
       return false;
@@ -449,8 +452,8 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
 cXinelibPlayer *cXinelibPlayerControl::m_Player = NULL;
 cMutex cXinelibPlayerControl::m_Lock;
 
-cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *File) :
-  cControl(OpenPlayer(File))
+cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *File, const char *SubFile) :
+  cControl(OpenPlayer(File, false, SubFile))
 {
   m_DisplayReplay = NULL;
   m_PlaylistMenu = NULL;
@@ -518,11 +521,11 @@ void cXinelibPlayerControl::Queue(const char *File)
   m_Lock.Unlock();
 }
 
-cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(const char *File, bool Queue)
+cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(const char *File, bool Queue, const char *SubFile)
 {
   m_Lock.Lock();
   if(!m_Player)
-    m_Player = new cXinelibPlayer(File, Queue);
+    m_Player = new cXinelibPlayer(File, Queue, SubFile);
   m_Lock.Unlock();
   return m_Player;
 }
