@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.86 2007-06-12 19:28:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.87 2007-06-21 13:14:48 phintuka Exp $
  *
  */
 
@@ -885,6 +885,24 @@ static char *strn0cpy(char *dest, const char *src, int n)
   return s;
 }
 
+static char *unescape_filename(const char *fn)
+{
+  char *d = strdup(fn), *s = d, *result = d;
+  while(*s && *s != '#') {
+    if(s[0] == '%' && s[1] && s[2]) {
+      unsigned int c;
+      if (sscanf(s+1, "%02x", &c) == 1) {
+	*d++ = (char)c;
+	s += 3;
+	continue;
+      }
+    }
+    *d++ = *s++;
+  }
+  *d = 0;
+  return result;
+}
+
 static int64_t pts_from_pes(const uint8_t *buf, int size)
 {
   int64_t pts = -1;
@@ -1150,36 +1168,6 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
   }
 
   return total_bytes;
-}
-
-static char *FindSubFile(const char *fname)
-{
-  char *subfile = (char*)malloc(strlen(fname)+4), *dot;
-  strcpy(subfile, fname);
-  dot = strrchr(subfile, '.');
-  if(dot) {
-    /*while(dot+1 > subfile) {*/
-      struct stat st;
-      strcpy(dot, ".sub");
-      if (stat(subfile, &st) == 0)
-	return subfile;
-      strcpy(dot, ".srt");
-      if (stat(subfile, &st) == 0)
-	return subfile;
-      strcpy(dot, ".txt");
-      if (stat(subfile, &st) == 0)
-	return subfile;
-      strcpy(dot, ".smi");
-      if (stat(subfile, &st) == 0)
-	return subfile;
-      strcpy(dot, ".ssa");
-      if (stat(subfile, &st) == 0)
-	return subfile;
-    /*  dot--; */
-    /*}*/
-  }
-  free(subfile);
-  return NULL;
 }
 
 static void queue_nosignal(vdr_input_plugin_t *this)
@@ -2673,8 +2661,8 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event);
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
-  char filename[4096]="", *subs = NULL, av[64], *pt2=av;
-  int loop = 0, pos = 0, err = 0;
+  char filename[4096], av[256], *pav = av;
+  int loop = 0, pos = 0, err = 0, avsize = sizeof(av)-2;
 
   while(*pt==' ') pt++;
 
@@ -2690,13 +2678,12 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   while(*pt == ' ') pt++;
 
   /* audio visualization */
-  while(*pt && *pt != ' ')
-    *pt2++ = *pt++;
-  *pt2 = 0;
+  while(*pt && *pt != ' ' && --avsize)
+    *pav++ = *pt++;
+  *pav = 0;
   while(*pt == ' ') pt++;
 
   strn0cpy(filename, pt, sizeof(filename));
-  /*filename[sizeof(filename)-1] = 0;*/
 
   if(*filename) {
     this->loop_play = 0;
@@ -2710,44 +2697,39 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     /* check if it is really a file (not mrl) and try to access it */
     if(filename[0] == '/') {
       struct stat st;
+      char *f = unescape_filename(filename);
       errno = 0;
-      if(stat(filename, &st)) {
+      if(stat(f, &st)) {
 	if(errno == EACCES || errno == ELOOP)
 	  LOGERR("Can't access file !");
 	if(errno == ENOENT || errno == ENOTDIR) 
 	  LOGERR("File not found !");
-	if(this->fd_control > 0) {
-	  char mrl[sizeof(filename)];
-	  char *phost = strdup(strstr(this->mrl, "//") + 2);
-	  char *pfile = strrchr(filename, '/');
-	  char *port = strchr(phost, ':');
-	  int iport;
-	  if(port) *port++ = 0;
-	  iport = port ? atoi(port) : DEFAULT_VDR_PORT;
-	  snprintf(mrl, sizeof(mrl), "http://%s:%d/PLAYFILE%s", 
-	  /*sprintf(mrl, "httpseek://%s:%d/PLAYFILE%s", */
-		  phost?:"127.0.0.1", iport, pfile?:"");
-	  mrl[sizeof(mrl)-1] = 0;
-	  free(phost);
+	if(this->fd_control >= 0) {
+	  char mrl[sizeof(filename)+256], mrlbase[256];
+	  char *host = strdup(strstr(this->mrl, "//")+2);
+	  char *port = strchr(host, ':');
+	  char *sub  = strstr(filename, "#subtitle:");
+	  int  iport = port ? atoi(port+1) : DEFAULT_VDR_PORT;
+	  if(port) *port = 0;
+	  if(sub) *sub = 0;
+	  snprintf(mrlbase, sizeof(mrlbase), "http://%s:%d/PLAYFILE", 
+		   host?:"127.0.0.1", iport);
+	  sprintf(mrl, "%s%s", mrlbase, filename);
+	  if(sub) {
+	    sub += 10; /*strlen("#subtitle:");*/
+	    strcat(mrl, "#subtitle:");
+	    strcat(mrl, mrlbase);
+	    strcat(mrl, sub);
+	  }
+	  free(host);
 	  LOGMSG("  -> trying to stream from server (%s) ...", mrl);
 	  strn0cpy(filename, mrl, sizeof(filename));
 	}
-      } else {
-	subs = FindSubFile(filename);
       }
+      free(f);
     }
-  
-    if(subs) {
-      if(strlen(subs)+strlen(filename)+12 < sizeof(filename)) {
-	LOGMSG("Found subtitles: %s", subs);
-	strcat(filename, "#subtitle:");
-	strcat(filename, subs);
-      }
-      free(subs);
-    } else {
-      LOGDBG("Subtitles not found for %s", filename);
 
-      if(!strcmp(filename,"dvd:/")) {
+    if(!strcmp(filename,"dvd:/")) {
 #if 0
 	/* input/media_helper.c */
 	eject_media(0);	/* DVD tray in */
@@ -2758,7 +2740,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 				       "media.dvd.device", &device))
 	    dvd_set_speed(device.str_value, 2700);
 #endif
-      }
     }
 
     if(!this->slave_stream) {
@@ -2784,10 +2765,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	LOGMSG("playfile: main stream video_fifo not empty ! (%d)",
 	       this->stream->video_fifo->size(this->stream->video_fifo));
       
-      /*
-       * flush decoders and output fifos, close decoders and free frames.
-       * freeing frames is important in systems with only 4 MB frame buffer memory 
-       */
+      /* flush decoders and output fifos, close decoders and free frames. */
       _x_demux_control_start(this->stream);
       xine_usec_sleep(50*1000);
 
@@ -2806,15 +2784,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	LOGMSG("Error playing file");
 	*filename = 0; /* this triggers stop */
       } else {
-#if 0
-	set_playback_speed(this, 1);
-	this->live_mode = 1;
-	set_live_mode(this, 0);
-	set_playback_speed(this, 1);
-	reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
-	this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
-						 METRONOM_PREBUFFER, 90000);
-#endif
 	send_meta_info(this);
 
 	if(!strncmp(filename, "cdda:", 5))
@@ -6057,12 +6026,13 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   if(this->ffmpeg_video_decoder < 0) {
     xine_cfg_entry_t ffmpegprio, mpeg2prio;
     this->ffmpeg_video_decoder = 0;
-    if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.ffmpegvideo", &ffmpegprio)) {
+    if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.ffmpegvideo", &ffmpegprio) &&
+	ffmpegprio.num_value > 0) {
       LOGMSG("ffmpeg video decoder priority: %d", ffmpegprio.num_value);
       this->ffmpeg_video_decoder = 1;
       if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.mpeg2", &mpeg2prio)) {
 	LOGMSG("libmpeg2 video decoder priority: %d", mpeg2prio.num_value);
-	if (mpeg2prio.num_value > ffmpegprio.num_value)
+	if (mpeg2prio.num_value >= ffmpegprio.num_value)
 	  this->ffmpeg_video_decoder = 0;
       }
       LOGMSG(" --> using %s mpeg2 video decoder", this->ffmpeg_video_decoder?"ffmpeg":"libmpeg2");
