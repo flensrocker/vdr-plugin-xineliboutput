@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.39 2007-06-12 20:55:11 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.40 2007-06-21 09:35:13 phintuka Exp $
  *
  */
 
@@ -729,7 +729,8 @@ static void init_dummy_ports(fe_t *this, int on)
   } else {
     if(! this->audio_port_none)
       this->audio_port_none = _x_ao_new_port (this->xine, NULL, 1); 
-    this->audio_port_none->set_property(this->audio_port_none, AO_PROP_DISCARD_BUFFERS, 1);
+    if(this->audio_port_none)
+      this->audio_port_none->set_property(this->audio_port_none, AO_PROP_DISCARD_BUFFERS, 1);
     /*LOGMSG("initialized dummy audio port %x", this->audio_port_none);*/
 #if 0
     if(! this->video_port_none)
@@ -750,21 +751,25 @@ static void fe_post_unwire(fe_t *this)
 
   if(this->postplugins->slave_stream) {
     LOGDBG("unwiring slave stream post plugins");
-
     init_dummy_ports(this, 1);
-    (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
+    if(ao_source && this->audio_port_none)
+      (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
     /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
 
     vo_source = xine_get_video_source(this->postplugins->slave_stream);
     ao_source = xine_get_audio_source(this->postplugins->slave_stream);
-    (void) xine_post_wire_video_port(vo_source, this->video_port);
-    (void) xine_post_wire_audio_port(ao_source, this->audio_port);
+    if(vo_source && this->video_port)
+      (void) xine_post_wire_video_port(vo_source, this->video_port);
+    if(ao_source && this->audio_port)
+      (void) xine_post_wire_audio_port(ao_source, this->audio_port);
 
   } else {
     LOGDBG("unwiring post plugins");
     init_dummy_ports(this, 0);
-    (void) xine_post_wire_video_port(vo_source, this->video_port);
-    (void) xine_post_wire_audio_port(ao_source, this->audio_port);   
+    if(vo_source && this->video_port)
+      (void) xine_post_wire_video_port(vo_source, this->video_port);
+    if(ao_source && this->audio_port)
+      (void) xine_post_wire_audio_port(ao_source, this->audio_port);   
   }
 }
 
