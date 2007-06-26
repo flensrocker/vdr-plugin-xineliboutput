@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.88 2007-06-26 10:50:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.89 2007-06-26 14:56:13 phintuka Exp $
  *
  */
 
@@ -2730,10 +2730,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     }
 
     if(!strcmp(filename,"dvd:/")) {
-      /* DVD plugin 'bug': unescaping is not implemented ... */
-      char *mrl = unescape_filename(filename);
-      strn0cpy(filename, mrl, sizeof(filename));
-      free(mrl);
 #if 0
 	/* input/media_helper.c */
 	eject_media(0);	/* DVD tray in */
@@ -2744,6 +2740,12 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 				       "media.dvd.device", &device))
 	    dvd_set_speed(device.str_value, 2700);
 #endif
+    }
+    else if(!strncmp(filename,"dvd:/", 5)) {
+      /* DVD plugin 'bug': unescaping is not implemented ... */
+      char *mrl = unescape_filename(filename);
+      strn0cpy(filename, mrl, sizeof(filename));
+      free(mrl);
     }
 
     if(!this->slave_stream) {
