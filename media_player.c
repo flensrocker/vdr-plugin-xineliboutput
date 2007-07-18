@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.31 2007-06-21 12:40:22 phintuka Exp $
+ * $Id: media_player.c,v 1.32 2007-07-18 12:40:07 phintuka Exp $
  *
  */
 
@@ -866,6 +866,14 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   if (cXinelibDevice::Instance().EndOfStreamReached()) {
     Hide();
     return osEnd;
+  }
+  else {
+    const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
+    if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
+      memset(m_CurrentDVDTitle, 0, 63);
+      strn0cpy(m_CurrentDVDTitle, ti, 63);
+      MsgReplaying(m_CurrentDVDTitle, NULL);
+    }
   }
 
   if(Menu) {
