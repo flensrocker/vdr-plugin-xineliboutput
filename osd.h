@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.h,v 1.3 2006-10-23 20:09:04 phintuka Exp $
+ * $Id: osd.h,v 1.4 2007-09-01 08:47:04 phintuka Exp $
  *
  */
 
@@ -45,7 +45,7 @@ class cXinelibOsd : public cOsd, public cListObject
     friend class cXinelibOsdProvider;
 
   public:
-    cXinelibOsd(cXinelibDevice *Device, int x, int y);
+    cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level = 0);
     virtual ~cXinelibOsd();
 };
 
@@ -59,7 +59,11 @@ class cXinelibOsdProvider : public cOsdProvider
     cXinelibOsdProvider(cXinelibDevice *Device);
     virtual ~cXinelibOsdProvider();
 
+#if VDRVERSNUM >= 10509
+    virtual cOsd *CreateOsd(int Left, int Top, uint Level);
+#else
     virtual cOsd *CreateOsd(int Left, int Top);
+#endif
 
     static void RefreshOsd(void);
 };

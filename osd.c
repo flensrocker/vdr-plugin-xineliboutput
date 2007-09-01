@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.7 2007-03-14 17:51:01 phintuka Exp $
+ * $Id: osd.c,v 1.8 2007-09-01 08:47:04 phintuka Exp $
  *
  */
 
@@ -148,8 +148,12 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
   }
 }
 
-cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y)
+cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
+#if VDRVERSNUM >= 10509
+    : cOsd(x, y, Level), m_IsVisible(true)
+#else
     : cOsd(x, y), m_IsVisible(true)
+#endif
 {
   TRACEF("cXinelibOsd::cXinelibOsd");
 
@@ -341,7 +345,11 @@ cXinelibOsdProvider::~cXinelibOsdProvider()
   }
 }
 
+#if VDRVERSNUM >= 10509
+cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
+#else
 cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top)
+#endif
 {
   TRACEF("cXinelibOsdProvider::CreateOsd");
 
@@ -350,7 +358,11 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top)
   if(cXinelibOsd::m_OsdStack.First())
     LOGMSG("cXinelibOsdProvider::CreateOsd - OSD already open !");
 
+#if VDRVERSNUM >= 10509
+  cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top, Level);
+#else
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top);
+#endif
 
   if(cXinelibOsd::m_OsdStack.First())
     cXinelibOsd::m_OsdStack.First()->Hide();
