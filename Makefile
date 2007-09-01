@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.22 2007-04-02 13:52:49 phintuka Exp $
+# $Id: Makefile,v 1.23 2007-09-01 13:07:43 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -13,6 +13,7 @@
 
 PLUGIN = xineliboutput
 
+_default: all
 
 ###
 ### check for xine-lib and X11
@@ -102,6 +103,7 @@ VDRINCDIR ?= $(VDRDIR)/include
 ###
 
 -include $(VDRDIR)/Make.config
+-include Make.config
 
 
 ###
@@ -148,7 +150,6 @@ XINEINPUTVDR = xineplug_inp_xvdr.so
 XINEPOSTAUTOCROP  = xineplug_post_autocrop.so
 XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
 XINEPOSTHEADPHONE = xineplug_post_headphone.so
-
 
 ###
 ### which programs and libs to build
