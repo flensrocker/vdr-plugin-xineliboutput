@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.43 2007-06-19 06:09:48 phintuka Exp $
+ * $Id: config.c,v 1.44 2007-09-12 13:39:01 phintuka Exp $
  *
  */
 
@@ -19,6 +19,7 @@
 
 #include "logdefs.h"
 #include "config.h"
+#include "i18n.h"
 
 #define STRN0CPY(dst, src) \
   do { \
@@ -30,64 +31,177 @@
 
 #define DEFAULT_DEINTERLACE_OPTS "method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
 
-const char *config_t::s_bufferSize[] =
-  {"custom", "tiny", "small", "medium", "large", "huge", NULL};
-const int config_t::i_pesBufferSize[] =
-  {0, 50, 250, 500, 1000, 2000, 500};
-const char *config_t::s_aspects[] =
-  {"automatic", "default", "4:3", "16:9", "16:10", "Pan&Scan", "CenterCutOut", 0};
-const char *config_t::s_deinterlaceMethods[] =
-  {"none", "bob", "weave", "greedy", "onefield", "onefield_xv", 
-   "linearblend", "tvtime", 0};
-const char *config_t::s_deinterlaceMethodNames[] =
-  {"off", "Bob", "Weave", "Greedy", "One Field", "One Field XV", 
-   "Linear Blend", "TvTime", NULL};
-const char *config_t::s_fieldOrder[] =
-  {"normal", "inverted", NULL};
-const char *config_t::s_audioDriverNames[] =
-  {"automatic", "Alsa", "OSS", "no audio", "Arts", "ESD", "Jack", NULL};
-const char *config_t::s_audioDrivers[] =
-  {"auto",      "alsa", "oss", "none",     "arts", "esd", "jack", NULL};
-const char *config_t::s_videoDriverNamesX11[] =
-  {"automatic", "XShm", "Xv", "XvMC", "XvMC+VLD", "Vidix", "XDirectFB", "OpenGL", "SDL", "no video",NULL};
-const char *config_t::s_videoDriversX11[] =
-  {"auto",      "xshm", "xv", "xvmc", "xxmc",     "vidix", "XDirectFB", "opengl", "sdl", "none",    NULL};
-const char *config_t::s_videoDriverNamesFB[] =
-  {"automatic", "Framebuffer", "DirectFB", "SDL", "VidixFB", "DXR3",   "No Video", NULL};
-const char *config_t::s_videoDriversFB[] =
-  {"auto",      "fb",          "DirectFB", "sdl", "vidixfb", "aadxr3", "none",     NULL};
-const char *config_t::s_frontendNames[] =
-  {"X11 (sxfe)", "Framebuffer (fbfe)", "Off", NULL};
-const char *config_t::s_frontends[] =
-  {"sxfe", "fbfe", "none", NULL};
-const char *config_t::s_frontend_files[] =
-  {"lib" PLUGIN_NAME_I18N "-sxfe.so." XINELIBOUTPUT_VERSION, 
-   "lib" PLUGIN_NAME_I18N "-fbfe.so." XINELIBOUTPUT_VERSION, 
-   // example: libxineliboutput-sxfe.so.0.4.0
-   "", 
-   NULL};
+const int config_t::i_pesBufferSize[ PES_BUFFERS_count+1 ] =  { 
+  0, 50, 250, 500, 1000, 2000, 500
+};
 
-const char *config_t::s_audioEqNames[] =
-  {"30 Hz", "60 Hz", "125 Hz", "250 Hz", "500 Hz",
-   "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz", NULL};
-const char *config_t::s_audioVisualizationNames[] =
-  {"Off", "Goom", "Oscilloscope", "FFT Scope", "FFT Graph", NULL};
-const char *config_t::s_audioVisualizations[] = 
-  {"none", "goom", "oscope", "fftscope", "fftgraph", NULL};
+const char *config_t::s_bufferSize[ PES_BUFFERS_count+1 ] = { 
+  trNOOP("custom"),
+  trNOOP("tiny"),
+  trNOOP("small"),
+  trNOOP("medium"),
+  trNOOP("large"),
+  trNOOP("huge"),
+  NULL
+};
+
+const char *config_t::s_aspects[ ASPECT_count+1 ] = {
+  trNOOP("automatic"),
+  trNOOP("default"),
+  "4:3",
+  "16:9",
+  "16:10",
+  trNOOP("Pan&Scan"),
+  trNOOP("CenterCutOut"),
+  NULL
+};
+
+const char *config_t::s_deinterlaceMethods[ DEINTERLACE_count+1 ] = {
+  "none",
+  "bob",
+  "weave",
+  "greedy",
+  "onefield",
+  "onefield_xv",
+  "linearblend",
+  "tvtime",
+  NULL
+};
+
+const char *config_t::s_deinterlaceMethodNames[ DEINTERLACE_count+1 ] = {
+  trNOOP("off"),
+  "Bob",
+  "Weave",
+  "Greedy",
+  "One Field",
+  "One Field XV",
+  "Linear Blend",
+  "TvTime",
+  NULL
+};
+
+const char *config_t::s_fieldOrder[ FIELD_ORDER_count+1 ] = { 
+  trNOOP("normal"),
+  trNOOP("inverted"),
+  NULL
+};
+
+const char *config_t::s_audioDrivers[ AUDIO_DRIVER_count+1 ] = { 
+  "auto", "alsa", "oss", "none", "arts", "esd", "jack",
+  NULL
+};
+
+const char *config_t::s_audioDriverNames[ AUDIO_DRIVER_count+1 ] = {
+  trNOOP("automatic"),
+  "Alsa",
+  "OSS",
+  trNOOP("no audio"),
+  "Arts",
+  "ESD",
+  "Jack",
+  NULL
+};
+
+const char *config_t::s_videoDriversX11[ X11_DRIVER_count+1 ] =  {
+  "auto", "xshm", "xv", "xvmc", "xxmc", "vidix", "XDirectFB", "opengl", "sdl", "none",
+  NULL
+};
+
+const char *config_t::s_videoDriverNamesX11[ X11_DRIVER_count+1 ] =  {
+  trNOOP("automatic"),
+  "XShm",
+  "Xv",
+  "XvMC",
+  "XvMC+VLD",
+  "Vidix",
+  "XDirectFB",
+  "OpenGL",
+  "SDL",
+  trNOOP("no video"),
+  NULL
+};
+
+const char *config_t::s_videoDriversFB[ FB_DRIVER_count+1 ] = {
+  "auto", "fb", "DirectFB", "sdl", "vidixfb", "aadxr3", "none",
+  NULL 
+};
+
+const char *config_t::s_videoDriverNamesFB [ FB_DRIVER_count+1 ] = {
+  trNOOP("automatic"),
+  "Framebuffer",
+  "DirectFB",
+  "SDL",
+  "VidixFB",
+  "DXR3",
+  trNOOP("no video"),
+  NULL
+};
+
+const char *config_t::s_frontends[ FRONTEND_count+1 ] = {
+  "sxfe", "fbfe", "none",
+  NULL
+};
+
+const char *config_t::s_frontendNames[ FRONTEND_count+1 ] = {
+  "X11 (sxfe)",
+  "Framebuffer (fbfe)",
+  trNOOP("Off"),
+  NULL 
+};
+
+const char *config_t::s_frontend_files[ FRONTEND_count+1 ] = {
+  "lib" PLUGIN_NAME_I18N "-sxfe.so." XINELIBOUTPUT_VERSION,
+  "lib" PLUGIN_NAME_I18N "-fbfe.so." XINELIBOUTPUT_VERSION,
+  // example: libxineliboutput-sxfe.so.0.4.0
+  "",
+  NULL
+};
+
+const char *config_t::s_audioEqNames[ AUDIO_EQ_count+1 ] = {
+  "30 Hz", "60 Hz", "125 Hz", "250 Hz", "500 Hz",
+  "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz",
+  NULL
+};
+
+const char *config_t::s_audioVisualizations[ AUDIO_VIS_count+1 ] = {
+  "none", "goom", "oscope", "fftscope", "fftgraph",
+  NULL
+};
+
+const char *config_t::s_audioVisualizationNames[ AUDIO_VIS_count+1 ] = {
+  trNOOP("Off"),
+  trNOOP("Goom"),
+  trNOOP("Oscilloscope"),
+  trNOOP("FFT Scope"),
+  trNOOP("FFT Graph"),
+  NULL
+};
 
 /* xine, audio_alsa_out.c */
-const char *config_t::s_speakerArrangements[] =
-  {"Mono 1.0", "Stereo 2.0", "Headphones 2.0", "Stereo 2.1",
-   "Surround 3.0", "Surround 4.0", "Surround 4.1", 
-   "Surround 5.0", "Surround 5.1", "Surround 6.0",
-   "Surround 6.1", "Surround 7.1", "Pass Through", 
-   NULL};
+const char *config_t::s_speakerArrangements[ SPEAKERS_count+1 ] = {
+  "Mono 1.0", "Stereo 2.0", "Headphones 2.0", "Stereo 2.1",
+  "Surround 3.0", "Surround 4.0", "Surround 4.1",
+  "Surround 5.0", "Surround 5.1", "Surround 6.0",
+  "Surround 6.1", "Surround 7.1", "Pass Through",
+  NULL
+};
 
-const char *config_t::s_subtitleSizes[] = {"default", "tiny", "small", "medium", "large", "very large", "huge", NULL };
+const char *config_t::s_subtitleSizes[ SUBTITLESIZE_count+1 ] = { 
+  trNOOP("default"),
+  trNOOP("tiny"),
+  trNOOP("small"),
+  trNOOP("medium"),
+  trNOOP("large"),
+  trNOOP("very large"),
+  trNOOP("huge"),
+  NULL
+};
 
-const char *config_t::s_subExts[] = {".sub", ".srt", ".txt", ".ssa", 
-				     ".SUB", ".SRT", ".TXT", ".SSA", 
-				     NULL};
+const char *config_t::s_subExts[] = {
+  ".sub", ".srt", ".txt", ".ssa",
+  ".SUB", ".SRT", ".TXT", ".SSA", 
+  NULL
+};
 
 static char *strcatrealloc(char *dest, const char *src)
 {
