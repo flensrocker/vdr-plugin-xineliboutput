@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.29 2007-06-19 06:06:22 phintuka Exp $
+ * $Id: config.h,v 1.30 2007-09-12 13:49:37 phintuka Exp $
  *
  */
 
@@ -53,10 +53,9 @@
 #define AUDIO_DRIVER_ALSA        1
 #define AUDIO_DRIVER_OSS         2
 #define AUDIO_DRIVER_NONE        3
-#define AUDIO_DRIVER_ARTS        4
-#define AUDIO_DRIVER_ESD         5
-#define AUDIO_DRIVER_JACK        6
-#define AUDIO_DRIVER_count       7
+#define AUDIO_DRIVER_ESD         4
+#define AUDIO_DRIVER_JACK        5
+#define AUDIO_DRIVER_count       6
 
 // Video driver
 #define X11_DRIVER_AUTO          0

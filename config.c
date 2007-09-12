@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.44 2007-09-12 13:39:01 phintuka Exp $
+ * $Id: config.c,v 1.45 2007-09-12 13:49:38 phintuka Exp $
  *
  */
 
@@ -87,7 +87,7 @@ const char *config_t::s_fieldOrder[ FIELD_ORDER_count+1 ] = {
 };
 
 const char *config_t::s_audioDrivers[ AUDIO_DRIVER_count+1 ] = { 
-  "auto", "alsa", "oss", "none", "arts", "esd", "jack",
+  "auto", "alsa", "oss", "none", "esd", "jack",
   NULL
 };
 
@@ -96,7 +96,6 @@ const char *config_t::s_audioDriverNames[ AUDIO_DRIVER_count+1 ] = {
   "Alsa",
   "OSS",
   trNOOP("no audio"),
-  "Arts",
   "ESD",
   "Jack",
   NULL

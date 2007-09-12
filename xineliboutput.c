@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.21 2007-06-11 19:18:41 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.22 2007-09-12 13:49:38 phintuka Exp $
  *
  */
 
@@ -99,7 +99,7 @@ const char cmdLineHelp[] =
 "                           --remote=<ip>:<port>  (default is all interfaces)\n"
 "  -A NAME   --audio=NAME   Use audio driver NAME for local frontend\n"
 "                           Supported values:\n"
-"                           auto, alsa, oss, arts, esound, none\n"
+"                           auto, alsa, oss, esound, none\n"
 "  -V NAME   --video=NAME   Use video driver NAME for local frontend\n"
 "                           Supported values:\n"
 "                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc,\n"
