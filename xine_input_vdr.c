@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.92 2007-09-13 21:19:33 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.93 2007-09-13 21:24:07 phintuka Exp $
  *
  */
 
@@ -4890,7 +4890,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   {
     int64_t pts = pts_from_pes(buf->content, buf->size);
     if(pts >= 0) {
-      int video = ( buf->content[3] >= 0xe0 && buf->content[3] <= 0xef );
+      int video = ((buf->content[3] & 0xf0) == 0xe0);
       if(video)
         this->last_delivered_vid_pts = pts;
       if(!video) {
@@ -4951,11 +4951,11 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
 #ifndef FFMPEG_DEC
   if(this->live_mode && this->I_frames < 4)
-    if(buf->content[3] == 0xe0 && buf->size > 32)
+    if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32)
       update_frames(this, buf->content, buf->size);
 #else /* FFMPEG_DEC */
   if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
-    if(buf->content[3] == 0xe0 && buf->size > 32) {
+    if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32) {
       int type = update_frames(this, buf->content, buf->size);
       if(type && this->ffmpeg_video_decoder) {
 	buf_element_t *cbuf = get_buf_element(this, 0, 1);
