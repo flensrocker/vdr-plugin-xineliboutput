@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.91 2007-09-13 21:18:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.92 2007-09-13 21:19:33 phintuka Exp $
  *
  */
 
@@ -5379,7 +5379,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
   }
   LOGMSG("Server greeting: %s", tmpbuf);
   if(!strncmp(tmpbuf, "Access denied", 13)) {
-    LOGMSG("Maybe host address is missing from server-side svdrp.conf ?");
+    LOGMSG("Maybe host address is missing from server-side svdrphosts.conf ?");
     close(fd_control);
     this->fd_control = saved_fd;
     return -1;
