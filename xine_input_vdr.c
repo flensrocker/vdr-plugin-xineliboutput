@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.89 2007-06-26 14:56:13 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.90 2007-09-13 21:15:59 phintuka Exp $
  *
  */
 
@@ -223,7 +223,7 @@ typedef struct vdr_input_plugin_s {
   vdr_input_plugin_funcs_t funcs; 
 
   /* plugin */
-  vdr_input_class_t  *cls;
+  vdr_input_class_t  *class;
   xine_stream_t      *stream;
   xine_event_queue_t *event_queue;
 
@@ -738,10 +738,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    as those are decoded too late according to running SCR)
 */
 #if 0
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
+    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 0);
     num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
 						      VO_PROP_BUFS_IN_FIFO);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 0);
     if(num_vbufs < 3) {
       LOGSCR("SCR paused by adjust_speed (vbufs=%d)", num_vbufs);
 #endif
@@ -768,10 +768,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 */
 #if 0
     /* causes random freezes with some post plugins */
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
+    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 0);
     num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
 						      VO_PROP_BUFS_IN_FIFO);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 0);
 #endif
 
     if( num_used/2 > num_free 
@@ -1498,12 +1498,12 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
     height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM);
 
     if(width >= 360 && height >= 288 && width <= 1920 && height <= 1024) {
-      this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+      this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
       img = this->stream->video_out->get_frame (this->stream->video_out,
 						width, height,
 						dratio, XINE_IMGFMT_YV12, 
 						VO_BOTH_FIELDS);
-      this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+      this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
     }
 
     if(img) {
@@ -1609,7 +1609,7 @@ static void fifo_dispose (input_plugin_t *this_gen)
   } 
 }
 
-static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
+static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
 						xine_stream_t *stream,
 						const char *data) 
 {
@@ -1629,7 +1629,7 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *cls_gen,
   slave->i.open              = fifo_open;
   slave->i.get_mrl           = fifo_get_mrl;
   slave->i.dispose           = fifo_dispose;
-  slave->i.input_class       = cls_gen;
+  slave->i.input_class       = class_gen;
   slave->i.get_capabilities  = fifo_get_capabilities;
   slave->i.read              = fifo_read;
   slave->i.read_block        = fifo_read_block;
@@ -1651,10 +1651,10 @@ static int update_video_size(vdr_input_plugin_t *this)
   int w = 0, h = 0;
   int64_t duration;
 
-  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+  this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
   this->stream->video_out->status(this->stream->video_out, 
 				  this->stream, &w, &h, &duration);
-  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+  this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
 
   if(w>0 && h>0) {
     if(this->video_width  != w ||
@@ -2059,7 +2059,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	    this->osddata[cmd->wnd].datalen = cmd->datalen;
 	    
 	    rle_scaled = 1;
-	    scale_rle_image(cmd, new_w, new_h, this->cls->fast_osd_scaling ? 0 : 1);
+	    scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
 	  } else {
 	    LOGOSD("osd_command: size out of margins, using UNSCALED");
 	    use_unscaled = unscaled_supported;
@@ -2096,7 +2096,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	      this->osddata[cmd->wnd].datalen = cmd->datalen;
 	    
 	      rle_scaled = 1;
-	      scale_rle_image(cmd, new_w, new_h, this->cls->fast_osd_scaling ? 0 : 1);
+	      scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
 	    }
 	  }
 	}
@@ -2182,7 +2182,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	  memset(&this->osddata[i], 0, sizeof(osd_command_t));
 
 	  if(!ticket) {
-	    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+	    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
 	    ticket++;
 	  }
 	  exec_osd_command(this, &tmp);
@@ -2193,7 +2193,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	    free(tmp.data);
 	}
       if(ticket)
-	this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+	this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
     }
     pthread_mutex_unlock(&this->osd_lock);
 
@@ -2211,9 +2211,9 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
 
   if(!pthread_mutex_lock (&this->osd_lock)) {
     video_changed = update_video_size(this);
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
     result = exec_osd_command(this, cmd);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);	  
+    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);	  
     pthread_mutex_unlock (&this->osd_lock);
   } else {
     LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
@@ -2381,9 +2381,9 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
      "POST tvtime ..." control message  */
   } else return -2;
   
-  this->stream->xine->config->update_num(this->stream->xine->config,
-					 "video.output.xv_deinterlace_method",
-					 method >= 0 ? method : 0);
+  this->class->xine->config->update_num(this->class->xine->config,
+					"video.output.xv_deinterlace_method",
+					method >= 0 ? method : 0);
   xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, method ? 1 : 0);
   
   return 0;
@@ -2435,7 +2435,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
   pthread_mutex_lock(&this->lock);
 
   if(this->live_mode != onoff) {
-    config_values_t *config = this->stream->xine->config;
+    config_values_t *config = this->class->xine->config;
     this->live_mode = onoff;
 
     this->stream->metronom->set_option(this->stream->metronom, 
@@ -2736,7 +2736,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 #endif
 #ifdef DVD_STREAMING_SPEED
 	  xine_cfg_entry_t device;
-	  if (xine_config_lookup_entry(this->stream->xine,
+	  if (xine_config_lookup_entry(this->class->xine,
 				       "media.dvd.device", &device))
 	    dvd_set_speed(device.str_value, 2700);
 #endif
@@ -2749,7 +2749,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     }
 
     if(!this->slave_stream) {
-      this->slave_stream = xine_stream_new(this->stream->xine, 
+      this->slave_stream = xine_stream_new(this->class->xine, 
 					   this->stream->audio_out, 
 					   this->stream->video_out);
     }
@@ -3194,12 +3194,12 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
     return 1; 
   }
 
-  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+  this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
   result = MAX(0, pool->size(pool)) + 
            MAX(0, buffer->size(buffer)) +
            this->stream->video_out->get_property(this->stream->video_out, 
 						 VO_PROP_BUFS_IN_FIFO);
-  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+  this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
 
   if(result>0) {
     put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
@@ -3221,12 +3221,12 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 					 &pool->buffer_pool_mutex, &abstime);
     pthread_mutex_unlock(&pool->buffer_pool_mutex);
 
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
     result = MAX(0, pool->size(pool)) +
              MAX(0, buffer->size(buffer)) +
              this->stream->video_out->get_property(this->stream->video_out, 
 						   VO_PROP_BUFS_IN_FIFO);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
   }
 
   TRACE("vdr_plugin_flush returns %d (%d+%d used, %d frames)\n", result,
@@ -3348,14 +3348,14 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     pt = strstr(cmd+6, " CHAPTER");
     if(pt) {
       *pt = 0;
-      stream->xine->config->update_num(stream->xine->config,
-				       "media.dvd.skip_behaviour", 1);
+      this->class->xine->config->update_num(this->class->xine->config,
+					    "media.dvd.skip_behaviour", 1);
     }
     pt = strstr(cmd+6, " TITLE");
     if(pt) {
       *pt = 0;
-      stream->xine->config->update_num(stream->xine->config,
-				       "media.dvd.skip_behaviour", 2);
+      this->class->xine->config->update_num(this->class->xine->config,
+					    "media.dvd.skip_behaviour", 2);
     }
     while(eventmap[i].name)
       if(!strcmp(cmd+6, eventmap[i].name)) {
@@ -3493,15 +3493,15 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 
   } else if(!strncasecmp(cmd, "AUDIOSURROUND ",14)) {
     if(1 == sscanf(cmd, "AUDIOSURROUND %d", &tmp32)) {
-      stream->xine->config->update_num(stream->xine->config,
-				       "audio.a52.surround_downmix", tmp32?1:0);
+      this->class->xine->config->update_num(this->class->xine->config,
+					    "audio.a52.surround_downmix", tmp32?1:0);
     } else
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "SPEAKERS ",9)) {
     if(1 == sscanf(cmd, "SPEAKERS %d", &tmp32)) {
-      stream->xine->config->update_num(stream->xine->config,
-				       "audio.output.speaker_arrangement", tmp32);
+      this->class->xine->config->update_num(this->class->xine->config,
+					    "audio.output.speaker_arrangement", tmp32);
     } else
       err = CONTROL_PARAM_ERROR;
 
@@ -3652,7 +3652,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     if(this->slave_stream) {
       int vpos = 0;
       if(1 == sscanf(cmd, "SUBTITLES %d", &vpos))
-	stream->xine->config->update_num(stream->xine->config,
+	this->class->xine->config->update_num(this->class->xine->config,
 		          "subtitles.separate.vertical_offset", vpos);
       else
 	err = CONTROL_PARAM_ERROR;
@@ -3664,7 +3664,8 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       /* size of separate subtitles :
 	 -1 = xine default 
 	 0...6 = { tiny  small  normal  large  very large  huge } */
-      stream->xine->config->update_num(stream->xine->config, "subtitles.separate.subtitle_size", size);
+      this->class->xine->config->update_num(this->class->xine->config, 
+					    "subtitles.separate.subtitle_size", size);
     else
       err = CONTROL_PARAM_ERROR;
 
@@ -3974,7 +3975,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 #if 1
 	if(iSysLogLevel > 2) {
 	  /* dump whole xine log as we should not be here ... */
-	  xine_t *xine = this->stream->xine;
+	  xine_t *xine = this->class->xine;
 	  int i, j;
 	  int logs = xine_get_log_section_count(xine);
 	  const char * const * names = xine_get_log_names(xine);
@@ -5169,8 +5170,8 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* SCR */
   if (this->scr) {
-    this->stream->xine->clock->unregister_scr(this->stream->xine->clock, 
-					      &this->scr->scr);
+    this->class->xine->clock->unregister_scr(this->class->xine->clock, 
+					     &this->scr->scr);
     this->scr->scr.exit(&this->scr->scr);
   }
 
@@ -5255,7 +5256,7 @@ static int vdr_plugin_get_optional_data (input_plugin_t *this_gen,
 static int vdr_plugin_open(input_plugin_t *this_gen)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  xine_t *xine = this->stream->xine;
+  xine_t *xine = this->class->xine;
 
   this->event_queue = xine_event_new_queue (this->stream);
   xine_event_create_listener_thread (this->event_queue, vdr_event_cb, this);
@@ -5273,7 +5274,7 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
     time = xine->clock->get_current_time(xine->clock);
     this->scr = pvrscr_init();
     this->scr->scr.start(&this->scr->scr, time);
-    if(xine->clock->register_scr(this->stream->xine->clock, &this->scr->scr))
+    if(xine->clock->register_scr(this->class->xine->clock, &this->scr->scr))
       LOGMSG("xine->clock->register_scr FAILED !");
  }
 #endif
@@ -5880,11 +5881,11 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
     return 0;
   }
 
-  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 1);
+  this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
   if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
        VO_CAP_UNSCALED_OVERLAY))
     LOGMSG("WARNING: Video output driver reports it does not support unscaled overlays !");
-  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 1);
+  this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
 
   this->threads_initialized = 1;
   return 1;
@@ -5907,11 +5908,11 @@ static void vdr_class_fast_osd_scaling_cb(void *data, xine_cfg_entry_t *cfg)
   class->fast_osd_scaling = cfg->num_value;
 }
 
-static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
+static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
 				    xine_stream_t *stream,
 				    const char *data) 
 {
-  vdr_input_class_t  *cls = (vdr_input_class_t *) cls_gen;
+  vdr_input_class_t  *class = (vdr_input_class_t *) class_gen;
   vdr_input_plugin_t *this;
   char               *mrl = (char *) data;
   int                local_mode, i;
@@ -5923,7 +5924,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 
   if(!strncasecmp(mrl, "xvdr:slave://0x", 15)) {
     LOGMSG("vdr_class_get_instance: slave stream requested");
-    return fifo_class_get_instance(cls_gen, stream, data);
+    return fifo_class_get_instance(class_gen, stream, data);
   }
 
   this = (vdr_input_plugin_t *) xine_xmalloc (sizeof(vdr_input_plugin_t));
@@ -5931,7 +5932,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
 
   this->stream       = stream;
   this->mrl          = NULL;
-  this->cls          = cls;
+  this->class        = class;
   this->event_queue  = NULL;
 
   this->fd_data      = -1;
@@ -5995,7 +5996,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
                                        : vdr_plugin_open_net;
   this->input_plugin.get_mrl           = vdr_plugin_get_mrl;
   this->input_plugin.dispose           = vdr_plugin_dispose;
-  this->input_plugin.input_class       = cls_gen;
+  this->input_plugin.input_class       = class_gen;
 
   this->input_plugin.get_capabilities  = vdr_plugin_get_capabilities;
   this->input_plugin.read              = vdr_plugin_read;
@@ -6032,11 +6033,11 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *cls_gen,
   if(this->ffmpeg_video_decoder < 0) {
     xine_cfg_entry_t ffmpegprio, mpeg2prio;
     this->ffmpeg_video_decoder = 0;
-    if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.ffmpegvideo", &ffmpegprio) &&
+    if (xine_config_lookup_entry(this->class->xine, "engine.decoder_priorities.ffmpegvideo", &ffmpegprio) &&
 	ffmpegprio.num_value > 0) {
       LOGMSG("ffmpeg video decoder priority: %d", ffmpegprio.num_value);
       this->ffmpeg_video_decoder = 1;
-      if (xine_config_lookup_entry(this->stream->xine, "engine.decoder_priorities.mpeg2", &mpeg2prio)) {
+      if (xine_config_lookup_entry(this->class->xine, "engine.decoder_priorities.mpeg2", &mpeg2prio)) {
 	LOGMSG("libmpeg2 video decoder priority: %d", mpeg2prio.num_value);
 	if (mpeg2prio.num_value >= ffmpegprio.num_value)
 	  this->ffmpeg_video_decoder = 0;
