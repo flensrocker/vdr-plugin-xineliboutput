@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.38 2007-06-17 09:11:22 phintuka Exp $
+ * $Id: device.c,v 1.39 2007-09-17 23:10:19 phintuka Exp $
  *
  */
 
@@ -713,16 +713,16 @@ void cXinelibDevice::TrickSpeed(int Speed)
     //     pause <-> slow
     //     _and_ from any mode to normal play and pause
 
-    if(Speed==8 || Speed==4 || Speed == 2) {
+    if(Speed == 8 || Speed == 4 || Speed == 2) {
 #ifdef LOG_TRICKSPEED
       LOGMSG("    Slow forward (1/%d speed), IPB-frames", Speed);
 #endif
-      /* do nothing - slow forward is just slow playback of complete stream */
+      // do nothing - slow forward is just slow playback of complete stream
       m_TrickSpeedMode = trs_IPB_frames;
 
-      /* previous state was slow forward or pause --> no need for clear */
+      // previous state was slow forward or pause --> no need for clear
 
-      /* change decoder and UDP/RTP scheduler clock rates */
+      // change decoder and UDP/RTP scheduler clock rates
       ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed);
     }
 
@@ -731,23 +731,24 @@ void cXinelibDevice::TrickSpeed(int Speed)
 #ifdef LOG_TRICKSPEED
       LOGMSG("    Slow backward (1/%d speed), I-frames only", RealSpeed);    
 #endif
-      /* previous state was slow backwards or pause --> clear if it was pause */
+      // previous state was slow backwards or pause --> clear if it was pause
+      //
       //if(PrevSpeed == 0 && !(m_TrickSpeedMode & trs_PTS_recalc)) {
       //  LOGMSG("    -> Clear");
       //  ForEach(m_clients, &cXinelibThread::Clear);
       //}
 
-      /* only I-frames, backwards, pts must be re-generated */
+      // only I-frames, backwards, pts must be re-generated
       m_TrickSpeedMode = trs_I_frames | trs_PTS_recalc | trs_NoAudio;
 
-      /* change decoder and UDP/RTP scheduler clock rates */
+      // change decoder and UDP/RTP scheduler clock rates
       ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed);
     }
 
     else if(Speed == 6 || Speed == 3 || Speed == 1) {
       RealSpeed = 12/Speed;
 #ifdef LOG_TRICKSPEED
-      LOGMSG("    Fast (%dx speed), direction unknown, I-frames only", RealSpeed);
+      LOGMSG("    Fast (%dx speed), direction unknown", RealSpeed);
 #endif
       // TODO: patch dvbplayer to always use P and B frames too ... -> smoother speeds 3 and 6
 
@@ -758,7 +759,7 @@ void cXinelibDevice::TrickSpeed(int Speed)
 	 so, clear() must be done in PlayVideo. */
       /* previous trick speed state is not overwritten yet ... ! */
       
-      /* change decoder and UDP/RTP scheduler clock rates */
+      // change decoder and UDP/RTP scheduler clock rates
       ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed);
     }
 
@@ -766,17 +767,19 @@ void cXinelibDevice::TrickSpeed(int Speed)
 #ifdef LOG_TRICKSPEED
       LOGMSG("    Play/Pause");
 #endif
-      /* change decoder and UDP/RTP scheduler clock rates */
+      // change decoder and UDP/RTP scheduler clock rates
       ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed);
 
-      /* returning from backward mode needs Clear */
+      // returning from backward mode needs Clear 
+      //
       //if(Speed==-1 && (m_TrickSpeedMode & trs_PTS_recalc)) {
       //  LOGMSG("    -> Clear");
       //  ForEach(m_clients, &cXinelibThread::Clear);
       //  m_TrickSpeedMode = 0;
       //}
-      /* returning from fast forward mode needs Clear
-         because of DvbPlayer jumps few seconds back at mode change ... */
+      // returning from fast forward mode needs Clear
+      // because of DvbPlayer jumps few seconds back at mode change ...
+      //
       //if(Speed==-1 && (m_TrickSpeedMode & trs_I_frames)) {
       //  LOGMSG("    -> Clear");
       //  ForEach(m_clients, &cXinelibThread::Clear);
@@ -929,7 +932,7 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
       if(PictureType != NO_PICTURE) {
 	bool  Video = false, Audio = false;
 	int64_t pts = pes_extract_pts(buf, length, Audio, Video);
-	LOGMSG("    TrickSpeed: frame %s pts %lld", PictureTypeStr(PictureType), pts);
+	LOGMSG("    TrickSpeed: frame %s pts %"PRId64, PictureTypeStr(PictureType), pts);
       }
 #endif
     }
@@ -975,13 +978,13 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
 	m_TrickSpeedMode |= trs_NoAudio;
 	m_TrickSpeedPts = pts;
 #ifdef LOG_TRICKSPEED
-	LOGMSG("    Seen video pts = %lld", m_TrickSpeedPts);
+	LOGMSG("    Seen video pts = %"PRId64, pts);
 #endif
       } else {
 	if(pts < m_TrickSpeedPts) {
 	  /* -> playing fast backwards */
 #ifdef LOG_TRICKSPEED
-	  LOGMSG("    Detected fast backward mode. last %lld now %lld", 
+	  LOGMSG("    Detected fast backward mode. last %"PRId64" now %"PRId64, 
 		 m_TrickSpeedPts, pts);
 #endif
 	  //if(!(m_TrickSpeedMode & trs_PTS_recalc))
@@ -1006,8 +1009,9 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
 
     if(Video && pts>0) {
 #ifdef LOG_TRICKSPEED
-      LOGMSG("    pts %lld -> %lld (diff %lld)", pts, 
-	     m_TrickSpeedPts + 40*12*90, m_TrickSpeedPts + 40*12*90 - pts);
+      LOGMSG("    pts %"PRId64" -> %"PRId64" (diff %"PRId64")  %"PRId64"", pts, 
+	     m_TrickSpeedPts + 40*12*90, m_TrickSpeedPts + 40*12*90 - pts,
+	     (m_TrickSpeedPts + 40*12*90)^0x80000000);
 #endif
       pts = m_TrickSpeedPts = m_TrickSpeedPts + 40*12*90; /* 12 frames * 40ms -> pts units */
       pts ^= 0x80000000; /* discontinuity (when mode changes) forces re-syncing of all clocks */
