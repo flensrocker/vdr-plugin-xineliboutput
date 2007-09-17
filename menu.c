@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.39 2007-06-21 11:54:03 phintuka Exp $
+ * $Id: menu.c,v 1.40 2007-09-17 19:07:54 phelin Exp $
  *
  */
 
@@ -193,10 +193,10 @@ void cMenuBrowseFiles::SetHelpButtons(void)
 {
   bool isDir = !GetCurrent() || GetCurrent()->IsDir();
   bool isDvd = GetCurrent() && GetCurrent()->IsDvd();
-  SetHelp((isDir && isDvd) ? tr("Button$Open") : !m_OnlyQueue ? tr("Button$Play"): NULL,
+  SetHelp((isDir && isDvd) ? trVDR("Button$Open") : !m_OnlyQueue ? trVDR("Button$Play"): NULL,
 	  (m_Mode == ShowMusic) ? tr("Button$Queue") : 
 	           strlen(m_CurrentDir)>1 ? "[..]" : NULL,
-	  (isDir && !isDvd) ? NULL : tr("Button$Delete"),
+	  (isDir && !isDvd) ? NULL : trVDR("Button$Delete"),
 	  isDir ? NULL : tr("Button$Info"));
   Display();
 }
@@ -205,7 +205,7 @@ eOSState cMenuBrowseFiles::Delete(void)
 {
   cFileListItem *it = GetCurrent();
   if(!it->IsDir()) {
-    if (Interface->Confirm(tr("Delete recording?"))) {
+    if (Interface->Confirm(trVDR("Delete recording?"))) {
       cString name = cString::sprintf("%s/%s", m_CurrentDir, it->Name());
       if(!unlink(name)) {
         isyslog("file %s deleted", *name);
@@ -217,7 +217,7 @@ eOSState cMenuBrowseFiles::Delete(void)
 	SetHelpButtons();
         Display();
       } else {
-        Skins.Message(mtError, tr("Error while deleting recording!"));
+        Skins.Message(mtError, triVDR("Error while deleting recording!"));
         isyslog("Error deleting file %s", *name);
       }
     }
