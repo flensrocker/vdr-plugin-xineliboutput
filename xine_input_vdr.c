@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.94 2007-09-14 22:56:10 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.95 2007-09-17 20:01:52 phelin Exp $
  *
  */
 
@@ -3811,7 +3811,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   }
 
 #ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-  i = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+  i = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
   if(i >= 0) {
     sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
     if(this->funcs.xine_input_event)
@@ -3935,7 +3935,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	LOGMSG("XINE_EVENT_UI_SET_TITLE: %s", data->str);
 
 #ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-	int tt = _x_stream_info_get(this->stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+	int tt = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
 	snprintf(titlen, sizeof(titlen), "INFO DVDTITLE %d\r\n", tt);
 #endif
 	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n%s", data->str, titlen);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.37 2007-06-21 09:49:57 phintuka Exp $
+ * $Id: frontend.c,v 1.38 2007-09-17 20:01:51 phelin Exp $
  *
  */
 
@@ -169,9 +169,12 @@ void cXinelibThread::InfoHandler(const char *info)
   }
 
   else if(!strncmp(info, "DVDTITLE ", 9)) {
+    LOGMSG("DVDTITLE %s", info);
     map += 9;
     while(*map == ' ') map++;
     cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
+    if (*map == '0')  // DVD Menu, set spu track to 0
+      cXinelibDevice::Instance().SetCurrentDvdSpuTrack(0);
   }
 
   free(pmap);
