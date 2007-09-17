@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.95 2007-09-17 20:01:52 phelin Exp $
+ * $Id: xine_input_vdr.c,v 1.96 2007-09-17 22:31:59 phintuka Exp $
  *
  */
 
@@ -4696,6 +4696,27 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len
 #  include "cache_iframe.c"
 #endif
 
+static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+#if 1
+  /* PTS wrap workaround for mpeg_block demuxer */
+  int64_t pts = pts_from_pes(buf->content, buf->size);
+  if(pts >= 0) {
+    int video = ((buf->content[3] & 0xf0) == 0xe0);
+    if(video)
+      this->last_delivered_vid_pts = pts;
+    if(!video) {
+      if(pts > 0x40400000 && 
+	 this->last_delivered_vid_pts < 0x40000000 && 
+	 this->last_delivered_vid_pts > 0) {
+	LOGMSG("VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, pts);
+	pes_strip_pts(buf->content, buf->size);
+      }
+    }
+  }
+#endif
+}
+
 static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
 {
   int i = 8;
@@ -4886,25 +4907,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   track_audio_stream_change(this, buf);
 
-#if 1
-  /* PTS wrap workaround for mpeg_block demuxer */
-  {
-    int64_t pts = pts_from_pes(buf->content, buf->size);
-    if(pts >= 0) {
-      int video = ((buf->content[3] & 0xf0) == 0xe0);
-      if(video)
-        this->last_delivered_vid_pts = pts;
-      if(!video) {
-        if(pts > 0x40400000 && 
-           this->last_delivered_vid_pts < 0x40000000 && 
-           this->last_delivered_vid_pts > 0) {
-          LOGMSG("VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, pts);
-          pes_strip_pts(buf->content, buf->size);
-        }
-      }
-    }
-  }
-#endif
+  pts_wrap_workaround(this, buf);
 
   /* Send current PTS ? */
   if(this->send_pts) {
