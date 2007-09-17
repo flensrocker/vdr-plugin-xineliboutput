@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.96 2007-09-17 22:31:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.97 2007-09-17 22:33:09 phintuka Exp $
  *
  */
 
@@ -1411,6 +1411,10 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
       LOGDBG("vdr_plugin_write: jumbo PES (%d bytes) !", size);
     }
   }
+
+  /* final try from audio fifo */
+  if(!buf)
+    buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
 
   if(buf) {
     buf->content = buf->mem;
