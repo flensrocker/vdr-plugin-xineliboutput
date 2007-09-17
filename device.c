@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.39 2007-09-17 23:10:19 phintuka Exp $
+ * $Id: device.c,v 1.40 2007-09-17 23:29:22 phintuka Exp $
  *
  */
 
@@ -217,6 +217,7 @@ cXinelibDevice::cXinelibDevice()
   m_TrickSpeedPts = 0;
   m_TrickSpeedMode = 0;
   m_TrickSpeedDelay = 0;
+  m_VDR_TrickSpeedIBP = 0;
   m_SkipAudio   = false;
   m_PlayingFile = false;
   m_StreamStart = true;
@@ -693,6 +694,25 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
 #define trs_NoAudio    0x08  // no audio in trick speed mode
 #define trs_PTS_check  0x80  // detect in PlayVideo if PTS must be recalculated
 
+bool cXinelibDevice::HasIBPTrickSpeed(void)
+{
+  TRACEF("cXinelibDevice::HasIBPTrickSpeed");
+
+#ifndef DEVICE_SUPPORTS_IBP_TRICKSPEED
+#warning VDR has not been patched for smooth fast forward. Disabling smooth fast forward.
+  return false;
+#else
+  m_VDR_TrickSpeedIBP = true;
+
+  return xc.ibp_trickspeed;
+#endif
+}
+
+bool cXinelibDevice::UseIBPTrickSpeed(void) 
+{ 
+  return m_VDR_TrickSpeedIBP && xc.ibp_trickspeed; 
+}
+
 void cXinelibDevice::TrickSpeed(int Speed) 
 {
   TRACEF("cXinelibDevice::TrickSpeed");
@@ -973,7 +993,19 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
   if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_check)) {
     bool Video = false, Audio = false;
     int64_t pts = pes_extract_pts(buf, length, Audio, Video);
+
     if(Video && pts > 0) {
+
+      uchar PictureType = NO_PICTURE;
+      ScanVideoPacket(buf, length, PictureType);
+      if(PictureType != I_FRAME && PictureType != NO_PICTURE) {
+	// --> must be fast worward with IBP frames.
+	// --> PTS check does not work (frames are sent in decoder order) ! */
+	m_TrickSpeedPts = pts - 1;
+#ifdef LOG_TRICKSPEED
+	LOGMSG("    Detected fast forward mode, using IBP frames");
+#endif
+      }
       if(m_TrickSpeedPts == 0) {
 	m_TrickSpeedMode |= trs_NoAudio;
 	m_TrickSpeedPts = pts;
@@ -994,7 +1026,10 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
 #ifdef LOG_TRICKSPEED
 	  LOGMSG("    Detected fast forward mode");
 #endif
-	  m_TrickSpeedMode = trs_I_frames;
+          if(UseIBPTrickSpeed())
+            m_TrickSpeedMode = trs_IPB_frames;
+          else
+            m_TrickSpeedMode = trs_I_frames;
 	}
       }
     }
@@ -1008,6 +1043,10 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
     int64_t pts = pes_extract_pts(buf, length, Audio, Video);
 
     if(Video && pts>0) {
+      /* m_TrickSpeedPts could be 0 in case of slow backwards */
+      if(m_TrickSpeedPts == 0) {
+	m_TrickSpeedPts = pts;
+      }
 #ifdef LOG_TRICKSPEED
       LOGMSG("    pts %"PRId64" -> %"PRId64" (diff %"PRId64")  %"PRId64"", pts, 
 	     m_TrickSpeedPts + 40*12*90, m_TrickSpeedPts + 40*12*90 - pts,
