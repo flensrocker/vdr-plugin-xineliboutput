@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.35 2007-09-01 08:47:04 phintuka Exp $
+ * $Id: setup_menu.c,v 1.36 2007-09-17 17:56:26 phelin Exp $
  *
  */
 
@@ -865,17 +865,17 @@ void cMenuSetupOSD::Set(void)
 				tr("Off")));
   
   Add(NewTitle(tr("Subtitles")));
-  Add(new cMenuEditBoolItem(tr("Setup.EPG$Preferred languages"), 
+  Add(new cMenuEditBoolItem(trVDR("Setup.EPG$Preferred languages"), 
 			    &newconfig.spu_autoshow));
   if(newconfig.spu_autoshow) {
     Add(ctrl_spulang0 =
-	new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+	new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
 			     newconfig.spu_lang[0], 4, LangNameChars));
-    Add(new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+    Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
 			     newconfig.spu_lang[1], 4, LangNameChars));
-    Add(new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+    Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
 			     newconfig.spu_lang[2], 4, LangNameChars));
-    Add(new cMenuEditStrItem(tr("Setup.EPG$Preferred language"),
+    Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
 			     newconfig.spu_lang[3], 4, LangNameChars));
   }
 

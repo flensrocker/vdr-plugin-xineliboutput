@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.45 2007-09-12 13:49:38 phintuka Exp $
+ * $Id: config.c,v 1.46 2007-09-17 17:56:26 phelin Exp $
  *
  */
 
@@ -178,10 +178,10 @@ const char *config_t::s_audioVisualizationNames[ AUDIO_VIS_count+1 ] = {
 
 /* xine, audio_alsa_out.c */
 const char *config_t::s_speakerArrangements[ SPEAKERS_count+1 ] = {
-  "Mono 1.0", "Stereo 2.0", "Headphones 2.0", "Stereo 2.1",
-  "Surround 3.0", "Surround 4.0", "Surround 4.1",
-  "Surround 5.0", "Surround 5.1", "Surround 6.0",
-  "Surround 6.1", "Surround 7.1", "Pass Through",
+  trNOOP("Mono 1.0"), trNOOP("Stereo 2.0"), trNOOP("Headphones 2.0"), trNOOP("Stereo 2.1"),
+  trNOOP("Surround 3.0"), trNOOP("Surround 4.0"), trNOOP("Surround 4.1"),
+  trNOOP("Surround 5.0"), trNOOP("Surround 5.1"), trNOOP("Surround 6.0"),
+  trNOOP("Surround 6.1"), trNOOP("Surround 7.1"), trNOOP("Pass Through"),
   NULL
 };
 
