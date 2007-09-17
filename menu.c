@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.41 2007-09-17 19:15:10 phelin Exp $
+ * $Id: menu.c,v 1.42 2007-09-17 23:16:18 phintuka Exp $
  *
  */
 
@@ -24,6 +24,7 @@
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
+#include "i18n.h"          // trVDR for VDR-1.4.x
 
 #ifndef HOTKEY_START
 # define HOTKEY_START        kRed

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.37 2007-09-17 20:58:49 phelin Exp $
+ * $Id: setup_menu.c,v 1.38 2007-09-17 23:16:18 phintuka Exp $
  *
  */
 
@@ -17,6 +17,7 @@
 #include "device.h"
 #include "menuitems.h"
 #include "config.h"
+#include "i18n.h"      // trVDR for vdr-1.4.x
 
 namespace XinelibOutputSetupMenu {
 
