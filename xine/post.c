@@ -504,7 +504,7 @@ static post_element_t **_pplugin_join_deinterlace_and_post_elements(fe_t *fe, in
 {
   post_element_t **post_elements;
   int i = 0, j = 0, n = 0, p = 0;
-  static const char *order[] = {"autocrop", "tvtime", NULL};
+  static const char *order[] = {"autocrop", "thread", "tvtime", NULL};
 
   *post_elements_num = 0;
   if( fe->post_video_enable )
