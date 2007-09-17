@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.97 2007-09-17 22:33:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.98 2007-09-17 22:34:11 phintuka Exp $
  *
  */
 
@@ -905,8 +905,8 @@ static char *unescape_filename(const char *fn)
 
 static int64_t pts_from_pes(const uint8_t *buf, int size)
 {
-  int64_t pts = -1;
-  if(size > 13 && buf[7] & 0x80) { /* pts avail */
+  int64_t pts = INT64_C(-1);
+  if(size > 13 && (buf[7] & 0x80)) { /* pts avail */
     pts  = ((int64_t)( buf[ 9] & 0x0E)) << 29;
     pts |=  (int64_t)( buf[10]         << 22 );
     pts |=  (int64_t)((buf[11] & 0xFE) << 14 );
@@ -914,6 +914,19 @@ static int64_t pts_from_pes(const uint8_t *buf, int size)
     pts |=  (int64_t)((buf[13] & 0xFE) >>  1 );
   }
   return pts;
+}
+
+static int64_t dts_from_pes(const uint8_t *buf, int size)
+{
+  int64_t dts = INT64_C(-1);
+  if(size > 18 && (buf[7] & 0x40)) { /* dts avail */
+    dts  = ((int64_t)( buf[14] & 0x0E)) << 29 ;
+    dts |=  (int64_t)( buf[15]         << 22 );
+    dts |=  (int64_t)((buf[16] & 0xFE) << 14 );
+    dts |=  (int64_t)( buf[17]         <<  7 );
+    dts |=  (int64_t)((buf[18] & 0xFE) >>  1 );
+  }
+  return dts;
 }
 
 static void pes_strip_pts(uint8_t *buf, int size)
