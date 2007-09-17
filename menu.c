@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.40 2007-09-17 19:07:54 phelin Exp $
+ * $Id: menu.c,v 1.41 2007-09-17 19:15:10 phelin Exp $
  *
  */
 
@@ -197,7 +197,7 @@ void cMenuBrowseFiles::SetHelpButtons(void)
 	  (m_Mode == ShowMusic) ? tr("Button$Queue") : 
 	           strlen(m_CurrentDir)>1 ? "[..]" : NULL,
 	  (isDir && !isDvd) ? NULL : trVDR("Button$Delete"),
-	  isDir ? NULL : tr("Button$Info"));
+	  isDir ? NULL : trVDR("Button$Info"));
   Display();
 }
 
@@ -217,7 +217,7 @@ eOSState cMenuBrowseFiles::Delete(void)
 	SetHelpButtons();
         Display();
       } else {
-        Skins.Message(mtError, triVDR("Error while deleting recording!"));
+        Skins.Message(mtError, trVDR("Error while deleting recording!"));
         isyslog("Error deleting file %s", *name);
       }
     }
