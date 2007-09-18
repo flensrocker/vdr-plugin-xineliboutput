@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: iconv.h,v 1.4 2007-06-26 15:14:11 phintuka Exp $
+ * $Id: iconv.h,v 1.5 2007-09-18 09:13:13 phintuka Exp $
  *
  */
 
@@ -39,23 +39,22 @@ cIConv::cIConv(const char *SrcCharset, const char * DstCharset)
 #ifdef USE_ICONV
   if(!SrcCharset)
     SrcCharset = "UTF-8";
-  if(!DstCharset)
+  if(!DstCharset) {
 #if APIVERSNUM >= 10503
     DstCharset = cCharSetConv::SystemCharacterTable();
 #else
     DstCharset = I18nCharSets()[Setup.OSDLanguage];
 #endif
+  }
+  m_ic = (iconv_t)-1;
 
-  m_ic = iconv_open(DstCharset, SrcCharset);
+  if(DstCharset) {
+    m_ic = iconv_open(DstCharset, SrcCharset);
 
-  if(m_ic == (iconv_t)-1) 
-    LOGERR("cIConv: iconv_open(\"%s\",\"%s\") failed",
-	   SrcCharset, DstCharset);
-# if 0
-  else
-    LOGDBG("cIConv: initialized conversion from \'%s\' to \'%s\'", 
-	   SrcCharset, DstCharset);
-# endif
+    if(m_ic == (iconv_t)-1) 
+      LOGERR("cIConv: iconv_open(\"%s\",\"%s\") failed",
+	     SrcCharset, DstCharset);
+  }
 #endif
 }
 
@@ -70,6 +69,9 @@ cIConv::~cIConv()
 cString cIConv::Translate(const char *Text) const
 {
 #ifdef USE_ICONV
+  if(m_ic == (iconv_t)-1)
+    return cString(Text);
+
   size_t  inc  = strlen(Text);
   size_t  outc = inc<2048 ? 2048 : inc+1;
 #ifdef __APPLE__  
@@ -79,7 +81,7 @@ cString cIConv::Translate(const char *Text) const
 #endif
   char   *buf  = (char*)malloc(outc+1);
   char   *out  = buf;
-
+    
   size_t n = iconv(m_ic, &in, &inc, &out, &outc);
 
   if(n != (size_t)-1) {
