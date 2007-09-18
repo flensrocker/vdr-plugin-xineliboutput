@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.27 2007-09-18 11:51:12 phintuka Exp $
+ * $Id: i18n.c,v 1.28 2007-09-18 13:52:52 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -16,6 +16,8 @@
 
 #include <vdr/config.h>
 #include "i18n.h"
+
+#if VDRVERSNUM < 10507
 
 const tI18nPhrase Phrases[] = {
   { "X11/xine-lib output plugin", // English
@@ -3377,5 +3379,5 @@ const tI18nPhrase Phrases[] = {
   { NULL }
 };
 
-
+#endif // VDRVERSNUM < 10507
 

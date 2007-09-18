@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.23 2007-09-17 17:56:26 phelin Exp $
+ * $Id: xineliboutput.c,v 1.24 2007-09-18 13:52:52 phintuka Exp $
  *
  */
 
@@ -144,7 +144,10 @@ bool cPluginXinelibOutput::Initialize(void)
   // Initialize any background activities the plugin shall perform.
   TRACEF("cPluginXinelibOutput::Initialize");
 
+#if VDRVERSNUM < 10507
   RegisterI18n(Phrases);
+#endif
+
   cXinelibDevice::Instance();
   return true;
 }
