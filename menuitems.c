@@ -4,13 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.9 2007-06-21 10:00:29 phintuka Exp $
+ * $Id: menuitems.c,v 1.10 2007-09-18 14:02:38 phintuka Exp $
  *
  */
 
 #include <math.h>
 
-#include <vdr/i18n.h>
+#include "i18n.h"
 
 #include "menuitems.h"
 

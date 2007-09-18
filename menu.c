@@ -4,14 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.42 2007-09-17 23:16:18 phintuka Exp $
+ * $Id: menu.c,v 1.43 2007-09-18 14:02:38 phintuka Exp $
  *
  */
 
 #include <dirent.h>
 
 #include <vdr/config.h>
-#include <vdr/i18n.h>
 #include <vdr/interface.h>
 #include <vdr/menu.h>
 #include <vdr/plugin.h>
