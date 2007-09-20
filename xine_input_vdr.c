@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.99 2007-09-20 22:33:13 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.100 2007-09-20 22:37:22 phintuka Exp $
  *
  */
 
@@ -72,8 +72,9 @@
 
 #define ADJUST_SCR_SPEED        1
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
-#define HD_BUF_NUM_BUFS   (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
-#define HD_BUF_ELEM_SIZE  (2048+64)
+#define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
+#define HD_BUF_ELEM_SIZE        (2048+64)
+#define TEST_H264               1
 
 #define RADIO_MAX_BUFFERS  10
 
@@ -246,6 +247,7 @@ typedef struct vdr_input_plugin_s {
   int                 padding_cnt;
   int                 loop_play;
   int                 hd_stream;  /* true if current stream is HD */
+  int                 h264;       /* -1: unknown, 0: no, 1: yes */
 
   int                 audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
   int                 prev_audio_stream_id;
@@ -4777,6 +4779,124 @@ static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
   return 0;
 }
 
+#ifdef TEST_H264
+static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
+{
+  int i = 8;
+  i += data[i] + 1;   /* possible additional header bytes */
+
+  /* H.264 detection */
+  if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1) {
+    if (data[i + 3] == 0x09) {
+      LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
+      return 1;
+    }
+    if (data[i + 3] == (0x09 | 0x80)) {
+      LOGMSG("H.264 scanner: Possible VDR H.264 NAL AUD (0x09|0x80) ?");
+      return this->h264; /* no state change */
+    }
+    if (data[i + 3] == 0) {
+      LOGDBG("H.264 scanner: Possible MPEG2 start code PICTURE (0x00)");
+      return 0;
+    }
+    if (data[i + 3] >= 0x80) {
+      LOGDBG("H.264 scanner: Possible MPEG2 start code (0x%02x)", data[i + 3]);
+      return 0;
+    }
+    LOGMSG("H.264 scanner: Unregonized header 00 00 01 %02x", data[i + 3]);
+  }
+
+#if 0
+  if (this->h264 < 0)
+    LOGDBG("H.264 scanner: unregonized video packet");
+#endif
+
+  return this->h264;
+}
+#endif /* TEST_H264 */
+
+#ifdef TEST_H264
+buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+  int64_t pts = pts_from_pes (buf->content, buf->size);
+  uint8_t *data = buf->content;
+  int i = 8;
+
+  /* Detect video frame boundaries */
+
+  i += data[i] + 1;   /* possible additional header bytes */
+
+  if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 ) {
+
+    /* VDR mangled Access Unit Delimiter */
+    if (data[i + 3] == (0x09 | 0x80)) {
+      data[i + 3] = 0x09;
+      LOGMSG("H.264: NAL AUD ? (0x89 -> 0x09)");
+    }
+
+    /* Access Unit Delimiter */
+    if (data[i + 3] == 0x09)
+      post_frame_end (this, BUF_VIDEO_H264);
+
+    if (data[i + 3] >= 0x80) {
+      LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", data[i + 3]);
+      /* Should do something ... ? */
+    }
+  }
+
+  /* Handle PTS and DTS timestamps */
+
+  buf->decoder_info[0] = 0;
+  if (pts >= INT64_C(0)) {
+    int64_t dts = dts_from_pes (buf->content, buf->size);
+#if 0
+    if (dts < INT64_C(0)) {
+      buf->decoder_info[0] = pts;
+    } else {
+      buf->decoder_info[0] = (pts - dts);
+      buf->decoder_flags |= BUF_FLAG_FRAMERATE;
+    }
+    LOGMSG("H.264: dts %"PRId64"  DIFF %d [stream video step %d]", 
+	   dts, (int)(pts-dts), 
+	   _x_stream_info_get(this->stream, XINE_STREAM_INFO_FRAME_DURATION));
+#endif
+    if (this->send_pts) {
+      LOGMSG("H.264: post pts %"PRId64, pts);
+      vdr_x_demux_control_newpts (this->stream, pts, 0);
+      this->send_pts = 0;
+    } else if (this->last_delivered_vid_pts > 0 && 
+	       abs(pts - this->last_delivered_vid_pts) > 270000 /* 3 sec */) {
+      LOGMSG("H.264: post pts %"PRId64" diff %d", pts, (int)(pts-this->last_delivered_vid_pts));
+      vdr_x_demux_control_newpts (this->stream, pts, 0);
+    }
+
+    /* xine ffmpeg decoder does not handle pts <-> dts difference very well if P/B frames have pts */
+    if (abs(pts - this->last_delivered_vid_pts) < 90000 && pts < this->last_delivered_vid_pts) {
+      LOGDBG("H.264:    -> pts %"PRId64"  <- 0", pts);
+      /*buf->pts = 0;*/
+    } else if (dts>0) {
+      LOGDBG("H.264:    -> pts %"PRId64"  <- 0 (DTS %"PRId64")", pts, dts);
+      /*buf->pts = 0;*/
+    } else {
+      LOGDBG("H.264:    -> pts %"PRId64, pts);
+      buf->pts = pts;
+    }
+
+    this->last_delivered_vid_pts = pts;
+  }
+
+  /* bypass demuxer ... */
+
+  buf->type = BUF_VIDEO_H264;
+  buf->content += i;
+  buf->size -= i;
+
+  this->stream->video_fifo->put (this->stream->video_fifo, buf);
+
+  return NULL;
+}
+#endif /* TEST_H264 */
+
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 					     fifo_buffer_t *fifo, off_t todo) 
 {
@@ -4930,12 +5050,27 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       this->last_delivered_vid_pts = INT64_C(-1);
       this->send_pts = 1;
       this->stream_start = 0;
+      this->h264 = -1;
       pthread_mutex_lock (&this->stream->first_frame_lock);
       this->stream->first_frame_flag = 2;
       pthread_mutex_unlock (&this->stream->first_frame_lock);
     }
 
     pthread_mutex_unlock(&this->lock);
+
+#ifdef TEST_H264
+    /* H.264 */
+    if(this->h264 && (buf->content[3] & 0xf0) == 0xe0) {
+      if(this->h264 < 0)
+	this->h264 = detect_h264(this, buf->content, buf->size);
+      
+      if(this->h264 > 0) {
+	buf = post_frame_h264(this, buf);
+	if(!buf)
+	  continue;
+      }
+    }
+#endif
 
   } while(!buf);
 
