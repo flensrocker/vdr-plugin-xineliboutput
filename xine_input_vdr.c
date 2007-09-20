@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.98 2007-09-17 22:34:11 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.99 2007-09-20 22:33:13 phintuka Exp $
  *
  */
 
@@ -4734,6 +4734,27 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif
 }
 
+static void post_frame_end(vdr_input_plugin_t *this, int type)
+{
+  /* signal FRAME_END to video decoder */ 
+  buf_element_t *cbuf = get_buf_element (this, 0, 1);
+  if (!cbuf) {
+    LOGMSG("get_buf_element() for BUF_FLAG_FRAME_END failed - retrying");
+    xine_usec_sleep (10*1000);
+    cbuf = get_buf_element (this, 0, 1);
+  }
+  if (cbuf) {
+    cbuf->type = type;
+    cbuf->decoder_flags = BUF_FLAG_FRAME_END;
+    this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
+  } else if (type == BUF_VIDEO_H264) {
+    /* Should not be here ... 
+       Failing to send BUF_FLAG_FRAME_END 's freezes the decoder */
+    LOGERR("get_buf_element() for H.264 BUF_FLAG_FRAME_END failed - aborting");
+    abort();
+  }
+}
+
 static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
 {
   int i = 8;
@@ -4979,13 +5000,8 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32) {
       int type = update_frames(this, buf->content, buf->size);
       if(type && this->ffmpeg_video_decoder) {
-	buf_element_t *cbuf = get_buf_element(this, 0, 1);
 	/* signal FRAME_END to decoder */
-	if(cbuf) {
-	  cbuf->type = BUF_VIDEO_MPEG;
-	  cbuf->decoder_flags = BUF_FLAG_FRAME_END;
-	  this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
-	}
+	post_frame_end(this, BUF_VIDEO_MPEG);
 	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
 	 * (B-frame pts's are smaller than in previous P-frame) 
 	 * Anyway, without this block of code B frames with pts are dropped. */
