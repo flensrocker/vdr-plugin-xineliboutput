@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.34 2007-09-17 20:01:52 phelin Exp $
+ * $Id: media_player.c,v 1.35 2007-09-28 23:07:06 phintuka Exp $
  *
  */
 
@@ -903,13 +903,16 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     Show();
 
   bool MenuDomain = false;
-  if(Key != kNone) {
+  if(Key != kNone || m_DisplayReplay) {
     const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
     if(dt && !strcmp("0", dt)) 
       MenuDomain = true;
   }
 
   if(MenuDomain) {
+    if(m_DisplayReplay)
+      Hide();
+
     switch(Key) {
       // DVD navigation
       case kUp:    m_Player->Control("EVENT XINE_EVENT_INPUT_UP");     return osContinue;
