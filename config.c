@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.46 2007-09-17 17:56:26 phelin Exp $
+ * $Id: config.c,v 1.47 2007-09-30 16:52:18 phintuka Exp $
  *
  */
 
@@ -489,6 +489,7 @@ config_t::config_t() {
 #else
   ibp_trickspeed = 0;
 #endif
+  max_trickspeed = 12;
   overscan       = 0;
   hue          = -1; 
   saturation   = -1; 
@@ -712,6 +713,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
   else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
   else if (!strcasecmp(Name, "Video.IBPTrickSpeed"))  ibp_trickspeed = atoi(Value);
+  else if (!strcasecmp(Name, "Video.MaxTrickSpeed"))  max_trickspeed = atoi(Value);
 
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);

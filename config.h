@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.30 2007-09-12 13:49:37 phintuka Exp $
+ * $Id: config.h,v 1.31 2007-09-30 16:52:18 phintuka Exp $
  *
  */
 
@@ -201,6 +201,7 @@ class config_t {
 
     // Video settings
     int  ibp_trickspeed;
+    int  max_trickspeed;
     int  overscan;            // %
     int  hue;                 // 0...0xffff, -1 == off
     int  saturation;          // 0...0xffff, -1 == off

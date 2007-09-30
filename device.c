@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.42 2007-09-30 16:10:20 phintuka Exp $
+ * $Id: device.c,v 1.43 2007-09-30 16:52:18 phintuka Exp $
  *
  */
 
@@ -776,6 +776,11 @@ void cXinelibDevice::TrickSpeed(int Speed)
       RealSpeed = 12/Speed;
       LOGTRICKSPEED("    Fast (%dx speed), direction unknown", RealSpeed);
 
+      if(RealSpeed > xc.max_trickspeed) {
+	RealSpeed = xc.max_trickspeed;
+	LOGTRICKSPEED("    Trick speed limited to %dx speed", RealSpeed);
+      }
+
       /* only I-frames, backwards, pts must be re-generated if playing backwards */
       m_TrickSpeedMode |= trs_PTS_check;
 
@@ -966,14 +971,16 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
       static int64_t t0 = 0;
       int64_t t1 = cTimeMs::Now();
       if((t1 - t0) < 1000) {
-	int fdelay = 40*12;
-	if(m_TrickSpeed==6)  fdelay /= 2;
-	if(m_TrickSpeed==3)  fdelay /= 4;
-	if(m_TrickSpeed==1)  fdelay /= 12;
-	if(m_TrickSpeed==63) fdelay *= 6;
-	if(m_TrickSpeed==48) fdelay *= 4;
-	if(m_TrickSpeed==24) fdelay *= 2;
-
+	int fdelay = 40*12; // = 480 ms, time of one GOP in normal speed
+	switch(m_TrickSpeed) {
+	  case  6: /*   2x ff  */ fdelay /= min( 2, xc.max_trickspeed); break;
+	  case  3: /*   4x ff  */ fdelay /= min( 4, xc.max_trickspeed); break;
+	  case  1: /*  12x ff  */ fdelay /= min(12, xc.max_trickspeed); break;
+	  case 63: /* 1/6x rew */ fdelay *= 6; break;
+	  case 48: /* 1/4x rew */ fdelay *= 4; break;
+	  case 24: /* 1/2x rew */ fdelay *= 2; break;
+	  default: break;
+	}
 	/* wait if data is coming in too fast */
 	if(fdelay - (t1-t0) >= 40) {
 	  m_TrickSpeedDelay = 40;
