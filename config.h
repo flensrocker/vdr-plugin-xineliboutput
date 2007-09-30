@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.31 2007-09-30 16:52:18 phintuka Exp $
+ * $Id: config.h,v 1.32 2007-09-30 21:11:11 phintuka Exp $
  *
  */
 
@@ -122,6 +122,14 @@
 #define SPEAKERS_A52_PASSTHRU  12 
 #define SPEAKERS_count         13 
 
+// OSD layers mixing
+#define OSD_MIXER_NONE          0
+#define OSD_MIXER_GRAY          1
+#define OSD_MIXER_ALPHA         2
+#define OSD_MIXER_GRAYALPHA     3  // OSD_MIXER_GRAY | OSD_MIXER_ALPHA
+#define OSD_MIXER_FULL          4
+#define OSD_MIXER_count         5
+
 #define SUBTITLESIZE_count     7
 
 #define HIDDEN_OPTION(opt) \
@@ -163,6 +171,7 @@ class config_t {
     static const char *s_speakerArrangements[];
     static const char *s_subtitleSizes[];
     static const char *s_subExts[];
+    static const char *s_osdMixers[];
 
   public:
 
@@ -211,6 +220,7 @@ class config_t {
     // OSD settings 
     eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
     int  hide_main_menu;
+    int  osd_mixer;                // show multiple OSD layers
     int  prescale_osd;
     int  prescale_osd_downscale;
     int  unscaled_osd;
