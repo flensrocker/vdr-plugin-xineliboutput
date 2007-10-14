@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.43 2007-09-30 16:52:18 phintuka Exp $
+ * $Id: device.c,v 1.44 2007-10-14 18:32:00 phintuka Exp $
  *
  */
 
@@ -26,6 +26,9 @@
 //#define FORWARD_DVD_SPUS
 //#define DEBUG_SWITCHING_TIME
 //#define LOG_TRICKSPEED
+#if VDRVERSNUM >= 10510
+# define SKIP_DVDSPU
+#endif
 
 #include "logdefs.h"
 #include "config.h"
