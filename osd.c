@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.8 2007-09-01 08:47:04 phintuka Exp $
+ * $Id: osd.c,v 1.9 2007-10-15 00:31:39 phintuka Exp $
  *
  */
 
 #include <vdr/config.h>
+#include <vdr/tools.h>   // cListObject
 
 #include "logdefs.h"
 #include "device.h"
@@ -18,6 +19,38 @@
 //#define LIMIT_OSD_REFRESH_RATE
 
 #include "xine_osd_command.h"
+
+class cXinelibOsd : public cOsd, public cListObject 
+{
+  private:
+    cXinelibOsd();
+    cXinelibOsd(cXinelibOsd&);
+
+    cXinelibDevice *m_Device;
+
+  protected:
+    static cMutex             m_Lock;
+    static cList<cXinelibOsd> m_OsdStack;
+
+    bool   m_IsVisible;
+    bool   m_Shown;
+
+    virtual eOsdError CanHandleAreas(const tArea *Areas, int NumAreas);
+    virtual eOsdError SetAreas(const tArea *Areas, int NumAreas);
+    virtual void Flush(void);
+
+    // Messages from cXinelibOsdProvider
+    void Show(void);
+    void Hide(void);
+    void Refresh(void);
+    void Detach(void);
+
+    friend class cXinelibOsdProvider;
+
+  public:
+    cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level = 0);
+    virtual ~cXinelibOsd();
+};
 
 cList<cXinelibOsd> cXinelibOsd::m_OsdStack;
 cMutex             cXinelibOsd::m_Lock;
@@ -345,11 +378,7 @@ cXinelibOsdProvider::~cXinelibOsdProvider()
   }
 }
 
-#if VDRVERSNUM >= 10509
 cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
-#else
-cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top)
-#endif
 {
   TRACEF("cXinelibOsdProvider::CreateOsd");
 
@@ -358,11 +387,7 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top)
   if(cXinelibOsd::m_OsdStack.First())
     LOGMSG("cXinelibOsdProvider::CreateOsd - OSD already open !");
 
-#if VDRVERSNUM >= 10509
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top, Level);
-#else
-  cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top);
-#endif
 
   if(cXinelibOsd::m_OsdStack.First())
     cXinelibOsd::m_OsdStack.First()->Hide();
