@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: timer.c,v 1.1 2006-06-03 10:04:28 phintuka Exp $
+ * $Id: timer.c,v 1.2 2007-10-15 00:15:07 phintuka Exp $
  *
  */
 
@@ -25,10 +25,6 @@
 #  define TRACEF(x)
 #endif
 
-#if VDRVERSNUM>10317
-  #define time_ms() cTimeMs::Now()
-#endif
-
 // ---------------------------- cTimerThreadEvent ----------------------------
 
 class cTimerThreadEvent : public cListObject {
@@ -39,7 +35,7 @@ class cTimerThreadEvent : public cListObject {
        m_DeleteOnCancel(DeleteOnCancel), 
        m_TimeoutMs(TimeoutMs)
     {
-      m_NextEventTime = time_ms();
+      m_NextEventTime = cTimeMs::Now();
       UpdateEventTime();
     }
 
@@ -56,7 +52,7 @@ class cTimerThreadEvent : public cListObject {
 
     int TimeToNextEvent(void)
     {
-      return m_NextEventTime - time_ms();
+      return m_NextEventTime - cTimeMs::Now();
     }
 
     virtual bool operator< (const cListObject &ListObject)

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.35 2007-09-28 23:07:06 phintuka Exp $
+ * $Id: media_player.c,v 1.36 2007-10-15 00:15:07 phintuka Exp $
  *
  */
 
@@ -25,34 +25,10 @@
 
 #include "tools/iconv.h"
 
-#if VDRVERSNUM < 10400
-// Dirty hack to bring menu back ...
-#include <vdr/remote.h>
-static void BackToMenu(void)
-{
-  static bool MagicKeyAdded = false;
-
-  if(!MagicKeyAdded) {
-    MagicKeyAdded = true;
-    cKeyMacro *m = new cKeyMacro();
-    char *tmp = strdup("User1\t@xineliboutput");
-    m->Parse(tmp);
-    free(tmp);
-    eKeys *keys = (eKeys*)m->Macro();
-    keys[0] = (eKeys)(k_Plugin|0x1000); /* replace kUser1 if it is used to something else */
-    keys[1] = k_Plugin;
-    
-    KeyMacros.Add(m);
-  }
-
-  cRemote::PutMacro((eKeys)(k_Plugin|0x1000));
-}
-#else
 static void BackToMenu(void)
 {
   cRemote::CallPlugin("xineliboutput");
 }
-#endif
 
 
 //
@@ -493,15 +469,9 @@ cXinelibPlayerControl::~cXinelibPlayerControl()
 
 void cXinelibPlayerControl::MsgReplaying(const char *Title, const char *File)
 {
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, NULL);
-  if(File)
-    cStatus::MsgReplaying(this, File);
-#else
   cStatus::MsgReplaying(this, NULL, NULL, false);
   if(Title || File)
     cStatus::MsgReplaying(this, Title, File, true);
-#endif
 }
 
 void cXinelibPlayerControl::Queue(const char *File)
@@ -1112,11 +1082,7 @@ cXinelibImagesControl::~cXinelibImagesControl()
     delete m_DisplayReplay;
   m_DisplayReplay = NULL;
 
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, NULL);
-#else
   cStatus::MsgReplaying(this, NULL, NULL, false);
-#endif
   Close();
 
   if(m_Files) {
@@ -1185,11 +1151,7 @@ void cXinelibImagesControl::Seek(int Rel)
   if(NULL != (pt=strrchr(m_File, '.')))
     *pt = 0;
 
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, m_Files[m_Index]);
-#else
   cStatus::MsgReplaying(this, m_File, m_Files[m_Index], true);
-#endif
 
   m_Player->ShowImage(m_Files[m_Index]);
   m_LastShowTime = time(NULL);

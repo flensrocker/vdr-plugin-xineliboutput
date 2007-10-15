@@ -4,15 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: equalizer.c,v 1.3 2007-09-01 08:47:04 phintuka Exp $
+ * $Id: equalizer.c,v 1.4 2007-10-15 00:15:07 phintuka Exp $
  *
  */
 
 #include <vdr/config.h>
-
-#if VDRVERSNUM < 10307
-# error VDR < 1.3.7 not supported
-#endif
 
 #include "config.h"
 #include "device.h"

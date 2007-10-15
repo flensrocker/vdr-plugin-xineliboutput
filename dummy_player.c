@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: dummy_player.c,v 1.2 2006-06-04 08:18:18 phintuka Exp $
+ * $Id: dummy_player.c,v 1.3 2007-10-15 00:15:07 phintuka Exp $
  *
  */
 
@@ -64,20 +64,12 @@ cMutex cDummyPlayerControl::m_Lock;
 cDummyPlayerControl::cDummyPlayerControl(void) :
   cControl(OpenPlayer())
 {
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, "none");
-#else
   cStatus::MsgReplaying(this, "none", NULL, true);
-#endif
 }
 
 cDummyPlayerControl::~cDummyPlayerControl()
 {
-#if VDRVERSNUM < 10338
-  cStatus::MsgReplaying(this, NULL);
-#else
   cStatus::MsgReplaying(this, NULL, NULL, false);
-#endif
   Close();
 }
 

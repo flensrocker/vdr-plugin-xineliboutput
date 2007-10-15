@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.44 2007-10-14 18:32:00 phintuka Exp $
+ * $Id: device.c,v 1.45 2007-10-15 00:15:07 phintuka Exp $
  *
  */
 
@@ -74,12 +74,8 @@ class cXinelibStatusMonitor : public cStatus
 
   protected:
     virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
-#if VDRVERSNUM < 10338
-    virtual void Replaying(const cControl *Control, const char *Name);
-#else
     virtual void Replaying(const cControl *Control, const char *Name, 
 			   const char *FileName, bool On);
-#endif
 
     cXinelibDevice& m_Device;
     int m_cardIndex;
@@ -136,18 +132,6 @@ void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device,
   }
 }
 
-#if VDRVERSNUM < 10338
-void cXinelibStatusMonitor::Replaying(const cControl *Control, 
-				      const char *Name) 
-{
-  TRACEF("cXinelibStatusMonitor::Replaying");
-  
-  if (Name != NULL) {
-    TRACE("cXinelibStatusMonitor: Replaying " << Name);
-    m_Device.SetReplayMode();
-  }
-}
-#else
 void cXinelibStatusMonitor::Replaying(const cControl *Control, 
 				      const char *Name,
 				      const char *FileName, bool On)
@@ -159,7 +143,6 @@ void cXinelibStatusMonitor::Replaying(const cControl *Control,
     m_Device.SetReplayMode();
   }
 }
-#endif
 
 //----------------------------- device ----------------------------------------
 
@@ -369,10 +352,8 @@ void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
 	LOGMSG("Forcing primary device, original index = %d", m_OriginalPrimaryDevice);
 	if(cOsd::IsOpen()) {
 	  LOGMSG("Forcing primary device, old OSD still open !");
-#if VDRVERSNUM >= 10400
 	  xc.main_menu_mode = CloseOsd;
 	  cRemote::CallPlugin("xineliboutput");
-#endif
 	}
 	SetPrimaryDevice(DeviceNumber() + 1);
       }
@@ -389,10 +370,8 @@ void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
 	cControl::Shutdown();
 	if(cOsd::IsOpen()) {
 	  LOGMSG("Restoring primary device, xineliboutput OSD still open !");
-#if VDRVERSNUM >= 10400
 	  xc.main_menu_mode = CloseOsd; /* will be executed in future by vdr main thread */
 	  cRemote::CallPlugin("xineliboutput");
-#endif
 	}
 	cChannel *channel = Channels.GetByNumber(CurrentChannel());
 	cDevice::SetPrimaryDevice(m_OriginalPrimaryDevice);
@@ -1499,38 +1478,6 @@ cSpuDecoder *cXinelibDevice::GetSpuDecoder(void)
 // Image Grabbing
 //
 
-#if VDRVERSNUM < 10338
-
-bool cXinelibDevice::GrabImage(const char *FileName, bool Jpeg, 
-			       int Quality, int SizeX, int SizeY)
-{
-  uchar *Data = NULL;
-  int Size = 0;
-  TRACEF("cXinelibDevice::GrabImage");
-
-  if(m_local)
-    Data = m_local->GrabImage(Size, Jpeg, Quality, SizeX, SizeY);
-  if(!Data && m_server)
-    Data = m_local->GrabImage(Size, Jpeg, Quality, SizeX, SizeY);
-
-  if(Data) {
-    FILE *fp = fopen(FileName, "wb");
-    if(fp) {
-      fwrite(Data, Size, 1, fp);
-      fclose(fp);
-      free(Data);     
-      return true;
-    } 
-    LOGERR("Grab: Can't open %s", FileName);
-    free(Data);
-  } else {
-    LOGMSG("Grab to %s failed", FileName);
-  }
-  return false;
-}
-
-#else
-
 uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg, 
 				 int Quality, int SizeX, int SizeY)
 {
@@ -1543,8 +1490,6 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 
   return NULL;
 }
-
-#endif
 
 
 //

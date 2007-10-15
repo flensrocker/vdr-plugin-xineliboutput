@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.24 2007-09-18 13:52:52 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.25 2007-10-15 00:15:07 phintuka Exp $
  *
  */
 
@@ -34,11 +34,8 @@
 #include "setup_menu.h"
 #include "menu.h"
 
-#if VDRVERSNUM < 10342
-#  if VDRVERSNUM < 10331
-#    error VDR versions < 1.3.31 are not supported !
-#  endif
-#  warning This plugin is not tested with VDR versions < 1.3.42 !
+#if VDRVERSNUM < 10400
+# error VDR versions < 1.4.0 are not supported !
 #endif
 
 //---------------------------------plugin-------------------------------------
