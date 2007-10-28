@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.9 2007-10-15 00:31:39 phintuka Exp $
+ * $Id: osd.c,v 1.10 2007-10-28 18:57:29 phintuka Exp $
  *
  */
 
@@ -20,6 +20,8 @@
 
 #include "xine_osd_command.h"
 
+#define LOGOSD(x...)
+
 class cXinelibOsd : public cOsd, public cListObject 
 {
   private:
@@ -34,6 +36,7 @@ class cXinelibOsd : public cOsd, public cListObject
 
     bool   m_IsVisible;
     bool   m_Shown;
+    uint   m_Layer;
 
     virtual eOsdError CanHandleAreas(const tArea *Areas, int NumAreas);
     virtual eOsdError SetAreas(const tArea *Areas, int NumAreas);
@@ -183,15 +186,17 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
 
 cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
 #if VDRVERSNUM >= 10509
-    : cOsd(x, y, Level), m_IsVisible(true)
+    : cOsd(x, y, Level)
 #else
-    : cOsd(x, y), m_IsVisible(true)
+    : cOsd(x, y)
 #endif
 {
   TRACEF("cXinelibOsd::cXinelibOsd");
 
   m_Device = Device;
   m_Shown = false;
+  m_IsVisible = true;
+  m_Layer = Level;
   CmdSize(m_Device, 0, 720, 576);
 }
 
@@ -334,8 +339,10 @@ void cXinelibOsd::Hide(void)
   if(m_IsVisible) {
     cBitmap *Bitmap;
     m_IsVisible = false;
-    for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++)
+    for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
+      LOGOSD("Hide OSD %d.%d", Index(), i);
       CmdClose(m_Device, i);
+    }
   }
 }
 
@@ -384,15 +391,37 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
 
   cMutexLock ml(&cXinelibOsd::m_Lock);
 
+#if VDRVERSNUM < 10509
   if(cXinelibOsd::m_OsdStack.First())
     LOGMSG("cXinelibOsdProvider::CreateOsd - OSD already open !");
+#endif
 
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top, Level);
 
-  if(cXinelibOsd::m_OsdStack.First())
-    cXinelibOsd::m_OsdStack.First()->Hide();
+  // sorted insert
+  cXinelibOsd *it = cXinelibOsd::m_OsdStack.First(); 
+  while(it) {
+    if(it->m_Layer >= Level) {
+      cXinelibOsd::m_OsdStack.Ins(m_OsdInstance, it);
+      break;
+    }
+    it = cXinelibOsd::m_OsdStack.Next(it);
+  }
+  if(!it)
+    cXinelibOsd::m_OsdStack.Add(m_OsdInstance);
 
-  cXinelibOsd::m_OsdStack.Ins(m_OsdInstance);
+  LOGOSD("New OSD: index %d, layer %d [now %d OSDs]", m_OsdInstance->Index(), Level, cXinelibOsd::m_OsdStack.Count());
+  if(xc.osd_mixer == OSD_MIXER_NONE)
+    LOGOSD(" OSD mixer off");
+
+  // hide all but top-most OSD  
+  it = cXinelibOsd::m_OsdStack.Last();
+  while(cXinelibOsd::m_OsdStack.Prev(it)) {
+    LOGOSD(" -> hide OSD %d", it->Index());
+    it->Hide();
+    it = cXinelibOsd::m_OsdStack.Prev(it);
+  }
+  it->Show();
 
   return m_OsdInstance;
 }
@@ -403,8 +432,12 @@ void cXinelibOsdProvider::RefreshOsd(void)
 
   cMutexLock ml(&cXinelibOsd::m_Lock);
 
-  if(cXinelibOsd::m_OsdStack.First())
-    cXinelibOsd::m_OsdStack.First()->Refresh();
+  // bottom --> top (draw lower layer OSDs first)
+  cXinelibOsd *it = cXinelibOsd::m_OsdStack.Last();
+  while(it) {
+    it->Refresh();
+    it = cXinelibOsd::m_OsdStack.Prev(it);
+  }
 }
 
 
