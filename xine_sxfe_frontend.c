@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.27 2007-07-18 11:34:25 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.28 2007-10-28 18:45:39 phintuka Exp $
  *
  */
 
@@ -46,6 +46,9 @@
 #endif
 #include <jpeglib.h>
 #undef boolean
+
+/* framegrab ports */
+#define XINE_ENABLE_EXPERIMENTAL_FEATURES
 
 #include <xine.h>
 #ifndef XINE_ENGINE_INTERNAL
