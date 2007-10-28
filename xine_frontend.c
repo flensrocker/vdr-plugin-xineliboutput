@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.41 2007-10-28 18:45:39 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.42 2007-10-28 20:16:57 phintuka Exp $
  *
  */
 
@@ -735,7 +735,7 @@ static void init_dummy_ports(fe_t *this, int on)
 #if XINE_VERSION_CODE < 10190
       this->audio_port_none = _x_ao_new_port (this->xine, NULL, 1); 
 #else
-      this->audio_port = xine_new_framegrab_audio_port(this->xine);
+      this->audio_port_none = xine_new_framegrab_audio_port(this->xine);
 #endif
     if(this->audio_port_none)
       this->audio_port_none->set_property(this->audio_port_none, AO_PROP_DISCARD_BUFFERS, 1);
