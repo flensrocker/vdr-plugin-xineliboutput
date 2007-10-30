@@ -4,12 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.10 2007-10-28 18:57:29 phintuka Exp $
+ * $Id: osd.c,v 1.11 2007-10-30 20:30:23 phintuka Exp $
  *
  */
 
 #include <vdr/config.h>
-#include <vdr/tools.h>   // cListObject
+#include <vdr/tools.h>
+#include <vdr/thread.h>
 
 #include "logdefs.h"
 #include "device.h"
@@ -29,6 +30,8 @@ class cXinelibOsd : public cOsd, public cListObject
     cXinelibOsd(cXinelibOsd&);
 
     cXinelibDevice *m_Device;
+
+    void CloseWindows(void);
 
   protected:
     static cMutex             m_Lock;
@@ -206,8 +209,7 @@ cXinelibOsd::~cXinelibOsd()
 
   cMutexLock ml(&m_Lock);
 
-  if(m_IsVisible)
-    Hide();
+  CloseWindows();
 
   m_OsdStack.Del(this,false);
 
@@ -330,20 +332,28 @@ void cXinelibOsd::Show(void)
   Refresh();
 }
 
+void cXinelibOsd::CloseWindows(void)
+{
+  TRACEF("cXinelibOsd::CloseWindows");
+
+  if(m_IsVisible) {
+    cBitmap *Bitmap;
+    m_Shown = false;
+    for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
+      LOGOSD("Close OSD %d.%d", Index(), i);
+      CmdClose(m_Device, i);
+    }
+  }
+}
+
 void cXinelibOsd::Hide(void)
 {
   TRACEF("cXinelibOsd::Hide");
 
   cMutexLock ml(&m_Lock);
 
-  if(m_IsVisible) {
-    cBitmap *Bitmap;
-    m_IsVisible = false;
-    for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
-      LOGOSD("Hide OSD %d.%d", Index(), i);
-      CmdClose(m_Device, i);
-    }
-  }
+  CloseWindows();
+  m_IsVisible = false;
 }
 
 void cXinelibOsd::Detach(void)
