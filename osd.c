@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.12 2007-10-30 20:33:34 phintuka Exp $
+ * $Id: osd.c,v 1.13 2007-10-30 21:07:14 phintuka Exp $
  *
  */
 
@@ -16,10 +16,9 @@
 #include "device.h"
 #include "osd.h"
 #include "config.h"
+#include "xine_osd_command.h"
 
 //#define LIMIT_OSD_REFRESH_RATE
-
-#include "xine_osd_command.h"
 
 #define LOGOSD(x...)
 
@@ -27,11 +26,16 @@ class cXinelibOsd : public cOsd, public cListObject
 {
   private:
     cXinelibOsd();
-    cXinelibOsd(cXinelibOsd&);
+    cXinelibOsd(cXinelibOsd&); // no copy
 
     cXinelibDevice *m_Device;
 
     void CloseWindows(void);
+    void CmdSize(int Width, int Height);
+    void CmdRle(int Wnd, int X0, int Y0,
+		int W, int H, unsigned char *Data,
+		int Colors, unsigned int *Palette);
+    void CmdClose(int Wnd);
 
   protected:
     static cMutex             m_Lock;
@@ -61,35 +65,35 @@ class cXinelibOsd : public cOsd, public cListObject
 cList<cXinelibOsd> cXinelibOsd::m_OsdStack;
 cMutex             cXinelibOsd::m_Lock;
 
-static inline void CmdSize(cXinelibDevice *Device, int wnd, int w=0, int h=0)
-{
-  TRACEF("xinelib_osd.c:CmdSize");
 
-  if(Device) {
+void cXinelibOsd::CmdSize(int Width, int Height)
+{
+  TRACEF("cXinelibOsd::CmdSize");
+
+  if(m_Device) {
     osd_command_t osdcmd;
     memset(&osdcmd,0,sizeof(osdcmd));
 
     osdcmd.cmd = OSD_Size;
-    osdcmd.wnd = wnd;
-    osdcmd.w = w;
-    osdcmd.h = h;
+    osdcmd.w = Width;
+    osdcmd.h = Height;
 
-    Device->OsdCmd((void*)&osdcmd);
+    m_Device->OsdCmd((void*)&osdcmd);
   }
 }
 
-static inline void CmdClose(cXinelibDevice *Device, int wnd)
+void cXinelibOsd::CmdClose(int Wnd)
 {
-  TRACEF("xinelib_osd.c:CmdClose");
+  TRACEF("cXinelibOsd::CmdClose");
 
-  if(Device) {
+  if(m_Device) {
     osd_command_t osdcmd;
     memset(&osdcmd,0,sizeof(osdcmd));
     
     osdcmd.cmd = OSD_Close;
-    osdcmd.wnd = wnd;
+    osdcmd.wnd = Wnd;
 
-    Device->OsdCmd((void*)&osdcmd);
+    m_Device->OsdCmd((void*)&osdcmd);
   }
 }
 
@@ -98,13 +102,13 @@ static inline int saturate(int x, int min, int max)
   return x < min ? min : (x > max ? max : x);
 }
 
-static inline void RleCmd(cXinelibDevice *Device, int wnd,
-                int x0, int y0, int w, int h, unsigned char *data,
-                int colors, unsigned int *palette)
+void cXinelibOsd::CmdRle(int Wnd,
+			 int X0, int Y0, int W, int H, unsigned char *Data,
+			 int Colors, unsigned int *Palette)
 {
-  TRACEF("xinelib_osd.c:RleCmd");
+  TRACEF("cXinelibOsd::CmdRle");
 
-  if(Device) {
+  if(m_Device) {
 
     xine_rle_elem_t rle, *rle_p=0;
 
@@ -116,21 +120,21 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
     memset(&osdcmd, 0, sizeof(osdcmd));
     memset(&clut, 0, sizeof(clut));
     osdcmd.cmd = OSD_Set_RLE;
-    osdcmd.wnd = wnd;
-    osdcmd.x = x0;
-    osdcmd.y = y0;
-    osdcmd.w = w;
-    osdcmd.h = h;
+    osdcmd.wnd = Wnd;
+    osdcmd.x = X0;
+    osdcmd.y = Y0;
+    osdcmd.w = W;
+    osdcmd.h = H;
 
     /* apply alpha layer correction and convert ARGB -> AYCrCb */
 
-    if (colors) {
-      for(int c=0; c<colors; c++) {
-	int alpha = (palette[c] & 0xff000000)>>24;
+    if (Colors) {
+      for(int c=0; c<Colors; c++) {
+	int alpha = (Palette[c] & 0xff000000)>>24;
 	alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
-	int R     = ((palette[c] & 0x00ff0000) >> 16);
-	int G     = ((palette[c] & 0x0000ff00) >>  8);
-	int B     = ((palette[c] & 0x000000ff));
+	int R     = ((Palette[c] & 0x00ff0000) >> 16);
+	int G     = ((Palette[c] & 0x0000ff00) >>  8);
+	int B     = ((Palette[c] & 0x000000ff));
 	int Y     = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
 	int CR    = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
 	int CB    = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
@@ -141,7 +145,7 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
       }
     }
 
-    osdcmd.colors = colors;
+    osdcmd.colors = Colors;
     osdcmd.palette = clut;
 
     /* RLE compression */
@@ -150,14 +154,14 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
     rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
     osdcmd.data = rle_p;
 
-    for( y = 0; y < h; y++ ) {
+    for( y = 0; y < H; y++ ) {
       rle.len = 0;
       rle.color = 0;
-      c = data + y * w;
-      for( x = 0; x < w; x++, c++ ) {
+      c = Data + y * W;
+      for( x = 0; x < W; x++, c++ ) {
 	if( rle.color != *c ) {
 	  if( rle.len ) {
-	    if( (num_rle + h-y+1) > rle_size ) {
+	    if( (num_rle + H-y+1) > rle_size ) {
 	      rle_size *= 2;
 	      rle_p = (xine_rle_elem_t*)realloc( osdcmd.data, 4*rle_size);
 	      osdcmd.data = rle_p;
@@ -178,9 +182,9 @@ static inline void RleCmd(cXinelibDevice *Device, int wnd,
     osdcmd.datalen = 4 * num_rle;
     osdcmd.num_rle = num_rle;
     
-    TRACE("xinelib_osd.c:RleCmd uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
+    TRACE("xinelib_osd.c:CmdRle uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
 
-    Device->OsdCmd((void*)&osdcmd);
+    m_Device->OsdCmd((void*)&osdcmd);
 
     if(osdcmd.data)
       free(osdcmd.data);
@@ -200,7 +204,7 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
   m_Shown = false;
   m_IsVisible = true;
   m_Layer = Level;
-  CmdSize(m_Device, 0, 720, 576);
+  CmdSize(720, 576);
 }
 
 cXinelibOsd::~cXinelibOsd()
@@ -232,9 +236,9 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
     LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d", 
 	   Left() + Width(), Top() + Height(), 
 	   Setup.OSDWidth, Setup.OSDHeight);
-    CmdSize(m_Device, 0, Setup.OSDWidth, Setup.OSDHeight);
+    CmdSize(Setup.OSDWidth, Setup.OSDHeight);
   } else {
-    CmdSize(m_Device, 0, 720, 576);
+    CmdSize(720, 576);
   }
 
   return Result;
@@ -276,7 +280,7 @@ void cXinelibOsd::Flush(void)
       /* XXX what if only palette has been changed ? */
       int NumColors;
       const tColor *Colors = Bitmap->Colors(NumColors);
-      RleCmd(m_Device, i,
+      CmdRle(i,
              Left() + Bitmap->X0(), Top() + Bitmap->Y0(),
              Bitmap->Width(), Bitmap->Height(),
              (unsigned char *)Bitmap->Data(0,0),
@@ -342,7 +346,7 @@ void cXinelibOsd::CloseWindows(void)
     m_Shown = false;
     for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
       LOGOSD("Close OSD %d.%d", Index(), i);
-      CmdClose(m_Device, i);
+      CmdClose(i);
     }
   }
 }
