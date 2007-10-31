@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.42 2007-10-28 20:16:57 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.43 2007-10-31 22:14:18 phintuka Exp $
  *
  */
 
@@ -44,6 +44,31 @@ static inline char *strn0cpy(char *dest, const char *src, int n)
   for ( ; --n && (*dest = *src) != 0; dest++, src++) ;
   *dest = 0;
   return s;
+}
+
+static int guess_cpu_count(void)
+{
+  static int cores = -1;
+  FILE *f;
+
+  if(cores >= 0)
+    return cores;
+
+  cores = 0;
+  if(NULL != (f = fopen("/proc/cpuinfo", "r"))) {
+    char buf[256];
+    while (NULL != fgets(buf, 255, f))
+      sscanf(buf, "processor : %d", &cores);
+    fclose(f);
+  }
+  cores++;
+
+  if(cores > 1) 
+    LOGMSG("Detected %d CPUs", cores);
+  else
+    LOGDBG("Detected single CPU. Multithreaded decoding and post processing disabled.");
+
+  return cores;
 }
 
 /*
@@ -634,6 +659,27 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   posts->audio_port = this->audio_port;
   posts->video_port = this->video_port;
   posts->stream = this->stream;
+
+  /* multithreaded decoding / post processing */
+
+  if(guess_cpu_count() > 1) {
+    int xmajor, xminor, xsub;
+    xine_get_version(&xmajor, &xminor, &xsub);
+    if(xmajor*10000 + xminor*100 + xsub < 10109)
+      LOGMSG("Multithreaded video decoding is not supported in xine-lib %d.%d.%d",
+	     xmajor, xminor, xsub);
+    else
+      LOGMSG("Enabling multithreaded video decoding");
+
+    /* try to enable anyway, maybe someone is using patched 1.1.8 ... */
+    x_upd_num("video.processing.ffmpeg_thread_count", guess_cpu_count());
+#if 0
+    LOGMSG("Enabling multithreaded post processing");
+    vpplugin_parse_and_store_post(posts, "thread");
+#endif
+  }
+
+  /* static post plugins from command-line */
 
   if(static_post_plugins && *static_post_plugins) {
     int i;
