@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.13 2007-10-30 21:07:14 phintuka Exp $
+ * $Id: osd.c,v 1.14 2007-10-31 00:52:27 phintuka Exp $
  *
  */
 
@@ -14,13 +14,102 @@
 
 #include "logdefs.h"
 #include "device.h"
-#include "osd.h"
 #include "config.h"
 #include "xine_osd_command.h"
+
+#include "osd.h"
 
 //#define LIMIT_OSD_REFRESH_RATE
 
 #define LOGOSD(x...)
+
+//
+// tools
+//
+
+static inline int saturate(int x, int min, int max)
+{
+  return x < min ? min : (x > max ? max : x);
+}
+
+static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palette, int colors, bool top)
+{
+  if (colors) {
+    int c;
+
+    // Apply alpha layer correction and convert ARGB -> AYCrCb
+
+    for(c=0; c<colors; c++) {
+      int alpha = (palette[c] & 0xff000000)>>24;
+      alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
+      int R     = ((palette[c] & 0x00ff0000) >> 16);
+      int G     = ((palette[c] & 0x0000ff00) >>  8);
+      int B     = ((palette[c] & 0x000000ff));
+      int Y     = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
+      int CR    = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
+      int CB    = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
+      clut[c].y     = saturate(    Y, 16, 235);
+      clut[c].cb    = saturate(   CB, 16, 240);
+      clut[c].cr    = saturate(   CR, 16, 240);
+      clut[c].alpha = saturate(alpha,  0, 255);
+    }
+
+    // Apply OSD mixer settings
+
+    if(!top) {
+      if(xc.osd_mixer & OSD_MIXER_ALPHA)
+	for(c=0; c<colors; c++)
+	  clut[c].alpha = (clut[c].alpha >> 1) | 0x80;
+      if(xc.osd_mixer & OSD_MIXER_GRAY)
+	for(c=0; c<colors; c++)
+	  clut[c].cb = clut[c].cr = 0x80;
+    }
+  }
+}
+
+static int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, int w, int h)
+{
+  xine_rle_elem_t rle, *rle_p = 0, *rle_base;
+  int x, y, num_rle = 0, rle_size = 8128;
+  const uint8_t *c;
+
+  rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
+  rle_base = rle_p;
+
+  for( y = 0; y < h; y++ ) {
+    rle.len = 0;
+    rle.color = 0;
+    c = data + y * w;
+    for( x = 0; x < w; x++, c++ ) {
+      if( rle.color != *c ) {
+	if( rle.len ) {
+	  if( (num_rle + h-y+1) > rle_size ) {
+	    rle_size *= 2;
+	    rle_base = (xine_rle_elem_t*)realloc( rle_base, 4*rle_size );
+	    rle_p = rle_base + num_rle;
+	  }
+	  *rle_p++ = rle;
+	  num_rle++;
+	}
+	rle.color = *c;
+	rle.len = 1;
+      } else {
+	rle.len++;
+      }
+    }
+    *rle_p++ = rle;
+    num_rle++;
+  }
+
+  TRACE("xinelib_osd.c:CmdRle uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
+
+  *rle_data = rle_base;
+  return num_rle;
+}
+
+//
+// cXinelibOsd
+//
 
 class cXinelibOsd : public cOsd, public cListObject 
 {
@@ -34,7 +123,7 @@ class cXinelibOsd : public cOsd, public cListObject
     void CmdSize(int Width, int Height);
     void CmdRle(int Wnd, int X0, int Y0,
 		int W, int H, unsigned char *Data,
-		int Colors, unsigned int *Palette);
+		int Colors, unsigned int *Palette, int Top);
     void CmdClose(int Wnd);
 
   protected:
@@ -97,28 +186,18 @@ void cXinelibOsd::CmdClose(int Wnd)
   }
 }
 
-static inline int saturate(int x, int min, int max)
-{
-  return x < min ? min : (x > max ? max : x);
-}
-
-void cXinelibOsd::CmdRle(int Wnd,
-			 int X0, int Y0, int W, int H, unsigned char *Data,
-			 int Colors, unsigned int *Palette)
+void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0, 
+			 int W, int H, unsigned char *Data,
+			 int Colors, unsigned int *Palette, int Top)
 {
   TRACEF("cXinelibOsd::CmdRle");
 
   if(m_Device) {
 
-    xine_rle_elem_t rle, *rle_p=0;
-
     osd_command_t osdcmd;
-    int x, y, num_rle=0, rle_size=0;
-    uint8_t *c;
     xine_clut_t clut[256];
 
     memset(&osdcmd, 0, sizeof(osdcmd));
-    memset(&clut, 0, sizeof(clut));
     osdcmd.cmd = OSD_Set_RLE;
     osdcmd.wnd = Wnd;
     osdcmd.x = X0;
@@ -126,64 +205,13 @@ void cXinelibOsd::CmdRle(int Wnd,
     osdcmd.w = W;
     osdcmd.h = H;
 
-    /* apply alpha layer correction and convert ARGB -> AYCrCb */
-
-    if (Colors) {
-      for(int c=0; c<Colors; c++) {
-	int alpha = (Palette[c] & 0xff000000)>>24;
-	alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
-	int R     = ((Palette[c] & 0x00ff0000) >> 16);
-	int G     = ((Palette[c] & 0x0000ff00) >>  8);
-	int B     = ((Palette[c] & 0x000000ff));
-	int Y     = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
-	int CR    = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
-	int CB    = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
-	clut[c].y     = saturate(    Y, 16, 235);
-	clut[c].cb    = saturate(   CB, 16, 240);
-	clut[c].cr    = saturate(   CR, 16, 240);
-	clut[c].alpha = saturate(alpha,  0, 255);
-      }
-    }
-
+    prepare_palette(&clut[0], Palette, Colors, Top);
     osdcmd.colors = Colors;
     osdcmd.palette = clut;
 
-    /* RLE compression */
- 
-    rle_size = 8128;
-    rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
-    osdcmd.data = rle_p;
-
-    for( y = 0; y < H; y++ ) {
-      rle.len = 0;
-      rle.color = 0;
-      c = Data + y * W;
-      for( x = 0; x < W; x++, c++ ) {
-	if( rle.color != *c ) {
-	  if( rle.len ) {
-	    if( (num_rle + H-y+1) > rle_size ) {
-	      rle_size *= 2;
-	      rle_p = (xine_rle_elem_t*)realloc( osdcmd.data, 4*rle_size);
-	      osdcmd.data = rle_p;
-	      rle_p += num_rle;
-	    }
-	    *rle_p++ = rle;
-	    num_rle++;
-	  }
-	  rle.color = *c;
-	  rle.len = 1;
-	} else {
-	  rle.len++;
-	}
-      }
-      *rle_p++ = rle;
-      num_rle++;
-    }
-    osdcmd.datalen = 4 * num_rle;
-    osdcmd.num_rle = num_rle;
+    osdcmd.num_rle = rle_compress(&osdcmd.data, Data, W, H);
+    osdcmd.datalen = 4 * osdcmd.num_rle;
     
-    TRACE("xinelib_osd.c:CmdRle uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
-
     m_Device->OsdCmd((void*)&osdcmd);
 
     if(osdcmd.data)
@@ -272,6 +300,7 @@ void cXinelibOsd::Flush(void)
   if(!m_IsVisible) 
     return;
 
+  int top = (Prev() == NULL);
   int SendDone = 0;
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
     int x1 = 0, y1 = 0, x2 = Bitmap->Width()-1, y2 = Bitmap->Height()-1;
@@ -284,7 +313,8 @@ void cXinelibOsd::Flush(void)
              Left() + Bitmap->X0(), Top() + Bitmap->Y0(),
              Bitmap->Width(), Bitmap->Height(),
              (unsigned char *)Bitmap->Data(0,0),
-             NumColors, (unsigned int *)Colors);
+             NumColors, (unsigned int *)Colors,
+	     top);
       SendDone++;
     }
     Bitmap->Clean();
