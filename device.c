@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.45 2007-10-15 00:15:07 phintuka Exp $
+ * $Id: device.c,v 1.46 2007-11-25 17:38:46 phelin Exp $
  *
  */
 
@@ -28,6 +28,7 @@
 //#define LOG_TRICKSPEED
 #if VDRVERSNUM >= 10510
 # define SKIP_DVDSPU
+# define DEVICE_SUPPORTS_IBP_TRICKSPEED
 #endif
 
 #include "logdefs.h"
