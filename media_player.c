@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.36 2007-10-15 00:15:07 phintuka Exp $
+ * $Id: media_player.c,v 1.37 2007-11-25 18:46:04 phelin Exp $
  *
  */
 
@@ -95,19 +95,8 @@ cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile
       m_Playlist.Sort();
     } else if(xc.IsPlaylistFile(File)) {
       m_Playlist.Read(File);
-    } else if(xc.IsAudioFile(File) && !Queue) {
-      // one audio file, create temporary playlist
-      cString folder(File);
-      *(strrchr(*folder, '/') + 1) = 0;
-      m_Playlist.Read(*folder);
-      m_Playlist.Sort();
-      // search start position
-      m_Playlist.SetCurrent(NULL);
-      for(cPlaylistItem *i = m_Playlist.First(); i; i = m_Playlist.Next(i))
-	if(!strcmp(File, *(i->Filename)))
-	  m_Playlist.SetCurrent(i);
     } else {
-      // not audio or playlist file, create playlist with only one item
+      // a single file but not a playlist file, create playlist with only one item
       m_Playlist.Read(File);
     }
 
@@ -183,7 +172,7 @@ void cXinelibPlayer::SetSpeed(int Speed)
 
 bool cXinelibPlayer::NextFile(int step)
 {
-  if(m_Playlist.Count()>1) {
+  if(m_Playlist.Count()>0) {
     for(;step < 0; step++)
       m_Playlist.Prev();
     for(;step > 0; step--) 
@@ -593,6 +582,10 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       !m_Player->Replaying() ) {
     LOGDBG("cXinelibPlayerControl: EndOfStreamReached");
     LOGDBG("cXinelibPlayerControl: Replaying = %d", m_Player->Replaying());
+    if (m_Mode == ShowMusic && m_Player->Files() == 1) {
+      m_Player->NextFile(0);
+      return osContinue;
+    }
     int Jump = 1;
     if(m_RandomPlay) {
       srand((unsigned int)time(NULL));
