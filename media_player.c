@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.37 2007-11-25 18:46:04 phelin Exp $
+ * $Id: media_player.c,v 1.38 2007-11-25 19:01:45 phelin Exp $
  *
  */
 
@@ -652,9 +652,8 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   switch(Key) {
     case kBack:   xc.main_menu_mode = m_Mode;
                   Hide(); 
-                  Close(); 
 		  BackToMenu();
-                  return osEnd;
+                  break;
     case kStop:
     case kBlue:   Hide();
                   Close();
