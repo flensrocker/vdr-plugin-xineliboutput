@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.28 2007-10-28 18:45:39 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.29 2007-12-09 22:59:19 phintuka Exp $
  *
  */
 
@@ -154,6 +154,7 @@ typedef struct sxfe_s {
   uint8_t   fullscreen_state_forced;
   uint8_t   stay_above;
   uint8_t   no_border;
+  uint8_t   check_move;
 
   /* strings */
   char    configfile[256];
@@ -404,6 +405,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->height          = height;
   this->origwidth       = width>0 ? width : 720;
   this->origheight      = height>0 ? height : 576;
+  this->check_move      = 0;
 
   this->fullscreen      = fullscreen;
   this->vmode_switch    = modeswitch;
@@ -654,6 +656,9 @@ static int sxfe_display_config(frontend_t *this_gen,
     if(!fullscreen) {
       XResizeWindow(this->display, this->window[0], this->width, this->height);
       XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
+      LOGDBG("sxfe_display_config: XMoveWindow called with x=%d and y=%d",
+	     this->xpos, this->ypos);
+      this->check_move = 1;
       set_above(this, this->stay_above);
     } else {
       set_fullscreen_props(this);
@@ -770,6 +775,14 @@ static int sxfe_run(frontend_t *this_gen)
 	
 	this->width  = cev->width;
 	this->height = cev->height;
+
+        if(this->window[0] == cev->window && this->check_move) {
+	  LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
+		 cev->x, cev->y, this->check_move);
+	  this->check_move = 0;
+	  if(this->xpos != cev->x && this->ypos != cev->y)
+	    XMoveWindow(this->display, this->window[0], cev->x, cev->y);
+	}
 	
 	if ((cev->x == 0) && (cev->y == 0)) {
 	  XLockDisplay(cev->display);
@@ -814,6 +827,7 @@ static int sxfe_run(frontend_t *this_gen)
 	  dry = mev->y_root;
 
 	  XMoveWindow(this->display, this->window[0], xpos, ypos);
+          LOGDBG("MotionNotify: XMoveWindow called with x=%d and y=%d", xpos, ypos);
 
 	  XUnlockDisplay(this->display);
 	}
