@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.100 2007-09-20 22:37:22 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.101 2007-12-19 20:44:30 phintuka Exp $
  *
  */
 
@@ -3906,13 +3906,12 @@ struct {
   {XINE_EVENT_VDR_VOLMINUS,     "Volume-"},
   {XINE_EVENT_VDR_MUTE,         "Mute"},
   {XINE_EVENT_VDR_AUDIO,        "Audio"},
-#else
-#  warning Xine VDR keys not defined
 #endif
 #if defined(XINE_EVENT_VDR_INFO)
   {XINE_EVENT_VDR_INFO,         "Info"},
-#else
-#  warning Xine VDR key "Info" not defined
+#endif
+#if defined(XINE_EVENT_VDR_SUBTITLES)
+  {XINE_EVENT_VDR_SUBTITLES,    "Subtitles"},
 #endif
   {-1, NULL}
 };
