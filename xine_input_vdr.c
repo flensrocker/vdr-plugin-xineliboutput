@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.101 2007-12-19 20:44:30 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.102 2007-12-19 20:48:20 phintuka Exp $
  *
  */
 
@@ -6225,6 +6225,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
  * vdr input plugin class stuff
  */
 
+#if INPUT_PLUGIN_IFACE_VERSION < 18
 #if XINE_VERSION_CODE > 10103
 static const char *vdr_class_get_description (input_class_t *this_gen) 
 #else
@@ -6238,6 +6239,7 @@ static const char *vdr_class_get_identifier (input_class_t *this_gen)
 {
   return "xvdr";
 }
+#endif
 
 static char **vdr_plugin_get_autplay_list(input_class_t *this_gen, int *num_files) 
 {
@@ -6300,8 +6302,13 @@ static void *init_class (xine_t *xine, void *data)
 						 (void *)this);
 
   this->input_class.get_instance       = vdr_class_get_instance;
+#if INPUT_PLUGIN_IFACE_VERSION < 18
   this->input_class.get_identifier     = vdr_class_get_identifier;
   this->input_class.get_description    = vdr_class_get_description;
+#else
+  this->input_class.identifier         = "xvdr";
+  this->input_class.description        = N_("VDR (Video Disk Recorder) input plugin");
+#endif
   this->input_class.get_dir            = NULL;
   this->input_class.get_autoplay_list  = vdr_plugin_get_autplay_list;
   this->input_class.dispose            = vdr_class_dispose;
