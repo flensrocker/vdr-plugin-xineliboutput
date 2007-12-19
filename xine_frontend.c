@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.43 2007-10-31 22:14:18 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.44 2007-12-19 20:35:40 phintuka Exp $
  *
  */
 
@@ -84,11 +84,15 @@ static int find_input(fe_t *this)
       usleep(100*1000);
       return 0;
     }
+#if XINE_VERSION_CODE < 10190
     if(strcmp(this->stream->input_plugin->input_class->get_identifier(
 	      this->stream->input_plugin->input_class),
               "xvdr")) {
+#else
+    if(strcmp(this->stream->input_plugin->input_class->identifier,
+              "xvdr")) {
+#endif
       LOGMSG("find_input: current xine input plugin is not xvdr !");
-      /*usleep(100*1000);*/
       return 0;
     }
     this->input = this->stream->input_plugin;
