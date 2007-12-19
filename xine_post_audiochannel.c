@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_audiochannel.c,v 1.3 2007-06-21 08:02:38 phintuka Exp $
+ * $Id: xine_post_audiochannel.c,v 1.4 2007-12-19 21:42:15 phintuka Exp $
  *
  */
 
@@ -273,6 +273,7 @@ static post_plugin_t *audioch_open_plugin(post_class_t *class_gen,
  *    Plugin class
  */
 
+#if XINE_VERSION_CODE < 10190
 static char *audioch_get_identifier(post_class_t *class_gen)
 {
   return "audiochannel";
@@ -287,6 +288,7 @@ static void audioch_class_dispose(post_class_t *class_gen)
 {
   free(class_gen);
 }
+#endif
 
 static void *audioch_init_plugin(xine_t *xine, void *data)
 {
@@ -296,9 +298,15 @@ static void *audioch_init_plugin(xine_t *xine, void *data)
     return NULL;
 
   class->open_plugin     = audioch_open_plugin;
+#if XINE_VERSION_CODE < 10190
   class->get_identifier  = audioch_get_identifier;
   class->get_description = audioch_get_description;
   class->dispose         = audioch_class_dispose;
+#else
+  class->identifier      = "audiochannel";
+  class->description     = N_("Select audio channel");
+  class->dispose         = default_post_class_dispose;
+#endif
 
   return class;
 }

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.10 2006-12-19 17:38:52 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.11 2007-12-19 21:46:07 phintuka Exp $
  *
  */
 
@@ -27,7 +27,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.10 2006-12-19 17:38:52 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.11 2007-12-19 21:46:07 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -381,6 +381,7 @@ static int blank_line_UV_mmx(uint8_t *data, int length)
   __asm__("pxor %0,%0" : "=y"(sum1));
   __asm__("pxor %0,%0" : "=y"(sum2));
 
+  /* fetch static data to MMX registers */
   m_03 = gm_03.m64;
   /*m_f8 = gm_f8.m64;*/
   m_80 = gm_80.m64;
@@ -440,6 +441,7 @@ static int blank_line_Y_sse(uint8_t *data, int length)
   length -= 64; /* skip borders (2 x 32 pixels) */
   length /= 16; /* 16 bytes / loop */
 
+  /* Start prefetching data to CPU cache */
   _mm_prefetch(data128+length-1, _MM_HINT_NTA);
   _mm_prefetch(data128+length-3, _MM_HINT_NTA);
 
@@ -1573,6 +1575,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
  *    Plugin class
  */
 
+#if XINE_VERSION_CODE < 10190
 static char *autocrop_get_identifier(post_class_t *class_gen)
 {
   return "autocrop";
@@ -1587,6 +1590,7 @@ static void autocrop_class_dispose(post_class_t *class_gen)
 {
   free(class_gen);
 }
+#endif
 
 static void *autocrop_init_plugin(xine_t *xine, void *data)
 {
@@ -1594,9 +1598,15 @@ static void *autocrop_init_plugin(xine_t *xine, void *data)
   
   if(class) {
     class->open_plugin     = autocrop_open_plugin;
+#if XINE_VERSION_CODE < 10190
     class->get_identifier  = autocrop_get_identifier;
     class->get_description = autocrop_get_description;
     class->dispose         = autocrop_class_dispose;
+#else
+    class->identifier      = "autocrop";
+    class->description     = N_("Crop letterboxed 4:3 video to 16:9");
+    class->dispose         = default_post_class_dispose;
+#endif
   }
 
   return class;
