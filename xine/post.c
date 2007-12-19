@@ -230,14 +230,13 @@ static post_element_t **pplugin_parse_and_load(fe_t *fe,
 					       int *post_elements_num) 
 {
   post_element_t **post_elements = NULL;
-  char            *post_chain;
 
   *post_elements_num = 0;
 
   if(pchain && strlen(pchain)) {
-    char *p;
+    char *post_chain, *freeme, *p;
     
-    xine_strdupa(post_chain, pchain);
+    freeme = post_chain = strdup(pchain);
     
     while((p = xine_strsep(&post_chain, ";"))) {
       
@@ -299,6 +298,7 @@ static post_element_t **pplugin_parse_and_load(fe_t *fe,
 	free(plugin);
       }
     }
+    free(freeme);
   }
 
   return post_elements;
