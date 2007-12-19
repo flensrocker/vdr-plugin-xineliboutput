@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.102 2007-12-19 20:48:20 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.103 2007-12-19 23:32:34 phintuka Exp $
  *
  */
 
@@ -1382,6 +1382,88 @@ static void signal_buffer_not_empty(vdr_input_plugin_t *this)
   }
 }
 
+#if XINE_VERSION_CODE < 10190
+#  define fifo_buffer_new (stream, n, s) _x_fifo_buffer_new(n, s)
+#else
+static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, uint32_t buf_size)
+{
+  fifo_buffer_t *ref = stream->video_fifo;
+  fifo_buffer_t *this;
+  int            i;
+  int            alignment = 2048;
+  unsigned char *multi_buffer = NULL;
+
+  LOGDBG("fifo_buffer_new...");
+  this = xine_xmalloc (sizeof (fifo_buffer_t));
+
+  this->first               = NULL;
+  this->last                = NULL;
+  this->fifo_size           = 0;
+  this->put                 = ref->put;
+  this->insert              = ref->insert;
+  this->get                 = ref->get;
+  this->clear               = ref->clear;
+  this->size                = ref->size;
+  this->num_free            = ref->num_free;
+  this->data_size           = ref->data_size;
+  this->dispose             = ref->dispose;
+  this->register_alloc_cb   = ref->register_alloc_cb;
+  this->register_get_cb     = ref->register_get_cb;
+  this->register_put_cb     = ref->register_put_cb;
+  this->unregister_alloc_cb = ref->unregister_alloc_cb;
+  this->unregister_get_cb   = ref->unregister_get_cb;
+  this->unregister_put_cb   = ref->unregister_put_cb;
+  pthread_mutex_init (&this->mutex, NULL);
+  pthread_cond_init (&this->not_empty, NULL);
+
+  /*
+   * init buffer pool, allocate nNumBuffers of buf_size bytes each
+   */
+
+  if (buf_size % alignment != 0)
+    buf_size += alignment - (buf_size % alignment);
+
+  multi_buffer = xine_xmalloc_aligned (alignment, num_buffers * buf_size,
+                                       &this->buffer_pool_base);
+
+  this->buffer_pool_top = NULL;
+
+  pthread_mutex_init (&this->buffer_pool_mutex, NULL);
+  pthread_cond_init (&this->buffer_pool_cond_not_empty, NULL);
+
+  this->buffer_pool_num_free  = 0;
+  this->buffer_pool_capacity  = num_buffers;
+  this->buffer_pool_buf_size  = buf_size;
+  this->buffer_pool_alloc     = ref->buffer_pool_alloc;
+  this->buffer_pool_try_alloc = ref->buffer_pool_try_alloc;
+
+  for (i = 0; i<num_buffers; i++) {
+    buf_element_t *buf;
+
+    buf = xine_xmalloc (sizeof (buf_element_t));
+
+    buf->mem = multi_buffer;
+    multi_buffer += buf_size;
+
+    buf->max_size    = buf_size;
+    buf->free_buffer = buffer_pool_free;
+    buf->source      = this;
+    buf->extra_info  = malloc(sizeof(extra_info_t));
+
+    buffer_pool_free (buf);
+  }
+  this->alloc_cb[0]              = NULL;
+  this->get_cb[0]                = NULL;
+  this->put_cb[0]                = NULL;
+  this->alloc_cb_data[0]         = NULL;
+  this->get_cb_data[0]           = NULL;
+  this->put_cb_data[0]           = NULL;
+
+  LOGDBG("fifo_buffer_new done.");
+  return this;
+}
+#endif
+
 static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int force)
 {
   buf_element_t *buf = NULL;
@@ -1389,7 +1471,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   /* HD buffer */
   if(this->hd_stream) {
     if(!this->hd_buffer)
-      this->hd_buffer = _x_fifo_buffer_new(HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
+      this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
 
     if(size <= HD_BUF_ELEM_SIZE && this->hd_buffer && this->hd_stream)
       buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
@@ -1421,7 +1503,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
     }
     else { /* len>64k */
       if(!this->big_buffer)
-	this->big_buffer = _x_fifo_buffer_new(4,512*1024);
+	this->big_buffer = fifo_buffer_new(this->stream, 4, 512*1024);
       buf = this->big_buffer->buffer_pool_try_alloc(this->big_buffer);
       LOGDBG("vdr_plugin_write: jumbo PES (%d bytes) !", size);
     }
@@ -1582,7 +1664,7 @@ static char* fifo_get_mrl (input_plugin_t *this_gen)
 #endif
 { return "xvdr:slave:"; }
 
-#if XINE_VERSION_CODE < 10200
+#if XINE_VERSION_CODE < 10190
 static off_t fifo_read (input_plugin_t *this_gen, char *buf, off_t len) 
 #else
 static off_t fifo_read (input_plugin_t *this_gen, void *buf, off_t len) 
@@ -1644,7 +1726,7 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
   slave->master = (vdr_input_plugin_t*)master;
   slave->stream = stream;
   slave->buffer_pool = stream->video_fifo;
-  slave->buffer = _x_fifo_buffer_new(4,4096);
+  slave->buffer = fifo_buffer_new(stream, 4, 4096);
   slave->i.open              = fifo_open;
   slave->i.get_mrl           = fifo_get_mrl;
   slave->i.dispose           = fifo_dispose;
@@ -4690,7 +4772,7 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
   }
 }
 
-#if XINE_VERSION_CODE < 10200
+#if XINE_VERSION_CODE < 10190
 static off_t vdr_plugin_read (input_plugin_t *this_gen, char *buf_gen, off_t len)
 #else
 static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len)
@@ -4843,7 +4925,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
     }
   }
 
-  /* Handle PTS and DTS timestamps */
+  /* Handle PTS and DTS */
 
   buf->decoder_info[0] = 0;
   if (pts >= INT64_C(0)) {
@@ -6187,7 +6269,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   }
   
   /* buffer */
-  this->block_buffer = _x_fifo_buffer_new(4,0x10000+64); /* dummy buf to be used before first read and for big PES frames */
+  this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
   this->big_buffer = NULL;   /* dummy buf to be used for jumbo PES frames */
   this->hd_buffer = NULL;
   
@@ -6324,16 +6406,9 @@ static void *init_class (xine_t *xine, void *data)
  * exported plugin catalog entry
  */
 
-/*
-#define NO_INFO_EXPORT
-#include "xine_post_audiochannel.c"
-#undef NO_INFO_EXPORT
-*/
-
 const plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) = {
   /* type, API, "name", version, special_info, init_function */
   { PLUGIN_INPUT, INPUT_PLUGIN_IFACE_VERSION, "XVDR", XINE_VERSION_CODE, NULL, init_class },
-  /*{ PLUGIN_POST, 9, "audiochannel", XINE_VERSION_CODE, &audioch_info, &audioch_init_plugin },*/
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 
