@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.29 2007-12-09 22:59:19 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.30 2007-12-19 20:18:37 phintuka Exp $
  *
  */
 
@@ -364,8 +364,8 @@ static void set_above(sxfe_t *this, int stay_above)
   XMapRaised(this->display, this->window[0]);
 #endif
 #if 0
-  xine_gui_send_vo_data(this->stream, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			(void*) this->window[this->fullscreen ? 1 : 0]);
+  xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+			  (void*) this->window[this->fullscreen ? 1 : 0]);
 #endif
 }
 
@@ -634,8 +634,8 @@ static int sxfe_display_config(frontend_t *this_gen,
     XResizeWindow(this->display, this->window[0], this->width, this->height);
     XUnlockDisplay(this->display);
     if(!fullscreen && !this->fullscreen)
-      xine_gui_send_vo_data(this->stream, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			    (void*) this->window[0]);
+      xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+			      (void*) this->window[0]);
   }
 
   if(fullscreen) {
@@ -668,8 +668,8 @@ static int sxfe_display_config(frontend_t *this_gen,
 			  DefaultRootWindow(this->display),
 			  0, 0, &this->xpos, &this->ypos, &tmp_win);
     XUnlockDisplay(this->display);
-    xine_gui_send_vo_data(this->stream, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			  (void*) this->window[this->fullscreen ? 1 : 0]);
+    xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+			    (void*) this->window[this->fullscreen ? 1 : 0]);
   }
 
   if(!modeswitch && strcmp(modeline, this->modeline)) {
@@ -765,7 +765,7 @@ static int sxfe_run(frontend_t *this_gen)
     switch (event.type) {
       case Expose:
 	if (event.xexpose.count == 0)
-	  xine_gui_send_vo_data (this->stream, XINE_GUI_SEND_EXPOSE_EVENT, &event);
+	  xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_EXPOSE_EVENT, &event);
 	break;
 	
       case ConfigureNotify:
@@ -915,7 +915,7 @@ static int sxfe_run(frontend_t *this_gen)
     }
     
     if (event.type == this->completion_event)
-      xine_gui_send_vo_data (this->stream, XINE_GUI_SEND_COMPLETION_EVENT, &event);
+      xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
   }
 
   return keep_going;
