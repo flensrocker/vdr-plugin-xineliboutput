@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.103 2007-12-19 23:32:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.104 2007-12-22 21:57:02 phintuka Exp $
  *
  */
 
@@ -1383,7 +1383,7 @@ static void signal_buffer_not_empty(vdr_input_plugin_t *this)
 }
 
 #if XINE_VERSION_CODE < 10190
-#  define fifo_buffer_new (stream, n, s) _x_fifo_buffer_new(n, s)
+#  define fifo_buffer_new(stream, n, s) _x_fifo_buffer_new(n, s)
 #else
 static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, uint32_t buf_size)
 {
