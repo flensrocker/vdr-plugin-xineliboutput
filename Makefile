@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.24 2007-11-25 17:40:24 phelin Exp $
+# $Id: Makefile,v 1.25 2007-12-22 20:28:51 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -21,7 +21,10 @@ _default: all
 
 XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
-XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0")
+XINELIBOUTPUT_XINEPLUGIN = $(shell (pkg-config libxine && echo 1 || echo 0))
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 0)
+    XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0")
+endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINELIBOUTPUT_FB  = $(XINELIBOUTPUT_XINEPLUGIN)
     XINELIBOUTPUT_X11 = $(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null)
@@ -181,7 +184,7 @@ ifeq ($(XINELIBOUTPUT_FB), 1)
 endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
-    XINEPLUGINDIR   = $(shell xine-config --plugindir)
+    XINEPLUGINDIR   = $(shell pkg-config libxine --variable=plugindir || xine-config --plugindir)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
     XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
     ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
@@ -198,7 +201,7 @@ endif
 ###
 
 INCLUDES  += -I$(VDRINCDIR)
-LIBS_XINE += $(shell xine-config --libs)
+LIBS_XINE += $(shell pkg-config libxine --libs || xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 
 ifeq ($(APPLE_DARWIN), 1)
@@ -217,7 +220,7 @@ DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
 DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-    CFLAGS += $(shell xine-config --cflags) 
+    CFLAGS += $(pkg-config libxine --cflags || shell xine-config --cflags) 
 endif
 
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
