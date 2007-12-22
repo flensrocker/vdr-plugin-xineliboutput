@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.25 2007-12-22 20:28:51 phintuka Exp $
+# $Id: Makefile,v 1.26 2007-12-22 20:29:59 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -217,7 +217,11 @@ DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
 
 # check for yaegp patch
-DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
+YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
+ifeq ($(YAEPG), 1)
+  DEFINES += -DYAEGP_PATCH
+endif
+#DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     CFLAGS += $(pkg-config libxine --cflags || shell xine-config --cflags) 
