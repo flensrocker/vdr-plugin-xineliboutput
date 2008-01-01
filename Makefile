@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.26 2007-12-22 20:29:59 phintuka Exp $
+# $Id: Makefile,v 1.27 2008-01-01 07:43:10 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -184,7 +184,7 @@ ifeq ($(XINELIBOUTPUT_FB), 1)
 endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
-    XINEPLUGINDIR   = $(shell pkg-config libxine --variable=plugindir || xine-config --plugindir)
+    XINEPLUGINDIR   = $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --variable=plugindir) || xine-config --plugindir)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
     XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
     ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
@@ -201,7 +201,7 @@ endif
 ###
 
 INCLUDES  += -I$(VDRINCDIR)
-LIBS_XINE += $(shell pkg-config libxine --libs || xine-config --libs)
+LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --libs) || xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 
 ifeq ($(APPLE_DARWIN), 1)
@@ -224,7 +224,7 @@ endif
 #DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-    CFLAGS += $(pkg-config libxine --cflags || shell xine-config --cflags) 
+    CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags) 
 endif
 
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
