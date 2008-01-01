@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.44 2007-12-19 20:35:40 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.45 2008-01-01 06:43:14 phintuka Exp $
  *
  */
 
@@ -106,10 +106,10 @@ static void *fe_control(void *fe_handle, const char *cmd);
  * xine callbacks
  */
 
-static double fe_dest_pixel_aspect(fe_t *this, double video_pixel_aspect,
+static double fe_dest_pixel_aspect(const fe_t *this, double video_pixel_aspect,
 				   int video_width, int video_height)
 {
-  int new_cropping = 0;
+  /*int new_cropping = 0;*/
   double result = 1.0;
 
   if(!this->scale_video) {
@@ -151,7 +151,7 @@ aspect_diff=(video_pixel_aspect*(double)video_width/(double)video_height) - 4.0 
               if ((aspect_diff < 0.05) && (aspect_diff > -0.05)) {
 		result = (4.0/3.0 * (double)this->height/(double)this->width);
 		/*LOGDBG("diff: %f", aspect_diff);*/
-		new_cropping = 1;
+		/*new_cropping = 1;*/
 	      } else {
 		result = (16.0/9.0 * (double)this->height/(double)this->width);
 	      }
@@ -307,6 +307,7 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
 	LOGMSG("xine_event_cb: NO USER DATA !");
       }
       break;
+    default: break;
   }
 }
 
@@ -338,12 +339,12 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
 #define x_upd_num(x...)  this->xine->config->update_num(this->xine->config, x)
 #define x_upd_str(x...)  this->xine->config->update_string(this->xine->config, x)
 
-static void configure_audio_out(fe_t *this, const char *audio_driver, const char *audio_port)
+static void configure_audio_out(const fe_t *this, const char *audio_driver, const char *audio_port)
 {
   /*
    * alsa 
    */
-  if(audio_driver && !strcmp("alsa", audio_driver) && audio_port && strlen(audio_port) > 0) {
+  if(audio_driver && audio_port && !strcmp("alsa", audio_driver) && strlen(audio_port) > 0) {
     
     /* define possible speaker arrangements */
     /* From xine audio_alsa_out.c ; must be synchronized ! */
@@ -437,7 +438,7 @@ static void configure_audio_out(fe_t *this, const char *audio_driver, const char
   /* 
    * OSS 
    */
-  if(!strcmp("oss", audio_driver) && audio_port) {
+  if(audio_driver && !strcmp("oss", audio_driver) && audio_port) {
     int devnum = -2;
     if(!strcmp("default", audio_port))
       devnum = -1;
@@ -831,27 +832,26 @@ static void fe_post_unwire(fe_t *this)
   }
 }
 
-static void fe_post_rewire(fe_t *this)
+static void fe_post_rewire(const fe_t *this)
 {
   LOGDBG("re-wiring post plugins");
   vpplugin_rewire_posts(this->postplugins);
   applugin_rewire_posts(this->postplugins);
 }
 
-static void fe_post_unload(fe_t *this)
+static void fe_post_unload(const fe_t *this)
 {
   LOGDBG("unloading post plugins");
   vpplugin_unload_post(this->postplugins, NULL);
   applugin_unload_post(this->postplugins, NULL);
 }
 
-static int fe_post_close(fe_t *this, const char *name, int which)
+static void fe_post_close(const fe_t *this, const char *name, int which)
 {
   post_plugins_t *posts = this->postplugins;
-  int result = 0;
 
   if(!this)
-    return 0;
+    return;
 
   if(name && !strcmp(name, "AudioVisualization")) {
     name = NULL;
@@ -868,14 +868,14 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     if(applugin_unload_post(posts, name)) {
       /*LOGDBG("  * rewiring audio");*/
       applugin_rewire_posts(posts);
-      return 1;
+      return;
     }
     if(vpplugin_unload_post(posts, name)) {
       /*LOGDBG("  * rewiring video");*/
       vpplugin_rewire_posts(posts);
-      return 1;
+      return;
     }
-    return 0;
+    return;
   }
 
   /* by type */
@@ -887,7 +887,6 @@ static int fe_post_close(fe_t *this, const char *name, int which)
       if(applugin_unload_post(posts, posts->post_vis_elements[0]->name)) {
 	/*LOGDBG("  * rewiring audio");*/
 	applugin_rewire_posts(posts);
-	result = 1;
       }
     }
   }
@@ -897,7 +896,6 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     if(applugin_disable_post(posts, NULL)) {
       /*LOGDBG("  * rewiring audio");*/
       applugin_rewire_posts(posts);
-      result = 1;
     }
   }
   if(which == POST_VIDEO || which < 0) { /* video effect(s) */
@@ -905,7 +903,6 @@ static int fe_post_close(fe_t *this, const char *name, int which)
     if(vpplugin_unload_post(posts, NULL)) {
       /*LOGDBG("  * rewiring video");*/
       vpplugin_rewire_posts(posts);
-      result = 1;
     }
   }
 
@@ -917,32 +914,29 @@ static int fe_post_close(fe_t *this, const char *name, int which)
       if(vpplugin_unload_post(posts, "mosaico")) {
 	/*LOGDBG("  * rewiring video");*/
 	vpplugin_rewire_posts(posts);
-	result = 1;
       }
     }
   }
-
-  return result;
 }
 
-static int get_opt_val(char *s, char *opt)
+static int get_opt_val(const char *s, const char *opt)
 {
   int val = -1;
-  char *pt = strstr(s, opt);
+  const char *pt = strstr(s, opt);
   if(pt) 
     if(1 == sscanf(pt+strlen(opt)+1, "%d", &val))
       return val;
   return -1;
 }
 
-static int fe_post_open(fe_t *this, const char *name, const char *args)
+static void fe_post_open(const fe_t *this, const char *name, const char *args)
 {
   post_plugins_t *posts = this->postplugins;
   char initstr[1024];
   int found = 0;
 
   if(!this || !this->xine || !this->stream || !name)
-    return 0;
+    return;
 
   /* pip */
   if(!strcmp(name, "Pip")) {
@@ -1008,14 +1002,12 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
 
       posts->post_video_enable = 1;
       vpplugin_rewire_posts(posts);
-      /*return 1;*/
     }
 
     /* audio filters */
     if(!found && applugin_enable_post(posts, initstr, &found)) {
       posts->post_audio_enable = 1;
       applugin_rewire_posts(posts);
-      /*return 1;*/
     }
   }
 
@@ -1023,8 +1015,6 @@ static int fe_post_open(fe_t *this, const char *name, const char *args)
     LOGMSG("Can't load post plugin %s", name);
   else
     LOGDBG("Post plugin %s loaded and wired", name);
-    
-  return 0;
 }
 
 static int fe_xine_play(frontend_t *this_gen) 
@@ -1424,7 +1414,7 @@ typedef struct tJpegCompressData_s {
   unsigned char *mem;
 } tJpegCompressData;
 
-static void JpegCompressInitDestination(j_compress_ptr cinfo)
+static void JpegCompressInitDestination(const j_compress_ptr cinfo)
 {
   tJpegCompressData *jcd = (tJpegCompressData *)cinfo->client_data;
   if (jcd) {
@@ -1434,7 +1424,7 @@ static void JpegCompressInitDestination(j_compress_ptr cinfo)
      }
 }
 
-static boolean JpegCompressEmptyOutputBuffer(j_compress_ptr cinfo)
+static boolean JpegCompressEmptyOutputBuffer(const j_compress_ptr cinfo)
 {
   tJpegCompressData *jcd = (tJpegCompressData *)cinfo->client_data;
   if (jcd) {
@@ -1450,7 +1440,7 @@ static boolean JpegCompressEmptyOutputBuffer(j_compress_ptr cinfo)
   return FALSE;
 }
 
-static void JpegCompressTermDestination(j_compress_ptr cinfo)
+static void JpegCompressTermDestination(const j_compress_ptr cinfo)
 {
   tJpegCompressData *jcd = (tJpegCompressData *)cinfo->client_data;
   if (jcd) {
