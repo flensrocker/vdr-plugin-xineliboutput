@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_audiochannel.c,v 1.4 2007-12-19 21:42:15 phintuka Exp $
+ * $Id: xine_post_audiochannel.c,v 1.5 2008-01-02 01:55:19 phintuka Exp $
  *
  */
 
@@ -273,7 +273,7 @@ static post_plugin_t *audioch_open_plugin(post_class_t *class_gen,
  *    Plugin class
  */
 
-#if XINE_VERSION_CODE < 10190
+#if POST_PLUGIN_IFACE_VERSION < 10
 static char *audioch_get_identifier(post_class_t *class_gen)
 {
   return "audiochannel";
@@ -298,7 +298,7 @@ static void *audioch_init_plugin(xine_t *xine, void *data)
     return NULL;
 
   class->open_plugin     = audioch_open_plugin;
-#if XINE_VERSION_CODE < 10190
+#if POST_PLUGIN_IFACE_VERSION < 10
   class->get_identifier  = audioch_get_identifier;
   class->get_description = audioch_get_description;
   class->dispose         = audioch_class_dispose;
@@ -317,7 +317,7 @@ static post_info_t audioch_info = { XINE_POST_TYPE_AUDIO_FILTER };
 plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) =
 {
   /* type, API, "name", version, special_info, init_function */
-  { PLUGIN_POST, 9, "audiochannel", XINE_VERSION_CODE, &audioch_info, &audioch_init_plugin },
+  { PLUGIN_POST, POST_PLUGIN_IFACE_VERSION, "audiochannel", XINE_VERSION_CODE, &audioch_info, &audioch_init_plugin },
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 #endif

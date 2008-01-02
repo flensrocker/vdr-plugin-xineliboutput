@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.11 2007-12-19 21:46:07 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.12 2008-01-02 01:55:19 phintuka Exp $
  *
  */
 
@@ -27,7 +27,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.11 2007-12-19 21:46:07 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.12 2008-01-02 01:55:19 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
@@ -1575,7 +1575,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
  *    Plugin class
  */
 
-#if XINE_VERSION_CODE < 10190
+#if POST_PLUGIN_IFACE_VERSION < 10
 static char *autocrop_get_identifier(post_class_t *class_gen)
 {
   return "autocrop";
@@ -1598,7 +1598,7 @@ static void *autocrop_init_plugin(xine_t *xine, void *data)
   
   if(class) {
     class->open_plugin     = autocrop_open_plugin;
-#if XINE_VERSION_CODE < 10190
+#if POST_PLUGIN_IFACE_VERSION < 10
     class->get_identifier  = autocrop_get_identifier;
     class->get_description = autocrop_get_description;
     class->dispose         = autocrop_class_dispose;
@@ -1618,6 +1618,6 @@ static post_info_t info = { XINE_POST_TYPE_VIDEO_FILTER };
 const plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) =
 {
   /* type, API, "name", version, special_info, init_function */  
-  { PLUGIN_POST, 9, "autocrop", XINE_VERSION_CODE, &info, &autocrop_init_plugin },
+  { PLUGIN_POST, POST_PLUGIN_IFACE_VERSION, "autocrop", XINE_VERSION_CODE, &info, &autocrop_init_plugin },
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
