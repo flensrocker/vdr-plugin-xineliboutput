@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.104 2007-12-22 21:57:02 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.105 2008-01-03 15:33:40 phintuka Exp $
  *
  */
 
@@ -360,14 +360,7 @@ static udp_data_t *init_udp_data(void)
 {
   udp_data_t *data = (udp_data_t *)xine_xmalloc(sizeof(udp_data_t));
 
-  memset(data->queue, 0, sizeof(data->queue));
-  data->next_seq         = 0;
-  data->queued           = 0;
-  data->queue_input_pos  = 0ULL;
-  data->resend_requested = 0;
-  data->missed_frames    = 0;
   data->received_frames  = -1; 
-  data->scr_jump_done    = 0;
 
   return data;
 }
@@ -2023,14 +2016,10 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     ov_event.event_type = OVERLAY_EVENT_FREE_HANDLE;
     ov_event.object.handle = handle;
     this->osdhandle[cmd->wnd] = -1;
-    if(this->osddata[cmd->wnd].data) {
-      free(this->osddata[cmd->wnd].data);
-      this->osddata[cmd->wnd].data = NULL;
-    }
-    if(this->osddata[cmd->wnd].palette) {
-      free(this->osddata[cmd->wnd].palette);
-      this->osddata[cmd->wnd].palette = NULL;
-    }
+    free(this->osddata[cmd->wnd].data);
+    this->osddata[cmd->wnd].data = NULL;
+    free(this->osddata[cmd->wnd].palette);
+    this->osddata[cmd->wnd].palette = NULL;
 
     do {
       int r = ovl_manager->add_event(ovl_manager, (void *)&ov_event);
@@ -2098,14 +2087,11 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       use_unscaled = 1;
 
     /* store osd for later rescaling (done if video size changes) */
-    if(this->osddata[cmd->wnd].data) {
-      free(this->osddata[cmd->wnd].data);
-      this->osddata[cmd->wnd].data = NULL;
-    }
-    if(this->osddata[cmd->wnd].palette) {
-      free(this->osddata[cmd->wnd].palette);
-      this->osddata[cmd->wnd].palette = NULL;
-    }
+    free(this->osddata[cmd->wnd].data);
+    this->osddata[cmd->wnd].data = NULL;
+    free(this->osddata[cmd->wnd].palette);
+    this->osddata[cmd->wnd].palette = NULL;
+
     memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
     this->osddata[cmd->wnd].data = NULL;
     if(cmd->palette) {
@@ -2288,10 +2274,8 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	  }
 	  exec_osd_command(this, &tmp);
 
-	  if(tmp.palette)
-	    free(tmp.palette);
-	  if(tmp.data)
-	    free(tmp.data);
+	  free(tmp.palette);
+	  free(tmp.data);
 	}
       if(ticket)
 	this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
@@ -2843,12 +2827,14 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	    dvd_set_speed(device.str_value, 2700);
 #endif
     }
+#if XINE_VERSION_CODE < 10109
     else if(!strncmp(filename,"dvd:/", 5)) {
       /* DVD plugin 'bug': unescaping is not implemented ... */
       char *mrl = unescape_filename(filename);
       strn0cpy(filename, mrl, sizeof(filename));
       free(mrl);
     }
+#endif
 
     if(!this->slave_stream) {
       this->slave_stream = xine_stream_new(this->class->xine, 
@@ -3139,10 +3125,8 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   if(err == CONTROL_OK) 
     err = vdr_plugin_exec_osd_command((input_plugin_t*)this, &osdcmd);
 
-  if(osdcmd.data)
-    free(osdcmd.data);
-  if(osdcmd.palette)
-    free(osdcmd.palette);
+  free(osdcmd.data);
+  free(osdcmd.palette);
 
   return err;
 }
@@ -5492,14 +5476,14 @@ static int vdr_plugin_get_optional_data (input_plugin_t *this_gen,
     static const uint8_t preview_data[] = {0x00,0x00,0x01,0xBA, /* sequence start */
 					   0x00,0x00,0x01,0xBE, /* padding */
 					   0x00,0x02,0xff,0xff};
-    if(MAX_PREVIEW_SIZE < sizeof(preview_data)) {
-      LOGMSG("MAX_PREVIEW_SIZE < 12 ?!?!?!?!");
-      memcpy(data, preview_data, MAX_PREVIEW_SIZE);
-      return MAX_PREVIEW_SIZE;
-    }
-
+#if MAX_PREVIEW_SIZE < 12
+#  warning MAX_PREVIEW_SIZE < 12 !
+    memcpy(data, preview_data, MAX_PREVIEW_SIZE);
+    return MAX_PREVIEW_SIZE;
+#else
     memcpy(data, preview_data, sizeof(preview_data));
     return sizeof(preview_data);
+#endif
   }
 
   return INPUT_OPTIONAL_UNSUPPORTED;
@@ -6180,53 +6164,28 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   }
 
   this = (vdr_input_plugin_t *) xine_xmalloc (sizeof(vdr_input_plugin_t));
-  memset(this, 0, sizeof(vdr_input_plugin_t));
 
   this->stream       = stream;
-  this->mrl          = NULL;
+  this->mrl          = strdup(mrl); 
   this->class        = class;
-  this->event_queue  = NULL;
 
   this->fd_data      = -1;
   this->fd_control   = -1;
-  this->udp          = 0;
-  this->control_running = 0;
 
-  this->block_buffer = NULL;
-  this->discard_index= 0;
-  this->guard_index  = 0;
-  this->curpos       = 0;
+  this->stream_start = 1;
   this->max_buffers  = 10;
+  this->ffmpeg_video_decoder = -1;
   this->last_delivered_vid_pts = INT64_C(-1);
 
-  this->scr          = NULL;
-
-  this->I_frames     = 0;
-
-  this->no_video     = 0;
-  this->live_mode    = 0;
-  this->still_mode   = 0;
-  this->stream_start = 1;
-  this->send_pts     = 0;
-  this->ffmpeg_video_decoder = -1;
-
-  this->rescale_osd  = 0;
-  this->unscaled_osd = 0;
   for(i=0; i<MAX_OSD_OBJECT; i++)
-    this->osdhandle[i] = -1;;
+    this->osdhandle[i] = -1;
   this->video_width  = this->vdr_osd_width  = 720;
   this->video_height = this->vdr_osd_height = 576;
 
-  this->video_properties_saved = 0;
-  this->orig_hue        = 0;
-  this->orig_brightness = 0;
-  this->orig_saturation = 0;
-  this->orig_contrast   = 0;
-  local_mode            = ( (!strncasecmp(mrl, "xvdr://", 7)) && 
-			    (strlen(mrl)==7))
-                          || (!strncasecmp(mrl, "xvdr:///", 8));
+  local_mode         = ( (!strncasecmp(mrl, "xvdr://", 7)) && 
+			 (strlen(mrl)==7))
+                       || (!strncasecmp(mrl, "xvdr:///", 8));
 
-  this->mrl          = strdup(mrl); 
   if(!bSymbolsFound) {
     /* not running under VDR or vdr-sxfe/vdr-fbfe */
     if(local_mode) {
@@ -6270,16 +6229,12 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   
   /* buffer */
   this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
-  this->big_buffer = NULL;   /* dummy buf to be used for jumbo PES frames */
-  this->hd_buffer = NULL;
   
   /* sync */
   pthread_mutex_init (&this->lock, NULL);
   pthread_mutex_init (&this->osd_lock, NULL);
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
   pthread_mutex_init (&this->fd_control_lock, NULL);
-
-  this->udp_data = NULL;
 
 #ifdef FFMPEG_DEC
   if(this->ffmpeg_video_decoder < 0) {
@@ -6391,10 +6346,8 @@ static void *init_class (xine_t *xine, void *data)
   this->input_class.identifier         = "xvdr";
   this->input_class.description        = N_("VDR (Video Disk Recorder) input plugin");
 #endif
-  this->input_class.get_dir            = NULL;
   this->input_class.get_autoplay_list  = vdr_plugin_get_autplay_list;
   this->input_class.dispose            = vdr_class_dispose;
-  this->input_class.eject_media        = NULL;
 
   LOGDBG("init class succeeded");
 
