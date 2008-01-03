@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.30 2007-12-19 20:18:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.31 2008-01-03 10:59:12 phintuka Exp $
  *
  */
 
@@ -119,6 +119,7 @@ typedef struct sxfe_s {
   /* xine stuff */
   xine_t              *xine;
   xine_stream_t       *stream;
+  xine_stream_t       *slave_stream;
   input_plugin_t      *input;
   xine_video_port_t   *video_port;
   xine_video_port_t   *video_port_none;

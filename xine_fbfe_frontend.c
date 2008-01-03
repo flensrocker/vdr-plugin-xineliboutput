@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.17 2007-05-18 15:49:02 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.18 2008-01-03 10:59:12 phintuka Exp $
  *
  */
 
@@ -34,6 +34,9 @@
 #endif
 #include <jpeglib.h>
 #undef boolean
+
+/* framegrab ports */
+#define XINE_ENABLE_EXPERIMENTAL_FEATURES
 
 #include <xine.h>
 #ifndef XINE_ENGINE_INTERNAL
@@ -69,6 +72,7 @@ typedef struct fbfe_t {
   /* xine stuff */
   xine_t             *xine;
   xine_stream_t      *stream;
+  xine_stream_t      *slave_stream;
   input_plugin_t     *input;
   xine_video_port_t  *video_port;
   xine_video_port_t  *video_port_none;
