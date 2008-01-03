@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.106 2008-01-03 19:05:07 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.107 2008-01-03 20:06:27 phintuka Exp $
  *
  */
 
@@ -1655,7 +1655,7 @@ static const char* fifo_get_mrl (input_plugin_t *this_gen)
 #else
 static char* fifo_get_mrl (input_plugin_t *this_gen)
 #endif
-{ return "xvdr:slave:"; }
+{ return "xvdr+slave:"; }
 
 #if XINE_VERSION_CODE < 10190
 static off_t fifo_read (input_plugin_t *this_gen, char *buf, off_t len) 
@@ -5997,11 +5997,13 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 
   if(strchr(this->mrl, '#')) 
     *strchr(this->mrl, '#') = 0;
-
-  if((!strncasecmp(this->mrl, "xvdr:tcp://", 11)  && (this->tcp=1)) ||
-      (!strncasecmp(this->mrl, "xvdr:udp://", 11) && (this->udp=1)) ||
-      (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && (this->rtp=1)) ||
-      (!strncasecmp(this->mrl, "xvdr://", 7))) {
+  if((!strncasecmp(this->mrl, "xvdr+tcp://", 11) && (this->tcp=1)) ||
+     (!strncasecmp(this->mrl, "xvdr+udp://", 11) && (this->udp=1)) ||
+     (!strncasecmp(this->mrl, "xvdr+rtp://", 11) && (this->rtp=1)) ||
+     (!strncasecmp(this->mrl, "xvdr:tcp://", 11) && (this->tcp=1)) ||
+     (!strncasecmp(this->mrl, "xvdr:udp://", 11) && (this->udp=1)) ||
+     (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && (this->rtp=1)) ||
+     (!strncasecmp(this->mrl, "xvdr://", 7))) {
 
     char *phost = strdup(strstr(this->mrl, "//") + 2);
     char host[256];
@@ -6156,10 +6158,10 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
 
   LOGDBG("vdr_class_get_instance");
 
-  if (strncasecmp (mrl, "xvdr:",5))
+  if (strncasecmp (mrl, "xvdr:",5) && strncasecmp (mrl, "xvdr+",5))
     return NULL;
 
-  if(!strncasecmp(mrl, "xvdr:slave://0x", 15)) {
+  if(!strncasecmp(mrl, "xvdr+slave://0x", 15)) {
     LOGMSG("vdr_class_get_instance: slave stream requested");
     return fifo_class_get_instance(class_gen, stream, data);
   }

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.33 2007-06-18 06:01:28 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.34 2008-01-03 20:06:27 phintuka Exp $
  *
  */
 
@@ -408,7 +408,7 @@ int main(int argc, char *argv[])
   while ((c = getopt_long(argc, argv, "HL:A:V:d:a:fw:h:P:vslkbtur", long_options, NULL)) != -1) {
     switch (c) {
     default:
-    case 'H': printf("\nUsage: %s [options] [xvdr:[udp:|tcp:|rtp:][//host[:port]]] \n"
+    case 'H': printf("\nUsage: %s [options] [xvdr[+udp|+tcp|+rtp]:[//host[:port]]] \n"
 		     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
 	      list_plugins(NULL, verbose_xine_log);
@@ -530,13 +530,22 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+#if 1
+  /* backward compability */
+  if(mrl && ( !strncmp(mrl, "xvdr:tcp:", 9) ||
+	      !strncmp(mrl, "xvdr:udp:", 9) ||
+	      !strncmp(mrl, "xvdr:rtp:", 9) ||
+	      !strncmp(mrl, "xvdr:pipe:", 10)))
+    mrl[5] = '+';
+#endif
+
   /* If server address not given, try to find server automatically */
   if(!mrl || 
      !strcmp(mrl, "xvdr:") ||
-     !strcmp(mrl, "xvdr:tcp:") ||
-     !strcmp(mrl, "xvdr:udp:") ||
-     !strcmp(mrl, "xvdr:rtp:") ||
-     !strcmp(mrl, "xvdr:pipe:")) {
+     !strcmp(mrl, "xvdr+tcp:") ||
+     !strcmp(mrl, "xvdr+udp:") ||
+     !strcmp(mrl, "xvdr+rtp:") ||
+     !strcmp(mrl, "xvdr+pipe:")) {
     char address[1024] = "";
     int port = -1;
     PRINTF("VDR server not given, searching ...\n");
@@ -558,25 +567,25 @@ int main(int argc, char *argv[])
     }
   }
 
-  {
-    char *tmp = NULL, *mrl2 = mrl;
-    if(frtp && !strstr(mrl, "rtp:"))
-      tmp = strdup("xvdr:rtp:");
-    else if(fudp && !strstr(mrl, "udp:"))
-      tmp = strdup("xvdr:udp:");
-    else if(ftcp && !strstr(mrl, "tcp:"))
-      tmp = strdup("xvdr:tcp:");
-    if(tmp) {
-      mrl = strcatrealloc(tmp, strchr(mrl, '/'));
-      free(mrl2);
-    }
-  }
-
-  if(mrl && strncmp(mrl, "xvdr:", 5)) {
+  if(mrl && strncmp(mrl, "xvdr:", 5) && strncmp(mrl, "xvdr+", 5)) {
     char *mrl2 = mrl;
     PRINTF("WARNING: MRL does not start with \'xvdr:\' (%s)", mrl);
     asprintf(&mrl, "xvdr://%s", mrl);
     free(mrl2);
+  }
+
+  {
+    char *tmp = NULL, *mrl2 = mrl;
+    if(frtp && !strstr(mrl, "rtp:"))
+      tmp = strdup("xvdr+rtp:");
+    else if(fudp && !strstr(mrl, "udp:"))
+      tmp = strdup("xvdr+udp:");
+    else if(ftcp && !strstr(mrl, "tcp:"))
+      tmp = strdup("xvdr+tcp:");
+    if(tmp) {
+      mrl = strcatrealloc(tmp, strchr(mrl, '/'));
+      free(mrl2);
+    }
   }
 
   if(daemon_mode) {
