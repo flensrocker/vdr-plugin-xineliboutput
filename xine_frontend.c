@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.45 2008-01-01 06:43:14 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.46 2008-01-03 13:04:53 phintuka Exp $
  *
  */
 
@@ -631,6 +631,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   /* create stream */
 
   this->stream = xine_stream_new(this->xine, this->audio_port, this->video_port);
+  this->slave_stream = NULL;
 
   if(!this->stream) {
     LOGMSG("fe_xine_init: xine_stream_new failed"); 
@@ -663,7 +664,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   posts->xine = this->xine;
   posts->audio_port = this->audio_port;
   posts->video_port = this->video_port;
-  posts->stream = this->stream;
+  posts->video_source = posts->audio_source = this->stream;
 
   /* multithreaded decoding / post processing */
 
@@ -772,7 +773,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 static void init_dummy_ports(fe_t *this, int on)
 {
   if(!on) {
-    if(this->postplugins->slave_stream)
+    if(this->slave_stream)
       LOGMSG("ERROR: init_dummy_ports(false) called while port is still in use !");
     
     if(this->audio_port_none)
@@ -808,27 +809,40 @@ static void fe_post_unwire(fe_t *this)
   xine_post_out_t  *vo_source = xine_get_video_source(this->stream);
   xine_post_out_t  *ao_source = xine_get_audio_source(this->stream);
 
-  if(this->postplugins->slave_stream) {
-    LOGDBG("unwiring slave stream post plugins");
+  if(this->slave_stream &&
+     this->slave_stream == this->postplugins->audio_source) {
+    LOGDBG("unwiring slave stream audio post plugins");
     init_dummy_ports(this, 1);
+
     if(ao_source && this->audio_port_none)
       (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
-    /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
 
-    vo_source = xine_get_video_source(this->postplugins->slave_stream);
-    ao_source = xine_get_audio_source(this->postplugins->slave_stream);
-    if(vo_source && this->video_port)
-      (void) xine_post_wire_video_port(vo_source, this->video_port);
+    ao_source = xine_get_audio_source(this->slave_stream);
     if(ao_source && this->audio_port)
       (void) xine_post_wire_audio_port(ao_source, this->audio_port);
 
   } else {
-    LOGDBG("unwiring post plugins");
+    LOGDBG("unwiring audio post plugins");
     init_dummy_ports(this, 0);
-    if(vo_source && this->video_port)
-      (void) xine_post_wire_video_port(vo_source, this->video_port);
     if(ao_source && this->audio_port)
       (void) xine_post_wire_audio_port(ao_source, this->audio_port);   
+  }
+
+  if(this->slave_stream &&
+     this->slave_stream == this->postplugins->video_source) {
+    LOGDBG("unwiring slave stream video post plugins");
+    /*init_dummy_ports(this, 1);*/
+    /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
+
+    vo_source = xine_get_video_source(this->slave_stream);
+    if(vo_source && this->video_port)
+      (void) xine_post_wire_video_port(vo_source, this->video_port);
+
+  } else {
+    LOGDBG("unwiring video post plugins");
+    /*init_dummy_ports(this, 0);*/
+    if(vo_source && this->video_port)
+      (void) xine_post_wire_video_port(vo_source, this->video_port);
   }
 }
 
@@ -1110,9 +1124,9 @@ static void fe_xine_exit(frontend_t *this_gen)
       xine_dispose(this->postplugins->pip_stream);
     this->postplugins->pip_stream = NULL;
 
-    if(this->postplugins->slave_stream) 
-      xine_dispose(this->postplugins->slave_stream);
-    this->postplugins->slave_stream = NULL;
+    if(this->slave_stream) 
+      xine_dispose(this->slave_stream);
+    this->slave_stream = NULL;
 
     if(this->audio_port)
       xine_close_audio_driver(this->xine, this->audio_port);
@@ -1151,7 +1165,7 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
     return 1;
   
   if(slave_stream) {
-    if(!this->postplugins->slave_stream || this->slave_playback_finished)
+    if(!this->slave_stream || this->slave_playback_finished)
       return 1;
   }
   
@@ -1262,7 +1276,7 @@ static void *fe_control(void *fe_handle, const char *cmd)
 
   if(!strncmp(cmd, "SLAVE CLOSED", 16)) {
     /*LOGMSG("fe_control : slave closed");*/
-    if(posts->slave_stream)
+    if(this->slave_stream)
       fe_control(fe_handle, "SLAVE 0x0\r\n");
     init_dummy_ports(this, 0);
 
@@ -1270,30 +1284,39 @@ static void *fe_control(void *fe_handle, const char *cmd)
     unsigned long pt;
     if(1 == sscanf(cmd, "SLAVE 0x%lx", &pt)) {
       xine_stream_t *slave_stream = (xine_stream_t*)pt;
-      if(posts->slave_stream != slave_stream) {
+      if(this->slave_stream != slave_stream) {
 
 	fe_post_unwire(this);
 
-	if(posts->slave_stream) {
+	if(this->slave_stream) {
 	  /*xine_post_out_t  *vo_source = xine_get_video_source(posts->slave_stream);*/
-	  xine_post_out_t  *ao_source = xine_get_audio_source(posts->slave_stream);
-	  LOGMSG("unwiring slave stream from output");
-	  /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
-	  (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
+	  if(this->slave_stream == this->postplugins->audio_source) {
+	    xine_post_out_t  *ao_source = xine_get_audio_source(this->slave_stream);
+	    LOGMSG("unwiring slave stream from output");
+	    /*(void) xine_post_wire_video_port(vo_source, this->video_port_none);*/
+	    (void) xine_post_wire_audio_port(ao_source, this->audio_port_none);
+	  }
 	}
 
-	posts->slave_stream = slave_stream;
+	this->slave_stream = slave_stream;
 
-	if(posts->slave_stream)
+	this->postplugins->video_source = this->postplugins->audio_source = 
+	  this->slave_stream ?: this->stream;
+	if(strstr(cmd, "Video")) /* video only, audio from VDR */
+	  this->postplugins->audio_source = this->stream;
+	if(strstr(cmd, "Audio")) /* audio only, video from VDR */
+	  this->postplugins->video_source = this->stream;
+
+	if(this->slave_stream)
 	  fe_post_unwire(this);
 
 	fe_post_rewire(this);
       }
-      this->slave_playback_finished = (slave_stream==NULL);
+      this->slave_playback_finished = !slave_stream;
     }
 
   } else if(!strncmp(cmd, "ENDOFSTREAM", 11)) {
-    if(posts->slave_stream)
+    if(this->slave_stream)
       this->slave_playback_finished = 1;
 
   } else if(!strncmp(cmd, "SUBSTREAM ", 10)) {
