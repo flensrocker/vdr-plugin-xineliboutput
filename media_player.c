@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.38 2007-11-25 19:01:45 phelin Exp $
+ * $Id: media_player.c,v 1.39 2008-01-03 19:05:07 phintuka Exp $
  *
  */
 
@@ -209,8 +209,15 @@ void cXinelibPlayer::Activate(bool On)
     // (those may contain #subtitle, #volnorm etc. directives)
     cString mrl;
     if(*m_SubFile)
-      mrl = cString::sprintf("%s#subtitle:%s", *cPlaylist::EscapeMrl(m_File), *cPlaylist::EscapeMrl(m_SubFile));
-    else /*if((*m_File)[0] == '/')*/
+      mrl = cString::sprintf("%s%s#subtitle:%s",
+			     m_File[0] == '/' ? "file:" : "",
+			     *cPlaylist::EscapeMrl(m_File), 
+			     *cPlaylist::EscapeMrl(m_SubFile));
+    else if((*m_File)[0] == '/')
+      mrl = cString::sprintf("%s%s",
+			     m_File[0] == '/' ? "file:" : "",
+			     *cPlaylist::EscapeMrl(m_File));
+    else
       mrl = cPlaylist::EscapeMrl(m_File);
     m_Replaying = cXinelibDevice::Instance().PlayFile(mrl, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Replaying?"OK":"FAIL");
@@ -1031,7 +1038,7 @@ void cXinelibImagePlayer::Activate(bool On)
 {
   if(On) {
     m_Active = true;
-    cXinelibDevice::Instance().PlayFile(m_File, 0, true);
+    cXinelibDevice::Instance().PlayFile(*cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File)), 0, true);
   } else {
     m_Active = false;
     cXinelibDevice::Instance().PlayFile(NULL, 0);
@@ -1042,7 +1049,7 @@ bool cXinelibImagePlayer::ShowImage(const char *File)
 {
   m_File = File;
   if(m_Active)
-    return cXinelibDevice::Instance().PlayFile(m_File, 0, true);
+    return cXinelibDevice::Instance().PlayFile(*cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File)), 0, true);
   return true;
 }
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.46 2007-06-21 13:22:06 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.47 2008-01-03 19:05:07 phintuka Exp $
  *
  */
 
@@ -1261,6 +1261,9 @@ void cXinelibServer::Handle_Control_CONTROL(int cli, const char *arg)
 
 static int strcmp_escaped(const char *s1, const char *s2)
 {
+  if(!strncmp(s1, "file:", 5))
+    s1 += 5;
+
   while(*s1 && *s2) {
     int c1 = *s1;
     int c2 = *s2;
