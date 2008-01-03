@@ -43,9 +43,9 @@ struct post_plugins_s {
 
   /* frontend data */
   char *static_post_plugins;   /* post plugins from command line; always on */
-  xine_stream_t *stream;       /* main stream (VDR output) */
+  xine_stream_t *video_source; /* stream to take video from */
+  xine_stream_t *audio_source; /* stream to take audio from */
   xine_stream_t *pip_stream;   /* pip stream */
-  xine_stream_t *slave_stream; /* slave stream for file playing */
 
   /* xine */
   xine_t            *xine;

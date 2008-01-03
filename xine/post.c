@@ -390,12 +390,7 @@ void applugin_parse_and_store_post(fe_t *fe, const char *post_chain)
 static void _vpplugin_unwire(fe_t *fe) 
 {
   xine_post_out_t  *vo_source;
-  
-  if(fe->slave_stream)
-    vo_source = xine_get_video_source(fe->slave_stream);
-  else
-    vo_source = xine_get_video_source(fe->stream);
-
+  vo_source = xine_get_video_source(fe->video_source);
   (void) xine_post_wire_video_port(vo_source, fe->video_port);
 }
 
@@ -403,12 +398,7 @@ static void _vpplugin_unwire(fe_t *fe)
 static void _applugin_unwire(fe_t *fe) 
 {
   xine_post_out_t  *ao_source;
-  
-  if(fe->slave_stream)
-    ao_source = xine_get_audio_source(fe->slave_stream);
-  else
-    ao_source = xine_get_audio_source(fe->stream);
-
+  ao_source = xine_get_audio_source(fe->audio_source);
   (void) xine_post_wire_audio_port(ao_source, fe->audio_port);
 }
 
@@ -451,10 +441,7 @@ static void _vpplugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
 				post_elements[0]->post->video_input[1]);
     }
 
-    if(fe->slave_stream)
-      vo_source = xine_get_video_source(fe->slave_stream);
-    else
-      vo_source = xine_get_video_source(fe->stream);
+    vo_source = xine_get_video_source(fe->video_source);
     LOGDBG("        wiring %10s[out] -> [in]%-10s", "stream", post_elements[0]->name);
     xine_post_wire_video_port(vo_source, 
 			      post_elements[0]->post->video_input[0]);
@@ -491,10 +478,7 @@ static void _applugin_rewire_from_post_elements(fe_t *fe, post_element_t **post_
       }
     }
 
-    if(fe->slave_stream)
-      ao_source = xine_get_audio_source(fe->slave_stream);
-    else
-      ao_source = xine_get_audio_source(fe->stream);
+    ao_source = xine_get_audio_source(fe->audio_source);
     LOGDBG("        wiring %10s[out] -> [in]%-10s", "stream", post_elements[0]->name);
     xine_post_wire_audio_port(ao_source, post_elements[0]->post->audio_input[0]);
   }
