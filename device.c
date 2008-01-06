@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.46 2007-11-25 17:38:46 phelin Exp $
+ * $Id: device.c,v 1.47 2008-01-06 13:01:12 phintuka Exp $
  *
  */
 
@@ -214,7 +214,7 @@ cXinelibDevice::cXinelibDevice()
   m_TrickSpeedDelay = 0;
   m_VDR_TrickSpeedIBP = 0;
   m_SkipAudio   = false;
-  m_PlayingFile = false;
+  m_PlayingFile = pmNone;
   m_StreamStart = true;
   m_RadioStream = false;
   m_AudioCount  = 0;
@@ -879,7 +879,7 @@ int cXinelibDevice::PlayFileCtrl(const char *Cmd)
   TRACEF("cXinelibDevice::PlayFile");
   int result = -1;
 
-  if(m_PlayingFile) {
+  if(m_PlayingFile != pmNone) {
     if(m_server)
       result = m_server->PlayFileCtrl(Cmd);
     if(m_local) 
@@ -897,7 +897,8 @@ bool cXinelibDevice::EndOfStreamReached(void)
   return true;
 }
 
-bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
+bool cXinelibDevice::PlayFile(const char *FileName, int Position, 
+			      bool LoopPlay, ePlayMode PlayMode)
 {
   TRACEF("cXinelibDevice::PlayFile");
   TRACE("cXinelibDevice::PlayFile(\"" << FileName << "\")");
@@ -905,17 +906,17 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
   bool result = true;
 
   if(FileName) {
-    if(!m_PlayingFile) {
-      m_PlayingFile = true;
+    if(m_PlayingFile == pmNone) {
+      m_PlayingFile = PlayMode;
       StopOutput();
     }
     for(int i = 0; i < mi_Count; i++) 
       m_MetaInfo[i][0] = 0;
     if(m_server)
-      result = m_server->PlayFile(FileName, Position, LoopPlay);
+      result = m_server->PlayFile(FileName, Position, LoopPlay, PlayMode);
     if(m_local)
-      result = m_local->PlayFile(FileName, Position, LoopPlay);
-  } else if(/*!FileName &&*/m_PlayingFile) {
+      result = m_local->PlayFile(FileName, Position, LoopPlay, PlayMode);
+  } else if(/*!FileName &&*/m_PlayingFile != pmNone) {
     if(m_server) 
       result = m_server->PlayFile(NULL, 0);
     if(m_local)
@@ -924,7 +925,7 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position, bool LoopPlay)
       SetReplayMode();
     else
       SetTvMode(Channels.GetByNumber(cDevice::CurrentChannel()));
-    m_PlayingFile = false;
+    m_PlayingFile = pmNone;
   }
 
   return result;
@@ -1063,8 +1064,10 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   TRACEF("cXinelibDevice::PlayAny");
   TRACK_TIME(100);
 
+#if 0
   if(m_PlayingFile)
     return length;
+#endif
 
   //
   // Need to be sure Poll has been called for every frame:
@@ -1158,6 +1161,9 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
   }
 #endif
 
+  if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly))
+    return length;
+
   return PlayAny(buf, length);
 }
 
@@ -1185,7 +1191,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
   int i;
 
-  if(m_PlayingFile)
+  if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly))
     return;
 
   TRACE("cXinelibDevice::StillPicture: isPes = "<<isPes
@@ -1256,6 +1262,9 @@ int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id)
     }
   }
 
+  if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmAudioOnly))
+    return length;
+
   return PlayAny(buf, length);
 }
 
@@ -1293,7 +1302,7 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
   TRACEF("cXinelibDevice::Poll");
   TRACK_TIME(400);
 
-  if(m_PlayingFile)
+  if(m_PlayingFile == pmAudioVideo)
     return true;
 
   if(m_TrickSpeed == 0) {
