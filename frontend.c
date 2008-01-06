@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.38 2007-09-17 20:01:51 phelin Exp $
+ * $Id: frontend.c,v 1.39 2008-01-06 10:14:25 phintuka Exp $
  *
  */
 
@@ -652,16 +652,34 @@ int cXinelibThread::Xine_Control(const char *cmd, const char *p1)
 }
 
 bool cXinelibThread::PlayFile(const char *FileName, int Position, 
-			      bool LoopPlay)
+			      bool LoopPlay, ePlayMode PlayMode)
 {
   TRACEF("cXinelibThread::PlayFile");
 
   char vis[256];
-  if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
-    snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
-  else
-    strn0cpy(vis, xc.audio_visualization, sizeof(vis));
-  vis[sizeof(vis)-1] = 0;
+
+  switch(PlayMode) {
+    case pmVideoOnly:
+      LOGDBG("cXinelibThread::PlayFile: Video from file, audio from VDR");
+      strcpy(vis, "Video");
+      break;
+    case pmAudioOnly:
+      LOGDBG("cXinelibThread::PlayFile: Audio from file, video from VDR");
+      strcpy(vis, "Audio");
+      break;
+    case pmAudioOnlyBlack:
+      //LOGDBG("cXinelibThread::PlayFile: Audio from file, no video");
+      strcpy(vis, "none");
+      break;
+    case pmAudioVideo:
+    default:
+      if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
+      else
+	strn0cpy(vis, xc.audio_visualization, sizeof(vis));
+      vis[sizeof(vis)-1] = 0;
+      break;
+  }
 
   char buf[4096];
   m_bEndOfStreamReached = false;
