@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.16 2008-01-06 10:14:25 phintuka Exp $
+ * $Id: frontend.h,v 1.17 2008-01-09 08:44:15 phintuka Exp $
  *
  */
 
@@ -139,6 +139,7 @@ class cXinelibThread : public cThread, public cListObject
     bool m_bLiveMode;
     bool m_bEndOfStreamReached;
     bool m_bPlayingFile;
+    int  m_Volume;
     cString  m_FileName;
     uint64_t m_StreamPos;
     uint32_t m_Frames;

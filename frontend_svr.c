@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.47 2008-01-03 19:05:07 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.48 2008-01-09 08:44:15 phintuka Exp $
  *
  */
 
@@ -1154,6 +1154,7 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   fd_control[cli].printf("NOVIDEO %d\r\nLIVE %d\r\n", 
 			 m_bNoVideo?1:0, m_bLiveMode?1:0); 
 
+  SetVolume(m_Volume);
   ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
   ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
 			  xc.audio_compression, xc.audio_equalizer,
