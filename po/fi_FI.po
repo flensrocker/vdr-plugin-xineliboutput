@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2007-11-24 21:54+0200\n"
+"POT-Creation-Date: 2008-01-01 10:23+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Petri Hintukainen\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -274,6 +274,12 @@ msgstr ""
 msgid "Default playlist not defined"
 msgstr ""
 
+msgid "Delay"
+msgstr "Viive"
+
+msgid "ms"
+msgstr "ms"
+
 #, c-format
 msgid "xineliboutput: hotkey %s not binded"
 msgstr ""
@@ -292,12 +298,6 @@ msgstr "Laitteistolla"
 
 msgid "Software"
 msgstr "Ohjelmallisesti"
-
-msgid "Delay"
-msgstr "Viive"
-
-msgid "ms"
-msgstr "ms"
 
 msgid "Mix to headphones"
 msgstr ""
