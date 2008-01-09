@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.108 2008-01-09 08:48:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.109 2008-01-09 08:52:31 phintuka Exp $
  *
  */
 
@@ -233,6 +233,7 @@ typedef struct vdr_input_plugin_s {
   xine_stream_t      *pip_stream;
   xine_stream_t      *slave_stream;
   xine_event_queue_t *slave_event_queue;
+  int                 autoplay_size;
 
   /* Sync */
   pthread_mutex_t     lock;
@@ -2748,7 +2749,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
   char filename[4096], av[256], *pav = av;
-  int loop = 0, pos = 0, err = 0, avsize = sizeof(av)-2;
+  int loop = 0, pos = 0, err = 0, avsize = sizeof(av)-2, mix_streams = 0;
 
   while(*pt==' ') pt++;
 
@@ -2763,13 +2764,16 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   while(*pt && *pt != ' ') pt++;
   while(*pt == ' ') pt++;
 
-  /* audio visualization */
+  /* audio visualization / audio/video mixing */
   while(*pt && *pt != ' ' && --avsize)
     *pav++ = *pt++;
   *pav = 0;
   while(*pt == ' ') pt++;
+  mix_streams = (!strcmp(av, "Audio")) || (!strcmp(av, "Video"));
 
   strn0cpy(filename, pt, sizeof(filename));
+
+  this->autoplay_size = -1;
 
   if(*filename) {
     int is_file_mrl = !strncmp(filename, "file:/", 6) ? 5 : 0;
@@ -2873,6 +2877,9 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					       METRONOM_PREBUFFER, 90000);
 #endif
+      if(!strncmp(filename, "cdda:", 5))
+	send_cd_info(this);
+
       this->loop_play = loop;
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
       if(err) {
@@ -2881,13 +2888,12 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       } else {
 	send_meta_info(this);
 
-	if(!strncmp(filename, "cdda:", 5))
-	  send_cd_info(this);
-
 	if(this->funcs.fe_control) {
 	  char tmp[128];
 	  int has_video;
-	  sprintf(tmp, "SLAVE 0x%lx\r\n", (unsigned long int)this->slave_stream);
+	  sprintf(tmp, "SLAVE 0x%lx %s\r\n", 
+		  (unsigned long int)this->slave_stream,
+		  mix_streams ? av : "");
 	  this->funcs.fe_control(this->funcs.fe_handle, tmp);
 	  has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
 
@@ -2904,7 +2910,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	  }
 	  this->funcs.fe_control(this->funcs.fe_handle, 
 				 has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
-	  if(!has_video && *av && strcmp(av, "none")) {
+	  if(!has_video && !mix_streams && *av && strcmp(av, "none")) {
 	    char str[128], *avopts;
 	    if(NULL != (avopts = strchr(av, ':')))
 	      *avopts++ = 0;
@@ -3713,14 +3719,15 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     }
 
   } else if(!strncasecmp(cmd, "GETAUTOPLAYSIZE", 15)) {
-    char **list;
-    int count = 0;
-    if(this->slave_stream &&
-       this->slave_stream->input_plugin &&
-       this->slave_stream->input_plugin->input_class)
-      list = this->slave_stream->input_plugin->input_class->
-	get_autoplay_list(this->slave_stream->input_plugin->input_class, &count);
-    err = count;
+    if(this->autoplay_size < 0) {
+      char **list;
+      if(this->slave_stream &&
+	 this->slave_stream->input_plugin &&
+	 this->slave_stream->input_plugin->input_class)
+	list = this->slave_stream->input_plugin->input_class->
+	  get_autoplay_list(this->slave_stream->input_plugin->input_class, &this->autoplay_size);
+    }
+    err = this->autoplay_size;
     if(this->fd_control >= 0) {
       printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
@@ -6179,6 +6186,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   this->max_buffers  = 10;
   this->ffmpeg_video_decoder = -1;
   this->last_delivered_vid_pts = INT64_C(-1);
+  this->autoplay_size = -1;
 
   for(i=0; i<MAX_OSD_OBJECT; i++)
     this->osdhandle[i] = -1;
