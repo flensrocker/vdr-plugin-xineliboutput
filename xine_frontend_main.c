@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.34 2008-01-03 20:06:27 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.35 2008-01-09 20:40:17 phintuka Exp $
  *
  */
 
@@ -98,7 +98,7 @@ static int read_key(void)
       LOGERR("read_key: read(stdin) failed: no stdin");
     return -2;
 
-  } else if(err < 0) {
+  } else if(err < 0 && errno != EINTR) {
     LOGERR("read_key: poll(stdin) failed");
     return -2;
   }
