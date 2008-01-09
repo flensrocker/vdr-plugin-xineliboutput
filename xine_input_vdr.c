@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.107 2008-01-03 20:06:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.108 2008-01-09 08:48:38 phintuka Exp $
  *
  */
 
@@ -6281,7 +6281,7 @@ static const char *vdr_class_get_identifier (input_class_t *this_gen)
 }
 #endif
 
-static char **vdr_plugin_get_autplay_list(input_class_t *this_gen, int *num_files) 
+static char **vdr_plugin_get_autoplay_list(input_class_t *this_gen, int *num_files) 
 {
   vdr_input_class_t *this = (vdr_input_class_t *)this_gen;
   *num_files = 1;
@@ -6349,7 +6349,7 @@ static void *init_class (xine_t *xine, void *data)
   this->input_class.identifier         = "xvdr";
   this->input_class.description        = N_("VDR (Video Disk Recorder) input plugin");
 #endif
-  this->input_class.get_autoplay_list  = vdr_plugin_get_autplay_list;
+  this->input_class.get_autoplay_list  = vdr_plugin_get_autoplay_list;
   this->input_class.dispose            = vdr_class_dispose;
 
   LOGDBG("init class succeeded");
