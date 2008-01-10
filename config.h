@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.32 2007-09-30 21:11:11 phintuka Exp $
+ * $Id: config.h,v 1.33 2008-01-10 23:36:06 phelin Exp $
  *
  */
 
@@ -239,6 +239,9 @@ class config_t {
     int  cache_implicit_playlists; // used in playlist.c
     int  enable_id3_scanner;       // used in playlist.c
     int  subtitle_vpos;            // used in media player. Not saved !
+    int  playlist_tracknumber;
+    int  playlist_artist;
+    int  playlist_album;   
 
     // Audio visualization
     char audio_visualization[64];

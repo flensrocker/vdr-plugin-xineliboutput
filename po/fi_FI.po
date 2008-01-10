@@ -557,6 +557,24 @@ msgstr "RTSP-palvelin"
 msgid "RTSP clients can control VDR"
 msgstr "Anna RTSP-asiakkaiden ohjata VDR:‰‰"
 
+msgid "Playlist settings"
+msgstr "Soittolistan asetukset"
+
+msgid "Show the track number"
+msgstr "N‰yt‰ raidan numero"
+
+msgid "Show the name of the artist"
+msgstr "N‰yt‰ esitt‰j‰n nimi"
+
+msgid "Show the name of the album"
+msgstr "N‰yt‰ levyn nimi"
+
+msgid "Scan for metainfo"
+msgstr "Tutki kappaleiden metatiedot"
+
+msgid "Cache metainfo"
+msgstr "Tallenna metatieto"
+
 msgid "Grayscale"
 msgstr "Harmaas‰vy"
 

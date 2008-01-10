@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.48 2007-09-30 21:11:11 phintuka Exp $
+ * $Id: config.c,v 1.49 2008-01-10 23:36:06 phelin Exp $
  *
  */
 
@@ -751,6 +751,9 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
   else if (!strcasecmp(Name, "Media.CacheImplicitPlaylists")) cache_implicit_playlists = atoi(Value);
   else if (!strcasecmp(Name, "Media.EnableID3Scanner"))  enable_id3_scanner = atoi(Value);
+  else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
+  else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
+  else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
     sscanf(Value,"%d %d %d %d %d %d %d %d %d %d",

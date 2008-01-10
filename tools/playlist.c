@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.10 2008-01-10 23:33:51 phelin Exp $
+ * $Id: playlist.c,v 1.11 2008-01-10 23:36:06 phelin Exp $
  *
  */
 
@@ -477,7 +477,7 @@ static const char *strchrnext(const char *s, char c)
 
 bool cPlaylist::ReadCache(void) 
 {
-  if(m_Origin == eImplicit && *m_Folder) {
+  if(xc.cache_implicit_playlists && m_Origin == eImplicit && *m_Folder) {
 
     cString Name = cString::sprintf("%s%s", *m_Folder, PLAYLIST_CACHE);
     FILE *f = fopen(Name, "r");

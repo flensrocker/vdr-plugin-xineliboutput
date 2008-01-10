@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.41 2007-09-30 21:11:10 phintuka Exp $
+ * $Id: setup_menu.c,v 1.42 2008-01-10 23:36:06 phelin Exp $
  *
  */
 
@@ -1509,6 +1509,87 @@ void cMenuSetupRemote::Store(void)
   Setup.Save();
 }
 
+//--- cMenuSetupMediaPlayer --------------------------------------------------------
+
+class cMenuSetupMediaPlayer : public cMenuSetupPage
+{
+  private:
+    config_t newconfig;
+
+    cOsdItem *media_ctrl_playlist_tracknumber;
+    cOsdItem *media_ctrl_playlist_artist;
+    cOsdItem *media_ctrl_playlist_album;
+    cOsdItem *media_ctrl_playlist_cache;
+    cOsdItem *media_ctrl_playlist_id3scanner;
+
+  protected:
+    virtual void Store(void);
+    void Set(void);
+
+  public:
+    cMenuSetupMediaPlayer(void);
+
+    virtual eOSState ProcessKey(eKeys Key);
+};
+
+cMenuSetupMediaPlayer::cMenuSetupMediaPlayer(void)
+{
+  memcpy(&newconfig, &xc, sizeof(config_t));
+  Set();
+}
+
+void cMenuSetupMediaPlayer::Set(void)
+{
+  SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
+  int current = Current();
+  Clear();
+
+  Add(NewTitle(tr("Playlist settings")));
+
+  Add(media_ctrl_playlist_tracknumber =
+      new cMenuEditBoolItem(tr("Show the track number"),
+                            &newconfig.playlist_tracknumber));
+
+  Add(media_ctrl_playlist_artist =
+      new cMenuEditBoolItem(tr("Show the name of the artist"),
+                            &newconfig.playlist_artist));
+  
+  Add(media_ctrl_playlist_album =
+      new cMenuEditBoolItem(tr("Show the name of the album"),
+                            &newconfig.playlist_album));
+
+  Add(media_ctrl_playlist_id3scanner =
+      new cMenuEditBoolItem(tr("Scan for metainfo"),
+                            &newconfig.enable_id3_scanner));
+
+  Add(media_ctrl_playlist_cache =
+      new cMenuEditBoolItem(tr("Cache metainfo"),
+                            &newconfig.cache_implicit_playlists));
+
+  
+  if(current<1) current=1; /* first item is not selectable */
+  SetCurrent(Get(current));
+  Display();
+}
+
+eOSState cMenuSetupMediaPlayer::ProcessKey(eKeys Key)
+{ 
+  eOSState state = cMenuSetupPage::ProcessKey(Key);
+  return state;
+}
+
+void cMenuSetupMediaPlayer::Store(void)
+{ 
+  memcpy(&xc, &newconfig, sizeof(config_t));
+  
+  SetupStore("Playlist.Tracknumber", xc.playlist_tracknumber);
+  SetupStore("Playlist.Album", xc.playlist_album);
+  SetupStore("Playlist.Artist", xc.playlist_artist);
+  SetupStore("Media.CacheImplicitPlaylists", xc.cache_implicit_playlists);
+  SetupStore("Media.EnableID3Scanner", xc.enable_id3_scanner);
+  Setup.Save();
+}
+
 } // namespace
 
 
@@ -1766,7 +1847,6 @@ eOSState cMenuTestImages::ProcessKey(eKeys Key)
   return state;
 }
 
-
 //--- cMenuSetupXinelib ------------------------------------------------------
 
 cMenuSetupXinelib::cMenuSetupXinelib(void)
@@ -1785,6 +1865,7 @@ void cMenuSetupXinelib::Set(void)
   Add(new cOsdItem(hk(tr("Video")),          osUser3));
   Add(new cOsdItem(hk(tr("OSD")),            osUser4));
   //Add(new cOsdItem(hk(tr("Decoder")),        osUser5));
+  Add(new cOsdItem(hk(tr("Media Player")),   osUser5));
   Add(new cOsdItem(hk(tr("Local Frontend")), osUser6));
   Add(new cOsdItem(hk(tr("Remote Clients")), osUser7));
   Add(new cOsdItem(hk(tr("Test Images")),    osUser8));
@@ -1805,8 +1886,8 @@ eOSState cMenuSetupXinelib::ProcessKey(eKeys Key)
       return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupVideo);
     case osUser4: 
       return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupOSD);
-    //case osUser5: 
-    //  return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupDecoder);
+    case osUser5: 
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupMediaPlayer);
     case osUser6: 
       return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupLocal);
     case osUser7: 
