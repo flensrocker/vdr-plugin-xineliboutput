@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.h,v 1.4 2007-06-18 08:53:31 phintuka Exp $
+ * $Id: playlist.h,v 1.5 2008-01-10 23:30:37 phelin Exp $
  *
  */
 
@@ -35,8 +35,8 @@ class cPlaylistItem : public cListObject
   
   cString Filename; /* file name and full path */
 
-  // Metaingo (ID3 etc.)
-  cString Track;
+  // Metainfo (ID3 etc.)
+  cString Title;
   cString Artist;
   cString Album;
     

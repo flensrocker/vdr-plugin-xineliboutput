@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.39 2008-01-03 19:05:07 phintuka Exp $
+ * $Id: media_player.c,v 1.40 2008-01-10 23:30:37 phelin Exp $
  *
  */
 
@@ -224,11 +224,11 @@ void cXinelibPlayer::Activate(bool On)
 
     if(m_Replaying) {
       // update playlist metainfo
-      const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTrack);
+      const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
       const char *al = cXinelibDevice::Instance().GetMetaInfo(miAlbum);
       const char *ar = cXinelibDevice::Instance().GetMetaInfo(miArtist);
-      if(tr && tr[0] && (!*m_Playlist.Current()->Track || !strstr(m_Playlist.Current()->Track, tr)))
-	m_Playlist.Current()->Track = tr;
+      if(ti && ti[0] && (!*m_Playlist.Current()->Title || !strstr(m_Playlist.Current()->Title, ti)))
+	m_Playlist.Current()->Title = ti;
       if(al && al[0])
 	m_Playlist.Current()->Album = al;
       if(ar && ar[0])
@@ -403,14 +403,14 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
     if(*i->Artist || *i->Album)
       Title = cString::sprintf("%c\t%s\t(%s%s%s)", 
 			       j==currentPlaying ? '*':' ',
-			       *i->Track,
+			       *i->Title,
 			       *i->Artist ?: "",
 			       *i->Artist ? ": " : "",
 			       *i->Album ?: "");
     else
       Title = cString::sprintf("%c\t%s",
 			       j==currentPlaying ? '*':' ',
-			       *i->Track);
+			       *i->Title);
     Add(new cOsdItem( ic.Translate(Title), (eOSState)(os_User + j)));
   }
 
@@ -445,7 +445,7 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
 
   m_Player->m_UseResume = (Mode==ShowFiles);
 
-  MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
+  MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
 }
 
 cXinelibPlayerControl::~cXinelibPlayerControl()
@@ -537,7 +537,7 @@ void cXinelibPlayerControl::Show()
       Total = (m_CurrentLen + 500) / 1000;   // ms --> s
       Current = (m_CurrentPos + 500) / 1000;
 
-      cString Title = m_Player->Playlist().Current()->Track;
+      cString Title = m_Player->Playlist().Current()->Title;
       if(*m_Player->Playlist().Current()->Artist ||
 	 *m_Player->Playlist().Current()->Album)
 	Title = cString::sprintf("%s (%s%s%s)", *Title,
@@ -610,26 +610,26 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
     if(!m_DisplayReplay)
       m_AutoShowStart = time(NULL);
 
-    MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
+    MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
   }
 
   else {
     // metainfo may change during playback (DVD titles, CDDA tracks)
-    const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTrack);
-    if(tr && tr[0] && (!*m_Player->Playlist().Current()->Track ||
-		       !strstr(m_Player->Playlist().Current()->Track, tr))) {
+    const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
+    if(ti && ti[0] && (!*m_Player->Playlist().Current()->Title ||
+		       !strstr(m_Player->Playlist().Current()->Title, ti))) {
       const char *al = cXinelibDevice::Instance().GetMetaInfo(miAlbum);
       const char *ar = cXinelibDevice::Instance().GetMetaInfo(miArtist);
       LOGDBG("metainfo changed: %s->%s %s->%s %s->%s",
 	     *m_Player->Playlist().Current()->Artist?:"-", ar?:"-", 
 	     *m_Player->Playlist().Current()->Album ?:"-", al?:"-", 
-	     *m_Player->Playlist().Current()->Track ?:"-", tr?:"-");
-      m_Player->Playlist().Current()->Track = tr;
+             *m_Player->Playlist().Current()->Title ?:"-", ti?:"-");
+      m_Player->Playlist().Current()->Title = ti;
       if(al && al[0])
 	m_Player->Playlist().Current()->Album = al;
       if(ar && ar[0])
 	m_Player->Playlist().Current()->Artist = ar;
-      MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
+      MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
     }
   }
 
@@ -644,7 +644,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       default:      if(state >= os_User) {
 	              m_Player->NextFile( (int)state - (int)os_User - m_Player->CurrentFile());
 		      m_PlaylistMenu->SetCurrentExt(m_Player->CurrentFile()); 
-		      MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
+		      MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
                     }
 	            break;
     }
@@ -701,14 +701,14 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                   }
                   if(!m_DisplayReplay)
                     m_AutoShowStart = time(NULL);
-                  MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
+                  MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
                   break;
     case kPrev:
     case kLeft:   if(cXinelibDevice::Instance().PlayFileCtrl("GETPOS") < 3000) {
                     m_Player->NextFile(-1);
                     if(!m_DisplayReplay)
                       m_AutoShowStart = time(NULL);
-                    MsgReplaying(*m_Player->Playlist().Current()->Track, *m_Player->File());
+                    MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
                   }
                   else {
                     m_Player->NextFile(0);

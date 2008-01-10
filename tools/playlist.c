@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.7 2007-06-18 10:48:03 phintuka Exp $
+ * $Id: playlist.c,v 1.8 2008-01-10 23:30:37 phelin Exp $
  *
  */
 
@@ -40,11 +40,11 @@ cPlaylistItem::cPlaylistItem(const char *filename)
   Position = -1;
 
   if(NULL != (pt = strrchr(filename, '/')))
-    Track = pt + 1;
+    Title = pt + 1;
   else
-    Track = filename;
+    Title = filename;
   
-  if(NULL != (pt = strrchr(Track, '.')))
+  if(NULL != (pt = strrchr(Title, '.')))
     *pt = 0;
 }
 
@@ -60,9 +60,9 @@ cPlaylistItem::cPlaylistItem(const char *filename,
   else
     Filename = cString::sprintf("%s%s", path, filename);
   Position = position;
-  Track = title ?: filename;
+  Title = title ?: filename;
 
-  if(!title && (pt = strrchr(Track, '.')))
+  if(!title && (pt = strrchr(Title, '.')))
     *pt = 0;
 }
 
@@ -80,7 +80,7 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
 
   // same position (or no positions definend) -> alphabetical order
 #if 0
-  return strcmp(Track, o->Track);
+  return strcmp(Title, o->Title);
 #else
   // use filename, because:
   //  - implicit playlist has no track names available when sorting 
@@ -160,7 +160,7 @@ class cID3Scanner : public cThread
             else if(!strncasecmp(pt, "ALBUM=", 6) && strlen(pt) > 7)
               Item->Album = (pt+6);
             else if(!strncasecmp(pt, "TITLE=", 6) && strlen(pt) > 7)
-              Item->Track = (pt+6);
+              Item->Title = (pt+6);
             else if(!strncasecmp(pt, "TRACKNUMBER=", 12) && strlen(pt) > 12)
               Item->Position = atoi(pt+12);
           }
@@ -169,7 +169,7 @@ class cID3Scanner : public cThread
 	cString Cmd = cString::sprintf("mp3info -p \""
 				       "Artist: %%a\\r\\n"
 				       "Album: %%l\\r\\n"
-				       "Track: %%t\\r\\n\""
+				       "Title: %%t\\r\\n"
 				       " \"%s\"",
 				       shell_escape(Item->Filename, '\"'));
 	cPipe p;
@@ -182,8 +182,8 @@ class cID3Scanner : public cThread
 	      Item->Artist = (pt+8);
 	    if(!strncmp(pt, "Album: ", 7) && strlen(pt) > 8)
 	      Item->Album = (pt+7);
-	    if(!strncmp(pt, "Track: ", 7) && strlen(pt) > 8)
-	      Item->Track = (pt+7);
+	    if(!strncmp(pt, "Title: ", 7) && strlen(pt) > 8)
+	      Item->Title = (pt+7);
 	  }
 	}
       }
@@ -268,7 +268,7 @@ class cPlsReader : public cPlaylistReader
 	      1 == sscanf(line + 5, "%d=", &n)) {
 	if(*(t+1)) {
 	  if(n == m_Current)
-	    Prev()->Track = t;
+	    Prev()->Title = t;
 	  else
 	    m_Title = t;
 	}
@@ -324,7 +324,7 @@ class cAsxReader : public cPlaylistReader
 	pt = strstr(line, "<entry>");
       if(pt) {
 	if(*m_Title && Prev()) {
-	  Prev()->Track = m_Title;
+	  Prev()->Title = m_Title;
 	  m_Title = NULL;
 	}
       }
@@ -445,7 +445,7 @@ bool cPlaylist::StoreCache(void)
   for(cPlaylistItem *i = First(); i; i=Next(i)) {
     // store only items in "current" root folder
     if(!strncmp(i->Filename, m_Folder, len)) {
-      if(/**i->Track ||*/ *i->Artist || *i->Album) {
+      if(/**i->Title ||*/ *i->Artist || *i->Album) {
 	cString Filename = ((*i->Filename) + len); // relative
 	if(entries < 1) {
 	  f = fopen(Name, "w");
@@ -458,8 +458,8 @@ bool cPlaylist::StoreCache(void)
 	}
 	entries++;
 	fprintf(f, "File%d=%s\r\n", entries, *Filename);
-	if(*i->Track && (*i->Track)[0])
-	  fprintf(f, "Title%d=%s\r\n", entries, *i->Track);
+	if(*i->Title && (*i->Title)[0])
+	  fprintf(f, "Title%d=%s\r\n", entries, *i->Title);
 	if(*i->Artist && (*i->Artist)[0])
 	  fprintf(f, "Artist%d=%s\r\n", entries, *i->Artist);
 	if(*i->Album && (*i->Album)[0])
@@ -508,7 +508,7 @@ bool cPlaylist::ReadCache(void)
 	    }
 	  }
 	} else if(it && !strncmp(pt, "Title", 5)) {
-	  it->Track = strchrnext(pt, '=');
+	  it->Title = strchrnext(pt, '=');
 	} else if(it && !strncmp(pt, "Artist", 6)) {
 	  it->Artist = strchrnext(pt, '=');
 	} else if(it && !strncmp(pt, "Album", 5)) {
@@ -767,7 +767,7 @@ int cPlaylist::ReadPlaylist(const char *file)
 	    // absolute path
 	    Add(new cPlaylistItem(pt));
 	    if(parser->Title())
-	      Last()->Track = parser->Title();
+	      Last()->Title = parser->Title();
 	  } else {
 	    // relative path
 	    Add(new cPlaylistItem(pt, Base, parser->Title()));
