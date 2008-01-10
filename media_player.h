@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.14 2007-07-18 12:40:07 phintuka Exp $
+ * $Id: media_player.h,v 1.15 2008-01-10 23:41:24 phelin Exp $
  *
  */
 
@@ -41,6 +41,9 @@ class cXinelibPlayerControl : public cControl
     int    m_CurrentPos;
     int    m_CurrentLen;
     bool   m_BlinkState;
+
+    cTimeMs lastTime;
+    int number;
 
     void MsgReplaying(const char *Title, const char *File);
 

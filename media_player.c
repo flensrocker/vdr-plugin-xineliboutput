@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.42 2008-01-10 23:37:35 phelin Exp $
+ * $Id: media_player.c,v 1.43 2008-01-10 23:41:24 phelin Exp $
  *
  */
 
@@ -435,6 +435,9 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
   m_AutoShowStart = time(NULL);
   m_BlinkState = true;
 
+  number = 0;
+  lastTime.Set();
+
   m_Player->m_UseResume = (Mode==ShowFiles);
 
   MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
@@ -642,7 +645,96 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   if (m_DisplayReplay) 
     Show();
 
-  switch(Key) {
+  if ( m_Mode == ShowFiles ) {
+    switch(Key) {
+      case kRed:    if(m_Player->Playlist().Count() > 1) {
+                      Hide();
+                      m_PlaylistMenu = new cPlaylistMenu(m_Player->Playlist(), m_RandomPlay);
+                      m_AutoShowStart = 0;
+                    } else {
+                      m_Player->Control("SEEK 0");    break;
+                    }
+                    break;
+      case k2:      xc.subtitle_vpos -= 10;
+      case k5:      xc.subtitle_vpos += 5;
+                    m_Player->Control("SUBTITLES %d", xc.subtitle_vpos);
+                    break;
+      case kRight:
+                    {
+                      static const int speeds[] = { -3, -2, 1, 2, -4, 2, 3, 4, 4 };
+                      m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                      if(m_Player->Speed() != 1)
+                        Show();
+                      else
+                        Hide();
+                      break;
+                    }
+      case kLeft:
+                    {
+                      static const int speeds[] = { 0, -4, -3, -2, 0, -2, 1, 2, 3 };
+                      m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                      if(m_Player->Speed() != 1 || !m_ShowModeOnly)
+                        Show();
+                      else
+                        Hide();
+                      break;
+                    }
+      default:      break;
+    }   
+  }
+  if ( m_Mode == ShowMusic ) {
+    switch(Key) {
+      case kRed:    Hide();
+                    m_PlaylistMenu = new cPlaylistMenu(m_Player->Playlist(), m_RandomPlay);
+                    m_AutoShowStart = 0;
+                    break;
+      case kNext:
+      case kRight:  if(m_RandomPlay) {
+                      srand((unsigned int)time(NULL));
+                      m_Player->NextFile((random() % m_Player->Files()) - m_Player->CurrentFile());
+                    }
+                    else {
+                      m_Player->NextFile(1);
+                    }
+                    if(!m_DisplayReplay)
+                      m_AutoShowStart = time(NULL);
+                    MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
+                    break;
+      case kPrev:
+      case kLeft:   if(cXinelibDevice::Instance().PlayFileCtrl("GETPOS") < 3000) {
+                      m_Player->NextFile(-1);
+                      if(!m_DisplayReplay)
+                        m_AutoShowStart = time(NULL);
+                      MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
+                    }
+                    else {
+                      m_Player->NextFile(0);
+                      if(!m_DisplayReplay)
+                        m_AutoShowStart = time(NULL);
+                    }
+                    break;
+      case k0 ... k9:
+                    if (number >= 0) {
+                       if (number * 10 + Key - k0 > m_Player->Files())
+                          number = m_Player->Files();
+                       else
+                          number = number * 10 + Key - k0;
+                    }
+                    break;
+      case kNone:
+                    if (number > 0 && int(lastTime.Elapsed()) > 3000) {
+                       m_Player->NextFile( number - (m_Player->CurrentFile() + 1) );
+                       if (!m_DisplayReplay)
+                          m_AutoShowStart = time(NULL);
+                       MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
+                       number = 0;
+                       lastTime.Set();
+                    }
+                    break;
+      default:      break;
+    }
+  }
+  switch(Key) { // key bindings common for both players
     case kBack:   xc.main_menu_mode = m_Mode;
                   Hide(); 
 		  BackToMenu();
@@ -651,15 +743,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
     case kBlue:   Hide();
                   Close();
                   return osEnd;
-    case kRed:    if(m_Player->Playlist().Count() > 1 || m_Mode == ShowMusic) {
-                    Hide();
-		    m_PlaylistMenu = new cPlaylistMenu(m_Player->Playlist(), m_RandomPlay);
-		    m_AutoShowStart = 0;
-                  } else {
-		    m_Player->Control("SEEK 0");    break;
-		  }
-		  break;
-    case k0:      if(m_Player->Playlist().Count()>1) {
+    case kUser7:  if(m_Player->Playlist().Count()>1) {
                     m_RandomPlay = !m_RandomPlay;
 		    if(m_RandomPlay)
 		      Skins.Message(mtInfo, tr("Random play"));
@@ -669,39 +753,8 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                   break;
     case kGreen:  m_Player->Control("SEEK -60");  break;
     case kYellow: m_Player->Control("SEEK +60");  break;
-    case k1:
     case kUser8:  m_Player->Control("SEEK -20");  break;
-    case k3:
     case kUser9:  m_Player->Control("SEEK +20");  break;
-    case k2:      xc.subtitle_vpos -= 10;
-    case k5:      xc.subtitle_vpos += 5;
-                  m_Player->Control("SUBTITLES %d", xc.subtitle_vpos);
-                  break;
-    case kNext:
-    case kRight:  if(m_RandomPlay) {
-                    srand((unsigned int)time(NULL));
-                    m_Player->NextFile((random() % m_Player->Files()) - m_Player->CurrentFile());
-                  }
-                  else {
-                    m_Player->NextFile(1);
-                  }
-                  if(!m_DisplayReplay)
-                    m_AutoShowStart = time(NULL);
-                  MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
-                  break;
-    case kPrev:
-    case kLeft:   if(cXinelibDevice::Instance().PlayFileCtrl("GETPOS") < 3000) {
-                    m_Player->NextFile(-1);
-                    if(!m_DisplayReplay)
-                      m_AutoShowStart = time(NULL);
-                    MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
-                  }
-                  else {
-                    m_Player->NextFile(0);
-                    if(!m_DisplayReplay)
-                      m_AutoShowStart = time(NULL);
-                  }
-                  break;
     case kDown:
     case kPause:  if(m_Player->Speed()) {
                     m_Player->SetSpeed(0);
