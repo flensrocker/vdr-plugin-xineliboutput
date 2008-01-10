@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.42 2008-01-10 23:32:18 phelin Exp $
+ * $Id: frontend.c,v 1.43 2008-01-10 23:44:46 phelin Exp $
  *
  */
 
@@ -142,12 +142,12 @@ void cXinelibThread::InfoHandler(const char *info)
     map += 8;
     while(*map) {
       while(*map == ' ') map++;
-      char *next = strstr(map, "=\'");
+      char *next = strstr(map, "=@");
       if(!next)
 	break;
       *next = 0;
       next += 2;
-      char *end =  strstr(next, "\'");
+      char *end =  strstr(next, "@");
       if(!end)
 	break;
       *end = 0;
