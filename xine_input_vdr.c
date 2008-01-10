@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.109 2008-01-09 08:52:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.110 2008-01-10 21:37:14 phintuka Exp $
  *
  */
 
@@ -2649,6 +2649,7 @@ static void send_cd_info(vdr_input_plugin_t *this)
     for(i=0; i<count && list[i]; i++)
       LOGMSG("cdda: %d: %s", i, list[i]);
   }
+  this->autoplay_size = count;
 #endif
 }
 
