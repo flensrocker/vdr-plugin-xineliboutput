@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.9 2008-01-10 23:32:18 phelin Exp $
+ * $Id: playlist.c,v 1.10 2008-01-10 23:33:51 phelin Exp $
  *
  */
 
@@ -139,16 +139,28 @@ class cID3Scanner : public cThread
     LOGDBG("ID3Scanner Started");
     while(Running()) {
       if(!(Item = m_List.Next(Item)))
-	break;
+        break;
 
-      if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 5, ".flac")) {
-        cString Cmd = cString::sprintf("metaflac "
-                                       " --show-tag=TITLE "
-                                       " --show-tag=ALBUM "
-                                       " --show-tag=ARTIST "
-                                       " --show-tag=TRACKNUMBER "
-                                       " \"%s\"",
-                                       shell_escape(Item->Filename, '\"'));
+      if(xc.IsAudioFile(Item->Filename)) {
+        LOGDBG("Scanning metainfo for file %s", *Item->Filename);
+        cString Cmd = "";
+        if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 5, ".flac"))
+            Cmd = cString::sprintf("metaflac "
+                                   " --show-tag=TITLE "
+                                   " --show-tag=ALBUM "
+                                   " --show-tag=ARTIST "
+                                   " --show-tag=TRACKNUMBER "
+                                   " \"%s\"",
+                                   shell_escape(Item->Filename, '\"'));
+        else
+            Cmd = cString::sprintf("mp3info -p \""
+                                   "ARTIST=%%a\\r\\n"
+                                   "ALBUM=%%l\\r\\n"
+                                   "TITLE=%%t\\r\\n"
+                                   "TRACKNUMBER=%%n\\r\\n\""
+                                   " \"%s\"",
+                                   shell_escape(Item->Filename, '\"'));
+
         cPipe p;
         if(p.Open(*Cmd, "r")) {
           cMutexLock ml(&m_List.m_Lock);
@@ -162,33 +174,9 @@ class cID3Scanner : public cThread
             else if(!strncasecmp(pt, "TITLE=", 6) && strlen(pt) > 7)
               Item->Title = (pt+6);
             else if(!strncasecmp(pt, "TRACKNUMBER=", 12) && strlen(pt) > 12)
-              Item->Tracknumber = (pt+12);
+              Item->Tracknumber = cString::sprintf("%s%s", strlen(pt) == 13 ? "0" : "", (pt+12));
           }
         }
-      } else if(xc.IsAudioFile(Item->Filename)) {
-	cString Cmd = cString::sprintf("mp3info -p \""
-				       "Artist: %%a\\r\\n"
-				       "Album: %%l\\r\\n"
-				       "Title: %%t\\r\\n"
-                                       "Tracknumber: %%n\\r\\n\""
-				       " \"%s\"",
-				       shell_escape(Item->Filename, '\"'));
-	cPipe p;
-	if(p.Open(*Cmd, "r")) {
-	  cMutexLock ml(&m_List.m_Lock);
-	  cReadLine r;
-	  char *pt;
-	  while(NULL != (pt = r.Read(p))) {
-	    if(!strncmp(pt, "Artist: ", 8) && strlen(pt) > 9)
-	      Item->Artist = (pt+8);
-	    if(!strncmp(pt, "Album: ", 7) && strlen(pt) > 8)
-	      Item->Album = (pt+7);
-	    if(!strncmp(pt, "Title: ", 7) && strlen(pt) > 8)
-	      Item->Title = (pt+7);
-            if(!strncmp(pt, "Tracknumber: ", 12) && strlen(pt) > 13)
-              Item->Tracknumber = (pt+12);
-	  }
-	}
       }
     }
     LOGDBG("ID3Scanner Done.");
