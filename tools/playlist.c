@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.11 2008-01-10 23:36:06 phelin Exp $
+ * $Id: playlist.c,v 1.12 2008-01-10 23:37:36 phelin Exp $
  *
  */
 
@@ -928,3 +928,28 @@ cString cPlaylist::EscapeMrl(const char *mrl)
   return cString((const char*)buf, true);
 }
 
+cString cPlaylist::GetEntry(cPlaylistItem *i, bool isPlaylist, bool isCurrent)
+{
+
+  cString Entry = "";
+  if (*i->Artist && xc.playlist_artist || *i->Album && xc.playlist_album) {
+      Entry = cString::sprintf("%s%s%s%s%s%s(%s%s%s)",
+                               isPlaylist ? (isCurrent ? "*" : " ") : "",
+                               isPlaylist ? "\t" : " ",
+                               xc.playlist_tracknumber ? (*i->Tracknumber ?: "") : "",
+                               xc.playlist_tracknumber ? (*i->Tracknumber ? " - " : "") : "",
+                               *i->Title,
+                               isPlaylist ? "\t" : " ",
+                               xc.playlist_artist ? (*i->Artist ?: "") : "",
+                               xc.playlist_artist && xc.playlist_album ? (*i->Artist && *i->Album ? ":" : "") : "",
+                               xc.playlist_album  ? (*i->Album  ?: "") : "");
+  } else {
+      Entry = cString::sprintf("%s%s%s%s%s",
+                               isPlaylist ? (isCurrent ? "*" : " ") : "",
+                               isPlaylist ? "\t" : " ",
+                               xc.playlist_tracknumber ? (*i->Tracknumber ?: "") : "",
+                               xc.playlist_tracknumber ? (*i->Tracknumber ? " - " : "") : "",
+                               *i->Title);
+  }
+  return Entry;
+}

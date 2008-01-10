@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.41 2008-01-10 23:32:18 phelin Exp $
+ * $Id: media_player.c,v 1.42 2008-01-10 23:37:35 phelin Exp $
  *
  */
 
@@ -402,18 +402,7 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
   int j = 0;
 
   for(cPlaylistItem *i = m_Playlist.First(); i; i = m_Playlist.Next(i), j++) {
-    cString Title;
-    if(*i->Artist || *i->Album)
-      Title = cString::sprintf("%c\t%s\t(%s%s%s)", 
-			       j==currentPlaying ? '*':' ',
-			       *i->Title,
-			       *i->Artist ?: "",
-			       *i->Artist ? ": " : "",
-			       *i->Album ?: "");
-    else
-      Title = cString::sprintf("%c\t%s",
-			       j==currentPlaying ? '*':' ',
-			       *i->Title);
+    cString Title = cPlaylist::GetEntry(i, true, j==currentPlaying);
     Add(new cOsdItem( ic.Translate(Title), (eOSState)(os_User + j)));
   }
 
@@ -540,17 +529,7 @@ void cXinelibPlayerControl::Show()
       Total = (m_CurrentLen + 500) / 1000;   // ms --> s
       Current = (m_CurrentPos + 500) / 1000;
 
-      cString Title = m_Player->Playlist().Current()->Title;
-      if(*m_Player->Playlist().Current()->Artist ||
-	 *m_Player->Playlist().Current()->Album)
-	Title = cString::sprintf("%s (%s%s%s)", *Title,
-				 *m_Player->Playlist().Current()->Artist ?: "",
-				 *m_Player->Playlist().Current()->Artist ? ": " : "",
-				 *m_Player->Playlist().Current()->Album ?: "");
-      else if (cXinelibDevice::Instance().GetMetaInfo(miTitle)[0])
-	Title = cString::sprintf("%s (%s)", *Title, 
-				 cXinelibDevice::Instance().GetMetaInfo(miTitle));
-
+      cString Title = cPlaylist::GetEntry(m_Player->Playlist().Current());
       cIConv ic;
       m_DisplayReplay->SetTitle(ic.Translate(Title));
 
