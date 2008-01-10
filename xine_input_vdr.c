@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.110 2008-01-10 21:37:14 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.111 2008-01-10 23:32:18 phelin Exp $
  *
  */
 
@@ -2618,14 +2618,15 @@ static void send_meta_info(vdr_input_plugin_t *this)
   if(this->slave_stream) {
 
     /* send stream meta info */
-    char *meta   = NULL;
-    char *title  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TITLE);
-    char *artist = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ARTIST);
-    char *album  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
+    char *meta         = NULL;
+    char *title        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TITLE);
+    char *artist       = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ARTIST);
+    char *album        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
+    char *tracknumber  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TRACK_NUMBER);
 
-    asprintf(&meta, 
-	     "INFO METAINFO title=\'%s\' artist=\'%s\' album=\'%s\'\r\n",
-	     title?:"", artist?:"", album?:"");
+    asprintf(&meta,
+             "INFO METAINFO title=\'%s\' artist=\'%s\' album=\'%s\' tracknumber=\'%s\'\r\n",
+             title?:"", artist?:"", album?:"", tracknumber?:"");
 
     if(this->fd_control < 0)
       this->funcs.xine_input_event(meta, NULL);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.40 2008-01-10 23:30:37 phelin Exp $
+ * $Id: media_player.c,v 1.41 2008-01-10 23:32:18 phelin Exp $
  *
  */
 
@@ -225,10 +225,13 @@ void cXinelibPlayer::Activate(bool On)
     if(m_Replaying) {
       // update playlist metainfo
       const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
+      const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTracknumber);
       const char *al = cXinelibDevice::Instance().GetMetaInfo(miAlbum);
       const char *ar = cXinelibDevice::Instance().GetMetaInfo(miArtist);
       if(ti && ti[0] && (!*m_Playlist.Current()->Title || !strstr(m_Playlist.Current()->Title, ti)))
 	m_Playlist.Current()->Title = ti;
+      if(tr && tr[0])
+        m_Playlist.Current()->Tracknumber = tr;
       if(al && al[0])
 	m_Playlist.Current()->Album = al;
       if(ar && ar[0])
@@ -618,13 +621,17 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
     const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
     if(ti && ti[0] && (!*m_Player->Playlist().Current()->Title ||
 		       !strstr(m_Player->Playlist().Current()->Title, ti))) {
+      const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTracknumber);
       const char *al = cXinelibDevice::Instance().GetMetaInfo(miAlbum);
       const char *ar = cXinelibDevice::Instance().GetMetaInfo(miArtist);
-      LOGDBG("metainfo changed: %s->%s %s->%s %s->%s",
+      LOGDBG("metainfo changed: %s->%s %s->%s %s->%s %s->%s",
 	     *m_Player->Playlist().Current()->Artist?:"-", ar?:"-", 
 	     *m_Player->Playlist().Current()->Album ?:"-", al?:"-", 
+	     *m_Player->Playlist().Current()->Tracknumber ?:"-", tr?:"-",
              *m_Player->Playlist().Current()->Title ?:"-", ti?:"-");
       m_Player->Playlist().Current()->Title = ti;
+      if(tr && tr[0])
+        m_Player->Playlist().Current()->Tracknumber = tr;
       if(al && al[0])
 	m_Player->Playlist().Current()->Album = al;
       if(ar && ar[0])

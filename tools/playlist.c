@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.8 2008-01-10 23:30:37 phelin Exp $
+ * $Id: playlist.c,v 1.9 2008-01-10 23:32:18 phelin Exp $
  *
  */
 
@@ -162,7 +162,7 @@ class cID3Scanner : public cThread
             else if(!strncasecmp(pt, "TITLE=", 6) && strlen(pt) > 7)
               Item->Title = (pt+6);
             else if(!strncasecmp(pt, "TRACKNUMBER=", 12) && strlen(pt) > 12)
-              Item->Position = atoi(pt+12);
+              Item->Tracknumber = (pt+12);
           }
         }
       } else if(xc.IsAudioFile(Item->Filename)) {
@@ -170,6 +170,7 @@ class cID3Scanner : public cThread
 				       "Artist: %%a\\r\\n"
 				       "Album: %%l\\r\\n"
 				       "Title: %%t\\r\\n"
+                                       "Tracknumber: %%n\\r\\n\""
 				       " \"%s\"",
 				       shell_escape(Item->Filename, '\"'));
 	cPipe p;
@@ -184,6 +185,8 @@ class cID3Scanner : public cThread
 	      Item->Album = (pt+7);
 	    if(!strncmp(pt, "Title: ", 7) && strlen(pt) > 8)
 	      Item->Title = (pt+7);
+            if(!strncmp(pt, "Tracknumber: ", 12) && strlen(pt) > 13)
+              Item->Tracknumber = (pt+12);
 	  }
 	}
       }
@@ -460,6 +463,8 @@ bool cPlaylist::StoreCache(void)
 	fprintf(f, "File%d=%s\r\n", entries, *Filename);
 	if(*i->Title && (*i->Title)[0])
 	  fprintf(f, "Title%d=%s\r\n", entries, *i->Title);
+        if(*i->Tracknumber && (*i->Tracknumber)[0])
+          fprintf(f, "Tracknumber%d=%s\r\n", entries, *i->Tracknumber);
 	if(*i->Artist && (*i->Artist)[0])
 	  fprintf(f, "Artist%d=%s\r\n", entries, *i->Artist);
 	if(*i->Album && (*i->Album)[0])
@@ -509,6 +514,8 @@ bool cPlaylist::ReadCache(void)
 	  }
 	} else if(it && !strncmp(pt, "Title", 5)) {
 	  it->Title = strchrnext(pt, '=');
+        } else if(it && !strncmp(pt, "Tracknumber", 11)) {
+          it->Tracknumber = strchrnext(pt, '=');
 	} else if(it && !strncmp(pt, "Artist", 6)) {
 	  it->Artist = strchrnext(pt, '=');
 	} else if(it && !strncmp(pt, "Album", 5)) {

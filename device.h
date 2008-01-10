@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.26 2008-01-06 13:01:12 phintuka Exp $
+ * $Id: device.h,v 1.27 2008-01-10 23:32:18 phelin Exp $
  *
  */
 
@@ -22,7 +22,7 @@ class cFunctor;
 
 typedef enum {
   miTitle  = 0,
-  miTrack  = 1,
+  miTracknumber  = 1,
   miArtist = 2,
   miAlbum  = 3,
   miDvdTitleNo = 4,
