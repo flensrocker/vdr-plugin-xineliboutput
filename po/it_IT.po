@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2007-11-24 21:54+0200\n"
+"POT-Creation-Date: 2008-01-16 17:06+0200\n"
 "PO-Revision-Date: 2008-01-16 00:27+0100\n"
 "Last-Translator: Gringo <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -272,6 +272,12 @@ msgstr "La lista esec. predefinita non è un link simbolico"
 msgid "Default playlist not defined"
 msgstr "Lista esec. predefinita non definita"
 
+msgid "Delay"
+msgstr "Ritardo"
+
+msgid "ms"
+msgstr "ms"
+
 #, c-format
 msgid "xineliboutput: hotkey %s not binded"
 msgstr "xineliboutput: tasto %s non associato"
@@ -290,12 +296,6 @@ msgstr "Hardware"
 
 msgid "Software"
 msgstr "Software"
-
-msgid "Delay"
-msgstr "Ritardo"
-
-msgid "ms"
-msgstr "ms"
 
 msgid "Mix to headphones"
 msgstr "Suono a cuffie"
@@ -555,6 +555,25 @@ msgstr "Server RTSP"
 msgid "RTSP clients can control VDR"
 msgstr "I client RTSP possono controllare VDR"
 
+#, fuzzy
+msgid "Playlist settings"
+msgstr "Impostazioni video"
+
+msgid "Show the track number"
+msgstr ""
+
+msgid "Show the name of the artist"
+msgstr ""
+
+msgid "Show the name of the album"
+msgstr ""
+
+msgid "Scan for metainfo"
+msgstr ""
+
+msgid "Cache metainfo"
+msgstr ""
+
 msgid "Grayscale"
 msgstr "Scala di grigi"
 
@@ -564,12 +583,11 @@ msgstr "Bitmap"
 msgid "OSD"
 msgstr "OSD"
 
+msgid "Media Player"
+msgstr "Lettore multimediale"
+
 msgid "Test Images"
 msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
-
-msgid "Media Player"
-msgstr "Lettore multimediale"
-

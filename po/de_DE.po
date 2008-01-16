@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-01-01 10:23+0200\n"
+"POT-Creation-Date: 2008-01-14 09:05+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -556,6 +556,25 @@ msgstr "RTSP-Server"
 msgid "RTSP clients can control VDR"
 msgstr "RTSP-Clients können VDR kontrollieren"
 
+#, fuzzy
+msgid "Playlist settings"
+msgstr "Video-Einstellungen"
+
+msgid "Show the track number"
+msgstr ""
+
+msgid "Show the name of the artist"
+msgstr ""
+
+msgid "Show the name of the album"
+msgstr ""
+
+msgid "Scan for metainfo"
+msgstr ""
+
+msgid "Cache metainfo"
+msgstr ""
+
 msgid "Grayscale"
 msgstr "Graustufen"
 
@@ -565,11 +584,11 @@ msgstr "Bitmap"
 msgid "OSD"
 msgstr ""
 
+msgid "Media Player"
+msgstr "Medien..."
+
 msgid "Test Images"
 msgstr "Testbilder"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib Ausgabe-Plugin"
-
-msgid "Media Player"
-msgstr "Medien..."
