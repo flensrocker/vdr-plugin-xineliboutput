@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.48 2008-01-10 23:36:06 phelin Exp $
+ * $Id: device.c,v 1.49 2008-01-24 09:31:05 phintuka Exp $
  *
  */
 
@@ -1143,6 +1143,13 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
       return length;
     }
 #endif
+
+    if(IsFrameH264(buf, length)) {
+      LOGMSG("cXinelibDevice::PlayVideo: Detected H.264 video");
+//#warning There are SDTV channels using H.264, so we should really check video size ...
+      ForEach(m_clients, &cXinelibThread::SetHDMode, true);
+      m_StreamStart = false;
+    }
 
     int Width, Height;
     if(GetVideoSize(buf, length, &Width, &Height)) {
