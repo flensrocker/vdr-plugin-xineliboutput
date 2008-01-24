@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.4 2006-10-27 23:02:02 phintuka Exp $
+ * $Id: pes.h,v 1.5 2008-01-24 08:33:59 phintuka Exp $
  *
  */
 
@@ -249,6 +249,20 @@ static inline int GetVideoSize(const uchar *buf, int length, int *width, int *he
     }
   }
   return 0;
+}
+
+static inline bool IsFrameH264(const uchar *Data, int Count)
+{
+  if (Count < 9 || Count < 9 + Data[8])
+    return false;
+  if ( (Data[6] & 0xC0) != 0x80)  /* MPEG 2 */
+    return false;
+
+  Data += 9 + Data[8];
+
+  if (!Data[0] && !Data[1] && Data[2] == 0x01 && Data[3] == 0x09)
+    return true;
+  return false;
 }
 
 // from vdr/remux.c:
