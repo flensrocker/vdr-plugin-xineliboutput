@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.111 2008-01-10 23:32:18 phelin Exp $
+ * $Id: xine_input_vdr.c,v 1.112 2008-01-24 09:21:07 phintuka Exp $
  *
  */
 
@@ -4855,6 +4855,29 @@ static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
 }
 
 #ifdef TEST_H264
+static int update_frames_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
+{
+  int i = 8;
+  if (!this->I_frames)
+    this->P_frames = this->B_frames = 0;
+  i += data[i] + 1;   /* possible additional header bytes */
+  for (; i < len-5; i++) {
+    if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 9) {
+      uint8_t type = (data[i + 4] >> 5);
+      switch (type) {
+        case 0: case 3: case 5: this->I_frames++; LOGSCR("I %d", type); break;
+        case 1: case 4: case 6: this->P_frames++; LOGSCR("P %d", type); break;
+        case 2: case 7:         this->B_frames++; LOGSCR("B %d", type); break;
+        default: return 0;
+      }
+      return type;
+    }
+  }
+  return 0;
+}
+#endif
+
+#ifdef TEST_H264
 static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 {
   int i = 8;
@@ -4917,6 +4940,10 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
       LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", data[i + 3]);
       /* Should do something ... ? */
     }
+
+    if(this->live_mode && this->I_frames < 4)
+      /*if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32)*/
+        update_frames_h264(this, buf->content, buf->size);
   }
 
   /* Handle PTS and DTS */
