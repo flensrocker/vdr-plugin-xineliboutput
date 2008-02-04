@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.1 2008-02-04 23:46:08 phintuka Exp $
+ * $Id: pes.c,v 1.2 2008-02-04 23:49:50 phintuka Exp $
  *
  */
 
@@ -17,10 +17,7 @@
 int64_t pes_get_pts(const uint8_t *buf, int len)
 {
   /* assume mpeg2 pes header ... */
-
-  if ((VIDEO_STREAM == (buf[3] & ~VIDEO_STREAM_MASK)) ||
-      (AUDIO_STREAM == (buf[3] & ~AUDIO_STREAM_MASK)) ||
-      (PRIVATE_STREAM1 == buf[3])) {
+  if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
       
     if ((buf[6] & 0xC0) != 0x80)
       return INT64_C(-1);
@@ -42,9 +39,7 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
 
 int64_t pes_get_dts(const uint8_t *buf, int len)
 {
-  if ((VIDEO_STREAM == (buf[3] & ~VIDEO_STREAM_MASK)) ||
-      (AUDIO_STREAM == (buf[3] & ~AUDIO_STREAM_MASK)) ||
-      (PRIVATE_STREAM1 == buf[3])) {
+  if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
       
     if ((buf[6] & 0xC0) != 0x80)
       return INT64_C(-1);
