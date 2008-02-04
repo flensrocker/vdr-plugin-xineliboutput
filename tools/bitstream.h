@@ -4,26 +4,29 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: bitstream.h,v 1.1 2008-01-29 23:14:53 phintuka Exp $
+ * $Id: bitstream.h,v 1.2 2008-02-04 22:41:14 phintuka Exp $
  *
  */
 
 #ifndef _XINELIBOUTPUT_BITSTREAM_H_
 #define _XINELIBOUTPUT_BITSTREAM_H_
 
+#include <stdint.h>
+
 
 # ifdef NOCACHE
 
-
 typedef struct {
-  uint8_t *data;
-  int      count; /* in bits */
-  int      index; /* in bits */
+  const uint8_t *data;
+  int            count; /* in bits */
+  int            index; /* in bits */
 } br_state;
 
-#define BR_INIT(data,bytes) { data, 8*bytes, 0 }
+#define BR_INIT(data,bytes) { (data), 8*(bytes), 0 }
 
-static inline void br_init(br_state *br, uint8_t *data, int bytes)
+#define BR_EOF(br) ((br)->index >= (br)->count)
+
+static inline void br_init(br_state *br, const uint8_t *data, int bytes)
 {
   br->data  = data;
   br->count = 8*bytes;
@@ -66,9 +69,9 @@ typedef struct {
   uint32_t cache_bits;
 } br_state;
 
-#define BR_INIT(data,bytes) { data, data+bytes, 0, 0 }
+#define BR_INIT(data,bytes) { (data), (data)+(bytes), 0, 0 }
 
-static inline void br_init(br_state *br, uint8_t *data, int bytes)
+static inline void br_init(br_state *br, const uint8_t *data, int bytes)
 {
   br->data       = data;
   br->data_end   = data + bytes;
@@ -78,6 +81,8 @@ static inline void br_init(br_state *br, uint8_t *data, int bytes)
 
 #define BR_GET_BYTE(br) \
    (br->data < br->data_end ? *br->data++ : 0xff)
+
+#define BR_EOF(br) ((br)->data >= (br)->data_end)
 
 static inline uint32_t br_get_bits(br_state *br, uint32_t n)
 {
