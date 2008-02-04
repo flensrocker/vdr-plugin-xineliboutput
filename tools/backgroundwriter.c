@@ -4,9 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.5 2007-03-27 07:59:53 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.6 2008-02-04 23:54:06 phintuka Exp $
  *
  */
+
+#define __STDC_FORMAT_MACROS
+#define __STDC_CONSTANT_MACROS
+#include <inttypes.h>
 
 #include <stdint.h>
 #include <unistd.h>
@@ -329,8 +333,7 @@ void cRawWriter::Action(void)
 	if(GetPos == NextHeaderPos) {
 	  if(Count < 6)
 	    LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
-	  bool dummy;
-	  int packlen = pes_packet_len(Data, Count, dummy);
+	  int packlen = pes_packet_len(Data, Count);
 	  if(Count < packlen)
 	    ;//LOGMSG("Count = %d < %d", Count, 
 	     //   header->len + sizeof(stream_tcp_header_t));

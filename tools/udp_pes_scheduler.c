@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.32 2007-06-21 09:08:59 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.33 2008-02-04 23:55:49 phintuka Exp $
  *
  */
 
@@ -583,8 +583,8 @@ void cUdpScheduler::Send_SAP(bool Announce)
   
 void cUdpScheduler::Schedule(const uchar *Data, int Length)
 {
-  bool Audio=false, Video=false;
-  int64_t pts = pes_extract_pts(Data, Length, Audio, Video);
+  bool Audio = IS_AUDIO_PACKET(Data), Video = IS_VIDEO_PACKET(Data);
+  int64_t pts = PES_HAS_PTS(Data) ? pes_get_pts(Data, Length) : INT64_C(-1);
   int elapsed = pts>0 ? calc_elapsed_vtime(pts, Audio) : 0;
 
   if(elapsed > 0) {
