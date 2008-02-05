@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.43 2008-01-10 23:44:46 phelin Exp $
+ * $Id: frontend.c,v 1.44 2008-02-05 00:30:48 phintuka Exp $
  *
  */
 
 #define __STDC_FORMAT_MACROS
+#define __STDC_CONSTANT_MACROS
 #include <inttypes.h>
 
 #include <stdlib.h>
@@ -396,9 +397,7 @@ int cXinelibThread::Play_PES(const uchar *data, int len)
 int cXinelibThread::Play_Mpeg1_PES(const uchar *data1, int len)
 {
   if(!data1[0] && !data1[1] && data1[2] == 0x01 && len>7 && /* header sync bytes */
-     ( VIDEO_STREAM == (data1[3] & ~VIDEO_STREAM_MASK) ||   /*   video stream */
-       AUDIO_STREAM == (data1[3] & ~AUDIO_STREAM_MASK) ||   /*   audio stream */
-       PRIVATE_STREAM1 == data1[3]) &&                      /*   private stream 1 */
+     ( IS_VIDEO_PACKET(data1) || IS_AUDIO_PACKET(data1)) && /* video / audio / ps1 stream */
      ((data1[6] & 0xC0) != 0x80) &&                         /* really mpeg1 pes */
      (len == ((data1[4]<<8) | data1[5]) + 6)) {             /* whole PES packet and nothing else */
     uchar *data2 = new uchar[len+64];
