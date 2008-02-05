@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.42 2008-01-10 23:36:06 phelin Exp $
+ * $Id: setup_menu.c,v 1.43 2008-02-05 00:34:34 phintuka Exp $
  *
  */
 
@@ -380,7 +380,7 @@ void cMenuSetupAudioEq::Store(void)
 
 //--- cMenuSetupVideo --------------------------------------------------------
 
-static const char *tvtime_method[] =
+static const char * const tvtime_method[] =
   { "use_vo_driver",
     "Linear",
     "LinearBlend",
@@ -394,9 +394,9 @@ static const char *tvtime_method[] =
     "TomsMoComp",
     NULL};
 
-static const int tvtime_methods_count = (sizeof(tvtime_method)-1)/sizeof(char*);
+static const int tvtime_methods_count = (sizeof(tvtime_method)/sizeof(tvtime_method[0]) - 1);
 
-static const char *tvtime_method_name[] =
+static const char * const tvtime_method_name[] =
   {"Use Video-Out Driver",               // "use_vo_driver"
    "Linear Interpolation",               // "Linear",
    "Linear Blend (mplayer)",             // "LinearBlend",
@@ -410,23 +410,23 @@ static const char *tvtime_method_name[] =
    "Tom's Motion Compensated (DScaler)", // "TomsMoComp",
    NULL};
 
-static const char *tvtime_pulldown[] = 
+static const char * const tvtime_pulldown[] = 
   { "none",
     "vector",
     NULL};
 
-static const char *tvtime_pulldown_name[] = 
+static const char * const tvtime_pulldown_name[] = 
   { "None",
     "Vector",
     NULL};
 
-static const char *tvtime_framerate[] = 
+static const char * const tvtime_framerate[] = 
   { "full",
     "half_top",
     "half_bottom",
     NULL};
 
-static const char *tvtime_framerate_name[] = 
+static const char * const tvtime_framerate_name[] = 
   { "Full",
     "Half (top)",
     "Half (bottom)",
