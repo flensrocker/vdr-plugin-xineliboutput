@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.49 2008-01-10 23:36:06 phelin Exp $
+ * $Id: config.c,v 1.50 2008-02-05 00:19:26 phintuka Exp $
  *
  */
 
@@ -35,7 +35,7 @@ const int config_t::i_pesBufferSize[ PES_BUFFERS_count+1 ] =  {
   0, 50, 250, 500, 1000, 2000, 500
 };
 
-const char *config_t::s_bufferSize[ PES_BUFFERS_count+1 ] = { 
+const char * const config_t::s_bufferSize[ PES_BUFFERS_count+1 ] = { 
   trNOOP("custom"),
   trNOOP("tiny"),
   trNOOP("small"),
@@ -45,7 +45,7 @@ const char *config_t::s_bufferSize[ PES_BUFFERS_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_aspects[ ASPECT_count+1 ] = {
+const char * const config_t::s_aspects[ ASPECT_count+1 ] = {
   trNOOP("automatic"),
   trNOOP("default"),
   "4:3",
@@ -56,7 +56,7 @@ const char *config_t::s_aspects[ ASPECT_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_deinterlaceMethods[ DEINTERLACE_count+1 ] = {
+const char * const config_t::s_deinterlaceMethods[ DEINTERLACE_count+1 ] = {
   "none",
   "bob",
   "weave",
@@ -68,7 +68,7 @@ const char *config_t::s_deinterlaceMethods[ DEINTERLACE_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_deinterlaceMethodNames[ DEINTERLACE_count+1 ] = {
+const char * const config_t::s_deinterlaceMethodNames[ DEINTERLACE_count+1 ] = {
   trNOOP("off"),
   "Bob",
   "Weave",
@@ -80,18 +80,18 @@ const char *config_t::s_deinterlaceMethodNames[ DEINTERLACE_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_fieldOrder[ FIELD_ORDER_count+1 ] = { 
+const char * const config_t::s_fieldOrder[ FIELD_ORDER_count+1 ] = { 
   trNOOP("normal"),
   trNOOP("inverted"),
   NULL
 };
 
-const char *config_t::s_audioDrivers[ AUDIO_DRIVER_count+1 ] = { 
+const char * const config_t::s_audioDrivers[ AUDIO_DRIVER_count+1 ] = { 
   "auto", "alsa", "oss", "none", "esd", "jack",
   NULL
 };
 
-const char *config_t::s_audioDriverNames[ AUDIO_DRIVER_count+1 ] = {
+const char * const config_t::s_audioDriverNames[ AUDIO_DRIVER_count+1 ] = {
   trNOOP("automatic"),
   "Alsa",
   "OSS",
@@ -101,12 +101,12 @@ const char *config_t::s_audioDriverNames[ AUDIO_DRIVER_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_videoDriversX11[ X11_DRIVER_count+1 ] =  {
+const char * const config_t::s_videoDriversX11[ X11_DRIVER_count+1 ] =  {
   "auto", "xshm", "xv", "xvmc", "xxmc", "vidix", "XDirectFB", "opengl", "sdl", "none",
   NULL
 };
 
-const char *config_t::s_videoDriverNamesX11[ X11_DRIVER_count+1 ] =  {
+const char * const config_t::s_videoDriverNamesX11[ X11_DRIVER_count+1 ] =  {
   trNOOP("automatic"),
   "XShm",
   "Xv",
@@ -120,12 +120,12 @@ const char *config_t::s_videoDriverNamesX11[ X11_DRIVER_count+1 ] =  {
   NULL
 };
 
-const char *config_t::s_videoDriversFB[ FB_DRIVER_count+1 ] = {
+const char * const config_t::s_videoDriversFB[ FB_DRIVER_count+1 ] = {
   "auto", "fb", "DirectFB", "sdl", "vidixfb", "aadxr3", "none",
   NULL 
 };
 
-const char *config_t::s_videoDriverNamesFB [ FB_DRIVER_count+1 ] = {
+const char * const config_t::s_videoDriverNamesFB [ FB_DRIVER_count+1 ] = {
   trNOOP("automatic"),
   "Framebuffer",
   "DirectFB",
@@ -136,19 +136,19 @@ const char *config_t::s_videoDriverNamesFB [ FB_DRIVER_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_frontends[ FRONTEND_count+1 ] = {
+const char * const config_t::s_frontends[ FRONTEND_count+1 ] = {
   "sxfe", "fbfe", "none",
   NULL
 };
 
-const char *config_t::s_frontendNames[ FRONTEND_count+1 ] = {
+const char * const config_t::s_frontendNames[ FRONTEND_count+1 ] = {
   "X11 (sxfe)",
   "Framebuffer (fbfe)",
   trNOOP("Off"),
   NULL 
 };
 
-const char *config_t::s_frontend_files[ FRONTEND_count+1 ] = {
+const char * const config_t::s_frontend_files[ FRONTEND_count+1 ] = {
   "lib" PLUGIN_NAME_I18N "-sxfe.so." XINELIBOUTPUT_VERSION,
   "lib" PLUGIN_NAME_I18N "-fbfe.so." XINELIBOUTPUT_VERSION,
   // example: libxineliboutput-sxfe.so.0.4.0
@@ -156,18 +156,18 @@ const char *config_t::s_frontend_files[ FRONTEND_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_audioEqNames[ AUDIO_EQ_count+1 ] = {
+const char * const config_t::s_audioEqNames[ AUDIO_EQ_count+1 ] = {
   "30 Hz", "60 Hz", "125 Hz", "250 Hz", "500 Hz",
   "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz",
   NULL
 };
 
-const char *config_t::s_audioVisualizations[ AUDIO_VIS_count+1 ] = {
+const char * const config_t::s_audioVisualizations[ AUDIO_VIS_count+1 ] = {
   "none", "goom", "oscope", "fftscope", "fftgraph",
   NULL
 };
 
-const char *config_t::s_audioVisualizationNames[ AUDIO_VIS_count+1 ] = {
+const char * const config_t::s_audioVisualizationNames[ AUDIO_VIS_count+1 ] = {
   trNOOP("Off"),
   trNOOP("Goom"),
   trNOOP("Oscilloscope"),
@@ -177,7 +177,7 @@ const char *config_t::s_audioVisualizationNames[ AUDIO_VIS_count+1 ] = {
 };
 
 /* xine, audio_alsa_out.c */
-const char *config_t::s_speakerArrangements[ SPEAKERS_count+1 ] = {
+const char * const config_t::s_speakerArrangements[ SPEAKERS_count+1 ] = {
   trNOOP("Mono 1.0"), trNOOP("Stereo 2.0"), trNOOP("Headphones 2.0"), trNOOP("Stereo 2.1"),
   trNOOP("Surround 3.0"), trNOOP("Surround 4.0"), trNOOP("Surround 4.1"),
   trNOOP("Surround 5.0"), trNOOP("Surround 5.1"), trNOOP("Surround 6.0"),
@@ -185,7 +185,7 @@ const char *config_t::s_speakerArrangements[ SPEAKERS_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_subtitleSizes[ SUBTITLESIZE_count+1 ] = { 
+const char * const config_t::s_subtitleSizes[ SUBTITLESIZE_count+1 ] = { 
   trNOOP("default"),
   trNOOP("tiny"),
   trNOOP("small"),
@@ -196,17 +196,17 @@ const char *config_t::s_subtitleSizes[ SUBTITLESIZE_count+1 ] = {
   NULL
 };
 
-const char *config_t::s_subExts[] = {
+const char * const config_t::s_subExts[] = {
   ".sub", ".srt", ".txt", ".ssa",
   ".SUB", ".SRT", ".TXT", ".SSA", 
   NULL
 };
 
-const char *config_t::s_osdMixers[] = {
+const char * const config_t::s_osdMixers[] = {
   trNOOP("no"),
   trNOOP("grayscale"),              // item [1]
   trNOOP("transparent"),            // item [2]
-  trNOOP("transparent greyscale"),  // item [3] ([1 | 2])
+  trNOOP("transparent grayscale"),  // item [3] ([1 | 2])
   trNOOP("yes"),
   NULL
 };
@@ -539,7 +539,9 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
 
 bool config_t::ProcessArgs(int argc, char *argv[])
 {
-  static struct option long_options[] = {
+  static const char short_options[] = "fw:h:l:r:A:V:d:P:pc";
+
+  static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
       { "width",        required_argument, NULL, 'w' },
       { "height",       required_argument, NULL, 'h' },
@@ -561,7 +563,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     };
 
   int c;
-  while ((c = getopt_long(argc, argv, "fw:h:l:r:A:V:d:P:pc", long_options, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
     switch (c) {
     case 'd': ProcessArg("Video.Port", optarg);
               break;

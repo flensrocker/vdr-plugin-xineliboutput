@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.33 2008-01-10 23:36:06 phelin Exp $
+ * $Id: config.h,v 1.34 2008-02-05 00:19:26 phintuka Exp $
  *
  */
 
@@ -150,28 +150,28 @@ typedef enum {
 
 class config_t {
   public:
-    static const char *s_bufferSize[];
-    static const int   i_pesBufferSize[];
-    static const char *s_aspects[];
-    static const char *s_deinterlaceMethods[];
-    static const char *s_deinterlaceMethodNames[];
-    static const char *s_fieldOrder[];
-    static const char *s_audioDriverNames[];
-    static const char *s_audioDrivers[];
-    static const char *s_videoDriverNamesX11[];
-    static const char *s_videoDriversX11[];
-    static const char *s_videoDriverNamesFB[];
-    static const char *s_videoDriversFB[];
-    static const char *s_frontendNames[];
-    static const char *s_frontends[];
-    static const char *s_frontend_files[];
-    static const char *s_audioEqNames[];
-    static const char *s_audioVisualizations[];
-    static const char *s_audioVisualizationNames[];
-    static const char *s_speakerArrangements[];
-    static const char *s_subtitleSizes[];
-    static const char *s_subExts[];
-    static const char *s_osdMixers[];
+    static const char * const s_bufferSize[];
+    static const int          i_pesBufferSize[];
+    static const char * const s_aspects[];
+    static const char * const s_deinterlaceMethods[];
+    static const char * const s_deinterlaceMethodNames[];
+    static const char * const s_fieldOrder[];
+    static const char * const s_audioDriverNames[];
+    static const char * const s_audioDrivers[];
+    static const char * const s_videoDriverNamesX11[];
+    static const char * const s_videoDriversX11[];
+    static const char * const s_videoDriverNamesFB[];
+    static const char * const s_videoDriversFB[];
+    static const char * const s_frontendNames[];
+    static const char * const s_frontends[];
+    static const char * const s_frontend_files[];
+    static const char * const s_audioEqNames[];
+    static const char * const s_audioVisualizations[];
+    static const char * const s_audioVisualizationNames[];
+    static const char * const s_speakerArrangements[];
+    static const char * const s_subtitleSizes[];
+    static const char * const s_subExts[];
+    static const char * const s_osdMixers[];
 
   public:
 
@@ -345,7 +345,7 @@ class config_t {
 extern config_t xc;
 
 // Find index of string in array of strings
-static inline int strstra(const char *str, const char *stra[], int def_index)
+static inline int strstra(const char * const str, const char * const stra[], int def_index)
 {
   if(str && stra) {
     int i;
