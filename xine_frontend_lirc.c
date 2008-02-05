@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.9 2007-05-18 14:43:03 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.10 2008-02-05 00:56:43 phintuka Exp $
  *
  */
 /*
@@ -20,7 +20,7 @@
  *
  * LIRC support added by Carsten Koch <Carsten.Koch@icem.de>  2000-06-16.
  *
- * $Id: xine_frontend_lirc.c,v 1.9 2007-05-18 14:43:03 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.10 2008-02-05 00:56:43 phintuka Exp $
  */
 
 
@@ -113,10 +113,6 @@ static void *lirc_receiver_thread(void *fe)
 
     if (timeout >= 0) {
       struct timeval tv;
-#if 0
-      if(TimeoutMs < 100)
-	TimeoutMs = 100; 
-#endif
       tv.tv_sec  = timeout / 1000;
       tv.tv_usec = (timeout % 1000) * 1000;
       ready = select(FD_SETSIZE, &set, NULL, NULL, &tv) > 0 && FD_ISSET(fd_lirc, &set);
@@ -167,10 +163,13 @@ static void *lirc_receiver_thread(void *fe)
         if (count == 0) {
           if (strcmp(KeyName, LastKeyName) == 0 && elapsed(FirstTime) < REPEATDELAY) 
 	    continue; /* skip keys coming in too fast */
-	  if (repeat)
+	  if (repeat) {
+	    alarm(3);
 	    if(find_input((fe_t*)fe))
 	      process_xine_keypress(((fe_t*)fe)->input, "LIRC", LastKeyName, 0, 1);
-	  /* Put(LastKeyName, false, true);  code, repeat, release */
+	    alarm(0);
+	  }
+
 	  strcpy(LastKeyName, KeyName);
 	  repeat = 0;
 	  FirstTime = time_ms();
@@ -205,18 +204,20 @@ static void *lirc_receiver_thread(void *fe)
                          xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
         } else 
 #endif
-	if(find_input((fe_t*)fe))
-	  process_xine_keypress(((fe_t*)fe)->input, "LIRC", KeyName, repeat, 0);
-
-	/*Put(KeyName, repeat);*/
-
+	  {
+	    alarm(3);
+	    if(find_input((fe_t*)fe))
+	      process_xine_keypress(((fe_t*)fe)->input, "LIRC", KeyName, repeat, 0);
+	    alarm(0);
+	  }
 
       }
       else if (repeat) { /* the last one was a repeat, so let's generate a release */
 	if (elapsed(LastTime) >= REPEATTIMEOUT) {
+	  alarm(3);
 	  if(find_input((fe_t*)fe))
 	    process_xine_keypress(((fe_t*)fe)->input, "LIRC", LastKeyName, 0, 1);
-	  /* Put(LastKeyName, false, true); */
+	  alarm(0);
 	  repeat = 0;
 	  *LastKeyName = 0;
 	  timeout = -1;
