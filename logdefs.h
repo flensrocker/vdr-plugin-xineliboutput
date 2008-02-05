@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.7 2007-03-14 11:57:48 phintuka Exp $
+ * $Id: logdefs.h,v 1.8 2008-02-05 01:18:17 phintuka Exp $
  *
  */
 
@@ -51,9 +51,9 @@
        buf[sizeof(buf)-1] = 0;
 #    ifndef __APPLE__
        if(!LogToSysLog) {
-	 fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
+	 fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", (long int)syscall(__NR_gettid), buf);
        } else {
-	 syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
+	 syslog(level, "[%ld] " LOG_MODULENAME "%s", (long int)syscall(__NR_gettid), buf);
        }
 #    else
        if(!LogToSysLog) {
