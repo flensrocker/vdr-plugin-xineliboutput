@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.35 2008-01-09 20:40:17 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.36 2008-02-05 00:37:18 phintuka Exp $
  *
  */
 
@@ -177,8 +177,10 @@ static void *kbd_receiver_thread(void *fe)
   }
 
   do {
+    alarm(0);
     errno = 0;
     code = read_key_seq();
+    alarm(3); /* watchdog */
     if(code == 0)
       continue;
     if(code == 27) {
@@ -304,7 +306,7 @@ static char *strcatrealloc(char *dest, const char *src)
   return dest;
 }
 
-static const char *help_str = 
+static const char help_str[] = 
 "When server address is not given, server is searched from local network.\n"
 "If server is not found, localhost (127.0.0.1) is used as default.\n\n"
     "   --help                        Show (this) help message\n"
@@ -342,6 +344,8 @@ static const char *help_str =
     "                                 If no transport options are given, transports\n"
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
+
+static const char short_options[] = "HL:A:V:d:a:fw:h:P:vslkbtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -405,7 +409,7 @@ int main(int argc, char *argv[])
 	 xmajor, xminor, xsub);
 
   /* Parse arguments */
-  while ((c = getopt_long(argc, argv, "HL:A:V:d:a:fw:h:P:vslkbtur", long_options, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
     switch (c) {
     default:
     case 'H': printf("\nUsage: %s [options] [xvdr[+udp|+tcp|+rtp]:[//host[:port]]] \n"
