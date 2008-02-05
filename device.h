@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.27 2008-01-10 23:32:18 phelin Exp $
+ * $Id: device.h,v 1.28 2008-02-05 00:28:43 phintuka Exp $
  *
  */
 
@@ -246,6 +246,7 @@ class cXinelibDevice : public cDevice
     bool m_StreamStart;
     int  m_FreeBufs;
     bool m_Cleared;
+    bool m_h264;
 
     int PlayAny(const uchar *Data, int Length);
     int PlayTrickSpeed(const uchar *buf, int length);
