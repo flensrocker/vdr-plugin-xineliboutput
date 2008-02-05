@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.49 2008-01-24 09:31:05 phintuka Exp $
+ * $Id: device.c,v 1.50 2008-02-05 00:47:05 phintuka Exp $
  *
  */
 
 #define __STDC_FORMAT_MACROS
+#define __STDC_CONSTANT_MACROS
 #include <inttypes.h>
 
 #include <vdr/config.h>
@@ -220,6 +221,7 @@ cXinelibDevice::cXinelibDevice()
   m_AudioCount  = 0;
   m_FreeBufs = 0;
   m_Cleared = true;
+  m_h264 = false;
 }
 
 cXinelibDevice::~cXinelibDevice() 
@@ -818,6 +820,7 @@ void cXinelibDevice::Clear(void)
     //LOGMSG("************ FIRST  Clear ***************");
     m_Cleared = true;
     m_StreamStart = true;
+    m_h264 = false;
     m_FreeBufs = 0;
     TrickSpeed(-1);
     ForEach(m_clients, &cXinelibThread::Clear);
@@ -938,18 +941,15 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
 int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length) 
 {
   if(abs(m_TrickSpeed) > 1 && (m_TrickSpeedMode & trs_I_frames)) {
-    uchar PictureType = NO_PICTURE;
-    if(ScanVideoPacket(buf, length, PictureType) > 0) {
+    uint8_t PictureType = pes_get_picture_type(buf, length);
 #ifdef LOG_TRICKSPEED
-      if(PictureType != NO_PICTURE) {
-	bool  Video = false, Audio = false;
-	int64_t pts = pes_extract_pts(buf, length, Audio, Video);
-	LOGMSG("    TrickSpeed: frame %s pts %"PRId64, PictureTypeStr(PictureType), pts);
+      if(PictureType != NO_PICTURE && PES_HAS_PTS(buf)) {
+	int64_t pts = pes_get_pts(buf, length);
+	LOGMSG("    TrickSpeed: frame %s pts %"PRId64, picture_type_str[PictureType], pts);
       }
 #endif
-    }
 
-#if 1 
+#if 1
     // limit I-frame rate
     if(PictureType == I_FRAME) {
       static int64_t t0 = 0;
@@ -973,7 +973,7 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
 	
 	t0 += fdelay;
 
-	pes_strip_pts((uchar*)buf, length);
+	pes_change_pts((uchar*)buf, length, INT64_C(0));
       } else {
 	t0 = t1;
       }
@@ -984,14 +984,10 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
   //
   // detecting trick speed mode ?
   //
-  if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_check)) {
-    bool Video = false, Audio = false;
-    int64_t pts = pes_extract_pts(buf, length, Audio, Video);
-
-    if(Video && pts > 0) {
-
-      uchar PictureType = NO_PICTURE;
-      ScanVideoPacket(buf, length, PictureType);
+  if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_check) && IS_VIDEO_PACKET(buf)) {
+    int64_t pts;
+    if (PES_HAS_PTS(buf) && (pts = pes_get_pts(buf, length)) > 0) {
+      uint8_t PictureType = pes_get_picture_type(buf, length);
       if(PictureType != I_FRAME && PictureType != NO_PICTURE) {
 	// --> must be fast worward with IBP frames.
 	// --> PTS check does not work (frames are sent in decoder order) ! */
@@ -1024,15 +1020,15 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
   //
   // Trick speed mode with PTS re-calc
   //
-  if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_recalc)) {
-    bool Video = false, Audio = false;
-    int64_t pts = pes_extract_pts(buf, length, Audio, Video);
-
-    if(Video && pts>0) {
+  if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_recalc) && 
+      IS_VIDEO_PACKET(buf) && PES_HAS_PTS(buf)) {
+    int64_t pts = pes_get_pts(buf, length);
+    if (pts > 0) {
+      
       /* m_TrickSpeedPts could be 0 in case of slow backwards */
-      if(m_TrickSpeedPts == 0) {
+      if(m_TrickSpeedPts == 0)
 	m_TrickSpeedPts = pts;
-      }
+
       LOGTRICKSPEED("    pts %"PRId64" -> %"PRId64" (diff %"PRId64")  %"PRId64"", pts, 
 		    m_TrickSpeedPts + 40*12*90, m_TrickSpeedPts + 40*12*90 - pts,
 		    (m_TrickSpeedPts + 40*12*90)^0x80000000);
@@ -1040,18 +1036,16 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
       pts ^= 0x80000000; /* discontinuity (when mode changes) forces re-syncing of all clocks */
       pes_change_pts((uchar*)buf, length, pts);
     }
-    if(Audio) {
-      LOGMSG("PlayTrickSpeed: got audio frame !");
-    }
   }
 
 #if 1
-  else if(m_TrickSpeedMode & trs_I_frames) {
-    bool Video = false, Audio = false;
-    int64_t pts = pes_extract_pts(buf, length, Audio, Video);
-    if(Video && pts>0) {
-      pts ^= 0x80000000; /* discontinuity (when mode changes) forces re-syncing of all clocks */
-      pes_change_pts((uchar*)buf, length, pts);
+  else if (m_TrickSpeedMode & trs_I_frames) {
+    if (IS_VIDEO_PACKET(buf) && PES_HAS_PTS(buf)) {
+      int64_t pts = pes_get_pts(buf, length);
+      if (pts > 0) {
+	pts ^= 0x80000000; /* discontinuity (when mode changes) forces re-syncing of all clocks */
+	pes_change_pts((uchar*)buf, length, pts);
+      }
     }
   }
 #endif
@@ -1086,9 +1080,8 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     }
   }
 
-  bool isMpeg1 = false;
-
-  int len = pes_packet_len(buf, length, isMpeg1);
+  int isMpeg1 = pes_is_mpeg1(buf);
+  int len = pes_packet_len(buf, length);
   if(len>0 && len != length) 
     LOGMSG("cXinelibDevice::PlayAny: invalid data !");
 
@@ -1097,7 +1090,7 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
       return 0; /* wait if data is coming in too fast */
   } else if(m_SkipAudio) {
     /* needed for still images when moving cutting marks */
-    pes_strip_pts((uchar*)buf, length);
+    pes_change_pts((uchar*)buf, length, INT64_C(0));
   }
   m_Cleared = false;
   m_FreeBufs --;
@@ -1135,35 +1128,30 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
 #ifdef START_IFRAME
     // Start with I-frame if stream has video
     // wait for first I-frame
-    uchar pictureType;
-    if( ScanVideoPacket(buf, length, /*0,*/pictureType) > 0 && 
-	pictureType == I_FRAME) {
+    if (pes_get_picture_type(buf, length) == I_FRAME) {
       m_StreamStart = false;
     } else {
       return length;
     }
 #endif
 
-    if(IsFrameH264(buf, length)) {
+    if (!m_h264 && pes_is_frame_h264(buf, length)) {
       LOGMSG("cXinelibDevice::PlayVideo: Detected H.264 video");
-//#warning There are SDTV channels using H.264, so we should really check video size ...
-      ForEach(m_clients, &cXinelibThread::SetHDMode, true);
-      m_StreamStart = false;
+      m_h264 = true;
     }
 
-    int Width, Height;
-    if(GetVideoSize(buf, length, &Width, &Height)) {
+    video_size_t Size;
+    if (pes_get_video_size(buf, length, &Size, m_h264 ? 1:0)) {
       m_StreamStart = false;
+      /*if (m_h264)*/ LOGMSG("Detected video size %dx%d", Size.width, Size.height);
       //LOGDBG("Detected video size %dx%d", Width, Height);
-      ForEach(m_clients, &cXinelibThread::SetHDMode, (Width > 800));
+      ForEach(m_clients, &cXinelibThread::SetHDMode, (Size.width > 800));
     }
   }
 
 #ifdef DEBUG_SWITCHING_TIME
   if(m_statusMonitor->switchtimeOff && m_statusMonitor->switchtimeOn) {
-    uchar pictureType;
-    if( ScanVideoPacket(buf, length, pictureType) > 0 && 
-	pictureType == I_FRAME)
+    if (pes_get_picture_type(buf, length) == I_FRAME)
       m_statusMonitor->IFrame();
   }
 #endif
