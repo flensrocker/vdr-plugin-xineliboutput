@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.36 2008-02-05 00:37:18 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.37 2008-02-19 02:11:31 phintuka Exp $
  *
  */
 
@@ -210,6 +210,7 @@ static void *kbd_receiver_thread(void *fe)
 
   } while(!terminate_key_pressed && code != 0xffff);
   
+  alarm(0);
   LOGDBG("Keyboard thread terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
   system("setterm -cursor on");
