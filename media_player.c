@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.44 2008-02-19 04:00:48 phintuka Exp $
+ * $Id: media_player.c,v 1.45 2008-02-19 04:05:45 phintuka Exp $
  *
  */
 
@@ -665,6 +665,10 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                       m_Player->Control("SEEK 0");    break;
                     }
                     break;
+      case kUser8:
+      case k1:      m_Player->Control("SEEK -20");  break;
+      case kUser9:
+      case k3:      m_Player->Control("SEEK +20");  break;
       case k2:      xc.subtitle_vpos -= 10;
       case k5:      xc.subtitle_vpos += 5;
                     m_Player->Control("SUBTITLES %d", xc.subtitle_vpos);
