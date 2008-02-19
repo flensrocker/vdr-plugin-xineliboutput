@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.13 2008-02-19 04:11:14 phintuka Exp $
+ * $Id: playlist.c,v 1.14 2008-02-19 04:15:37 phintuka Exp $
  *
  */
 
@@ -98,14 +98,13 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
 // cID3Scanner
 //
 
-static const char *shell_escape(const cString& src, char ch)
+static const char *shell_escape(char *buf, int buflen, const cString& src, char ch)
 {
-  static char buf[4096];
   const char *pt = *src;
   int n = 0;
 
   if(pt) {
-    while(*pt && n < (int)(sizeof(buf)-2)) {
+    while(*pt && n < buflen-2) {
       if(*pt == ch || *pt == '\\' /*|| *pt == '\"' || *pt == '\''*/) {
         buf[n++] = '\\';
       }
@@ -141,6 +140,7 @@ class cID3Scanner : public cThread
 
       if(xc.IsAudioFile(Item->Filename)) {
         LOGDBG("Scanning metainfo for file %s", *Item->Filename);
+        char buf[4096];
         cString Cmd = "";
         if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 5, ".flac"))
             Cmd = cString::sprintf("metaflac "
@@ -149,7 +149,7 @@ class cID3Scanner : public cThread
                                    " --show-tag=ARTIST "
                                    " --show-tag=TRACKNUMBER "
                                    " \"%s\"",
-                                   shell_escape(Item->Filename, '\"'));
+                                   shell_escape(buf, sizeof(buf)-1, Item->Filename, '\"'));
         else
             Cmd = cString::sprintf("mp3info -p \""
                                    "ARTIST=%%a\\r\\n"
@@ -157,7 +157,7 @@ class cID3Scanner : public cThread
                                    "TITLE=%%t\\r\\n"
                                    "TRACKNUMBER=%%n\\r\\n\""
                                    " \"%s\"",
-                                   shell_escape(Item->Filename, '\"'));
+                                   shell_escape(buf, sizeof(buf)-1, Item->Filename, '\"'));
 
         cPipe p;
         if(p.Open(*Cmd, "r")) {
