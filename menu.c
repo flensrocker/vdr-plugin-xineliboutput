@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.47 2008-02-19 04:43:12 phintuka Exp $
+ * $Id: menu.c,v 1.48 2008-02-19 04:47:19 phintuka Exp $
  *
  */
 
@@ -472,6 +472,8 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 }
 
 
+#if VDRVERSNUM < 10515
+
 //-------------------------- cDisplaySpuTracks ------------------------------
 //
 // cDisplaySpuTracks : almost identical copy of VDR 1.4.5 cDisplayTracks
@@ -599,6 +601,7 @@ eOSState cDisplaySpuTracks::ProcessKey(eKeys Key)
      }
   return timeout.TimedOut() ? osEnd : osContinue;
 }
+#endif // VDRVERSNUM < 10515
 
 //----------------------------- cMenuXinelib ---------------------------------
 
@@ -642,9 +645,13 @@ cMenuXinelib::cMenuXinelib()
     Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
   else
     Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
+#if VDRVERSNUM < 10515
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
     Add(new cOsdItem(tr("Select subtitle track >>"), osUser5));
-
+#else
+  if(cXinelibDevice::Instance().NumSubtitleTracks() > 0)
+    Add(new cOsdItem(tr("Select subtitle track >>"), osUser5));
+#endif
   Add(NewTitle(tr("Video settings")));
   Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
 					   &novideo));
@@ -757,12 +764,17 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cControl::Shutdown();
       cControl::Launch(new cXinelibPlayerControl(ShowMusic, "cdda:/"));
       return osEnd;
+#if VDRVERSNUM < 10515
     case osUser5:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = cDisplaySpuTracks::Create();
 	return osPlugin;
       }
       return osContinue;
+#else
+      cRemote::Put(kSubtitles);
+      return osEnd;
+#endif
     case osUser7:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cEqualizer();
@@ -836,6 +848,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       cControl::Launch(new cXinelibDvdPlayerControl("dvd:/1"));
       break;
 
+#if VDRVERSNUM < 10515
     case HOTKEY_DVD_SPU:
       /* use audio track display menu */
       if(!g_PendingMenuAction) {
@@ -849,7 +862,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	}
       }
       break;
-
+#endif
     case HOTKEY_LOCAL_FE:
       /* off, on */
       {
