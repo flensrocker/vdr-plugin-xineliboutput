@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.45 2008-02-19 00:43:04 phelin Exp $
+ * $Id: frontend.c,v 1.46 2008-02-19 04:34:53 phintuka Exp $
  *
  */
 
@@ -96,7 +96,9 @@ void cXinelibThread::InfoHandler(const char *info)
 
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
     map += 12;
+#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
+#endif
     while(*map) {
       bool Current = false;
       while(*map == ' ') map++;
@@ -111,10 +113,18 @@ void cXinelibThread::InfoHandler(const char *info)
 	char *lang = map;
 	while(*map && *map != ' ') map++;
 	if(*map == ' ') { *map = 0; map++; };
+#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
 	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, *lang ? lang : NULL, Current);
+#else
+	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id, *lang ? lang : NULL);
+#endif
       }
     }
+#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     cXinelibDevice::Instance().EnsureDvdSpuTrack();
+#else
+    cXinelibDevice::Instance().EnsureSubtitleTrack();
+#endif
   }
 
   else if(!strncmp(info, "TRACKMAP AUDIO", 14)) {
@@ -176,8 +186,13 @@ void cXinelibThread::InfoHandler(const char *info)
     map += 9;
     while(*map == ' ') map++;
     cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
+#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     if (*map == '0')  // DVD Menu, set spu track to 0
       cXinelibDevice::Instance().SetCurrentDvdSpuTrack(0);
+#else
+    if (*map == '0')  // DVD Menu, set spu track to 0
+      cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttSubtitleFirst);
+#endif
   }
 
   free(pmap);
