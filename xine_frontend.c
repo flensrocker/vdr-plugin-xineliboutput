@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.47 2008-01-03 20:06:27 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.48 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -1413,6 +1413,11 @@ static void *fe_control(void *fe_handle, const char *cmd)
       xine_set_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM, crop_y);
       /* trigger forced redraw to make changes effective */
       xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
+    }
+  } else if(!strncmp(cmd, "VO_ASPECT ", 10)) {
+    int vo_aspect_ratio;
+    if(1 == sscanf(cmd+10, "%d", &vo_aspect_ratio)) {
+      xine_set_param(this->stream, XINE_PARAM_VO_ASPECT_RATIO, vo_aspect_ratio);
     }
   }
   

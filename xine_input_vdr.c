@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.113 2008-01-24 21:18:09 phelin Exp $
+ * $Id: xine_input_vdr.c,v 1.114 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -304,6 +304,7 @@ typedef struct vdr_input_plugin_s {
   int   orig_brightness;
   int   orig_saturation;
   int   orig_contrast;
+  int   orig_vo_aspect_ratio;
 
   /* OSD */
   pthread_mutex_t osd_lock;
@@ -2478,13 +2479,15 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
 
 static int set_video_properties(vdr_input_plugin_t *this, 
 				int hue, int saturation, 
-				int brightness, int contrast)
+				int brightness, int contrast,
+                                int vo_aspect_ratio)
 {
   pthread_mutex_lock(&this->lock);
 
   /* when changed first time, save original/default values */
   if(!this->video_properties_saved && 
-     (hue>=0 || saturation>=0 || contrast>=0 || brightness>=0)) {
+     (hue>=0 || saturation>=0 || contrast>=0 || brightness>=0 || 
+      vo_aspect_ratio>=0)) {
     this->video_properties_saved = 1;
     this->orig_hue        = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_HUE );
@@ -2494,6 +2497,8 @@ static int set_video_properties(vdr_input_plugin_t *this,
 					   XINE_PARAM_VO_BRIGHTNESS );
     this->orig_contrast   = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_CONTRAST );
+    this->orig_vo_aspect_ratio   = xine_get_param(this->stream,
+                                           XINE_PARAM_VO_ASPECT_RATIO );
   }
 
   /* set new values, or restore default/original values */
@@ -2509,8 +2514,11 @@ static int set_video_properties(vdr_input_plugin_t *this,
   if(contrast>=0 || this->video_properties_saved)
     xine_set_param(this->stream, XINE_PARAM_VO_CONTRAST, 
 		   contrast>=0 ? contrast : this->orig_contrast );
+  if(vo_aspect_ratio>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_ASPECT_RATIO,
+                   vo_aspect_ratio>=0 ? vo_aspect_ratio : this->orig_vo_aspect_ratio );
 
-  if(hue<0 && saturation<0 && contrast<0 && brightness<0)
+  if(hue<0 && saturation<0 && contrast<0 && brightness<0 && vo_aspect_ratio<0)
     this->video_properties_saved = 0;
 
   pthread_mutex_unlock(&this->lock);
@@ -3419,10 +3427,10 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     err = handle_control_osdcmd(this);
 
   } else if(!strncasecmp(cmd, "VIDEO_PROPERTIES ", 17)) {
-    int hue, saturation, brightness, contrast;
-    if(4 == sscanf(cmd, "VIDEO_PROPERTIES %d %d %d %d", 
-		   &hue, &saturation, &brightness, &contrast))
-      err = set_video_properties(this, hue, saturation, brightness, contrast);
+    int hue, saturation, brightness, contrast, vo_aspect_ratio;
+    if(5 == sscanf(cmd, "VIDEO_PROPERTIES %d %d %d %d %d", 
+		   &hue, &saturation, &brightness, &contrast, &vo_aspect_ratio))
+      err = set_video_properties(this, hue, saturation, brightness, contrast, vo_aspect_ratio);
     else
       err = CONTROL_PARAM_ERROR;
 
@@ -3431,6 +3439,12 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       LOGMSG("No fe_control function! %s failed.", cmd);
     else
       this->funcs.fe_control(this->funcs.fe_handle, cmd);
+
+  } else if(!strncasecmp(cmd, "VO_ASPECT ", 10)) {
+    if(1 == sscanf(cmd, "VO_ASPECT %d", &tmp32)) {
+      xine_set_param(stream, XINE_PARAM_VO_ASPECT_RATIO, tmp32);
+    } else
+      err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "DEINTERLACE ", 12)) {
     if(this->fd_control < 0)
@@ -5436,7 +5450,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* restore video properties */
   if(this->video_properties_saved)
-    set_video_properties(this, -1,-1,-1,-1); /* restore defaults */
+    set_video_properties(this, -1,-1,-1,-1,-1); /* restore defaults */
 
   signal_buffer_pool_not_empty(this);
   signal_buffer_not_empty(this);

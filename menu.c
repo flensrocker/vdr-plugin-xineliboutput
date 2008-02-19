@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.45 2008-02-19 00:38:51 phelin Exp $
+ * $Id: menu.c,v 1.46 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -43,6 +43,7 @@
 				      symlink $(CONFDIR)/plugins/xineliboutput/default_playlist */
 # define HOTKEY_ADELAY_UP    kUp   /* audio delay up */
 # define HOTKEY_ADELAY_DOWN  kDown /* audio delay down */
+# define HOTKEY_TOGGLE_VO_ASPECT kRight
 #endif
 
 //#define OLD_SPU_MENU
@@ -750,7 +751,7 @@ cMenuXinelib::~cMenuXinelib()
 
   if(xc.overscan != overscan)
     cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-					      xc.contrast, xc.overscan);
+					      xc.contrast, xc.overscan, xc.vo_aspect_ratio);
 
   if(xc.headphone != headphone)
     cXinelibDevice::Instance().ConfigurePostprocessing("headphone", 
@@ -839,7 +840,7 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 							 xc.audio_surround, xc.speaker_type);
     else if(item == ctrl_overscan)
       cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-                                                xc.contrast, overscan);
+                                                xc.contrast, overscan, xc.vo_aspect_ratio);
   }
   if(Key==kLeft || Key==kRight) {
     if(item == ctrl_headphone)
@@ -986,6 +987,18 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       asprintf(&Message, "%s %s %s", tr("Aspect ratio"), 
 	       OnlyInfo ? ":" : "->",
 	       tr(xc.s_aspects[xc.display_aspect]));
+      break;
+
+    case HOTKEY_TOGGLE_VO_ASPECT:
+      /* auto, square, 4:3, anamorphic or DVB */
+      if(!OnlyInfo) {
+        xc.vo_aspect_ratio = (xc.vo_aspect_ratio < VO_ASPECT_count-1) ? xc.vo_aspect_ratio + 1 : 0;
+        cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
+                                              xc.contrast, xc.overscan, xc.vo_aspect_ratio);
+      }
+      asprintf(&Message, "%s %s %s", tr("Video aspect ratio"),
+               OnlyInfo ? ":" : "->",
+               tr(xc.s_vo_aspects[xc.vo_aspect_ratio]));
       break;
 
     case HOTKEY_TOGGLE_CROP:    

@@ -45,6 +45,15 @@ msgstr "Pan&Scan"
 msgid "CenterCutOut"
 msgstr ""
 
+msgid "square"
+msgstr ""
+
+msgid "anamorphic"
+msgstr ""
+
+msgid "DVB"
+msgstr ""
+
 msgid "off"
 msgstr "Выкл."
 
@@ -250,6 +259,9 @@ msgid "Local Frontend"
 msgstr "Локальный фронтенд"
 
 msgid "Aspect ratio"
+msgstr ""
+
+msgid "Video aspect ratio"
 msgstr ""
 
 msgid "On"

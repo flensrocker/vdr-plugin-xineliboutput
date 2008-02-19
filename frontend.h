@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.17 2008-01-09 08:44:15 phintuka Exp $
+ * $Id: frontend.h,v 1.18 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -117,7 +117,7 @@ class cXinelibThread : public cThread, public cListObject
     virtual int ConfigurePostprocessing(const char *name, bool on, const char *args);
     virtual int ConfigureVideo(int hue, int saturation, 
 			       int brightness, int contrast,
-			       int overscan);
+			       int overscan, int vo_aspect_ratio);
     // Local frontend:
     virtual void ConfigureWindow(int fullscreen, int width, int height, 
 				 int modeswitch, const char *modeline, 

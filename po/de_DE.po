@@ -45,6 +45,15 @@ msgstr "Pan&Scan"
 msgid "CenterCutOut"
 msgstr "CenterCutOut"
 
+msgid "square"
+msgstr ""
+
+msgid "anamorphic"
+msgstr ""
+
+msgid "DVB"
+msgstr ""
+
 msgid "off"
 msgstr "Aus"
 
@@ -251,6 +260,9 @@ msgstr "Lokale Anzeige"
 
 msgid "Aspect ratio"
 msgstr "Seitenverhältnis"
+
+msgid "Video aspect ratio"
+msgstr ""
 
 msgid "On"
 msgstr ""

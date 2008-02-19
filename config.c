@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.50 2008-02-05 00:19:26 phintuka Exp $
+ * $Id: config.c,v 1.51 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -55,6 +55,16 @@ const char * const config_t::s_aspects[ ASPECT_count+1 ] = {
   trNOOP("CenterCutOut"),
   NULL
 };
+
+const char * const config_t::s_vo_aspects[ VO_ASPECT_count+1 ] = {
+  trNOOP("automatic"),
+  trNOOP("square"),
+  "4:3",
+  trNOOP("anamorphic"),
+  trNOOP("DVB"),
+  NULL
+};
+
 
 const char * const config_t::s_deinterlaceMethods[ DEINTERLACE_count+1 ] = {
   "none",
@@ -506,6 +516,7 @@ config_t::config_t() {
   saturation   = -1; 
   contrast     = -1; 
   brightness   = -1; 
+  vo_aspect_ratio = 0;
 
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
@@ -728,6 +739,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
   else if (!strcasecmp(Name, "Video.IBPTrickSpeed"))  ibp_trickspeed = atoi(Value);
   else if (!strcasecmp(Name, "Video.MaxTrickSpeed"))  max_trickspeed = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AspectRatio"))    vo_aspect_ratio = atoi(Value);
 
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.43 2008-02-05 00:34:34 phintuka Exp $
+ * $Id: setup_menu.c,v 1.44 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -495,6 +495,7 @@ class cMenuSetupVideo : public cMenuSetupPage
     cOsdItem *ctrl_tvtime_method;
     cOsdItem *ctrl_unsharp;
     cOsdItem *ctrl_denoise3d;
+    cOsdItem *ctrl_vo_aspect_ratio;
 
     int deinterlace;
     struct tvtime_s tvtime;
@@ -530,7 +531,7 @@ cMenuSetupVideo::~cMenuSetupVideo(void)
 {
   cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, 
 					    xc.brightness, xc.contrast,
-					    xc.overscan);
+					    xc.overscan, xc.vo_aspect_ratio);
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
   cXinelibDevice::Instance().ConfigurePostprocessing(
@@ -551,6 +552,10 @@ void cMenuSetupVideo::Set(void)
   Clear();
 
   Add(NewTitle(tr("Video")));
+
+  Add(ctrl_vo_aspect_ratio =
+      new cMenuEditStraI18nItem(tr("Aspect ratio"), &newconfig.vo_aspect_ratio,
+                                  VO_ASPECT_count, xc.s_vo_aspects));
 
   Add(ctrl_autocrop = 
       new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
@@ -679,20 +684,21 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
 
   if(item == ctrl_hue || item == ctrl_saturation || 
      item == ctrl_contrast || item == ctrl_brightness ||
-     item == ctrl_overscan)
+     item == ctrl_overscan || item == ctrl_vo_aspect_ratio)
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
     cXinelibDevice::Instance().ConfigureVideo(newconfig.hue, 
 					      newconfig.saturation,
 					      newconfig.brightness, 
 					      newconfig.contrast,
-					      newconfig.overscan);
+					      newconfig.overscan,
+                                              newconfig.vo_aspect_ratio);
 #else
     cXinelibDevice::Instance().ConfigureVideo(
        INDEX_TO_CONTROL(newconfig.hue), 
        INDEX_TO_CONTROL(newconfig.saturation),
        INDEX_TO_CONTROL(newconfig.brightness), 
        INDEX_TO_CONTROL(newconfig.contrast),
-       newconfig.overscan);
+       newconfig.overscan, newconfig.vo_aspect_ratio);
 #endif
   else if(item == ctrl_autocrop) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
@@ -758,6 +764,7 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.Overscan",   xc.overscan);
   SetupStore("Video.IBPTrickSpeed", xc.ibp_trickspeed);
   SetupStore("Video.MaxTrickSpeed", xc.max_trickspeed);
+  SetupStore("Video.AspectRatio", xc.vo_aspect_ratio);
   SetupStore("Post.pp.Enable",   xc.ffmpeg_pp);
   SetupStore("Post.pp.Quality",  xc.ffmpeg_pp_quality);
   SetupStore("Post.pp.Mode",     xc.ffmpeg_pp_mode);
@@ -1682,7 +1689,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	br -= 0xffff/1024;
 	sprintf(s, "b %d", br);
 	m_Osd->DrawText(400, 100, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan);
+	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;	
       case kUp:
@@ -1691,7 +1698,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	co -= 0xffff/1024;
 	sprintf(s, "c %d", co);
 	m_Osd->DrawText(400, 130, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan);
+	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;
     }

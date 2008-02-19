@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.34 2008-02-05 00:19:26 phintuka Exp $
+ * $Id: config.h,v 1.35 2008-02-19 00:43:04 phelin Exp $
  *
  */
 
@@ -32,6 +32,14 @@
 #define ASPECT_PAN_SCAN 5
 #define ASPECT_CENTER_CUT_OUT 6
 #define ASPECT_count          7
+
+// VIDEO OUTPUT ASPECT RATIO
+#define VO_ASPECT_AUTO                0
+#define VO_ASPECT_SQUARE              1 /* 1:1    */
+#define VO_ASPECT_4_3                 2 /* 4:3    */
+#define VO_ASPECT_ANAMORPHIC          3 /* 16:9   */
+#define VO_ASPECT_DVB                 4 /* 2.11:1 */
+#define VO_ASPECT_count               5
 
 // De-interlace method
 #define DEINTERLACE_NONE         0
@@ -172,6 +180,7 @@ class config_t {
     static const char * const s_subtitleSizes[];
     static const char * const s_subExts[];
     static const char * const s_osdMixers[];
+    static const char * const s_vo_aspects[];
 
   public:
 
@@ -216,6 +225,7 @@ class config_t {
     int  saturation;          // 0...0xffff, -1 == off
     int  contrast;            // 0...0xffff, -1 == off
     int  brightness;          // 0...0xffff, -1 == off
+    int  vo_aspect_ratio;
 
     // OSD settings 
     eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
