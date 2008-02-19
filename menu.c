@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.46 2008-02-19 00:43:04 phelin Exp $
+ * $Id: menu.c,v 1.47 2008-02-19 04:43:12 phintuka Exp $
  *
  */
 
@@ -46,7 +46,6 @@
 # define HOTKEY_TOGGLE_VO_ASPECT kRight
 #endif
 
-//#define OLD_SPU_MENU
 //#define OLD_TOGGLE_FE
 
 #define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
@@ -473,59 +472,7 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 }
 
 
-//-------------------------- cDvdSpuTrackSelect ------------------------------
-
-#ifdef OLD_SPU_MENU
-class cDvdSpuTrackSelect : public cOsdMenu
-{
-  public:
-    cDvdSpuTrackSelect(void);
-    virtual eOSState ProcessKey(eKeys Key);
-};
-
-cDvdSpuTrackSelect::cDvdSpuTrackSelect(void) : 
-      cOsdMenu(tr("Select subtitle track")) 
-{
-  int count = cXinelibDevice::Instance().NumDvdSpuTracks();
-  int id = 0;
-  int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
-  Add(new cOsdItem("None", osUser1));
-  while(count && id < 64) {
-    const tTrackId *track = cXinelibDevice::Instance().GetDvdSpuTrack(id);
-    if(track) {
-      cString name = "";
-      if(track->language[0])
-	name = cString::sprintf(": %s", track->language);
-      name = cString::sprintf("Track %d%s", id, *name);
-      Add(new cOsdItem(name, osUser1));
-      count--;
-      if(id == current)
-	SetCurrent(Get(Count()-1));
-    }
-    id++;
-  }
-}
-
-eOSState cDvdSpuTrackSelect::ProcessKey(eKeys Key)
-{
-  eOSState state = cOsdMenu::ProcessKey(Key);
-
-  switch(state) {
-    case osUser1: 
-      {
-	const char *txt = Get(Current())->Text();
-	int id = -1; /* -> DVD SPU off */
-	sscanf(txt, "Track %d", &id);
-	cXinelibDevice::Instance().SetCurrentDvdSpuTrack(id);
-	AddSubMenu(new cMenuBrowseFiles());
-	return osEnd;
-      }
-    default: break;
-  }
-  return state;
-}
-#else
-
+//-------------------------- cDisplaySpuTracks ------------------------------
 //
 // cDisplaySpuTracks : almost identical copy of VDR 1.4.5 cDisplayTracks
 //
@@ -652,7 +599,6 @@ eOSState cDisplaySpuTracks::ProcessKey(eKeys Key)
      }
   return timeout.TimedOut() ? osEnd : osContinue;
 }
-#endif
 
 //----------------------------- cMenuXinelib ---------------------------------
 
@@ -812,16 +758,11 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cControl::Launch(new cXinelibPlayerControl(ShowMusic, "cdda:/"));
       return osEnd;
     case osUser5:
-#ifdef OLD_SPU_MENU
-      AddSubMenu(new cDvdSpuTrackSelect());
-      return osContinue;
-#else
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = cDisplaySpuTracks::Create();
 	return osPlugin;
       }
       return osContinue;
-#endif
     case osUser7:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cEqualizer();
@@ -896,30 +837,6 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       break;
 
     case HOTKEY_DVD_SPU:
-#ifdef OLD_SPU_MENU
-      {
-	int count = cXinelibDevice::Instance().NumDvdSpuTracks();
-	int current = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
-	if(!OnlyInfo) {
-	  current++;
-	  if(current == count)
-	    current = -1;
-	  cXinelibDevice::Instance().SetCurrentDvdSpuTrack(current);
-	}
-	const char *lang = cXinelibDevice::Instance().GetDvdSpuLang(current); 
-	if(current == -1) lang = "default";
-	if(count<1)
-	  asprintf(&Message, "%s", tr("No subtitles available!"));
-	if(lang && lang[0])
-	  asprintf(&Message, "%s %s %s (%d)", tr("Subtitles"), 
-		   OnlyInfo ? ":" : "->",
-		   lang, current);
-	else
-	  asprintf(&Message, "%s %s %d", tr("Subtitles"), 
-		   OnlyInfo ? ":" : "->", 
-		   current);
-      }
-#else
       /* use audio track display menu */
       if(!g_PendingMenuAction) {
 	bool WasOpen = cDisplaySpuTracks::IsOpen();
@@ -931,7 +848,6 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	  asprintf(&Message, "%s", tr("No subtitles available!"));
 	}
       }
-#endif
       break;
 
     case HOTKEY_LOCAL_FE:
