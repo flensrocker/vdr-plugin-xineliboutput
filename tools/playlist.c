@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.15 2008-02-19 04:24:34 phintuka Exp $
+ * $Id: playlist.c,v 1.16 2008-02-19 04:51:18 phintuka Exp $
  *
  */
 
@@ -943,7 +943,7 @@ cString cPlaylist::GetEntry(cPlaylistItem *i, bool isPlaylist, bool isCurrent)
 {
 
   cString Entry = "";
-  if (*i->Artist && xc.playlist_artist || *i->Album && xc.playlist_album) {
+  if ((*i->Artist && xc.playlist_artist) || (*i->Album && xc.playlist_album)) {
       Entry = cString::sprintf("%s%s%s%s%s%s(%s%s%s)",
                                isPlaylist ? (isCurrent ? "*" : " ") : "",
                                isPlaylist ? "\t" : " ",
