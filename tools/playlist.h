@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.h,v 1.7 2008-01-10 23:37:36 phelin Exp $
+ * $Id: playlist.h,v 1.8 2008-02-19 04:24:34 phintuka Exp $
  *
  */
 
@@ -74,6 +74,7 @@ class cPlaylist : protected cList<cPlaylistItem>
   cString        m_Name;    // playlist (or folder) name
   cString        m_Folder;  // path to "root" of playlist
   cPlaylistItem *m_Current; // now playing
+  unsigned int   m_Version;
 
   enum { ePlaylist, eImplicit } m_Origin;
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.14 2008-02-19 04:15:37 phintuka Exp $
+ * $Id: playlist.c,v 1.15 2008-02-19 04:24:34 phintuka Exp $
  *
  */
 
@@ -130,11 +130,21 @@ class cID3Scanner : public cThread
   virtual void Action(void)
   {
     cPlaylistItem *Item = NULL;
+    unsigned int Version = 0;
 
     (void)nice(10);
 
     LOGDBG("ID3Scanner Started");
     while(Running()) {
+
+      cMutexLock ml(&m_List.m_Lock);
+
+      if(Version < m_List.m_Version) {
+	// restart after sort, add, del
+	Item = NULL;
+	Version = m_List.m_Version;
+      }
+
       if(!(Item = m_List.Next(Item)))
         break;
 
@@ -161,7 +171,6 @@ class cID3Scanner : public cThread
 
         cPipe p;
         if(p.Open(*Cmd, "r")) {
-          cMutexLock ml(&m_List.m_Lock);
           cReadLine r;
           char *pt;
           while(NULL != (pt = r.Read(p))) {
@@ -333,6 +342,7 @@ cPlaylist::cPlaylist()
   m_Menu    = NULL;
   m_Scanner = NULL;
   m_Current = NULL;
+  m_Version = 1;
 }
 
 cPlaylist::~cPlaylist()
@@ -365,6 +375,7 @@ void cPlaylist::Sort(void)
 {
   cMutexLock ml(&m_Lock);
   cListBase::Sort(); 
+  m_Version++;
 }
 
 int cPlaylist::Count(void) const 
@@ -396,6 +407,7 @@ void cPlaylist::Del(cPlaylistItem *it)
 		cList<cPlaylistItem>::Prev(Current());
 
   cListBase::Del(it);
+  m_Version++;
 }
 
 void cPlaylist::SetCurrent(cPlaylistItem *current) 
@@ -861,7 +873,8 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
     LOGMSG("Empty playlist %s !", PlaylistFile);
     Add(new cPlaylistItem(PlaylistFile));
   }
-    
+
+  m_Version++;
   return Result;
 }
 
