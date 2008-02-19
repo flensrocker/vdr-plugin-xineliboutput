@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.44 2008-01-01 08:25:02 phintuka Exp $
+ * $Id: menu.c,v 1.45 2008-02-19 00:38:51 phelin Exp $
  *
  */
 
@@ -287,7 +287,10 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
     cString f = cString::sprintf("%s%s/%s", 
 				 GetCurrent()->IsDvd() ? "dvd:" : "",
 				 m_CurrentDir, GetCurrent()->Name());
-    strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
+    if (GetCurrent()->IsDvd()) 
+      strn0cpy(m_ConfigLastDir, m_CurrentDir, sizeof(xc.browse_files_dir));
+    else
+      strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
     StoreConfig();
 
     if(m_Mode != ShowImages) {
