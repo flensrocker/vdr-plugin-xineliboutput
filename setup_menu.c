@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.44 2008-02-19 00:43:04 phelin Exp $
+ * $Id: setup_menu.c,v 1.45 2008-02-19 02:59:46 phintuka Exp $
  *
  */
 
@@ -485,6 +485,7 @@ class cMenuSetupVideo : public cMenuSetupPage
     config_t newconfig;
 
     cOsdItem *ctrl_autocrop;
+    cOsdItem *ctrl_swscale;
     cOsdItem *ctrl_hue;
     cOsdItem *ctrl_saturation;
     cOsdItem *ctrl_contrast;
@@ -535,6 +536,8 @@ cMenuSetupVideo::~cMenuSetupVideo(void)
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
   cXinelibDevice::Instance().ConfigurePostprocessing(
+       "swscale", xc.swscale ? true : false, xc.SwScaleOptions());
+  cXinelibDevice::Instance().ConfigurePostprocessing(
        "pp", xc.ffmpeg_pp ? true : false, xc.FfmpegPpOptions());
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "unsharp", xc.unsharp ? true : false, xc.UnsharpOptions());
@@ -570,6 +573,18 @@ void cMenuSetupVideo::Set(void)
 			      "4:3...20:9", "14:9/16:9"));
     Add(new cMenuEditBoolItem(tr("  Detect subtitles"),
 			      &newconfig.autocrop_subs));
+  }
+
+  Add(ctrl_swscale = 
+      new cMenuEditBoolItem(tr("Software scaling"), 
+			    &newconfig.swscale));
+  if(newconfig.autocrop) {
+    Add(new cMenuEditIntItem( tr("  Width"), 
+			      &newconfig.swscale_width, 360, 2000));
+    Add(new cMenuEditIntItem( tr("  Height"),
+			      &newconfig.swscale_height, 288, 1200));
+    Add(new cMenuEditBoolItem(tr("  Allow downscaling"),
+			      &newconfig.swscale_downscale));
   }
 
   Add(ctrl_overscan =
@@ -706,6 +721,12 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
 	 newconfig.AutocropOptions());
     Set();
   }
+  else if(item == ctrl_swscale) {
+    cXinelibDevice::Instance().ConfigurePostprocessing(
+	 "swscale", newconfig.swscale ? true : false, 
+	 newconfig.SwScaleOptions());
+    Set();
+  }
   else if(item == ctrl_pp) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	 "pp", newconfig.ffmpeg_pp ? true : false, 
@@ -757,6 +778,10 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.AutoCrop.SoftStart",  xc.autocrop_soft);
   SetupStore("Video.AutoCrop.FixedSize",  xc.autocrop_fixedsize);
   SetupStore("Video.AutoCrop.DetectSubs", xc.autocrop_subs);
+  SetupStore("Video.SwScale",           xc.swscale);
+  SetupStore("Video.SwScale.Downscale", xc.swscale_downscale);
+  SetupStore("Video.SwScale.Width",     xc.swscale_width);
+  SetupStore("Video.SwScale.Height",    xc.swscale_height);
   SetupStore("Video.HUE",        xc.hue);
   SetupStore("Video.Saturation", xc.saturation);
   SetupStore("Video.Contrast",   xc.contrast);

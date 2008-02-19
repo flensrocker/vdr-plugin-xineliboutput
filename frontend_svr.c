@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.49 2008-02-19 00:43:04 phelin Exp $
+ * $Id: frontend_svr.c,v 1.50 2008-02-19 02:59:46 phintuka Exp $
  *
  */
 
@@ -1163,6 +1163,8 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
   ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
   ConfigurePostprocessing("autocrop",  xc.autocrop    ? true : false, 
 			  xc.AutocropOptions());
+  ConfigurePostprocessing("swscale", xc.swscale ? true : false, 
+			  xc.SwScaleOptions());
   ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
 			  xc.FfmpegPpOptions());
   ConfigurePostprocessing("unsharp",xc.unsharp ? true : false,

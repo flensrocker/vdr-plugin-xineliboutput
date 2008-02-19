@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.51 2008-02-19 00:43:04 phelin Exp $
+ * $Id: config.c,v 1.52 2008-02-19 02:59:46 phintuka Exp $
  *
  */
 
@@ -350,6 +350,19 @@ const char *config_t::AutocropOptions(void)
   return NULL;
 }
 
+const char *config_t::SwScaleOptions(void)
+{
+  if(swscale) {
+    static char buffer[256];
+    snprintf(buffer, sizeof(buffer),
+	     "no_downscaling=%d,output_width=%d,output_height=%d",
+	     swscale_downscale?0:1, swscale_width, swscale_height);
+    buffer[sizeof(buffer)-1] = 0;
+    return buffer;
+  }
+  return NULL;
+}
+
 const char *config_t::FfmpegPpOptions(void)
 {
   if(ffmpeg_pp) {
@@ -475,6 +488,11 @@ config_t::config_t() {
   autocrop_soft  = 1;
   autocrop_fixedsize = 1;
   autocrop_subs  = 1;
+
+  swscale           = 0;    // enable/disable
+  swscale_downscale = 0;    // allow downscaling
+  swscale_width     = 720;  // output video width
+  swscale_height    = 576;  // output video height
 
   remote_mode    = 0;
   listen_port    = LISTEN_PORT;
@@ -732,6 +750,12 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.AutoCrop.SoftStart"))    autocrop_soft = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.FixedSize"))    autocrop_fixedsize = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.DetectSubs"))   autocrop_subs = atoi(Value);
+
+  else if (!strcasecmp(Name, "Video.SwScale"))           swscale = atoi(Value);
+  else if (!strcasecmp(Name, "Video.SwScale.Downscale")) swscale_downscale = atoi(Value);
+  else if (!strcasecmp(Name, "Video.SwScale.Width"))     swscale_width = atoi(Value);
+  else if (!strcasecmp(Name, "Video.SwScale.Height"))    swscale_height = atoi(Value);
+
   else if (!strcasecmp(Name, "Video.HUE"))         hue = atoi(Value);
   else if (!strcasecmp(Name, "Video.Saturation"))  saturation = atoi(Value);
   else if (!strcasecmp(Name, "Video.Contrast"))    contrast = atoi(Value);
