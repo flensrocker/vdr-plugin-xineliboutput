@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.43 2008-01-10 23:41:24 phelin Exp $
+ * $Id: media_player.c,v 1.44 2008-02-19 04:00:48 phintuka Exp $
  *
  */
 
@@ -56,6 +56,7 @@ class cXinelibPlayer : public cPlayer
 
     // cPlayer
     virtual void SetAudioTrack(eTrackType Type, const tTrackId *TrackId);
+    virtual void SetSubtitleTrack(eTrackType Type, const tTrackId *TrackId);
     virtual bool GetIndex(int &Current, int &Total, bool SnapToIFrame = false);
     virtual bool GetReplayMode(bool &Play, bool &Forward, int &Speed);
 
@@ -123,6 +124,15 @@ void cXinelibPlayer::SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
     Control("AUDIOSTREAM AC3 %d", (int)(Type - ttDolbyFirst));
   if(IS_AUDIO_TRACK(Type))
     Control("AUDIOSTREAM AC3 %d", (int)(Type - ttAudioFirst));
+}
+
+void cXinelibPlayer::SetSubtitleTrack(eTrackType Type, const tTrackId *TrackId)
+{
+  LOGMSG("cXinelibPlayer::SetSubtitleTrack(%d %s)", (int)Type, TrackId ? TrackId->language : "?");
+  if(Type == ttNone)
+    Control("SPUSTREAM -1");
+  else
+    Control("SPUSTREAM %d", (int)(Type - ttSubtitleFirst));
 }
 
 bool cXinelibPlayer::GetIndex(int &Current, int &Total, bool SnapToIFrame) 
@@ -969,7 +979,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     case kRed:    Hide();
                   Menu = new cDvdMenu();
 		  break;
-
+#if VDRVERSNUM < 10515
     // SPU channel
     case k5:      cXinelibDevice::Instance().SetCurrentDvdSpuTrack(
                        cXinelibDevice::Instance().GetCurrentDvdSpuTrack() - 2);
@@ -977,7 +987,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
                   cRemote::Put(kRed); /* shortcut key */ 
 		  cRemote::Put(k2);
                   break;
-
+#endif
     // Playback control
     case kGreen:  m_Player->Control("SEEK -60");  break;
     case kYellow: m_Player->Control("SEEK +60");  break;
