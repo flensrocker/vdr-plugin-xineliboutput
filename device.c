@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.51 2008-02-19 00:43:04 phelin Exp $
+ * $Id: device.c,v 1.52 2008-02-19 03:12:17 phintuka Exp $
  *
  */
 
@@ -1654,16 +1654,15 @@ void cXinelibDevice::EnsureDvdSpuTrack(void)
 
 const char *cXinelibDevice::GetMetaInfo(eMetainfoType Type)
 {
-  if(Type >= 0 && Type < mi_Count)
+  if(Type >= 0 && Type < mi_Count) {
     if ( Type == 0 || Type > 3 ||
         (Type == 1 && xc.playlist_tracknumber == 1) ||
         (Type == 2 && xc.playlist_artist == 1) ||
         (Type == 3 && xc.playlist_album == 1)) {
        return m_MetaInfo[Type];
     }
-    else {
-       return "";
-    }
+    return "";
+  }
 
   LOGMSG("cXinelibDevice::GetMetaInfo: unknown metainfo type");
   return "";
