@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.45 2008-02-19 02:59:46 phintuka Exp $
+ * $Id: setup_menu.c,v 1.46 2008-02-19 08:48:02 phintuka Exp $
  *
  */
 
@@ -578,7 +578,7 @@ void cMenuSetupVideo::Set(void)
   Add(ctrl_swscale = 
       new cMenuEditBoolItem(tr("Software scaling"), 
 			    &newconfig.swscale));
-  if(newconfig.autocrop) {
+  if(newconfig.swscale) {
     Add(new cMenuEditIntItem( tr("  Width"), 
 			      &newconfig.swscale_width, 360, 2000));
     Add(new cMenuEditIntItem( tr("  Height"),
