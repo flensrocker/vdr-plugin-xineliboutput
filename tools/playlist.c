@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.12 2008-01-10 23:37:36 phelin Exp $
+ * $Id: playlist.c,v 1.13 2008-02-19 04:11:14 phintuka Exp $
  *
  */
 
@@ -122,9 +122,8 @@ class cID3Scanner : public cThread
  public:
   cPlaylist& m_List;
   cID3Scanner(cPlaylist& List) : cThread("Metadata scanner"), m_List(List), m_Done(false) {};
-  cCondWait wait;
   
-  void CancelScanner(void) { wait.Signal(); Cancel(3); }
+  void CancelScanner(void) { Cancel(3); }
 
  private:
   bool m_Done;
@@ -134,7 +133,6 @@ class cID3Scanner : public cThread
     cPlaylistItem *Item = NULL;
 
     (void)nice(10);
-    wait.Wait(5000);
 
     LOGDBG("ID3Scanner Started");
     while(Running()) {
