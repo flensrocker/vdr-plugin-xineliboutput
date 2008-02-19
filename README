@@ -302,24 +302,44 @@ Image viewer key bindings
                   Change slideshow direction
   Ok              Toggle replay display mode
 
-Media player key bindings
+Media player key bindings for video files
 
   Back         Return to file list
-  Red          Open playlist (music) / Jump to beginning of file (video)
+  Red          Open playlist if more than one file in the playlist,
+               otherwise jump to beginning of file
   Green        Jump 1 min back
   Yellow       Jump 1 min forward
   Stop/Blue    Stop replay
-  0            Random play / normal play
+  User7        Random play / normal play
   1, User8     Jump 20 s back
   3, User9     Jump 20 s forward
   2            Move subtitles up
   5            Move subtitles down
-  Pause        Pause replay
-  Play         Play
+  Down/Pause   Pause replay
+  Up/Play      Play
   Ok           Toggle replay display mode
-  Next/Right   Skip to next file when replaying playlist
-  Prev/Left    Skip to previous file when replaying playlist
+  Next         Skip to next file when replaying playlist
+  Prev         Skip to previous file when replaying playlist
+  FastRew/Left Play slower
+  FastFwd/Right Play faster
+
+Media player key bindings for audio files
+
+  Back         Return to file list
+  Red          Open playlist
+  Green        Jump 1 min back
+  Yellow       Jump 1 min forward
+  Stop/Blue    Stop replay
+  0...9        Use to select a file from the playlist 
+               according to its position on the playlist
+  Down/Pause   Pause replay
+  Up/Play      Play
+  Ok           Toggle replay display mode
+  Next/Right   Skip to next file
+  Prev/Left    Skip to previous file or restart the currently playing file 
+               if more than three seconds has been played back already
   FastRew/FastFwd  Play faster/slower
+  User7        Random play / normal play
 
   If media file includes multiple subtitles (DVD, .mkv file, ...),
   subtitle language can be selected from xineliboutput plugin menu 
@@ -419,6 +439,9 @@ Shortcut key macros
     Start replaying default playlist or file pointed by symlink 
     $(CONFDIR)/plugins/xineliboutput/default_playlist
                                          (User? @xineliboutput Red 9)
+    Increase audio delay                 (User? @xineliboutput Red Up)
+    Decrease audio delay                 (User? @xineliboutput Red Down)
+    Toggle the video aspect ratio        (User? @xineliboutput Red Right)
 
   Defining "Select subtitle track" macro key enables VDR-style
   subtitle track menu for media player (identical to audio track 
