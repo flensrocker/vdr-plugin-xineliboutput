@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.30 2008-01-16 14:26:06 phintuka Exp $
+ * $Id: i18n.c,v 1.31 2008-02-19 00:18:20 phelin Exp $
  *
  * Translations provided by:
  *
@@ -2882,7 +2882,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { "Button$Queue", // English
-    "Button$Warteschlange", // Deutsch
+    "Warteschlange", // Deutsch
     "", // Slovenski
     "Coda", // Italiano
     "", // Nederlands
@@ -2901,7 +2901,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { "Button$Sort", // English
-    "Button$Sortiere", // Deutsch
+    "Sortiere", // Deutsch
     "", // Slovenski
     "Ordina", // Italiano
     "", // Nederlands
@@ -2920,7 +2920,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { "Button$Remove", // English
-    "Button$Entferne", // Deutsch
+    "Entferne", // Deutsch
     "", // Slovenski
     "Rimuovi", // Italiano
     "", // Nederlands
@@ -2939,7 +2939,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { "Button$Add files", // English
-    "Button$Füge Dateien hinzu", // Deutsch
+    "Füge Dateien hinzu", // Deutsch
     "", // Slovenski
     "Aggiungi files", // Italiano
     "", // Nederlands
@@ -2958,7 +2958,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { "Button$Random", // English
-    "Button$Zufall", // Deutsch
+    "Zufall", // Deutsch
     "", // Slovenski
     "Casuale", // Italiano
     "", // Nederlands
@@ -2977,7 +2977,7 @@ const tI18nPhrase Phrases[] = {
     "", // Croatian
   },
   { "Button$Normal", // English
-    "Button$Normal", // Deutsch
+    "Normal", // Deutsch
     "", // Slovenski
     "Normale", // Italiano
     "", // Nederlands

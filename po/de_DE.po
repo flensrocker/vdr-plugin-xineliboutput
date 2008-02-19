@@ -142,19 +142,19 @@ msgid "Playlist"
 msgstr "Wiedergabeliste"
 
 msgid "Button$Random"
-msgstr "Button$Zufall"
+msgstr "Zufall"
 
 msgid "Button$Normal"
-msgstr "Button$Normal"
+msgstr "Normal"
 
 msgid "Button$Add files"
-msgstr "Button$Füge Dateien hinzu"
+msgstr "Füge Dateien hinzu"
 
 msgid "Button$Remove"
-msgstr "Button$Entferne"
+msgstr "Entferne"
 
 msgid "Button$Sort"
-msgstr "Button$Sortiere"
+msgstr "Sortiere"
 
 msgid "Queued to playlist"
 msgstr "Hänge an Wiedergabeliste an"
@@ -181,7 +181,7 @@ msgid "Play file"
 msgstr "Datei abspielen"
 
 msgid "Button$Queue"
-msgstr "Button$Warteschlange"
+msgstr "Warteschlange"
 
 msgid "Select subtitle track"
 msgstr "Wähle Untertitel"
