@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.46 2008-02-19 08:48:02 phintuka Exp $
+ * $Id: setup_menu.c,v 1.47 2008-02-20 03:17:22 phintuka Exp $
  *
  */
 
@@ -824,7 +824,9 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_scale;
     cOsdItem *ctrl_downscale;
     cOsdItem *ctrl_lowres;
+#ifdef VDRVERSNUM < 10515
     cOsdItem *ctrl_spulang0;
+#endif
   
   protected:
     virtual void Store(void);
@@ -867,7 +869,9 @@ void cMenuSetupOSD::Set(void)
   ctrl_lowres = NULL;
   ctrl_alpha = NULL;
   ctrl_alpha_abs = NULL;
+#if VDRVERSNUM < 10515
   ctrl_spulang0 = NULL;
+#endif
 
   Add(NewTitle(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
@@ -903,6 +907,7 @@ void cMenuSetupOSD::Set(void)
 				&newconfig.alpha_correction_abs, -0xff, 0xff,
 				tr("Off")));
   
+#if VDRVERSNUM < 10515
   Add(NewTitle(tr("Subtitles")));
   Add(new cMenuEditBoolItem(trVDR("Setup.EPG$Preferred languages"), 
 			    &newconfig.spu_autoshow));
@@ -917,6 +922,7 @@ void cMenuSetupOSD::Set(void)
     Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
 			     newconfig.spu_lang[3], 4, LangNameChars));
   }
+#endif
 
   Add(new cMenuEditStraI18nItem(tr("External subtitle size"),
 				&newconfig.extsub_size, SUBTITLESIZE_count, xc.s_subtitleSizes));
@@ -954,11 +960,12 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
     Set();
   if(newconfig.unscaled_osd && ctrl_lowres)
     Set();
+#if VDRVERSNUM < 10515
   if(newconfig.spu_autoshow && !ctrl_spulang0)
     Set();
   if(!newconfig.spu_autoshow && ctrl_spulang0)
     Set();
-
+#endif
   return state;
 }
 
@@ -985,11 +992,13 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.AlphaCorrectionAbs", xc.alpha_correction_abs);
 
   SetupStore("OSD.ExtSubSize", xc.extsub_size);
+#if VDRVERSNUM < 10515
   SetupStore("OSD.SpuAutoSelect", xc.spu_autoshow);
   SetupStore("OSD.SpuLang0", xc.spu_lang[0]);
   SetupStore("OSD.SpuLang1", xc.spu_lang[1]);
   SetupStore("OSD.SpuLang2", xc.spu_lang[2]);
   SetupStore("OSD.SpuLang3", xc.spu_lang[3]);
+#endif
   Setup.Save();
 }
 
