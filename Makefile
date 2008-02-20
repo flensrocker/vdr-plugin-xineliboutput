@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.28 2008-02-05 00:08:20 phintuka Exp $
+# $Id: Makefile,v 1.29 2008-02-20 22:27:13 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -151,6 +151,7 @@ VDRSXFE      = vdr-sxfe
 VDRFBFE      = vdr-fbfe
 XINEINPUTVDR = xineplug_inp_xvdr.so
 XINEPOSTAUTOCROP  = xineplug_post_autocrop.so
+XINEPOSTSWSCALE = xineplug_post_swscale.so
 XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
 XINEPOSTHEADPHONE = xineplug_post_headphone.so
 
@@ -166,6 +167,7 @@ XINEPOSTHEADPHONE_SO =
 XINEINPUTVDR_SO =
 XINEPLUGINDIR = ./
 XINEPOSTAUTOCROP_SO =
+XINEPOSTSWSCALE_SO =
 XINEPOSTAUDIOCHANNEL_SO =
 XINEPOSTHEADPHONE_SO =
 VDRPLUGIN_SO =
@@ -186,6 +188,7 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
     XINEPLUGINDIR   = $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --variable=plugindir) || xine-config --plugindir)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
+    XINEPOSTSWSCALE_SO = $(XINEPOSTSWSCALE)
     XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
     ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
         XINEPOSTHEADPHONE_SO = $(XINEPOSTHEADPHONE)
@@ -331,6 +334,8 @@ tools/vdrdiscovery_standalone.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
 xine_post_autocrop.o: xine_post_autocrop.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autocrop.c
+xine_post_swscale.o: xine_post_swscale.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_swscale.c
 xine_post_audiochannel.o: xine_post_audiochannel.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_audiochannel.c
 xine_post_headphone.o: xine_post_headphone.c
@@ -395,12 +400,12 @@ install : XINELIBOUTPUT_INSTALL_MSG =
 
 all: $(VDRPLUGIN_SO) $(VDRPLUGIN_SXFE_SO) $(VDRPLUGIN_FBFE_SO) \
 	    $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO) \
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) $(XINEPOSTHEADPHONE_SO) \
 	    $(XINEPOSTAUDIOCHANNEL_SO) i18n
 	$(XINELIBOUTPUT_INSTALL_MSG)
 
 frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTHEADPHONE_SO) \
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) $(XINEPOSTHEADPHONE_SO) \
 	    $(XINEPOSTAUDIOCHANNEL_SO)
 
 .PHONY: all
@@ -436,6 +441,8 @@ $(XINEINPUTVDR_SO): xine_input_vdr.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_input_vdr.o $(LIBS_XINE) -o $@
 $(XINEPOSTAUTOCROP_SO): xine_post_autocrop.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_autocrop.o $(LIBS_XINE) -o $@
+$(XINEPOSTSWSCALE_SO): xine_post_swscale.o
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_swscale.o $(LIBS_XINE) -o $@
 $(XINEPOSTAUDIOCHANNEL_SO): xine_post_audiochannel.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_audiochannel.o $(LIBS_XINE) -o $@
 endif
@@ -454,6 +461,10 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 #	@cp $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/
 	@$(INSTALL) -D -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
+	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
+#	@cp $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/
+	@$(INSTALL) -D -m 0644 $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 #	@cp $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/
