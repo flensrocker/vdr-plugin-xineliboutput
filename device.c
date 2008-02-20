@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.52 2008-02-19 03:12:17 phintuka Exp $
+ * $Id: device.c,v 1.53 2008-02-20 04:18:43 phintuka Exp $
  *
  */
 
@@ -23,12 +23,10 @@
 //#define XINELIBOUTPUT_DEBUG
 //#define XINELIBOUTPUT_DEBUG_STDERR
 //#define TRACK_EXEC_TIME
-//#define SKIP_DVDSPU
 //#define FORWARD_DVD_SPUS
 //#define DEBUG_SWITCHING_TIME
 //#define LOG_TRICKSPEED
 #if VDRVERSNUM >= 10510
-# define SKIP_DVDSPU
 # define DEVICE_SUPPORTS_IBP_TRICKSPEED
 #endif
 
@@ -198,14 +196,15 @@ cXinelibDevice::cXinelibDevice()
   m_ac3Present  = false;
   m_spuPresent  = false;
 
+#if VDRVERSNUM < 10515
   m_CurrentDvdSpuTrack = -1;
   m_ForcedDvdSpuTrack = false;
   ClrAvailableDvdSpuTracks();
+#endif
 
   memset(m_MetaInfo, 0, sizeof(m_MetaInfo));
     
   m_PlayMode = pmNone;
-  m_LastTrack = ttAudioFirst;
   m_AudioChannel = 0;
 
   m_liveMode    = true;
@@ -588,8 +587,10 @@ void cXinelibDevice::StopOutput(void)
   Clear();
   ForEach(m_clients, &cXinelibThread::QueueBlankDisplay);
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
+#if VDRVERSNUM < 10515
   ClrAvailableDvdSpuTracks();
   m_ForcedDvdSpuTrack = false;
+#endif
 }
 
 void cXinelibDevice::SetTvMode(cChannel *Channel)
@@ -659,7 +660,9 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
   m_ac3Present = false;
   m_spuPresent = false;
 
+#if VDRVERSNUM < 10515
   ClrAvailableDvdSpuTracks();
+#endif
   m_PlayMode = PlayMode;
 
   TrickSpeed(-1);
@@ -1263,13 +1266,11 @@ int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id)
   return PlayAny(buf, length);
 }
 
+#if VDRVERSNUM < 10510
 int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id) 
 {
   TRACEF("cXinelibDevice::PlaySpu");
 
-#ifdef SKIP_DVDSPU
-  return length;
-#else
   if(!buf || length < 6)
     return length;
 
@@ -1289,8 +1290,8 @@ int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id)
   }
 
   return PlayAny(buf, length);
-#endif
 }
+#endif
 
 bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs) 
 {
@@ -1503,10 +1504,10 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 //   - override cDevice::PlayPesPacket to get DVD SPUs
 //
 
+#if VDRVERSNUM < 10510
 int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length, 
 				  bool VideoOnly)
 {
-#ifndef SKIP_DVDSPU
   switch (Data[3]) {
     case 0xBD: { // private stream 1
       int PayloadOffset = Data[8] + 9;
@@ -1526,15 +1527,15 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
     default:
       ;
   }
-#endif
   return cDevice::PlayPesPacket(Data, Length, VideoOnly);
 }
-
+#endif
 
 //
 // Available DVD SPU tracks
 //
 
+#if VDRVERSNUM < 10515
 bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type, bool Force)
 {
   if(Type == -1 || 
@@ -1549,7 +1550,9 @@ bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type, bool Force)
   }
   return false;
 }
+#endif
 
+#if VDRVERSNUM < 10515
 void cXinelibDevice::ClrAvailableDvdSpuTracks(bool NotifyFrontend)
 {
   for(int i=0; i<64; i++)
@@ -1560,7 +1563,9 @@ void cXinelibDevice::ClrAvailableDvdSpuTracks(bool NotifyFrontend)
       ForEach(m_clients, &cXinelibThread::SpuStreamChanged, -1);
   }
 }
+#endif
 
+#if VDRVERSNUM < 10515
 int cXinelibDevice::NumDvdSpuTracks(void) const
 { 
   int DvdSpuTracks = 0;
@@ -1569,7 +1574,9 @@ int cXinelibDevice::NumDvdSpuTracks(void) const
       DvdSpuTracks++;
   return DvdSpuTracks; 
 }
+#endif
 
+#if VDRVERSNUM < 10515
 const tTrackId *cXinelibDevice::GetDvdSpuTrack(int Type) const
 {
   if(Type >= 0 && Type < 64 &&
@@ -1577,7 +1584,9 @@ const tTrackId *cXinelibDevice::GetDvdSpuTrack(int Type) const
     return &m_DvdSpuTrack[Type];
   return NULL;
 }
+#endif
 
+#if VDRVERSNUM < 10515
 const char *cXinelibDevice::GetDvdSpuLang(int Type) const
 {
   const tTrackId *track = GetDvdSpuTrack(Type);
@@ -1585,7 +1594,9 @@ const char *cXinelibDevice::GetDvdSpuLang(int Type) const
     return track->language[0] ? track->language : NULL;
   return NULL;
 }
+#endif
 
+#if VDRVERSNUM < 10515
 bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Current)
 {
   if(Type >= 0 && Type < 64) {
@@ -1601,7 +1612,9 @@ bool cXinelibDevice::SetAvailableDvdSpuTrack(int Type, const char *lang, bool Cu
   }
   return false;
 }
+#endif
 
+#if VDRVERSNUM < 10515
 void cXinelibDevice::EnsureDvdSpuTrack(void)
 {
   if(!m_ForcedDvdSpuTrack &&
@@ -1647,6 +1660,7 @@ void cXinelibDevice::EnsureDvdSpuTrack(void)
     }
   }
 }
+#endif
 
 //
 // Metainfo
