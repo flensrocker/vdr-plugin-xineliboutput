@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.45 2008-02-19 04:05:45 phintuka Exp $
+ * $Id: media_player.c,v 1.46 2008-02-20 22:23:15 phintuka Exp $
  *
  */
 
@@ -129,10 +129,12 @@ void cXinelibPlayer::SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
 void cXinelibPlayer::SetSubtitleTrack(eTrackType Type, const tTrackId *TrackId)
 {
   LOGMSG("cXinelibPlayer::SetSubtitleTrack(%d %s)", (int)Type, TrackId ? TrackId->language : "?");
+#if VDRVERSNUM >= 10515
   if(Type == ttNone)
     Control("SPUSTREAM -1");
   else
     Control("SPUSTREAM %d", (int)(Type - ttSubtitleFirst));
+#endif
 }
 
 bool cXinelibPlayer::GetIndex(int &Current, int &Total, bool SnapToIFrame) 
