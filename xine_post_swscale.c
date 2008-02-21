@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.4 2008-02-21 18:08:26 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.5 2008-02-21 18:51:06 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -1015,7 +1015,7 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  psrlw     $8, %%mm1     \n\t"  /* right adjust luma */
 	     "  psrlw     $8, %%mm2     \n\t"  /* right adjust luma */
 
-	     "  packuswb  %%mm2, %%mm1  \n\t"  /* pack words to our 16 byte answer */
+	     "  packuswb  %%mm2, %%mm1  \n\t"  /* pack words to our 8 byte answer */
 #ifdef STREAMING_STORE_TMP
 	     "  movntq    %%mm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
 #else
@@ -1059,8 +1059,8 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  psrlw     $8, %%mm1     \n\t"  /* right adjust luma */
 	     "  psrlw     $8, %%mm2     \n\t"  /* right adjust luma */
 
-	     "  packuswb  %%mm2, %%mm1  \n\t"  /* pack words to our 16 byte answer */
-	     "  movq      %%xmm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
+	     "  packuswb  %%mm2, %%mm1  \n\t"  /* pack words to our 8 byte answer */
+	     "  movq      %%mm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
 			 
 	     "  lea   8(%%"REGA"), %%"REGA" \n\t"
 	     "  loop  "vLoopMMX"b  \n"
