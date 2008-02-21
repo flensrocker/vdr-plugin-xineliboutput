@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.3 2008-02-21 04:25:01 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.4 2008-02-21 18:08:26 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -43,8 +43,14 @@
 /*#define DBG(x...)*/
 #define DBG(x...) fprintf(stderr, "post_warp: " x)
 
-#define STREAMING_STORE
-#define PREFETCH
+/*#define STREAMING_STORE_TMP*/
+/*#define STREAMING_STORE*/
+/*#define PREFETCH*/
+/* streaming store and prefetch seems to be slower ...
+ * Tested with P3 (128M L2) and C2D (4M L2).
+ * Maybe access pattern is enough simple for HW prefetchers.
+ */
+
 /*#define VANILLA*/
 
 /*
@@ -586,7 +592,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  paddw    %%xmm2, %%xmm1  \n\t"  /* combine lumas     */
 	    "  paddusw  %%xmm0, %%xmm1  \n\t"  /* round             */
 	    "  psrlw        $8, %%xmm1  \n\t"  /* right adjust luma */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	    "  movntdq  %%xmm1, (%%"REGDI", %%"REGA", 2) \n\t" /* save lumas in our work area */
 #else
 	    "  movdqu   %%xmm1, (%%"REGDI", %%"REGA", 2) \n\t" /* save lumas in our work area */
@@ -596,7 +602,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  psrlw        $8, %%xmm3  \n\t"  /* right adjust chroma */
 	    "  packuswb %%xmm3, %%xmm3  \n\t"  /* pack UV's into low dword */
 	    "  movdq2q  %%xmm3, %%mm1   \n\t"  /* save in our work area    */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	    "  movntq    %%mm1, (%%"REGB", %%"REGA") \n\t"  /* save in our work area */
 #else
 	    "  movq      %%mm1, (%%"REGB", %%"REGA") \n\t"  /* save in our work area */
@@ -608,7 +614,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  jz    "vLoopSSE2"b           \n\t"  /* or just loop, or not */
 
 	    /* done with our SSE2 fortified loop but we may need to pick up the spare change */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	    "  sfence    \n\t"
 #endif
 	    "  movl  "_src_row_size", %%"REGC" \n\t"  /* get count again   */
@@ -665,7 +671,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  paddw   %%mm2, %%mm1  \n\t"   /* combine lumas     */
 	    "  paddusw %%mm0, %%mm1  \n\t"   /* round             */
 	    "  psrlw      $8, %%mm1  \n\t"   /* right adjust luma */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	    "  movntq  %%mm1, (%%"REGDI", %%"REGA", 2) \n\t"  /* save lumas in our work area */
 #else
 	    "  movq    %%mm1, (%%"REGDI", %%"REGA", 2) \n\t"  /* save lumas in our work area */
@@ -680,7 +686,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  decl  %%"REGC"              \n\t"
 	    "  jg    "vLoopSSEMMX_Fetch"b  \n\t"  /* if not on last one loop, prefetch  */
 	    "  jz    "vLoopSSEMMX"b        \n\t"  /* or just loop, or not  */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	    "  sfence                      \n\t"
 #endif
 	    "  jmp    "MoreSpareChange"f   \n"    /* all done with vertical  */
@@ -936,7 +942,7 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  psrlw     $8, %%xmm2      \n\t"  /* right adjust luma */
 
 	     "  packuswb  %%xmm2, %%xmm1  \n\t"  /* pack words to our 16 byte answer */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	     "  movntdq   %%xmm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
 #else
 	     "  movdqu    %%xmm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
@@ -948,7 +954,7 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  jz    "vLoopSSE2"b        \n\t"  /* or just loop, or not  */
 
 	     /* done with our SSE2 fortified loop but we may need to pick up the spare change */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	     "  sfence                  \n\t"
 #endif
 	     "  movl  "_src_row_size", %%"REGC" \n\t"  /* get count again   */
@@ -1010,7 +1016,7 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  psrlw     $8, %%mm2     \n\t"  /* right adjust luma */
 
 	     "  packuswb  %%mm2, %%mm1  \n\t"  /* pack words to our 16 byte answer */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	     "  movntq    %%mm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
 #else
 	     "  movq      %%mm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
@@ -1020,7 +1026,7 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 
 	     "  jg    "vLoopSSEMMX_Fetch"b  \n\t"  /* if not on last one loop, prefetch  */
 	     "  jz    "vLoopSSEMMX"b        \n\t"  /* or just loop, or not  */
-#ifdef STREAMING_STORE
+#ifdef STREAMING_STORE_TMP
 	     "  sfence                      \n\t"
 #endif
 	     "  jmp    "MoreSpareChange"f   \n"    /* all done with vertical  */
