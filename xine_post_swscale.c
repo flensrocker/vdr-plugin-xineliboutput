@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.1 2008-02-20 22:31:23 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.2 2008-02-21 02:30:53 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -443,6 +443,23 @@ static void init_tables_yuy2(int newwidth, int newheight, int oldwidth, int oldh
 #define _SSE2enabledW   "%16"
 #endif
 
+/* Labels */
+#define vMaybeSSEMMX      "1"
+#define LessThan8         "2"
+#define LessThan4         "3"
+#define AllDone           "4"
+#define LastOne           "5"
+#define vLoopSSE2_Fetch   "6"
+#define vLoopSSE2         "7"
+#define vLoopSSEMMX_Fetch "8"
+#define vLoopSSEMMX       "9"
+#define vLoopMMX         "10"
+#define MoreSpareChange  "11"
+#define DoHorizontal     "12"
+#define hLoopMMX         "13"
+#define hLoopMMXSSE      "14"
+
+
 /* structure for mmx constants */
 typedef union {
   uint64_t uq[1];  /* Unsigned Quadword */
@@ -530,10 +547,10 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	     * using SSE2 if we have proper alignment.
 	     */
 	    "testl  $1, "_SSE2enabledW"  \n\t"  /* is SSE2 supported?*/
-	    "jz     vMaybeSSEMMX         \n\t"  /* n, can't do anyway*/
+	    "jz     "vMaybeSSEMMX"f      \n\t"  /* n, can't do anyway*/
 #endif
 	    "cmpl   $2, %%"REGC"         \n\t"  /* we have at least 16 bytes, 2 qwords? */
-	    "jl     vMaybeSSEMMX         \n\t"  /* n, don't bother*/
+	    "jl     "vMaybeSSEMMX"f      \n\t"  /* n, don't bother*/
 	    
 	    "shrl   $1, %%"REGC"         \n\t"  /* do 16 bytes at a time instead*/
 	    "decl   %%"REGC"             \n"    /* jigger loop ct */
@@ -545,12 +562,12 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "movdqa "_vWeight2", %%xmm6  \n\t"
 	    "movdqa "_YMask",    %%xmm7  \n"
 
-	    "vLoopSSE2_Fetch:            \n\t"
+	    ""vLoopSSE2_Fetch":          \n\t"
 #ifdef PREFETCH
 	    "  prefetcht0 16(%%"REGSI", %%"REGA", 2) \n\t"
 	    "  prefetcht0 16(%%"REGD",  %%"REGA", 2) \n"
 #endif	    
-	    "vLoopSSE2:  \n\t"
+	    ""vLoopSSE2":  \n\t"
 	    "  movdqu   (%%"REGSI", %%"REGA", 2), %%xmm1 \n\t" /* top of 2 lines to interpolate */
 	    "  movdqu   (%%"REGD",  %%"REGA", 2), %%xmm2 \n\t" /* 2nd of 2 lines */
 
@@ -587,8 +604,8 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  lea   8(%%"REGA"), %%"REGA"  \n\t"
 	    "  decl  %%"REGC"               \n\t"
 	    
-	    "  jg    vLoopSSE2_Fetch        \n\t"  /* if not on last one loop, prefetch */
-	    "  jz    vLoopSSE2              \n\t"  /* or just loop, or not */
+	    "  jg    "vLoopSSE2_Fetch"b     \n\t"  /* if not on last one loop, prefetch */
+	    "  jz    "vLoopSSE2"b           \n\t"  /* or just loop, or not */
 
 	    /* done with our SSE2 fortified loop but we may need to pick up the spare change */
 #ifdef STREAMING_STORE
@@ -602,14 +619,14 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  movq  "_vWeight2", %%mm6     \n\t"
 	    "  movq  "_FPround1", %%mm0     \n\t"  /* useful rounding constant  */
 
-	    "  shrl  $3, %%"REGC"    \n\t"  /* 8 bytes at a time, any?  */
-	    "  jz   MoreSpareChange  \n"    /* n, did them all  */
+	    "  shrl  $3, %%"REGC"     \n\t"  /* 8 bytes at a time, any?  */
+	    "  jz   "MoreSpareChange"f \n"    /* n, did them all  */
 
 	    /* Let's check here to see if we are on a P2 or Athlon and can use SSEMMX instructions.
 	     * This first loop is not the performance bottleneck anyway but it is trivial to tune
 	     * using SSE if we have proper alignment.
 	     */
-	    "vMaybeSSEMMX:    \n\t"
+	    ""vMaybeSSEMMX":    \n\t"
 
 	    "  movq  "_YMask",    %%mm7    \n\t"  /* useful luma mask constant - lazy dupl init */
 	    "  movq  "_vWeight1", %%mm5    \n\t"  
@@ -617,17 +634,17 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  movq  "_FPround1", %%mm0    \n\t"  /* useful rounding constant  */
 #if !defined(__x86_64__)
 	    "  testl $1, "_SSEMMXenabledW" \n\t"  /* MMXEXTsupported? */
-	    "  jz    vLoopMMX              \n\t"  /* n, can't do anyway */
+	    "  jz    "vLoopMMX"f           \n\t"  /* n, can't do anyway */
 #endif
 	    "  decl  %%"REGC"              \n"    /* jigger loop ctr */
 
-	    ".align 16           \n"
-	    "vLoopSSEMMX_Fetch:  \n\t"
+	    ".align 16             \n"
+	    ""vLoopSSEMMX_Fetch":  \n\t"
 #ifdef PREFETCH
 	    "  prefetcht0 8(%%"REGSI", %%"REGA", 2)  \n\t"
 	    "  prefetcht0 8(%%"REGD",  %%"REGA", 2)  \n"
 #endif
-	    "vLoopSSEMMX:   \n\t"
+	    ""vLoopSSEMMX":   \n\t"
 	    "  movq    (%%"REGSI", %%"REGA", 2), %%mm1  \n\t"   /* top of 2 lines to interpolate */
 	    "  movq    (%%"REGD",  %%"REGA", 2), %%mm2  \n\t"   /* 2nd of 2 lines    */
 
@@ -661,15 +678,15 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    
 	    "  lea   4(%%"REGA"), %%"REGA" \n\t"
 	    "  decl  %%"REGC"              \n\t"
-	    "  jg    vLoopSSEMMX_Fetch     \n\t"  /* if not on last one loop, prefetch  */
-	    "  jz    vLoopSSEMMX           \n\t"  /* or just loop, or not  */
+	    "  jg    "vLoopSSEMMX_Fetch"b  \n\t"  /* if not on last one loop, prefetch  */
+	    "  jz    "vLoopSSEMMX"b        \n\t"  /* or just loop, or not  */
 #ifdef STREAMING_STORE
 	    "  sfence                      \n\t"
 #endif
-	    "  jmp    MoreSpareChange      \n"    /* all done with vertical  */
+	    "  jmp    "MoreSpareChange"f   \n"    /* all done with vertical  */
 	    
 	    ".align 16     \n"
-	    "vLoopMMX:     \n\t"
+	    ""vLoopMMX":   \n\t"
 
 	    "  movq (%%"REGSI", %%"REGA", 2), %%mm1  \n\t" /* top of 2 lines to interpolate */
 	    "  movq (%%"REGD",  %%"REGA", 2), %%mm2  \n\t" /* 2nd of 2 lines */
@@ -700,22 +717,22 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  movd     %%mm3, (%%"REGB", %%"REGA")  \n\t"  /* save in our work area */
 
 	    "  lea      4(%%"REGA"), %%"REGA"  \n\t"
-	    "  loop     vLoopMMX       \n"
+	    "  loop     "vLoopMMX"b      \n"
 
 	    /* Add a little code here to check if we have 2 more pixels to do and, if so, make one
 	     * more pass thru vLoopMMX. We were processing in multiples of 4 pixels and alway have
 	     * an even number so there will never be more than 2 left. trbarry 7/29/2002
 	     */
-	    "MoreSpareChange:      \n\t"
+	    ""MoreSpareChange":    \n\t"
 
 	    "  cmpl  "_EndOffset", %%"REGEA"  \n\t"  /* did we get them all */
-	    "  jnl   DoHorizontal  \n\t"  /* yes, else have 2 left */
-	    "  movl  $1, %%"REGC"  \n\t"  /* jigger loop ct */
-	    "  sub   $2, %%"REGA"  \n\t"  /* back up 2 pixels (4 bytes, but eax carried as 1/2) */
-	    "  jmp   vLoopMMX      \n"
+	    "  jnl   "DoHorizontal"f \n\t"  /* yes, else have 2 left */
+	    "  movl  $1, %%"REGC"    \n\t"  /* jigger loop ct */
+	    "  sub   $2, %%"REGA"    \n\t"  /* back up 2 pixels (4 bytes, but eax carried as 1/2) */
+	    "  jmp   "vLoopMMX"b     \n"
 
 	    /*  We've taken care of the vertical scaling, now do horizontal  */
-	    "DoHorizontal:        \n\t"
+	    ""DoHorizontal":      \n\t"
 
 	    "  movq  "_YMask",    %%mm7     \n\t"  /* useful 0U0U..  mask constant  */
 	    "  movq  "_FPround2", %%mm6     \n\t"  /* useful rounding constant, dwords  */
@@ -727,7 +744,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  mov   "_vWorkUVW", %%"REGB"  \n"    /* chroma data, as UVUV UVUV...  */
 
 	    ".align 16  \n"
-	    "hLoopMMX:    \n\t"
+	    ""hLoopMMX":    \n\t"
 
 	    /* x86_64: must use movl (accessing table of uint32's) */
 	    "  movl      16(%%"REGSI"), %%"REGEA"        \n\t"  /* get data offset in pixels, 1st pixel pair */
@@ -757,7 +774,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 	    "  lea     24(%%"REGSI"), %%"REGSI"  \n\t"  /* bump to next control bytest */
 	    "  lea      4(%%"REGDI"), %%"REGDI"  \n\t"  /* bump to next output pixel addr */
 	    
-	    "  loop   hLoopMMX             \n\t"  /* loop for more */
+	    "  loop   "hLoopMMX"b             \n\t"  /* loop for more */
 
 	    "emms              \n\t"
 	    /* done with one line */
@@ -868,15 +885,15 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	      * using SSE2 if we have proper alignment.
 	      */
 	     "testl $1, "_SSE2enabledW"   \n\t"  /* is SSE2 supported? */
-	     "jz    vMaybeSSEMMX_12       \n\t"  /* n, can't do anyway */
+	     "jz    "vMaybeSSEMMX"f       \n\t"  /* n, can't do anyway */
 #endif
 	     "cmpl  $2, %%"REGC"          \n\t"  /* we have at least 16 byts, 2 qwords? */
-	     "jl    vMaybeSSEMMX_12       \n\t"  /* n, don't bother */
+	     "jl    "vMaybeSSEMMX"f       \n\t"  /* n, don't bother */
 	     
 	     "mov   %%"REGSI", %%"REGB"   \n\t"
 	     "or    %%"REGD",  %%"REGB"   \n\t"
 	     "test  $15,       %%"REGB"   \n\t"  /* both src rows 16 byte aligned? */
-	     "jnz   vMaybeSSEMMX_12       \n\t"  /* n, don't use sse2 */
+	     "jnz   "vMaybeSSEMMX"f       \n\t"  /* n, don't use sse2 */
 			 
 	     "shr   $1, %%"REGC"          \n\t"  /* do 16 bytes at a time instead */
 	     "dec   %%"REGC"              \n\t"  /* jigger loop ct */
@@ -887,12 +904,12 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "pxor        %%xmm7, %%xmm7  \n"
 
 	     ".align 16                   \n"
-	     "vLoopSSE2_Fetch_12:         \n\t"
+	     ""vLoopSSE2_Fetch":          \n\t"
 #ifdef PREFETCH
 	     "  prefetcht0 16(%%"REGSI", %%"REGA", 2) \n\t"
 	     "  prefetcht0 16(%%"REGD",  %%"REGA", 2) \n"
 #endif
-	     "vLoopSSE2_12:  \n\t"
+	     ""vLoopSSE2":  \n\t"
 	     /* we're already checked pointers to be on dqword aligned */
 	     "  movdqa  (%%"REGSI", %%"REGA"), %%xmm1 \n\t" /* top of 2 lines to interpolate */
 	     "  movdqa  (%%"REGD",  %%"REGA"), %%xmm3 \n\t" /* 2nd of 2 lines */
@@ -927,8 +944,8 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  lea   16(%%"REGA"), %%"REGA" \n\t"
 	     "  decl  %%"REGC"            \n\t"
 
-	     "  jg    vLoopSSE2_Fetch_12  \n\t"  /* if not on last one loop, prefetch  */
-	     "  jz    vLoopSSE2_12        \n\t"  /* or just loop, or not  */
+	     "  jg    "vLoopSSE2_Fetch"b  \n\t"  /* if not on last one loop, prefetch  */
+	     "  jz    "vLoopSSE2"b        \n\t"  /* or just loop, or not  */
 
 	     /* done with our SSE2 fortified loop but we may need to pick up the spare change */
 #ifdef STREAMING_STORE
@@ -941,13 +958,13 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  movq "_FPround1", %%mm0   \n\t"  /* useful rounding constant  */
 
 	     "  shrl  $3, %%"REGC"        \n\t"  /* 8 bytes at a time, any?  */
-	     "  jz   MoreSpareChange_12   \n"    /* n, did them all  */
+	     "  jz   "MoreSpareChange"f   \n"    /* n, did them all  */
 
 	     /* Let's check here to see if we are on a P2 or Athlon and can use SSEMMX instructions.
 	      * This first loop is not the performance bottleneck anyway but it is trivial to tune
 	      * using SSE if we have proper alignment.
 	      */
-	     "vMaybeSSEMMX_12:            \n\t"
+	     ""vMaybeSSEMMX":             \n\t"
 
 	     "  movq "_vWeight1", %%mm5   \n\t"  
 	     "  movq "_vWeight2", %%mm6   \n\t"  
@@ -955,17 +972,17 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  pxor       %%mm7, %%mm7   \n\t"
 #if !defined(__x86_64__)
 	     "  testl $1, "_SSEMMXenabledW" \n\t"/* MMXEXTsupported? */
-	     "  jz    vLoopMMX_12         \n\t"  /* n, can't do anyway */
+	     "  jz    "vLoopMMX"f         \n\t"  /* n, can't do anyway */
 #endif
 	     "  decl  %%"REGC"      \n"  /* jigger loop ctr */
 			 
 	     ".align 16             \n"
-	     "vLoopSSEMMX_Fetch_12: \n\t"
+	     ""vLoopSSEMMX_Fetch":  \n\t"
 #ifdef PREFETCH
 	     "  prefetcht0 8(%%"REGSI", %%"REGA")  \n\t"
 	     "  prefetcht0 8(%%"REGD",  %%"REGA")  \n"
 #endif
-	     "vLoopSSEMMX_12:   \n\t"
+	     ""vLoopSSEMMX":   \n\t"
 
 	     "  movq    (%%"REGSI", %%"REGA"), %%mm1  \n\t"   /* top of 2 lines to interpolate */
 	     "  movq    (%%"REGD",  %%"REGA"), %%mm3  \n\t"   /* 2nd of 2 lines    */
@@ -1001,15 +1018,15 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  lea   8(%%"REGA"), %%"REGA" \n\t"
 	     "  decl  %%"REGC"              \n\t"
 
-	     "  jg    vLoopSSEMMX_Fetch_12  \n\t"  /* if not on last one loop, prefetch  */
-	     "  jz    vLoopSSEMMX_12        \n\t"  /* or just loop, or not  */
+	     "  jg    "vLoopSSEMMX_Fetch"b  \n\t"  /* if not on last one loop, prefetch  */
+	     "  jz    "vLoopSSEMMX"b        \n\t"  /* or just loop, or not  */
 #ifdef STREAMING_STORE
 	     "  sfence                      \n\t"
 #endif
-	     "  jmp    MoreSpareChange_12   \n"    /* all done with vertical  */
+	     "  jmp    "MoreSpareChange"f   \n"    /* all done with vertical  */
 
 	     ".align 16        \n"
-	     "vLoopMMX_12:     \n\t"
+	     ""vLoopMMX":      \n\t"
 
 	     "  movq    (%%"REGSI", %%"REGA"), %%mm1  \n\t"  /* top of 2 lines to interpolate */
 	     "  movq    (%%"REGD",  %%"REGA"), %%mm3  \n\t"  /* 2nd of 2 lines    */
@@ -1040,23 +1057,23 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  movq      %%xmm1, (%%"REGDI", %%"REGA") \n\t" /* save lumas in our work area */
 			 
 	     "  lea   8(%%"REGA"), %%"REGA" \n\t"
-	     "  loop  vLoopMMX_12  \n"
+	     "  loop  "vLoopMMX"b  \n"
 
 	     /* Add a little code here to check if we have more pixels to do and, if so, make one
 	      * more pass thru vLoopMMX. We were processing in multiples of 8 pixels and alway have
 	      * an even number so there will never be more than 7 left.
 	      */
-	     "MoreSpareChange_12:    \n\t"
+	     ""MoreSpareChange":     \n\t"
 
 	     "  cmpl "_src_row_size", %%"REGEA"  \n\t"  /* did we get them all */
-	     "  jnl  DoHorizontal_12  \n\t"  /* yes, else have 2 left */
+	     "  jnl  "DoHorizontal"f  \n\t"  /* yes, else have 2 left */
 	     "  movl $1, %%"REGC"     \n\t"  /* jigger loop ct */
 	     "  movl "_src_row_size", %%"REGEA"  \n\t"
 	     "  sub  $8, %%"REGA"     \n\t"  /* back up to last 8 pixels */
-	     "  jmp  vLoopMMX_12      \n"
+	     "  jmp  "vLoopMMX"b      \n"
 
 	     /*  We've taken care of the vertical scaling, now do horizontal  */
-	     "DoHorizontal_12:        \n\t"
+	     ""DoHorizontal":        \n\t"
 	     "  pxor        %%mm7, %%mm7     \n\t"
 	     "  movq  "_FPround2", %%mm6     \n\t"  /* useful rounding constant, dwords  */
 	     "  mov   "_pControl", %%"REGSI" \n\t"  /* @ horiz control bytes  */	
@@ -1066,14 +1083,14 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  mov   "_dstp",     %%"REGDI" \n\t"  /* the destination line  */
 #if !defined(__x86_64__)
 	     "  testl $1, "_SSEMMXenabledW" \n\t"  /* MMXEXTsupported? */
-	     "  jz    hLoopMMX_12           \n\t"  /* n, can't do anyway */
+	     "  jz    "hLoopMMX"f           \n\t"  /* n, can't do anyway */
 #endif
 	     /* With SSE support we will make 8 pixels (from 8 pairs) at a time */
 	     "  shrl  $1, %%"REGC"  \n\t"  /* 8 bytes a time instead of 4  */
-	     "  jz    LessThan8     \n"
+	     "  jz    "LessThan8"f  \n"
 
 	     ".align 16          \n"
-	     "hLoopMMXSSE_12:    \n\t"
+	     ""hLoopMMXSSE":    \n\t"
 
 
 	     /* handle first 2 pixels */
@@ -1131,18 +1148,18 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  lea  96(%%"REGSI"), %%"REGSI" \n\t"
 	     "  lea   8(%%"REGDI"), %%"REGDI" \n\t"
 	     "  decl  %%"REGC"                \n\t"
-	     "  jg    hLoopMMXSSE_12    \n\t"   /* loop for more  */
+	     "  jg    "hLoopMMXSSE"b    \n\t"   /* loop for more  */
 #ifdef STREAMING_STORE
 	     "  sfence                  \n"
 #endif
-	     "LessThan8:    \n\t"
+	     ""LessThan8":    \n\t"
 	     "  movl "_row_size", %%"REGC"  \n\t"
 	     "  andl          $7, %%"REGC"  \n\t"  /* we have done all but maybe this */
 	     "  shrl          $2, %%"REGC"  \n\t"  /* now do only 4 bytes at a time */
-	     "  jz            LessThan4     \n"
+	     "  jz            "LessThan4"f  \n"
 
 	     ".align 16   \n"
-	     "hLoopMMX_12:    \n\t"
+	     ""hLoopMMX":    \n\t"
 
 	     /* handle first 2 pixels */
 	     "  movl   16(%%"REGSI"), %%"REGEA"  \n\t"  /* get data offset in pixels, 1st pixel pair */
@@ -1171,14 +1188,14 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  lea  48(%%"REGSI"), %%"REGSI" \n\t"
 	     "  lea   4(%%"REGDI"), %%"REGDI" \n\t"
 
-	     "  loop   hLoopMMX_12            \n"    /* loop for more */
+	     "  loop   "hLoopMMX"b            \n"    /* loop for more */
 		 
 	     /* test to see if we have a mod 4 size row, if not then more spare change */
-	     "LessThan4:    \n\t"
+	     ""LessThan4":    \n\t"
 	     "  movl "_row_size", %%"REGC"    \n\t"
 	     "  andl          $3, %%"REGC"    \n\t"  /* remainder side mod 4 */
 	     "  cmpl          $2, %%"REGC"    \n\t"  
-	     "  jl            LastOne         \n\t"  /* none, none */
+	     "  jl            "LastOne"f      \n\t"  /* none, none */
 
 	     /* handle 2 more pixels */
 	     "  movl      16(%%"REGSI"), %%"REGEA"  \n\t"  /* get data offset in pixels, 1st pixel pair */
@@ -1199,9 +1216,9 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  lea   2(%%"REGDI"), %%"REGDI" \n" /* bump to next output pixel addr */
 
 	     /* maybe one last pixel */
-	     "LastOne:    \n\t"
+	     ""LastOne":   \n\t"
 	     "  cmpl   $0, %%"REGC"   \r\n"  /* still more ? */
-	     "  jz     AllDone        \r\n"  /* n, done */
+	     "  jz     "AllDone"f     \r\n"  /* n, done */
 	     "  movl   16(%%"REGSI"), %%"REGEA"     \n\t"  /* get data offset in pixels, 1st pixel pair */
 	     "  movd   (%%"REGD", %%"REGA"), %%mm0  \n\t"  /* copy luma pair 0000xxYY */
 	     "  punpcklbw %%mm7, %%mm0        \n\t"  /* make words out of bytes, 0Y0Y0Y0Y */
@@ -1212,8 +1229,8 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 	     "  movd       %%mm0, %%"REGEA"   \n\t"
 	     "  movb        %%al, (%%"REGDI") \n"    /* store last one */
 			 
-	     "AllDone:  \n\t"
-	     "  emms    \n\t"
+	     ""AllDone":  \n\t"
+	     "  emms      \n\t"
 #if !defined(__x86_64__)
 	     "mov "_oldbx", %%"REGB" \n\t"
 #endif
