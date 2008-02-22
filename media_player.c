@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.46 2008-02-20 22:23:15 phintuka Exp $
+ * $Id: media_player.c,v 1.47 2008-02-22 15:50:56 phelin Exp $
  *
  */
 
@@ -903,6 +903,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
       memset(m_CurrentDVDTitle, 0, 63);
       strn0cpy(m_CurrentDVDTitle, ti, 63);
+      m_Player->Playlist().Current()->Title = cString::sprintf("%s", m_CurrentDVDTitle);
       MsgReplaying(m_CurrentDVDTitle, NULL);
     }
   }
