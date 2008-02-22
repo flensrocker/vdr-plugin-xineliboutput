@@ -4,14 +4,10 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.116 2008-02-22 06:43:44 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.117 2008-02-22 06:50:33 phintuka Exp $
  *
  */
 
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #define XINE_ENGINE_INTERNAL
 #define METRONOM_CLOCK_INTERNAL
@@ -3901,7 +3897,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   n = 0;  
   strcpy(tracks, "INFO TRACKMAP SPU ");
   cnt = strlen(tracks);
-  current = _x_get_spu_channel (stream);
+  current = _x_get_spu_channel (this->slave_stream);
   if(current < 0) {
     /* -1 == none, -2 == auto */
     cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
