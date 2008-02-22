@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.48 2008-02-22 06:01:15 phintuka Exp $
+ * $Id: frontend.c,v 1.49 2008-02-22 06:56:30 phintuka Exp $
  *
  */
 
@@ -96,6 +96,7 @@ void cXinelibThread::InfoHandler(const char *info)
     *pt = 0;
 
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
+    int CurrentTrack = -2; /* auto */
     map += 12;
 #if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
@@ -106,6 +107,11 @@ void cXinelibThread::InfoHandler(const char *info)
       if(*map == '*') {
 	Current = true;
 	map++;
+	if (*map == '-') {
+	  CurrentTrack = atoi(map);
+	  while (*map && *map != ' ') map++;
+	  continue;
+	}
       }
       if(*map >= '0' && *map <= '9') {
 	int id = atoi(map);
@@ -118,13 +124,20 @@ void cXinelibThread::InfoHandler(const char *info)
 	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, iso639_2_to_iso639_1(lang), Current);
 #else
 	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang));
+	if (Current) 
+	  CurrentTrack = id;
 #endif
       }
     }
 #if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     cXinelibDevice::Instance().EnsureDvdSpuTrack();
 #else
-    cXinelibDevice::Instance().EnsureSubtitleTrack();
+    if (CurrentTrack == -2)
+      cXinelibDevice::Instance().EnsureSubtitleTrack();
+    else if (CurrentTrack == -1)
+      cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttNone, true);
+    else
+      cXinelibDevice::Instance().SetCurrentSubtitleTrack(eTrackType(CurrentTrack+ttSubtitleFirst), true);
 #endif
   }
 
