@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.115 2008-02-19 01:08:59 phelin Exp $
+ * $Id: xine_input_vdr.c,v 1.116 2008-02-22 06:43:44 phintuka Exp $
  *
  */
 
@@ -2862,6 +2862,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       xine_event_create_listener_thread (this->slave_event_queue, 
 					 vdr_event_cb, this);
     }
+    _x_select_spu_channel(this->slave_stream, -2); /* -> auto */
 
     errno = 0;
     err = !xine_open(this->slave_stream, filename);
@@ -3900,7 +3901,13 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   n = 0;  
   strcpy(tracks, "INFO TRACKMAP SPU ");
   cnt = strlen(tracks);
-  current = xine_get_param(this->slave_stream, XINE_PARAM_SPU_CHANNEL);
+  current = _x_get_spu_channel (stream);
+  if(current < 0) {
+    /* -1 == none, -2 == auto */
+    cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
+		    "*%d:%s ", current, current==-1?"none":"auto");
+    n++;
+  }
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_spu_lang(this->slave_stream, i, lang)) {
       while(lang[0]==' ') strcpy(lang, lang+1);
