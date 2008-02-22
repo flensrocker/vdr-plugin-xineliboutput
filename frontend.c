@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.47 2008-02-20 03:28:01 phintuka Exp $
+ * $Id: frontend.c,v 1.48 2008-02-22 06:01:15 phintuka Exp $
  *
  */
 
@@ -117,7 +117,7 @@ void cXinelibThread::InfoHandler(const char *info)
 #if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
 	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, iso639_2_to_iso639_1(lang), Current);
 #else
-	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id, iso639_2_to_iso639_1(lang));
+	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang));
 #endif
       }
     }
