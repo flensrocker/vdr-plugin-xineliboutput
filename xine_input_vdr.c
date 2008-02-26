@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.117 2008-02-22 06:50:33 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.118 2008-02-26 22:49:27 phintuka Exp $
  *
  */
 
@@ -1950,19 +1950,19 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   if(!cmd || !this || !this->stream) {
     LOGMSG("exec_osd_command: Stream not initialized !");
-    return -3;
+    return CONTROL_DISCONNECTED;
   }
 
   if(cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
     LOGMSG("exec_osd_command: OSD window handle %d out of range !", cmd->wnd);
-    return -2;
+    return CONTROL_PARAM_ERROR;
   }
 
   handle = this->osdhandle[cmd->wnd];
 
   if(handle < 0 && cmd->cmd == OSD_Close) {
     LOGMSG("exec_osd_command: Attempt to close non-existing OSD (%d) !", cmd->wnd);
-    return -2;
+    return CONTROL_PARAM_ERROR;
   }
 
   /* we already have port ticket */
@@ -1971,7 +1971,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   if(!ovl_manager) {
     LOGMSG("exec_osd_command: Stream has no overlay manager !");
-    return -3;
+    return CONTROL_DISCONNECTED;
   }
 
   memset(&ov_event, 0, sizeof(ov_event));
@@ -2231,11 +2231,11 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   } else {
     LOGMSG("Unknown OSD command %d", cmd->cmd);
-    return -2;
+    return CONTROL_PARAM_ERROR;
   }
 
   LOGOSD("OSD command %d done", cmd->cmd); 
-  return 0;
+  return CONTROL_OK;
 }
 
 static void vdr_scale_osds(vdr_input_plugin_t *this, 
@@ -2289,7 +2289,7 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
 				       osd_command_t *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int result = -3;
+  int result = CONTROL_DISCONNECTED;
   int video_changed = 0;
 
   if(!pthread_mutex_lock (&this->osd_lock)) {
