@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.119 2008-02-27 00:27:48 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.120 2008-02-27 00:30:43 phintuka Exp $
  *
  */
 
@@ -2311,6 +2311,11 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   int result = CONTROL_DISCONNECTED;
   int video_changed = 0;
+
+  if (this->fd_control >= 0 &&  /* remote mode */
+      this->funcs.intercept_osd /* frontend handles OSD */ ) {
+    return this->funcs.intercept_osd(this->funcs.fe_handle, cmd) ? CONTROL_OK : CONTROL_DISCONNECTED;
+  }
 
   if(!pthread_mutex_lock (&this->osd_lock)) {
     palette_rgb_to_yuy(cmd->palette, cmd->colors);
