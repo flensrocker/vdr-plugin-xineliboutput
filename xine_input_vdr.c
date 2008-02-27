@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.118 2008-02-26 22:49:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.119 2008-02-27 00:27:48 phintuka Exp $
  *
  */
 
@@ -1764,6 +1764,26 @@ static int update_video_size(vdr_input_plugin_t *this)
   return 0;
 }
 
+#define saturate(x,min,max) ( (x)<(min) ? (min) : (x)>(max) ? (max) : (x))
+
+static void palette_rgb_to_yuy(xine_clut_t *clut, int colors)
+{
+  if (clut && colors>0) {
+    int c;
+    for (c=0; c<colors; c++) {
+      int R  = clut[c].r;
+      int G  = clut[c].g;
+      int B  = clut[c].b;
+      int Y  = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
+      int CR = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
+      int CB = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
+      clut[c].y  = saturate( Y, 16, 235);
+      clut[c].cb = saturate(CB, 16, 240);
+      clut[c].cr = saturate(CR, 16, 240);
+    }
+  }
+}
+
 static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
 {
   xine_rle_elem_t *data = (xine_rle_elem_t*)malloc(elems*sizeof(xine_rle_elem_t));
@@ -2293,6 +2313,7 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
   int video_changed = 0;
 
   if(!pthread_mutex_lock (&this->osd_lock)) {
+    palette_rgb_to_yuy(cmd->palette, cmd->colors);
     video_changed = update_video_size(this);
     this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
     result = exec_osd_command(this, cmd);

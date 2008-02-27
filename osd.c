@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.14 2007-10-31 00:52:27 phintuka Exp $
+ * $Id: osd.c,v 1.15 2008-02-27 00:27:48 phintuka Exp $
  *
  */
 
@@ -32,7 +32,7 @@ static inline int saturate(int x, int min, int max)
   return x < min ? min : (x > max ? max : x);
 }
 
-static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palette, int colors, bool top)
+static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palette, int colors, bool top, bool rgb)
 {
   if (colors) {
     int c;
@@ -40,18 +40,25 @@ static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palett
     // Apply alpha layer correction and convert ARGB -> AYCrCb
 
     for(c=0; c<colors; c++) {
-      int alpha = (palette[c] & 0xff000000)>>24;
-      alpha = alpha + xc.alpha_correction*alpha/100 + xc.alpha_correction_abs;
-      int R     = ((palette[c] & 0x00ff0000) >> 16);
-      int G     = ((palette[c] & 0x0000ff00) >>  8);
-      int B     = ((palette[c] & 0x000000ff));
-      int Y     = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
-      int CR    = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
-      int CB    = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
-      clut[c].y     = saturate(    Y, 16, 235);
-      clut[c].cb    = saturate(   CB, 16, 240);
-      clut[c].cr    = saturate(   CR, 16, 240);
-      clut[c].alpha = saturate(alpha,  0, 255);
+      int A = (palette[c] & 0xff000000) >> 24;
+      int R = (palette[c] & 0x00ff0000) >> 16;
+      int G = (palette[c] & 0x0000ff00) >>  8;
+      int B = (palette[c] & 0x000000ff);
+      A = A + xc.alpha_correction*A/100 + xc.alpha_correction_abs;
+      if(rgb) {
+        clut[c].r     = R;
+        clut[c].g     = G;
+        clut[c].b     = B;
+	clut[c].alpha = saturate( A,  0, 255);
+      } else {
+        int Y         = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
+        int CR        = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
+        int CB        = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
+        clut[c].y     = saturate( Y, 16, 235);
+        clut[c].cb    = saturate(CB, 16, 240);
+        clut[c].cr    = saturate(CR, 16, 240);
+        clut[c].alpha = saturate( A,  0, 255);
+      }
     }
 
     // Apply OSD mixer settings
@@ -61,8 +68,12 @@ static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palett
 	for(c=0; c<colors; c++)
 	  clut[c].alpha = (clut[c].alpha >> 1) | 0x80;
       if(xc.osd_mixer & OSD_MIXER_GRAY)
-	for(c=0; c<colors; c++)
-	  clut[c].cb = clut[c].cr = 0x80;
+	for(c=0; c<colors; c++) {
+	  if(rgb)
+	    clut[c].r = clut[c].g = clut[c].b = (clut[c].r + clut[c].g + clut[c].b)/3;
+	  else
+	    clut[c].cb = clut[c].cr = 0x80;
+	}
     }
   }
 }
@@ -205,7 +216,7 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     osdcmd.w = W;
     osdcmd.h = H;
 
-    prepare_palette(&clut[0], Palette, Colors, Top);
+    prepare_palette(&clut[0], Palette, Colors, Top, true);
     osdcmd.colors = Colors;
     osdcmd.palette = clut;
 
