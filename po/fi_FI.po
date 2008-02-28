@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-01-14 09:05+0200\n"
+"POT-Creation-Date: 2008-02-28 08:54+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Petri Hintukainen\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -193,9 +193,6 @@ msgstr "Toista tiedosto"
 msgid "Button$Queue"
 msgstr "Soittolistalle"
 
-msgid "Select subtitle track"
-msgstr "Valitse tekstityskieli"
-
 msgid "Subtitles"
 msgstr "Tekstitys"
 
@@ -350,6 +347,18 @@ msgstr "  Leikkaa kokoon"
 msgid "  Detect subtitles"
 msgstr "  Huomioi tekstitys"
 
+msgid "Software scaling"
+msgstr "  Skaalaa ohjelmistolla"
+
+msgid "  Change aspect ratio"
+msgstr "  Muuta kuvasuhdetta"
+
+msgid "  Change video size"
+msgstr "  Muuta videokuvan kokoa"
+
+msgid "  Allow downscaling"
+msgstr "  Salli skaalaus pienemmäksi"
+
 msgid "Post processing (ffmpeg)"
 msgstr "Käytä jälkikäsittelyä (ffmpeg)"
 
@@ -442,9 +451,6 @@ msgstr ""
 
 msgid "Scale OSD to video size"
 msgstr "Skaalaa videon kokoiseksi"
-
-msgid "  Allow downscaling"
-msgstr "  Salli skaalaus pienemmäksi"
 
 msgid "Unscaled OSD (no transparency)"
 msgstr "Skaalaamaton (ei läpinäkyvyyttä)"
@@ -604,3 +610,6 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
+
+#~ msgid "Select subtitle track"
+#~ msgstr "Valitse tekstityskieli"

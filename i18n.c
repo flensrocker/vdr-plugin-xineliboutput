@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.33 2008-02-24 18:24:44 phintuka Exp $
+ * $Id: i18n.c,v 1.34 2008-02-28 07:06:16 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -4112,6 +4112,50 @@ const tI18nPhrase Phrases[] = {
     "", // Fran<E7>ais
     "", // Norsk
     "Skaalaus ohjelmistolla", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+    "", // Eesti
+    "", // Dansk
+    "", // Czech
+  },
+  { "  Change aspect ratio", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Muuta kuvasuhdetta", // Suomi
+    "", // Polski
+    "", // Espa<F1>ol
+    "", // Ellinika
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Catala
+    "", // Russian
+    "", // Croatian
+    "", // Eesti
+    "", // Dansk
+    "", // Czech
+  },
+  { "  Change video size", // English
+    "", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Portugu<EA>s
+    "", // Fran<E7>ais
+    "", // Norsk
+    "  Muuta videokuvan kokoa", // Suomi
     "", // Polski
     "", // Espa<F1>ol
     "", // Ellinika

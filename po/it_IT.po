@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-01-16 17:06+0200\n"
+"POT-Creation-Date: 2008-02-28 08:54+0200\n"
 "PO-Revision-Date: 2008-01-16 00:27+0100\n"
 "Last-Translator: Gringo <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -191,9 +191,6 @@ msgstr "Riproduci file"
 msgid "Button$Queue"
 msgstr "Coda"
 
-msgid "Select subtitle track"
-msgstr "Seleziona traccia sottotitoli"
-
 msgid "Subtitles"
 msgstr "Sottotitoli"
 
@@ -348,6 +345,18 @@ msgstr "  Ritaglia a"
 msgid "  Detect subtitles"
 msgstr "  Rileva sottotitoli"
 
+msgid "Software scaling"
+msgstr ""
+
+msgid "  Change aspect ratio"
+msgstr ""
+
+msgid "  Change video size"
+msgstr ""
+
+msgid "  Allow downscaling"
+msgstr "  Permetti ridimensionamento"
+
 msgid "Post processing (ffmpeg)"
 msgstr "Codifica (ffmpeg)"
 
@@ -440,9 +449,6 @@ msgstr "Mostra tutti i livelli"
 
 msgid "Scale OSD to video size"
 msgstr "Scala OSD a dimensione video"
-
-msgid "  Allow downscaling"
-msgstr "  Permetti ridimensionamento"
 
 msgid "Unscaled OSD (no transparency)"
 msgstr "OSD non scalato (nessuna trasparenza)"
@@ -567,9 +573,8 @@ msgstr "Server RTSP"
 msgid "RTSP clients can control VDR"
 msgstr "I client RTSP possono controllare VDR"
 
-#, fuzzy
 msgid "Playlist settings"
-msgstr "Impostazioni video"
+msgstr ""
 
 msgid "Show the track number"
 msgstr ""
@@ -603,3 +608,6 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+
+#~ msgid "Select subtitle track"
+#~ msgstr "Seleziona traccia sottotitoli"
