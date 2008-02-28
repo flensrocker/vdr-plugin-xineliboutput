@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: post_util.h,v 1.2 2008-02-28 06:06:08 phintuka Exp $
+ * $Id: post_util.h,v 1.3 2008-02-28 06:10:54 phintuka Exp $
  *
  */
 
@@ -24,7 +24,7 @@ static void *init_plugin(xine_t *xine, void *data);
 static char *get_identifier(post_class_t *class_gen);
 static char *get_description(post_class_t *class_gen);
 static void  class_dispose(post_class_t *class_gen);
-#endid
+#endif
 
 /* required from plugin: */
 static post_plugin_t *open_plugin(post_class_t *class_gen, int inputs,
