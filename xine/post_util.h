@@ -4,18 +4,27 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: post_util.h,v 1.1 2008-02-19 01:24:19 phintuka Exp $
+ * $Id: post_util.h,v 1.2 2008-02-28 06:06:08 phintuka Exp $
  *
  */
+
+#if POST_PLUGIN_IFACE_VERSION < 9
+# warning  POST_PLUGIN_IFACE_VERSION < 9 not supported !
+#endif
+#if POST_PLUGIN_IFACE_VERSION > 10
+# warning  POST_PLUGIN_IFACE_VERSION > 10 not supported !
+#endif
 
 /*
  * class util prototypes
  */
 
 static void *init_plugin(xine_t *xine, void *data);
+#if POST_PLUGIN_IFACE_VERSION < 10
 static char *get_identifier(post_class_t *class_gen);
 static char *get_description(post_class_t *class_gen);
 static void  class_dispose(post_class_t *class_gen);
+#endid
 
 /* required from plugin: */
 static post_plugin_t *open_plugin(post_class_t *class_gen, int inputs,
@@ -29,6 +38,9 @@ static post_plugin_t *open_plugin(post_class_t *class_gen, int inputs,
 static int   dispatch_draw(vo_frame_t *frame, xine_stream_t *stream);
 static int   intercept_frame_yuy(post_video_port_t *port, vo_frame_t *frame);
 static int   post_draw(vo_frame_t *frame, xine_stream_t *stream);
+#ifdef ENABLE_SLICED
+static void  dispatch_slice(vo_frame_t *vo_img, uint8_t **src);
+#endif
 
 /* required from plugin: */
 static vo_frame_t    *got_frame(vo_frame_t *frame);
@@ -47,13 +59,20 @@ static void *init_plugin(xine_t *xine, void *data)
     return NULL;
 
   class->open_plugin     = open_plugin;
+#if POST_PLUGIN_IFACE_VERSION < 10
   class->get_identifier  = get_identifier;
   class->get_description = get_description;
   class->dispose         = class_dispose;
+#else
+  class->identifier      = PLUGIN_ID;
+  class->description     = PLUGIN_DESCR;
+  class->dispose         = default_post_class_dispose;
+#endif
 
   return class;
 }
 
+#if POST_PLUGIN_IFACE_VERSION < 10
 static char *get_identifier(post_class_t *class_gen)
 {
   return PLUGIN_ID;
@@ -68,10 +87,22 @@ static void class_dispose(post_class_t *class_gen)
 {
   free(class_gen);
 }
+#endif
 
 /*
  * plugin utils
  */
+
+#ifdef ENABLE_SLICED
+static void dispatch_slice(vo_frame_t *vo_img, uint8_t **src)
+{
+  if (vo_img->next->proc_slice) {
+    _x_post_frame_copy_down(vo_img, vo_img->next);
+    vo_img->next->proc_slice(vo_img->next, src);
+    _x_post_frame_copy_up(vo_img, vo_img->next);
+  }
+}
+#endif
 
 static int dispatch_draw(vo_frame_t *frame, xine_stream_t *stream)
 {

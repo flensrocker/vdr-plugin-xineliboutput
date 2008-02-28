@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.5 2008-02-21 18:51:06 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.6 2008-02-28 06:06:07 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -1720,8 +1720,8 @@ static post_info_t info = { XINE_POST_TYPE_VIDEO_FILTER };
 
 const plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) =
 {
-  /* type, API, "name", version, special_info, init_function */  
-  { PLUGIN_POST, 9, "warp",    XINE_VERSION_CODE, &info, &warp_init_plugin },
-  { PLUGIN_POST, 9, "swscale", XINE_VERSION_CODE, &info, &warp_init_plugin },
+  /* type, API, "name", version, special_info, init_function */
+  { PLUGIN_POST, POST_PLUGIN_IFACE_VERSION, "warp",    XINE_VERSION_CODE, &info, &warp_init_plugin },
+  { PLUGIN_POST, POST_PLUGIN_IFACE_VERSION, "swscale", XINE_VERSION_CODE, &info, &warp_init_plugin },
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
