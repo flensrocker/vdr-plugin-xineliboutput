@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.7 2008-02-27 00:27:48 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.8 2008-03-11 15:57:57 phintuka Exp $
  *
  */
 
@@ -29,8 +29,11 @@ typedef enum  {
   OSD_SetPalette  = 3,    /* Modify palette of already created OSD window */ 
   OSD_Move        = 4,    /* Change x/y position of already created OSD window */ 
   OSD_Close       = 5,    /* Close OSD window */
-  OSD_Set_YUV     = 6     /* Create/update OSD window. Data is in YUV420 format. */
+  OSD_Set_YUV     = 6,    /* Create/update OSD window. Data is in YUV420 format. */
+  OSD_Commit      = 7     /* All OSD areas have been updated, commit changes to display */
 } osd_command_id_t;
+
+#define OSDFLAG_YUV_CLUT   0x01
 
 typedef struct xine_clut_s {
   union {
@@ -52,6 +55,13 @@ typedef struct xine_rle_elem_s {
   uint16_t len;
   uint16_t color;
 } PACKED xine_rle_elem_t; /* from xine */
+
+typedef struct osd_rect_s {
+  uint16_t x1;
+  uint16_t y1;
+  uint16_t x2;
+  uint16_t y2;
+} osd_rect_t;
 
 typedef struct osd_command_s {
   uint32_t cmd;      /* osd_command_id_t */
@@ -78,6 +88,9 @@ typedef struct osd_command_s {
     xine_clut_t     *palette;  /* palette (YCrCb) */
     uint64_t         dummy02;
   };
+
+  osd_rect_t dirty_area;
+  uint8_t    flags;
 
 } PACKED osd_command_t;
 

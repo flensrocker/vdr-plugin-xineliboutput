@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.120 2008-02-27 00:30:43 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.121 2008-03-11 15:57:57 phintuka Exp $
  *
  */
 
@@ -2318,7 +2318,10 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
   }
 
   if(!pthread_mutex_lock (&this->osd_lock)) {
-    palette_rgb_to_yuy(cmd->palette, cmd->colors);
+    if(!(cmd->flags & OSDFLAG_YUV_CLUT))
+      palette_rgb_to_yuy(cmd->palette, cmd->colors);
+    cmd->flags &= ~OSDFLAG_YUV_CLUT;
+
     video_changed = update_video_size(this);
     this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
     result = exec_osd_command(this, cmd);
@@ -3129,6 +3132,10 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   osdcmd.datalen = ntohl(osdcmd.datalen);
   osdcmd.num_rle = ntohl(osdcmd.num_rle);
   osdcmd.colors  = ntohl(osdcmd.colors);
+  osdcmd.dirty_area.x1 = ntohs(osdcmd.dirty_area.x1);
+  osdcmd.dirty_area.y1 = ntohs(osdcmd.dirty_area.y1);
+  osdcmd.dirty_area.x2 = ntohs(osdcmd.dirty_area.x2);
+  osdcmd.dirty_area.y2 = ntohs(osdcmd.dirty_area.y2);
 #elif __BYTE_ORDER == __BIG_ENDIAN
 #else
 #  error __BYTE_ORDER undefined !

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.15 2008-02-27 00:27:48 phintuka Exp $
+ * $Id: osd.c,v 1.16 2008-03-11 15:57:57 phintuka Exp $
  *
  */
 
@@ -134,7 +134,9 @@ class cXinelibOsd : public cOsd, public cListObject
     void CmdSize(int Width, int Height);
     void CmdRle(int Wnd, int X0, int Y0,
 		int W, int H, unsigned char *Data,
-		int Colors, unsigned int *Palette, int Top);
+		int Colors, unsigned int *Palette, 
+		osd_rect_t *DirtyArea, 
+		bool Top);
     void CmdClose(int Wnd);
 
   protected:
@@ -199,7 +201,9 @@ void cXinelibOsd::CmdClose(int Wnd)
 
 void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0, 
 			 int W, int H, unsigned char *Data,
-			 int Colors, unsigned int *Palette, int Top)
+			 int Colors, unsigned int *Palette, 
+			 osd_rect_t *DirtyArea, 
+			 bool Top)
 {
   TRACEF("cXinelibOsd::CmdRle");
 
@@ -215,6 +219,8 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     osdcmd.y = Y0;
     osdcmd.w = W;
     osdcmd.h = H;
+    if(DirtyArea)
+      memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
 
     prepare_palette(&clut[0], Palette, Colors, Top, true);
     osdcmd.colors = Colors;
@@ -320,12 +326,13 @@ void cXinelibOsd::Flush(void)
       /* XXX what if only palette has been changed ? */
       int NumColors;
       const tColor *Colors = Bitmap->Colors(NumColors);
+      osd_rect_t DirtyArea = {x1:x1, y1:y1, x2:x2, y2:y2};
       CmdRle(i,
              Left() + Bitmap->X0(), Top() + Bitmap->Y0(),
              Bitmap->Width(), Bitmap->Height(),
              (unsigned char *)Bitmap->Data(0,0),
              NumColors, (unsigned int *)Colors,
-	     top);
+	     &DirtyArea, top);
       SendDone++;
     }
     Bitmap->Clean();
