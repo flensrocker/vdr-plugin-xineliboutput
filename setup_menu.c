@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.47 2008-02-20 03:17:22 phintuka Exp $
+ * $Id: setup_menu.c,v 1.48 2008-03-13 22:19:33 phintuka Exp $
  *
  */
 
@@ -486,6 +486,10 @@ class cMenuSetupVideo : public cMenuSetupPage
 
     cOsdItem *ctrl_autocrop;
     cOsdItem *ctrl_swscale;
+    cOsdItem *ctrl_swscale_resize;
+    cOsdItem *ctrl_swscale_aspect;
+    cOsdItem *ctrl_swscale_width;
+    cOsdItem *ctrl_swscale_height;
     cOsdItem *ctrl_hue;
     cOsdItem *ctrl_saturation;
     cOsdItem *ctrl_contrast;
@@ -575,16 +579,27 @@ void cMenuSetupVideo::Set(void)
 			      &newconfig.autocrop_subs));
   }
 
-  Add(ctrl_swscale = 
+  ctrl_swscale_resize = ctrl_swscale_aspect = ctrl_swscale_width = ctrl_swscale_height = NULL;
+  Add(ctrl_swscale =
       new cMenuEditBoolItem(tr("Software scaling"), 
 			    &newconfig.swscale));
   if(newconfig.swscale) {
-    Add(new cMenuEditIntItem( tr("  Width"), 
-			      &newconfig.swscale_width, 360, 2000));
-    Add(new cMenuEditIntItem( tr("  Height"),
-			      &newconfig.swscale_height, 288, 1200));
-    Add(new cMenuEditBoolItem(tr("  Allow downscaling"),
-			      &newconfig.swscale_downscale));
+    Add(ctrl_swscale_aspect =
+	new cMenuEditBoolItem(tr("  Change aspect ratio"), 
+			      &newconfig.swscale_change_aspect));
+    Add(ctrl_swscale_resize = 
+	new cMenuEditBoolItem(tr("  Change video size"), 
+			      &newconfig.swscale_resize));
+    if(newconfig.swscale_resize) {
+      Add(ctrl_swscale_width =
+	  new cMenuEditIntItem( tr("  Width"), 
+				&newconfig.swscale_width, 360, 2000));
+      Add(ctrl_swscale_height =
+	  new cMenuEditIntItem( tr("  Height"),
+				&newconfig.swscale_height, 288, 1200));
+      Add(new cMenuEditBoolItem(tr("  Allow downscaling"),
+				&newconfig.swscale_downscale));
+    }
   }
 
   Add(ctrl_overscan =
@@ -721,9 +736,13 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
 	 newconfig.AutocropOptions());
     Set();
   }
-  else if(item == ctrl_swscale) {
+  else if(item == ctrl_swscale || 
+	  item == ctrl_swscale_resize ||
+	  item == ctrl_swscale_aspect ||
+	  item == ctrl_swscale_width ||
+	  item == ctrl_swscale_height) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
-	 "swscale", newconfig.swscale ? true : false, 
+         "swscale", newconfig.swscale ? true : false, 
 	 newconfig.SwScaleOptions());
     Set();
   }
@@ -779,9 +798,11 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.AutoCrop.FixedSize",  xc.autocrop_fixedsize);
   SetupStore("Video.AutoCrop.DetectSubs", xc.autocrop_subs);
   SetupStore("Video.SwScale",           xc.swscale);
-  SetupStore("Video.SwScale.Downscale", xc.swscale_downscale);
+  SetupStore("Video.SwScale.Aspect",    xc.swscale_change_aspect);
+  SetupStore("Video.SwScale.Resize",    xc.swscale_resize);
   SetupStore("Video.SwScale.Width",     xc.swscale_width);
   SetupStore("Video.SwScale.Height",    xc.swscale_height);
+  SetupStore("Video.SwScale.Downscale", xc.swscale_downscale);
   SetupStore("Video.HUE",        xc.hue);
   SetupStore("Video.Saturation", xc.saturation);
   SetupStore("Video.Contrast",   xc.contrast);
@@ -824,10 +845,10 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_scale;
     cOsdItem *ctrl_downscale;
     cOsdItem *ctrl_lowres;
-#ifdef VDRVERSNUM < 10515
+#if VDRVERSNUM < 10515
     cOsdItem *ctrl_spulang0;
 #endif
-  
+
   protected:
     virtual void Store(void);
     void Set(void);
