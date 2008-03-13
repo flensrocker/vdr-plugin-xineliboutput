@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.6 2008-02-28 06:06:07 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.7 2008-03-13 23:08:18 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -1674,6 +1674,9 @@ static int warp_set_parameters(xine_post_t *this_gen, void *param_gen)
 
   memcpy(&this->config, params, sizeof(warp_parameters_t));  
   this->input_width = this->input_height = 0;
+
+  if(this->config.output_aspect > 999)
+    this->config.output_aspect /= 1000.0;
 
   DBG("warp_set_parameters: "
       "output_width=%d, output_height=%d, output_aspect=%4.3lf, no_downscaling=%d\n",
