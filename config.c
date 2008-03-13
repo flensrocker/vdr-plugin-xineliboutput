@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.55 2008-03-13 22:12:05 phintuka Exp $
+ * $Id: config.c,v 1.56 2008-03-13 22:14:06 phintuka Exp $
  *
  */
 
@@ -337,76 +337,60 @@ bool config_t::IsImageFile(const char *fname)
   return false;
 }
 
-const char *config_t::AutocropOptions(void)
+cString config_t::AutocropOptions(void)
 {
-  if(autocrop) {
-    static char buffer[256];
-    snprintf(buffer, sizeof(buffer),
-	     "enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
-	     autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
-    buffer[sizeof(buffer)-1] = 0;
-    return buffer;
-  }
-  return NULL;
+  if (!autocrop)
+    return NULL;
+
+  return cString::sprintf("enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
+			  autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
 }
 
-const char *config_t::SwScaleOptions(void)
+cString config_t::SwScaleOptions(void)
 {
-  if(swscale) {
-    static char buffer[256];
-    snprintf(buffer, sizeof(buffer),
-	     "no_downscaling=%d,output_width=%d,output_height=%d",
-	     swscale_downscale?0:1, swscale_width, swscale_height);
-    buffer[sizeof(buffer)-1] = 0;
-    return buffer;
-  }
-  return NULL;
+  if (!swscale)
+    return NULL;
+
+  return cString::sprintf("output_aspect=%s,output_width=%d,output_height=%d,no_downscaling=%d",
+			  swscale_change_aspect ? "auto" : "0.0",
+			  swscale_resize ? swscale_width  : 0,
+			  swscale_resize ? swscale_height : 0,
+			  swscale_downscale ? 0 : 1 );
 }
 
-const char *config_t::FfmpegPpOptions(void)
+cString config_t::FfmpegPpOptions(void)
 {
-  if(ffmpeg_pp) {
-    static char buffer[128];
-    if(*ffmpeg_pp_mode)
-      snprintf(buffer, sizeof(buffer), "quality=%d,mode=%s", ffmpeg_pp_quality, ffmpeg_pp_mode);
-    else
-      snprintf(buffer, sizeof(buffer), "quality=%d", ffmpeg_pp_quality);
-    buffer[sizeof(buffer)-1] = 0;
-    return buffer;
-  }
-  return NULL;
+  if (!ffmpeg_pp)
+    return NULL;
+
+  if(*ffmpeg_pp_mode)
+    return cString::sprintf("quality=%d,mode=%s", ffmpeg_pp_quality, ffmpeg_pp_mode);
+
+  return cString::sprintf("quality=%d", ffmpeg_pp_quality);
 }
 
-const char *config_t::UnsharpOptions(void)
+cString config_t::UnsharpOptions(void)
 {
-  if(unsharp) {
-    static char buffer[128];
-    snprintf(buffer, sizeof(buffer),
-             "luma_matrix_width=%d,luma_matrix_height=%d,luma_amount=%1.1f,"
-             "chroma_matrix_width=%d,chroma_matrix_height=%d,chroma_amount=%1.1f",
-             unsharp_luma_matrix_width, unsharp_luma_matrix_height,
-             ((float)unsharp_luma_amount)/10.0,
-             unsharp_chroma_matrix_width, unsharp_chroma_matrix_height,
-             ((float)unsharp_chroma_amount)/10.0);
-    buffer[sizeof(buffer)-1] = 0;
-    return buffer;
-  }
-  return NULL;
+  if (!unsharp)
+    return NULL;
+
+  return cString::sprintf("luma_matrix_width=%d,luma_matrix_height=%d,luma_amount=%1.1f,"
+			  "chroma_matrix_width=%d,chroma_matrix_height=%d,chroma_amount=%1.1f",
+			  unsharp_luma_matrix_width, unsharp_luma_matrix_height,
+			  ((float)unsharp_luma_amount)/10.0,
+			  unsharp_chroma_matrix_width, unsharp_chroma_matrix_height,
+			  ((float)unsharp_chroma_amount)/10.0);
 }
 
-const char *config_t::Denoise3dOptions(void)
+cString config_t::Denoise3dOptions(void)
 {
-  if(denoise3d) {
-    static char buffer[128];
-    snprintf(buffer, sizeof(buffer),
-             "luma=%1.1f,chroma=%1.1f,time=%1.1f",
-             ((float)denoise3d_luma)/10.0,
-             ((float)denoise3d_chroma)/10.0,
-             ((float)denoise3d_time)/10.0);
-    buffer[sizeof(buffer)-1] = 0;
-    return buffer;
-  }
-  return NULL;
+  if (!denoise3d)
+    return NULL;
+
+  return cString::sprintf("luma=%1.1f,chroma=%1.1f,time=%1.1f",
+			  ((float)denoise3d_luma)/10.0,
+			  ((float)denoise3d_chroma)/10.0,
+			  ((float)denoise3d_time)/10.0);
 }
 
 config_t::config_t() {
