@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.121 2008-03-11 15:57:57 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.122 2008-03-13 21:15:31 phintuka Exp $
  *
  */
 
@@ -3195,7 +3195,10 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
     } \
   } while(0)
 
-static const struct { int type; char *name; } eventmap[] = {
+static const struct { 
+  const uint32_t type;
+  const char     name[28]; 
+} eventmap[] = {
   {XINE_EVENT_INPUT_UP,      "XINE_EVENT_INPUT_UP"},
   {XINE_EVENT_INPUT_DOWN,    "XINE_EVENT_INPUT_DOWN"},
   {XINE_EVENT_INPUT_LEFT,    "XINE_EVENT_INPUT_LEFT"},
@@ -3208,7 +3211,7 @@ static const struct { int type; char *name; } eventmap[] = {
   {XINE_EVENT_INPUT_MENU5,   "XINE_EVENT_INPUT_MENU5"},
   {XINE_EVENT_INPUT_NEXT,    "XINE_EVENT_INPUT_NEXT"},
   {XINE_EVENT_INPUT_PREVIOUS,"XINE_EVENT_INPUT_PREVIOUS"},
-  {-1, NULL}};
+};
 
 static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 {
@@ -3421,7 +3424,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   int /*int32_t*/ tmp32 = 0;
   uint64_t tmp64 = 0ULL;
   xine_stream_t *stream = this->stream;
-  static const char *str_poll = "POLL";
+  static const char str_poll[] = "POLL";
   char *pt;
 
   VDR_ENTRY_LOCK(CONTROL_DISCONNECTED);
@@ -3481,7 +3484,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       err = set_deinterlace_method(this, cmd+12);
 
   } else if(!strncasecmp(cmd, "EVENT ", 6)) {
-    int i=0;
+    int i;
     char *pt = strchr(cmd, '\n');
     if(pt) *pt=0;
     pt = strstr(cmd+6, " CHAPTER");
@@ -3496,7 +3499,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       this->class->xine->config->update_num(this->class->xine->config,
 					    "media.dvd.skip_behaviour", 2);
     }
-    while(eventmap[i].name)
+    for(i=0; i<sizeof(eventmap)/sizeof(eventmap[0]); i++)
       if(!strcmp(cmd+6, eventmap[i].name)) {
 	xine_event_t ev;
 	ev.type = eventmap[i].type;
@@ -3507,8 +3510,6 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 	ev.data_length = 4;
 	xine_event_send(ev.stream, &ev);
 	break;
-      } else {
-	i++;
       }
 
   } else if(!strncasecmp(cmd, "VERSION ", 7)) {
@@ -3969,9 +3970,9 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
 }
 
 /* Map some xine input events to vdr input (remote key names) */
-struct {
-  int event;
-  char *name;
+static const struct {
+  const uint32_t  event;
+  const char      name[12];
 } vdr_keymap[] = {
   {XINE_EVENT_INPUT_NEXT,     "Next"},
   {XINE_EVENT_INPUT_PREVIOUS, "Previous"},
@@ -4039,15 +4040,14 @@ struct {
 #if defined(XINE_EVENT_VDR_SUBTITLES)
   {XINE_EVENT_VDR_SUBTITLES,    "Subtitles"},
 #endif
-  {-1, NULL}
 };
 
 static void vdr_event_cb (void *user_data, const xine_event_t *event) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *)user_data;
-  int i = 0;
+  int i;
 
-  while(vdr_keymap[i].name) {
+  for(i=0; i < sizeof(vdr_keymap)/sizeof(vdr_keymap[0]); i++) {
     if(event->type == vdr_keymap[i].event) {
       if(event->data && event->data_length == 4 && 
 	 !strncmp(event->data, "VDR", 4)) {
@@ -4068,7 +4068,6 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       }
       return;
     }
-    i++;
   }
 
   switch (event->type) {
@@ -6290,7 +6289,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
        !strcasecmp(mrl, "xvdr:///")) {
       /* default to local host */
       free(this->mrl);
-      asprintf(&this->mrl, "xvdr://127.0.0.1");
+      this->mrl = strdup("xvdr://127.0.0.1");
       LOGMSG("Changed mrl from %s to %s", mrl, this->mrl);
     }
   }
