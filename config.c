@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.53 2008-02-20 03:25:11 phintuka Exp $
+ * $Id: config.c,v 1.54 2008-03-13 22:09:23 phintuka Exp $
  *
  */
 
@@ -491,10 +491,12 @@ config_t::config_t() {
   autocrop_fixedsize = 1;
   autocrop_subs  = 1;
 
-  swscale           = 0;    // enable/disable
-  swscale_downscale = 0;    // allow downscaling
-  swscale_width     = 720;  // output video width
-  swscale_height    = 576;  // output video height
+  swscale               = 0;    // enable/disable
+  swscale_change_aspect = 0;    // change video aspect ratio
+  swscale_resize        = 0;    // change video size
+  swscale_width         = 720;  //   output video width
+  swscale_height        = 576;  //   output video height
+  swscale_downscale     = 0;    //   allow downscaling
 
   remote_mode    = 0;
   listen_port    = LISTEN_PORT;
@@ -756,6 +758,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.AutoCrop.DetectSubs"))   autocrop_subs = atoi(Value);
 
   else if (!strcasecmp(Name, "Video.SwScale"))           swscale = atoi(Value);
+  else if (!strcasecmp(Name, "Video.SwScale.Aspect"))    swscale_change_aspect = atoi(Value);
+  else if (!strcasecmp(Name, "Video.SwScale.Resize"))    swscale_resize = atoi(Value);
   else if (!strcasecmp(Name, "Video.SwScale.Downscale")) swscale_downscale = atoi(Value);
   else if (!strcasecmp(Name, "Video.SwScale.Width"))     swscale_width = atoi(Value);
   else if (!strcasecmp(Name, "Video.SwScale.Height"))    swscale_height = atoi(Value);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.37 2008-02-20 03:25:11 phintuka Exp $
+ * $Id: config.h,v 1.38 2008-03-13 22:09:23 phintuka Exp $
  *
  */
 
@@ -278,10 +278,12 @@ class config_t {
     int  autocrop_subs;
 
     // (video) software scaling
-    int  swscale;             // enable/disable
-    int  swscale_downscale;   // allow downscaling
-    int  swscale_width;       // output video width
-    int  swscale_height;      // output video height
+    int  swscale;               // enable/disable
+    int  swscale_change_aspect; // change video aspect ratio
+    int  swscale_resize;        // change video size
+    int  swscale_width;         //   output video width
+    int  swscale_height;        //   output video height
+    int  swscale_downscale;     //   allow downscaling
 
     // sharpen / soften post plugin
     int  unsharp;                      // enable / disable
