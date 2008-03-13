@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.10 2007-09-18 14:02:38 phintuka Exp $
+ * $Id: menuitems.c,v 1.11 2008-03-13 21:29:00 phintuka Exp $
  *
  */
 
@@ -28,18 +28,14 @@ cMenuEditTypedIntItem::cMenuEditTypedIntItem(const char *Name, const char *Type,
 
 void cMenuEditTypedIntItem::Set(void)
 {
-  char buf[64];
   if(*value == 0 && *zeroString) 
     SetValue(zeroString);
   else if (minString && *value == min)
     SetValue(minString);
   else if (maxString && *value == max)
     SetValue(maxString);
-  else {
-    snprintf(buf, sizeof(buf), "%d %s", *value, *type);
-    buf[sizeof(buf)-1] = 0;
-    SetValue(buf);
-  }
+  else
+    SetValue(cString::sprintf("%d %s", *value, *type));
 }
 
 // --- cMenuEditOddIntItem ------------------------------------------------------
@@ -109,17 +105,14 @@ cMenuEditFpIntItem::cMenuEditFpIntItem(const char *Name, int *Value, int Min, in
 
 void cMenuEditFpIntItem::Set(void)
 {
-  char buf[64];
   if(*value == 0 && *zeroString) 
     SetValue(zeroString);
   else if (minString && *value == min)
     SetValue(minString);
   else if (maxString && *value == max)
     SetValue(maxString);
-  else {
-    snprintf(buf, sizeof(buf), "%1.1f", ((float)(*value)) / exp10f(decimals));
-    SetValue(buf);
-  }
+  else
+    SetValue(cString::sprintf("%1.1f", ((float)(*value)) / exp10f(decimals)));
 }
 
 // --- cMenuEditStraI18nItem -------------------------------------------------
@@ -166,28 +159,29 @@ cFileListItem::cFileListItem(const char *name, bool IsDir,
 
 void cFileListItem::Set(void)
 {
-  char *txt = NULL,*pt;
+  cString txt;
+  char *pt;
   if(m_ShowFlags) {
     if(m_IsDir) {
-      if(m_IsDvd) 
-	asprintf(&txt, "\tD\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
+      if(m_IsDvd)
+	txt = cString::sprintf("\tD\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
       else
-	asprintf(&txt, "\t\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
+	txt = cString::sprintf("\t\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
     } else {
-      asprintf(&txt, "%c\t%c\t%s", m_HasResume ? ' ' : '*', *m_SubFile ? 'S' : m_IsDvd ? 'D' : ' ', *m_Name);
+      txt = cString::sprintf("%c\t%c\t%s", m_HasResume ? ' ' : '*', *m_SubFile ? 'S' : m_IsDvd ? 'D' : ' ', *m_Name);
       if(NULL != (pt = strrchr(txt,'.')))
 	*pt = 0;
     }
   } else {
     if(m_IsDir) {
-      asprintf(&txt, "[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
+      txt = cString::sprintf("[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
     } else {
-      asprintf(&txt, "%s", *m_Name);
+      txt = m_Name;
       if(NULL != (pt = strrchr(txt,'.')))
 	*pt = 0;
     }
   }
-  SetText(txt, false);
+  SetText(txt);
 }
 
 int cFileListItem::Compare(const cListObject &ListObject) const
