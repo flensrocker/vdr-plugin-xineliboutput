@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.38 2008-03-13 22:09:23 phintuka Exp $
+ * $Id: config.h,v 1.39 2008-03-13 22:12:05 phintuka Exp $
  *
  */
 
@@ -353,7 +353,7 @@ class config_t {
 
   protected:
     bool ProcessArg(const char *Name, const char *Value);
-    char *m_ProcessedArgs;
+    static cString m_ProcessedArgs;
 
     static uint8_t *hidden_options;
     static uint8_t *readonly_options;

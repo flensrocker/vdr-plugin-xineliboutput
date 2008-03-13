@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.54 2008-03-13 22:09:23 phintuka Exp $
+ * $Id: config.c,v 1.55 2008-03-13 22:12:05 phintuka Exp $
  *
  */
 
@@ -548,8 +548,6 @@ config_t::config_t() {
 
   main_menu_mode = ShowMenu;
   force_primary_device = 0;
-
-  m_ProcessedArgs = NULL;
 };
 
 static uint8_t g_hidden_options[sizeof(config_t)] = {0};
@@ -557,16 +555,13 @@ static uint8_t g_readonly_options[sizeof(config_t)] = {0};
 uint8_t *config_t::hidden_options   = &g_hidden_options[0];
 uint8_t *config_t::readonly_options = &g_readonly_options[0];
 
+cString config_t::m_ProcessedArgs;
 bool config_t::ProcessArg(const char *Name, const char *Value)
 {
-  char *s = m_ProcessedArgs;
-  m_ProcessedArgs = NULL;
   if(SetupParse(Name, Value)) {
-    asprintf(&m_ProcessedArgs, "%s%s ", s?s:" ", Name);
-    free(s);
+    m_ProcessedArgs = cString::sprintf("%s%s ", *m_ProcessedArgs ? *m_ProcessedArgs : " ", Name);
     return true;
   }
-  m_ProcessedArgs = s;
   return false;
 }
 
@@ -669,7 +664,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
   char *pt;
-  if(m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
+  if(*m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
      *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ') {
     LOGDBG("Skipping configuration entry %s=%s (overridden in command line)", Name, Value);
     return true;
