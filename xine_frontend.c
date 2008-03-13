@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.48 2008-02-19 00:43:04 phelin Exp $
+ * $Id: xine_frontend.c,v 1.49 2008-03-13 23:17:03 phintuka Exp $
  *
  */
 
@@ -967,6 +967,27 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
     initstr[sizeof(initstr)-1] = 0;
   } else
     strn0cpy(initstr, name, sizeof(initstr));
+
+  /* swscale aspect ratio */
+  if (!strcmp(name, "swscale")) {
+    char *pt = strstr(initstr, "output_aspect=auto");
+    if (pt) {
+      char tmp[16];
+      double r = 0.0;
+      pt += 14;
+      LOGMSG("AUTOINIT");
+      switch(this->aspect) {
+      case 0:
+      case 1: /*       */ r = this->display_ratio * (double)this->width / (double)this->height; break;
+      case 2: /* 4:3   */ r = 4.0/3.0; break;
+      case 3: /* 16:9  */ r = 16.0/9.0; break;
+      case 4: /* 16:10 */ r = 16.0/10.0; break;
+      }
+      /* in finnish locale decimal separator is "," - same as post plugin parameter separator :( */
+      sprintf(tmp, "%04d", (int)(r*1000.0));
+      strncpy(pt, tmp, 4); 
+    }
+  }
 
   LOGDBG("opening post plugin: %s", initstr);
 
