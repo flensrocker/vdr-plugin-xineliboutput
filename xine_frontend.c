@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.50 2008-03-13 23:17:53 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.51 2008-03-13 23:32:16 phintuka Exp $
  *
  */
 
@@ -609,13 +609,11 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(audio_driver && !strcmp(audio_driver, "auto")) {
     this->audio_port = xine_open_audio_driver (this->xine, NULL, NULL);
-  } else if(audio_driver && !strcmp(audio_driver, "none")) {
 #if XINE_VERSION_CODE < 10190
+  } else if(audio_driver && !strcmp(audio_driver, "none")) {
     this->audio_port = _x_ao_new_port (this->xine, NULL, 1);
-#else
-    this->audio_port = xine_new_framegrab_audio_port(this->xine);
-#endif
     this->audio_port->set_property(this->audio_port, AO_PROP_DISCARD_BUFFERS, 1);
+#endif
   } else {
     this->audio_port = xine_open_audio_driver (this->xine, audio_driver, NULL);
   }
@@ -787,7 +785,7 @@ static void init_dummy_ports(fe_t *this, int on)
 #if XINE_VERSION_CODE < 10190
       this->audio_port_none = _x_ao_new_port (this->xine, NULL, 1); 
 #else
-      this->audio_port_none = xine_new_framegrab_audio_port(this->xine);
+    this->audio_port_none = NULL;/*xine_new_framegrab_audio_port(this->xine);*/
 #endif
     if(this->audio_port_none)
       this->audio_port_none->set_property(this->audio_port_none, AO_PROP_DISCARD_BUFFERS, 1);
