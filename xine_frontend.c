@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.49 2008-03-13 23:17:03 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.50 2008-03-13 23:17:53 phintuka Exp $
  *
  */
 
@@ -975,7 +975,6 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
       char tmp[16];
       double r = 0.0;
       pt += 14;
-      LOGMSG("AUTOINIT");
       switch(this->aspect) {
       case 0:
       case 1: /*       */ r = this->display_ratio * (double)this->width / (double)this->height; break;
