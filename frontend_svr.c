@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.51 2008-03-11 15:57:57 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.52 2008-03-16 23:45:09 phintuka Exp $
  *
  */
 
@@ -338,38 +338,13 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
   if(cmd_gen) {
     osd_command_t *cmd = (osd_command_t*)cmd_gen;
     osd_command_t cmdnet;
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    /* -> network order */
-    memset(&cmdnet, 0, sizeof(osd_command_t));
-    cmdnet.cmd = htonl(cmd->cmd);
-    cmdnet.wnd = htonl(cmd->wnd);
-    cmdnet.pts = htonll(cmd->pts);
-    cmdnet.delay_ms = htonl(cmd->delay_ms);
-    cmdnet.x = htons(cmd->x);
-    cmdnet.y = htons(cmd->y);
-    cmdnet.w = htons(cmd->w);
-    cmdnet.h = htons(cmd->h);
-    cmdnet.datalen = htonl(cmd->datalen);
-    cmdnet.num_rle = htonl(cmd->num_rle);
-    cmdnet.colors  = htonl(cmd->colors);
-    cmdnet.dirty_area.x1 = htons(cmd->dirty_area.x1);
-    cmdnet.dirty_area.y1 = htons(cmd->dirty_area.y1);
-    cmdnet.dirty_area.x2 = htons(cmd->dirty_area.x2);
-    cmdnet.dirty_area.y2 = htons(cmd->dirty_area.y2);
-    if(cmd->data) {
-      cmdnet.raw_data = (uint8_t*)malloc(cmd->datalen);
-      cmdnet.datalen = htonl( recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle));
-    } else {
-      cmdnet.data = NULL;
-    }
-    cmdnet.palette = cmd->palette;
-#elif __BYTE_ORDER == __BIG_ENDIAN
     memcpy(&cmdnet, cmd, sizeof(osd_command_t));
-    cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
-    cmdnet.datalen = recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
-#else
-#  error __BYTE_ORDER not defined !
-#endif
+    if (cmd->data) {
+      cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
+      cmdnet.datalen = recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
+    }
+    // -> network byte order
+    hton_osdcmd(cmdnet);
 
 #ifdef HTTP_OSD
     uint8_t *spudata = NULL;

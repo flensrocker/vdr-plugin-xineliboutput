@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.122 2008-03-13 21:15:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.123 2008-03-16 23:45:09 phintuka Exp $
  *
  */
 
@@ -3119,27 +3119,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
     return CONTROL_DISCONNECTED;
   }
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-  /* -> host order */
-  osdcmd.cmd = ntohl(osdcmd.cmd);
-  osdcmd.wnd = ntohl(osdcmd.wnd);
-  osdcmd.pts = ntohll(osdcmd.pts);
-  osdcmd.delay_ms = ntohl(osdcmd.delay_ms);
-  osdcmd.x = ntohs(osdcmd.x);
-  osdcmd.y = ntohs(osdcmd.y);
-  osdcmd.w = ntohs(osdcmd.w);
-  osdcmd.h = ntohs(osdcmd.h);
-  osdcmd.datalen = ntohl(osdcmd.datalen);
-  osdcmd.num_rle = ntohl(osdcmd.num_rle);
-  osdcmd.colors  = ntohl(osdcmd.colors);
-  osdcmd.dirty_area.x1 = ntohs(osdcmd.dirty_area.x1);
-  osdcmd.dirty_area.y1 = ntohs(osdcmd.dirty_area.y1);
-  osdcmd.dirty_area.x2 = ntohs(osdcmd.dirty_area.x2);
-  osdcmd.dirty_area.y2 = ntohs(osdcmd.dirty_area.y2);
-#elif __BYTE_ORDER == __BIG_ENDIAN
-#else
-#  error __BYTE_ORDER undefined !
-#endif
+  ntoh_osdcmd(osdcmd);
 
   if(osdcmd.palette && osdcmd.colors>0) {
     int bytes = sizeof(xine_clut_t)*(osdcmd.colors);
@@ -3680,7 +3660,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       _x_select_spu_channel(stream, chind > -2 ? chind-1 : max-1);
     else if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
       _x_select_spu_channel(stream, tmp32);
-    } else 
+    } else
       err = CONTROL_PARAM_ERROR;
     LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
 
