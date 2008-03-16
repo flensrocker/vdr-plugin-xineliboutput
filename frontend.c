@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.50 2008-03-16 21:25:15 phintuka Exp $
+ * $Id: frontend.c,v 1.51 2008-03-16 21:34:45 phintuka Exp $
  *
  */
 
@@ -87,6 +87,15 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
     cRemote::Put(cKey::FromString(key));
   }
 }
+
+#include <vdr/status.h>
+class cFrontendStatusMonitor : public cStatus {
+  private:
+    bool& m_SpuLangAuto;
+  public:
+    cFrontendStatusMonitor(bool& SpuLangAuto) : m_SpuLangAuto(SpuLangAuto) {};
+    virtual void SetSubtitleTrack(int /*Index*/, const char * const */*Tracks*/) { m_SpuLangAuto = false; }
+};
 
 void cXinelibThread::InfoHandler(const char *info)
 {
@@ -226,6 +235,7 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_Frames = 0;
   m_bEndOfStreamReached = false;
   m_bPlayingFile = false;
+  m_StatusMonitor = NULL;
 }
 
 cXinelibThread::~cXinelibThread() 
@@ -235,6 +245,8 @@ cXinelibThread::~cXinelibThread()
   m_bStopThread = true;
   if(Active())
     Cancel();
+  if(m_StatusMonitor)
+    delete m_StatusMonitor;
 }
 
 //
@@ -721,6 +733,12 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     Lock();
     m_FileName = FileName;
     m_bPlayingFile = true;
+    m_SpuLangAuto = true;
+#if VDRVERSNUM >= 10515
+    if (m_StatusMonitor)
+      DELETENULL(m_StatusMonitor);
+    m_StatusMonitor = new cFrontendStatusMonitor(m_SpuLangAuto);
+#endif
     Unlock();
   }
 
@@ -730,6 +748,8 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     Lock();
     m_bPlayingFile = false;
     m_FileName = NULL;
+    if (m_StatusMonitor)
+      DELETENULL(m_StatusMonitor);
     Unlock();
   } else {
     if(xc.extsub_size >= 0)
