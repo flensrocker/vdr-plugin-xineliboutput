@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.31 2008-02-20 04:37:52 phintuka Exp $
+ * $Id: device.h,v 1.32 2008-03-16 21:40:57 phintuka Exp $
  *
  */
 
@@ -28,6 +28,9 @@ typedef enum {
   miDvdTitleNo = 4,
   mi_Count = 5
 } eMetainfoType;
+
+# define ttXSubtitleNone  (-2)
+# define ttXSubtitleAuto  (-1)
 
 #define MAX_METAINFO_LEN 63
 
@@ -145,6 +148,8 @@ class cXinelibDevice : public cDevice
     int   GetCurrentDvdSpuTrack(void) const { return m_CurrentDvdSpuTrack; }
     bool  SetCurrentDvdSpuTrack(int Type, bool Force=false);
     void  EnsureDvdSpuTrack(void);
+#else
+    virtual void SetSubtitleTrackDevice(eTrackType Type);
 #endif
 
     const char *GetMetaInfo(eMetainfoType Type);

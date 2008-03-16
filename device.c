@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.53 2008-02-20 04:18:43 phintuka Exp $
+ * $Id: device.c,v 1.54 2008-03-16 21:40:57 phintuka Exp $
  *
  */
 
@@ -197,7 +197,7 @@ cXinelibDevice::cXinelibDevice()
   m_spuPresent  = false;
 
 #if VDRVERSNUM < 10515
-  m_CurrentDvdSpuTrack = -1;
+  m_CurrentDvdSpuTrack = ttXSubtitleNone;
   m_ForcedDvdSpuTrack = false;
   ClrAvailableDvdSpuTracks();
 #endif
@@ -1538,7 +1538,7 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
 #if VDRVERSNUM < 10515
 bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type, bool Force)
 {
-  if(Type == -1 || 
+  if(Type == ttXSubtitleNone || 
      ( Type >= 0 && 
        Type < 64 &&
        m_DvdSpuTrack[Type].id != 0xffff)) {
@@ -1552,15 +1552,23 @@ bool cXinelibDevice::SetCurrentDvdSpuTrack(int Type, bool Force)
 }
 #endif
 
+#if VDRVERSNUM >= 10515
+void cXinelibDevice::SetSubtitleTrackDevice(eTrackType Type)
+{
+  if (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly)
+    ForEach(m_clients, &cXinelibThread::SetSubtitleTrack, Type);
+}
+#endif
+
 #if VDRVERSNUM < 10515
 void cXinelibDevice::ClrAvailableDvdSpuTracks(bool NotifyFrontend)
 {
   for(int i=0; i<64; i++)
     m_DvdSpuTrack[i].id = 0xffff;
-  if(m_CurrentDvdSpuTrack >=0 ) {
-    m_CurrentDvdSpuTrack = -1;
+  if(m_CurrentDvdSpuTrack >= 0 ) {
+    m_CurrentDvdSpuTrack = ttXSubtitleNone;
     if(NotifyFrontend)
-      ForEach(m_clients, &cXinelibThread::SpuStreamChanged, -1);
+      ForEach(m_clients, &cXinelibThread::SpuStreamChanged, m_CurrentDvdSpuTrack);
   }
 }
 #endif
@@ -1669,11 +1677,12 @@ void cXinelibDevice::EnsureDvdSpuTrack(void)
 const char *cXinelibDevice::GetMetaInfo(eMetainfoType Type)
 {
   if(Type >= 0 && Type < mi_Count) {
-    if ( Type == 0 || Type > 3 ||
-        (Type == 1 && xc.playlist_tracknumber == 1) ||
-        (Type == 2 && xc.playlist_artist == 1) ||
-        (Type == 3 && xc.playlist_album == 1)) {
-       return m_MetaInfo[Type];
+    if ((Type == miTitle) || 
+        (Type == miTracknumber && xc.playlist_tracknumber == 1) ||
+        (Type == miArtist      && xc.playlist_artist == 1) ||
+        (Type == miAlbum       && xc.playlist_album == 1) ||
+	(Type > miAlbum)) {
+      return m_MetaInfo[Type];
     }
     return "";
   }

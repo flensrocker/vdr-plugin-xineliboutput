@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.51 2008-03-16 21:34:45 phintuka Exp $
+ * $Id: frontend.c,v 1.52 2008-03-16 21:40:55 phintuka Exp $
  *
  */
 
@@ -105,7 +105,7 @@ void cXinelibThread::InfoHandler(const char *info)
     *pt = 0;
 
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
-    int CurrentTrack = -2; /* auto */
+    int CurrentTrack = ttXSubtitleAuto;
     map += 12;
 #if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
@@ -141,9 +141,9 @@ void cXinelibThread::InfoHandler(const char *info)
 #if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
     cXinelibDevice::Instance().EnsureDvdSpuTrack();
 #else
-    if (CurrentTrack == -2)
+    if (CurrentTrack == ttXSubtitleAuto)
       cXinelibDevice::Instance().EnsureSubtitleTrack();
-    else if (CurrentTrack == -1)
+    else if (CurrentTrack == ttXSubtitleNone)
       cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttNone, true);
     else
       cXinelibDevice::Instance().SetCurrentSubtitleTrack(eTrackType(CurrentTrack+ttSubtitleFirst), true);
@@ -372,11 +372,22 @@ void cXinelibThread::AudioStreamChanged(bool ac3, int StreamId)
     Xine_Control("AUDIOSTREAM", StreamId);
 }
 
+#if VDRVERSNUM < 10515
 void cXinelibThread::SpuStreamChanged(int StreamId)
 {
   TRACEF("cXinelibThread::SpuStreamChanged");
   Xine_Control("SPUSTREAM", StreamId);
 }
+#else
+void cXinelibThread::SetSubtitleTrack(eTrackType Track)
+{
+  TRACEF("cXinelibThread::SetSubtitleTrack");
+  cString buf = cString::sprintf("SPUSTREAM %d%s", 
+				 Track==ttNone ? ttXSubtitleNone  : (Track - ttSubtitleFirst), 
+				 m_SpuLangAuto ? " auto" : "");
+  Xine_Control(buf);
+}
+#endif
 
 void cXinelibThread::Clear(void)
 {
