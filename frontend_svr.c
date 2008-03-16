@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.52 2008-03-16 23:45:09 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.53 2008-03-16 23:47:25 phintuka Exp $
  *
  */
 
@@ -49,6 +49,9 @@
 
 #define MAX_OSD_TIMEOUTS  (25*5)      /* max. rate 25 updates/s -> at least 5 seconds */
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
+
+#define PLAYFILE_CTRL_TIMEOUT   300   /* ms */
+#define PLAYFILE_TIMEOUT       5000   /* ms */
 
 typedef struct {
   int    Size;
@@ -745,9 +748,7 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
     int64_t t = cTimeMs::Now();
 #endif
 
-    int timeout = 300;
-    if(bPlayfile)
-      timeout = 5000;
+    int timeout = bPlayfile ? PLAYFILE_TIMEOUT : PLAYFILE_CTRL_TIMEOUT;
 
     future.Wait(timeout);
 
