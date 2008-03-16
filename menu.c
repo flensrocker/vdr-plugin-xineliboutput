@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.51 2008-03-16 22:46:15 phintuka Exp $
+ * $Id: menu.c,v 1.52 2008-03-16 22:53:23 phintuka Exp $
  *
  */
 
@@ -827,7 +827,7 @@ void cMenuXinelib::Store(void)
 eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 {
   eOSState NewState = osEnd;
-  char    *Message  = NULL;
+  cString  Message;
   time_t   now      = time(NULL);
   bool     OnlyInfo = ((g_LastHotkeyTime < now-3) || g_LastHotkey != Key);
 
@@ -852,7 +852,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	  cRemote::CallPlugin("xineliboutput");
 	  if(WasOpen || !OnlyInfo) cRemote::Put(kNext);
 	} else {
-	  asprintf(&Message, "%s", tr("No subtitles available!"));
+	  Message = tr("No subtitles available!");
 	}
       }
       break;
@@ -893,9 +893,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	      xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
 	      xc.display_aspect, xc.scale_video, xc.field_order);
 	}
-	asprintf(&Message, "%s %s %s", tr("Local Frontend"), 
-		 OnlyInfo ? ":" : "->", 
-		 xc.s_frontendNames[local_frontend]);
+	Message = cString::sprintf("%s %s %s", tr("Local Frontend"), 
+				   OnlyInfo ? ":" : "->", 
+				   xc.s_frontendNames[local_frontend]);
       }
       break;
 
@@ -907,9 +907,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 						   xc.modeswitch, xc.modeline, xc.display_aspect, 
 						   xc.scale_video, xc.field_order);      
       }
-      asprintf(&Message, "%s %s %s", tr("Aspect ratio"), 
-	       OnlyInfo ? ":" : "->",
-	       tr(xc.s_aspects[xc.display_aspect]));
+      Message = cString::sprintf("%s %s %s", tr("Aspect ratio"), 
+				 OnlyInfo ? ":" : "->",
+				 tr(xc.s_aspects[xc.display_aspect]));
       break;
 
     case HOTKEY_TOGGLE_VO_ASPECT:
@@ -919,9 +919,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
         cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
                                               xc.contrast, xc.overscan, xc.vo_aspect_ratio);
       }
-      asprintf(&Message, "%s %s %s", tr("Video aspect ratio"),
-               OnlyInfo ? ":" : "->",
-               tr(xc.s_vo_aspects[xc.vo_aspect_ratio]));
+      Message = cString::sprintf("%s %s %s", tr("Video aspect ratio"),
+				 OnlyInfo ? ":" : "->",
+				 tr(xc.s_vo_aspects[xc.vo_aspect_ratio]));
       break;
 
     case HOTKEY_TOGGLE_CROP:    
@@ -940,9 +940,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 							   xc.AutocropOptions());
       }
 
-      asprintf(&Message, "%s %s %s", tr("Crop letterbox 4:3 to 16:9"), 
-	       OnlyInfo ? ":" : "->",
-	       !xc.autocrop ? tr("Off") : xc.autocrop_autodetect ? tr("automatic") : tr("On"));
+      Message = cString::sprintf("%s %s %s", tr("Crop letterbox 4:3 to 16:9"), 
+				 OnlyInfo ? ":" : "->",
+				 !xc.autocrop ? tr("Off") : xc.autocrop_autodetect ? tr("automatic") : tr("On"));
       break;
 
     case HOTKEY_DEINTERLACE:    
@@ -959,9 +959,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 							     compression, xc.audio_equalizer, 
 							     xc.audio_surround, xc.speaker_type);
 	}
-	asprintf(&Message, "%s %s %s", tr("Deinterlacing"), 
-		 OnlyInfo ? ":" : "->", 
-		 tr(off ? "Off":"On"));
+	Message = cString::sprintf("%s %s %s", tr("Deinterlacing"), 
+				   OnlyInfo ? ":" : "->", 
+				   tr(off ? "Off":"On"));
       }
       break;
 
@@ -972,10 +972,10 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	cXinelibDevice::Instance().ConfigurePostprocessing(
 		  "upmix", xc.audio_upmix ? true : false, NULL);
       }
-      asprintf(&Message, "%s %s %s", 
-	       tr("Upmix stereo to 5.1"), 
-	       OnlyInfo ? ":" : "->",
-	       tr(xc.audio_upmix ? "On" : "Off"));
+      Message = cString::sprintf("%s %s %s", 
+				 tr("Upmix stereo to 5.1"), 
+				 OnlyInfo ? ":" : "->",
+				 tr(xc.audio_upmix ? "On" : "Off"));
       break;
 
     case HOTKEY_DOWNMIX:    
@@ -986,10 +986,10 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	    xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
 	    xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
       }
-      asprintf(&Message, "%s %s %s", 
-	       tr("Downmix AC3 to surround"), 
-	       OnlyInfo ? ":" : "->",
-	       tr(xc.audio_surround ? "On":"Off"));
+      Message = cString::sprintf("%s %s %s", 
+				 tr("Downmix AC3 to surround"), 
+				 OnlyInfo ? ":" : "->",
+				 tr(xc.audio_surround ? "On":"Off"));
       break;
 
       case HOTKEY_PLAYLIST:
@@ -1003,7 +1003,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	    if (S_ISLNK(st.st_mode)) {
 	      char *buffer = ReadLink(file);
 	      if (!buffer || stat(buffer, &st)) {
-		asprintf(&Message, tr("Default playlist not found"));
+		Message = tr("Default playlist not found");
 	      } else {
 		LOGDBG("Replaying default playlist: %s", file);
 		cControl::Shutdown();
@@ -1011,10 +1011,10 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	      }
 	      free(buffer);
 	    } else {
-	      asprintf(&Message, tr("Default playlist is not symlink"));
+	      Message = tr("Default playlist is not symlink");
 	    }
 	  } else {
-	    asprintf(&Message, tr("Default playlist not defined"));
+	    Message = tr("Default playlist not defined");
 	  }
 	  free(file);
 	}
@@ -1028,9 +1028,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
                                                            xc.audio_compression, xc.audio_equalizer,
                                                            xc.audio_surround, xc.speaker_type);
       }
-      asprintf(&Message, "%s %s %d %s", tr("Delay"),
-	       OnlyInfo ? ":" : "->",
-	       xc.audio_delay, tr("ms"));
+      Message = cString::sprintf("%s %s %d %s", tr("Delay"),
+				 OnlyInfo ? ":" : "->",
+				 xc.audio_delay, tr("ms"));
       break;
 
     case HOTKEY_ADELAY_DOWN:
@@ -1041,22 +1041,21 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
                                                            xc.audio_compression, xc.audio_equalizer,
                                                            xc.audio_surround, xc.speaker_type);
       }
-      asprintf(&Message, "%s %s %d %s", tr("Delay"),
-	       OnlyInfo ? ":" : "->",
-	       xc.audio_delay, tr("ms"));
+      Message = cString::sprintf("%s %s %d %s", tr("Delay"),
+				 OnlyInfo ? ":" : "->",
+				 xc.audio_delay, tr("ms"));
       break;
 
     default:
-      asprintf(&Message, tr("xineliboutput: hotkey %s not binded"), cKey::ToString(Key));
+      Message = cString::sprintf(tr("xineliboutput: hotkey %s not binded"), cKey::ToString(Key));
       break;
   }
 
-  if(Message) {
+  if(*Message) {
     if(!g_PendingMenuAction &&
        !cRemote::HasKeys() &&
        cRemote::CallPlugin("xineliboutput"))
       g_PendingMenuAction = new cDisplayMessage(Message);
-    free(Message);
   }
 
   g_LastHotkeyTime = now;
