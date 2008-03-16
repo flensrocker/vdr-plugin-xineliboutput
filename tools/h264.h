@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.h,v 1.1 2008-02-04 22:43:27 phintuka Exp $
+ * $Id: h264.h,v 1.2 2008-03-16 22:12:56 phintuka Exp $
  *
  */
 
@@ -16,18 +16,12 @@
 extern "C" {
 #endif
 
-
-#ifndef VIDEO_SIZE_T
-#define VIDEO_SIZE_T
-typedef struct {
-  int width;
-  int height;
-} video_size_t;
-#endif
+#include "mpeg.h"
 
 typedef struct {
   int width;
   int height;
+  double pixel_aspect;
   /* ... */
 } h264_sps_data_t;
 

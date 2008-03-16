@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.h,v 1.1 2008-02-04 22:42:13 phintuka Exp $
+ * $Id: mpeg.h,v 1.2 2008-03-16 22:12:56 phintuka Exp $
  *
  */
 
@@ -27,13 +27,12 @@ extern "C" {
 #define B_FRAME     3
 
 
-#ifndef VIDEO_SIZE_T
-#define VIDEO_SIZE_T
 typedef struct {
   int width;
   int height;
+  double pixel_aspect;
 } video_size_t;
-#endif
+
 
 extern const char * const picture_type_str[];
 
