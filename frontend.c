@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.49 2008-02-22 06:56:30 phintuka Exp $
+ * $Id: frontend.c,v 1.50 2008-03-16 21:25:15 phintuka Exp $
  *
  */
 
@@ -584,36 +584,32 @@ bool cXinelibThread::LogoDisplay(void)
 {
   TRACEF("cXinelibThread::LogoDisplay");
   
-  char *path = NULL;
+  cString Path;
+  int     fd = -1;
+
   if(Setup.FileName()) {
-    char *setup_path = strdup(Setup.FileName());
-    char *end = strrchr(setup_path, '/');
+    cString SetupPath = Setup.FileName();
+    char *end = strrchr(SetupPath, '/');
     if(end) {
       *end = 0;
-      asprintf(&path, "%s/plugins/xineliboutput/logo.mpv", setup_path);
+      fd = open(Path=cString::sprintf("%s/plugins/xineliboutput/logo.mpv", *SetupPath), O_RDONLY);
     }
-    free(setup_path);
   }
   
-  int fd = path ? open(path, O_RDONLY) : -1;
-  if(fd<0) {
-    free(path);
-    path = strdup(STARTUP_IMAGE_FILE);
-    fd = open(path, O_RDONLY);
-  }
+  if(fd<0)
+    fd = open(Path=STARTUP_IMAGE_FILE, O_RDONLY);
   
   if(fd >= 0) {
     uint8_t *data = (uint8_t*)malloc(STARTUP_MAX_SIZE);
     int datalen = read(fd, data, STARTUP_MAX_SIZE);
     if(datalen == STARTUP_MAX_SIZE) {
-      LOGMSG("WARNING: custom startup image %s too large", path);
+      LOGMSG("WARNING: custom startup image %s too large", *Path);
     } else if(datalen<=0) {
-      LOGERR("error reading custom startup image %s", path);
+      LOGERR("error reading custom startup image %s", *Path);
     } else {
-      LOGMSG("using custom startup image %s", path);
+      LOGMSG("using custom startup image %s", *Path);
       bool r = Play_Mpeg2_ES(data, datalen, VIDEO_STREAM);
       free(data);
-      free(path);
       for(int i=0; i<5 && !Flush(100); i++)
 	;
       return r;
@@ -621,7 +617,6 @@ bool cXinelibThread::LogoDisplay(void)
     free(data);
     close(fd);
   }
-  free(path);
   
   /* use default image */
   extern const unsigned char v_mpg_vdrlogo[];     // vdrlogo_720x576.c
