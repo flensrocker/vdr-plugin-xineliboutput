@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.48 2008-03-16 21:45:32 phintuka Exp $
+ * $Id: media_player.c,v 1.49 2008-03-24 20:46:51 phintuka Exp $
  *
  */
 
@@ -900,7 +900,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
       memset(m_CurrentDVDTitle, 0, 63);
       strn0cpy(m_CurrentDVDTitle, ti, 63);
-      m_Player->Playlist().Current()->Title = cString::sprintf("%s", m_CurrentDVDTitle);
+      m_Player->Playlist().Current()->Title = m_CurrentDVDTitle;
       MsgReplaying(m_CurrentDVDTitle, NULL);
     }
   }
@@ -954,20 +954,25 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
       case kDown:  Key = kPause;   break;
       case kLeft:  Key = kFastRew; break;
       case kRight: Key = kFastFwd; break;
-      case kOk:
-                   if(m_Player->Speed() != 1) {
-		     Hide();
+      case kOk:    Hide();
+		   if(m_Player->Speed() != 1) {
 		     m_ShowModeOnly = !m_ShowModeOnly;
 		     Show();
+		     break;
+		   }
+	           if(m_DisplayReplay) {
+		     m_ShowModeOnly = true;
 		   } else {
-		     if(m_DisplayReplay) {
-		       m_ShowModeOnly = true;
-		       Hide();
-		     } else {
-		       Hide();
-		       m_ShowModeOnly = false;
-		       Show();
-		     }
+		     m_ShowModeOnly = false;
+		     Show();
+		   }
+		   break;
+      case kInfo:  Hide();
+	           if(m_DisplayReplay && !m_ShowModeOnly) {
+		     m_ShowModeOnly = true;
+		   } else {
+		     m_ShowModeOnly = false;
+		     Show();
 		   }
 		   break;
       case kBack:  xc.main_menu_mode = m_Mode;
