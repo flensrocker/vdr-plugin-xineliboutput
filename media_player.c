@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.49 2008-03-24 20:46:51 phintuka Exp $
+ * $Id: media_player.c,v 1.50 2008-03-24 22:04:33 phintuka Exp $
  *
  */
 
@@ -128,7 +128,6 @@ void cXinelibPlayer::SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
 
 void cXinelibPlayer::SetSubtitleTrack(eTrackType Type, const tTrackId *TrackId)
 {
-  LOGMSG("cXinelibPlayer::SetSubtitleTrack(%d %s)", (int)Type, TrackId ? TrackId->language : "?");
 #if VDRVERSNUM >= 10515
   cXinelibDevice::Instance().SetSubtitleTrackDevice(Type);
 #endif
@@ -954,15 +953,18 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
       case kDown:  Key = kPause;   break;
       case kLeft:  Key = kFastRew; break;
       case kRight: Key = kFastFwd; break;
-      case kOk:    Hide();
+      case kOk:    
 		   if(m_Player->Speed() != 1) {
+		     Hide();
 		     m_ShowModeOnly = !m_ShowModeOnly;
 		     Show();
 		     break;
 		   }
 	           if(m_DisplayReplay) {
+		     Hide();
 		     m_ShowModeOnly = true;
 		   } else {
+		     Hide();
 		     m_ShowModeOnly = false;
 		     Show();
 		   }
