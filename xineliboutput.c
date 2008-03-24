@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.25 2007-10-15 00:15:07 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.26 2008-03-24 20:29:37 phintuka Exp $
  *
  */
 
@@ -33,6 +33,7 @@
 #include "device.h"
 #include "setup_menu.h"
 #include "menu.h"
+#include "media_player.h"
 
 #if VDRVERSNUM < 10400
 # error VDR versions < 1.4.0 are not supported !
@@ -54,19 +55,29 @@ class cPluginXinelibOutput : public cPlugin
   public:
     cPluginXinelibOutput(void);
     virtual ~cPluginXinelibOutput();
+
     virtual const char *Version(void) { return VERSION; }
     virtual const char *Description(void) { return tr(DESCRIPTION); }
     virtual const char *CommandLineHelp(void);
+
     virtual bool ProcessArgs(int argc, char *argv[]);
     virtual bool Initialize(void);
     virtual bool Start(void);
     virtual void Stop(void);
     //virtual void Housekeeping(void);
     virtual void MainThreadHook();
+    //virtual cString Active(void);
+    //virtual time_t WakeupTime(void);
+
     virtual const char *MainMenuEntry(void) { return xc.hide_main_menu ? NULL : tr(MAINMENUENTRY); }
     virtual cOsdObject *MainMenuAction(void);
+
     virtual cMenuSetupPage *SetupMenu(void);
     virtual bool SetupParse(const char *Name, const char *Value);
+
+    virtual bool Service(const char *Id, void *Data = NULL);
+    //virtual const char **SVDRPHelpPages(void);
+    //virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
 };
 
 cPluginXinelibOutput::cPluginXinelibOutput(void)
@@ -208,6 +219,58 @@ bool cPluginXinelibOutput::SetupParse(const char *Name, const char *Value)
 {
   // Parse your own setup parameters and store their values.
   return xc.SetupParse(Name, Value);
+}
+
+bool cPluginXinelibOutput::Service(const char *Id, void *Data)
+{
+  if(Id) {
+    char *CData = (char*)Data;
+
+    if(!strcmp(Id, "MediaPlayer-1.0")) {
+      if(CData && *CData) {
+	LOGMSG("Service(%s, %s)", Id, CData);
+	cControl::Launch(new cXinelibPlayerControl(ShowFiles, CData));
+	return true;
+      }
+      LOGMSG("Service(%s) -> true", Id);
+      return true;
+    }
+
+    else if(!strcmp(Id, "MusicPlayer-1.0")) {
+      if(CData && *CData) {
+	LOGMSG("Service(%s, %s)", Id, CData);
+	cControl::Launch(new cXinelibPlayerControl(ShowMusic, CData));
+	return true;
+      }
+      LOGMSG("Service(%s) -> true", Id);
+      return true;
+    }
+
+    else if(!strcmp(Id, "DvdPlayer-1.0")) {
+      if(Data && *CData) {
+	LOGMSG("Service(%s, %s)", Id, CData);
+	cControl::Launch(new cXinelibDvdPlayerControl(CData));
+	return true;
+      }
+      LOGMSG("Service(%s) -> true", Id);
+      return true;
+    }
+
+    else if(!strcmp(Id, "ImagePlayer-1.0")) {
+      if(CData && *CData) {
+	LOGMSG("Service(%s, %s)", Id, CData);
+	char **list = new char*[2];
+	list[0] = strdup(CData);
+	list[1] = NULL;
+	cControl::Launch(new cXinelibImagesControl(list, 0, 1));
+	return true;
+      }
+      LOGMSG("Service(%s) -> true", Id);
+      return true;
+    }
+
+  }
+  return false;
 }
 
 extern "C"
