@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.123 2008-03-16 23:45:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.124 2008-03-25 21:54:05 phintuka Exp $
  *
  */
 
@@ -101,6 +101,9 @@
 #define  CONTROL_BUF       (0x0f000000)              /* 0x0f000000 */
 #define  CONTROL_BUF_BLANK (CONTROL_BUF|0x00010000)  /* 0x0f010000 */
 #define  CONTROL_BUF_CLEAR (CONTROL_BUF|0x00020000)  /* 0x0f020000 */
+
+#define SPU_CHANNEL_NONE   (-2)
+#define SPU_CHANNEL_AUTO   (-1)
 
 /******************************* LOG ***********************************/
 
@@ -2780,6 +2783,23 @@ static void dvd_set_speed(const char *device, int speed)
 
 static void vdr_event_cb (void *user_data, const xine_event_t *event);
 
+static void select_spu_channel(xine_stream_t *stream, int channel)
+{
+  _x_select_spu_channel(stream, channel);
+  if (channel == SPU_CHANNEL_NONE) {
+    /* re-enable overlay for VDR OSD ... */
+    if (stream->video_out) {
+      pthread_mutex_lock (&stream->frontend_lock);
+      stream->xine->port_ticket->acquire (stream->xine->port_ticket, 0);
+    
+      stream->video_out->enable_ovl (stream->video_out, 1);
+
+      stream->xine->port_ticket->release (stream->xine->port_ticket, 0);
+      pthread_mutex_unlock (&stream->frontend_lock);
+    }
+  }
+}
+
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
@@ -2887,7 +2907,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       xine_event_create_listener_thread (this->slave_event_queue, 
 					 vdr_event_cb, this);
     }
-    _x_select_spu_channel(this->slave_stream, -2); /* -> auto */
+    select_spu_channel(this->slave_stream, SPU_CHANNEL_AUTO);
 
     errno = 0;
     err = !xine_open(this->slave_stream, filename);
@@ -3652,17 +3672,21 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     }
 
   } else if(!strncasecmp(cmd, "SPUSTREAM ", 10)) {
-    int chind = _x_get_spu_channel (stream);
-    int max   = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
+    int old_ch  = _x_get_spu_channel (stream);
+    int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
+    int ch      = old_ch;
     if(strstr(cmd, "NEXT"))
-      _x_select_spu_channel(stream, chind < max ? chind+1 : -2);
+      ch = ch < max_ch ? ch+1 : -2;
     else if(strstr(cmd, "PREV"))
-      _x_select_spu_channel(stream, chind > -2 ? chind-1 : max-1);
+      ch = ch > -2 ? ch-1 : max_ch-1;
     else if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
-      _x_select_spu_channel(stream, tmp32);
+      ch = tmp32;
     } else
       err = CONTROL_PARAM_ERROR;
-    LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
+    if(ch != old_ch) {
+      select_spu_channel(stream, ch);
+      LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
+    }
 
   } else if(!strncasecmp(cmd, "AUDIODELAY ", 11)) {
     if(1 == sscanf(cmd, "AUDIODELAY %d", &tmp32))
@@ -3913,9 +3937,10 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   cnt = strlen(tracks);
   current = _x_get_spu_channel (this->slave_stream);
   if(current < 0) {
-    /* -1 == none, -2 == auto */
+    /* -2 == none, -1 == auto */
     cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
-		    "*%d:%s ", current, current==-1?"none":"auto");
+		    "*%d:%s ", current, 
+		    current==SPU_CHANNEL_NONE ? "none" : "auto");
     n++;
   }
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
