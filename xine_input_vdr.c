@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.124 2008-03-25 21:54:05 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.125 2008-03-25 21:58:01 phintuka Exp $
  *
  */
 
@@ -3894,6 +3894,10 @@ static void *vdr_control_thread(void *this_gen)
   if(this->control_running)
     write_control(this, "CLOSE\r\n");
   this->control_running = 0;
+
+  if(this->slave_stream)
+    xine_stop(this->slave_stream);
+
   LOGDBG("Control thread terminated");
   pthread_exit(NULL);
 }
