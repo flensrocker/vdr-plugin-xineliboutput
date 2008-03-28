@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.29 2008-02-20 22:27:13 phintuka Exp $
+# $Id: Makefile,v 1.30 2008-03-28 21:07:55 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -363,9 +363,9 @@ xine_fbfe_frontend_standalone.o: xine_fbfe_frontend.c xine_frontend.c \
 ### Internationalization (I18N):
 
 PODIR     = po
-LOCALEDIR = $(VDRDIR)/locale
+LOCDIR   ?= $(VDRDIR)/locale
 I18Npo    = $(wildcard $(PODIR)/*.po)
-I18Nmsgs  = $(addprefix $(LOCALEDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
+I18Nmsgs  = $(addprefix $(LOCDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
 I18Npot   = $(PODIR)/$(PLUGIN).pot
 
 %.mo: %.po
@@ -378,7 +378,7 @@ $(I18Npot): $(wildcard *.c)
 	msgmerge -U --no-wrap --no-location --backup=none -q $@ $<
 	@touch $@
 
-$(I18Nmsgs): $(LOCALEDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
+$(I18Nmsgs): $(LOCDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
 	@mkdir -p $(dir $@)
 	cp $< $@
 
@@ -502,5 +502,6 @@ clean:
 	@-rm -f $(DEPFILE) *.so* *.o *.tgz core* *~ *.flc *.bak \
 		tools/*.o tools/*~ tools/*.flc xine/*.o xine/*~ \
 		xine/*.flc $(VDR_FBFE) $(VDR_SXFE) mpg2c black_720x576.c \
-		nosignal_720x576.c vdrlogo_720x576.c vdr-sxfe vdr-fbfe
+		nosignal_720x576.c vdrlogo_720x576.c vdr-sxfe vdr-fbfe \
+		$(PODIR)/*.mo $(PODIR)/*.pot
 
