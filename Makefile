@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.30 2008-03-28 21:07:55 phintuka Exp $
+# $Id: Makefile,v 1.31 2008-03-28 21:13:36 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -21,6 +21,7 @@ _default: all
 
 XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
+HAVE_XRENDER      = 0
 XINELIBOUTPUT_XINEPLUGIN = $(shell (pkg-config libxine && echo 1 || echo 0))
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 0)
     XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0")
@@ -31,6 +32,12 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 
     ifeq ($(XINELIBOUTPUT_X11), 1)
         #$(warning Detected X11)
+        HAVE_XRENDER = $(shell (((echo "\#include <X11/extensions/Xrender.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null)
+        ifeq ($(HAVE_XRENDER), 0)
+            $(warning ********************************************************)
+            $(warning XRender extension not detected ! HUD OSD disabled.      )
+            $(warning ********************************************************)
+        endif
     else
         $(warning ********************************************************)
         $(warning X11 not detected ! X11 frontends will not be compiled.  )
@@ -50,6 +57,7 @@ APPLE_DARWIN = $(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || 
 
 USE_ICONV = 1
 #XINELIBOUTPUT_X11        = 1
+#HAVE_XRENDER             = 1
 #XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
 #XINELIBOUTPUT_VDRPLUGIN  = 1
@@ -206,6 +214,9 @@ endif
 INCLUDES  += -I$(VDRINCDIR)
 LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --libs) || xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
+ifeq ($(HAVE_XRENDER), 1)
+    LIBS_X11  += -lXrender
+endif
 
 ifeq ($(APPLE_DARWIN), 1)
     INCLUDES  += -I/sw/include
@@ -218,6 +229,9 @@ endif
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
+ifeq ($(HAVE_XRENDER), 1)
+    DEFINES += -DHAVE_XRENDER=1
+endif
 
 # check for yaegp patch
 YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
