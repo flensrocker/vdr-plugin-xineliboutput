@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.18 2008-01-03 10:59:12 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.19 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -135,7 +135,7 @@ static void fbfe_update_display_size(frontend_t *this_gen)
 /*
  * fbfe_display_open
  */
-static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen,
+static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
 			     int modeswitch, const char *modeline, int aspect,
 			     fe_keypress_f keyfunc, const char *video_port,
 			     int scale_video, int field_order) 

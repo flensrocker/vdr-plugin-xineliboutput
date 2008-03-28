@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.37 2008-02-19 02:11:31 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.38 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -322,6 +322,7 @@ static const char help_str[] =
     "                                 Use script to control HW aspect ratio:\n"
     "                                   --aspect=auto:path_to_script\n"
     "   --fullscreen                  Fullscreen mode\n"
+    "   --hud                         Head Up Display OSD mode\n"
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
     "   --noscaling                   Disable all video scaling\n"
@@ -346,7 +347,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HL:A:V:d:a:fw:h:P:vslkbtur";
+static const char short_options[] = "HL:A:V:d:a:fDw:h:P:vslkbtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -356,6 +357,7 @@ static const struct option long_options[] = {
   { "wid",        required_argument, NULL, 'W' },
   { "aspect",     required_argument, NULL, 'a' },
   { "fullscreen", no_argument,       NULL, 'f' },
+  { "hud",        no_argument,       NULL, 'D' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
   { "noscaling",  no_argument,       NULL, 'n' },
@@ -382,7 +384,7 @@ int main(int argc, char *argv[])
 {
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
-  int fullscreen = 0, width = 720, height = 576;
+  int fullscreen = 0, hud = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, slave_mode = 0;
   char *video_port = NULL;
@@ -461,6 +463,9 @@ int main(int argc, char *argv[])
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
 	      break;
+    case 'D': hud=1;
+              PRINTF("HUD OSD mode\n");
+              break;
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
 	      break;
@@ -614,7 +619,7 @@ int main(int argc, char *argv[])
   ((fe_t*)fe)->aspect_controller = aspect_controller;
 
   /* Initialize display */
-  if(!fe->fe_display_open(fe, width, height, fullscreen, 0, 
+  if(!fe->fe_display_open(fe, width, height, fullscreen, hud, 0, 
 			  "", aspect, NULL, video_port, scale_video, 0)) {
     fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);

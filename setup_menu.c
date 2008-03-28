@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.48 2008-03-13 22:19:33 phintuka Exp $
+ * $Id: setup_menu.c,v 1.49 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -897,6 +897,9 @@ void cMenuSetupOSD::Set(void)
   Add(NewTitle(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
 			    &newconfig.hide_main_menu));
+  Add(new cMenuEditStraI18nItem(tr("OSD scaling method"), &newconfig.osd_scaling,
+	                        OSD_SCALING_count, xc.s_osdScalings));
+
 #if VDRVERSNUM >= 10509
   Add(new cMenuEditStraI18nItem(tr("Show all layers"), &newconfig.osd_mixer, 
 			OSD_MIXER_count, xc.s_osdMixers));
@@ -1002,6 +1005,7 @@ void cMenuSetupOSD::Store(void)
   orig_alpha_correction = xc.alpha_correction;
   orig_alpha_correction_abs = xc.alpha_correction_abs;
 
+  SetupStore("OSD.Scaling",         xc.osd_scaling);
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);
   SetupStore("OSD.Prescale",        xc.prescale_osd);

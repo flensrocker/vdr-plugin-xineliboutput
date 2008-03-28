@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.31 2008-01-03 10:59:12 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.32 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -376,7 +376,7 @@ static void set_above(sxfe_t *this, int stay_above)
  * connect to X server, create windows
  */
 
-static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen,
+static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
 			     int modeswitch, const char *modeline, int aspect,
 			     fe_keypress_f keyfunc, const char *video_port,
 			     int scale_video, int field_order) 

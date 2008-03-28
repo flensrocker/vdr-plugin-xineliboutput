@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.40 2008-03-13 22:14:06 phintuka Exp $
+ * $Id: config.h,v 1.41 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -140,6 +140,12 @@
 #define OSD_MIXER_FULL          4
 #define OSD_MIXER_count         5
 
+// OSD scaling modes
+#define OSD_SCALING_NONE        0
+#define OSD_SCALING_NEAREST     1
+#define OSD_SCALING_BILINEAR    2
+#define OSD_SCALING_count       3
+
 #define SUBTITLESIZE_count     7
 
 #define HIDDEN_OPTION(opt) \
@@ -182,6 +188,7 @@ class config_t {
     static const char * const s_subtitleSizes[];
     static const char * const s_subExts[];
     static const char * const s_osdMixers[];
+    static const char * const s_osdScalings[];
     static const char * const s_vo_aspects[];
 
   public:
@@ -233,6 +240,8 @@ class config_t {
     eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
     int  hide_main_menu;
     int  osd_mixer;                // show multiple OSD layers
+    int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
+    int  hud_osd;                  // head up display OSD
     int  prescale_osd;
     int  prescale_osd_downscale;
     int  unscaled_osd;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.9 2008-03-16 23:41:37 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.10 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -91,6 +91,7 @@ typedef struct osd_command_s {
 
   osd_rect_t dirty_area;
   uint8_t    flags;
+  uint8_t    scaling;
 
 } PACKED osd_command_t;
 

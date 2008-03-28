@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.56 2008-03-13 22:14:06 phintuka Exp $
+ * $Id: config.c,v 1.57 2008-03-28 22:17:17 phintuka Exp $
  *
  */
 
@@ -218,6 +218,13 @@ const char * const config_t::s_osdMixers[] = {
   trNOOP("transparent"),            // item [2]
   trNOOP("transparent grayscale"),  // item [3] ([1 | 2])
   trNOOP("yes"),
+  NULL
+};
+
+const char * const config_t::s_osdScalings[] = {
+  trNOOP("no"),
+  trNOOP("nearest"),              // item [1]
+  trNOOP("bilinear"),             // item [2]
   NULL
 };
 
@@ -443,6 +450,8 @@ config_t::config_t() {
 
   hide_main_menu       = 0;
   osd_mixer            = OSD_MIXER_FULL;
+  osd_scaling          = OSD_SCALING_NEAREST;
+  hud_osd              = 0;
 
   prescale_osd         = 1;
   prescale_osd_downscale = 0;
@@ -551,10 +560,11 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
 
 bool config_t::ProcessArgs(int argc, char *argv[])
 {
-  static const char short_options[] = "fw:h:l:r:A:V:d:P:pc";
+  static const char short_options[] = "fDw:h:l:r:A:V:d:P:pc";
 
   static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
+      { "hud",          no_argument,       NULL, 'D' },
       { "width",        required_argument, NULL, 'w' },
       { "height",       required_argument, NULL, 'h' },
       //{ "xkeyboard",    no_argument,       NULL, 'k' },
@@ -580,6 +590,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'd': ProcessArg("Video.Port", optarg);
               break;
     case 'f': ProcessArg("Fullscreen", "1");
+              break;
+    case 'D': ProcessArg("X11.HUDOSD", "1");
               break;
     case 'w': ProcessArg("Fullscreen", "0");
               ProcessArg("X11.WindowWidth", optarg);
@@ -664,6 +676,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "X11.WindowWidth"))  width = atoi(Value);
   else if (!strcasecmp(Name, "X11.WindowHeight")) height = atoi(Value);
   else if (!strcasecmp(Name, "X11.UseKeyboard"))  use_x_keyboard = atoi(Value);
+  else if (!strcasecmp(Name, "X11.HUDOSD"))       hud_osd = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Driver")) STRN0CPY(audio_driver, Value);
   else if (!strcasecmp(Name, "Audio.Port"))   STRN0CPY(audio_port, Value);
@@ -680,6 +693,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 
   else if (!strcasecmp(Name, "OSD.HideMainMenu"))   hide_main_menu = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Prescale"))       prescale_osd = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Downscale"))      prescale_osd_downscale = atoi(Value);
   else if (!strcasecmp(Name, "OSD.UnscaledAlways")) unscaled_osd = atoi(Value);
