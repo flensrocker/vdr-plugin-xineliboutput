@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.49 2008-03-28 22:17:17 phintuka Exp $
+ * $Id: setup_menu.c,v 1.50 2008-03-29 18:48:19 phintuka Exp $
  *
  */
 
@@ -17,6 +17,8 @@
 #include "menuitems.h"
 #include "config.h"
 #include "i18n.h"      // trVDR for vdr-1.4.x
+#include "osd.h"       // cXinelibOsdProvider::RefreshOsd()
+
 
 namespace XinelibOutputSetupMenu {
 
@@ -839,6 +841,7 @@ class cMenuSetupOSD : public cMenuSetupPage
     int orig_alpha_correction;
     int orig_alpha_correction_abs;
 
+    cOsdItem *ctrl_scaling;
     cOsdItem *ctrl_alpha;
     cOsdItem *ctrl_alpha_abs;
     cOsdItem *ctrl_unscaled;
@@ -884,6 +887,7 @@ void cMenuSetupOSD::Set(void)
   int current = Current();
   Clear();
 
+  ctrl_scaling = NULL;
   ctrl_scale = NULL;
   ctrl_downscale = NULL;
   ctrl_unscaled = NULL;
@@ -897,7 +901,8 @@ void cMenuSetupOSD::Set(void)
   Add(NewTitle(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
 			    &newconfig.hide_main_menu));
-  Add(new cMenuEditStraI18nItem(tr("OSD scaling method"), &newconfig.osd_scaling,
+  Add(ctrl_scaling =
+      new cMenuEditStraI18nItem(tr("OSD scaling method"), &newconfig.osd_scaling,
 	                        OSD_SCALING_count, xc.s_osdScalings));
 
 #if VDRVERSNUM >= 10509
@@ -968,7 +973,9 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
   if(Key!=kLeft && Key!=kRight)
     return state;
 
-  if(item == ctrl_alpha)
+  if(item == ctrl_scaling)
+    cXinelibOsdProvider::RefreshOsd();
+  else if(item == ctrl_alpha)
     xc.alpha_correction = newconfig.alpha_correction;
   else if(item == ctrl_alpha_abs)
     xc.alpha_correction_abs = newconfig.alpha_correction_abs;
