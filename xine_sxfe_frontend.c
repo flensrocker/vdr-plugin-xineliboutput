@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.36 2008-03-31 22:28:45 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.37 2008-03-31 22:32:43 phintuka Exp $
  *
  */
 
@@ -679,6 +679,12 @@ static int hud_osd_open(frontend_t *this_gen)
     LOGDBG("opening HUD OSD window...");
 
     this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
+    if(!this->hud_vis) {
+      LOGMSG("find_argb_visual() failed. HUD OSD disabled.");
+      this->hud = 0;
+      XUnlockDisplay(this->display);
+      return 1;
+    }
 
     Colormap hud_colormap = XCreateColormap(this->display,
                                             RootWindow(this->display, DefaultScreen(this->display)),
@@ -732,6 +738,10 @@ static int hud_osd_open(frontend_t *this_gen)
     this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
 
     XUnlockDisplay(this->display);
+
+#ifndef FE_STANDALONE
+    this->fe.xine_osd_command = hud_osd_command;
+#endif
   }
   return 1;
 }
@@ -779,18 +789,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   XSizeHints hint;
   double     res_h, res_v, aspect_diff;
 
-  if(hud) {
-    LOGDBG("Enabling HUD\n");
-    this->hud = hud;
-    this->osd_width  = OSD_DEF_WIDTH;
-    this->osd_height = OSD_DEF_HEIGHT;
-    this->osd_pad_x  = 0;
-    this->osd_pad_y  = 0;
-#ifndef FE_STANDALONE
-    this->fe.xine_osd_command = hud_osd_command;
-#endif
-  }
-
   if(this->display)
     this->fe.fe_display_close(this_gen);
 
@@ -801,6 +799,15 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   LOGDBG("sxfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
 	 width, height, fullscreen, video_port);
+
+  if(hud) {
+    LOGDBG("sxfe_display_open: Enabling HUD OSD");
+    this->hud = hud;
+    this->osd_width  = OSD_DEF_WIDTH;
+    this->osd_height = OSD_DEF_HEIGHT;
+    this->osd_pad_x  = 0;
+    this->osd_pad_y  = 0;
+  }
 
   this->xpos            = 0;
   this->ypos            = 0;
