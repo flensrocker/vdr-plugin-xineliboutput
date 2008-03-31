@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.35 2008-03-31 22:24:47 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.36 2008-03-31 22:28:45 phintuka Exp $
  *
  */
 
@@ -519,13 +519,13 @@ static Visual *find_argb_visual(Display *dpy, int scr)
                        VisualClassMask, &template, &nvi);
 
   if(!xvi) {
-    LOGERR("No xvi\n");
+    LOGERR("find_argb_visual: XGetVisualInfo failed (no xvi)");
     return 0;
   }
 
   visual = 0;
   for(i = 0; i < nvi; i++) {
-     LOGDBG("iteration %d of %d\n", i, nvi);
+     LOGDBG("find_argb_visual: iteration %d of %d", i, nvi);
      format = XRenderFindVisualFormat(dpy, xvi[i].visual);
      if((format->type == PictTypeDirect) && format->direct.alphaMask) {
        visual = xvi[i].visual;
@@ -536,7 +536,7 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   XFree(xvi);
 
   if(!visual)
-    LOGERR("No visual found\n");
+    LOGERR("find_argb_visual: No visual found");
 
   return visual;
 }
@@ -575,11 +575,11 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
     XLockDisplay(this->display);
     switch(cmd->cmd) {
     case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
-      LOGDBG("HUD osd NOP\n");
+      LOGDBG("HUD osd NOP");
       break;
 
     case OSD_Size: /* Set size of VDR OSD area */
-      LOGDBG("HUD Set Size\n");
+      LOGDBG("HUD Set Size");
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
       this->osd_pad_x = (this->osd_width != OSD_DEF_WIDTH) ? 96 : 0;
@@ -587,7 +587,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
-      LOGDBG("HUD Set RLE\n");
+      LOGDBG("HUD Set RLE");
       if(this->completion_event != -1) {
         hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
         if(!cmd->scaling) {
@@ -642,19 +642,19 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_SetPalette: /* Modify palette of already created OSD window */
-      LOGDBG("HUD osd SetPalette\n");
+      LOGDBG("HUD osd SetPalette");
       break;
 
     case OSD_Move:       /* Change x/y position of already created OSD window */
-      LOGDBG("HUD osd Move\n");
+      LOGDBG("HUD osd Move");
       break;
 
     case OSD_Set_YUV:    /* Create/update OSD window. Data is in YUV420 format. */
-      LOGDBG("HUD osd set YUV\n");
+      LOGDBG("HUD osd set YUV");
       break;
 
     case OSD_Close: /* Close OSD window */
-      LOGDBG("HUD osd Close\n");
+      LOGDBG("HUD osd Close");
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
 		     0, 0, this->width, this->height);
@@ -662,7 +662,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     default:
-      LOGDBG("unknown osd command\n");
+      LOGDBG("hud_osd_command: unknown osd command");
       break;
     }
     XUnlockDisplay(this->display);
@@ -676,7 +676,7 @@ static int hud_osd_open(frontend_t *this_gen)
   if(this && this->hud) {
     XLockDisplay(this->display);
 
-    LOGDBG("opening HUD window...\n");
+    LOGDBG("opening HUD OSD window...");
 
     this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
 
@@ -722,7 +722,7 @@ static int hud_osd_open(frontend_t *this_gen)
       XShmAttach(this->display, &(this->hud_shminfo));
     } else {
       /* Fall-back to traditional memory */
-      LOGMSG("HUD falling back to normal (slow) memory\n");
+      LOGMSG("hud_osd_open: XShm not available, falling back to normal (slow) memory");
       this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
       this->hud_img = XCreateImage(this->display, this->hud_vis, 32, ZPixmap, 0, (char*)this->hud_img_mem,
                                    HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 32, 0);
@@ -741,7 +741,7 @@ static void hud_osd_close(frontend_t *this_gen)
   sxfe_t *this = (sxfe_t*)this_gen;
   if(this && this->hud) {
     XLockDisplay(this->display);
-    LOGDBG("closing hud window...\n");
+    LOGDBG("closing hud window...");
 
     if(this->completion_event != -1) {
       XShmDetach(this->display, &(this->hud_shminfo));
@@ -1388,7 +1388,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
 
   if(r && this->input && this->hud) {
     vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
-    LOGDBG("Enabling HUD");
+    LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     input_vdr->f.fe_handle  = this_gen;
     input_vdr->f.intercept_osd = hud_osd_command;
   }
