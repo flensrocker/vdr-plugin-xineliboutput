@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.37 2008-03-31 22:32:43 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.38 2008-03-31 23:08:26 phintuka Exp $
  *
  */
 
@@ -674,9 +674,19 @@ static int hud_osd_open(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
   if(this && this->hud) {
+    int dummy;
+
     XLockDisplay(this->display);
 
     LOGDBG("opening HUD OSD window...");
+
+    if(!XRenderQueryExtension(this->display, &dummy, &dummy)) {
+      LOGMSG("hud_osd_open: ERROR: XRender extension not available.");
+      LOGMSG("XRender extension must be enabled in X configuration (xorg.conf etc.)");
+      this->hud = 0;
+      XUnlockDisplay(this->display);
+      return 1;
+    }
 
     this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
     if(!this->hud_vis) {
