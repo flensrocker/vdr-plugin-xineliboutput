@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.32 2008-03-28 22:17:17 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.33 2008-03-31 21:36:37 phintuka Exp $
  *
  */
 
@@ -370,6 +370,25 @@ static void set_above(sxfe_t *this, int stay_above)
 #endif
 }
 
+static void set_cursor(Display *dpy, Window win, const int enable)
+{
+  if(enable)
+    XDefineCursor(dpy, win, None);
+  else {
+    /* no cursor */
+    static char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
+    Pixmap bm_no;
+    Cursor no_ptr;
+    XColor black, dummy;
+    bm_no = XCreateBitmapFromData(dpy, win, bm_no_data, 8, 8);
+    XAllocNamedColor(dpy, DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)), 
+		     "black", &black, &dummy);
+    no_ptr = XCreatePixmapCursor(dpy, bm_no, bm_no, &black, &black, 0, 0);
+    XDefineCursor(dpy, win, None);
+    XDefineCursor(dpy, win, no_ptr);
+  }
+}
+
 /*
  * sxfe_display_open
  *
@@ -567,19 +586,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->atom_wm_delete_window = XInternAtom(this->display, "WM_DELETE_WINDOW", False);
   XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->atom_wm_delete_window), 1);
 
-  if(this->window_id <= 0) {
-    /* no cursor */
-    static char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
-    Pixmap bm_no;
-    Cursor no_ptr;
-    XColor black, dummy;
-    bm_no = XCreateBitmapFromData(this->display, this->window[this->fullscreen ? 1 : 0], bm_no_data, 8, 8);
-    XAllocNamedColor(this->display, DefaultColormapOfScreen(DefaultScreenOfDisplay(this->display)), 
-		     "black", &black, &dummy);
-    no_ptr = XCreatePixmapCursor(this->display, bm_no, bm_no, &black, &black, 0, 0);
-    XDefineCursor(this->display, this->window[1], None);
-    XDefineCursor(this->display, this->window[1], no_ptr);
-  }
+  if(this->window_id <= 0)
+    set_cursor(this->display, this->window[1], 0);
 
   XUnlockDisplay (this->display);
 
