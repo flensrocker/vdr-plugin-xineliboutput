@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.51 2008-03-13 23:32:16 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.52 2008-03-31 20:36:03 phintuka Exp $
  *
  */
 
@@ -100,7 +100,7 @@ static int find_input(fe_t *this)
   return 1;
 }
 
-static void *fe_control(void *fe_handle, const char *cmd);
+static void *fe_control(frontend_t *fe_handle, const char *cmd);
 
 /*
  * xine callbacks
@@ -1068,7 +1068,7 @@ static int fe_xine_play(frontend_t *this_gen)
   input_vdr = (vdr_input_plugin_t *)this->input;
   input_vdr->f.xine_input_event = this->keypress;
   input_vdr->f.fe_control = fe_control;
-  input_vdr->f.fe_handle  = (void*)this;
+  input_vdr->f.fe_handle  = this_gen;
 
   if(this->playback_finished)
     LOGMSG("Error playing xvdr:// !");
@@ -1272,7 +1272,7 @@ static void process_xine_keypress(input_plugin_t *input,
 /*
  *  Control messages from input plugin
  */
-static void *fe_control(void *fe_handle, const char *cmd)
+static void *fe_control(frontend_t *fe_handle, const char *cmd)
 {
   fe_t *this = (fe_t*)fe_handle;
   post_plugins_t *posts;
