@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.33 2008-03-31 21:36:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.34 2008-03-31 22:20:30 phintuka Exp $
  *
  */
 
@@ -25,11 +25,14 @@
 #include <pthread.h>
 #include <sched.h>
 #include <poll.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/keysym.h>
 #include <X11/extensions/XShm.h>
+#include <X11/extensions/Xrender.h>
 #include <X11/Xutil.h>
 #ifdef HAVE_XF86VIDMODE
 #  include <X11/extensions/xf86vmode.h>
@@ -63,6 +66,7 @@
 #include <xine/plugin_catalog.h>
 
 #include "xine_input_vdr.h"
+#include "xine_osd_command.h"
 
 #include "xine_frontend.h"
 #include "xine/post.h"
@@ -84,6 +88,16 @@ typedef struct _mwmhints {
   uint32_t                          status;
 } MWMHints;
 
+/* HUD Scaling */
+typedef struct _xrender_surf
+{
+  int w, h;
+  int depth;
+  Visual *vis;
+  Drawable draw;
+  Picture pic;
+  int allocated : 1;
+} Xrender_Surf;
 
 /*
  * data
@@ -161,6 +175,21 @@ typedef struct sxfe_s {
   char    configfile[256];
   char    modeline[256];
 
+  /* HUD stuff */
+  uint8_t  hud;
+  GC       gc;
+  Window   hud_window;
+  XImage  *hud_img;
+  Visual  *hud_vis;
+  XShmSegmentInfo hud_shminfo;
+  Xrender_Surf *surf_win;
+  Xrender_Surf *surf_img;
+  int osd_width;
+  int osd_height;
+  int osd_pad_x;
+  int osd_pad_y;
+  uint32_t* hud_img_mem;
+
 } fe_t, sxfe_t;
 
 
@@ -171,6 +200,10 @@ typedef struct sxfe_s {
 
 #define DOUBLECLICK_TIME   500  // ms
 
+#define OSD_DEF_WIDTH      720
+#define OSD_DEF_HEIGHT     576
+#define HUD_MAX_WIDTH      1920
+#define HUD_MAX_HEIGHT     1080
 
 static void fe_dest_size_cb (void *data,
 			     int video_width, int video_height, double video_pixel_aspect,
@@ -389,6 +422,346 @@ static void set_cursor(Display *dpy, Window win, const int enable)
   }
 }
 
+Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w, int h, int alpha)
+{
+  Xrender_Surf *rs;
+  XRenderPictFormat *fmt;
+  XRenderPictureAttributes att;
+	
+  rs = calloc(1, sizeof (Xrender_Surf));
+	
+  if(alpha)
+    fmt = XRenderFindStandardFormat (dpy, PictStandardARGB32);
+  else
+    fmt = XRenderFindStandardFormat (dpy, PictStandardRGB24);
+  rs->w = w;
+  rs->h = h;
+  rs->depth = fmt->depth;
+  rs->vis = vis;
+  rs->draw = XCreatePixmap(dpy, draw, w, h, fmt->depth);
+  att.dither = 1;
+  att.component_alpha = 1;
+  att.repeat = 0;
+  rs->pic = XRenderCreatePicture(dpy, rs->draw, fmt, CPRepeat | CPDither | CPComponentAlpha, &att);
+  rs->allocated = 1;
+  return rs;
+}
+
+void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
+                        int x, int y, int w, int h, XDouble scale_x, XDouble scale_y, int smooth)
+{
+  XTransform xf;
+
+  if(!scale_x)
+    scale_x = 1;
+  if(!scale_y)
+    scale_y = 1;
+
+  xf.matrix[0][0] = XDoubleToFixed(1 / scale_x); xf.matrix[0][1] = 0; xf.matrix[0][2] = 0;
+  xf.matrix[1][0] = 0; xf.matrix[1][1] = XDoubleToFixed(1 / scale_y); xf.matrix[1][2] = 0;
+  xf.matrix[2][0] = 0; xf.matrix[2][1] = 0; xf.matrix[2][2] = 65536;
+  if(smooth)
+    XRenderSetPictureFilter(dpy, src->pic, "bilinear", NULL, 0);
+  else
+    XRenderSetPictureFilter(dpy, src->pic, "nearest", NULL, 0);
+  XRenderSetPictureTransform(dpy, src->pic, &xf);
+  XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic,
+                   x * scale_x + 1,
+                   y * scale_y + 1,
+                   0, 0,
+                   x * scale_x,
+                   y * scale_y,
+                   w * scale_x + 1,
+                   h * scale_y + 1);
+}
+
+Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
+{
+  Xrender_Surf *rs;
+  XRenderPictFormat *fmt;
+  XRenderPictureAttributes att;
+  
+  rs = calloc(1, sizeof(Xrender_Surf));
+  
+  fmt = XRenderFindVisualFormat(dpy, vis);
+  rs->w = w;
+  rs->h = h;
+  rs->depth = fmt->depth;
+  rs->vis = vis;
+  rs->draw = draw;
+  att.dither = 1;
+  att.component_alpha = 1;
+  att.repeat = 0;
+  rs->pic = XRenderCreatePicture(dpy, rs->draw, fmt, CPRepeat | CPDither | CPComponentAlpha, &att);
+  rs->allocated = 0;
+  return rs;
+}
+
+void xrender_surf_free(Display *dpy, Xrender_Surf *rs)
+{
+  if(rs->allocated)
+    XFreePixmap(dpy, rs->draw);
+  XRenderFreePicture(dpy, rs->pic);
+  free(rs);
+}
+
+static Visual *find_argb_visual(Display *dpy, int scr)
+{
+  XVisualInfo *xvi, template;
+  int nvi, i;
+  XRenderPictFormat *format;
+  Visual *visual;
+  
+  template.screen = scr;
+  template.depth = 32;
+  template.class = TrueColor;
+  xvi = XGetVisualInfo(dpy, VisualScreenMask | VisualDepthMask |
+                       VisualClassMask, &template, &nvi);
+
+  if(!xvi) {
+    LOGERR("No xvi\n");
+    return 0;
+  }
+
+  visual = 0;
+  for(i = 0; i < nvi; i++) {
+     LOGDBG("iteration %d of %d\n", i, nvi);
+     format = XRenderFindVisualFormat(dpy, xvi[i].visual);
+     if((format->type == PictTypeDirect) && format->direct.alphaMask) {
+       visual = xvi[i].visual;
+       break;
+     }
+  }  
+
+  XFree(xvi);
+
+  if(!visual)
+    LOGERR("No visual found\n");
+
+  return visual;
+}
+
+static int hud_osd_open(frontend_t *this_gen)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+  if(this && this->hud) {
+    XLockDisplay(this->display);
+
+    LOGDBG("opening HUD window...\n");
+
+    this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
+
+    Colormap hud_colormap = XCreateColormap(this->display,
+                                            RootWindow(this->display, DefaultScreen(this->display)),
+                                            this->hud_vis, AllocNone);
+
+    XSetWindowAttributes attributes;
+    attributes.override_redirect = True;
+    attributes.background_pixel = 0x00000000;
+    attributes.border_pixel = 0;
+    attributes.colormap = hud_colormap;
+    attributes.backing_store = Always;
+    
+    this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
+                                     this->xpos, this->ypos,
+                                     this->width, this->height,
+                                     0, 32, InputOutput, this->hud_vis,
+                                     CWBackPixel | CWBorderPixel |
+                                     CWOverrideRedirect | CWColormap,
+                                     &attributes);
+
+    XSelectInput(this->display, this->hud_window,
+                 StructureNotifyMask |
+                 ExposureMask |
+                 KeyPressMask |
+                 ButtonPressMask |
+                 FocusChangeMask);
+
+    XStoreName(this->display, this->hud_window, "HUD");
+    this->gc = XCreateGC(this->display, this->hud_window, 0, NULL);
+
+    if(this->completion_event != -1) {
+      this->hud_img = XShmCreateImage(this->display, this->hud_vis, 32, ZPixmap, NULL, &(this->hud_shminfo),
+                                      HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
+
+      this->hud_shminfo.shmid = shmget(IPC_PRIVATE, this->hud_img->bytes_per_line * this->hud_img->height,
+                                       IPC_CREAT | 0777);
+
+      this->hud_shminfo.shmaddr = this->hud_img->data = shmat(this->hud_shminfo.shmid, 0, 0);
+      this->hud_shminfo.readOnly = True;
+
+      XShmAttach(this->display, &(this->hud_shminfo));
+    } else {
+      /* Fall-back to traditional memory */
+      LOGMSG("HUD falling back to normal (slow) memory\n");
+      this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+      this->hud_img = XCreateImage(this->display, this->hud_vis, 32, ZPixmap, 0, (char*)this->hud_img_mem,
+                                   HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 32, 0);
+    }
+
+    this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
+    this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
+
+    XUnlockDisplay(this->display);
+  }
+  return 1;
+}
+
+static void hud_osd_close(frontend_t *this_gen)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+  if(this && this->hud) {
+    XLockDisplay(this->display);
+    LOGDBG("closing hud window...\n");
+
+    if(this->completion_event != -1) {
+      XShmDetach(this->display, &(this->hud_shminfo));
+      XDestroyImage(this->hud_img);
+      shmdt(this->hud_shminfo.shmaddr);
+      shmctl(this->hud_shminfo.shmid, IPC_RMID, 0);
+    } else
+      XDestroyImage(this->hud_img);
+
+    if(this->surf_img)
+      xrender_surf_free(this->display, this->surf_img);
+    if(this->surf_win)
+      xrender_surf_free(this->display, this->surf_win);
+
+    XDestroyWindow(this->display, this->hud_window);
+    XUnlockDisplay(this->display);
+  }
+}
+
+static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
+{
+  int i, pixelcounter = 0;
+  int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
+
+  for(i = 0; i < cmd->num_rle; ++i) {
+    const uint8_t alpha = (cmd->palette + (cmd->data + i)->color)->alpha;
+    const uint8_t r = (cmd->palette + (cmd->data + i)->color)->r;
+    const uint8_t g = (cmd->palette + (cmd->data + i)->color)->g;
+    const uint8_t b = (cmd->palette + (cmd->data + i)->color)->b;
+    int j, finalcolor = 0;
+    finalcolor |= ((alpha << 24) & 0xFF000000);
+    finalcolor |= ((r << 16) & 0x00FF0000);
+    finalcolor |= ((g << 8) & 0x0000FF00);
+    finalcolor |= (b & 0x000000FF);
+    
+    for(j = 0; j < (cmd->data + i)->len; ++j) {
+      if(pixelcounter >= cmd->w) {
+        idx += HUD_MAX_WIDTH - pixelcounter;
+        pixelcounter = 0;
+      }
+      dst[idx++] = finalcolor;
+      ++pixelcounter;
+    }
+  }
+}
+
+static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+  if(this && this->hud && cmd) {
+    XLockDisplay(this->display);
+    switch(cmd->cmd) {
+    case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
+      LOGDBG("HUD osd NOP\n");
+      break;
+
+    case OSD_Size: /* Set size of VDR OSD area */
+      LOGDBG("HUD Set Size\n");
+      this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
+      this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
+      this->osd_pad_x = (this->osd_width != OSD_DEF_WIDTH) ? 96 : 0;
+      this->osd_pad_y = (this->osd_height != OSD_DEF_HEIGHT) ? 90 : 0;
+      break;
+
+    case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
+      LOGDBG("HUD Set RLE\n");
+      if(this->completion_event != -1) {
+        hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
+        if(!cmd->scaling) {
+          /* Place image directly onto hud window */
+          XShmPutImage(this->display, this->hud_window, this->gc, this->hud_img,
+                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1,
+                       False);
+        } else {
+          /* Place image onto Xrender surface which will be blended onto hud window */
+          XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
+                       cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
+                       cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+                       False);
+          xrender_surf_blend(this->display, this->surf_img, this->surf_win,
+                             cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
+			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
+			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
+        }
+      } else {
+        hud_fill_img_memory(this->hud_img_mem, cmd);
+        if(!cmd->scaling) {
+          /* Place image directly onto hud window (always unscaled) */
+          XPutImage(this->display, this->hud_window, this->gc, this->hud_img,
+                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1);
+        } else {
+          /* Place image onto Xrender surface which will be blended onto hud window */
+          XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
+                    cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
+                    cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2);
+          xrender_surf_blend(this->display, this->surf_img, this->surf_win,
+                             cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
+			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
+			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
+        }
+      }
+      break;
+
+    case OSD_SetPalette: /* Modify palette of already created OSD window */
+      LOGDBG("HUD osd SetPalette\n");
+      break;
+
+    case OSD_Move:       /* Change x/y position of already created OSD window */
+      LOGDBG("HUD osd Move\n");
+      break;
+
+    case OSD_Set_YUV:    /* Create/update OSD window. Data is in YUV420 format. */
+      LOGDBG("HUD osd set YUV\n");
+      break;
+
+    case OSD_Close: /* Close OSD window */
+      LOGDBG("HUD osd Close\n");
+      XSetForeground(this->display, this->gc, 0x00000000);
+      XFillRectangle(this->display, this->hud_window, this->gc,
+		     0, 0, this->width, this->height);
+      XFlush(this->display);
+      break;
+
+    default:
+      LOGDBG("unknown osd command\n");
+      break;
+    }
+    XUnlockDisplay(this->display);
+  }
+  return 1;
+}
+
+
 /*
  * sxfe_display_open
  *
@@ -405,6 +778,18 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   MWMHints   mwmhints;
   XSizeHints hint;
   double     res_h, res_v, aspect_diff;
+
+  if(hud) {
+    LOGDBG("Enabling HUD\n");
+    this->hud = hud;
+    this->osd_width  = OSD_DEF_WIDTH;
+    this->osd_height = OSD_DEF_HEIGHT;
+    this->osd_pad_x  = 0;
+    this->osd_pad_y  = 0;
+#ifndef FE_STANDALONE
+    this->fe.xine_osd_command = hud_osd_command;
+#endif
+  }
 
   if(this->display)
     this->fe.fe_display_close(this_gen);
@@ -423,8 +808,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->origypos        = 0;
   this->width           = width;
   this->height          = height;
-  this->origwidth       = width>0 ? width : 720;
-  this->origheight      = height>0 ? height : 576;
+  this->origwidth       = width>0 ? width : OSD_DEF_WIDTH;
+  this->origheight      = height>0 ? height : OSD_DEF_HEIGHT;
   this->check_move      = 0;
 
   this->fullscreen      = fullscreen;
@@ -533,12 +918,14 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 		StructureNotifyMask |
 		ExposureMask |
 		KeyPressMask | 
-		ButtonPressMask | ButtonReleaseMask | ButtonMotionMask);
+		ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | 
+		FocusChangeMask);
   XSelectInput (this->display, this->window[1],
 		StructureNotifyMask |
 		ExposureMask |
 		KeyPressMask | 
-		ButtonPressMask);
+		ButtonPressMask | 
+		FocusChangeMask);
 
 
   if(this->window_id <= 0) {
@@ -616,7 +1003,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   set_fullscreen_props(this);
 
-  return 1;
+  return hud_osd_open(this_gen);
 }
 
 /*
@@ -782,6 +1169,23 @@ static int sxfe_run(frontend_t *this_gen)
 	XConfigureEvent *cev = (XConfigureEvent *) &event;
 	Window tmp_win;
 	
+	/* Move and resize HUD along with main or fullscreen window */
+	if(this->hud) {
+	  if(cev->window == this->window[0]) {
+	    int hud_x, hud_y;
+	    XTranslateCoordinates(this->display, this->window[0],
+				  DefaultRootWindow(this->display),
+				  0, 0, &hud_x, &hud_y, &tmp_win);
+	    XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
+	    XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
+	    set_cursor(this->display, this->hud_window, 1);
+	  } else if(cev->window == this->window[1]) {
+	    XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
+	    XMoveWindow(this->display, this->hud_window, 0, 0);
+	    set_cursor(this->display, this->hud_window, 0);
+	  }
+	}
+
 	this->width  = cev->width;
 	this->height = cev->height;
 
@@ -809,6 +1213,28 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
       }
 
+      case FocusIn:
+      {
+         if(this->hud) {
+           XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
+           /* Show HUD again if sxfe window receives focus */
+           if(fev->window == this->window[0] || fev->window == this->window[1]) {
+             XMapWindow(this->display, this->hud_window);
+           }
+        }
+        break;
+      }
+      case FocusOut:
+      {
+	if(this->hud) {
+	  XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
+	  /* Dismiss HUD window if focusing away from frontend window */
+	  if(fev->window == this->window[0] || fev->window == this->window[1]) {
+            XUnmapWindow(this->display, this->hud_window);
+          }
+        }
+        break;
+      }
       case ButtonRelease:
       {
 	dragging = 0;
@@ -934,6 +1360,8 @@ static void sxfe_display_close(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
+  hud_osd_close(this_gen);
+
   if(this && this->display) {
     
     if(this->xine)
@@ -951,6 +1379,24 @@ static void sxfe_display_close(frontend_t *this_gen)
   }
 }
 
+static int sxfe_xine_play(frontend_t *this_gen)
+{
+  int r = fe_xine_play(this_gen);
+
+#ifdef FE_STANDALONE
+  sxfe_t *this = (sxfe_t*)this_gen;
+
+  if(r && this->input && this->hud) {
+    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
+    LOGDBG("Enabling HUD");
+    input_vdr->f.fe_handle  = this_gen;
+    input_vdr->f.intercept_osd = hud_osd_command;
+  }
+#endif
+
+  return r;
+}
+
 static frontend_t *sxfe_get_frontend(void)
 {
   sxfe_t *this = malloc(sizeof(sxfe_t));
@@ -964,7 +1410,7 @@ static frontend_t *sxfe_get_frontend(void)
   
   this->fe.xine_init  = fe_xine_init;
   this->fe.xine_open  = fe_xine_open;
-  this->fe.xine_play  = fe_xine_play;
+  this->fe.xine_play  = sxfe_xine_play;
   this->fe.xine_stop  = fe_xine_stop;
   this->fe.xine_close = fe_xine_close;
   this->fe.xine_exit  = fe_xine_exit;
