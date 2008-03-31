@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.34 2008-03-31 22:20:30 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.35 2008-03-31 22:24:47 phintuka Exp $
  *
  */
 
@@ -541,97 +541,6 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   return visual;
 }
 
-static int hud_osd_open(frontend_t *this_gen)
-{
-  sxfe_t *this = (sxfe_t*)this_gen;
-  if(this && this->hud) {
-    XLockDisplay(this->display);
-
-    LOGDBG("opening HUD window...\n");
-
-    this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
-
-    Colormap hud_colormap = XCreateColormap(this->display,
-                                            RootWindow(this->display, DefaultScreen(this->display)),
-                                            this->hud_vis, AllocNone);
-
-    XSetWindowAttributes attributes;
-    attributes.override_redirect = True;
-    attributes.background_pixel = 0x00000000;
-    attributes.border_pixel = 0;
-    attributes.colormap = hud_colormap;
-    attributes.backing_store = Always;
-    
-    this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
-                                     this->xpos, this->ypos,
-                                     this->width, this->height,
-                                     0, 32, InputOutput, this->hud_vis,
-                                     CWBackPixel | CWBorderPixel |
-                                     CWOverrideRedirect | CWColormap,
-                                     &attributes);
-
-    XSelectInput(this->display, this->hud_window,
-                 StructureNotifyMask |
-                 ExposureMask |
-                 KeyPressMask |
-                 ButtonPressMask |
-                 FocusChangeMask);
-
-    XStoreName(this->display, this->hud_window, "HUD");
-    this->gc = XCreateGC(this->display, this->hud_window, 0, NULL);
-
-    if(this->completion_event != -1) {
-      this->hud_img = XShmCreateImage(this->display, this->hud_vis, 32, ZPixmap, NULL, &(this->hud_shminfo),
-                                      HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
-
-      this->hud_shminfo.shmid = shmget(IPC_PRIVATE, this->hud_img->bytes_per_line * this->hud_img->height,
-                                       IPC_CREAT | 0777);
-
-      this->hud_shminfo.shmaddr = this->hud_img->data = shmat(this->hud_shminfo.shmid, 0, 0);
-      this->hud_shminfo.readOnly = True;
-
-      XShmAttach(this->display, &(this->hud_shminfo));
-    } else {
-      /* Fall-back to traditional memory */
-      LOGMSG("HUD falling back to normal (slow) memory\n");
-      this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
-      this->hud_img = XCreateImage(this->display, this->hud_vis, 32, ZPixmap, 0, (char*)this->hud_img_mem,
-                                   HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 32, 0);
-    }
-
-    this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
-    this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
-
-    XUnlockDisplay(this->display);
-  }
-  return 1;
-}
-
-static void hud_osd_close(frontend_t *this_gen)
-{
-  sxfe_t *this = (sxfe_t*)this_gen;
-  if(this && this->hud) {
-    XLockDisplay(this->display);
-    LOGDBG("closing hud window...\n");
-
-    if(this->completion_event != -1) {
-      XShmDetach(this->display, &(this->hud_shminfo));
-      XDestroyImage(this->hud_img);
-      shmdt(this->hud_shminfo.shmaddr);
-      shmctl(this->hud_shminfo.shmid, IPC_RMID, 0);
-    } else
-      XDestroyImage(this->hud_img);
-
-    if(this->surf_img)
-      xrender_surf_free(this->display, this->surf_img);
-    if(this->surf_win)
-      xrender_surf_free(this->display, this->surf_win);
-
-    XDestroyWindow(this->display, this->hud_window);
-    XUnlockDisplay(this->display);
-  }
-}
-
 static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
 {
   int i, pixelcounter = 0;
@@ -759,6 +668,97 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
     XUnlockDisplay(this->display);
   }
   return 1;
+}
+
+static int hud_osd_open(frontend_t *this_gen)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+  if(this && this->hud) {
+    XLockDisplay(this->display);
+
+    LOGDBG("opening HUD window...\n");
+
+    this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
+
+    Colormap hud_colormap = XCreateColormap(this->display,
+                                            RootWindow(this->display, DefaultScreen(this->display)),
+                                            this->hud_vis, AllocNone);
+
+    XSetWindowAttributes attributes;
+    attributes.override_redirect = True;
+    attributes.background_pixel = 0x00000000;
+    attributes.border_pixel = 0;
+    attributes.colormap = hud_colormap;
+    attributes.backing_store = Always;
+    
+    this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
+                                     this->xpos, this->ypos,
+                                     this->width, this->height,
+                                     0, 32, InputOutput, this->hud_vis,
+                                     CWBackPixel | CWBorderPixel |
+                                     CWOverrideRedirect | CWColormap,
+                                     &attributes);
+
+    XSelectInput(this->display, this->hud_window,
+                 StructureNotifyMask |
+                 ExposureMask |
+                 KeyPressMask |
+                 ButtonPressMask |
+                 FocusChangeMask);
+
+    XStoreName(this->display, this->hud_window, "HUD");
+    this->gc = XCreateGC(this->display, this->hud_window, 0, NULL);
+
+    if(this->completion_event != -1) {
+      this->hud_img = XShmCreateImage(this->display, this->hud_vis, 32, ZPixmap, NULL, &(this->hud_shminfo),
+                                      HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
+
+      this->hud_shminfo.shmid = shmget(IPC_PRIVATE, this->hud_img->bytes_per_line * this->hud_img->height,
+                                       IPC_CREAT | 0777);
+
+      this->hud_shminfo.shmaddr = this->hud_img->data = shmat(this->hud_shminfo.shmid, 0, 0);
+      this->hud_shminfo.readOnly = True;
+
+      XShmAttach(this->display, &(this->hud_shminfo));
+    } else {
+      /* Fall-back to traditional memory */
+      LOGMSG("HUD falling back to normal (slow) memory\n");
+      this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+      this->hud_img = XCreateImage(this->display, this->hud_vis, 32, ZPixmap, 0, (char*)this->hud_img_mem,
+                                   HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 32, 0);
+    }
+
+    this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
+    this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
+
+    XUnlockDisplay(this->display);
+  }
+  return 1;
+}
+
+static void hud_osd_close(frontend_t *this_gen)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+  if(this && this->hud) {
+    XLockDisplay(this->display);
+    LOGDBG("closing hud window...\n");
+
+    if(this->completion_event != -1) {
+      XShmDetach(this->display, &(this->hud_shminfo));
+      XDestroyImage(this->hud_img);
+      shmdt(this->hud_shminfo.shmaddr);
+      shmctl(this->hud_shminfo.shmid, IPC_RMID, 0);
+    } else
+      XDestroyImage(this->hud_img);
+
+    if(this->surf_img)
+      xrender_surf_free(this->display, this->surf_img);
+    if(this->surf_win)
+      xrender_surf_free(this->display, this->surf_win);
+
+    XDestroyWindow(this->display, this->hud_window);
+    XUnlockDisplay(this->display);
+  }
 }
 
 
