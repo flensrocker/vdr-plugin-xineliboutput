@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.31 2008-03-28 21:13:36 phintuka Exp $
+# $Id: Makefile,v 1.32 2008-04-01 14:18:13 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -22,6 +22,7 @@ _default: all
 XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
 HAVE_XRENDER      = 0
+HAVE_EXTRACTOR_H  = 0
 XINELIBOUTPUT_XINEPLUGIN = $(shell (pkg-config libxine && echo 1 || echo 0))
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 0)
     XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0")
@@ -58,6 +59,7 @@ APPLE_DARWIN = $(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || 
 USE_ICONV = 1
 #XINELIBOUTPUT_X11        = 1
 #HAVE_XRENDER             = 1
+#HAVE_EXTRACTOR_H         = 1
 #XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
 #XINELIBOUTPUT_VDRPLUGIN  = 1
@@ -93,7 +95,7 @@ else
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
     LDFLAGS_SO ?= -shared -fvisibility=hidden 
 endif
-
+LIBS_VDR ?= 
 
 ###
 ### The directory environment:
@@ -140,6 +142,11 @@ else
         APIVERSION = $(VDRVERSION)
     endif
     XINELIBOUTPUT_VDRPLUGIN = 1
+    ifeq ($(shell pkg-config libextractor && echo "1"), 1)
+        HAVE_EXTRACTOR_H = 1
+    else
+        $(warning libextractor not found.)
+    endif
 endif
 
 
@@ -231,6 +238,12 @@ DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
 ifeq ($(HAVE_XRENDER), 1)
     DEFINES += -DHAVE_XRENDER=1
+endif
+ifeq ($(HAVE_EXTRACTOR_H), 1)
+    DEFINES  += -DHAVE_EXTRACTOR_H=1
+    INCLUDES += $(shell pkg-config libextractor --cflags-only-I)
+    LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
+    LIBS_VDR += $(shell pkg-config libextractor --libs-only-l)
 endif
 
 # check for yaegp patch
@@ -427,7 +440,7 @@ frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
 
 ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
 $(VDRPLUGIN_SO): $(OBJS) $(OBJS_MPG)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
 	@-rm -rf $(LIBDIR)/$@.$(APIVERSION)
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 endif
