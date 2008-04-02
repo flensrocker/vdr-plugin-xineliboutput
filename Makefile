@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.32 2008-04-01 14:18:13 phintuka Exp $
+# $Id: Makefile,v 1.33 2008-04-02 20:17:24 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -23,18 +23,22 @@ XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
 HAVE_XRENDER      = 0
 HAVE_EXTRACTOR_H  = 0
-XINELIBOUTPUT_XINEPLUGIN = $(shell (pkg-config libxine && echo 1 || echo 0))
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 0)
-    XINELIBOUTPUT_XINEPLUGIN = $(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0")
+APPLE_DARWIN      = 0
+XINELIBOUTPUT_XINEPLUGIN = 0
+ifeq ($(shell (pkg-config libxine && echo 1 || echo 0)), 1)
+    XINELIBOUTPUT_XINEPLUGIN = 1
+else
+    ifeq ($(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0"), 1)
+        XINELIBOUTPUT_XINEPLUGIN = 1
+    endif
 endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINELIBOUTPUT_FB  = $(XINELIBOUTPUT_XINEPLUGIN)
-    XINELIBOUTPUT_X11 = $(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null)
-
-    ifeq ($(XINELIBOUTPUT_X11), 1)
-        #$(warning Detected X11)
-        HAVE_XRENDER = $(shell (((echo "\#include <X11/extensions/Xrender.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null)
-        ifeq ($(HAVE_XRENDER), 0)
+    ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
+        XINELIBOUTPUT_X11 = 1
+        ifeq ($(shell (((echo "\#include <X11/extensions/Xrender.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
+            HAVE_XRENDER = 1
+        else
             $(warning ********************************************************)
             $(warning XRender extension not detected ! HUD OSD disabled.      )
             $(warning ********************************************************)
@@ -50,7 +54,9 @@ else
     $(warning ********************************************************)
 endif
 
-APPLE_DARWIN = $(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0")
+ifeq ($(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0"), 1)
+    APPLE_DARWIN = 1
+endif
 
 #
 # Override configuration here or in ../../../Make.config
