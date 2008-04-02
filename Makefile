@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.33 2008-04-02 20:17:24 phintuka Exp $
+# $Id: Makefile,v 1.34 2008-04-02 20:18:11 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -25,6 +25,8 @@ HAVE_XRENDER      = 0
 HAVE_EXTRACTOR_H  = 0
 APPLE_DARWIN      = 0
 XINELIBOUTPUT_XINEPLUGIN = 0
+
+# check for xine-lib
 ifeq ($(shell (pkg-config libxine && echo 1 || echo 0)), 1)
     XINELIBOUTPUT_XINEPLUGIN = 1
 else
@@ -32,6 +34,8 @@ else
         XINELIBOUTPUT_XINEPLUGIN = 1
     endif
 endif
+
+# check for X11 and Xrender extension
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
     XINELIBOUTPUT_FB  = $(XINELIBOUTPUT_XINEPLUGIN)
     ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
@@ -54,6 +58,7 @@ else
     $(warning ********************************************************)
 endif
 
+# check for Apple Darwin
 ifeq ($(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0"), 1)
     APPLE_DARWIN = 1
 endif
@@ -86,11 +91,8 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | cut -d'"' 
 ###
 
 CXX      ?= g++
+CC       ?= gcc 
 OPTFLAGS ?= 
-#CXXFLAGS ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g 
-
-CC     ?= gcc 
-#CFLAGS ?= -O3 -pipe -Wall -fPIC -g
 
 ifeq ($(APPLE_DARWIN), 1)
     CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
@@ -253,10 +255,10 @@ ifeq ($(HAVE_EXTRACTOR_H), 1)
 endif
 
 # check for yaegp patch
-YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
-ifeq ($(YAEPG), 1)
-  DEFINES += -DYAEGP_PATCH
-endif
+#YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
+#ifeq ($(YAEPG), 1)
+#  DEFINES += -DYAEGP_PATCH
+#endif
 #DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
@@ -488,37 +490,30 @@ install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
-#	@cp $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/
 	@$(INSTALL) $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-#	@cp $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/
 	@$(INSTALL) -D -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
-#	@cp $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/
 	@$(INSTALL) -D -m 0644 $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-#	@cp $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/
 	@$(INSTALL) -D -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
-#	@cp $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/
 	@$(INSTALL) -D -m 0644 $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 endif
 ifeq ($(XINELIBOUTPUT_FB), 1)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-fbfe
 	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-fbfe
-#	@cp vdr-fbfe $(DESTDIR)/$(BINDIR)/
 	@$(INSTALL) -D -m 0755 vdr-fbfe $(DESTDIR)/$(BINDIR)/vdr-fbfe
 endif
 ifeq ($(XINELIBOUTPUT_X11), 1)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-sxfe
 	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-sxfe
-#	@cp vdr-sxfe $(DESTDIR)/$(BINDIR)/
 	@$(INSTALL) -D -m 0755 vdr-sxfe $(DESTDIR)/$(BINDIR)/vdr-sxfe
 endif
 
