@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.52 2008-03-16 21:40:55 phintuka Exp $
+ * $Id: frontend.c,v 1.53 2008-04-03 08:08:27 phintuka Exp $
  *
  */
 
@@ -774,6 +774,30 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 //
 // Configuration
 //
+
+void cXinelibThread::Configure(void)
+{
+    ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
+    ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
+			    xc.audio_compression, xc.audio_equalizer,
+			    xc.audio_surround, xc.speaker_type);
+    ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast, xc.overscan, xc.vo_aspect_ratio);
+    ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
+    ConfigurePostprocessing("autocrop",  xc.autocrop  ? true : false, 
+			    xc.AutocropOptions());
+    ConfigurePostprocessing("swscale", xc.swscale ? true : false, 
+			    xc.SwScaleOptions());
+    ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
+			    xc.FfmpegPpOptions());
+    ConfigurePostprocessing("unsharp",xc.unsharp ? true : false, 
+                            xc.UnsharpOptions());
+    ConfigurePostprocessing("denoise3d",xc.denoise3d ? true : false, 
+                            xc.Denoise3dOptions());
+
+#ifdef ENABLE_TEST_POSTPLUGINS
+    ConfigurePostprocessing("headphone", xc.headphone ? true : false, NULL);
+#endif
+}
 
 int cXinelibThread::ConfigureOSD(bool prescale_osd, bool unscaled_osd) 
 {

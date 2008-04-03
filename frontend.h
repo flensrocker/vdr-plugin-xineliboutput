@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.19 2008-03-16 21:40:55 phintuka Exp $
+ * $Id: frontend.h,v 1.20 2008-04-03 08:08:27 phintuka Exp $
  *
  */
 
@@ -69,6 +69,8 @@ class cXinelibThread : public cThread, public cListObject
     int  Xine_Control(const char *cmd, int64_t p1);
     virtual int  Xine_Control(const char *cmd) = 0;
     virtual int  Xine_Control_Sync(const char *cmd) { return Xine_Control(cmd); }
+
+    void Configure(void);
 
   //
   // Data transfer

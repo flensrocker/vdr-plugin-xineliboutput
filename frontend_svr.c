@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.53 2008-03-16 23:47:25 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.54 2008-04-03 08:08:27 phintuka Exp $
  *
  */
 
@@ -1135,28 +1135,10 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 			 m_bNoVideo?1:0, m_bLiveMode?1:0); 
 
   SetVolume(m_Volume);
-  ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
-  ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
-			  xc.audio_compression, xc.audio_equalizer,
-                          xc.audio_surround, xc.speaker_type);
-  ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.contrast, xc.overscan, xc.vo_aspect_ratio);
-  ConfigurePostprocessing("upmix",     xc.audio_upmix ? true : false, NULL);
-  ConfigurePostprocessing("autocrop",  xc.autocrop    ? true : false, 
-			  xc.AutocropOptions());
-  ConfigurePostprocessing("swscale", xc.swscale ? true : false, 
-			  xc.SwScaleOptions());
-  ConfigurePostprocessing("pp", xc.ffmpeg_pp ? true : false, 
-			  xc.FfmpegPpOptions());
-  ConfigurePostprocessing("unsharp",xc.unsharp ? true : false,
-                            xc.UnsharpOptions());
-  ConfigurePostprocessing("denoise3d",xc.denoise3d ? true : false,
-                          xc.Denoise3dOptions());
+
+  Configure();
 
   fd_control[cli].write_cmd("CLEAR\r\n");
-
-#ifdef ENABLE_TEST_POSTPLUGINS
-  ConfigurePostprocessing("headphone", xc.headphone   ? true : false, NULL);
-#endif
 
   if(m_bPlayingFile && *m_FileName) {
     Unlock();
