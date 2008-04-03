@@ -4,11 +4,20 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.16 2008-02-19 04:51:18 phintuka Exp $
+ * $Id: playlist.c,v 1.17 2008-04-03 15:11:26 phelin Exp $
  *
  */
 
 #include <stdlib.h> 
+
+#ifdef HAVE_EXTRACTOR_H
+# include <extractor.h>
+  // libextractor 0.5.20 (2008-03-20) adds support for track numbers
+# if EXTRACTOR_VERSION < 0x00052000
+#  warning libextractor version too old (0.5.20 required for track numbers)
+#  undef HAVE_EXTRACTOR_H
+# endif
+#endif
 
 #include <vdr/config.h> 
 #include <vdr/tools.h> 
@@ -98,6 +107,7 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
 // cID3Scanner
 //
 
+#ifndef HAVE_EXTRACTOR_H
 static const char *shell_escape(char *buf, int buflen, const cString& src, char ch)
 {
   const char *pt = *src;
@@ -115,6 +125,7 @@ static const char *shell_escape(char *buf, int buflen, const cString& src, char 
   }
   return "";
 }
+#endif
 
 class cID3Scanner : public cThread 
 {
@@ -150,6 +161,28 @@ class cID3Scanner : public cThread
 
       if(xc.IsAudioFile(Item->Filename)) {
         LOGDBG("Scanning metainfo for file %s", *Item->Filename);
+#ifdef HAVE_EXTRACTOR_H
+        EXTRACTOR_ExtractorList * plugins;
+        EXTRACTOR_KeywordList   * md_list;
+        plugins = EXTRACTOR_loadDefaultLibraries();
+        md_list = EXTRACTOR_getKeywords(plugins, *Item->Filename);
+        const char *key;
+        while(md_list) {
+          if ((key=EXTRACTOR_getKeywordTypeAsString(md_list->keywordType))) {
+            if (!strcasecmp(key,"title"))
+             Item->Title =  strdup(md_list->keyword);
+            else if (!strcasecmp(key,"artist"))
+             Item->Artist =  strdup(md_list->keyword);
+            else if (!strcasecmp(key,"album"))
+             Item->Album =  strdup(md_list->keyword);
+            else if (!strcasecmp(key,"track number"))
+             Item->Tracknumber = cString::sprintf("%s%s", strlen(md_list->keyword) == 1 ? "0" : "", md_list->keyword);
+            md_list=md_list->next; 
+           }
+         }
+        EXTRACTOR_freeKeywords(md_list);
+        EXTRACTOR_removeAll(plugins); /* unload plugins */
+#else
         char buf[4096];
         cString Cmd = "";
         if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 5, ".flac"))
@@ -184,6 +217,7 @@ class cID3Scanner : public cThread
               Item->Tracknumber = cString::sprintf("%s%s", strlen(pt) == 13 ? "0" : "", (pt+12));
           }
         }
+#endif
       }
     }
     LOGDBG("ID3Scanner Done.");
