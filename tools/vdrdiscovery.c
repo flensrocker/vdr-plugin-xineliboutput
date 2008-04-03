@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.4 2007-06-11 19:39:06 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.5 2008-04-03 13:59:37 phintuka Exp $
  *
  */
 
@@ -201,7 +201,7 @@ int udp_discovery_is_valid_search(const char *buf)
 #else
 int udp_discovery_find_server(int *port, char *address)
 {
-  static const char *mystring = DISCOVERY_1_0_HDR "Server port: ";
+  static const char mystring[] = DISCOVERY_1_0_HDR "Server port: ";
   struct sockaddr_in from;
   char buf[DISCOVERY_MSG_MAXSIZE];
   int fd_discovery = -1;
