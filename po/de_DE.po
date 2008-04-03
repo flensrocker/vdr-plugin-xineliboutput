@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-02-28 08:54+0200\n"
+"POT-Creation-Date: 2008-03-28 23:58+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -139,6 +139,12 @@ msgid "transparent grayscale"
 msgstr ""
 
 msgid "yes"
+msgstr ""
+
+msgid "nearest"
+msgstr ""
+
+msgid "bilinear"
 msgstr ""
 
 msgid "Frontend initialization failed"
@@ -444,6 +450,9 @@ msgstr "On-Screen Display"
 
 msgid "Hide main menu"
 msgstr "Verstecke Hauptmenü"
+
+msgid "OSD scaling method"
+msgstr ""
 
 msgid "Show all layers"
 msgstr ""

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-02-28 08:54+0200\n"
+"POT-Creation-Date: 2008-03-28 23:58+0200\n"
 "PO-Revision-Date: 2008-01-16 00:27+0100\n"
 "Last-Translator: Gringo <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -139,6 +139,12 @@ msgstr "scala di grigi trasparente"
 
 msgid "yes"
 msgstr "sì"
+
+msgid "nearest"
+msgstr ""
+
+msgid "bilinear"
+msgstr ""
 
 msgid "Frontend initialization failed"
 msgstr "Inizializzazione frontend fallita"
@@ -443,6 +449,9 @@ msgstr "Messaggi in sovraimpressione (OSD)"
 
 msgid "Hide main menu"
 msgstr "Nascondi voce nel menu principale"
+
+msgid "OSD scaling method"
+msgstr ""
 
 msgid "Show all layers"
 msgstr "Mostra tutti i livelli"
