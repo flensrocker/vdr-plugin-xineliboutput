@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.50 2008-03-24 22:04:33 phintuka Exp $
+ * $Id: media_player.c,v 1.51 2008-04-03 15:32:07 phelin Exp $
  *
  */
 
@@ -104,7 +104,7 @@ cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile
     if(m_Playlist.Count() < 1)
       LOGMSG("cXinelibPlayer: nothing to play !");
 
-    if(m_Playlist.Count() > 1)
+    if(m_Playlist.Count() > 0)
       m_Playlist.StartScanner();
 
     m_File = m_Playlist.Current()->Filename;
@@ -496,6 +496,10 @@ void cXinelibPlayerControl::Queue(const char *File)
   Skins.Message(mtInfo, tr("Queued to playlist"));
 
   m_Lock.Unlock();
+
+  if(m_Player->Playlist().Count() > 0)
+    m_Player->Playlist().StartScanner();
+
 }
 
 cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(const char *File, bool Queue, const char *SubFile)
