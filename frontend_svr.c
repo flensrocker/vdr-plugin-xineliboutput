@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.54 2008-04-03 08:08:27 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.55 2008-04-03 08:10:49 phintuka Exp $
  *
  */
 
@@ -44,6 +44,7 @@
 
 #include "frontend_svr.h"
 #include "device.h"
+#include "osd.h"
 
 //#define HTTP_OSD
 
@@ -1149,6 +1150,8 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 			     (pos>0?pos/1000:0), xc.audio_visualization, *m_FileName);
     }
   }
+
+  cXinelibOsdProvider::RefreshOsd();
 }
 
 void cXinelibServer::Handle_Control_UDP_RESEND(int cli, const char *arg)
