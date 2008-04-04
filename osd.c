@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.18 2008-04-04 20:16:28 phintuka Exp $
+ * $Id: osd.c,v 1.19 2008-04-04 20:36:47 phintuka Exp $
  *
  */
 
@@ -143,7 +143,7 @@ class cXinelibOsd : public cOsd, public cListObject
     static cList<cXinelibOsd> m_OsdStack;
 
     bool   m_IsVisible;
-    bool   m_Shown;
+    bool   m_Refresh;
     uint   m_Layer;
 
     virtual eOsdError CanHandleAreas(const tArea *Areas, int NumAreas);
@@ -190,10 +190,13 @@ void cXinelibOsd::CmdClose(int Wnd)
   if(m_Device) {
     osd_command_t osdcmd;
     memset(&osdcmd,0,sizeof(osdcmd));
-    
+
     osdcmd.cmd = OSD_Close;
     osdcmd.wnd = Wnd;
 
+    if(m_Refresh)
+      osdcmd.flags |= OSDFLAG_REFRESH;
+    
     m_Device->OsdCmd((void*)&osdcmd);
   }
 }
@@ -219,6 +222,8 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     osdcmd.h = H;
     if(DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
+    if(m_Refresh)
+      osdcmd.flags |= OSDFLAG_REFRESH;
 
     prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
     osdcmd.colors = Colors;
@@ -246,7 +251,7 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
   TRACEF("cXinelibOsd::cXinelibOsd");
 
   m_Device = Device;
-  m_Shown = false;
+  m_Refresh = false;
   m_IsVisible = true;
   m_Layer = Level;
   CmdSize(720, 576);
@@ -271,7 +276,7 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
   TRACEF("cXinelibOsd::SetAreas");
   cMutexLock ml(&m_Lock);
 
-  LOGOSD("cXinelibOsd::SetAreas, m_Shown = %s", m_Shown ? "true" : "false");
+  LOGOSD("cXinelibOsd::SetAreas");
 
   CloseWindows();
 
@@ -320,7 +325,7 @@ void cXinelibOsd::Flush(void)
   int SendDone = 0;
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
     int x1 = 0, y1 = 0, x2 = Bitmap->Width()-1, y2 = Bitmap->Height()-1;
-    if (!m_Shown || Bitmap->Dirty(x1, y1, x2, y2)) {
+    if (m_Refresh || Bitmap->Dirty(x1, y1, x2, y2)) {
 
       /* XXX what if only palette has been changed ? */
       int NumColors;
@@ -351,17 +356,6 @@ void cXinelibOsd::Flush(void)
     last_refresh = now;
   }
 #endif
-
-#ifdef YAEPG_PATCH
-  // yaepg
-  if(!m_Shown && vidWin.bpp != 0) {
-    LOGDBG("yaepg vidWin %d %d %d %d\n", 
-	   vidWin.x1, vidWin.y1, vidWin.x2, vidWin.y2);
-    fflush(stdout);
-  }
-#endif
-
-  m_Shown = true;
 }
 
 void cXinelibOsd::Refresh(void)
@@ -370,8 +364,9 @@ void cXinelibOsd::Refresh(void)
 
   cMutexLock ml(&m_Lock);
 
-  m_Shown = false;
+  m_Refresh = true;
   Flush();
+  m_Refresh = false;
 }
 
 void cXinelibOsd::Show(void)
@@ -390,7 +385,6 @@ void cXinelibOsd::CloseWindows(void)
 
   if(m_IsVisible) {
     cBitmap *Bitmap;
-    m_Shown = false;
     for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
       LOGOSD("Close OSD %d.%d", Index(), i);
       CmdClose(i);
