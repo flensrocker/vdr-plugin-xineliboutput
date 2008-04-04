@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.10 2008-03-28 22:17:17 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.11 2008-04-04 20:35:11 phintuka Exp $
  *
  */
 
@@ -34,6 +34,7 @@ typedef enum  {
 } osd_command_id_t;
 
 #define OSDFLAG_YUV_CLUT   0x01
+#define OSDFLAG_REFRESH    0x02 /* OSD data refresh for new config, clients, etc. - no changes in bitmap */
 
 typedef struct xine_clut_s {
   union {
