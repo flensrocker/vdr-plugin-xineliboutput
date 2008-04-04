@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.19 2008-04-04 20:36:47 phintuka Exp $
+ * $Id: osd.c,v 1.20 2008-04-04 20:40:29 phintuka Exp $
  *
  */
 
@@ -365,6 +365,7 @@ void cXinelibOsd::Refresh(void)
   cMutexLock ml(&m_Lock);
 
   m_Refresh = true;
+  CloseWindows();
   Flush();
   m_Refresh = false;
 }
