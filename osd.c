@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.17 2008-03-28 22:17:17 phintuka Exp $
+ * $Id: osd.c,v 1.18 2008-04-04 20:16:28 phintuka Exp $
  *
  */
 
@@ -135,8 +135,7 @@ class cXinelibOsd : public cOsd, public cListObject
     void CmdRle(int Wnd, int X0, int Y0,
 		int W, int H, unsigned char *Data,
 		int Colors, unsigned int *Palette, 
-		osd_rect_t *DirtyArea, 
-		bool Top);
+		osd_rect_t *DirtyArea);
     void CmdClose(int Wnd);
 
   protected:
@@ -202,8 +201,7 @@ void cXinelibOsd::CmdClose(int Wnd)
 void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0, 
 			 int W, int H, unsigned char *Data,
 			 int Colors, unsigned int *Palette, 
-			 osd_rect_t *DirtyArea, 
-			 bool Top)
+			 osd_rect_t *DirtyArea)
 {
   TRACEF("cXinelibOsd::CmdRle");
 
@@ -222,7 +220,7 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     if(DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
 
-    prepare_palette(&clut[0], Palette, Colors, Top, true);
+    prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
     osdcmd.colors = Colors;
     osdcmd.palette = clut;
 
@@ -319,7 +317,6 @@ void cXinelibOsd::Flush(void)
   if(!m_IsVisible) 
     return;
 
-  int top = (Prev() == NULL);
   int SendDone = 0;
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
     int x1 = 0, y1 = 0, x2 = Bitmap->Width()-1, y2 = Bitmap->Height()-1;
@@ -334,7 +331,7 @@ void cXinelibOsd::Flush(void)
              Bitmap->Width(), Bitmap->Height(),
              (unsigned char *)Bitmap->Data(0,0),
              NumColors, (unsigned int *)Colors,
-	     &DirtyArea, top);
+	     &DirtyArea);
       SendDone++;
     }
     Bitmap->Clean();
