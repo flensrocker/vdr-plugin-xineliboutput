@@ -354,7 +354,7 @@ msgid "  Detect subtitles"
 msgstr "  Huomioi tekstitys"
 
 msgid "Software scaling"
-msgstr "  Skaalaa ohjelmistolla"
+msgstr "Skaalaa ohjelmistolla"
 
 msgid "  Change aspect ratio"
 msgstr "  Muuta kuvasuhdetta"
