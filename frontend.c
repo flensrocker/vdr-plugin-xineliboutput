@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.53 2008-04-03 08:08:27 phintuka Exp $
+ * $Id: frontend.c,v 1.54 2008-04-10 20:21:45 phintuka Exp $
  *
  */
 
@@ -400,7 +400,11 @@ void cXinelibThread::Clear(void)
 
   char buf[128];
   snprintf(buf, sizeof(buf), "DISCARD %" PRId64 " %d", tmp1, tmp2);
+  /* Send to control stream and data stream. If message is sent only to 
+   * control stream, and it is delayed, engine flush will be skipped.
+   */
   Xine_Control(buf);
+  Xine_Control_Sync(buf);
 }
 
 bool cXinelibThread::Flush(int TimeoutMs) 

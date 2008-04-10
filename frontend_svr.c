@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.55 2008-04-03 08:10:49 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.56 2008-04-10 20:21:45 phintuka Exp $
  *
  */
 
@@ -172,14 +172,14 @@ void cXinelibServer::Clear(void)
 
   LOCK_THREAD;
 
-  cXinelibThread::Clear();
-
   for(int i = 0; i < MAXCLIENTS; i++) 
     if(fd_control[i].open() && m_Writer[i]) 
       m_Writer[i]->Clear();
 
   if(m_Scheduler)
     m_Scheduler->Clear();
+
+  cXinelibThread::Clear();
 }
 
 void cXinelibServer::CloseDataConnection(int cli)
@@ -639,11 +639,11 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
 
   if(cmd && *cmd) {
     int  i, len, UdpClients = 0, RtpClients = 0;
-    char buf[4096];
+    char buf[256];
 
-    len = snprintf(buf, sizeof(buf), "%s\r\n", cmd);
+    len = snprintf(buf, sizeof(buf), "%s\r\n", cmd) + 1;
     if(len >= (int)sizeof(buf)) {
-      LOGMSG("Xine_Control_Sync: command truncated !");
+      LOGMSG("Xine_Control_Sync: command truncated ! (%s)", cmd);
       len = sizeof(buf);
     }
 
