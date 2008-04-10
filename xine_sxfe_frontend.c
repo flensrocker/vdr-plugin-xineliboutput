@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.40 2008-04-10 14:41:10 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41 2008-04-10 15:01:31 phintuka Exp $
  *
  */
 
@@ -30,9 +30,11 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/keysym.h>
-#include <X11/extensions/XShm.h>
-#include <X11/extensions/Xrender.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/XShm.h>
+#ifdef HAVE_XRENDER
+#  include <X11/extensions/Xrender.h>
+#endif
 #ifdef HAVE_XF86VIDMODE
 #  include <X11/extensions/xf86vmode.h>
 #endif
@@ -87,6 +89,7 @@ typedef struct _mwmhints {
   uint32_t                          status;
 } MWMHints;
 
+#ifdef HAVE_XRENDER
 /* HUD Scaling */
 typedef struct _xrender_surf
 {
@@ -97,6 +100,7 @@ typedef struct _xrender_surf
   Picture pic;
   int allocated : 1;
 } Xrender_Surf;
+#endif /* HAVE_XRENDER */
 
 /*
  * data
@@ -178,6 +182,7 @@ typedef struct sxfe_s {
   char    modeline[256];
 
   /* HUD stuff */
+#ifdef HAVE_XRENDER
   uint8_t  hud;
   GC       gc;
   Window   hud_window;
@@ -191,6 +196,7 @@ typedef struct sxfe_s {
   int osd_pad_x;
   int osd_pad_y;
   uint32_t* hud_img_mem;
+#endif /* HAVE_XRENDER */
 
 } fe_t, sxfe_t;
 
@@ -424,6 +430,7 @@ static void set_cursor(Display *dpy, Window win, const int enable)
   }
 }
 
+#ifdef HAVE_XRENDER
 Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w, int h, int alpha)
 {
   Xrender_Surf *rs;
@@ -782,6 +789,7 @@ static void hud_osd_close(frontend_t *this_gen)
     XUnlockDisplay(this->display);
   }
 }
+#endif /* HAVE_XRENDER */
 
 
 /*
@@ -813,12 +821,16 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 	 width, height, fullscreen, video_port);
 
   if(hud) {
+#ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
     this->hud = hud;
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
     this->osd_pad_x  = 0;
     this->osd_pad_y  = 0;
+#else
+    LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
+#endif
   }
 
   this->xpos            = 0;
@@ -1025,7 +1037,11 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   set_fullscreen_props(this);
 
+#ifdef HAVE_XRENDER
   return hud_osd_open(this_gen);
+#else
+  return 1;
+#endif
 }
 
 /*
@@ -1192,6 +1208,7 @@ static int sxfe_run(frontend_t *this_gen)
 	Window tmp_win;
 	
 	/* Move and resize HUD along with main or fullscreen window */
+#ifdef HAVE_XRENDER
 	if(this->hud) {
 	  if(cev->window == this->window[0]) {
 	    int hud_x, hud_y;
@@ -1211,7 +1228,7 @@ static int sxfe_run(frontend_t *this_gen)
 	    XUnlockDisplay(cev->display);
 	  }
 	}
-
+#endif
 	this->width  = cev->width;
 	this->height = cev->height;
 
@@ -1239,6 +1256,7 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
       }
 
+#ifdef HAVE_XRENDER
       case FocusIn:
       {
          if(this->hud) {
@@ -1265,6 +1283,7 @@ static int sxfe_run(frontend_t *this_gen)
         }
         break;
       }
+#endif /* HAVE_XRENDER */
       case ButtonRelease:
       {
 	dragging = 0;
@@ -1390,7 +1409,9 @@ static void sxfe_display_close(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
+#ifdef HAVE_XRENDER
   hud_osd_close(this_gen);
+#endif
 
   if(this && this->display) {
     
@@ -1418,6 +1439,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
   int r = fe_xine_play(this_gen);
 
 #ifdef FE_STANDALONE
+# ifdef HAVE_XRENDER
   sxfe_t *this = (sxfe_t*)this_gen;
 
   if(r && this->input && this->hud) {
@@ -1426,7 +1448,8 @@ static int sxfe_xine_play(frontend_t *this_gen)
     input_vdr->f.fe_handle  = this_gen;
     input_vdr->f.intercept_osd = hud_osd_command;
   }
-#endif
+# endif /* HAVE_XRENDER */
+#endif /* FE_STANDALONE */
 
   return r;
 }
