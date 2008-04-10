@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.54 2008-03-16 21:40:57 phintuka Exp $
+ * $Id: device.c,v 1.55 2008-04-10 22:25:02 phelin Exp $
  *
  */
 
@@ -914,7 +914,8 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
   if(FileName) {
     if(m_PlayingFile == pmNone) {
       m_PlayingFile = PlayMode;
-      StopOutput();
+      if (!xc.IsImageFile(FileName))
+         StopOutput();
     }
     for(int i = 0; i < mi_Count; i++) 
       m_MetaInfo[i][0] = 0;
