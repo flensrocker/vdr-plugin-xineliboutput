@@ -4,12 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.39 2008-04-10 10:43:18 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.40 2008-04-10 14:41:10 phintuka Exp $
  *
  */
 
 /*#define HAVE_XF86VIDMODE*/
-#define HAVE_XDPMS
 
 #include <errno.h>
 #include <inttypes.h>
@@ -121,6 +120,9 @@ typedef struct sxfe_s {
 #ifdef HAVE_XF86VIDMODE
   int      XF86_modelines_count;
   XF86VidModeModeInfo**  XF86_modelines;
+#endif
+#ifdef HAVE_XDPMS
+  BOOL     dpms_state;
 #endif
 
   /* Atoms */
@@ -1002,8 +1004,11 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   {
     int dpms_dummy;
     if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
-/*    DPMSInfo(dpy, &dpms_state, &dpms_on); */
+      CARD16 dpms_level;
+      DPMSInfo(this->display, &dpms_level, &this->dpms_state);
       DPMSDisable(this->display);
+    } else {
+      LOGMSG("sxfe_display_open: DPMS unavailable");
     }
   }
 #endif
@@ -1392,6 +1397,10 @@ static void sxfe_display_close(frontend_t *this_gen)
     if(this->xine)
       this->fe.xine_exit(this_gen);
     
+#ifdef HAVE_XDPMS
+    if(this->dpms_state == TRUE)
+      DPMSEnable(this->display);
+#endif
     if(this->window_id <= 0) {
       XLockDisplay(this->display);
       XUnmapWindow(this->display, this->window[this->fullscreen ? 1 : 0]);
