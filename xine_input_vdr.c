@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.127 2008-04-11 00:07:58 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.128 2008-04-11 00:18:58 phintuka Exp $
  *
  */
 
@@ -2342,6 +2342,16 @@ static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen,
 
 /******************************* Control *********************************/
 
+#if XINE_VERSION_CODE < 10111
+# define DEMUX_MUTEX_LOCK
+# define DEMUX_MUTEX_UNLOCK
+# define DEMUX_RESUME_SIGNAL
+#else
+# define DEMUX_MUTEX_LOCK    pthread_mutex_lock(&stream->demux_mutex)
+# define DEMUX_MUTEX_UNLOCK  pthread_mutex_unlock(&stream->demux_mutex)
+# define DEMUX_RESUME_SIGNAL pthread_cond_signal(&this->stream->demux_resume)
+#endif
+
 static void suspend_demuxer(vdr_input_plugin_t *this)
 {
   this->stream->demux_action_pending = 1;
@@ -2349,13 +2359,14 @@ static void suspend_demuxer(vdr_input_plugin_t *this)
   if(this->is_paused) 
     LOGMSG("WARNING: called suspend_demuxer in paused mode !");
   pthread_mutex_lock( &this->stream->demux_lock );
+  this->stream->demux_action_pending = 0;
   /* must be paired with resume_demuxer !!! */
 }
 
 static void resume_demuxer(vdr_input_plugin_t *this)
 {
   /* must be paired with suspend_demuxer !!! */
-  this->stream->demux_action_pending = 0;
+  DEMUX_RESUME_SIGNAL;
   pthread_mutex_unlock( &this->stream->demux_lock );
 }
 
@@ -2386,6 +2397,8 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
   fifo_buffer_clear(stream->video_fifo);
   fifo_buffer_clear(stream->audio_fifo);
 
+  DEMUX_MUTEX_LOCK;
+
   buf = stream->video_fifo->buffer_pool_alloc (stream->video_fifo);
   buf->type = BUF_CONTROL_RESET_DECODER;
   stream->video_fifo->put (stream->video_fifo, buf);
@@ -2393,6 +2406,8 @@ static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t 
   buf = stream->audio_fifo->buffer_pool_alloc (stream->audio_fifo);
   buf->type = BUF_CONTROL_RESET_DECODER;
   stream->audio_fifo->put (stream->audio_fifo, buf);
+
+  DEMUX_MUTEX_UNLOCK;
 
   this->prev_audio_stream_id = 0;
 
@@ -2422,6 +2437,8 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
 {
   buf_element_t *buf;
 
+  DEMUX_MUTEX_LOCK;
+
   buf = stream->video_fifo ? stream->video_fifo->buffer_pool_try_alloc (stream->video_fifo) : NULL;
   if(buf) {
     buf->type = BUF_CONTROL_NEWPTS;
@@ -2441,6 +2458,8 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
   } else {
     LOGMSG("vdr_x_demux_control_newpts: audio fifo full !");
   }
+
+  DEMUX_MUTEX_UNLOCK;
 }
 
 static void vdr_flush_engine(vdr_input_plugin_t *this)
