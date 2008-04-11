@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.129 2008-04-11 00:27:06 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.130 2008-04-11 00:45:48 phintuka Exp $
  *
  */
 
@@ -2484,14 +2484,27 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
 
 static void vdr_flush_engine(vdr_input_plugin_t *this)
 {
-  if(this->stream_start)
+  int speed;
+
+  if(this->stream_start) {
+    LOGMSG("vdr_flush_engine: stream_start, flush skipped");
     return;
+  }
 
   if(this->curpos > this->discard_index) {
     if(this->curpos < this->guard_index) {
-      LOGMSG("Guard > current position, decoder flush skipped");
+      LOGMSG("vdr_flush_engine: guard > curpos, flush skipped");
       return;
     }
+    LOGMSG("vdr_flush_engine: %"PRIu64" < current position, flush skipped", 
+	   this->discard_index);
+    return;
+  }
+
+  speed = xine_get_param(this->stream, XINE_PARAM_FINE_SPEED);
+  if(speed <= 0) {
+    LOGMSG("vdr_flush_engine: speed = %d", speed);
+    xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, XINE_FINE_SPEED_NORMAL);
   }
 
   /* suspend demuxer */
@@ -2504,17 +2517,17 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
 
   _x_demux_flush_engine (this->stream);
 
-  /* _x_demux_control_headers_done resets demux_action_pending */
-  this->stream->demux_action_pending = 1;
-  this->prev_audio_stream_id = 0;
-
 #if XINE_VERSION_CODE < 10104
   /* disabled _x_demux_control_start as it causes alsa output driver to exit now and then ... */
 #else
   _x_demux_control_start(this->stream);
 #endif
+  this->prev_audio_stream_id = 0;
   this->stream_start = 1;
   this->I_frames = this->B_frames = this->P_frames = 0;
+
+  if(speed <= 0) 
+    xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, speed);
 
   resume_demuxer(this);
 }
