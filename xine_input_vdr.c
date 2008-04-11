@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.126 2008-04-10 20:21:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.127 2008-04-11 00:07:58 phintuka Exp $
  *
  */
 
@@ -1493,13 +1493,13 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
       buf = this->buffer_pool->buffer_pool_try_alloc(this->buffer_pool);
     else if(size < 0xffff) {
       buf = this->block_buffer->buffer_pool_try_alloc(this->block_buffer);
-      LOGDBG("vdr_plugin_write: big PES (%d bytes) !", size);
+      LOGDBG("get_buf_element: big PES (%d bytes) !", size);
     }
     else { /* len>64k */
       if(!this->big_buffer)
 	this->big_buffer = fifo_buffer_new(this->stream, 4, 512*1024);
       buf = this->big_buffer->buffer_pool_try_alloc(this->big_buffer);
-      LOGDBG("vdr_plugin_write: jumbo PES (%d bytes) !", size);
+      LOGDBG("get_buf_element: jumbo PES (%d bytes) !", size);
     }
   }
 
@@ -1716,7 +1716,6 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
   sscanf(data+15, "%lx", &imaster);
   master = (vdr_input_plugin_t*)imaster;
 
-  memset(slave, 0, sizeof(fifo_input_plugin_t));
   slave->master = (vdr_input_plugin_t*)master;
   slave->stream = stream;
   slave->buffer_pool = stream->video_fifo;
@@ -3288,11 +3287,6 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
     data source has higher priority than control source */
   if(result <= 0) {
     result = 0;
-#ifdef __APPLE__
-    sched_yield();
-#else
-    pthread_yield();
-#endif
     xine_usec_sleep(3*1000);
   }
 
@@ -3323,11 +3317,6 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 
   if(this->live_mode /*&& this->fd_control < 0*/) {
     /* No flush in live mode */
-#ifdef __APPLE__
-    sched_yield();
-#else
-    pthread_yield();
-#endif
     return 1; 
   }
 
@@ -4951,10 +4940,6 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
       LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
       return 1;
     }
-    if (data[i + 3] == (0x09 | 0x80)) {
-      LOGMSG("H.264 scanner: Possible VDR H.264 NAL AUD (0x09|0x80) ?");
-      return this->h264; /* no state change */
-    }
     if (data[i + 3] == 0) {
       LOGDBG("H.264 scanner: Possible MPEG2 start code PICTURE (0x00)");
       return 0;
@@ -4987,12 +4972,6 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
   i += data[i] + 1;   /* possible additional header bytes */
 
   if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 ) {
-
-    /* VDR mangled Access Unit Delimiter */
-    if (data[i + 3] == (0x09 | 0x80)) {
-      data[i + 3] = 0x09;
-      LOGMSG("H.264: NAL AUD ? (0x89 -> 0x09)");
-    }
 
     /* Access Unit Delimiter */
     if (data[i + 3] == 0x09)
