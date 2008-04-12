@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.131 2008-04-12 07:23:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.132 2008-04-12 16:02:27 phintuka Exp $
  *
  */
 
@@ -237,6 +237,7 @@ typedef struct vdr_input_plugin_s {
   /* Sync */
   pthread_mutex_t     lock;
   pthread_mutex_t     vdr_entry_lock;
+  pthread_cond_t      engine_flushed;
 
   /* Playback */
   int                 no_video;
@@ -2482,7 +2483,7 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
   DEMUX_MUTEX_UNLOCK;
 }
 
-static void vdr_flush_engine(vdr_input_plugin_t *this)
+static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 {
   int speed;
 
@@ -2491,13 +2492,13 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
     return;
   }
 
-  if(this->curpos > this->discard_index) {
+  if(this->curpos > discard_index) {
     if(this->curpos < this->guard_index) {
       LOGMSG("vdr_flush_engine: guard > curpos, flush skipped");
       return;
     }
     LOGMSG("vdr_flush_engine: %"PRIu64" < current position, flush skipped", 
-	   this->discard_index);
+	   discard_index);
     return;
   }
 
@@ -2508,12 +2509,20 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
   }
 
   /* suspend demuxer */
+  this->stream->demux_action_pending = 1;
   if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
     LOGERR("pthread_mutex_unlock failed !");
   suspend_demuxer(this);
   pthread_mutex_lock( &this->lock );
 
   reset_scr_tunning(this, this->speed_before_pause);
+
+  /* reset speed again (adjust_realtime_speed might have set pause) */
+  if(xine_get_param(this->stream, XINE_PARAM_FINE_SPEED) <= 0) {
+    speed = xine_get_param(this->stream, XINE_PARAM_FINE_SPEED);
+    LOGMSG("vdr_flush_engine: speed = %d", speed);
+    xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, XINE_FINE_SPEED_NORMAL);
+  }
 
 #if 0
   _x_demux_flush_engine (this->stream);
@@ -2534,6 +2543,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
   this->prev_audio_stream_id = 0;
   this->stream_start = 1;
   this->I_frames = this->B_frames = this->P_frames = 0;
+  this->discard_index = discard_index;
 
   if(speed <= 0) 
     xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, speed);
@@ -3605,12 +3615,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     if(2 == sscanf(cmd, "DISCARD %" PRIu64 " %d", &tmp64, &tmp32)) {
       pthread_mutex_lock(&this->lock);
       if(this->discard_index < tmp64) {
-	this->discard_index = tmp64;
 	this->discard_frame = tmp32;
-	vdr_flush_engine(this);
+	vdr_flush_engine(this, tmp64);
+	this->discard_index = tmp64;
       } else if(this->discard_index != tmp64) {
 	LOGMSG("Ignoring delayed control message %s", cmd);
       }
+      pthread_cond_broadcast(&this->engine_flushed);
       pthread_mutex_unlock(&this->lock);
     } else 
       err = CONTROL_PARAM_ERROR;
@@ -3618,7 +3629,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   } else if(!strncasecmp(cmd, "STREAMPOS ", 10)) {
     if(1 == sscanf(cmd, "STREAMPOS %" PRIu64, &tmp64)) {
       pthread_mutex_lock(&this->lock);
-      vdr_flush_engine(this);
+      vdr_flush_engine(this, tmp64);
       this->curpos = tmp64;
       this->discard_index = this->curpos;
       this->guard_index = 0;
@@ -4246,6 +4257,41 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
 /**************************** Data Stream *********************************/
 
+static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
+{
+  char *tmp;
+
+  cmd[64] = 0;
+  if(NULL != (tmp=strchr(cmd, '\r')))
+    *tmp = '\0';
+  if(NULL != (tmp=strchr(cmd, '\n')))
+    *tmp = '\0';
+
+  if(!strncasecmp(cmd, "DISCARD ", 8)) {
+    uint64_t index;
+    if(1 == sscanf(cmd, "DISCARD %" PRIu64, &index)) {
+      struct timespec abstime;
+      create_timeout_time(&abstime, 100);
+
+      this->block_buffer->clear(this->block_buffer);
+
+      pthread_mutex_lock(&this->lock);
+      while(this->control_running &&
+	    this->discard_index < index) {
+	LOGDBG("data_stream_parse_control: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
+	       this->discard_index, index);
+	pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
+      } 
+      pthread_mutex_unlock(&this->lock);
+      LOGDBG("data_stream_parse_control: streams synced at %"PRIu64"/%"PRIu64,
+	     index, this->discard_index);
+    }
+    return;
+  }
+
+  vdr_plugin_parse_control((input_plugin_t*)this, cmd);
+}
+
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
@@ -4324,8 +4370,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 	/* control data */
 	uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
 	if(pkt_data[0]) { /* -> can't be pes frame */
-	  pkt_data[64] = 0;
-	  vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
+	  data_stream_parse_control(this, (char*)pkt_data);
 
 	  /* read next block */
 	  todo = sizeof(stream_tcp_header_t);
@@ -4531,7 +4576,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  continue;
 	}
       } else {
-	vdr_plugin_parse_control((input_plugin_t*)this, (char*)pkt_data);
+	data_stream_parse_control(this, (char*)pkt_data);
 	continue;
       }
     } else {
@@ -5497,6 +5542,13 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     xine_event_dispose_queue (this->event_queue);
   this->event_queue = NULL;
 
+  pthread_cond_broadcast(&this->engine_flushed);
+  while(pthread_cond_destroy(&this->engine_flushed) == EBUSY) {
+    LOGMSG("engine_flushed busy !");
+    pthread_cond_broadcast(&this->engine_flushed);
+    xine_usec_sleep(10);
+  }
+
   /* destroy mutexes (keep VDR out) */
   LOGDBG("Destroying mutexes");
   while(pthread_mutex_destroy(&this->vdr_entry_lock) == EBUSY) {
@@ -6393,6 +6445,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   pthread_mutex_init (&this->osd_lock, NULL);
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
   pthread_mutex_init (&this->fd_control_lock, NULL);
+  pthread_cond_init  (&this->engine_flushed, NULL);
 
 #ifdef FFMPEG_DEC
   if(this->ffmpeg_video_decoder < 0) {
