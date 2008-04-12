@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.21 2008-04-12 20:45:29 phintuka Exp $
+ * $Id: osd.c,v 1.22 2008-04-12 20:56:02 phintuka Exp $
  *
  */
 
@@ -254,11 +254,6 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
   m_Refresh = false;
   m_IsVisible = true;
   m_Layer = Level;
-  if(Setup.OSDWidth + (2*Setup.OSDLeft) > 720 || Setup.OSDHeight + (2*Setup.OSDTop) > 576) {
-    CmdSize(Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
-  } else {
-    CmdSize(720, 576);
-  } 
 }
 
 cXinelibOsd::~cXinelibOsd()
