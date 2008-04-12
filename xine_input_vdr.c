@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.130 2008-04-11 00:45:48 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.131 2008-04-12 07:23:59 phintuka Exp $
  *
  */
 
@@ -2515,7 +2515,16 @@ static void vdr_flush_engine(vdr_input_plugin_t *this)
 
   reset_scr_tunning(this, this->speed_before_pause);
 
+#if 0
   _x_demux_flush_engine (this->stream);
+  /* warning: after clearing decoders fifos an absolute discontinuity
+   *          indication must be sent. relative discontinuities are likely
+   *          to cause "jumps" on metronom.
+   */
+#else
+  this->stream->demux_plugin->seek (this->stream->demux_plugin,
+				    0, 0, this->stream->demux_thread_running);
+#endif
 
 #if XINE_VERSION_CODE < 10104
   /* disabled _x_demux_control_start as it causes alsa output driver to exit now and then ... */
@@ -5070,12 +5079,12 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif
     if (this->send_pts) {
       LOGMSG("H.264: post pts %"PRId64, pts);
-      vdr_x_demux_control_newpts (this->stream, pts, 0);
+      vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
       this->send_pts = 0;
     } else if (this->last_delivered_vid_pts > 0 && 
 	       abs(pts - this->last_delivered_vid_pts) > 270000 /* 3 sec */) {
       LOGMSG("H.264: post pts %"PRId64" diff %d", pts, (int)(pts-this->last_delivered_vid_pts));
-      vdr_x_demux_control_newpts (this->stream, pts, 0);
+      vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
     }
 
     /* xine ffmpeg decoder does not handle pts <-> dts difference very well if P/B frames have pts */
@@ -5217,7 +5226,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	       this->block_buffer->fifo_size,
 	       this->stream->video_fifo->fifo_size);
       } else {
-	vdr_x_demux_control_newpts(this->stream, 0, 0);
+	vdr_x_demux_control_newpts(this->stream, 0, BUF_FLAG_SEEK);
 	queue_blank_yv12(this);
       }
       pthread_mutex_unlock(&this->lock);
@@ -5298,7 +5307,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       if(need_pause)
 	scr_tunning_set_paused(this);
 #endif
-      vdr_x_demux_control_newpts(this->stream, pts, 0);
+      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
       this->send_pts = 0;
     } else if(pts == 0) {
       /* Still image? do nothing, leave send_pts ON */
@@ -5328,7 +5337,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
        Reset metronom pts so images will be displayed */
     int64_t pts = pts_from_pes(buf->content, buf->size);
     if(pts==0) {
-      vdr_x_demux_control_newpts(this->stream, pts, 0);
+      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
       /* delay frame 10ms (9000 ticks) */
       /*buf->content[12] = (uint8_t)((10*90) >> 7);*/
     }
