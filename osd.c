@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.20 2008-04-04 20:40:29 phintuka Exp $
+ * $Id: osd.c,v 1.21 2008-04-12 20:45:29 phintuka Exp $
  *
  */
 
@@ -254,7 +254,11 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
   m_Refresh = false;
   m_IsVisible = true;
   m_Layer = Level;
-  CmdSize(720, 576);
+  if(Setup.OSDWidth + (2*Setup.OSDLeft) > 720 || Setup.OSDHeight + (2*Setup.OSDTop) > 576) {
+    CmdSize(Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
+  } else {
+    CmdSize(720, 576);
+  } 
 }
 
 cXinelibOsd::~cXinelibOsd()
@@ -284,9 +288,9 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
 
   if(Left() + Width() > 720 || Top() + Height() > 576) {
     LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d", 
-	   Left() + Width(), Top() + Height(), 
-	   Setup.OSDWidth, Setup.OSDHeight);
-    CmdSize(Setup.OSDWidth, Setup.OSDHeight);
+           2*Left() + Width(), 2*Top() + Height(),
+           Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
+    CmdSize(Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
   } else {
     CmdSize(720, 576);
   }
