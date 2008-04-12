@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.55 2008-04-10 22:25:02 phelin Exp $
+ * $Id: device.c,v 1.56 2008-04-12 19:37:41 phintuka Exp $
  *
  */
 
@@ -414,14 +414,11 @@ void cXinelibDevice::MainThreadHook(void)
 // Configuration
 //
 
-void cXinelibDevice::ConfigureOSD(bool prescale_osd, bool unscaled_osd)
+void cXinelibDevice::ConfigureOSD(void)
 {
   TRACEF("cXinelibDevice::ConfigureOSD");
 
-  if(m_local)
-    m_local->ConfigureOSD(prescale_osd, unscaled_osd);
-  if(m_server)
-    m_server->ConfigureOSD(prescale_osd, unscaled_osd);
+  ForEach(m_clients, &cXinelibThread::ConfigureOSD);
 }
 
 void cXinelibDevice::ConfigurePostprocessing(const char *deinterlace_method, 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.54 2008-04-10 20:21:45 phintuka Exp $
+ * $Id: frontend.c,v 1.55 2008-04-12 19:37:41 phintuka Exp $
  *
  */
 
@@ -781,7 +781,7 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 
 void cXinelibThread::Configure(void)
 {
-    ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
+    ConfigureOSD();
     ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, 
 			    xc.audio_compression, xc.audio_equalizer,
 			    xc.audio_surround, xc.speaker_type);
@@ -803,13 +803,11 @@ void cXinelibThread::Configure(void)
 #endif
 }
 
-int cXinelibThread::ConfigureOSD(bool prescale_osd, bool unscaled_osd) 
+int cXinelibThread::ConfigureOSD(void) 
 {
   char buf[256];
-  sprintf(buf, "OSDSCALING %d", prescale_osd);
-  if(!xc.prescale_osd_downscale)
-    strcat(buf, " NoDownscale");
-  if(unscaled_osd)
+  sprintf(buf, "OSDSCALING %d", xc.prescale_osd);
+  if(xc.unscaled_osd)
     strcat(buf, " UnscaledAlways");
   if(xc.unscaled_osd_opaque)
     strcat(buf, " UnscaledOpaque");

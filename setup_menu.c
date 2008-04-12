@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.50 2008-03-29 18:48:19 phintuka Exp $
+ * $Id: setup_menu.c,v 1.51 2008-04-12 19:37:41 phintuka Exp $
  *
  */
 
@@ -846,7 +846,6 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_alpha_abs;
     cOsdItem *ctrl_unscaled;
     cOsdItem *ctrl_scale;
-    cOsdItem *ctrl_downscale;
     cOsdItem *ctrl_lowres;
 #if VDRVERSNUM < 10515
     cOsdItem *ctrl_spulang0;
@@ -878,7 +877,7 @@ cMenuSetupOSD::~cMenuSetupOSD()
   xc.alpha_correction = orig_alpha_correction;
   xc.alpha_correction_abs = orig_alpha_correction_abs;
 
-  cXinelibDevice::Instance().ConfigureOSD(xc.prescale_osd, xc.unscaled_osd);
+  cXinelibDevice::Instance().ConfigureOSD();
 }
 
 void cMenuSetupOSD::Set(void)
@@ -889,7 +888,6 @@ void cMenuSetupOSD::Set(void)
 
   ctrl_scaling = NULL;
   ctrl_scale = NULL;
-  ctrl_downscale = NULL;
   ctrl_unscaled = NULL;
   ctrl_lowres = NULL;
   ctrl_alpha = NULL;
@@ -912,10 +910,6 @@ void cMenuSetupOSD::Set(void)
   Add(ctrl_scale = 
       new cMenuEditBoolItem(tr("Scale OSD to video size"), 
 			    &newconfig.prescale_osd));
-  if(newconfig.prescale_osd)
-    Add(ctrl_downscale =
-	new cMenuEditBoolItem(tr("  Allow downscaling"), 
-			      &newconfig.prescale_osd_downscale));
   Add(ctrl_unscaled =
       new cMenuEditBoolItem(tr("Unscaled OSD (no transparency)"), 
 			    &newconfig.unscaled_osd));
@@ -980,13 +974,8 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
   else if(item == ctrl_alpha_abs)
     xc.alpha_correction_abs = newconfig.alpha_correction_abs;
   else if(item == ctrl_unscaled || item == ctrl_scale)
-    cXinelibDevice::Instance().ConfigureOSD(newconfig.prescale_osd, 
-					    newconfig.unscaled_osd);
+    cXinelibDevice::Instance().ConfigureOSD();
 
-  if(newconfig.prescale_osd && !ctrl_downscale)
-    Set();
-  if(!newconfig.prescale_osd && ctrl_downscale)
-    Set();
   if(!newconfig.unscaled_osd && !ctrl_lowres)
     Set();
   if(newconfig.unscaled_osd && ctrl_lowres)
@@ -1016,7 +1005,6 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);
   SetupStore("OSD.Prescale",        xc.prescale_osd);
-  SetupStore("OSD.Downscale",       xc.prescale_osd_downscale);
   SetupStore("OSD.UnscaledAlways",  xc.unscaled_osd);
   SetupStore("OSD.UnscaledOpaque", xc.unscaled_osd_opaque);
   SetupStore("OSD.UnscaledLowRes", xc.unscaled_osd_lowresvideo);
