@@ -32,6 +32,13 @@ Requirements
   - Enough CPU power and memory to decode streams
     (PII 400Mhz + 64M should be enough with Xv or DirectFB)
 
+  Optional:
+
+  - X server with Composite and Xrender extensions,
+    compositing window manager or composite manager (xcompmgr).
+    (Required for HUD OSD to blend high-quality OSD using graphics hardware)
+  - libextractor 0.5.20 or later (http://libextractor.sourceforge.net).
+    (used for media file metadata extraction in media player)
 
 WARNING
 
@@ -463,6 +470,13 @@ Xine-specific settings
   All xine-specific settings can be changed by editing file
   $(HOME)/.xine/config_xineliboutput.
 
+  Default mpeg2 decoder (libmpeg2) can be switched to ffmpeg mpeg2 decoder
+  by increasing ffmpeg decoder priority:
+
+     engine.decoder_priorities.ffmpegvideo:1
+
+  (ffmpeg decoder is slower but handles errors better).
+
 
 Slave mode
 
@@ -475,6 +489,104 @@ Slave mode
   FULLSCREEN       Toggle fullscreen state
   DEINTERLACE      Toggle deinterlacing
   QUIT             Close program
+
+  Video can be drawn to existing X11 window with vdr-sxfe 
+  option --wid=<x_window_id>
+
+
+Distributed set-up - multiple clients and/or servers
+
+  Simple multi-head setup
+
+  When there is no need to watch different recordings / channels at
+  different clients at the same time, just running vdr-[sx/fb]fe at 
+  each client is enough. In this case the same video + OSD is mirrored 
+  to all clients and all clients control the same (shared) VDR.
+
+  Real multi-user setup
+
+  When there is a need to have multiple independently controlled 
+  clients (each with separate video and OSD), running multiple 
+  instances of VDR is required.
+  It doesn't matter if all VDR instances run at server or at each
+  client. However, there are some benefits when running all 
+  instances of VDR on the same server:
+   - less maintenance: only one installation of VDR and plugins is required
+   - posibility to use simpler, diskless clients with less memory
+   - Faster cutting / DVD burning / ... as there is no 
+     network between VDR and disks
+   - no need to export and mount /video to every client
+   - overall resource usage is lower
+   - ...
+
+  It is preferred to allow recording only at the "master" vdr. 
+  Recording the same timer on two VDR instances will most likely
+  corrupt the recording. Besides that, doing all recordings directly
+  from DVB card (no streamdev in middle) makes things simpler and less
+  error prone. It is probably even impossible to do several recordings
+  from different transponders using single streamdev instance.
+
+  Timersync plugin disables recording on client VDRs. All timers
+  are still visible at each client and timers can be created/modified
+  at any client just as with the single VDR setup.
+  Timersync plugin synchronizes all timer modifications between VDR instances
+  and takes care that all recordings are made by the "master" vdr.
+  Still, all kind of autotimer plugins etc. that generate timers 
+  should be activated only at server vdr (there shouldn't
+  be any reasons to run multiple instances of such plugins).
+
+  Simplified example:  
+    (xinelibout and streamdev plugins required)
+
+    Start 3 VDRs at server:
+
+    "Master" VDR: controls all DVB cards, does all recordings, 
+                  server for client 1
+
+        vdr -c /etc/vdr \
+           -P"xineliboutput --local=none --remote=37890" \
+           -Pstreamdev-server
+
+    VDR server for client 2:
+
+        vdr -c /etc/vdr2 \
+           -D 10 -p 2102 \
+           -P"xineliboutput --local=none --remote=37892" \
+           -Pstreamdev-client
+
+    VDR server for client 3
+
+        vdr -c /etc/vdr3 \
+           -D 10 -p 2103 \
+           -P"xineliboutput --local=none --remote=37894" \
+           -Pstreamdev-client
+
+    + all possible other options and plugins.
+
+    - Using -D 10 option for client VDR instances "forces" all DVB 
+      cards for master VDR.
+    - Each VDR instance must have its own configuration directory (-c option).
+    - Each xineliboutput server uses different port
+    - Streamdev plugin is used to provide live view for client
+      VDR's. It is not required to just watch recordings.
+      To correctly configure vdr-streamdev plugin, see 
+      streamdev plugin's README.
+    - Using suspendoutput plugin with some proper timeout value
+      in VDR instances might be good idea - it releases
+      streamdev VTP connection and server-side DVB devices
+      for other use when the client is not in use.
+
+    Starting clients:
+
+      Client 1:   vdr-sxfe
+
+      Client 2:   vdr-sxfe xvdr://<server ip>:37892
+
+      Client 3:   vdr-sxfe xvdr://<server ip>:37894
+
+    - If RTP is used between vdr and vdr-sxfe, using separate 
+      RTP address or port for each xineliboutput server 
+      instance might be good idea.
 
 
 VDR Logo
