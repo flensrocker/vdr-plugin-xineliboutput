@@ -444,7 +444,7 @@ msgid "Smooth fast forward"
 msgstr "Tasainen kuvakelaus"
 
 msgid "Fastest trick speed"
-msgstr ""
+msgstr "Suurin kelausnopeus"
 
 msgid "On-Screen Display"
 msgstr "Kuvaruutunäyttö"
@@ -453,10 +453,10 @@ msgid "Hide main menu"
 msgstr "Piilota valinta päävalikossa"
 
 msgid "OSD scaling method"
-msgstr ""
+msgstr "Skaalaustapa"
 
 msgid "Show all layers"
-msgstr ""
+msgstr "Näytä kaikki kerrokset"
 
 msgid "Scale OSD to video size"
 msgstr "Skaalaa videon kokoiseksi"
