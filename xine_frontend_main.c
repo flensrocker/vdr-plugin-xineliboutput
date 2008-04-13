@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.38 2008-03-28 22:17:17 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.39 2008-04-13 22:08:14 phintuka Exp $
  *
  */
 
@@ -704,11 +704,7 @@ int main(int argc, char *argv[])
     fflush(stderr);
 
     while(fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed) 
-#ifdef __APPLE__
-      sched_yield();
-#else
-      pthread_yield();
-#endif
+      ;
 
     fe->xine_close(fe);
     firsttry = 0;
