@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.27 2008-03-28 22:17:17 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.28 2008-04-13 22:45:07 phintuka Exp $
  *
  */
 
@@ -41,7 +41,7 @@
 
 //---------------------------------plugin-------------------------------------
 
-static const char *VERSION        = "1.0.0rc2";
+static const char *VERSION        = "1.0.0";
 static const char *DESCRIPTION    = trNOOP("X11/xine-lib output plugin");
 static const char *MAINMENUENTRY  = trNOOP("Media Player");
 
@@ -115,11 +115,8 @@ const char cmdLineHelp[] =
 "                           for fbfe: auto, fb, DirectFB, vidixfb,\n"
 "                                     sdl, dxr3, aadxr3, none\n"
 #if 0
-"  -L        --nolocal      No local frontend, only remote frontends\n"
 "  -m M      --modeline=M   Use modeline M for local frontend\n"
 "                           (example: )\n" 
-"  -k        --xkeyboard    X11 keyboard in use\n"
-"  -R        --noremote     No remote clients\n"
 #endif
 "  -f        --fullscreen   Fullscreen mode (X11)\n"
 "  -D        --hud          Head Up Display OSD (X11)\n"
