@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.52 2008-03-31 20:36:03 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53 2008-04-13 23:11:51 phintuka Exp $
  *
  */
 
@@ -100,7 +100,7 @@ static int find_input(fe_t *this)
   return 1;
 }
 
-static void *fe_control(frontend_t *fe_handle, const char *cmd);
+static void *fe_control(frontend_t *this_gen, const char *cmd);
 
 /*
  * xine callbacks
@@ -1272,16 +1272,16 @@ static void process_xine_keypress(input_plugin_t *input,
 /*
  *  Control messages from input plugin
  */
-static void *fe_control(frontend_t *fe_handle, const char *cmd)
+static void *fe_control(frontend_t *this_gen, const char *cmd)
 {
-  fe_t *this = (fe_t*)fe_handle;
+  fe_t *this = (fe_t*)this_gen;
   post_plugins_t *posts;
 
   /*LOGDBG("fe_control(\"%s\")", cmd);*/
 
   if(!cmd || !this) {
     LOGMSG("fe_control(0x%lx,0x%lx) : invalid argument", 
-	   (unsigned long int)fe_handle, (unsigned long int)cmd);
+	   (unsigned long int)this_gen, (unsigned long int)cmd);
     return NULL;
   }
 
@@ -1295,7 +1295,7 @@ static void *fe_control(frontend_t *fe_handle, const char *cmd)
   if(!strncmp(cmd, "SLAVE CLOSED", 16)) {
     /*LOGMSG("fe_control : slave closed");*/
     if(this->slave_stream)
-      fe_control(fe_handle, "SLAVE 0x0\r\n");
+      fe_control(this_gen, "SLAVE 0x0\r\n");
     init_dummy_ports(this, 0);
 
   } else if(!strncmp(cmd, "SLAVE 0x", 8)) {
