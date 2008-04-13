@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.55 2008-04-12 19:37:41 phintuka Exp $
+ * $Id: frontend.c,v 1.56 2008-04-13 22:14:31 phintuka Exp $
  *
  */
 
@@ -801,6 +801,10 @@ void cXinelibThread::Configure(void)
 #ifdef ENABLE_TEST_POSTPLUGINS
     ConfigurePostprocessing("headphone", xc.headphone ? true : false, NULL);
 #endif
+
+    Xine_Control(cString::sprintf("SCR %s %d", 
+				  xc.live_mode_sync ? "Sync"    : "NoSync",
+				  xc.scr_tunning    ? xc.scr_hz : 90000));
 }
 
 int cXinelibThread::ConfigureOSD(void) 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.58 2008-04-12 19:37:41 phintuka Exp $
+ * $Id: config.c,v 1.59 2008-04-13 22:14:31 phintuka Exp $
  *
  */
 
@@ -532,6 +532,10 @@ config_t::config_t() {
   brightness   = -1; 
   vo_aspect_ratio = 0;
 
+  live_mode_sync = 1;      // Sync SCR to transponder clock in live mode
+  scr_tunning    = 0;      // Fine-tune xine egine SCR (to sync video to graphics output)
+  scr_hz         = 90000;  // Current SCR speed (Hz), default is 90000
+
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
   strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
@@ -569,11 +573,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       //{ "xkeyboard",    no_argument,       NULL, 'k' },
       //{ "noxkeyboard",  no_argument,       NULL, 'K' },
       { "local",        required_argument, NULL, 'l' },
-      //{ "nolocal",      no_argument,       NULL, 'L' },
       //{ "modeline",     required_argument, NULL, 'm' },
       { "remote",       required_argument, NULL, 'r' },
-      //{ "noremote",     no_argument,       NULL, 'R' },
-      //{ "window",       no_argument,       NULL, 'w' },
       { "audio",        required_argument, NULL, 'A' },
       { "video",        required_argument, NULL, 'V' },
       { "display",      required_argument, NULL, 'd' },
@@ -604,8 +605,6 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     //          break;
     case 'l': ProcessArg("Frontend", optarg);
               break;
-    //case 'L': ProcessArg("Frontend", "none");
-    //          break;
     //case 'm': ProcessArg("Modeline", optarg);
     //          break;
     case 'r': if(strcmp(optarg, "none")) {
@@ -625,10 +624,6 @@ bool config_t::ProcessArgs(int argc, char *argv[])
               } else
                 ProcessArg("RemoteMode", "0");
               break;
-    //case 'R': ProcessArg("RemoteMode", "0");
-    //          break;
-    //case 'w': ProcessArg("Fullscreen", "0");
-    //          break;
     case 'V': ProcessArg("Video.Driver", optarg);
               break;
     case 'A': if(strchr(optarg,':')) {
@@ -791,6 +786,10 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
+
+  else if (!strcasecmp(Name, "Advanced.LiveModeSync")) xc.live_mode_sync = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    xc.scr_tunning = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     xc.scr_hz = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
     sscanf(Value,"%d %d %d %d %d %d %d %d %d %d",
