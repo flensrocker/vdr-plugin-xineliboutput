@@ -1,6 +1,53 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2008-04-14: Version 1.0.0
+- Added Italian translations (Thanks to Gringo)
+- Added Czech translations (Thanks to Maya)
+- Added HUD OSD (Blend OSD using graphics hardware) and --hud command-line option.
+  (Thanks to Antti Seppälä and Rolf Ahrenberg)
+- Added support for libextractor metadata parsing library (Petri Helin)
+- Added service interface for launching media player (Suggested by Tobias Grimm) 
+- Added configuration options for unsharp and denoise3d post plugins (Petri Helin)
+- Fixed the case when watching image files and the first one just flashes and 
+  gets replaced by black image (Petri Helin)
+- Added support for VDR 1.5.x and 1.6.0
+- Dropped legacy code for vdr-1.3.x
+- Added support for xine-lib up to 1.1.11.1
+- Added support for xine-lib 1.2 hg branch
+- Changed mrl syntax from xvdr[:proto]:// to xvdr[+proto]://
+- Added video softwarwe scaling support 
+- Added non-linear 4:3 -> 16:9 "smart" scaling
+- Added configure option for video aspect ratio (Petri Helin)
+- Added media player options for enabling or disabling metainfo types, metainfo 
+  scanner and metainfo caching (Petri Helin)
+- Added support for smooth fast forward (Thanks to Timo Eskola)
+- Added setup option to limit trick speed
+- Removed support for arts audio output
+- Added setup option to change external subtitle (.sub/.srt) font size
+- Added command-line option for binding to specific local interface address
+- Initial support for H.264 video
+- Support for HD-resolution OSD (Petri Helin). Requires patched vdr.
+- Increased local frontend initialization timeout (Thanks to Mikko Vartiainen)
+- Removed configuration option to disable OSD downscaling
+- Improved media player playlist handling and menu (Petri Helin)
+- Fixed DVD menu domain detection (Petri Helin)
+- Fixed DVD title and chapter information shown on the OSD (Petri Helin)
+- Improved key mappings for audio player (Petri Helin)
+- Allow users to add single files to playlist as well as whole directories (Petri Helin)
+- Fixed "TCP fifo full" problem
+- Added hotkeys for audio delay (Thanks to Timo Eskola)
+- Enabled streaming of external subtitle files for remote frontends
+- Added support for multithreaded video decoding. Auto-detect number of CPUs. 
+- Show address of current VDR server in X title bar
+- Added support to control HW aspect ratio with external script
+- Added support to output video and OSD to existing X11 window
+- Allow fine-tuning of SCR (should reduce frame drops/duplications and make video smoother)
+- Support using ffmpeg mpeg2 video decoder instead of libmpeg2 decoder
+- Improved PTS warp detection
+- Restore DPMS state at exit
+- Fixed sxfe window position when returning from fullscreen mode (Thanks to Timo Eskola) 
+
 2007-05-17: Version 1.0.0rc2
 
 - Workaround for xine-lib demux_mpeg_block PTS wrap issue
