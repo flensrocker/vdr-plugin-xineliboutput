@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.133 2008-04-12 19:37:41 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.134 2008-04-13 22:19:08 phintuka Exp $
  *
  */
 
@@ -692,8 +692,6 @@ static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
 
 static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this) 
 {
- if(this->scr_live_sync) {
-
   /*
    * Grab current buffer usage 
    */
@@ -819,7 +817,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    */
   } else if( _x_get_fine_speed(this->stream) == XINE_FINE_SPEED_NORMAL) {
 
-    if(this->no_video) {  /* radio stream ? */
+    if(!this->scr_live_sync) {
+        scr_tunning = SCR_TUNNING_OFF;
+
+    } else if(this->no_video) {  /* radio stream ? */
       if( num_used >= (RADIO_MAX_BUFFERS-1))
         scr_tunning = +1; /* play faster */
       else if( num_used <= (RADIO_MAX_BUFFERS/3))
@@ -859,7 +860,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   } else if( this->scr_tunning ) {
     reset_scr_tunning(this, -1);
   }
- }
 }
 
 #else /* ADJUST_SCR_SPEED */
@@ -5531,7 +5531,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   pthread_cond_broadcast(&this->engine_flushed);
   while(pthread_cond_destroy(&this->engine_flushed) == EBUSY) {
-    LOGMSG("engine_flushed busy !");
+    LOGMSG("discard_signal busy !");
     pthread_cond_broadcast(&this->engine_flushed);
     xine_usec_sleep(10);
   }
