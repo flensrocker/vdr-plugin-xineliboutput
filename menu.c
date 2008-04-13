@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.53 2008-04-03 15:11:25 phelin Exp $
+ * $Id: menu.c,v 1.54 2008-04-13 23:07:25 phintuka Exp $
  *
  */
 
@@ -1024,26 +1024,23 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 	   symlink $(CONFDIR)/plugins/xineliboutput/default_playlist */
 	{
 	  struct stat st;
-	  char *file;
-	  asprintf(&file, "%s%s", cPlugin::ConfigDirectory("xineliboutput"), "/default_playlist");
+	  cString file = cString::sprintf("%s%s", cPlugin::ConfigDirectory("xineliboutput"), "/default_playlist");
 	  if (lstat(file, &st) == 0) {
 	    if (S_ISLNK(st.st_mode)) {
-	      char *buffer = ReadLink(file);
-	      if (!buffer || stat(buffer, &st)) {
+	      cString buffer(ReadLink(file), true);
+	      if (!*buffer || stat(buffer, &st)) {
 		Message = tr("Default playlist not found");
 	      } else {
-		LOGDBG("Replaying default playlist: %s", file);
+		LOGDBG("Replaying default playlist: %s", *file);
 		cControl::Shutdown();
 		cControl::Launch(new cXinelibPlayerControl(CloseOsd, buffer));
 	      }
-	      free(buffer);
 	    } else {
 	      Message = tr("Default playlist is not symlink");
 	    }
 	  } else {
 	    Message = tr("Default playlist not defined");
 	  }
-	  free(file);
 	}
 	break;
 
