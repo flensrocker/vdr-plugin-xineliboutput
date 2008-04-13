@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.59 2008-04-13 22:14:31 phintuka Exp $
+ * $Id: config.c,v 1.60 2008-04-13 22:37:52 phintuka Exp $
  *
  */
 
@@ -453,7 +453,6 @@ config_t::config_t() {
   osd_scaling          = OSD_SCALING_NEAREST;
   hud_osd              = 0;
 
-  prescale_osd         = 1;
   unscaled_osd         = 0;
   unscaled_osd_opaque  = 0;
   unscaled_osd_lowresvideo = 1;
@@ -688,7 +687,6 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.HideMainMenu"))   hide_main_menu = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
-  else if (!strcasecmp(Name, "OSD.Prescale"))       prescale_osd = atoi(Value);
   else if (!strcasecmp(Name, "OSD.UnscaledAlways")) unscaled_osd = atoi(Value);
   else if (!strcasecmp(Name, "OSD.UnscaledOpaque")) unscaled_osd_opaque = atoi(Value);
   else if (!strcasecmp(Name, "OSD.UnscaledLowRes")) unscaled_osd_lowresvideo = atoi(Value);

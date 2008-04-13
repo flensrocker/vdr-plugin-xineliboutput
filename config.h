@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.43 2008-04-13 22:14:31 phintuka Exp $
+ * $Id: config.h,v 1.44 2008-04-13 22:37:52 phintuka Exp $
  *
  */
 
@@ -242,7 +242,6 @@ class config_t {
     int  osd_mixer;                // show multiple OSD layers
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
     int  hud_osd;                  // head up display OSD
-    int  prescale_osd;
     int  unscaled_osd;
     int  unscaled_osd_opaque;
     int  unscaled_osd_lowresvideo;
