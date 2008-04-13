@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.134 2008-04-13 22:19:08 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.135 2008-04-13 22:32:44 phintuka Exp $
  *
  */
 
@@ -312,7 +312,6 @@ typedef struct vdr_input_plugin_s {
   int vdr_osd_width, vdr_osd_height;
   int video_width, video_height;
   int video_changed;
-  int rescale_osd;
   int unscaled_osd;
   int unscaled_osd_opaque;
   int unscaled_osd_lowresvideo;
@@ -2169,7 +2168,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	  if(unscaled_supported && this->unscaled_osd_lowresvideo)
 	    use_unscaled = 1;
 
-	if(!use_unscaled && this->rescale_osd) {
+	if(!use_unscaled && cmd->scaling > 0) {
+
 	  if(height_diff || width_diff) {
 	    this->osddata[cmd->wnd].data = cmd->data;
 	    this->osddata[cmd->wnd].datalen = cmd->datalen;
@@ -2196,11 +2196,11 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 							     VO_PROP_WINDOW_WIDTH);
       int win_height = this->stream->video_out->get_property(this->stream->video_out, 
 							     VO_PROP_WINDOW_HEIGHT);
-      if(this->rescale_osd) {
+      if(cmd->scaling > 0) {
 	/* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
 	
 	if(win_width > 240 && win_height > 196) {
-	  if(this->rescale_osd) {
+	  if(cmd->scaling > 0) {
 	    /*LOGMSG("Scaling unscaled OSD to %dx%d", win_width, win_height);*/
 	    if(win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
 	      int new_w = (0x100*cmd->w * win_width 
@@ -2239,7 +2239,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     ov_event.object.overlay->data_size = cmd->datalen;
 
     /* store rle for later scaling (done if video size changes) */
-    if(/*!use_unscaled &&*/ /*this->rescale_osd && */
+    if(/*!use_unscaled &&*/
        /*!this->osddata[cmd->wnd].data && */
        !rle_scaled /*if scaled, we already have a copy (original data)*/ ) {
       this->osddata[cmd->wnd].data = malloc(cmd->datalen);
@@ -2292,7 +2292,8 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
          scaling is done automatically if required. */
       for(i=0; i<MAX_OSD_OBJECT; i++)
 	if(this->osdhandle[i] >= 0 &&
-	   this->osddata[i].data) {
+	   this->osddata[i].data &&
+	   this->osddata[i].scaling > 0) {
 	  osd_command_t tmp;
 	  memcpy(&tmp, &this->osddata[i], sizeof(osd_command_t));
 	  memset(&this->osddata[i], 0, sizeof(osd_command_t));
@@ -3170,17 +3171,12 @@ LOGMSG("  pip stream created");
 
 static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
 {
-  int err = CONTROL_OK, tmp;
   pthread_mutex_lock(&this->osd_lock);
-  if(1 == sscanf(cmd, "OSDSCALING %d", &tmp)) {
-    this->rescale_osd = tmp ? 1 : 0;
-    this->unscaled_osd = strstr(cmd, "UnscaledAlways") ? 1 : 0;
-    this->unscaled_osd_opaque = strstr(cmd, "UnscaledOpaque") ? 1 : 0;
-    this->unscaled_osd_lowresvideo = strstr(cmd, "UnscaledLowRes") ? 1 : 0;
-  } else
-    err = CONTROL_PARAM_ERROR;
+  this->unscaled_osd = strstr(cmd, "UnscaledAlways") ? 1 : 0;
+  this->unscaled_osd_opaque = strstr(cmd, "UnscaledOpaque") ? 1 : 0;
+  this->unscaled_osd_lowresvideo = strstr(cmd, "UnscaledLowRes") ? 1 : 0;
   pthread_mutex_unlock(&this->osd_lock);
-  return err;
+  return CONTROL_OK;
 }
 
 static int handle_control_osdcmd(vdr_input_plugin_t *this)
@@ -4177,8 +4173,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	       frame_change->width, frame_change->height, 
 	       frame_change->aspect);
 	if(!frame_change->aspect) /* from frontend */
-	  if(this->rescale_osd)
-	    vdr_scale_osds(this, frame_change->width, frame_change->height);
+	  vdr_scale_osds(this, frame_change->width, frame_change->height);
 #if 0
 	if(frame_change->aspect)
 	  queue_blank_yv12(this);
