@@ -96,7 +96,6 @@ Installing - IMPORTANT
 
   XINE'S DYNAMIC LIBRARIES AND FRONTEND EXECUTABLES ARE NOT
   INSTALLED AUTOMATICALLY.
-  This was changed in version 1.0.0pre2.
 
   It is important to copy required libraries to right place
   either by hand or by executing "make install" in plugin's
@@ -214,6 +213,39 @@ Using remote frontends
       vdr -P"xineliboutput --post=tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
     Disable deinterlacing:
       vdr-sxfe --post tvtime:enable=0
+
+
+HUD OSD
+
+  HUD OSD implements high-quality OSD using modern graphics hardware.
+  OSD is scaled and blended using hardware, so it adds no extra CPU 
+  overhead. OSD is always blended to output (display) resolution,
+  so it remains sharp and detailed even with low-resolution video.
+
+  HUD OSD must be enabled with command-line option (--hud). Scaling
+  options can be configured in xineliboutput plugin setup menu, 
+  OSD settings page.
+
+  Requirements:
+    - X server with Composite and Xrender extensions.
+      Composite extension must be enabled in Xorg config.
+    - Composite window manager (compiz, beryl, or properly configured xfce4, metacity, ...)
+      or separate composite manager (xcompmgr).
+    - Compatible graphics hardware and drivers.
+      HUD OSD has been tested with:
+        nVidia GF FX5700LE      (driver version 169.09)
+        Intel G965 (GMA-X3000)  (driver version 2.2.1, textured XVideo)
+
+        metacity 2.23.2
+        xcompmgr 1.1.3
+
+  NOTE: 
+    - Drawing video (even without OSD) may be slower when composite 
+      extension is enabled.
+
+    - For true HD-resolution OSD VDR needs to be patched.
+
+  HUD OSD was contributed by Antti Seppälä and Rolf Ahrenberg.
 
 
 Using with xine-ui (xine, fbxine, gxine, ...)
