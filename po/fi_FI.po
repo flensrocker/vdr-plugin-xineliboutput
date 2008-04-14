@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-03-28 23:58+0200\n"
+"POT-Creation-Date: 2008-04-15 00:22+0300\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Petri Hintukainen\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -452,23 +452,17 @@ msgstr "Kuvaruutunäyttö"
 msgid "Hide main menu"
 msgstr "Piilota valinta päävalikossa"
 
-msgid "OSD scaling method"
+msgid "Blending method"
+msgstr "Piirtotapa"
+
+msgid "  Use hardware for low-res video"
+msgstr "  Laitteisto matalaresoluutioisella videolla"
+
+msgid "Scaling method"
 msgstr "Skaalaustapa"
 
 msgid "Show all layers"
 msgstr "Näytä kaikki kerrokset"
-
-msgid "Scale OSD to video size"
-msgstr "Skaalaa videon kokoiseksi"
-
-msgid "Unscaled OSD (no transparency)"
-msgstr "Skaalaamaton (ei läpinäkyvyyttä)"
-
-msgid "  When opaque OSD"
-msgstr "  Kun ei läpinäkyvä"
-
-msgid "  When low-res video"
-msgstr "  Kun matalaresoluutioinen video"
 
 msgid "Dynamic transparency correction"
 msgstr "Dynaaminen läpinäkyvyyden korjaus"
@@ -620,5 +614,3 @@ msgstr "Testikuvat"
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
 
-#~ msgid "Select subtitle track"
-#~ msgstr "Valitse tekstityskieli"
