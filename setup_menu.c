@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.53 2008-04-14 13:19:45 phintuka Exp $
+ * $Id: setup_menu.c,v 1.54 2008-04-14 14:13:15 phintuka Exp $
  *
  */
 
@@ -845,7 +845,6 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_alpha;
     cOsdItem *ctrl_alpha_abs;
     cOsdItem *ctrl_unscaled;
-    cOsdItem *ctrl_scale;
     cOsdItem *ctrl_lowres;
 #if VDRVERSNUM < 10515
     cOsdItem *ctrl_spulang0;
@@ -887,7 +886,6 @@ void cMenuSetupOSD::Set(void)
   Clear();
 
   ctrl_scaling = NULL;
-  ctrl_scale = NULL;
   ctrl_unscaled = NULL;
   ctrl_lowres = NULL;
   ctrl_alpha = NULL;
@@ -968,7 +966,7 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
     xc.alpha_correction = newconfig.alpha_correction;
   else if(item == ctrl_alpha_abs)
     xc.alpha_correction_abs = newconfig.alpha_correction_abs;
-  else if(item == ctrl_unscaled || item == ctrl_scale)
+  else if(item == ctrl_unscaled)
     cXinelibDevice::Instance().ConfigureOSD();
 
   if(!newconfig.unscaled_osd && !ctrl_lowres)
@@ -1000,8 +998,7 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);
   SetupStore("OSD.UnscaledAlways",  xc.unscaled_osd);
-  SetupStore("OSD.UnscaledOpaque", xc.unscaled_osd_opaque);
-  SetupStore("OSD.UnscaledLowRes", xc.unscaled_osd_lowresvideo);
+  SetupStore("OSD.UnscaledLowRes",  xc.unscaled_osd_lowresvideo);
   SetupStore("OSD.AlphaCorrection", xc.alpha_correction);
   SetupStore("OSD.AlphaCorrectionAbs", xc.alpha_correction_abs);
 
