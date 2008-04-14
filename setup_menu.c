@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.52 2008-04-13 22:37:53 phintuka Exp $
+ * $Id: setup_menu.c,v 1.53 2008-04-14 13:19:45 phintuka Exp $
  *
  */
 
@@ -911,8 +911,6 @@ void cMenuSetupOSD::Set(void)
       new cMenuEditBoolItem(tr("Unscaled OSD (no transparency)"), 
 			    &newconfig.unscaled_osd));
   if(!newconfig.unscaled_osd) {
-    Add(new cMenuEditBoolItem(tr("  When opaque OSD"),
-			      &newconfig.unscaled_osd_opaque));
     Add(ctrl_lowres =
 	new cMenuEditBoolItem(tr("  When low-res video"),
 			      &newconfig.unscaled_osd_lowresvideo));

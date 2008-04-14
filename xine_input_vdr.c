@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.135 2008-04-13 22:32:44 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.136 2008-04-14 13:19:45 phintuka Exp $
  *
  */
 
@@ -313,7 +313,6 @@ typedef struct vdr_input_plugin_s {
   int video_width, video_height;
   int video_changed;
   int unscaled_osd;
-  int unscaled_osd_opaque;
   int unscaled_osd_lowresvideo;
   int osdhandle[MAX_OSD_OBJECT];
   int64_t last_changed_vpts[MAX_OSD_OBJECT];
@@ -2082,7 +2081,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
     int use_unscaled = 0;
     int rle_scaled = 0;
-    int semitransparent = 0;
     int xmove = 0, ymove = 0;
     int unscaled_supported = 1;
 
@@ -2113,16 +2111,12 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       uint32_t *tmp = (uint32_t*)(cmd->palette + i);
       ov_event.object.overlay->color[i] = *tmp & 0xffffff;
       ov_event.object.overlay->trans[i] = (cmd->palette[i].alpha + 0x7)/0xf;
-      if(ov_event.object.overlay->trans[i] > 0 && 
-	 ov_event.object.overlay->trans[i] < 0xf)
-	semitransparent = 1;
     }
 
     if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
 	 VO_CAP_UNSCALED_OVERLAY))
       unscaled_supported = 0;
-    else if(this->unscaled_osd ||
-	    (this->unscaled_osd_opaque && !semitransparent))
+    else if(this->unscaled_osd)
       use_unscaled = 1;
 
     /* store osd for later rescaling (done if video size changes) */
@@ -3173,7 +3167,6 @@ static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
 {
   pthread_mutex_lock(&this->osd_lock);
   this->unscaled_osd = strstr(cmd, "UnscaledAlways") ? 1 : 0;
-  this->unscaled_osd_opaque = strstr(cmd, "UnscaledOpaque") ? 1 : 0;
   this->unscaled_osd_lowresvideo = strstr(cmd, "UnscaledLowRes") ? 1 : 0;
   pthread_mutex_unlock(&this->osd_lock);
   return CONTROL_OK;

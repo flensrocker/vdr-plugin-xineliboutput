@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.57 2008-04-13 22:32:44 phintuka Exp $
+ * $Id: frontend.c,v 1.58 2008-04-14 13:19:45 phintuka Exp $
  *
  */
 
@@ -813,8 +813,6 @@ int cXinelibThread::ConfigureOSD(void)
   strcpy(buf, "OSDSCALING ");
   if(xc.unscaled_osd)
     strcat(buf, " UnscaledAlways");
-  if(xc.unscaled_osd_opaque)
-    strcat(buf, " UnscaledOpaque");
   if(xc.unscaled_osd_lowresvideo)
     strcat(buf, " UnscaledLowRes");
 
