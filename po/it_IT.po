@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-03-28 23:58+0200\n"
+"POT-Creation-Date: 2008-04-15 00:22+0300\n"
 "PO-Revision-Date: 2008-01-16 00:27+0100\n"
 "Last-Translator: Gringo <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -450,23 +450,17 @@ msgstr "Messaggi in sovraimpressione (OSD)"
 msgid "Hide main menu"
 msgstr "Nascondi voce nel menu principale"
 
-msgid "OSD scaling method"
+msgid "Blending method"
+msgstr ""
+
+msgid "  Use hardware for low-res video"
+msgstr ""
+
+msgid "Scaling method"
 msgstr ""
 
 msgid "Show all layers"
 msgstr "Mostra tutti i livelli"
-
-msgid "Scale OSD to video size"
-msgstr "Scala OSD a dimensione video"
-
-msgid "Unscaled OSD (no transparency)"
-msgstr "OSD non scalato (nessuna trasparenza)"
-
-msgid "  When opaque OSD"
-msgstr "  Se OSD opaco"
-
-msgid "  When low-res video"
-msgstr "  Se video a bassa risoluzione"
 
 msgid "Dynamic transparency correction"
 msgstr "Correzione trasparenza dinamica"
@@ -617,6 +611,3 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
-
-#~ msgid "Select subtitle track"
-#~ msgstr "Seleziona traccia sottotitoli"

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-03-28 23:58+0200\n"
+"POT-Creation-Date: 2008-04-15 00:22+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -452,23 +452,17 @@ msgstr "Obrazovkové menu"
 msgid "Hide main menu"
 msgstr "Nezobrazovat v hlavním menu"
 
-msgid "OSD scaling method"
+msgid "Blending method"
+msgstr ""
+
+msgid "  Use hardware for low-res video"
+msgstr ""
+
+msgid "Scaling method"
 msgstr ""
 
 msgid "Show all layers"
 msgstr "Zobrazit v¹echny vrstvy"
-
-msgid "Scale OSD to video size"
-msgstr "©kálovat OSD do velikosti obrazu"
-
-msgid "Unscaled OSD (no transparency)"
-msgstr "Ne¹kálovat OSD (neprùhledné OSD)"
-
-msgid "  When opaque OSD"
-msgstr "  Pøi neprùhledném OSD"
-
-msgid "  When low-res video"
-msgstr "  Pøi nízkém rozli¹ení"
 
 msgid "Dynamic transparency correction"
 msgstr "Úprava dynamické prùhlednosti"
