@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.56 2008-04-12 19:37:41 phintuka Exp $
+ * $Id: device.c,v 1.57 2008-04-14 19:58:50 phintuka Exp $
  *
  */
 
@@ -413,13 +413,6 @@ void cXinelibDevice::MainThreadHook(void)
 //
 // Configuration
 //
-
-void cXinelibDevice::ConfigureOSD(void)
-{
-  TRACEF("cXinelibDevice::ConfigureOSD");
-
-  ForEach(m_clients, &cXinelibThread::ConfigureOSD);
-}
 
 void cXinelibDevice::ConfigurePostprocessing(const char *deinterlace_method, 
 					     int audio_delay, 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.11 2008-04-04 20:35:11 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.12 2008-04-14 19:58:50 phintuka Exp $
  *
  */
 
@@ -33,8 +33,10 @@ typedef enum  {
   OSD_Commit      = 7     /* All OSD areas have been updated, commit changes to display */
 } osd_command_id_t;
 
-#define OSDFLAG_YUV_CLUT   0x01
-#define OSDFLAG_REFRESH    0x02 /* OSD data refresh for new config, clients, etc. - no changes in bitmap */
+#define OSDFLAG_YUV_CLUT        0x01 /* palette is in YUV format */
+#define OSDFLAG_REFRESH         0x02 /* OSD data refresh for new config, clients, etc. - no changes in bitmap */
+#define OSDFLAG_UNSCALED        0x04 /* xine-lib unscaled (hardware) blending                   */
+#define OSDFLAG_UNSCALED_LOWRES 0x08 /* unscaled blending when video resolution < .95 * 720x576 */
 
 typedef struct xine_clut_s {
   union {

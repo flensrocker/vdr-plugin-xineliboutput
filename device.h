@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.33 2008-04-12 19:37:41 phintuka Exp $
+ * $Id: device.h,v 1.34 2008-04-14 19:58:50 phintuka Exp $
  *
  */
 
@@ -211,7 +211,6 @@ class cXinelibDevice : public cDevice
     cXinelibThread        *m_local;
 
   public:
-    void ConfigureOSD(void);
     void ConfigurePostprocessing(const char *deinterlace_method, 
 				 int audio_delay,
 				 int audio_compression, 

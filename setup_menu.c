@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.54 2008-04-14 14:13:15 phintuka Exp $
+ * $Id: setup_menu.c,v 1.55 2008-04-14 19:58:50 phintuka Exp $
  *
  */
 
@@ -875,8 +875,6 @@ cMenuSetupOSD::~cMenuSetupOSD()
 {
   xc.alpha_correction = orig_alpha_correction;
   xc.alpha_correction_abs = orig_alpha_correction_abs;
-
-  cXinelibDevice::Instance().ConfigureOSD();
 }
 
 void cMenuSetupOSD::Set(void)
@@ -966,8 +964,6 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
     xc.alpha_correction = newconfig.alpha_correction;
   else if(item == ctrl_alpha_abs)
     xc.alpha_correction_abs = newconfig.alpha_correction_abs;
-  else if(item == ctrl_unscaled)
-    cXinelibDevice::Instance().ConfigureOSD();
 
   if(!newconfig.unscaled_osd && !ctrl_lowres)
     Set();

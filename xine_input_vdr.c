@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.136 2008-04-14 13:19:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.137 2008-04-14 19:58:54 phintuka Exp $
  *
  */
 
@@ -312,8 +312,6 @@ typedef struct vdr_input_plugin_s {
   int vdr_osd_width, vdr_osd_height;
   int video_width, video_height;
   int video_changed;
-  int unscaled_osd;
-  int unscaled_osd_lowresvideo;
   int osdhandle[MAX_OSD_OBJECT];
   int64_t last_changed_vpts[MAX_OSD_OBJECT];
   osd_command_t osddata[MAX_OSD_OBJECT];
@@ -2116,7 +2114,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
 	 VO_CAP_UNSCALED_OVERLAY))
       unscaled_supported = 0;
-    else if(this->unscaled_osd)
+    else if(cmd->flags & OSDFLAG_UNSCALED)
       use_unscaled = 1;
 
     /* store osd for later rescaling (done if video size changes) */
@@ -2159,7 +2157,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 		     / this->vdr_osd_height)>>8;
 	LOGOSD("Size out of margins, rescaling rle image");
 	if(width_diff < 0 || height_diff < 0)
-	  if(unscaled_supported && this->unscaled_osd_lowresvideo)
+	  if(unscaled_supported && (cmd->flags & OSDFLAG_UNSCALED_LOWRES))
 	    use_unscaled = 1;
 
 	if(!use_unscaled && cmd->scaling > 0) {
@@ -3163,15 +3161,6 @@ LOGMSG("  pip stream created");
   return CONTROL_PARAM_ERROR;
 }
 
-static int handle_control_osdscaling(vdr_input_plugin_t *this, const char *cmd)
-{
-  pthread_mutex_lock(&this->osd_lock);
-  this->unscaled_osd = strstr(cmd, "UnscaledAlways") ? 1 : 0;
-  this->unscaled_osd_lowresvideo = strstr(cmd, "UnscaledLowRes") ? 1 : 0;
-  pthread_mutex_unlock(&this->osd_lock);
-  return CONTROL_OK;
-}
-
 static int handle_control_osdcmd(vdr_input_plugin_t *this)
 {
   osd_command_t osdcmd;
@@ -3490,10 +3479,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   if(NULL != (pt = strstr(cmd, "\r\n")))
     *((char*)pt) = 0; /* auts */
 
-  if(!strncasecmp(cmd, "OSDSCALING", 10)) {
-    err = handle_control_osdscaling(this, cmd);
-
-  } else if(!strncasecmp(cmd, "OSDCMD", 6)) {
+  if(!strncasecmp(cmd, "OSDCMD", 6)) {
     err = handle_control_osdcmd(this);
 
   } else if(!strncasecmp(cmd, "VIDEO_PROPERTIES ", 17)) {

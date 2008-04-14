@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.21 2008-04-12 19:37:41 phintuka Exp $
+ * $Id: frontend.h,v 1.22 2008-04-14 19:58:50 phintuka Exp $
  *
  */
 
@@ -115,7 +115,6 @@ class cXinelibThread : public cThread, public cListObject
   //
 
   public:
-    virtual int ConfigureOSD(void);
     virtual int ConfigurePostprocessing(const char *deinterlace_method, 
 					int audio_delay, 
 					int audio_compression, 
