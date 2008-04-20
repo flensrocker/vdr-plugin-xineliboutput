@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: time_pts.c,v 1.1 2007-01-06 03:42:17 phintuka Exp $
+ * $Id: time_pts.c,v 1.2 2008-04-20 17:51:45 phintuka Exp $
  *
  */
 
@@ -27,33 +27,43 @@
 #  warning Posix monotonic clock not available
 #endif
 
+int cTimePts::m_Monotonic = -1;
+
+void cTimePts::Init(void)
+{
+#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
+  if(m_Monotonic >= 0)
+    return;
+
+  m_Monotonic = 0;
+
+  struct timespec resolution;   
+  if(clock_getres(CLOCK_MONOTONIC, &resolution)) {
+    LOGERR("cTimePts: clock_getres(CLOCK_MONOTONIC) failed");
+    return;
+  }
+
+  LOGDBG("cTimePts: clock_gettime(CLOCK_MONOTONIC): clock resolution %d us",
+	 ((int)resolution.tv_nsec) / 1000);
+
+  if( resolution.tv_sec == 0 && resolution.tv_nsec <= 1000000 ) {
+    struct timespec tp;
+    if(clock_gettime(CLOCK_MONOTONIC, &tp)) {
+      LOGERR("cTimePts: clock_gettime(CLOCK_MONOTONIC) failed");
+    } else {
+      LOGDBG("cTimePts: using monotonic clock");
+      m_Monotonic = 1;
+    }
+  }
+#endif
+}
 
 cTimePts::cTimePts(void)
 {
   m_Paused     = false;
   m_Multiplier = 90000;
-  m_Monotonic  = false;
 
-#if _POSIX_TIMERS > 0 && defined(_POSIX_MONOTONIC_CLOCK)
-  struct timespec resolution;   
-
-  if(clock_getres(CLOCK_MONOTONIC, &resolution)) {
-    LOGERR("cTimePts: clock_getres(CLOCK_MONOTONIC) failed");
-  } else {
-    LOGDBG("cTimePts: clock_gettime(CLOCK_MONOTONIC): clock resolution %d us",
-	   ((int)resolution.tv_nsec) / 1000);
-
-    if( resolution.tv_sec == 0 && resolution.tv_nsec <= 1000000 ) {
-      struct timespec tp;
-      if(clock_gettime(CLOCK_MONOTONIC, &tp)) {
-	LOGERR("cTimePts: clock_gettime(CLOCL_MONOTONIC) failed");
-      } else {
-	LOGDBG("cTimePts: using monotonic clock");
-	m_Monotonic = true;
-      }
-    }
-  }
-#endif
+  Init();
 
   Set();
 }
@@ -119,7 +129,7 @@ void cTimePts::Set(int64_t Pts)
     }
 
     LOGERR("cTimePts: clock_gettime(CLOCL_MONOTONIC) failed");
-    m_Monotonic = false;
+    m_Monotonic = 0;
   }
 #endif
 

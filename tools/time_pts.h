@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: time_pts.h,v 1.1 2007-01-06 03:39:15 phintuka Exp $
+ * $Id: time_pts.h,v 1.2 2008-04-20 17:51:45 phintuka Exp $
  *
  */
 
@@ -22,7 +22,9 @@ class cTimePts
     struct timeval tbegin;  /* Start time (real time) */
     bool m_Paused;
     int  m_Multiplier;
-    bool m_Monotonic;
+
+    static int m_Monotonic;
+    static void Init(void);
 
   public:
     cTimePts(void);
