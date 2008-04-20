@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: time_pts.h,v 1.2 2008-04-20 17:51:45 phintuka Exp $
+ * $Id: time_pts.h,v 1.3 2008-04-20 21:29:29 phintuka Exp $
  *
  */
 
@@ -22,6 +22,7 @@ class cTimePts
     struct timeval tbegin;  /* Start time (real time) */
     bool m_Paused;
     int  m_Multiplier;
+    int  m_ScrSpeed;
 
     static int m_Monotonic;
     static void Init(void);
@@ -35,6 +36,8 @@ class cTimePts
     void Pause(void);
     void Resume(void);
     void TrickSpeed(int Multiplier);
+
+    void SetScrSpeed(int ScrSpeed = 90000);
 };
 
 #endif // __TIME_PTS_H
