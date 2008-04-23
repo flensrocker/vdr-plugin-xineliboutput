@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.36 2008-04-13 20:50:19 phintuka Exp $
+# $Id: Makefile,v 1.37 2008-04-23 07:11:20 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -23,6 +23,7 @@ XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
 HAVE_XRENDER      = 0
 HAVE_XDPMS        = 0
+HAVE_XINERAMA     = 0
 HAVE_EXTRACTOR_H  = 0
 APPLE_DARWIN      = 0
 XINELIBOUTPUT_XINEPLUGIN = 0
@@ -53,6 +54,11 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
         else
             $(warning XDPMS extension not detected. )
         endif
+        ifeq ($(shell (((echo "\#include <X11/extensions/Xinerama.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
+            HAVE_XINERAMA = 1
+        else
+            $(warning Xinerama extension not detected. )
+        endif
     else
         $(warning ********************************************************)
         $(warning X11 not detected ! X11 frontends will not be compiled.  )
@@ -77,6 +83,7 @@ USE_ICONV = 1
 #XINELIBOUTPUT_X11        = 1
 #HAVE_XRENDER             = 1
 #HAVE_XDPMS               = 1
+#HAVE_XINERAMA            = 1
 #HAVE_EXTRACTOR_H         = 1
 #XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
@@ -256,6 +263,9 @@ ifeq ($(HAVE_XRENDER), 1)
 endif
 ifeq ($(HAVE_XDPMS), 1)
     DEFINES += -DHAVE_XDPMS=1
+endif
+ifeq ($(HAVE_XINERAMA), 1)
+    DEFINES += -DHAVE_XINERAMA=1
 endif
 ifeq ($(HAVE_EXTRACTOR_H), 1)
     DEFINES  += -DHAVE_EXTRACTOR_H=1
