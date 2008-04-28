@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: time_pts.c,v 1.3 2008-04-20 21:29:29 phintuka Exp $
+ * $Id: time_pts.c,v 1.4 2008-04-28 20:48:05 phintuka Exp $
  *
  */
 
@@ -69,7 +69,7 @@ cTimePts::cTimePts(void)
   Set();
 }
 
-int64_t cTimePts::Now(void)
+int64_t cTimePts::Now(void) const
 {
   if(m_Paused)
     return begin;
@@ -152,7 +152,7 @@ void cTimePts::Resume(void)
   }
 }
 
-void cTimePts::TrickSpeed(int Multiplier)
+void cTimePts::TrickSpeed(const int Multiplier)
 {
   Set(Now());
 
@@ -164,7 +164,7 @@ void cTimePts::TrickSpeed(int Multiplier)
     LOGERR("cTimePts::SetSpeed: Multiplier=%d", Multiplier);
 }
 
-void cTimePts::SetScrSpeed(int ScrSpeed)
+void cTimePts::SetScrSpeed(const int ScrSpeed)
 {
   Set(Now());
 
