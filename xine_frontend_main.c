@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.39 2008-04-13 22:08:14 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40 2008-04-28 20:03:52 phintuka Exp $
  *
  */
 
@@ -335,7 +335,7 @@ static const char help_str[] =
     "   --verbose                     Verbose debug output\n"
     "   --silent                      Silent mode (report only errors)\n"
     "   --syslog                      Write all output to system log\n"
-    "   --nokbd                       Disable kayboard input\n"
+    "   --nokbd                       Disable keyboard input\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\r\n"
