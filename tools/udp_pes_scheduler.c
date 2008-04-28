@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.33 2008-02-04 23:55:49 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.34 2008-04-28 20:53:07 phintuka Exp $
  *
  */
 
@@ -382,7 +382,7 @@ void cUdpScheduler::Pause(bool On)
   m_TrickSpeed = false;
 }
 
-void cUdpScheduler::TrickSpeed(int Multiplier)
+void cUdpScheduler::TrickSpeed(const int Multiplier)
 {
   cMutexLock ml(&m_Lock);
 
@@ -398,6 +398,14 @@ void cUdpScheduler::TrickSpeed(int Multiplier)
   MasterClock.TrickSpeed(Multiplier);
 
   m_TrickSpeed = (Multiplier==-1 || Multiplier==1) ? false : true;
+}
+
+void cUdpScheduler::SetScrSpeed(const int Speed)
+{
+  cMutexLock ml(&m_Lock);
+
+  MasterClock.SetScrSpeed(Speed);
+  RtpScr.SetScrSpeed(Speed);
 }
 
 bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length) 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.12 2007-03-29 12:45:43 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.13 2008-04-28 20:53:07 phintuka Exp $
  *
  */
 
@@ -47,7 +47,8 @@ class cUdpScheduler : public cThread
     bool Flush(int TimeoutMs);
 
     void Pause(bool On);
-    void TrickSpeed(int Multiplier);
+    void TrickSpeed(const int Multiplier);
+    void SetScrSpeed(const int Speed = 90000);
 
   protected:
 
