@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.54 2008-04-13 23:07:25 phintuka Exp $
+ * $Id: menu.c,v 1.55 2008-04-29 11:33:45 phintuka Exp $
  *
  */
 
@@ -187,12 +187,6 @@ void cMenuBrowseFiles::StoreConfig(void)
 							  xc.browse_files_dir);
   cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.BrowseImagesDir", 
 							  xc.browse_images_dir);
-#if 1
-  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.CacheImplicitPlaylists", 
-							  xc.cache_implicit_playlists);
-  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.EnableID3Scanner", 
-							  xc.enable_id3_scanner);
-#endif
 }
 
 void cMenuBrowseFiles::SetHelpButtons(void)
