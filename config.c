@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.61 2008-04-14 13:19:45 phintuka Exp $
+ * $Id: config.c,v 1.62 2008-04-29 11:36:07 phintuka Exp $
  *
  */
 
@@ -769,11 +769,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.denoise3d.luma"))    denoise3d_luma   = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.chroma"))  denoise3d_chroma = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.time"))    denoise3d_time   = atoi(Value);
-#if 1 // 1.0.0pre6
-  else if (!strcasecmp(Name, "BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
-  else if (!strcasecmp(Name, "BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
-  else if (!strcasecmp(Name, "BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
-#endif
+
   else if (!strcasecmp(Name, "Media.BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
