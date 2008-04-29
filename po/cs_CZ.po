@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-04-15 00:22+0300\n"
+"POT-Creation-Date: 2008-04-21 10:36+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -126,6 +126,12 @@ msgstr "Prùchozí"
 
 msgid "very large"
 msgstr "velmi velký"
+
+msgid "Software"
+msgstr "softwarové"
+
+msgid "Hardware"
+msgstr "hardwarové"
 
 msgid "no"
 msgstr "ne"
@@ -307,12 +313,6 @@ msgstr "Reproduktory"
 
 msgid "Volume control"
 msgstr "Ovládání hlasitosti"
-
-msgid "Hardware"
-msgstr "hardwarové"
-
-msgid "Software"
-msgstr "softwarové"
 
 msgid "Mix to headphones"
 msgstr ""

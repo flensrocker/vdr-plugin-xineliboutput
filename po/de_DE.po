@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-04-15 00:22+0300\n"
+"POT-Creation-Date: 2008-04-21 10:36+0300\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -124,6 +124,12 @@ msgid "Pass Through"
 msgstr ""
 
 msgid "very large"
+msgstr ""
+
+msgid "Software"
+msgstr ""
+
+msgid "Hardware"
 msgstr ""
 
 msgid "no"
@@ -305,12 +311,6 @@ msgid "Speakers"
 msgstr "Lautsprecher"
 
 msgid "Volume control"
-msgstr ""
-
-msgid "Hardware"
-msgstr ""
-
-msgid "Software"
 msgstr ""
 
 msgid "Mix to headphones"
