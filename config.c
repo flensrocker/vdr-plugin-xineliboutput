@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.62 2008-04-29 11:36:07 phintuka Exp $
+ * $Id: config.c,v 1.63 2008-04-29 12:44:25 phintuka Exp $
  *
  */
 
@@ -209,6 +209,12 @@ const char * const config_t::s_subtitleSizes[ SUBTITLESIZE_count+1 ] = {
 const char * const config_t::s_subExts[] = {
   ".sub", ".srt", ".txt", ".ssa",
   ".SUB", ".SRT", ".TXT", ".SSA", 
+  NULL
+};
+
+const char * const config_t::s_osdBlendingMethods[] = {
+  trNOOP("Software"),
+  trNOOP("Hardware"),
   NULL
 };
 
@@ -453,8 +459,8 @@ config_t::config_t() {
   osd_scaling          = OSD_SCALING_NEAREST;
   hud_osd              = 0;
 
-  unscaled_osd         = 0;
-  unscaled_osd_lowresvideo = 1;
+  osd_blending             = OSD_BLENDING_SOFTWARE;
+  osd_blending_lowresvideo = OSD_BLENDING_HARDWARE;
 
 #if VDRVERSNUM < 10515
   spu_autoshow = 0;
@@ -686,9 +692,13 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.HideMainMenu"))   hide_main_menu = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
-  else if (!strcasecmp(Name, "OSD.UnscaledAlways")) unscaled_osd = atoi(Value);
-  else if (!strcasecmp(Name, "OSD.UnscaledLowRes")) unscaled_osd_lowresvideo = atoi(Value);
-
+  else if (!strcasecmp(Name, "OSD.Blending"))       osd_blending = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.BlendingLowRes")) osd_blending_lowresvideo = atoi(Value);
+#if 1
+  // < 1.0.1
+  else if (!strcasecmp(Name, "OSD.UnscaledAlways")) osd_blending = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.UnscaledLowRes")) osd_blending_lowresvideo = atoi(Value);
+#endif
   else if (!strcasecmp(Name, "OSD.AlphaCorrection"))    alpha_correction = atoi(Value);
   else if (!strcasecmp(Name, "OSD.AlphaCorrectionAbs")) alpha_correction_abs = atoi(Value);
 

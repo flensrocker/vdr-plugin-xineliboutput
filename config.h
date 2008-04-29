@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.45 2008-04-14 14:13:15 phintuka Exp $
+ * $Id: config.h,v 1.46 2008-04-29 12:44:25 phintuka Exp $
  *
  */
 
@@ -132,6 +132,11 @@
 #define SPEAKERS_A52_PASSTHRU  12 
 #define SPEAKERS_count         13 
 
+// OSD blending methods
+#define OSD_BLENDING_SOFTWARE   0  // xine-lib "normal" osd
+#define OSD_BLENDING_HARDWARE   1  // xine-lib "unscaled osd"
+#define OSD_BLENDING_count      2
+
 // OSD layers mixing
 #define OSD_MIXER_NONE          0
 #define OSD_MIXER_GRAY          1
@@ -187,6 +192,7 @@ class config_t {
     static const char * const s_speakerArrangements[];
     static const char * const s_subtitleSizes[];
     static const char * const s_subExts[];
+    static const char * const s_osdBlendingMethods[];
     static const char * const s_osdMixers[];
     static const char * const s_osdScalings[];
     static const char * const s_vo_aspects[];
@@ -242,8 +248,8 @@ class config_t {
     int  osd_mixer;                // show multiple OSD layers
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
     int  hud_osd;                  // head up display OSD
-    int  unscaled_osd;
-    int  unscaled_osd_lowresvideo;
+    int  osd_blending;             // OSD blending method
+    int  osd_blending_lowresvideo; // Use hardware blending for low-resolution video
     int  alpha_correction;
     int  alpha_correction_abs;
     int  extsub_size; /* size of separate subtitles ( -1 = xine default ; 0...6 = { tiny  small  normal  large  very large  huge } */

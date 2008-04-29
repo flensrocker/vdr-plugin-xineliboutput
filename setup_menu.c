@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.57 2008-04-29 12:38:17 phintuka Exp $
+ * $Id: setup_menu.c,v 1.58 2008-04-29 12:44:25 phintuka Exp $
  *
  */
 
@@ -848,7 +848,7 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_scaling;
     cOsdItem *ctrl_alpha;
     cOsdItem *ctrl_alpha_abs;
-    cOsdItem *ctrl_unscaled;
+    cOsdItem *ctrl_blending;
     cOsdItem *ctrl_lowres;
 #if VDRVERSNUM < 10515
     cOsdItem *ctrl_spulang0;
@@ -888,7 +888,7 @@ void cMenuSetupOSD::Set(void)
   Clear();
 
   ctrl_scaling = NULL;
-  ctrl_unscaled = NULL;
+  ctrl_blending = NULL;
   ctrl_lowres = NULL;
   ctrl_alpha = NULL;
   ctrl_alpha_abs = NULL;
@@ -900,14 +900,15 @@ void cMenuSetupOSD::Set(void)
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
 			    &newconfig.hide_main_menu));
 
-  Add(ctrl_unscaled =
+  Add(ctrl_blending =
       new cMenuEditBoolItem(tr("Blending method"),
-			    &newconfig.unscaled_osd,
-			    tr("Software"), tr("Hardware")));
-  if(!newconfig.unscaled_osd) {
+			    &newconfig.osd_blending,
+			    tr(xc.s_osdBlendingMethods[OSD_BLENDING_SOFTWARE]),
+			    tr(xc.s_osdBlendingMethods[OSD_BLENDING_HARDWARE])));
+  if(newconfig.osd_blending == OSD_BLENDING_SOFTWARE) {
     Add(ctrl_lowres =
 	new cMenuEditBoolItem(tr("  Use hardware for low-res video"),
-			      &newconfig.unscaled_osd_lowresvideo));
+			      &newconfig.osd_blending_lowresvideo));
   }
 
   Add(ctrl_scaling =
@@ -974,9 +975,9 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
   else if(item == ctrl_alpha_abs)
     xc.alpha_correction_abs = newconfig.alpha_correction_abs;
 
-  if(!newconfig.unscaled_osd && !ctrl_lowres)
+  if(newconfig.osd_blending==OSD_BLENDING_SOFTWARE && !ctrl_lowres)
     Set();
-  if(newconfig.unscaled_osd && ctrl_lowres)
+  if(newconfig.osd_blending!=OSD_BLENDING_SOFTWARE && ctrl_lowres)
     Set();
 #if VDRVERSNUM < 10515
   if(newconfig.spu_autoshow && !ctrl_spulang0)
@@ -1002,10 +1003,12 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.Scaling",         xc.osd_scaling);
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);
-  SetupStore("OSD.UnscaledAlways",  xc.unscaled_osd);
-  SetupStore("OSD.UnscaledLowRes",  xc.unscaled_osd_lowresvideo);
+  SetupStore("OSD.Blending",        xc.osd_blending);
+  SetupStore("OSD.BlendingLowRes",  xc.osd_blending_lowresvideo);
 #if 1
   // Delete old keys (<=1.0.0)
+  SetupStore("OSD.UnscaledAlways");
+  SetupStore("OSD.UnscaledLowRes");
   SetupStore("OSD.UnscaledOpaque");
   SetupStore("OSD.Prescale");
   SetupStore("OSD.Downscale");
