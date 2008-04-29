@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.56 2008-04-14 21:15:42 phintuka Exp $
+ * $Id: setup_menu.c,v 1.57 2008-04-29 12:38:17 phintuka Exp $
  *
  */
 
@@ -827,6 +827,10 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Post.denoise3d.luma",     xc.denoise3d_luma);
   SetupStore("Post.denoise3d.chroma",   xc.denoise3d_chroma);
   SetupStore("Post.denoise3d.time",     xc.denoise3d_time);
+#if 1
+  // delete old keys (<1.0.0)
+  SetupStore("Video.AutoScale");
+#endif
   Setup.Save();
 }
 
@@ -1000,6 +1004,12 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);
   SetupStore("OSD.UnscaledAlways",  xc.unscaled_osd);
   SetupStore("OSD.UnscaledLowRes",  xc.unscaled_osd_lowresvideo);
+#if 1
+  // Delete old keys (<=1.0.0)
+  SetupStore("OSD.UnscaledOpaque");
+  SetupStore("OSD.Prescale");
+  SetupStore("OSD.Downscale");
+#endif
   SetupStore("OSD.AlphaCorrection", xc.alpha_correction);
   SetupStore("OSD.AlphaCorrectionAbs", xc.alpha_correction_abs);
 
@@ -1105,6 +1115,11 @@ void cMenuSetupDecoder::Store(void)
     xc.pes_buffers = xc.i_pesBufferSize[pes_buffers_ind];
 
   SetupStore("Decoder.PesBuffers",    xc.pes_buffers);
+#if 1
+  // delete old keys (<1.0.0)
+  SetupStore("Decoder.Priority");
+  SetupStore("Decoder.InactivityTimer");
+#endif
 
   if(xc.pes_buffers != old_buffers)
     cXinelibDevice::Instance().ConfigureDecoder(xc.pes_buffers);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.55 2008-04-29 11:33:45 phintuka Exp $
+ * $Id: menu.c,v 1.56 2008-04-29 12:38:17 phintuka Exp $
  *
  */
 
@@ -187,6 +187,12 @@ void cMenuBrowseFiles::StoreConfig(void)
 							  xc.browse_files_dir);
   cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("Media.BrowseImagesDir", 
 							  xc.browse_images_dir);
+#if 1
+  // delete old keys (<1.0.0)
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseMusicDir");
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseFilesDir");
+  cPluginManager::GetPlugin(PLUGIN_NAME_I18N)->SetupStore("BrowseImagesDir");
+#endif
 }
 
 void cMenuBrowseFiles::SetHelpButtons(void)
