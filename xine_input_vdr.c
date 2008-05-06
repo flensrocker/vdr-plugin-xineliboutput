@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.137 2008-04-14 19:58:54 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138 2008-05-06 23:14:19 phintuka Exp $
  *
  */
 
@@ -2466,8 +2466,6 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
 
 static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 {
-  int speed;
-
   if(this->stream_start) {
     LOGMSG("vdr_flush_engine: stream_start, flush skipped");
     return;
@@ -2483,9 +2481,9 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
     return;
   }
 
-  speed = xine_get_param(this->stream, XINE_PARAM_FINE_SPEED);
-  if(speed <= 0) {
-    LOGMSG("vdr_flush_engine: speed = %d", speed);
+  /* reset speed */
+  if(xine_get_param(this->stream, XINE_PARAM_FINE_SPEED) <= 0) {
+    LOGMSG("vdr_flush_engine: playback is paused <0>");
     xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, XINE_FINE_SPEED_NORMAL);
   }
 
@@ -2500,8 +2498,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 
   /* reset speed again (adjust_realtime_speed might have set pause) */
   if(xine_get_param(this->stream, XINE_PARAM_FINE_SPEED) <= 0) {
-    speed = xine_get_param(this->stream, XINE_PARAM_FINE_SPEED);
-    LOGMSG("vdr_flush_engine: speed = %d", speed);
+    LOGMSG("vdr_flush_engine: playback is paused <1>");
     xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, XINE_FINE_SPEED_NORMAL);
   }
 
@@ -2525,9 +2522,6 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
   this->stream_start = 1;
   this->I_frames = this->B_frames = this->P_frames = 0;
   this->discard_index = discard_index;
-
-  if(speed <= 0) 
-    xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, speed);
 
   resume_demuxer(this);
 }
