@@ -1,8 +1,10 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-????-??-??: Version 1.0.1
--
+2008-05-07: Version 1.0.1
+
+- Fixed freezes while zapping and/or seeking
+- Added metainfo menu to media player (Petri Helin)
 
 2008-04-14: Version 1.0.0
 - Added Italian translations (Thanks to Gringo)
