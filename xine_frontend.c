@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.54 2008-05-07 14:43:43 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.55 2008-05-07 15:19:08 phintuka Exp $
  *
  */
 
@@ -1300,7 +1300,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 
   } else if(!strncmp(cmd, "SLAVE 0x", 8)) {
     unsigned long pt;
-    if(1 == sscanf(cmd, "SLAVE 0x%lu", &pt)) {
+    if(1 == sscanf(cmd, "SLAVE 0x%lx", &pt)) {
       xine_stream_t *slave_stream = (xine_stream_t*)pt;
       if(this->slave_stream != slave_stream) {
 
