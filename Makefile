@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.37 2008-04-23 07:11:20 phintuka Exp $
+# $Id: Makefile,v 1.38 2008-05-07 13:27:15 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -317,7 +317,8 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
          frontend_local.o frontend_svr.o \
          tools/cxsocket.o tools/udp_pes_scheduler.o \
          tools/backgroundwriter.o tools/playlist.o tools/http.o \
-         tools/vdrdiscovery.o tools/time_pts.o tools.o
+         tools/vdrdiscovery.o tools/time_pts.o tools.o \
+         tools/metainfo_menu.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
   OBJS = 

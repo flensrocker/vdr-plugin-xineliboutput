@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.15 2008-01-10 23:41:24 phelin Exp $
+ * $Id: media_player.h,v 1.16 2008-05-07 13:27:15 phintuka Exp $
  *
  */
 
@@ -116,6 +116,8 @@ class cXinelibImagesControl : public cControl
     virtual void Show(void);
     virtual void Hide(void);
     virtual eOSState ProcessKey(eKeys Key);
+
+    virtual cOsdObject *GetInfo(void);
 
     static void Close(void);
     static bool IsOpen(void) { return m_Player != NULL; }

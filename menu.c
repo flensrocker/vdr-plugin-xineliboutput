@@ -4,15 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.56 2008-04-29 12:38:17 phintuka Exp $
+ * $Id: menu.c,v 1.57 2008-05-07 13:27:15 phintuka Exp $
  *
  */
 
 #include <dirent.h>
-
-#ifdef HAVE_EXTRACTOR_H
-# include <extractor.h>
-#endif
 
 #include <vdr/config.h>
 #include <vdr/interface.h>
@@ -24,6 +20,7 @@
 #include "config.h"
 #include "menu.h"
 #include "menuitems.h"
+#include "tools/metainfo_menu.h"
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
@@ -333,53 +330,9 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
 eOSState cMenuBrowseFiles::Info(void)
 {
   if(GetCurrent() && !GetCurrent()->IsDir()) {
-#ifdef HAVE_EXTRACTOR_H
     cString filename = cString::sprintf("%s/%s", m_CurrentDir, GetCurrent()->Name());
-    EXTRACTOR_ExtractorList * plugins;
-    EXTRACTOR_KeywordList   * md_list;
-    plugins = EXTRACTOR_loadDefaultLibraries();
-    md_list = EXTRACTOR_getKeywords(plugins, *filename);
-    const char *key;
-    char * buf;
-    char metadata[4096];
-    strcpy(metadata, "");
-    while(md_list) {
-      if((key=EXTRACTOR_getKeywordTypeAsString(md_list->keywordType))) {
-          buf = strdup(md_list->keyword);
-          sprintf(metadata, "%s%s: %s\n", metadata, key, buf);
-          free(buf);
-       }
-      md_list=md_list->next;
-     }
-    EXTRACTOR_freeKeywords(md_list);
-    EXTRACTOR_removeAll(plugins); /* unload plugins */
-    return AddSubMenu(new cMenuText(GetCurrent()->Name(), metadata));
-#else
-    cString cmd = cString::sprintf("'%s/%s'", m_CurrentDir, GetCurrent()->Name());
-    if(xc.IsPlaylistFile(GetCurrent()->Name()))
-      cmd = cString::sprintf("file -b %s; cat %s", *cmd, *cmd);
-    else if(xc.IsAudioFile(GetCurrent()->Name()))
-      cmd = cString::sprintf("mp3info -x %s ; file -b %s", *cmd, *cmd);
-    else if(xc.IsVideoFile(GetCurrent()->Name()))
-      cmd = cString::sprintf("file -b %s; midentify %s", *cmd, *cmd);
-    else if(xc.IsImageFile(GetCurrent()->Name()))
-      cmd = cString::sprintf("file -b %s; identify %s", *cmd, *cmd);
-    else
-      cmd = cString::sprintf("file -b %s", *cmd);
-
-    cPipe p;
-    if(p.Open(*cmd, "r")) {
-      char buf[4096];
-      int n = fread(buf, 1, sizeof(buf)-1, p);
-      if(n>0) {
-        buf[n] = 0;
-        strreplace(buf, ',', '\n');
-        return AddSubMenu(new cMenuText(GetCurrent()->Name(), buf));
-      }
-    }
-#endif
+    return AddSubMenu(new cMetainfoMenu(filename));
   }
-
   return osContinue;
 }
 
