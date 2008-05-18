@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.46 2008-04-29 12:44:25 phintuka Exp $
+ * $Id: config.h,v 1.47 2008-05-18 19:42:33 phintuka Exp $
  *
  */
 
@@ -152,6 +152,10 @@
 #define OSD_SCALING_count       3
 
 #define SUBTITLESIZE_count     7
+
+#if VDRVERSNUM >= 10510
+# define DEVICE_SUPPORTS_IBP_TRICKSPEED
+#endif
 
 #define HIDDEN_OPTION(opt) \
   (xc.IsOptionHidden(xc.opt))
