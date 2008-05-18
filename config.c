@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.63 2008-04-29 12:44:25 phintuka Exp $
+ * $Id: config.c,v 1.64 2008-05-18 20:24:51 phintuka Exp $
  *
  */
 
@@ -239,7 +239,7 @@ static char *strcatrealloc(char *dest, const char *src)
   if (!src || !*src) 
     return dest;
 
-  int l = (dest ? strlen(dest) : 0) + strlen(src) + 1;
+  size_t l = (dest ? strlen(dest) : 0) + strlen(src) + 1;
   if(dest) {
     dest = (char *)realloc(dest, l);
     strcat(dest, src);

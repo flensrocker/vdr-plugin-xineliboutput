@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.56 2008-04-10 20:21:45 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.57 2008-05-18 20:24:51 phintuka Exp $
  *
  */
 
@@ -1108,7 +1108,7 @@ void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
   bool repeat = false, release = false;
   strn0cpy(buf, arg, sizeof(buf));
 
-  int n = strlen(buf)-1;
+  size_t n = *buf ? strlen(buf)-1 : 0;
   while(n && buf[n]==' ') buf[n--]=0; /* trailing spaces */
   if(NULL != (key=strchr(buf, ' '))) {
     while(*key == ' ')
@@ -1445,12 +1445,12 @@ void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
 						    /*m_ssrc*/0x4df73452,
 						    xc.remote_rtp_port,
 						    xc.remote_rtp_ttl);
-	int sdplen = sdp_descr ? strlen(sdp_descr) : 0;
+	size_t sdplen = sdp_descr ? strlen(sdp_descr) : 0;
 	RTSPOUT(RTSP_200_OK
 		"Content-Type: application/sdp\r\n"
-		"Content-Length: %d\r\n"
+		"Content-Length: %lu\r\n"
 		"\r\n",
-		CSeq, sdplen);
+		CSeq, (unsigned long)sdplen);
 	fd_control[cli].write_cmd(sdp_descr, sdplen);
       } else {
 	RTSPOUT(RTSP_415 /*UNSUPPORTED_MEDIATYPE*/);
