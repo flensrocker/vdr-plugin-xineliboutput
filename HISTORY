@@ -3,7 +3,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.0.2
 
-- 
+- Fixed smooth trick speed setup menu entry for vdr >= 1.5.10 (Thanks to Timo Eskola)
 
 2008-05-07: Version 1.0.1
 
