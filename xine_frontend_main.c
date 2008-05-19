@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40 2008-04-28 20:03:52 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.41 2008-05-19 06:54:58 phintuka Exp $
  *
  */
 
@@ -291,7 +291,7 @@ static void SignalHandler(int signum)
 
 static char *strcatrealloc(char *dest, const char *src)
 {
-  int l;
+  size_t l;
 
   if (!src || !*src) 
     return dest;

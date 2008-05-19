@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138 2008-05-06 23:14:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.139 2008-05-19 06:54:57 phintuka Exp $
  *
  */
 
@@ -1065,7 +1065,7 @@ static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t
 
 static void write_control(vdr_input_plugin_t *this, const char *str)
 {
-  size_t len = (size_t)strlen(str);
+  size_t len = strlen(str);
   pthread_mutex_lock (&this->fd_control_lock);
   write_control_data(this, str, len);
   pthread_mutex_unlock (&this->fd_control_lock);
@@ -3941,7 +3941,8 @@ static void *vdr_control_thread(void *this_gen)
 static void slave_track_maps_changed(vdr_input_plugin_t *this)
 {
   char tracks[1024], lang[128];
-  int i, current, n = 0, cnt;
+  int i, current, n = 0;
+  size_t cnt;
   
   /* Audio tracks */
   
