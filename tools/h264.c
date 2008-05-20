@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.1 2008-02-04 22:43:27 phintuka Exp $
+ * $Id: h264.c,v 1.2 2008-05-20 11:00:42 phintuka Exp $
  *
  */
 
@@ -98,9 +98,40 @@ int h264_parse_sps(const uint8_t *buf, int len, h264_sps_data_t *sps)
     else
       sps->height -= 4*(crop_top + crop_bottom);
   }
-  /* skip VUI parameters */
 
-  LOGDBG("H.264 SPS: -> video size %dx%d ", sps->width, sps->height);
+  /* VUI parameters */
+  sps->pixel_aspect.num = 0;
+  if (br_get_bit(&br)) {   /* vui_parameters_present flag */
+    if (br_get_bit(&br)) { /* aspect_ratio_info_present */
+      uint32_t aspect_ratio_idc = br_get_u8(&br);
+      LOGDBG("H.264 SPS: aspect_ratio_idc %d", aspect_ratio_idc);
+
+      if (aspect_ratio_idc == 255 /* Extended_SAR */) {
+	sps->pixel_aspect.num = br_get_u16(&br); /* sar_width */
+	sps->pixel_aspect.den = br_get_u16(&br); /* sar_height */
+	LOGDBG("H.264 SPS: -> sar %dx%d", sps->pixel_aspect.num, sps->pixel_aspect.den);
+      } else {
+	static const h264_rational_t aspect_ratios[] =
+	  { /* page 213: */
+	    /* 0: unknown */
+	    {0, 1},
+	    /* 1...16: */
+	    { 1,  1}, {12, 11}, {10, 11}, {16, 11}, { 40, 33}, {24, 11}, {20, 11}, {32, 11}, 
+	    {80, 33}, {18, 11}, {15, 11}, {64, 33}, {160, 99}, { 4,  3}, { 3,  2}, { 2,  1}
+	  };
+
+	if (aspect_ratio_idc < sizeof(aspect_ratios)/sizeof(aspect_ratios[0])) {
+	  memcpy(&sps->pixel_aspect, &aspect_ratios[aspect_ratio_idc], sizeof(h264_rational_t));
+	  LOGDBG("H.264 SPS: -> aspect ratio %d / %d", sps->pixel_aspect.num, sps->pixel_aspect.den);
+	} else {
+	  LOGMSG("H.264 SPS: aspect_ratio_idc out of range !");
+	}
+      }
+    }
+  }
+
+  LOGDBG("H.264 SPS: -> video size %dx%d, aspect %d:%d",
+	 sps->width, sps->height, sps->pixel_aspect.num, sps->pixel_aspect.den);
 
   if(BR_EOF(&br)) {
     LOGDBG("H.264 SPS: not enough data ?");
@@ -155,7 +186,7 @@ int h264_get_video_size(const uint8_t *buf, int len, video_size_t *size)
   int i;
 
   /* H.264 detection, search for NAL AUD */
-  if (!(buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == 0x09))
+  if (!(buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == NAL_AUD))
     return 0;
 
   /* if I-frame, search for NAL SPS */
@@ -164,9 +195,8 @@ int h264_get_video_size(const uint8_t *buf, int len, video_size_t *size)
 
   /* scan video packet for sequence parameter set */
   for (i = 5; i < len-4; i++) 
-    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1 && (buf[i + 3] & 0x1f) == 0x07) {
+    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1 && (buf[i + 3] & 0x1f) == NAL_SPS) {
 
-      h264_sps_data_t sps = {0};
       uint8_t nal_data[len];
       int     nal_len;
 
@@ -174,9 +204,15 @@ int h264_get_video_size(const uint8_t *buf, int len, video_size_t *size)
 
       if (0 < (nal_len = h264_nal_unescape(nal_data, buf+i+4, len-i-4))) {
 
+	h264_sps_data_t sps = {0};
+
 	if (h264_parse_sps(nal_data, nal_len, &sps)) {
 	  size->width  = sps.width;
 	  size->height = sps.height;
+	  if(sps.pixel_aspect.den)
+	    size->pixel_aspect = (double)sps.pixel_aspect.num / (double)sps.pixel_aspect.den;
+	  else
+	    size->pixel_aspect = 0.0;
 	  return 1;
 	}
 	LOGMSG("h264_get_video_size: not enough data ?");
