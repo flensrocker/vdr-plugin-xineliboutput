@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.64 2008-05-18 20:24:51 phintuka Exp $
+ * $Id: config.c,v 1.65 2008-05-20 10:06:20 phintuka Exp $
  *
  */
 
@@ -234,6 +234,91 @@ const char * const config_t::s_osdScalings[] = {
   NULL
 };
 
+static const char exts_playlist[][4] = {
+  "asx",
+  "m3u",
+  "pls",
+  "ram",
+};
+
+static const char exts_audio[][8] = {
+  "ac3",
+  "asf",
+  "au",
+  "aud",
+  "flac",
+  "mpa",
+  "mpega",
+  "mp2",
+  "mp3",
+  "m4a",
+  "ogg",
+  "ogm",
+  "ra",
+  "spx",
+  "wav",
+  "wma",
+};
+
+static const char exts_video[][8] = {
+  "asf",
+  "avi",
+  "dat",
+  "divx",
+  "dv",
+  "fli",
+  "flv",
+  "iso", /* maybe dvd */
+  "mkv",
+  "mov",
+  "mpeg",
+  "mpg",
+  "mpv",
+  "mp4",
+  "m2v",
+  "m4v",
+  "pes",
+  "rm",
+  "ts",
+  "vdr",
+  "vob",
+  "wmv",
+  "xvid",
+};
+
+static const char exts_image[][8] = {
+  "bmp",
+  "gif",
+  "jpeg",
+  "jpg",
+  "mng",
+  "png",
+  "tiff",
+};
+
+#define DEF_EXT_IS(TYPE) \
+static bool ext_is_ ## TYPE(const char *ext) \
+{ \
+  for(unsigned int i=0; i<sizeof(exts_ ## TYPE)/sizeof(exts_ ## TYPE[0]); i++) \
+    if(!strcasecmp(ext, exts_ ## TYPE[i])) \
+      return true; \
+  return false; \
+} 
+DEF_EXT_IS(playlist)
+DEF_EXT_IS(audio)
+DEF_EXT_IS(video)
+DEF_EXT_IS(image)
+
+static const char *get_extension(const char *fname)
+{
+  if(fname) {
+    const char *pos = strrchr(fname, '.');
+    if(pos)
+      return pos+1;
+  }
+  return NULL;
+}
+
 static char *strcatrealloc(char *dest, const char *src)
 {
   if (!src || !*src) 
@@ -250,104 +335,29 @@ static char *strcatrealloc(char *dest, const char *src)
   return dest;
 }
 
+
 bool config_t::IsPlaylistFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "pls") || 
-	 !strcasecmp(pos, "m3u") || 
-	 !strcasecmp(pos, "ram") ||
-	 !strcasecmp(pos, "asx"))
-	return true;
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && ext_is_playlist(ext);
 }
 
 bool config_t::IsAudioFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "mpa") ||
-	 !strcasecmp(pos, "mp2") ||
-	 !strcasecmp(pos, "mp3") ||
-	 !strcasecmp(pos, "m4a") ||
-	 !strcasecmp(pos, "mpega") ||
-	 !strcasecmp(pos, "flac") ||
-	 !strcasecmp(pos, "ac3") ||
-	 !strcasecmp(pos, "ogg") ||
-	 !strcasecmp(pos, "ogm") ||
-	 !strcasecmp(pos, "au") ||
-	 !strcasecmp(pos, "aud") ||
-	 !strcasecmp(pos, "wma") ||
-	 !strcasecmp(pos, "asf") ||
-	 !strcasecmp(pos, "wav") ||
-	 !strcasecmp(pos, "spx") ||
-	 !strcasecmp(pos, "ra"))
-	return true;
-      return IsPlaylistFile(fname);
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && ext_is_audio(ext);
 }
 
 bool config_t::IsVideoFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "avi") ||
-	 !strcasecmp(pos, "mpv") ||
-	 !strcasecmp(pos, "m2v") ||
-	 !strcasecmp(pos, "m4v") ||
-	 !strcasecmp(pos, "vob") ||
-	 !strcasecmp(pos, "vdr") ||
-	 !strcasecmp(pos, "mpg") ||
-	 !strcasecmp(pos, "mpeg")||
-	 !strcasecmp(pos, "mp4") ||
-	 !strcasecmp(pos, "asf") ||
-	 !strcasecmp(pos, "wmv") ||
-	 !strcasecmp(pos, "mov") ||
-	 !strcasecmp(pos, "ts") ||
-	 !strcasecmp(pos, "pes") ||
-	 !strcasecmp(pos, "xvid") ||
-	 !strcasecmp(pos, "divx") ||
-	 !strcasecmp(pos, "fli") ||
-	 !strcasecmp(pos, "flv") ||
-	 !strcasecmp(pos, "dv") ||
-	 !strcasecmp(pos, "dat") ||
-	 !strcasecmp(pos, "mkv") ||
-	 !strcasecmp(pos, "rm") ||
-	 !strcasecmp(pos, "iso"))  /* maybe dvd */
-	return true;
-      return IsAudioFile(fname);
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && (ext_is_video(ext) || ext_is_audio(ext));
 }
 
 bool config_t::IsImageFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "jpg") ||
-	 !strcasecmp(pos, "jpeg") ||
-	 !strcasecmp(pos, "gif") ||
-	 !strcasecmp(pos, "tiff") || 
-	 !strcasecmp(pos, "bmp") || 
-	 !strcasecmp(pos, "mng") ||
-	 !strcasecmp(pos, "png"))
-	return true;
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && ext_is_image(ext);
 }
 
 cString config_t::AutocropOptions(void)
