@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.3 2008-05-07 15:16:48 phintuka Exp $
+ * $Id: pes.c,v 1.4 2008-05-20 11:09:52 phintuka Exp $
  *
  */
 
@@ -111,7 +111,7 @@ int pes_is_frame_h264(const uint8_t *buf, int len)
 
   buf += 9 + buf[8];
 
-  if (!buf[0] && !buf[1] && buf[2] == 0x01 && buf[3] == 0x09)
+  if (!buf[0] && !buf[1] && buf[2] == 0x01 && buf[3] == NAL_AUD)
     return 1;
   return 0;
 }
@@ -125,7 +125,7 @@ uint8_t pes_get_picture_type(const uint8_t *buf, int len)
   len -= i;
 
   if (!buf[0] && !buf[1] && buf[2]) {
-    if (buf[3] == 0x09)
+    if (buf[3] == NAL_AUD)
       return h264_get_picture_type(buf, len);
     else
       return mpeg2_get_picture_type(buf, len);
@@ -142,7 +142,7 @@ int pes_get_video_size(const uint8_t *buf, int len, video_size_t *size, int h264
   buf += i;
   len -= i;
 
-  if (h264 || (!buf[0] && !buf[1] && buf[2] == 0x01 && buf[3] == 0x09))
+  if (h264 || (!buf[0] && !buf[1] && buf[2] == 0x01 && buf[3] == NAL_AUD))
     return h264_get_video_size(buf, len, size);
   else
     return mpeg2_get_video_size(buf, len, size);
