@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41 2008-04-10 15:01:31 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.42 2008-05-21 20:06:45 phintuka Exp $
  *
  */
 
@@ -1456,8 +1456,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
 
 static frontend_t *sxfe_get_frontend(void)
 {
-  sxfe_t *this = malloc(sizeof(sxfe_t));
-  memset(this, 0, sizeof(sxfe_t));
+  sxfe_t *this = calloc(1, sizeof(sxfe_t));
 
   this->window_id = -1;
   
