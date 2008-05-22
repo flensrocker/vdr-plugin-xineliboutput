@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.2 2008-05-22 10:33:40 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.3 2008-05-22 10:35:44 phintuka Exp $
  *
  */
 
@@ -40,6 +40,8 @@ void cMetainfoMenu::Display(void)
 {
   cOsdMenu::Display();
   char metadata[4096];
+  metadata[0] = 0;
+
 #ifdef HAVE_EXTRACTOR_H
   EXTRACTOR_ExtractorList * plugins;
   EXTRACTOR_KeywordList   * md_list;
@@ -50,7 +52,6 @@ void cMetainfoMenu::Display(void)
 
   const char *key;
   char * buf;
-  strcpy(metadata, "");
   while(md_list) {
     if((key=EXTRACTOR_getKeywordTypeAsString(md_list->keywordType))) {
       buf = strdup(md_list->keyword);
