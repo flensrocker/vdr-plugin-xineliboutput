@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.1 2008-05-07 13:27:15 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.2 2008-05-22 10:33:40 phintuka Exp $
  *
  */
 
@@ -62,7 +62,7 @@ void cMetainfoMenu::Display(void)
   EXTRACTOR_freeKeywords(md_list);
   EXTRACTOR_removeAll(plugins); /* unload plugins */
 #else
-  cString cmd = "";
+  cString cmd;
   if(xc.IsPlaylistFile(m_Filename))
     cmd = cString::sprintf("file -b '%s'; cat '%s'", *m_Filename, *m_Filename);
   else if(xc.IsAudioFile(m_Filename))
@@ -78,8 +78,8 @@ void cMetainfoMenu::Display(void)
   if(p.Open(*cmd, "r")) {
     int n = fread(metadata, 1, sizeof(metadata)-1, p);
     if(n>0) {
-    metadata[n] = 0;
-    strreplace(metadata, ',', '\n');
+      metadata[n] = 0;
+      strreplace(metadata, ',', '\n');
     }
   }
 #endif
