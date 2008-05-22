@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.3 2008-05-22 10:35:44 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.4 2008-05-22 10:44:23 phintuka Exp $
  *
  */
 
@@ -49,6 +49,7 @@ void cMetainfoMenu::Display(void)
   md_list = EXTRACTOR_getKeywords(plugins, m_Filename);
   md_list = EXTRACTOR_removeEmptyKeywords (md_list);
   md_list = EXTRACTOR_removeDuplicateKeywords(md_list, 0);
+  md_list = EXTRACTOR_removeKeywordsOfType(md_list, EXTRACTOR_THUMBNAILS);
 
   const char *key;
   char * buf;
