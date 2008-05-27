@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38 2008-05-07 13:27:15 phintuka Exp $
+# $Id: Makefile,v 1.39 2008-05-27 15:58:30 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -245,6 +245,9 @@ LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config 
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 ifeq ($(HAVE_XRENDER), 1)
     LIBS_X11  += -lXrender
+endif
+ifeq ($(HAVE_XINERAMA), 1)
+    LIBS_X11  += -lXinerama
 endif
 
 ifeq ($(APPLE_DARWIN), 1)
