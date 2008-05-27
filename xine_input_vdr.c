@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.139 2008-05-19 06:54:57 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.140 2008-05-27 19:58:28 phintuka Exp $
  *
  */
 
@@ -356,7 +356,7 @@ struct udp_data_s {
 
 static udp_data_t *init_udp_data(void)
 {
-  udp_data_t *data = (udp_data_t *)xine_xmalloc(sizeof(udp_data_t));
+  udp_data_t *data = calloc(1, sizeof(udp_data_t));
 
   data->received_frames  = -1; 
 
@@ -584,8 +584,7 @@ static pvrscr_t* pvrscr_init (void)
 {
   pvrscr_t *this;
 
-  this = malloc(sizeof(*this));
-  memset(this, 0, sizeof(*this));
+  this = calloc(1, sizeof(pvrscr_t));
 
   this->scr.interface_version = 3;
   this->scr.set_fine_speed    = pvrscr_set_fine_speed;
@@ -1404,7 +1403,7 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   unsigned char *multi_buffer = NULL;
 
   LOGDBG("fifo_buffer_new...");
-  this = xine_xmalloc (sizeof (fifo_buffer_t));
+  this = calloc(1, sizeof (fifo_buffer_t));
 
   this->first               = NULL;
   this->last                = NULL;
@@ -1450,7 +1449,7 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   for (i = 0; i<num_buffers; i++) {
     buf_element_t *buf;
 
-    buf = xine_xmalloc (sizeof (buf_element_t));
+    buf = calloc(1, sizeof (buf_element_t));
 
     buf->mem = multi_buffer;
     multi_buffer += buf_size;
@@ -1724,7 +1723,7 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
 						xine_stream_t *stream,
 						const char *data) 
 {
-  fifo_input_plugin_t *slave = (fifo_input_plugin_t *) xine_xmalloc (sizeof(fifo_input_plugin_t));
+  fifo_input_plugin_t *slave = calloc(1, sizeof(fifo_input_plugin_t));
   unsigned long int imaster;
   vdr_input_plugin_t *master;
   LOGDBG("fifo_class_get_instance");
@@ -6328,7 +6327,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
     return fifo_class_get_instance(class_gen, stream, data);
   }
 
-  this = (vdr_input_plugin_t *) xine_xmalloc (sizeof(vdr_input_plugin_t));
+  this = calloc(1, sizeof(vdr_input_plugin_t));
 
   this->stream       = stream;
   this->mrl          = strdup(mrl); 
@@ -6481,7 +6480,7 @@ static void *init_class (xine_t *xine, void *data)
     }
   }
 
-  this = (vdr_input_class_t *) xine_xmalloc (sizeof (vdr_input_class_t));
+  this = calloc(1, sizeof (vdr_input_class_t));
 
   this->xine   = xine;
   
