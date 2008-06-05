@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.46 2008-06-05 13:46:23 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.47 2008-06-05 14:42:14 phintuka Exp $
  *
  */
 
@@ -131,6 +131,7 @@ typedef struct sxfe_s {
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
+  Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
   int      xinerama_screen;
   int      xinerama_x, xinerama_y;
 
@@ -1380,13 +1381,12 @@ static int sxfe_run(frontend_t *this_gen)
       {
 	XButtonEvent *bev = (XButtonEvent *) &event;
 	if(bev->button == Button1) {
-	  static Time prev_time = 0;
-	  if(bev->time - prev_time < DOUBLECLICK_TIME) {
+	  if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
 	    /* Toggle fullscreen */
 	    sxfe_toggle_fullscreen(this);
-	    prev_time = 0; /* don't react to third click ... */
+	    this->prev_click_time = 0; /* don't react to third click ... */
 	  } else {
-	    prev_time = bev->time;
+	    this->prev_click_time = bev->time;
 	    if(!this->fullscreen && this->no_border && !this->dragging) {
 	      this->dragging = 1;
 	      this->dragging_x = bev->x_root;
