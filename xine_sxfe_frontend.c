@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.44 2008-06-03 19:30:56 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.45 2008-06-05 13:42:56 phintuka Exp $
  *
  */
 
@@ -168,6 +168,7 @@ typedef struct sxfe_s {
   uint16_t  width, height;
   uint16_t  origxpos, origypos;
   uint16_t  origwidth, origheight;
+  uint16_t  dragging_x, dragging_y;
   uint8_t   aspect;
   uint8_t   cropping;
   uint8_t   scale_video;
@@ -181,6 +182,7 @@ typedef struct sxfe_s {
   uint8_t   stay_above;
   uint8_t   no_border;
   uint8_t   check_move;
+  uint8_t   dragging;
 
   /* strings */
   char    configfile[256];
@@ -901,7 +903,11 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->height          = height;
   this->origwidth       = width>0 ? width : OSD_DEF_WIDTH;
   this->origheight      = height>0 ? height : OSD_DEF_HEIGHT;
+
   this->check_move      = 0;
+  this->dragging        = 0;
+  this->dragging_x      = 0;
+  this->dragging_y      = 0;
 
   this->fullscreen      = fullscreen;
   this->vmode_switch    = modeswitch;
@@ -1227,7 +1233,6 @@ static void sxfe_interrupt(frontend_t *this_gen)
 static int sxfe_run(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  static int dragging = 0, drx = 0, dry = 0;
 
   int keep_going = 1;
   XEvent event;
@@ -1339,13 +1344,13 @@ static int sxfe_run(frontend_t *this_gen)
 #endif /* HAVE_XRENDER */
       case ButtonRelease:
       {
-	dragging = 0;
+	this->dragging = 0;
 	break;
       }
 
       case MotionNotify:
       {
-	if(dragging && !this->fullscreen) {
+	if(this->dragging && !this->fullscreen) {
 	  XMotionEvent *mev = (XMotionEvent *) &event;
 	  Window tmp_win;
 	  int xpos, ypos;
@@ -1358,10 +1363,10 @@ static int sxfe_run(frontend_t *this_gen)
 				DefaultRootWindow(this->display),
 				0, 0, &xpos, &ypos, &tmp_win);
 
-	  this->xpos = (xpos += mev->x_root - drx);
-	  this->ypos = (ypos += mev->y_root - dry);
-	  drx = mev->x_root;
-	  dry = mev->y_root;
+	  this->xpos = (xpos += mev->x_root - this->dragging_x);
+	  this->ypos = (ypos += mev->y_root - this->dragging_y);
+	  this->dragging_x = mev->x_root;
+	  this->dragging_y = mev->y_root;
 
 	  XMoveWindow(this->display, this->window[0], xpos, ypos);
           LOGDBG("MotionNotify: XMoveWindow called with x=%d and y=%d", xpos, ypos);
@@ -1382,10 +1387,10 @@ static int sxfe_run(frontend_t *this_gen)
 	    prev_time = 0; /* don't react to third click ... */
 	  } else {
 	    prev_time = bev->time;
-	    if(!this->fullscreen && this->no_border && !dragging) {
-	      dragging = 1;
-	      drx = bev->x_root;
-	      dry = bev->y_root;
+	    if(!this->fullscreen && this->no_border && !this->dragging) {
+	      this->dragging = 1;
+	      this->dragging_x = bev->x_root;
+	      this->dragging_y = bev->y_root;
 	    }
 	  }
 	} else if(bev->button == Button3) {
