@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.45 2008-06-05 13:42:56 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.46 2008-06-05 13:46:23 phintuka Exp $
  *
  */
 
@@ -131,8 +131,8 @@ typedef struct sxfe_s {
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
-  int xinerama_screen;
-  int xinerama_x, xinerama_y;
+  int      xinerama_screen;
+  int      xinerama_x, xinerama_y;
 
   /* Atoms */
   Atom     atom_wm_delete_window;
@@ -166,7 +166,7 @@ typedef struct sxfe_s {
   int       xpos, ypos;
   uint16_t  video_width, video_height;
   uint16_t  width, height;
-  uint16_t  origxpos, origypos;
+  uint16_t  origxpos, origypos;    /* saved windowed mode pos + size while in fullscreen mode */
   uint16_t  origwidth, origheight;
   uint16_t  dragging_x, dragging_y;
   uint8_t   aspect;
@@ -974,7 +974,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     update_screen_size(this);
   
   if(this->window_id > 0) {
-    LOGMSG("sxfe_diaplay_open(): Using X11 window %d for output", this->window_id);
+    LOGMSG("sxfe_display_open(): Using X11 window %d for output", this->window_id);
     this->window[0] = this->window[1] = (Window)this->window_id;
     XUnmapWindow(this->display, this->window[0]);
   } else {
