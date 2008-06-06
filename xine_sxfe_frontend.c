@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.47 2008-06-05 14:42:14 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.48 2008-06-06 20:52:20 phintuka Exp $
  *
  */
 
@@ -438,7 +438,7 @@ static void set_cursor(Display *dpy, Window win, const int enable)
     XDefineCursor(dpy, win, None);
   else {
     /* no cursor */
-    static char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
+    const char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
     Pixmap bm_no;
     Cursor no_ptr;
     XColor black, dummy;
@@ -495,7 +495,8 @@ static void update_screen_size(sxfe_t *this)
 }
 
 #ifdef HAVE_XRENDER
-Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w, int h, int alpha)
+static Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, 
+				       int w, int h, int alpha)
 {
   Xrender_Surf *rs;
   XRenderPictFormat *fmt;
@@ -520,8 +521,9 @@ Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w,
   return rs;
 }
 
-void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
-                        int x, int y, int w, int h, XDouble scale_x, XDouble scale_y, int smooth)
+static void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
+			       int x, int y, int w, int h, 
+			       XDouble scale_x, XDouble scale_y, int smooth)
 {
   XTransform xf;
 
@@ -548,7 +550,7 @@ void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
                    h * scale_y + 1);
 }
 
-Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
+static Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
 {
   Xrender_Surf *rs;
   XRenderPictFormat *fmt;
@@ -570,7 +572,7 @@ Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int 
   return rs;
 }
 
-void xrender_surf_free(Display *dpy, Xrender_Surf *rs)
+static void xrender_surf_free(Display *dpy, Xrender_Surf *rs)
 {
   if(rs->allocated)
     XFreePixmap(dpy, rs->draw);
@@ -868,8 +870,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 			     int scale_video, int field_order) 
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
-
-  MWMHints   mwmhints;
   double     res_h, res_v, aspect_diff;
 
   if(this->display)
@@ -992,6 +992,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   }
 
   if(this->window_id <= 0) {
+    MWMHints   mwmhints;
+
     /* full-screen window */
     set_fullscreen_props(this);
 
