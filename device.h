@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.34 2008-04-14 19:58:50 phintuka Exp $
+ * $Id: device.h,v 1.35 2008-06-11 23:21:49 phintuka Exp $
  *
  */
 
@@ -266,10 +266,9 @@ class cXinelibDevice : public cDevice
 
     virtual int  PlayVideo(const uchar *Data, int Length);
     virtual int  PlayAudio(const uchar *Data, int Length, uchar Id);
+    virtual int  PlaySubtitle(const uchar *Data, int Length);
 
 #if VDRVERSNUM < 10510
-    virtual int  PlaySpu(const uchar *Data, int Length, uchar Id);
-
     // conflicts with vdr-1.5.10+ DVB subtitle handling
     // override cDevice to get DVD SPUs
     virtual int PlayPesPacket(const uchar *Data, int Length,
