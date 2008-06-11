@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.144 2008-06-11 22:03:52 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.145 2008-06-11 22:51:31 phintuka Exp $
  *
  */
 
@@ -4931,50 +4931,21 @@ static void post_frame_end(vdr_input_plugin_t *this, int type)
   }
 }
 
-static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
+static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int len)
 {
-  int i = 8;
+  uint8_t type = pes_get_picture_type(data, len);
 
   if (!this->I_frames)
     this->P_frames = this->B_frames = 0;
-  i += data[i] + 1;   /* possible additional header bytes */
-  for (; i < len-5; i++) {
-    if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 0) {
-      uint8_t type = ((data[i + 5] >> 3) & 0x07);
-      switch (type) {
-        case I_FRAME: this->I_frames++; LOGSCR("I"); break;
-        case P_FRAME: this->P_frames++; LOGSCR("P"); break;
-        case B_FRAME: this->B_frames++; LOGSCR("B"); break;
-        default: return 0;
-      }
-      return type;
-    }
+  
+  switch (type) {
+    case I_FRAME: this->I_frames++; LOGSCR("I"); break;
+    case P_FRAME: this->P_frames++; LOGSCR("P"); break;
+    case B_FRAME: this->B_frames++; LOGSCR("B"); break;
+    default: break;
   }
-  return 0;
+  return type;
 }
-
-#ifdef TEST_H264
-static int update_frames_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
-{
-  int i = 8;
-  if (!this->I_frames)
-    this->P_frames = this->B_frames = 0;
-  i += data[i] + 1;   /* possible additional header bytes */
-  for (; i < len-5; i++) {
-    if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 9) {
-      uint8_t type = (data[i + 4] >> 5);
-      switch (type) {
-        case 0: case 3: case 5: this->I_frames++; LOGSCR("I %d", type); break;
-        case 1: case 4: case 6: this->P_frames++; LOGSCR("P %d", type); break;
-        case 2: case 7:         this->B_frames++; LOGSCR("B %d", type); break;
-        default: return 0;
-      }
-      return type;
-    }
-  }
-  return 0;
-}
-#endif
 
 #ifdef TEST_H264
 static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
@@ -5031,8 +5002,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
     }
 
     if(this->live_mode && this->I_frames < 4)
-      /*if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32)*/
-        update_frames_h264(this, buf->content, buf->size);
+      update_frames(this, buf->content, buf->size);
   }
 
   /* Handle PTS and DTS */
@@ -5324,7 +5294,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #else /* FFMPEG_DEC */
   if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
     if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
-      int type = update_frames(this, buf->content, buf->size);
+      uint8_t type = update_frames(this, buf->content, buf->size);
       if(type && this->ffmpeg_video_decoder) {
 	/* signal FRAME_END to decoder */
 	post_frame_end(this, BUF_VIDEO_MPEG);
