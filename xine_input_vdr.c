@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.140 2008-05-27 19:58:28 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.141 2008-06-11 21:32:08 phintuka Exp $
  *
  */
 
@@ -240,33 +240,33 @@ typedef struct vdr_input_plugin_s {
   pthread_cond_t      engine_flushed;
 
   /* Playback */
-  int                 no_video;
-  int                 live_mode;
-  int                 still_mode;
-  int                 stream_start;
-  int                 send_pts;
-  int                 padding_cnt;
-  int                 loop_play;
-  int                 hd_stream;  /* true if current stream is HD */
-  int                 h264;       /* -1: unknown, 0: no, 1: yes */
+  int8_t              h264;                 /* -1: unknown, 0: no, 1: yes */
+  int8_t              ffmpeg_video_decoder; /* -1: unknown, 0: no, 1: yes */
+  uint8_t             padding_cnt; /* number of padding frames passed to demux */ 
+  uint8_t             no_video : 1;
+  uint8_t             live_mode : 1;
+  uint8_t             still_mode : 1;
+  uint8_t             stream_start : 1;
+  uint8_t             send_pts : 1;
+  uint8_t             loop_play : 1;
+  uint8_t             hd_stream : 1;   /* true if current stream is HD */
+  uint8_t             sw_volume_control : 1;
 
-  int                 audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
-  int                 prev_audio_stream_id;
-  int                 sw_volume_control;
-  int                 ffmpeg_video_decoder;
+  uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
+
 
   /* SCR */
   pvrscr_t           *scr;
-  int                 scr_tunning;
-  int                 fixed_scr;
-  int                 scr_live_sync;
   int                 speed_before_pause;
-  int                 is_paused;
-  int                 is_trickspeed;
+  int8_t              scr_tunning;
+  uint8_t             fixed_scr     : 1;
+  uint8_t             scr_live_sync : 1;
+  uint8_t             is_paused     : 1;
+  uint8_t             is_trickspeed : 1;
 
-  int                 I_frames;   /* amount of I-frames passed to demux */
-  int                 B_frames;
-  int                 P_frames;
+  uint                I_frames;   /* amount of I-frames passed to demux */
+  uint                B_frames;
+  uint                P_frames;
 
   /* Network */
   pthread_t           control_thread;
@@ -276,7 +276,7 @@ typedef struct vdr_input_plugin_s {
   volatile int        control_running;
   volatile int        fd_data;
   volatile int        fd_control;
-  int                 tcp, udp, rtp;
+  uint8_t             tcp, udp, rtp;
   udp_data_t         *udp_data;
   int                 client_id;
   int                 token;
@@ -309,11 +309,11 @@ typedef struct vdr_input_plugin_s {
 
   /* OSD */
   pthread_mutex_t osd_lock;
-  int vdr_osd_width, vdr_osd_height;
-  int video_width, video_height;
-  int video_changed;
-  int osdhandle[MAX_OSD_OBJECT];
-  int64_t last_changed_vpts[MAX_OSD_OBJECT];
+  uint16_t vdr_osd_width, vdr_osd_height;
+  uint16_t video_width, video_height;
+  uint8_t  video_changed;
+  int      osdhandle[MAX_OSD_OBJECT];
+  int64_t  last_changed_vpts[MAX_OSD_OBJECT];
   osd_command_t osddata[MAX_OSD_OBJECT];
 
 } vdr_input_plugin_t;
@@ -3687,6 +3687,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
 
   } else if(!strncasecmp(cmd, "AUDIOSTREAM ", 12)) {
     if(!this->slave_stream) {
+#if 0
       int ac3 = strncmp(cmd+12, "AC3", 3) ? 0 : 1;
       if(1 == sscanf(cmd+12 + 4*ac3, "%d", &tmp32)) {
 	pthread_mutex_lock(&this->lock);
@@ -3695,6 +3696,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       } else {
 	err = CONTROL_PARAM_ERROR;
       }
+#endif
     } else {
       if(1 == sscanf(cmd, "AUDIOSTREAM AC3 %d", &tmp32)) {
 	tmp32 &= 0xff;
