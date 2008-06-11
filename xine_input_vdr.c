@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.142 2008-06-11 21:45:57 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.143 2008-06-11 21:56:31 phintuka Exp $
  *
  */
 
@@ -1416,12 +1416,9 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   multi_buffer = xine_xmalloc_aligned (alignment, num_buffers * buf_size,
                                        &this->buffer_pool_base);
 
-  this->buffer_pool_top = NULL;
-
   pthread_mutex_init (&this->buffer_pool_mutex, NULL);
   pthread_cond_init (&this->buffer_pool_cond_not_empty, NULL);
 
-  this->buffer_pool_num_free  = 0;
   this->buffer_pool_capacity  = num_buffers;
   this->buffer_pool_buf_size  = buf_size;
   this->buffer_pool_alloc     = ref->buffer_pool_alloc;
@@ -1442,12 +1439,6 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
 
     buffer_pool_free (buf);
   }
-  this->alloc_cb[0]              = NULL;
-  this->get_cb[0]                = NULL;
-  this->put_cb[0]                = NULL;
-  this->alloc_cb_data[0]         = NULL;
-  this->get_cb_data[0]           = NULL;
-  this->put_cb_data[0]           = NULL;
 
   LOGDBG("fifo_buffer_new done.");
   return this;
@@ -2732,12 +2723,6 @@ static void dvd_set_speed(const char *device, int speed)
   struct stat st;
   int fd;
 
-  memset(&sghdr, 0, sizeof(sghdr));
-  memset(buffer, 0, sizeof(buffer));
-  memset(sense, 0, sizeof(sense));
-  memset(cmd, 0, sizeof(cmd));
-  memset(&st, 0, sizeof(st));
-
   /* remember previous device so we can restore default speed */
   static int dvd_speed = 0;
   static const char *dvd_dev = NULL;
@@ -2754,6 +2739,11 @@ static void dvd_set_speed(const char *device, int speed)
     LOGMSG("set_dvd_speed: error opening DVD device %s for read/write", device);
     return;
   }
+
+  memset(&sghdr, 0, sizeof(sghdr));
+  memset(buffer, 0, sizeof(buffer));
+  memset(sense, 0, sizeof(sense));
+  memset(cmd, 0, sizeof(cmd));
 
   if(speed < 0) {
     /* restore default value */
@@ -5583,8 +5573,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     this->block_buffer->dispose(this->block_buffer);
   if(this->hd_buffer)
     this->hd_buffer->dispose(this->hd_buffer);
-
-  memset(this, 0, sizeof(this));
 
   free (this);
   LOGDBG("dispose done.");
