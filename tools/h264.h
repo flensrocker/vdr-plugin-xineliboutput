@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.h,v 1.3 2008-05-20 11:00:42 phintuka Exp $
+ * $Id: h264.h,v 1.4 2008-06-11 15:50:27 phintuka Exp $
  *
  */
 
@@ -22,14 +22,9 @@ extern "C" {
 #define NAL_AUD  0x09
 
 typedef struct {
-  int num;
-  int den;  
-} h264_rational_t;
-
-typedef struct {
   int width;
   int height;
-  h264_rational_t pixel_aspect;
+  mpeg_rational_t pixel_aspect;
   /* ... */
 } h264_sps_data_t;
 

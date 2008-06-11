@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.2 2008-05-20 11:00:42 phintuka Exp $
+ * $Id: h264.c,v 1.3 2008-06-11 15:50:28 phintuka Exp $
  *
  */
 
@@ -111,7 +111,7 @@ int h264_parse_sps(const uint8_t *buf, int len, h264_sps_data_t *sps)
 	sps->pixel_aspect.den = br_get_u16(&br); /* sar_height */
 	LOGDBG("H.264 SPS: -> sar %dx%d", sps->pixel_aspect.num, sps->pixel_aspect.den);
       } else {
-	static const h264_rational_t aspect_ratios[] =
+	static const mpeg_rational_t aspect_ratios[] =
 	  { /* page 213: */
 	    /* 0: unknown */
 	    {0, 1},
@@ -121,7 +121,7 @@ int h264_parse_sps(const uint8_t *buf, int len, h264_sps_data_t *sps)
 	  };
 
 	if (aspect_ratio_idc < sizeof(aspect_ratios)/sizeof(aspect_ratios[0])) {
-	  memcpy(&sps->pixel_aspect, &aspect_ratios[aspect_ratio_idc], sizeof(h264_rational_t));
+	  memcpy(&sps->pixel_aspect, &aspect_ratios[aspect_ratio_idc], sizeof(mpeg_rational_t));
 	  LOGDBG("H.264 SPS: -> aspect ratio %d / %d", sps->pixel_aspect.num, sps->pixel_aspect.den);
 	} else {
 	  LOGMSG("H.264 SPS: aspect_ratio_idc out of range !");
@@ -209,10 +209,7 @@ int h264_get_video_size(const uint8_t *buf, int len, video_size_t *size)
 	if (h264_parse_sps(nal_data, nal_len, &sps)) {
 	  size->width  = sps.width;
 	  size->height = sps.height;
-	  if(sps.pixel_aspect.den)
-	    size->pixel_aspect = (double)sps.pixel_aspect.num / (double)sps.pixel_aspect.den;
-	  else
-	    size->pixel_aspect = 0.0;
+	  memcpy(&size->pixel_aspect, &sps.pixel_aspect, sizeof(mpeg_rational_t));
 	  return 1;
 	}
 	LOGMSG("h264_get_video_size: not enough data ?");
