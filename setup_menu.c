@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.58 2008-04-29 12:44:25 phintuka Exp $
+ * $Id: setup_menu.c,v 1.59 2008-06-11 23:08:44 phintuka Exp $
  *
  */
 
@@ -951,6 +951,13 @@ void cMenuSetupOSD::Set(void)
   Add(new cMenuEditStraI18nItem(tr("External subtitle size"),
 				&newconfig.extsub_size, SUBTITLESIZE_count, xc.s_subtitleSizes));
 
+#if VDRVERSNUM >= 10510
+  Add(new cMenuEditBoolItem(tr("DVB subtitle decoder"),
+			    &newconfig.dvb_subtitles,
+			    "VDR",
+			    "frontend"));
+#endif
+
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
   //SetCurrent(Get(1));
@@ -1024,6 +1031,8 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.SpuLang2", xc.spu_lang[2]);
   SetupStore("OSD.SpuLang3", xc.spu_lang[3]);
 #endif
+  SetupStore("OSD.DvbSubtitles", xc.dvb_subtitles);
+
   Setup.Save();
 }
 

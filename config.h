@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.47 2008-05-18 19:42:33 phintuka Exp $
+ * $Id: config.h,v 1.48 2008-06-11 23:08:44 phintuka Exp $
  *
  */
 
@@ -256,7 +256,8 @@ class config_t {
     int  osd_blending_lowresvideo; // Use hardware blending for low-resolution video
     int  alpha_correction;
     int  alpha_correction_abs;
-    int  extsub_size; /* size of separate subtitles ( -1 = xine default ; 0...6 = { tiny  small  normal  large  very large  huge } */
+    int  extsub_size;              // size of separate subtitles ( -1 = xine default ; 0...6 = { tiny  small  normal  large  very large  huge }
+    int  dvb_subtitles;            // send DVB subtitles in data stream (decode+display using xine-lib or external media player)
 
     // Media player
 #if VDRVERSNUM < 10515
