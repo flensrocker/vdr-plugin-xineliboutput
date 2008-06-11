@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.145 2008-06-11 22:51:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.146 2008-06-11 23:05:28 phintuka Exp $
  *
  */
 
@@ -247,20 +247,19 @@ typedef struct vdr_input_plugin_s {
   pthread_cond_t      engine_flushed;
 
   /* Playback */
+  uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
   int8_t              h264;                 /* -1: unknown, 0: no, 1: yes */
   int8_t              ffmpeg_video_decoder; /* -1: unknown, 0: no, 1: yes */
-  uint8_t             padding_cnt; /* number of padding frames passed to demux */ 
+  uint8_t             padding_cnt;          /* number of padding frames passed to demux */ 
   uint8_t             no_video : 1;
   uint8_t             live_mode : 1;
   uint8_t             still_mode : 1;
   uint8_t             stream_start : 1;
   uint8_t             send_pts : 1;
   uint8_t             loop_play : 1;
-  uint8_t             hd_stream : 1;   /* true if current stream is HD */
+  uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
-
-  uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
-
+  uint8_t             bih_posted : 1;
 
   /* SCR */
   pvrscr_t           *scr;
@@ -4910,25 +4909,46 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif
 }
 
-static void post_frame_end(vdr_input_plugin_t *this, int type)
+static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 {
-  /* signal FRAME_END to video decoder */ 
+  /* signal FRAME_END to video decoder */
   buf_element_t *cbuf = get_buf_element (this, 0, 1);
   if (!cbuf) {
     LOGMSG("get_buf_element() for BUF_FLAG_FRAME_END failed - retrying");
     xine_usec_sleep (10*1000);
     cbuf = get_buf_element (this, 0, 1);
   }
-  if (cbuf) {
-    cbuf->type = type;
-    cbuf->decoder_flags = BUF_FLAG_FRAME_END;
-    this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
-  } else if (type == BUF_VIDEO_H264) {
-    /* Should not be here ... 
-       Failing to send BUF_FLAG_FRAME_END 's freezes the decoder */
-    LOGERR("get_buf_element() for H.264 BUF_FLAG_FRAME_END failed - aborting");
+  if (!cbuf) {
+    LOGERR("get_buf_element() for BUF_FLAG_FRAME_END failed - aborting");
     abort();
   }
+
+  cbuf->type = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
+  cbuf->decoder_flags = BUF_FLAG_FRAME_END;
+
+  if(!this->bih_posted) {
+    video_size_t size = {0};
+    if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->h264 > 0)) {
+      xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
+      memset(bmi, 0, sizeof(xine_bmiheader));
+
+      cbuf->decoder_flags |= BUF_FLAG_HEADER;
+      bmi->biSize = sizeof(xine_bmiheader);
+      bmi->biWidth = size.width;
+      bmi->biHeight = size.height;
+
+      cbuf->decoder_flags |= BUF_FLAG_ASPECT;
+      cbuf->decoder_info[1] = size.pixel_aspect.num;
+      cbuf->decoder_info[2] = size.pixel_aspect.den;
+
+      LOGDBG("post_frame_end: video width %d, height %d, pixel aspect %d:%d", 
+	     size.width, size.height, size.pixel_aspect.num, size.pixel_aspect.den);
+
+      this->bih_posted = 1;
+    }      
+  }
+
+  this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
 }
 
 static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int len)
@@ -4994,7 +5014,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 
     /* Access Unit Delimiter */
     if (data[i + 3] == 0x09)
-      post_frame_end (this, BUF_VIDEO_H264);
+      post_frame_end (this, buf);
 
     if (data[i + 3] >= 0x80) {
       LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", data[i + 3]);
@@ -5211,6 +5231,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       this->last_delivered_vid_pts = INT64_C(-1);
       this->send_pts = 1;
       this->stream_start = 0;
+      this->bih_posted = 0;
       this->h264 = -1;
       pthread_mutex_lock (&this->stream->first_frame_lock);
       this->stream->first_frame_flag = 2;
@@ -5297,7 +5318,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       uint8_t type = update_frames(this, buf->content, buf->size);
       if(type && this->ffmpeg_video_decoder) {
 	/* signal FRAME_END to decoder */
-	post_frame_end(this, BUF_VIDEO_MPEG);
+	post_frame_end(this, buf);
 	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
 	 * (B-frame pts's are smaller than in previous P-frame) 
 	 * Anyway, without this block of code B frames with pts are dropped. */
