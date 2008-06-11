@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-04-21 10:36+0300\n"
+"POT-Creation-Date: 2008-05-23 12:36+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -472,6 +472,9 @@ msgstr "Úprava statické prùhlednosti"
 
 msgid "External subtitle size"
 msgstr "Velikost externích titulkù"
+
+msgid "DVB subtitle decoder"
+msgstr ""
 
 msgid "Decoder"
 msgstr "Dekodér"
