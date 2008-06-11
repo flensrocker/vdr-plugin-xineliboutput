@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.143 2008-06-11 21:56:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.144 2008-06-11 22:03:52 phintuka Exp $
  *
  */
 
@@ -3488,13 +3488,14 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     }
     for(i=0; i<sizeof(eventmap)/sizeof(eventmap[0]); i++)
       if(!strcmp(cmd+6, eventmap[i].name)) {
-	xine_event_t ev;
-	ev.type = eventmap[i].type;
-	ev.stream = this->slave_stream ? this->slave_stream : this->stream;
-	/* tag event to prevent circular input events 
-	   (vdr -> here -> event_listener -> vdr -> ...) */
-	ev.data = "VDR"; 
-	ev.data_length = 4;
+	xine_event_t ev = {
+	  .type = eventmap[i].type,
+	  .stream = this->slave_stream ? this->slave_stream : this->stream,
+	  /* tag event to prevent circular input events 
+	     (vdr -> here -> event_listener -> vdr -> ...) */
+	  .data = "VDR",
+	  .data_length = 4,
+	};
 	xine_event_send(ev.stream, &ev);
 	break;
       }
@@ -4162,9 +4163,10 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 #if 0
 	  if(!this->loop_play) {
 	    /* forward to vdr-fe (listening only VDR stream events) */
-	    xine_event_t event;
-	    event.data_length = 0;
-	    event.type        = XINE_EVENT_UI_PLAYBACK_FINISHED;
+	    xine_event_t event = {
+	      .type        = XINE_EVENT_UI_PLAYBACK_FINISHED,
+	      .data_length = 0,
+	    };
 	    xine_event_send (this->stream, &event);
 	  } else {
 # if 0
@@ -5519,11 +5521,11 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   /* OSD */
   for(i=0; i<MAX_OSD_OBJECT; i++) {
     if(this->osdhandle[i] != -1) {
-      osd_command_t cmd;
+      osd_command_t cmd = {
+	.cmd = OSD_Close,
+	.wnd = i,
+      };
       LOGDBG("Closing osd %d", i);
-      memset(&cmd,0,sizeof(cmd));
-      cmd.cmd = OSD_Close;
-      cmd.wnd = i;
       exec_osd_command(this, &cmd);
     }
   }
