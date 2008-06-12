@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.149 2008-06-12 22:09:56 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.150 2008-06-12 22:14:15 phintuka Exp $
  *
  */
 
@@ -5079,6 +5079,36 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif /* TEST_H264 */
 
 /*
+ * Demux some buffers not supported by mpeg_block demuxer:
+ *  - H.264 video
+ *  - DVB Subtitles
+ */
+static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+#ifdef TEST_H264
+  /* H.264 */
+  if (IS_VIDEO_PACKET(buf->content)) {
+    if (this->h264) {
+      if (this->h264 < 0)
+	this->h264 = detect_h264(this, buf->content, buf->size);
+      
+      if (this->h264 > 0)
+	buf = post_frame_h264(this, buf);
+    }
+    return buf;
+  }
+#endif
+
+#ifdef TEST_DVB_SPU
+  /* DVB subtitles */
+  if (buf->content[3] == PRIVATE_STREAM1) {
+  }
+#endif
+
+  return buf;
+}
+
+/*
  * Postprocess buffer before passing it to demuxer
  * - Track audio stream changes
  * - Detect pts wraps
@@ -5342,19 +5372,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     pthread_mutex_unlock(&this->lock);
 
-#ifdef TEST_H264
-    /* H.264 */
-    if(this->h264 && (buf->content[3] & 0xf0) == 0xe0) {
-      if(this->h264 < 0)
-	this->h264 = detect_h264(this, buf->content, buf->size);
-      
-      if(this->h264 > 0) {
-	buf = post_frame_h264(this, buf);
-	if(!buf)
-	  continue;
-      }
-    }
-#endif
+    buf = demux_buf(this, buf);
 
   } while(!buf);
 
