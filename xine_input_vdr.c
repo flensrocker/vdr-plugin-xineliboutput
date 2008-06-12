@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.147 2008-06-12 22:00:43 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.148 2008-06-12 22:05:32 phintuka Exp $
  *
  */
 
@@ -5093,14 +5093,45 @@ static void handle_disconnect(vdr_input_plugin_t *this)
   this->stream->emergency_brake = 1;
 }
 
+static int adjust_scr_speed(vdr_input_plugin_t *this)
+{
+  int need_pause = 0;
+
+#ifdef ADJUST_SCR_SPEED
+  if(pthread_mutex_lock(&this->lock)) {
+    LOGERR("adjust_scr_speed: pthread_mutex_lock failed");
+    return 0;
+  }
+
+  if( (!this->live_mode && (this->fd_control < 0 || 
+			    this->fixed_scr)) ||
+      this->slave_stream) {
+    if(this->scr_tunning)
+      reset_scr_tunning(this, this->speed_before_pause);
+  } else {
+# ifdef TEST_SCR_PAUSE
+    if(this->stream_start || this->send_pts) {
+      reset_scr_tunning(this, this->speed_before_pause);
+      need_pause = 1;
+    } else {
+      vdr_adjust_realtime_speed(this);
+    }
+# else
+    vdr_adjust_realtime_speed(this);
+# endif
+  }
+  pthread_mutex_unlock(&this->lock); 
+#endif
+
+  return need_pause;
+}
+
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 					     fifo_buffer_t *fifo, off_t todo) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf  = NULL;
-#ifdef TEST_SCR_PAUSE
-  int need_pause = 0;
-#endif
+  int need_pause;
 
   TRACE("vdr_plugin_read_block");
 
@@ -5124,31 +5155,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 #endif
 
   /* adjust SCR speed */
-#ifdef ADJUST_SCR_SPEED
-  if(pthread_mutex_lock(&this->lock)) {
-    LOGERR("read_block: pthread_mutex_lock failed");
-    return NULL;
-  }
-
-  if( (!this->live_mode && (this->fd_control < 0 || 
-			    this->fixed_scr)) ||
-      this->slave_stream) {
-    if(this->scr_tunning)
-      reset_scr_tunning(this, this->speed_before_pause);
-  } else {
-# ifdef TEST_SCR_PAUSE
-    if(this->stream_start || this->send_pts) {
-      reset_scr_tunning(this, this->speed_before_pause);
-      need_pause = 1;
-    } else {
-# endif
-      vdr_adjust_realtime_speed(this);
-# ifdef TEST_SCR_PAUSE
-    }
-# endif
-  }
-  pthread_mutex_unlock(&this->lock); 
-#endif
+  need_pause = adjust_scr_speed(this);
 
   do {
     buf = fifo_buffer_try_get(this->block_buffer);
