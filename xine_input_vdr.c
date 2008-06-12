@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.148 2008-06-12 22:05:32 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.149 2008-06-12 22:09:56 phintuka Exp $
  *
  */
 
@@ -5078,6 +5078,96 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 }
 #endif /* TEST_H264 */
 
+/*
+ * Postprocess buffer before passing it to demuxer
+ * - Track audio stream changes
+ * - Detect pts wraps
+ * - Signal new pts upstream after stream changes
+ * - Special handling for still images
+ * - Count video frames for SCR tunning
+ * - Special handling for ffmpeg mpeg2 video decoder
+ */
+static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int need_pause)
+{
+#ifdef CACHE_FIRST_IFRAME
+  cache_iframe(this, buf);
+#endif
+
+  track_audio_stream_change(this, buf);
+
+  pts_wrap_workaround(this, buf);
+
+  /* Send current PTS ? */
+  if(this->send_pts) {
+    int64_t pts = pes_get_pts(buf->content, buf->size);
+    if(pts > 0) {
+#ifdef TEST_SCR_PAUSE
+      if(need_pause)
+	scr_tunning_set_paused(this);
+#endif
+      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
+      this->send_pts = 0;
+    } else if(pts == 0) {
+      /* Still image? do nothing, leave send_pts ON */
+    }
+  }
+
+#ifdef LOG_FIRSTFRAME_FLAG
+  {
+    /* trace first frame flag changes */
+    static uint64_t timer = 0;
+    static int tfd = 0;
+    pthread_mutex_lock (&this->stream->first_frame_lock);
+    if(tfd != this->stream->first_frame_flag) {
+      uint64_t now = monotonic_time_ms();
+      if(tfd)
+	LOGMSG("FIRST FRAME FLAG %d -> %d (%d ms)", 
+	       tfd, this->stream->first_frame_flag, (int)(now-timer));
+      timer = now;
+      tfd = this->stream->first_frame_flag;
+    }
+    pthread_mutex_unlock (&this->stream->first_frame_lock);
+  }
+#endif
+
+  /* generated still images start with empty video PES, PTS = 0.
+     Reset metronom pts so images will be displayed */
+  if(this->still_mode && buf->size == 14) {
+    int64_t pts = pes_get_pts(buf->content, buf->size);
+    if(pts==0) {
+      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
+      /* delay frame 10ms (9000 ticks) */
+      /*buf->content[12] = (uint8_t)((10*90) >> 7);*/
+    }
+  }
+
+#ifndef FFMPEG_DEC
+
+  /* Count video frames for SCR tunning algorithm */
+  if(this->live_mode && this->I_frames < 4)
+    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32)
+      update_frames(this, buf->content, buf->size);
+
+#else /* FFMPEG_DEC */
+
+  /* Count video frames for SCR tunning algorithm */
+  if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
+    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
+      uint8_t type = update_frames(this, buf->content, buf->size);
+      if(type && this->ffmpeg_video_decoder) {
+	/* signal FRAME_END to decoder */
+	post_frame_end(this, buf);
+	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
+	 * (B-frame pts's are smaller than in previous P-frame) 
+	 * Anyway, without this block of code B frames with pts are dropped. */
+	if(type == B_FRAME && PES_HAS_PTS(buf->content))
+	  pes_strip_pts(buf->content, buf->size);
+      }
+    }
+
+#endif
+}
+
 static void handle_disconnect(vdr_input_plugin_t *this)
 {
   LOGMSG("read_block: no data source, returning NULL");
@@ -5268,78 +5358,8 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   } while(!buf);
 
-#ifdef CACHE_FIRST_IFRAME
-  cache_iframe(this, buf);
-#endif
-
-  track_audio_stream_change(this, buf);
-
-  pts_wrap_workaround(this, buf);
-
-  /* Send current PTS ? */
-  if(this->send_pts) {
-    int64_t pts = pes_get_pts(buf->content, buf->size);
-    if(pts > 0) {
-#ifdef TEST_SCR_PAUSE
-      if(need_pause)
-	scr_tunning_set_paused(this);
-#endif
-      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
-      this->send_pts = 0;
-    } else if(pts == 0) {
-      /* Still image? do nothing, leave send_pts ON */
-    }
-  }
-
-#ifdef LOG_FIRSTFRAME_FLAG
-  {
-    /* trace flag changes */
-    static uint64_t timer = 0;
-    static int tfd = 0;
-    pthread_mutex_lock (&this->stream->first_frame_lock);
-    if(tfd != this->stream->first_frame_flag) {
-      uint64_t now = monotonic_time_ms();
-      if(tfd)
-	LOGMSG("FIRST FRAME FLAG %d -> %d (%d ms)", 
-	       tfd, this->stream->first_frame_flag, (int)(now-timer));
-      timer = now;
-      tfd = this->stream->first_frame_flag;
-    }
-    pthread_mutex_unlock (&this->stream->first_frame_lock);
-  }
-#endif
-
-  if(this->still_mode && buf->size == 14) {
-    /* generated still images start with empty video PES, PTS = 0.
-       Reset metronom pts so images will be displayed */
-    int64_t pts = pes_get_pts(buf->content, buf->size);
-    if(pts==0) {
-      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
-      /* delay frame 10ms (9000 ticks) */
-      /*buf->content[12] = (uint8_t)((10*90) >> 7);*/
-    }
-  }
-
-#ifndef FFMPEG_DEC
-  if(this->live_mode && this->I_frames < 4)
-    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32)
-      update_frames(this, buf->content, buf->size);
-#else /* FFMPEG_DEC */
-  if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
-    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
-      uint8_t type = update_frames(this, buf->content, buf->size);
-      if(type && this->ffmpeg_video_decoder) {
-	/* signal FRAME_END to decoder */
-	post_frame_end(this, buf);
-	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
-	 * (B-frame pts's are smaller than in previous P-frame) 
-	 * Anyway, without this block of code B frames with pts are dropped. */
-	if(type == B_FRAME && PES_HAS_PTS(buf->content))
-	  pes_strip_pts(buf->content, buf->size);
-      }
-    }
-#endif
-
+  postprocess_buf(this, buf, need_pause);
+  
   TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
   return buf;
 }
