@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.146 2008-06-11 23:05:28 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.147 2008-06-12 22:00:43 phintuka Exp $
  *
  */
 
@@ -5078,6 +5078,21 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 }
 #endif /* TEST_H264 */
 
+static void handle_disconnect(vdr_input_plugin_t *this)
+{
+  LOGMSG("read_block: no data source, returning NULL");
+  if(this->block_buffer)
+    this->block_buffer->clear(this->block_buffer);
+  if(this->big_buffer)
+    this->big_buffer->clear(this->big_buffer);
+  if(this->hd_buffer)
+    this->hd_buffer->clear(this->hd_buffer);
+  set_playback_speed(this, 1);
+  this->live_mode = 0;
+  reset_scr_tunning(this, XINE_FINE_SPEED_NORMAL);
+  this->stream->emergency_brake = 1;
+}
+
 static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 					     fifo_buffer_t *fifo, off_t todo) 
 {
@@ -5092,17 +5107,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   /* check for disconnection/termination */
   if(!this->funcs.push_input_write /* reading from socket */ &&
      !this->control_running) {
-    LOGMSG("read_block: no data source, returning NULL");
-    if(this->block_buffer)
-      this->block_buffer->clear(this->block_buffer);
-    if(this->big_buffer)
-      this->big_buffer->clear(this->big_buffer);
-    if(this->hd_buffer)
-      this->hd_buffer->clear(this->hd_buffer);
-    set_playback_speed(this, 1);
-    this->live_mode = 0;
-    reset_scr_tunning(this, XINE_FINE_SPEED_NORMAL);
-    this->stream->emergency_brake = 1;
+    handle_disconnect(this);
     return NULL; /* disconnected ? */
   }
 
