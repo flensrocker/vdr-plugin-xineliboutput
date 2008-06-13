@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.55 2008-06-13 21:07:51 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.56 2008-06-13 21:29:16 phintuka Exp $
  *
  */
 
@@ -1255,26 +1255,35 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
     XComposeStatus status;
 
     XLookupString(kev, buffer, sizeof(buffer), &ks, &status);
+
+    switch(ks) {
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-    if(ks == XK_f || ks == XK_F) {
-      sxfe_toggle_fullscreen(this);
-    } else if(ks == XK_d || ks == XK_D) {
-      xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
-		     xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
-    } else
+      case XK_f:
+      case XK_F:
+	sxfe_toggle_fullscreen(this);
+	return 1;
+      case XK_d:
+      case XK_D:
+	xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
+		       xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+	return 1;
 #endif
 #ifdef FE_STANDALONE
-      if(ks == XK_Escape) {
+      case XK_Escape:
 	terminate_key_pressed = 1;
 	return 0;
-      } else if(this->input || find_input(this))
-	process_xine_keypress(this->input, "XKeySym", XKeysymToString(ks), 0, 0);
-#else
-    if(this->keypress) 
-      this->keypress("XKeySym", XKeysymToString(ks));
 #endif
+      default: 
+#ifdef FE_STANDALONE
+	if(this->input || find_input(this))
+	  process_xine_keypress(this->input, "XKeySym", XKeysymToString(ks), 0, 0);
+#else
+	if(this->keypress) 
+	  this->keypress("XKeySym", XKeysymToString(ks));
+#endif
+        return 1;
+    }
   }
-
   return 1;
 }
 
