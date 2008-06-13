@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.51 2008-06-13 14:50:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.52 2008-06-13 18:04:59 phintuka Exp $
  *
  */
 
@@ -1273,6 +1273,41 @@ static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
   }
 }
 
+static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
+{
+  switch(bev->button) {
+    case Button1:
+      /* Double-click toggles between fullscreen and windowed mode */
+      if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
+	/* Toggle fullscreen */
+	sxfe_toggle_fullscreen(this);
+	this->prev_click_time = 0; /* don't react to third click ... */
+      } else {
+	this->prev_click_time = bev->time;
+	if(!this->fullscreen && this->no_border && !this->dragging) {
+	  this->dragging = 1;
+	  this->dragging_x = bev->x_root;
+	  this->dragging_y = bev->y_root;
+	}
+      }
+      break;
+
+    case Button3:
+      /* Toggle border and stacking */
+      if(!this->fullscreen) {
+	if(!this->stay_above) {
+	  set_above(this, 1);
+	} else if(!this->no_border) {
+	  set_border(this, 0);
+	} else {
+	  set_border(this, 1);
+	  set_above(this, 0);
+	}
+      }
+      break;
+  }
+}
+
 static int sxfe_run(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
@@ -1395,35 +1430,8 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
 
       case ButtonPress:
-      {
-	XButtonEvent *bev = (XButtonEvent *) &event;
-	if(bev->button == Button1) {
-	  if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
-	    /* Toggle fullscreen */
-	    sxfe_toggle_fullscreen(this);
-	    this->prev_click_time = 0; /* don't react to third click ... */
-	  } else {
-	    this->prev_click_time = bev->time;
-	    if(!this->fullscreen && this->no_border && !this->dragging) {
-	      this->dragging = 1;
-	      this->dragging_x = bev->x_root;
-	      this->dragging_y = bev->y_root;
-	    }
-	  }
-	} else if(bev->button == Button3) {
-	  if(!this->fullscreen) {
-	    if(!this->stay_above) {
-	      set_above(this, 1);
-	    } else if(!this->no_border) {
-	      set_border(this, 0);
-	    } else {
-	      set_border(this, 1);
-	      set_above(this, 0);
-	    }
-	  }
-	}
+	XButtonEvent_handler(this, (XButtonEvent *) &event);
 	break;
-      }
 
       case KeyPress:
       case KeyRelease:
