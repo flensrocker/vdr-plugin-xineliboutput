@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.49 2008-06-06 21:11:27 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.50 2008-06-13 14:46:20 phintuka Exp $
  *
  */
 
@@ -1251,9 +1251,6 @@ static int sxfe_run(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  int keep_going = 1;
-  XEvent event;
-
   /* poll X server (connection socket). 
      (XNextEvent will block if no events are queued).
      We want to use timeout, blocking for long time usually causes vdr
@@ -1267,7 +1264,9 @@ static int sxfe_run(frontend_t *this_gen)
     }
   }
 
-  while(keep_going && XPending(this->display) > 0) {
+  while(XPending(this->display) > 0) {
+
+    XEvent event;
 
     XNextEvent (this->display, &event);   
     
@@ -1448,7 +1447,7 @@ static int sxfe_run(frontend_t *this_gen)
 #ifdef FE_STANDALONE
 	  if(ks == XK_Escape) {
 	    terminate_key_pressed = 1;
-	    keep_going = 0;
+	    return 0;
 	  } else if(this->input || find_input(this))
 	    process_xine_keypress(this->input, "XKeySym",ksname, 0, 0);
 #else
@@ -1468,7 +1467,8 @@ static int sxfe_run(frontend_t *this_gen)
 	if ( cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW )
 	  /* we got a window deletion message from out window manager.*/
 	  LOGDBG("ClientMessage: WM_DELETE_WINDOW");
-	  keep_going=0;
+
+	return 0;
       }
     }
     
@@ -1476,7 +1476,7 @@ static int sxfe_run(frontend_t *this_gen)
       xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
   }
 
-  return keep_going;
+  return 1;
 }
 
 static void sxfe_display_close(frontend_t *this_gen) 
