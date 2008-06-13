@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.53 2008-06-13 19:15:49 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.54 2008-06-13 20:53:20 phintuka Exp $
  *
  */
 
@@ -1247,6 +1247,40 @@ static void sxfe_interrupt(frontend_t *this_gen)
   XFlush(this->display);
 }
 
+static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
+{
+  KeySym          ks;
+  char            *ksname;
+  char            buffer[20];
+  int             buf_len = 20;
+  XComposeStatus  status;
+
+  if(kev->keycode) {
+    XLookupString(kev, buffer, buf_len, &ks, &status);
+    ksname = XKeysymToString(ks);
+#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
+    if(ks == XK_f || ks == XK_F) {
+      sxfe_toggle_fullscreen(this);
+    } else if(ks == XK_d || ks == XK_D) {
+      xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
+		     xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+    } else
+#endif
+#ifdef FE_STANDALONE
+      if(ks == XK_Escape) {
+	terminate_key_pressed = 1;
+	return 0;
+      } else if(this->input || find_input(this))
+	process_xine_keypress(this->input, "XKeySym",ksname, 0, 0);
+#else
+    if(this->keypress) 
+      this->keypress("XKeySym",ksname);
+#endif
+  }
+
+  return 1;
+}
+
 static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 {
   Window tmp_win;
@@ -1393,7 +1427,7 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
 	
       case ConfigureNotify:
-	XConfigureEvent_Handler(this, (XMotionEvent *) &event);
+	XConfigureEvent_handler(this, (XConfigureEvent *) &event);
 	break;
 
 #ifdef HAVE_XRENDER
@@ -1425,10 +1459,8 @@ static int sxfe_run(frontend_t *this_gen)
       }
 #endif /* HAVE_XRENDER */
       case ButtonRelease:
-      {
 	this->dragging = 0;
 	break;
-      }
 
       case MotionNotify:
 	XMotionEvent_handler(this, (XMotionEvent *) &event);
@@ -1440,38 +1472,9 @@ static int sxfe_run(frontend_t *this_gen)
 
       case KeyPress:
       case KeyRelease:
-      {
-	XKeyEvent *kevent = (XKeyEvent *) &event;
-	KeySym          ks;
-	char            *ksname;
-	char            buffer[20];
-	int             buf_len = 20;
-	XComposeStatus  status;
-
-	if(kevent->keycode) {
-	  XLookupString(kevent, buffer, buf_len, &ks, &status);
-	  ksname = XKeysymToString(ks);
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-	  if(ks == XK_f || ks == XK_F) {
-	    sxfe_toggle_fullscreen(this);
-	  } else if(ks == XK_d || ks == XK_D) {
-	    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
-			   xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
-	  } else
-#endif
-#ifdef FE_STANDALONE
-	  if(ks == XK_Escape) {
-	    terminate_key_pressed = 1;
-	    return 0;
-	  } else if(this->input || find_input(this))
-	    process_xine_keypress(this->input, "XKeySym",ksname, 0, 0);
-#else
-	  if(this->keypress) 
-	    this->keypress("XKeySym",ksname);
-#endif
-	}
-      }
-      break;
+	if (! XKeyEvent_handler(this, (XKeyEvent *) &event))
+	  return 0;
+	break;
       
       case ClientMessage:
       {
