@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.52 2008-06-13 18:04:59 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.53 2008-06-13 19:15:49 phintuka Exp $
  *
  */
 
@@ -1247,6 +1247,61 @@ static void sxfe_interrupt(frontend_t *this_gen)
   XFlush(this->display);
 }
 
+static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
+{
+  Window tmp_win;
+	
+  /* Move and resize HUD along with main or fullscreen window */
+#ifdef HAVE_XRENDER
+  if(this->hud) {
+    if(cev->window == this->window[0]) {
+      int hud_x, hud_y;
+      XLockDisplay(cev->display);
+      XTranslateCoordinates(this->display, this->window[0],
+			    DefaultRootWindow(this->display),
+			    0, 0, &hud_x, &hud_y, &tmp_win);
+      XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
+      XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
+      set_cursor(this->display, this->hud_window, 1);
+      XUnlockDisplay(cev->display);
+    } else if(cev->window == this->window[1]) {
+      XLockDisplay(cev->display);
+      XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
+      XMoveWindow(this->display, this->hud_window, 0, 0);
+      set_cursor(this->display, this->hud_window, 0);
+      XUnlockDisplay(cev->display);
+    }
+  }
+#endif
+
+  /* update video window size */
+  this->width  = cev->width;
+  this->height = cev->height;
+
+  if(this->window[0] == cev->window && this->check_move) {
+    LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
+	   cev->x, cev->y, this->check_move);
+    this->check_move = 0;
+    if(this->xpos != cev->x && this->ypos != cev->y)
+      XMoveWindow(this->display, this->window[0], cev->x, cev->y);
+  }
+	
+  if ((cev->x == 0) && (cev->y == 0)) {
+    XLockDisplay(cev->display);
+    if(!this->fullscreen) 
+      XTranslateCoordinates(cev->display, cev->window,
+			    DefaultRootWindow(cev->display),
+			    0, 0, &this->xpos, &this->ypos, &tmp_win);
+    XUnlockDisplay(cev->display);
+  } else {
+    if(!this->fullscreen) {
+      /* update video window position */
+      this->xpos = cev->x;
+      this->ypos = cev->y;
+    }
+  }
+}
+
 static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
 {
   if(this->dragging && !this->fullscreen) {
@@ -1338,58 +1393,8 @@ static int sxfe_run(frontend_t *this_gen)
 	break;
 	
       case ConfigureNotify:
-      {
-	XConfigureEvent *cev = (XConfigureEvent *) &event;
-	Window tmp_win;
-	
-	/* Move and resize HUD along with main or fullscreen window */
-#ifdef HAVE_XRENDER
-	if(this->hud) {
-	  if(cev->window == this->window[0]) {
-	    int hud_x, hud_y;
-	    XLockDisplay(cev->display);
-	    XTranslateCoordinates(this->display, this->window[0],
-				  DefaultRootWindow(this->display),
-				  0, 0, &hud_x, &hud_y, &tmp_win);
-	    XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
-	    XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
-	    set_cursor(this->display, this->hud_window, 1);
-	    XUnlockDisplay(cev->display);
-	  } else if(cev->window == this->window[1]) {
-	    XLockDisplay(cev->display);
-	    XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
-	    XMoveWindow(this->display, this->hud_window, 0, 0);
-	    set_cursor(this->display, this->hud_window, 0);
-	    XUnlockDisplay(cev->display);
-	  }
-	}
-#endif
-	this->width  = cev->width;
-	this->height = cev->height;
-
-        if(this->window[0] == cev->window && this->check_move) {
-	  LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
-		 cev->x, cev->y, this->check_move);
-	  this->check_move = 0;
-	  if(this->xpos != cev->x && this->ypos != cev->y)
-	    XMoveWindow(this->display, this->window[0], cev->x, cev->y);
-	}
-	
-	if ((cev->x == 0) && (cev->y == 0)) {
-	  XLockDisplay(cev->display);
-	  if(!this->fullscreen) 
-	    XTranslateCoordinates(cev->display, cev->window,
-				  DefaultRootWindow(cev->display),
-				  0, 0, &this->xpos, &this->ypos, &tmp_win);
-	  XUnlockDisplay(cev->display);
-	} else {
-	  if(!this->fullscreen) {
-	    this->xpos = cev->x;
-	    this->ypos = cev->y;
-	  }
-	}
+	XConfigureEvent_Handler(this, (XMotionEvent *) &event);
 	break;
-      }
 
 #ifdef HAVE_XRENDER
       case FocusIn:
