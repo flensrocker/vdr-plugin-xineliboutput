@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.20 2008-05-21 20:06:45 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.21 2008-06-14 07:13:32 phintuka Exp $
  *
  */
 
@@ -130,6 +130,46 @@ static void fbfe_update_display_size(frontend_t *this_gen)
     LOGDBG("Framebuffer size after initialization: %dx%d",
 	   this->width, this->height);
   }
+}
+
+/*
+ * update_DFBARGS
+ *
+ * (optionally) add fbdev option to DFBARGS environment variable
+ */
+static void update_DFBARGS(const char *fb_dev)
+{
+  const char *env_old = getenv("DFBARGS");
+  char *env_new = NULL;
+
+  if (env_old) {
+    char *env_tmp = strdup(env_old);
+    char *head    = strstr(env_tmp, "fbdev=");
+
+    if (head) {
+      char *tail = strchr(head, ',');
+      if(head == env_tmp)
+	head = NULL;
+      else
+	*head = 0;
+      asprintf(&env_new, "%sfbdev=%s%s",
+	       head ? env_tmp : "", fb_dev, tail ? tail : "");
+    } else {
+      asprintf(&env_new, "fbdev=%s%s%s", fb_dev, env_tmp ? "," : "", env_tmp ?: "");
+    }
+    free(env_tmp);
+
+    LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
+	   env_new, env_old);
+
+  } else {
+    asprintf(&env_new, "fbdev=%s", fb_dev);
+
+    LOGMSG("setting environment variable DFBARGS to %s", env_new);
+  }
+
+  setenv("DFBARGS", env_new, 1);
+  free(env_new);
 }
 
 /*
@@ -280,6 +320,21 @@ static void fbfe_display_close(frontend_t *this_gen)
   }
 }
 
+static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver, 
+			  const char *audio_port,
+			  const char *video_driver, 
+			  int pes_buffers,
+			  const char *static_post_plugins)
+{
+  if (video_driver && !strcmp(video_driver, "DirectFB")) {
+    fbfe_t *this = (fbfe_t*)this_gen;
+    update_DFBARGS(this->fb_dev);
+  }
+
+  return fe_xine_init(this_gen, audio_driver, audio_port,
+		      video_driver, pes_buffers, static_post_plugins);
+}
+
 static frontend_t *fbfe_get_frontend(void)
 {
   fe_t *this = calloc(1, sizeof(fe_t));
@@ -290,7 +345,7 @@ static frontend_t *fbfe_get_frontend(void)
   this->fe.fe_display_config = fbfe_display_config;
   this->fe.fe_display_close  = fbfe_display_close;
 
-  this->fe.xine_init  = fe_xine_init;
+  this->fe.xine_init  = fbfe_xine_init;
   this->fe.xine_open  = fe_xine_open;
   this->fe.xine_play  = fe_xine_play;
   this->fe.xine_stop  = fe_xine_stop;

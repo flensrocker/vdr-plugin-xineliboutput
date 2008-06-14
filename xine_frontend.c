@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.58 2008-06-14 04:26:12 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.59 2008-06-14 07:13:32 phintuka Exp $
  *
  */
 
@@ -536,34 +536,6 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   if(this->fb_dev) {
     if(video_driver && !strcmp(video_driver, "fb"))
       x_upd_str("video.device.fb_device", this->fb_dev);
-    else if(video_driver && !strcmp(video_driver, "DirectFB")) { 
-      /* DirectFBInit (NULL, NULL); */
-      /* DirectFBSetOption ("fbdev", video_port); */
-      char *orig = getenv("DFBARGS"), *head = NULL, *tail = NULL, *tmp = NULL;
-      if(orig) {
-	orig = strdup(orig);
-	if(NULL != (head = strstr(orig,"fbdev="))) {
-	  tail = strchr(head, ',');
-	  if(head == orig)
-	    head = NULL;
-	  else
-	    *head = 0;
-	  asprintf(&tmp, "%sfbdev=%s%s",
-		   head ? orig : "", this->fb_dev, tail ? tail : "");
-	} else {
-	  asprintf(&tmp, "fbdev=%s%s%s", this->fb_dev, orig?",":"", orig?orig:"");
-	}
-	LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
-	       tmp, getenv("DFBARGS"));
-	free(orig);
-      } else {
-	asprintf(&tmp, "fbdev=%s", this->fb_dev);
-	LOGMSG("setting environment variable DFBARGS to %s", tmp);
-      }
-      setenv("DFBARGS", tmp, 1);
-      free(tmp);
-      /*free(orig);*/
-    }
   }
 #endif
 
@@ -947,7 +919,7 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
     if(!posts->post_pip_elements ||
        !posts->post_vis_elements[0] ||
        !posts->post_vis_elements[0]->enable)
-      LOGMSG("enabling picture-in-picture (\"%s\") post plugin", initstr);
+      LOGMSG("enabling picture-in-picture (\"%s:%s\") post plugin", name, args);
   }
 
   if(args) {
@@ -1404,11 +1376,6 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
       xine_set_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM, crop_y);
       /* trigger forced redraw to make changes effective */
       xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
-    }
-  } else if(!strncmp(cmd, "VO_ASPECT ", 10)) {
-    int vo_aspect_ratio;
-    if(1 == sscanf(cmd+10, "%d", &vo_aspect_ratio)) {
-      xine_set_param(this->stream, XINE_PARAM_VO_ASPECT_RATIO, vo_aspect_ratio);
     }
   }
   
