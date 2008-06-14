@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.56 2008-05-21 20:06:45 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.57 2008-06-14 04:24:20 phintuka Exp $
  *
  */
 
@@ -257,16 +257,18 @@ static void fe_frame_output_cb (void *data,
 			   ((double)video_width)/((double)video_height)));
   if(this->video_width  != video_width ||
      this->video_height != video_height) {
-    xine_event_t event;
-    xine_format_change_data_t framedata;
-    event.type = XINE_EVENT_FRAME_FORMAT_CHANGE;
-    event.stream = this->stream;
-    event.data = &framedata;
-    event.data_length = sizeof(framedata);
-    framedata.width  = video_width;
-    framedata.height = video_height;
-    framedata.aspect = 0; /* TODO */
-    framedata.pan_scan = 0;
+    xine_format_change_data_t framedata = {
+      .width  = video_width,
+      .height = video_height,
+      .aspect = 0, /* TODO */
+      .pan_scan = 0,
+    };
+    const xine_event_t event = {
+      .type = XINE_EVENT_FRAME_FORMAT_CHANGE,
+      .stream = this->stream,
+      .data = &framedata,
+      .data_length = sizeof(framedata),
+    };
     xine_event_send(this->stream, &event);
     this->video_width = video_width;
     this->video_height = video_height;
@@ -1223,23 +1225,6 @@ static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len
 
   if(!this->input && !find_input(this))
     return 0/*-1*/;
-
-#if 0
-  if(len<6) {
-    LOGMSG("xine_queue_pes_packet: len == %d, too short!", len);
-    abort();
-  }
-  /* must contain single pes packet and nothing else */
-  if(data[0] || data[1] || (data[2] != 1)) {
-    static int counter=0;
-    counter++;
-    LOGMSG("xine_queue_pes_packet: packet not starting with 00 00 01 \n"
-	   "    packet #%d, size=%d : %02x %02x %02x %02x %02x %02x\n",
-	   counter, len,
-	   data[0], data[1], data[2], data[3], data[4], data[5]);
-    abort();
-  }
-#endif
 
   input_vdr = (vdr_input_plugin_t *)this->input;
   return input_vdr->f.push_input_write(this->input, data, len);

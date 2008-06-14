@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.56 2008-06-13 21:29:16 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.57 2008-06-14 04:24:20 phintuka Exp $
  *
  */
 
@@ -1233,15 +1233,16 @@ static void sxfe_toggle_fullscreen(sxfe_t *this)
 static void sxfe_interrupt(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  XClientMessageEvent ev2;
 
-  ev2.type    = ClientMessage;
-  ev2.display = this->display;
-  ev2.window  = this->window[this->fullscreen ? 1 : 0];
-  ev2.message_type = this->xa_SXFE_INTERRUPT;
-  ev2.format  = 32;
+  XClientMessageEvent event = {
+    .type         = ClientMessage,
+    .display      = this->display,
+    .window       = this->window[this->fullscreen ? 1 : 0],
+    .message_type = this->xa_SXFE_INTERRUPT,
+    .format       = 32,
+  };
 
-  if(!XSendEvent(ev2.display, ev2.window, TRUE, /*KeyPressMask*/0, (XEvent *)&ev2))
+  if(!XSendEvent(event.display, event.window, TRUE, /*KeyPressMask*/0, (XEvent *)&event))
     LOGERR("sxfe_interrupt: XSendEvent(ClientMessage) FAILED\n");
 
   XFlush(this->display);
