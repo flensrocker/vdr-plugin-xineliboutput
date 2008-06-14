@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.58 2008-06-14 04:26:12 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.59 2008-06-14 04:48:34 phintuka Exp $
  *
  */
 
@@ -454,10 +454,9 @@ static void set_cursor(Display *dpy, Window win, const int enable)
   else {
     /* no cursor */
     const char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
-    Pixmap bm_no;
     Cursor no_ptr;
     XColor black, dummy;
-    bm_no = XCreateBitmapFromData(dpy, win, bm_no_data, 8, 8);
+    Pixmap bm_no = XCreateBitmapFromData(dpy, win, bm_no_data, 8, 8);
     XAllocNamedColor(dpy, DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)), 
 		     "black", &black, &dummy);
     no_ptr = XCreatePixmapCursor(dpy, bm_no, bm_no, &black, &black, 0, 0);
@@ -872,6 +871,52 @@ static void hud_osd_close(frontend_t *this_gen)
 }
 #endif /* HAVE_XRENDER */
 
+/*
+ * open_display
+ * 
+ * Try to connect to X server, in order
+ *   1) user-given display
+ *   2) DISPLAY environment variable
+ *   3) default display 
+ *   4) :0.0
+ *   5) 127.0.0.1:0.0
+ */
+static int open_display(sxfe_t *this, const char *video_port)
+{
+  if (video_port && strlen(video_port)>2) {
+    if (!(this->display = XOpenDisplay(video_port)))
+      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
+	     video_port);
+  }
+
+  if (!this->display) {
+    if (NULL!=(video_port=getenv("DISPLAY")) && !(this->display = XOpenDisplay(video_port)))
+      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
+	     video_port);
+  }
+
+  if (!this->display) {
+    this->display = XOpenDisplay(NULL);
+  }
+
+  if (!this->display) {
+    if (!(this->display = XOpenDisplay(":0.0")))
+      LOGERR("sxfe_display_open: failed to connect to X server (:0.0)");
+  }
+
+  if (!this->display) {
+    if (!(this->display = XOpenDisplay("127.0.0.1:0.0")))
+      LOGERR("sxfe_display_open: failed to connect to X server (127.0.0.1:0.0");
+  }
+
+  if (!this->display) {
+    LOGERR("sxfe_display_open: failed to connect to X server.");
+    LOGMSG("If X server is running, try running \"xhost +\" in xterm window");
+    return 0;
+  }
+
+  return 1;
+}
 
 /*
  * sxfe_display_open
@@ -946,32 +991,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     return 0;
   }
 
-  if(video_port && strlen(video_port)>2) {
-    if(!(this->display = XOpenDisplay(video_port)))
-      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
-	     video_port);
-  }
-  if(!this->display) {
-    if(NULL!=(video_port=getenv("DISPLAY")) && !(this->display = XOpenDisplay(video_port)))
-      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
-	     video_port);
-  }
-  if(!this->display) {
-    this->display = XOpenDisplay(NULL);
-  }
-  if(!this->display) {
-    if(!(this->display = XOpenDisplay(":0.0")))
-      LOGERR("sxfe_display_open: failed to connect to X server (:0.0)");
-  }
-  if(!this->display) {
-    if(!(this->display = XOpenDisplay("127.0.0.1:0.0")))
-      LOGERR("sxfe_display_open: failed to connect to X server (127.0.0.1:0.0");
-  }
-  if (!this->display) {
-    LOGERR("sxfe_display_open: failed to connect to X server.");
-    LOGMSG("If X server is running, try running \"xhost +\" in xterm window");
+  if (!open_display(this, video_port))
     return 0;
-  }
 
   XLockDisplay (this->display);
 
