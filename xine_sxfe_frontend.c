@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.57 2008-06-14 04:24:20 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.58 2008-06-14 04:26:12 phintuka Exp $
  *
  */
 
@@ -1533,6 +1533,31 @@ static void sxfe_display_close(frontend_t *this_gen)
   }
 }
 
+/*
+ * sxfe_xine_open
+ *
+ * Override fe_xine_open:
+ *  - Set window name: append remote host address to title bar text
+ */
+static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
+{
+  int result = fe_xine_open(this_gen, mrl);
+
+#if defined(FE_STANDALONE)
+  if(!strncmp(mrl, "xvdr:", 5) && strstr(mrl, "//")) {
+    sxfe_t *this = (sxfe_t*)this_gen;
+    char *name = NULL, *end;
+    asprintf(&name, "VDR - %s", strstr(mrl, "//")+2);
+    if(NULL != (end = strstr(name, ":37890"))) *end = 0; /* hide only default port */
+    XStoreName(this->display, this->window[0], name);
+    XStoreName(this->display, this->window[1], name);
+    free(name);
+  }
+#endif
+
+  return result;
+}
+
 static int sxfe_xine_play(frontend_t *this_gen)
 {
   int r = fe_xine_play(this_gen);
@@ -1564,7 +1589,7 @@ static frontend_t *sxfe_get_frontend(void)
   this->fe.fe_display_close  = sxfe_display_close;
   
   this->fe.xine_init  = fe_xine_init;
-  this->fe.xine_open  = fe_xine_open;
+  this->fe.xine_open  = sxfe_xine_open;
   this->fe.xine_play  = sxfe_xine_play;
   this->fe.xine_stop  = fe_xine_stop;
   this->fe.xine_close = fe_xine_close;
