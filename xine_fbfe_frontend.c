@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.21 2008-06-14 07:13:32 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.22 2008-06-16 11:29:45 phintuka Exp $
  *
  */
 
@@ -112,7 +112,7 @@ typedef struct fbfe_t {
   char        configfile[256];
   char        modeline[256];
 
-} fe_t;
+} fbfe_t, fe_t;
 
 #define IS_FBFE
 
@@ -180,7 +180,7 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
 			     fe_keypress_f keyfunc, const char *video_port,
 			     int scale_video, int field_order) 
 {
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(!this)
     return 0;
@@ -248,7 +248,7 @@ static int fbfe_display_config(frontend_t *this_gen, int width, int height, int 
 			       int modeswitch, const char *modeline, int aspect, 
 			       int scale_video, int field_order) 
 {
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(!this)
     return 0;
@@ -285,7 +285,7 @@ static void fbfe_interrupt(frontend_t *this_gen)
 static int fbfe_run(frontend_t *this_gen) 
 {
   struct timeval tv;
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(this && this->playback_finished)
     return !this->playback_finished;
@@ -299,7 +299,7 @@ static int fbfe_run(frontend_t *this_gen)
 
 static void fbfe_display_close(frontend_t *this_gen) 
 {
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(this) {
     if(this->fb_dev) {
@@ -337,7 +337,7 @@ static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
 static frontend_t *fbfe_get_frontend(void)
 {
-  fe_t *this = calloc(1, sizeof(fe_t));
+  fbfe_t *this = calloc(1, sizeof(fbfe_t));
 
   this->fd_tty = -1;
 
