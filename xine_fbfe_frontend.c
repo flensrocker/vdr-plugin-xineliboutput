@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.23 2008-06-16 11:36:49 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.24 2008-06-16 21:24:36 phintuka Exp $
  *
  */
 
@@ -178,7 +178,8 @@ static void update_DFBARGS(const char *fb_dev)
 static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
 			     int modeswitch, const char *modeline, int aspect,
 			     fe_keypress_f keyfunc, const char *video_port,
-			     int scale_video, int field_order) 
+			     int scale_video, int field_order,
+			     const char *aspect_controller, int window_id) 
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
@@ -209,6 +210,7 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->overscan        = 0;
   strn0cpy(this->modeline, modeline, sizeof(this->modeline));
   this->display_ratio   = 1.0;
+  this->aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
 
   this->xine_visual_type = XINE_VISUAL_TYPE_FB;
   this->vis.frame_output_cb = fe_frame_output_cb;
@@ -318,6 +320,9 @@ static void fbfe_display_close(frontend_t *this_gen)
       this->fd_tty = -1;
     }
   }
+
+  free(this->aspect_controller);
+  this->aspect_controller = NULL;
 }
 
 static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver, 

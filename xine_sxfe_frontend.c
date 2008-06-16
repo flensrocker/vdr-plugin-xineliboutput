@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.60 2008-06-16 11:36:49 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.61 2008-06-16 21:24:36 phintuka Exp $
  *
  */
 
@@ -927,7 +927,8 @@ static int open_display(sxfe_t *this, const char *video_port)
 static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
 			     int modeswitch, const char *modeline, int aspect,
 			     fe_keypress_f keyfunc, const char *video_port,
-			     int scale_video, int field_order) 
+			     int scale_video, int field_order,
+			     const char *aspect_controller, int window_id) 
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
   double     res_h, res_v, aspect_diff;
@@ -980,6 +981,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->fullscreen_state_forced = 0;
   strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));
   this->xinerama_screen = -1;
+  this->aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
+  this->window_id = window_id;
 
   /*
    * init x11 stuff
@@ -1552,6 +1555,9 @@ static void sxfe_display_close(frontend_t *this_gen)
     XCloseDisplay (this->display);
     this->display = NULL;
   }
+
+  free(this->aspect_controller);
+  this->aspect_controller = NULL;
 }
 
 /*
