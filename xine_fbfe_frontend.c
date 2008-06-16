@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.22 2008-06-16 11:29:45 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.23 2008-06-16 11:36:49 phintuka Exp $
  *
  */
 
@@ -109,7 +109,7 @@ typedef struct fbfe_t {
   uint8_t     field_order;
 
   /* strings */
-  char        configfile[256];
+  char        *configfile;
   char        modeline[256];
 
 } fbfe_t, fe_t;

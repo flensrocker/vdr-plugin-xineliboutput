@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.59 2008-06-14 07:13:32 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.60 2008-06-16 11:36:49 phintuka Exp $
  *
  */
 
@@ -502,11 +502,11 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   /*xine_register_log_cb(this->xine, xine_log_cb, this);*/
 
-  /* TODO: use different config file ? (vdr conf.dir/xine/config_vdr ?) */
-  snprintf(this->configfile, sizeof(this->configfile),
+  free(this->configfile);
+  this->configfile = NULL;
+  asprintf(&this->configfile,
 	   "%s%s", xine_get_homedir(), 
 	  "/.xine/config_xineliboutput");
-  this->configfile[sizeof(this->configfile)-1] = 0;
   xine_config_load (this->xine, this->configfile);
 
   x_reg_num ("engine.buffers.video_num_buffers",
@@ -1091,7 +1091,11 @@ static void fe_xine_exit(frontend_t *this_gen)
       fe_xine_close(this_gen);
     fe_post_unload(this);
 
-    xine_config_save (this->xine, this->configfile);
+    if(this->configfile) {
+      xine_config_save (this->xine, this->configfile);
+      free(this->configfile);
+      this->configfile = NULL;
+    }
     if(this->event_queue)
       xine_event_dispose_queue(this->event_queue);
     this->event_queue = NULL;
@@ -1133,6 +1137,7 @@ static void fe_free(frontend_t *this_gen)
   if (this_gen) {
     fe_t *this = (fe_t*)this_gen;
     this->fe.fe_display_close(this_gen);
+    free(this->configfile);
     free(this);
   }
 }

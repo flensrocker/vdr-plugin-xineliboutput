@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.59 2008-06-14 04:48:34 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.60 2008-06-16 11:36:49 phintuka Exp $
  *
  */
 
@@ -193,7 +193,7 @@ typedef struct sxfe_s {
   uint8_t   dragging;
 
   /* strings */
-  char    configfile[256];
+  char    *configfile;
   char    modeline[256];
 
   /* HUD stuff */
