@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.151 2008-06-17 15:36:30 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.152 2008-06-17 16:42:54 phintuka Exp $
  *
  */
 
@@ -1645,7 +1645,7 @@ static const char* fifo_get_mrl (input_plugin_t *this_gen)
 #else
 static char* fifo_get_mrl (input_plugin_t *this_gen)
 #endif
-{ return "xvdr+slave:"; }
+{ return MRL_ID "+slave:"; }
 
 #if XINE_VERSION_CODE < 10190
 static off_t fifo_read (input_plugin_t *this_gen, char *buf, off_t len) 
@@ -2285,7 +2285,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if, 
 				       osd_command_t *cmd)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t * ) this_if;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   int result = CONTROL_DISCONNECTED;
   int video_changed = 0;
 
@@ -6169,15 +6169,15 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
 
   if(strchr(this->mrl, '#')) 
     *strchr(this->mrl, '#') = 0;
-  if((!strncasecmp(this->mrl, "xvdr+tcp://", 11) && (this->tcp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr+udp://", 11) && (this->udp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr+rtp://", 11) && (this->rtp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr+pipe://", 12)) ||
-     (!strncasecmp(this->mrl, "xvdr:tcp://", 11) && (this->tcp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr:udp://", 11) && (this->udp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr:rtp://", 11) && (this->rtp=1)) ||
-     (!strncasecmp(this->mrl, "xvdr:pipe://", 12)) ||
-     (!strncasecmp(this->mrl, "xvdr://", 7))) {
+  if((!strncasecmp(this->mrl, MRL_ID "+tcp://",  MRL_ID_LEN+7) && (this->tcp=1)) ||
+     (!strncasecmp(this->mrl, MRL_ID "+udp://",  MRL_ID_LEN+7) && (this->udp=1)) ||
+     (!strncasecmp(this->mrl, MRL_ID "+rtp://",  MRL_ID_LEN+7) && (this->rtp=1)) ||
+     (!strncasecmp(this->mrl, MRL_ID "+pipe://", MRL_ID_LEN+8)) ||
+     (!strncasecmp(this->mrl, MRL_ID ":tcp://",  MRL_ID_LEN+7) && (this->tcp=1)) ||
+     (!strncasecmp(this->mrl, MRL_ID ":udp://",  MRL_ID_LEN+7) && (this->udp=1)) ||
+     (!strncasecmp(this->mrl, MRL_ID ":rtp://",  MRL_ID_LEN+7) && (this->rtp=1)) ||
+     (!strncasecmp(this->mrl, MRL_ID ":pipe://", MRL_ID_LEN+8)) ||
+     (!strncasecmp(this->mrl, MRL_ID "://",      MRL_ID_LEN+3))) {
 
     char *phost = strdup(strstr(this->mrl, "//") + 2);
     char host[256];
@@ -6332,10 +6332,11 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
 
   LOGDBG("vdr_class_get_instance");
 
-  if (strncasecmp (mrl, "xvdr:",5) && strncasecmp (mrl, "xvdr+",5))
+  if (strncasecmp (mrl, MRL_ID ":", MRL_ID_LEN+1) && 
+      strncasecmp (mrl, MRL_ID "+", MRL_ID_LEN+1))
     return NULL;
 
-  if(!strncasecmp(mrl, "xvdr+slave://0x", 15)) {
+  if(!strncasecmp(mrl, MRL_ID "+slave://0x", MRL_ID_LEN+11)) {
     LOGMSG("vdr_class_get_instance: slave stream requested");
     return fifo_class_get_instance(class_gen, stream, data);
   }
@@ -6360,9 +6361,9 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   this->video_width  = this->vdr_osd_width  = 720;
   this->video_height = this->vdr_osd_height = 576;
 
-  local_mode         = ( (!strncasecmp(mrl, "xvdr://", 7)) && 
+  local_mode         = ( (!strncasecmp(mrl, MRL_ID "://", MRL_ID_LEN+3)) && 
 			 (strlen(mrl)==7))
-                       || (!strncasecmp(mrl, "xvdr:///", 8));
+                       || (!strncasecmp(mrl, MRL_ID ":///", MRL_ID_LEN+4));
 
   if(!bSymbolsFound) {
     /* not running under VDR or vdr-sxfe/vdr-fbfe */
@@ -6370,13 +6371,13 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
       LOGDBG("vdr or vdr-??fe not detected, forcing remote mode");
       local_mode = 0;
     }
-    if(!strcasecmp(mrl, "xvdr:") ||
-       !strcasecmp(mrl, "xvdr:/") ||
-       !strcasecmp(mrl, "xvdr://") ||
-       !strcasecmp(mrl, "xvdr:///")) {
+    if(!strcasecmp(mrl, MRL_ID ":") ||
+       !strcasecmp(mrl, MRL_ID ":/") ||
+       !strcasecmp(mrl, MRL_ID "://") ||
+       !strcasecmp(mrl, MRL_ID ":///")) {
       /* default to local host */
       free(this->mrl);
-      this->mrl = strdup("xvdr://127.0.0.1");
+      this->mrl = strdup(MRL_ID "://127.0.0.1");
       LOGMSG("Changed mrl from %s to %s", mrl, this->mrl);
     }
   }
@@ -6453,7 +6454,7 @@ static char *vdr_class_get_description (input_class_t *this_gen)
 
 static const char *vdr_class_get_identifier (input_class_t *this_gen) 
 {
-  return "xvdr";
+  return MRL_ID;
 }
 #endif
 
@@ -6470,9 +6471,9 @@ static void vdr_class_dispose (input_class_t *this_gen)
   vdr_input_class_t *this = (vdr_input_class_t *) this_gen;
 
   this->xine->config->unregister_callback(this->xine->config,
-					  "media.xvdr.default_mrl");
+					  "media." MRL_ID ".default_mrl");
   this->xine->config->unregister_callback(this->xine->config,
-					  "xvdr.osd.fast_scaling");
+					  MRL_ID ".osd.fast_scaling");
 
   free (this);
 }
@@ -6498,15 +6499,15 @@ static void *init_class (xine_t *xine, void *data)
   this->xine   = xine;
   
   this->mrls[ 0 ] = config->register_string(config,                 
-					    "media.xvdr.default_mrl",
-                                            "xvdr://127.0.0.1#nocache;demux:mpeg_block",
+					    "media." MRL_ID ".default_mrl",
+                                            MRL_ID "://127.0.0.1#nocache;demux:mpeg_block",
                                             _("default VDR host"),
                                             _("The default VDR host"),
                                             10, vdr_class_default_mrl_change_cb, (void *)this);
   this->mrls[ 1 ] = 0;
 
   this->fast_osd_scaling = config->register_bool(config,
-						 "input.xvdr.fast_osd_scaling", 0,
+						 "input." MRL_ID ".fast_osd_scaling", 0,
 						 _("Fast (low-quality) OSD scaling"),
 						 _("Enable fast (lower quality) OSD scaling.\n"
 						   "Default is to use (slow) linear interpolation "
@@ -6522,7 +6523,7 @@ static void *init_class (xine_t *xine, void *data)
   this->input_class.get_identifier     = vdr_class_get_identifier;
   this->input_class.get_description    = vdr_class_get_description;
 #else
-  this->input_class.identifier         = "xvdr";
+  this->input_class.identifier         = MRL_ID;
   this->input_class.description        = N_("VDR (Video Disk Recorder) input plugin");
 #endif
   this->input_class.get_autoplay_list  = vdr_plugin_get_autoplay_list;
@@ -6540,7 +6541,7 @@ static void *init_class (xine_t *xine, void *data)
 
 const plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) = {
   /* type, API, "name", version, special_info, init_function */
-  { PLUGIN_INPUT, INPUT_PLUGIN_IFACE_VERSION, "XVDR", XINE_VERSION_CODE, NULL, init_class },
+  { PLUGIN_INPUT, INPUT_PLUGIN_IFACE_VERSION, MRL_ID, XINE_VERSION_CODE, NULL, init_class },
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 
