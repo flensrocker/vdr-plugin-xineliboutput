@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.63 2008-06-17 15:15:44 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.64 2008-06-17 16:12:23 phintuka Exp $
  *
  */
 
@@ -113,7 +113,8 @@ typedef struct sxfe_s {
 
   /* function pointers */
   frontend_t              fe;
-  void (*update_display_size)(frontend_t*);
+  void (*update_display_size)(struct sxfe_s *);
+  void (*toggle_fullscreen_state)(struct sxfe_s *);
 
   /* vdr */
   fe_keypress_f        keypress;
@@ -1227,7 +1228,7 @@ static int sxfe_display_config(frontend_t *this_gen,
   return 1;
 }
 
-static void sxfe_toggle_fullscreen(sxfe_t *this)
+static void sxfe_toggle_fullscreen(fe_t *this)
 {
   int force = this->fullscreen_state_forced;
   this->fullscreen_state_forced = 0;
@@ -1632,6 +1633,8 @@ static frontend_t *sxfe_get_frontend(void)
 
   this->fe.xine_queue_pes_packet = xine_queue_pes_packet;
 #endif /*#ifndef FE_STANDALONE */
+
+  this->toggle_fullscreen_state = sxfe_toggle_fullscreen;
 
   return (frontend_t*)this;
 }

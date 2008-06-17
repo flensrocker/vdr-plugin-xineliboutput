@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.62 2008-06-17 15:15:44 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.63 2008-06-17 16:12:23 phintuka Exp $
  *
  */
 
@@ -567,7 +567,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   
   /* re-configure display size (DirectFB driver changes display mode in init) */
   if(this->update_display_size)
-    this->update_display_size(this_gen);
+    this->update_display_size(this);
 
   /* create audio port */
 

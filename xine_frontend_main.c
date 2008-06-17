@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.43 2008-06-17 08:55:36 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.44 2008-06-17 16:12:23 phintuka Exp $
  *
  */
 
@@ -152,10 +152,6 @@ static uint64_t read_key_seq(void)
   return k;
 }
 
-#ifndef IS_FBFE
-static void sxfe_toggle_fullscreen(sxfe_t *this);
-#endif
-
 static void *kbd_receiver_thread(void *fe) 
 {
   fe_t *this = (fe_t*)fe;
@@ -189,14 +185,12 @@ static void *kbd_receiver_thread(void *fe)
       break;
     }
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-# ifndef IS_FBFE
     if(code == 'f' || code == 'F') {
-      sxfe_toggle_fullscreen((sxfe_t*)fe);
-      continue;
-    } else
-# endif
-    if(code == 'd' || code == 'D') {
-      fe_t *this = (fe_t*)fe;
+      if(this->toggle_fullscreen_state) {
+	this->toggle_fullscreen_state(this);
+	continue;
+      }
+    } else if(code == 'd' || code == 'D') {
       xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
 		     xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
       continue;
@@ -243,13 +237,11 @@ static void *slave_receiver_thread(void *fe)
     if(!strncasecmp(str, "QUIT", 4)) {
       break;
 
-#ifndef IS_FBFE
     } else if(!strncasecmp(str, "FULLSCREEN", 10)) {
-      sxfe_toggle_fullscreen((sxfe_t*)fe);
-#endif
+      if(this->toggle_fullscreen_state)
+	this->toggle_fullscreen_state(this);
 
     } else if(!strncasecmp(str, "DEINTERLACE ", 12)) {
-      fe_t *this = (fe_t*)fe;
       int val = atoi(str+12);
       xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, val ? 1 : 0);
 

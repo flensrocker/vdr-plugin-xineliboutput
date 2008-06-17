@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.12 2008-06-17 15:43:13 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.13 2008-06-17 16:12:23 phintuka Exp $
  *
  */
 /*
@@ -43,9 +43,6 @@ static volatile char *lirc_device_name = NULL;
 static volatile int fd_lirc = -1;
 static int lirc_repeat_emu = 0;
 
-#ifndef IS_FBFE
-static void sxfe_toggle_fullscreen(sxfe_t *this);
-#endif
 
 static uint64_t time_ms()
 {
@@ -192,13 +189,13 @@ static void *lirc_receiver_thread(void *fe)
         if(!strcmp(KeyName, "Quit")) {
           terminate_key_pressed = 1;
           break;
-# ifndef IS_FBFE
+
         } else if(!strcmp(KeyName, "Fullscreen")) {
           if(!repeat)
-            sxfe_toggle_fullscreen((sxfe_t*)fe);
-# endif
+	    if(this->toggle_fullscreen_state)
+	      this->toggle_fullscreen_state(this);
+
         } else if(!strcmp(KeyName, "Deinterlace")) {
-          fe_t *this = (fe_t*)fe;
           xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
                          xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
         } else 
