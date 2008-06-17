@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.150 2008-06-12 22:14:15 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.151 2008-06-17 15:36:30 phintuka Exp $
  *
  */
 
@@ -224,10 +224,13 @@ typedef struct vdr_input_class_s {
 
 /* input plugin */
 typedef struct vdr_input_plugin_s {
-  input_plugin_t      input_plugin;
-
-  /* VDR */
-  vdr_input_plugin_funcs_t funcs; 
+  union {
+    vdr_input_plugin_if_t      iface;
+    struct {
+      input_plugin_t           input_plugin;
+      vdr_input_plugin_funcs_t funcs; 
+    };
+  };
 
   /* plugin */
   vdr_input_class_t  *class;
@@ -2279,10 +2282,10 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
   }
 }
 
-static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen, 
+static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if, 
 				       osd_command_t *cmd)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t * ) this_if;
   int result = CONTROL_DISCONNECTED;
   int video_changed = 0;
 
@@ -3169,7 +3172,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   }
 
   if(err == CONTROL_OK) 
-    err = vdr_plugin_exec_osd_command((input_plugin_t*)this, &osdcmd);
+    err = vdr_plugin_exec_osd_command(&this->iface, &osdcmd);
 
   free(osdcmd.data);
   free(osdcmd.palette);
@@ -3406,9 +3409,9 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
   return CONTROL_OK;
 }
 
-static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
+static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *cmd)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   int err = CONTROL_OK, i, j;
   int /*int32_t*/ tmp32 = 0;
   uint64_t tmp64 = 0ULL;
@@ -3878,7 +3881,7 @@ static void *vdr_control_thread(void *this_gen)
       break;
 
     /* parse */
-    switch(err = vdr_plugin_parse_control(this_gen, line)) {
+    switch(err = vdr_plugin_parse_control(&this->iface, line)) {
       case CONTROL_OK:
         break;
       case CONTROL_UNKNOWN:
@@ -4075,8 +4078,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
       if(this->funcs.input_control) {
 	/* remote mode: -> input_plugin -> connection -> VDR */
-	this->funcs.input_control((input_plugin_t *)this,
-				  NULL, vdr_keymap[i].name, 0, 0);
+	this->funcs.input_control(&this->iface, NULL, vdr_keymap[i].name, 0, 0);
       }
       if(this->funcs.xine_input_event) {
 	/* local mode: -> VDR */
@@ -4218,7 +4220,7 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
     return;
   }
 
-  vdr_plugin_parse_control((input_plugin_t*)this, cmd);
+  vdr_plugin_parse_control(&this->iface, cmd);
 }
 
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
@@ -4719,9 +4721,9 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
 }
 #endif
 
-static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
+static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, int len)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   buf_element_t      *buf = NULL;
   static int overflows = 0;
 
@@ -4772,11 +4774,11 @@ static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
   return len;
 }
 
-static int vdr_plugin_keypress(input_plugin_t *this_gen, 
+static int vdr_plugin_keypress(vdr_input_plugin_if_t *this_if,
 			       const char *map, const char *key,
 			       int repeat, int release)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   if(pthread_mutex_lock(&this->lock)) {
     LOGERR("vdr_plugin_keypress: pthread_mutex_lock failed");
     return -1;
@@ -4891,7 +4893,6 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len
 
 static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
 {
-#if 1
   /* PTS wrap workaround for mpeg_block demuxer */
   int64_t pts = pes_get_pts(buf->content, buf->size);
   if(pts >= 0) {
@@ -4906,7 +4907,6 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
       }
     }
   }
-#endif
 }
 
 static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
