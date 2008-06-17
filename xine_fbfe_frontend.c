@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.26 2008-06-17 16:12:23 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.27 2008-06-17 19:13:14 phintuka Exp $
  *
  */
 
@@ -82,7 +82,7 @@ typedef struct fbfe_t {
   xine_event_queue_t *event_queue;
 
   post_plugins_t     *postplugins;
-  char               *fb_dev;
+  char               *video_port_name;
   char               *aspect_controller;
 
   int                 xine_visual_type;
@@ -219,9 +219,9 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->update_display_size = fbfe_update_display_size;
 
   if(video_port && !strncmp(video_port, "/dev/", 5))
-    this->fb_dev = strdup(video_port);
+    this->video_port_name = strdup(video_port);
   else
-    this->fb_dev = NULL;
+    this->video_port_name = NULL;
 
 #if defined(KDSETMODE) && defined(KD_GRAPHICS)
   if (isatty(STDIN_FILENO))
@@ -304,9 +304,9 @@ static void fbfe_display_close(frontend_t *this_gen)
   fbfe_t *this = (fbfe_t*)this_gen;
 
   if(this) {
-    if(this->fb_dev) {
-      free(this->fb_dev);
-      this->fb_dev = NULL;
+    if(this->video_port_name) {
+      free(this->video_port_name);
+      this->video_port_name = NULL;
     }
     if(this->xine)
       this->fe.xine_exit(this_gen);
@@ -333,7 +333,7 @@ static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
 {
   if (video_driver && !strcmp(video_driver, "DirectFB")) {
     fbfe_t *this = (fbfe_t*)this_gen;
-    update_DFBARGS(this->fb_dev);
+    update_DFBARGS(this->video_port_name);
   }
 
   return fe_xine_init(this_gen, audio_driver, audio_port,

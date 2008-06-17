@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.65 2008-06-17 16:23:57 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.66 2008-06-17 19:13:14 phintuka Exp $
  *
  */
 
@@ -195,6 +195,7 @@ typedef struct sxfe_s {
 
   /* strings */
   char    *configfile;
+  char    *video_port_name;
   char    modeline[256];
 
   /* HUD stuff */

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.64 2008-06-17 16:26:50 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.65 2008-06-17 19:13:14 phintuka Exp $
  *
  */
 
@@ -525,12 +525,10 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   x_upd_num("video.device.xv_double_buffer", 1);
   x_upd_num("engine.buffers.video_num_buffers", pes_buffers);
 
-#ifdef IS_FBFE
-  if(this->fb_dev) {
+  if(this->video_port_name) {
     if(video_driver && !strcmp(video_driver, "fb"))
-      x_upd_str("video.device.fb_device", this->fb_dev);
+      x_upd_str("video.device.fb_device", this->video_port_name);
   }
-#endif
 
   this->playback_finished = 0;
 
