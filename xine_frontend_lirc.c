@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.11 2008-06-17 08:55:36 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.12 2008-06-17 15:43:13 phintuka Exp $
  *
  */
 /*
@@ -20,7 +20,6 @@
  *
  * LIRC support added by Carsten Koch <Carsten.Koch@icem.de>  2000-06-16.
  *
- * $Id: xine_frontend_lirc.c,v 1.11 2008-06-17 08:55:36 phintuka Exp $
  */
 
 
