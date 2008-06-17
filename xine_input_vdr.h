@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.h,v 1.6 2008-06-17 15:15:44 phintuka Exp $
+ * $Id: xine_input_vdr.h,v 1.7 2008-06-17 15:38:40 phintuka Exp $
  *
  */
 
@@ -15,6 +15,8 @@
 extern "C" {
 #endif
 
+#define MRL_ID      "xvdr"
+#define MRL_ID_LEN  4
 
 struct input_plugin_s;
 struct vdr_input_plugin_if_s;
