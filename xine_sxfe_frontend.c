@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.64 2008-06-17 16:12:23 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.65 2008-06-17 16:23:57 phintuka Exp $
  *
  */
 
@@ -1571,7 +1571,7 @@ static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
   int result = fe_xine_open(this_gen, mrl);
 
 #if defined(FE_STANDALONE)
-  if(!strncmp(mrl, "xvdr:", 5) && strstr(mrl, "//")) {
+  if(result && !strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) && strstr(mrl, "//")) {
     sxfe_t *this = (sxfe_t*)this_gen;
     char *name = NULL, *end;
     asprintf(&name, "VDR - %s", strstr(mrl, "//")+2);
