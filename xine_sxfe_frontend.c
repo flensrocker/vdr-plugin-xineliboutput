@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.61 2008-06-16 21:24:36 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.62 2008-06-17 08:55:35 phintuka Exp $
  *
  */
 
@@ -1300,8 +1300,7 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 #endif
       default: 
 #ifdef FE_STANDALONE
-	if(this->input || find_input(this))
-	  process_xine_keypress(this->input, "XKeySym", XKeysymToString(ks), 0, 0);
+	process_xine_keypress((fe_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
 #else
 	if(this->keypress) 
 	  this->keypress("XKeySym", XKeysymToString(ks));

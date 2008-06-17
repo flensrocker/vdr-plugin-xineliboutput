@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.42 2008-06-16 21:24:36 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.43 2008-06-17 08:55:36 phintuka Exp $
  *
  */
 
@@ -158,6 +158,7 @@ static void sxfe_toggle_fullscreen(sxfe_t *this);
 
 static void *kbd_receiver_thread(void *fe) 
 {
+  fe_t *this = (fe_t*)fe;
   uint64_t code = 0;
   char str[64];
 
@@ -205,8 +206,7 @@ static void *kbd_receiver_thread(void *fe)
       break;
 
     snprintf(str, sizeof(str), "%016" PRIX64, code);
-    if(find_input((fe_t*)fe))
-      process_xine_keypress(((fe_t*)fe)->input, "KBD", str, 0, 0);
+    process_xine_keypress(this, "KBD", str, 0, 0);
 
   } while(!terminate_key_pressed && code != 0xffff);
   
@@ -221,6 +221,7 @@ static void *kbd_receiver_thread(void *fe)
 
 static void *slave_receiver_thread(void *fe) 
 {
+  fe_t *this = (fe_t*)fe;
   char str[128], *pt;
 
   terminate_key_pressed = 0;
@@ -253,8 +254,7 @@ static void *slave_receiver_thread(void *fe)
       xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, val ? 1 : 0);
 
     } else if(!strncasecmp(str, "HITK ", 5)) {
-      if(find_input((fe_t*)fe))
-	process_xine_keypress(((fe_t*)fe)->input, NULL, str+5, 0, 0);
+      process_xine_keypress(this, NULL, str+5, 0, 0);
 
     } else {
       LOGMSG("Unknown slave mode command: %s", str);

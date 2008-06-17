@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.10 2008-02-05 00:56:43 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.11 2008-06-17 08:55:36 phintuka Exp $
  *
  */
 /*
@@ -20,7 +20,7 @@
  *
  * LIRC support added by Carsten Koch <Carsten.Koch@icem.de>  2000-06-16.
  *
- * $Id: xine_frontend_lirc.c,v 1.10 2008-02-05 00:56:43 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.11 2008-06-17 08:55:36 phintuka Exp $
  */
 
 
@@ -93,6 +93,7 @@ static void lircd_connect(void)
 
 static void *lirc_receiver_thread(void *fe)
 {
+  fe_t *this = (fe_t*)fe;
   int timeout = -1;
   uint64_t FirstTime = time_ms();
   uint64_t LastTime = time_ms();
@@ -165,8 +166,7 @@ static void *lirc_receiver_thread(void *fe)
 	    continue; /* skip keys coming in too fast */
 	  if (repeat) {
 	    alarm(3);
-	    if(find_input((fe_t*)fe))
-	      process_xine_keypress(((fe_t*)fe)->input, "LIRC", LastKeyName, 0, 1);
+	    process_xine_keypress(this, "LIRC", LastKeyName, 0, 1);
 	    alarm(0);
 	  }
 
@@ -206,8 +206,7 @@ static void *lirc_receiver_thread(void *fe)
 #endif
 	  {
 	    alarm(3);
-	    if(find_input((fe_t*)fe))
-	      process_xine_keypress(((fe_t*)fe)->input, "LIRC", KeyName, repeat, 0);
+	    process_xine_keypress(this, "LIRC", KeyName, repeat, 0);
 	    alarm(0);
 	  }
 
@@ -215,8 +214,7 @@ static void *lirc_receiver_thread(void *fe)
       else if (repeat) { /* the last one was a repeat, so let's generate a release */
 	if (elapsed(LastTime) >= REPEATTIMEOUT) {
 	  alarm(3);
-	  if(find_input((fe_t*)fe))
-	    process_xine_keypress(((fe_t*)fe)->input, "LIRC", LastKeyName, 0, 1);
+	  process_xine_keypress(this, "LIRC", LastKeyName, 0, 1);
 	  alarm(0);
 	  repeat = 0;
 	  *LastKeyName = 0;
