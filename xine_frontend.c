@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.63 2008-06-17 16:12:23 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.64 2008-06-17 16:26:50 phintuka Exp $
  *
  */
 
@@ -80,12 +80,12 @@ static int find_input_plugin(fe_t *this)
 #if XINE_VERSION_CODE < 10190
     if(strcmp(this->stream->input_plugin->input_class->get_identifier(
 	      this->stream->input_plugin->input_class),
-              "xvdr")) {
+              MRL_ID)) {
 #else
     if(strcmp(this->stream->input_plugin->input_class->identifier,
-              "xvdr")) {
+              MRL_ID)) {
 #endif
-      LOGMSG("find_input_plugin: current xine input plugin is not xvdr !");
+      LOGMSG("find_input_plugin: current xine input plugin is not " MRL_ID " !");
       return 0;
     }
     this->input_plugin = (vdr_input_plugin_if_t*)this->stream->input_plugin;
@@ -691,7 +691,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   this->input_plugin      = NULL;
   this->playback_finished = 1;
 
-  asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : "xvdr://");
+  asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : MRL_ID "://");
 
   result = xine_open(this->stream, url);
 
@@ -1024,7 +1024,7 @@ static int fe_xine_play(frontend_t *this_gen)
   this->input_plugin->f.fe_handle  = this_gen;
 
   if(this->playback_finished)
-    LOGMSG("Error playing xvdr:// !");
+    LOGMSG("Error playing " MRL_ID ":// !");
 
   return !this->playback_finished;
 }
@@ -1280,7 +1280,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 					    this->video_port);
       LOGMSG("  PIP %d: %dx%d @ (%d,%d)", pid & 0x0f, w, h, x, y);
       LOGMSG("create pip stream done");
-      sprintf(mrl, "xvdr+slave://0x%lx#nocache;demux:mpeg_block",
+      sprintf(mrl, MRL_ID "+slave://0x%lx#nocache;demux:mpeg_block",
 	      (unsigned long int)this);
       if(!xine_open(posts->pip_stream, mrl) ||
 	 !xine_play(posts->pip_stream, 0, 0)) {
