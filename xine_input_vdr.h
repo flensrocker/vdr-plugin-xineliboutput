@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.h,v 1.5 2008-03-31 20:36:03 phintuka Exp $
+ * $Id: xine_input_vdr.h,v 1.6 2008-06-17 15:15:44 phintuka Exp $
  *
  */
 
@@ -15,25 +15,36 @@
 extern "C" {
 #endif
 
+
 struct input_plugin_s;
+struct vdr_input_plugin_if_s;
 struct osd_command_s;
 struct frontend_s;
 
 typedef struct vdr_input_plugin_funcs_s {
   /* VDR --> input plugin (only local mode) */
-  int  (*push_input_write)(struct input_plugin_s *, const char *, int);
-  int  (*push_input_control)(struct input_plugin_s *, const char *);
-  int  (*push_input_osd)(struct input_plugin_s *, struct osd_command_s *);
+  int  (*push_input_write)  (struct vdr_input_plugin_if_s *, const char *, int);
+  int  (*push_input_control)(struct vdr_input_plugin_if_s *, const char *);
+  int  (*push_input_osd)    (struct vdr_input_plugin_if_s *, struct osd_command_s *);
+
   /* input plugin --> frontend (only local mode) */
-  void (*xine_input_event)(const char *, const char *);
+  void (*xine_input_event)  (const char *, const char *);
+
   /* input plugin --> frontend (remote mode) */
-  int  (*intercept_osd)(struct frontend_s *, struct osd_command_s *);
+  int  (*intercept_osd)     (struct frontend_s *, struct osd_command_s *);
+
   /* input plugin --> frontend */
-  void *(*fe_control)(struct frontend_s *, const char *);
+  void *(*fe_control)       (struct frontend_s *, const char *);
   struct frontend_s *fe_handle;
+
   /* frontend --> input plugin (remote mode) */
-  int  (*input_control)(struct input_plugin_s *, const char *, const char *, int, int);
+  int  (*input_control)     (struct vdr_input_plugin_if_s *, const char *, const char *, int, int);
 } vdr_input_plugin_funcs_t;
+
+typedef struct vdr_input_plugin_if_s {
+  input_plugin_t           input_plugin;
+  vdr_input_plugin_funcs_t f;
+} vdr_input_plugin_if_t;
 
 #define CONTROL_OK            0
 #define CONTROL_UNKNOWN      -1 

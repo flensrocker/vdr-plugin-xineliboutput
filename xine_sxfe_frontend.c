@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.62 2008-06-17 08:55:35 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.63 2008-06-17 15:15:44 phintuka Exp $
  *
  */
 
@@ -153,7 +153,7 @@ typedef struct sxfe_s {
   xine_t              *xine;
   xine_stream_t       *stream;
   xine_stream_t       *slave_stream;
-  input_plugin_t      *input;
+  vdr_input_plugin_if_t *input_plugin;
   xine_video_port_t   *video_port;
   xine_video_port_t   *video_port_none;
   xine_audio_port_t   *audio_port;
@@ -1592,11 +1592,10 @@ static int sxfe_xine_play(frontend_t *this_gen)
 # ifdef HAVE_XRENDER
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(r && this->input && this->hud) {
-    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
+  if(r && this->input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
-    input_vdr->f.fe_handle  = this_gen;
-    input_vdr->f.intercept_osd = hud_osd_command;
+    this->input_plugin->f.fe_handle  = this_gen;
+    this->input_plugin->f.intercept_osd = hud_osd_command;
   }
 # endif /* HAVE_XRENDER */
 #endif /* FE_STANDALONE */

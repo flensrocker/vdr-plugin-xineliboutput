@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.61 2008-06-17 08:55:35 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.62 2008-06-17 15:15:44 phintuka Exp $
  *
  */
 
@@ -29,13 +29,6 @@
 #else
   int LogToSysLog __attribute__((visibility("default"))) = 1; /* dynamically linked from input plugin */
 #endif
-
-/* from vdr_input_plugin: */
-typedef struct {
-  input_plugin_t           input_plugin;
-  vdr_input_plugin_funcs_t f;
-  /* ... */
-} vdr_input_plugin_t;
 
 
 static inline char *strn0cpy(char *dest, const char *src, int n) 
@@ -75,12 +68,12 @@ static int guess_cpu_count(void)
  * detect input plugin 
  */
 
-static int find_input(fe_t *this)
+static int find_input_plugin(fe_t *this)
 {
-  if(!this->input) {
+  if(!this->input_plugin) {
     if(!this->stream || !this->stream->input_plugin ||
        !this->stream->input_plugin->input_class || this->playback_finished) {
-      LOGMSG("find_input: stream not initialized or playback finished !");
+      LOGMSG("find_input_plugin: stream not initialized or playback finished !");
       usleep(100*1000);
       return 0;
     }
@@ -92,10 +85,10 @@ static int find_input(fe_t *this)
     if(strcmp(this->stream->input_plugin->input_class->identifier,
               "xvdr")) {
 #endif
-      LOGMSG("find_input: current xine input plugin is not xvdr !");
+      LOGMSG("find_input_plugin: current xine input plugin is not xvdr !");
       return 0;
     }
-    this->input = this->stream->input_plugin;
+    this->input_plugin = (vdr_input_plugin_if_t*)this->stream->input_plugin;
   }
   return 1;
 }
@@ -487,7 +480,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   this->stream          = NULL;
   this->video_port      = NULL;
   this->audio_port      = NULL;
-  this->input           = NULL;
+  this->input_plugin    = NULL;
 
   /* create a new xine and load config file */
   this->xine = xine_new();
@@ -695,7 +688,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   if(!this)
     return 0;
 
-  this->input = NULL;
+  this->input_plugin      = NULL;
   this->playback_finished = 1;
 
   asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : "xvdr://");
@@ -1014,23 +1007,21 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
 static int fe_xine_play(frontend_t *this_gen) 
 {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
   if(!this)
     return 0;
 
   fe_post_rewire(this);
 
-  this->input = NULL;
+  this->input_plugin      = NULL;
   this->playback_finished = xine_play(this->stream, 0, 0) ? 0 : 1;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  input_vdr->f.xine_input_event = this->keypress;
-  input_vdr->f.fe_control = fe_control;
-  input_vdr->f.fe_handle  = this_gen;
+  this->input_plugin->f.xine_input_event = this->keypress;
+  this->input_plugin->f.fe_control = fe_control;
+  this->input_plugin->f.fe_handle  = this_gen;
 
   if(this->playback_finished)
     LOGMSG("Error playing xvdr:// !");
@@ -1045,7 +1036,7 @@ static int fe_xine_stop(frontend_t *this_gen)
   if(!this)
     return 0;
 
-  this->input = NULL;
+  this->input_plugin      = NULL;
   this->playback_finished = 1;
 
   xine_stop(this->stream);
@@ -1064,10 +1055,9 @@ static void fe_xine_close(frontend_t *this_gen)
 
   if (this && this->xine) {
 #ifndef FE_STANDALONE
-    if(this->input) {
-      vdr_input_plugin_t *input_vdr;
-      input_vdr = (vdr_input_plugin_t *)this->input;
-      input_vdr->f.xine_input_event = NULL;
+    if(this->input_plugin) {
+      this->input_plugin->f.xine_input_event = NULL;
+      this->input_plugin->f.fe_control       = NULL;
     }
 #endif
 
@@ -1087,7 +1077,7 @@ static void fe_xine_exit(frontend_t *this_gen)
 
   if (this && this->xine) {
 
-    if(this->input || !this->playback_finished)
+    if(this->input_plugin || !this->playback_finished)
       fe_xine_close(this_gen);
     fe_post_unload(this);
 
@@ -1164,36 +1154,30 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 static int xine_control(frontend_t *this_gen, const char *cmd)
 {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  return input_vdr->f.push_input_control(this->input, cmd);
+  return this->input_plugin->f.push_input_control(this->input_plugin, cmd);
 }
 
 static int xine_osd_command(frontend_t *this_gen, struct osd_command_s *cmd) {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  return input_vdr->f.push_input_osd(this->input, cmd);
+  return this->input_plugin->f.push_input_osd(this->input_plugin, cmd);
 }
 
 static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len)
 {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return 0/*-1*/;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  return input_vdr->f.push_input_write(this->input, data, len);
+  return this->input_plugin->f.push_input_write(this->input_plugin, data, len);
 }
 
 #else /* #ifndef FE_STANDALONE */
@@ -1205,13 +1189,11 @@ static void process_xine_keypress(fe_t *this,
   /* from UI --> input plugin --> vdr */
   LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
-  if(this->input || find_input(this)) {
-    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
-    if(input_vdr->f.input_control) {
-      input_vdr->f.input_control(this->input, map, key, repeat, release);
-    } else {
+  if(find_input_plugin(this)) {
+    if(this->input_plugin->f.input_control)
+      this->input_plugin->f.input_control(this->input_plugin, map, key, repeat, release);
+    else
       LOGMSG("Keypress --- NO HANDLER SET");
-    }
   } else {
     LOGMSG("Keypress --- NO PLUGIN FOUND");
   }
@@ -1463,7 +1445,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   /* #warning TODO: convert to RGB PPM */
 #endif
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return 0;
 
   LOGDBG("fe_grab: grabbing %s %d %dx%d", 
