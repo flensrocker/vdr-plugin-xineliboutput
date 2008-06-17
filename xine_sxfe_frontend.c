@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.66 2008-06-17 19:13:14 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.67 2008-06-17 19:23:38 phintuka Exp $
  *
  */
 
@@ -761,9 +761,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   return 1;
 }
 
-static int hud_osd_open(frontend_t *this_gen)
+static int hud_osd_open(sxfe_t *this)
 {
-  sxfe_t *this = (sxfe_t*)this_gen;
   if(this && this->hud) {
     int dummy;
 
@@ -847,9 +846,8 @@ static int hud_osd_open(frontend_t *this_gen)
   return 1;
 }
 
-static void hud_osd_close(frontend_t *this_gen)
+static void hud_osd_close(sxfe_t *this)
 {
-  sxfe_t *this = (sxfe_t*)this_gen;
   if(this && this->hud) {
     XLockDisplay(this->display);
     LOGDBG("closing hud window...");
@@ -1140,7 +1138,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   set_fullscreen_props(this);
 
 #ifdef HAVE_XRENDER
-  return hud_osd_open(this_gen);
+  return hud_osd_open(this);
 #else
   return 1;
 #endif
@@ -1534,7 +1532,7 @@ static void sxfe_display_close(frontend_t *this_gen)
   sxfe_t *this = (sxfe_t*)this_gen;
 
 #ifdef HAVE_XRENDER
-  hud_osd_close(this_gen);
+  hud_osd_close(this);
 #endif
 
   if(this && this->display) {
