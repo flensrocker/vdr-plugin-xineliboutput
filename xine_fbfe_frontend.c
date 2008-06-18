@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.27 2008-06-17 19:13:14 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.28 2008-06-18 06:24:56 phintuka Exp $
  *
  */
 
@@ -60,7 +60,7 @@
  * data
  */
 
-typedef struct fbfe_t {
+typedef struct fbfe_s {
 
   /* function pointers */
   frontend_t         fe;
@@ -286,15 +286,13 @@ static void fbfe_interrupt(frontend_t *this_gen)
 
 static int fbfe_run(frontend_t *this_gen) 
 {
-  struct timeval tv;
   fbfe_t *this = (fbfe_t*)this_gen;
 
   if(this && this->playback_finished)
     return !this->playback_finished;
 
-  tv.tv_sec = 0;
-  tv.tv_usec = 500*1000;
-  select(0, NULL, NULL, NULL, &tv); /* just sleep 500ms */
+  /* just sleep 500ms */
+  select(0, NULL, NULL, NULL, &(struct timeval){ .tv_sec = 0, .tv_usec = 500*1000 }); 
 
   return !(!this || this->playback_finished);
 }
