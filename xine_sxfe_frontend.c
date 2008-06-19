@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.70 2008-06-19 20:48:53 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.71 2008-06-19 20:51:35 phintuka Exp $
  *
  */
 
@@ -915,7 +915,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   if(hud) {
 #ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
-    this->hud = hud;
+    this->hud        = hud;
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
     this->osd_pad_x  = 0;
@@ -925,32 +925,34 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 #endif
   }
 
-  this->x.xpos            = 0;
-  this->x.ypos            = 0;
-  this->origxpos        = 0;
-  this->origypos        = 0;
-  this->x.width           = width;
-  this->x.height          = height;
-  this->origwidth       = width>0 ? width : OSD_DEF_WIDTH;
-  this->origheight      = height>0 ? height : OSD_DEF_HEIGHT;
+  this->x.xpos        = 0;
+  this->x.ypos        = 0;
+  this->x.width       = width;
+  this->x.height      = height;
+  this->x.aspect      = aspect;
+/*this->x.cropping    = 0;*/
+  this->x.overscan    = 0;
+  this->x.scale_video = scale_video;
+  this->x.field_order = field_order ? 1 : 0;
+  this->x.aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
 
-  this->check_move      = 0;
-  this->dragging        = 0;
-  this->dragging_x      = 0;
-  this->dragging_y      = 0;
+  this->origxpos      = 0;
+  this->origypos      = 0;
+  this->origwidth     = width>0 ? width : OSD_DEF_WIDTH;
+  this->origheight    = height>0 ? height : OSD_DEF_HEIGHT;
+
+  this->check_move    = 0;
+  this->dragging      = 0;
+  this->dragging_x    = 0;
+  this->dragging_y    = 0;
 
   this->fullscreen      = fullscreen;
 /*this->vmode_switch    = modeswitch;*/
-  this->x.aspect          = aspect;
-/*this->x.cropping        = 0;*/
-  this->x.field_order     = field_order ? 1 : 0;
-  this->x.scale_video     = scale_video;
-  this->x.overscan        = 0;
   this->fullscreen_state_forced = 0;
-/*strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));*/
-  this->xinerama_screen = -1;
-  this->x.aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
+/*this->modeline = strdup(modeline ?: "");*/
   this->window_id = window_id;
+
+  this->xinerama_screen = -1;
 
   /*
    * init x11 stuff
@@ -1074,6 +1076,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   /* we want to get notified if user closes the window */
   XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->xa_WM_DELETE_WINDOW), 1);
 
+  /* Hide cursor */
   if(this->window_id <= 0)
     set_cursor(this->display, this->window[1], 0);
 
@@ -1082,7 +1085,9 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   /* No screen saver */
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
   XSetScreenSaver(this->display, 0, 0, DefaultBlanking, DefaultExposures);
+
 #ifdef HAVE_XDPMS
+  /* Disable DPMS */
   {
     int dpms_dummy;
     if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
@@ -1232,6 +1237,12 @@ static void sxfe_toggle_fullscreen(fe_t *this_gen)
  *   X event loop
  */
 
+/*
+ * sxfe_interrupt
+ *
+ * - Interrupt X event loop (sxfe_run)
+ *
+ */
 static void sxfe_interrupt(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
@@ -1250,6 +1261,10 @@ static void sxfe_interrupt(frontend_t *this_gen)
   XFlush(this->display);
 }
 
+/*
+ * XKeyEvent handler
+ *
+ */
 static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 {
   if(kev->keycode) {
@@ -1275,11 +1290,10 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
       case XK_Escape:
 	terminate_key_pressed = 1;
 	return 0;
-#endif
       default: 
-#ifdef FE_STANDALONE
 	process_xine_keypress((fe_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
 #else
+      default: 
 	if(this->x.keypress) 
 	  this->x.keypress("XKeySym", XKeysymToString(ks));
 #endif
@@ -1289,6 +1303,10 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
   return 1;
 }
 
+/*
+ * XConfigureEvent handler
+ *
+ */
 static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 {
   Window tmp_win;
@@ -1349,6 +1367,13 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
   }
 }
 
+/*
+ * XMotionEvent handler
+ *
+ * Track mouse movement when Button1 is pressed down
+ *   - enable window dragging: user can simply drag window around screen
+ *   - useful when window is borderless (no title bar)
+ */
 static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
 {
   if(this->dragging && !this->fullscreen) {
@@ -1375,6 +1400,14 @@ static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
   }
 }
 
+/*
+ * XButtonEvent handler
+ *
+ *  - Double click switches between windowed and fullscreen mode
+ *  - Window can be moved by dragging it
+ *  - Right mouse button switches window state:
+ *    normal window -> borderless window -> always on top -> ...
+ */
 static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
 {
   switch(bev->button) {
@@ -1387,6 +1420,7 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
       } else {
 	this->prev_click_time = bev->time;
 	if(!this->fullscreen && this->no_border && !this->dragging) {
+          /* start dragging window */
 	  this->dragging = 1;
 	  this->dragging_x = bev->x_root;
 	  this->dragging_y = bev->y_root;
@@ -1410,24 +1444,31 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
   }
 }
 
+/*
+ * sxfe_run
+ *
+ *  - main X event loop
+ */
 static int sxfe_run(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  /* poll X server (connection socket). 
-     (XNextEvent will block if no events are queued).
-     We want to use timeout, blocking for long time usually causes vdr
-     watchdog to emergency exit ... */
+  /* poll X server (connection socket).
+   * (XNextEvent will block until events are queued).
+   * We want to use timeout, blocking for long time usually causes vdr
+   * watchdog to emergency exit ...
+   */
   if (! XPending(this->display)) {
-    struct pollfd pfd[2];
-    pfd[0].fd = ConnectionNumber(this->display);
-    pfd[0].events = POLLIN;
-    if(poll(pfd, 1, 50) < 1 || !(pfd[0].revents & POLLIN)) {
+    struct pollfd pfd = {
+      .fd = ConnectionNumber(this->display),
+      .events = POLLIN,
+    };
+    if (poll(&pfd, 1, 50) < 1 || !(pfd.revents & POLLIN)) {
       return 1;
     }
   }
 
-  while(XPending(this->display) > 0) {
+  while (XPending(this->display) > 0) {
 
     XEvent event;
 
@@ -1576,13 +1617,13 @@ static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
 
 static int sxfe_xine_play(frontend_t *this_gen)
 {
-  int r = fe_xine_play(this_gen);
+  int result = fe_xine_play(this_gen);
 
 #ifdef FE_STANDALONE
 # ifdef HAVE_XRENDER
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(r && this->x.input_plugin && this->hud) {
+  if (result && this->x.input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     this->x.input_plugin->f.fe_handle     = this_gen;
     this->x.input_plugin->f.intercept_osd = hud_osd_command;
@@ -1590,7 +1631,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
 # endif /* HAVE_XRENDER */
 #endif /* FE_STANDALONE */
 
-  return r;
+  return result;
 }
 
 static frontend_t *sxfe_get_frontend(void)
