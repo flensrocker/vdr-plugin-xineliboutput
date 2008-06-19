@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.68 2008-06-19 14:49:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.69 2008-06-19 20:26:26 phintuka Exp $
  *
  */
 
@@ -75,6 +75,10 @@
 #include "xine_frontend.h"
 #include "xine/post.h"
 
+/* Common (non-X11/FB) frontend functions */
+#include "xine_frontend.c"
+
+
 #ifndef WIN_LAYER_NORMAL
   #define WIN_LAYER_NORMAL 4
 #endif
@@ -112,12 +116,10 @@ typedef struct _xrender_surf
 typedef struct sxfe_s {
 
   /* function pointers */
-  frontend_t              fe;
-  void (*update_display_size)(struct sxfe_s *);
-  void (*toggle_fullscreen_state)(struct sxfe_s *);
-
-  /* vdr */
-  fe_keypress_f        keypress;
+  union {
+    frontend_t fe;  /* generic frontend */
+    fe_t       x;   /* xine frontend */
+  };
 
   /* X11 */
   Display *display;
@@ -150,53 +152,17 @@ typedef struct sxfe_s {
   Atom     xa_NET_WM_STATE_FULLSCREEN;
   Atom     xa_NET_WM_STATE_STAYS_ON_TOP;
 
-  /* xine stuff */
-  xine_t              *xine;
-  xine_stream_t       *stream;
-  xine_stream_t       *slave_stream;
-  vdr_input_plugin_if_t *input_plugin;
-  xine_video_port_t   *video_port;
-  xine_video_port_t   *video_port_none;
-  xine_audio_port_t   *audio_port;
-  xine_audio_port_t   *audio_port_none;
-  xine_event_queue_t  *event_queue;
-
-  post_plugins_t      *postplugins;
-
-  x11_visual_t         vis;
-  int                  xine_visual_type;
-
-  uint16_t             pes_buffers;
-
   /* frontend */
-  double    display_ratio;
-  double    video_aspect;
-  char     *aspect_controller;
-  int       xpos, ypos;
-  uint16_t  video_width, video_height;
-  uint16_t  width, height;
   uint16_t  origxpos, origypos;    /* saved windowed mode pos + size while in fullscreen mode */
   uint16_t  origwidth, origheight;
   uint16_t  dragging_x, dragging_y;
-  uint8_t   aspect;
-  uint8_t   cropping;
-  uint8_t   scale_video;
-  uint8_t   overscan;
-  uint8_t   playback_finished;
-  uint8_t   slave_playback_finished;
   uint8_t   fullscreen;
   uint8_t   vmode_switch;
-  uint8_t   field_order;
   uint8_t   fullscreen_state_forced;
   uint8_t   stay_above;
   uint8_t   no_border;
   uint8_t   check_move;
   uint8_t   dragging;
-
-  /* strings */
-  char    *configfile;
-  char    *video_port_name;
-  char    modeline[256];
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
@@ -215,11 +181,8 @@ typedef struct sxfe_s {
   uint32_t* hud_img_mem;
 #endif /* HAVE_XRENDER */
 
-} fe_t, sxfe_t;
+} sxfe_t;
 
-
-/* Common (non-X11/FB) frontend functions */
-#include "xine_frontend.c"
 
 #include "vdrlogo_32x32.c"
 
@@ -270,8 +233,8 @@ static void set_fs_size_hint(sxfe_t *this)
   hint.flags  = USSize | USPosition | PPosition | PSize;
   hint.x      = this->xinerama_x;
   hint.y      = this->xinerama_y;
-  hint.width  = this->width;
-  hint.height = this->height;
+  hint.width  = this->x.width;
+  hint.height = this->x.height;
   XSetNormalHints(this->display, this->window[1], &hint);
 }
 
@@ -495,8 +458,8 @@ static void update_xinerama_info(sxfe_t *this)
       screen = 0;
     this->xinerama_x = screens[screen].x_org;
     this->xinerama_y = screens[screen].y_org;
-    this->width      = screens[screen].width;
-    this->height     = screens[screen].height;
+    this->x.width    = screens[screen].width;
+    this->x.height   = screens[screen].height;
 
     XFree(screens);
   }
@@ -505,8 +468,8 @@ static void update_xinerama_info(sxfe_t *this)
 
 static void update_screen_size(sxfe_t *this)
 {
-  this->width = DisplayWidth(this->display, this->screen);
-  this->height = DisplayHeight(this->display, this->screen);
+  this->x.width = DisplayWidth(this->display, this->screen);
+  this->x.height = DisplayHeight(this->display, this->screen);
   update_xinerama_info(this);
 }
 
@@ -701,8 +664,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                              cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
                              cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
                              cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
-			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
-			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
+			     (XDouble)(this->x.width) / (XDouble)(this->osd_width + this->osd_pad_x),
+			     (XDouble)(this->x.height) / (XDouble)(this->osd_height + this->osd_pad_y),
 			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
         }
       } else {
@@ -725,8 +688,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                              cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
                              cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
                              cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
-			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
-			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
+			     (XDouble)(this->x.width) / (XDouble)(this->osd_width + this->osd_pad_x),
+			     (XDouble)(this->x.height) / (XDouble)(this->osd_height + this->osd_pad_y),
 			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
         }
       }
@@ -748,7 +711,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD osd Close");
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
-		     0, 0, this->width, this->height);
+		     0, 0, this->x.width, this->x.height);
       XFlush(this->display);
       break;
 
@@ -798,8 +761,8 @@ static int hud_osd_open(sxfe_t *this)
     attributes.backing_store = Always;
     
     this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
-                                     this->xpos, this->ypos,
-                                     this->width, this->height,
+                                     this->x.xpos, this->x.ypos,
+                                     this->x.width, this->x.height,
                                      0, 32, InputOutput, this->hud_vis,
                                      CWBackPixel | CWBorderPixel |
                                      CWOverrideRedirect | CWColormap,
@@ -937,8 +900,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->fe.fe_display_close(this_gen);
 
   if(keyfunc) {
-    this->keypress = keyfunc;
-    this->keypress("XKeySym", ""); /* triggers learning mode */
+    this->x.keypress = keyfunc;
+    this->x.keypress("XKeySym", ""); /* triggers learning mode */
   }
 
   LOGDBG("sxfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
@@ -957,12 +920,12 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 #endif
   }
 
-  this->xpos            = 0;
-  this->ypos            = 0;
+  this->x.xpos            = 0;
+  this->x.ypos            = 0;
   this->origxpos        = 0;
   this->origypos        = 0;
-  this->width           = width;
-  this->height          = height;
+  this->x.width           = width;
+  this->x.height          = height;
   this->origwidth       = width>0 ? width : OSD_DEF_WIDTH;
   this->origheight      = height>0 ? height : OSD_DEF_HEIGHT;
 
@@ -972,16 +935,16 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->dragging_y      = 0;
 
   this->fullscreen      = fullscreen;
-  this->vmode_switch    = modeswitch;
-  this->aspect          = aspect;
-  this->cropping        = 0;
-  this->field_order     = field_order ? 1 : 0;
-  this->scale_video     = scale_video;
-  this->overscan        = 0;
+/*this->vmode_switch    = modeswitch;*/
+  this->x.aspect          = aspect;
+/*this->x.cropping        = 0;*/
+  this->x.field_order     = field_order ? 1 : 0;
+  this->x.scale_video     = scale_video;
+  this->x.overscan        = 0;
   this->fullscreen_state_forced = 0;
-  strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));
+/*strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));*/
   this->xinerama_screen = -1;
-  this->aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
+  this->x.aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
   this->window_id = window_id;
 
   /*
@@ -1023,12 +986,12 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     /* create and display our video window */
     this->window[0] = XCreateSimpleWindow (this->display,
 					   DefaultRootWindow(this->display),
-					   this->xpos, this->ypos,
-					   this->width, this->height,
+					   this->x.xpos, this->x.ypos,
+					   this->x.width, this->x.height,
 					   1, 0, 0);
     this->window[1] = XCreateSimpleWindow(this->display, XDefaultRootWindow(this->display),
 					  this->xinerama_x, this->xinerama_y, 
-					  this->width, this->height,
+					  this->x.width, this->x.height,
 					  0, 0, 0);
   }
 
@@ -1088,10 +1051,10 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 	   / DisplayWidthMM (this->display, this->screen));
   res_v = (DisplayHeight (this->display, this->screen)*1000
 	   / DisplayHeightMM (this->display, this->screen));
-  this->display_ratio = res_v / res_h;
-  aspect_diff = this->display_ratio - 1.0;
+  this->x.display_ratio = res_v / res_h;
+  aspect_diff = this->x.display_ratio - 1.0;
   if ((aspect_diff < 0.01) && (aspect_diff > -0.01)) {
-    this->display_ratio   = 1.0;
+    this->x.display_ratio   = 1.0;
   }
   LOGDBG("Display size : %d x %d mm", 
 	 DisplayWidthMM (this->display, this->screen),
@@ -1101,7 +1064,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 	 DisplayHeight (this->display, this->screen));
   LOGDBG("               %ddpi / %ddpi", 
 	 (int)(res_v/1000*25.4), (int)(res_h/1000*25.4));
-  LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, this->display_ratio);
+  LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, this->x.display_ratio);
 
   /* we want to get notified if user closes the window */
   XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->xa_WM_DELETE_WINDOW), 1);
@@ -1127,13 +1090,14 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   }
 #endif
 
-  this->xine_visual_type     = XINE_VISUAL_TYPE_X11;
-  this->vis.display          = this->display;
-  this->vis.screen           = this->screen;
-  this->vis.d                = this->window[this->fullscreen ? 1 : 0];
-  this->vis.dest_size_cb     = fe_dest_size_cb;
-  this->vis.frame_output_cb  = fe_frame_output_cb;
-  this->vis.user_data        = this;
+  /* setup xine visual type */
+  this->x.xine_visual_type         = XINE_VISUAL_TYPE_X11;
+  this->x.vis_x11.display          = this->display;
+  this->x.vis_x11.screen           = this->screen;
+  this->x.vis_x11.d                = this->window[this->fullscreen ? 1 : 0];
+  this->x.vis_x11.dest_size_cb     = fe_dest_size_cb;
+  this->x.vis_x11.frame_output_cb  = fe_frame_output_cb;
+  this->x.vis_x11.user_data        = this;
 
   set_fullscreen_props(this);
 
@@ -1160,15 +1124,15 @@ static int sxfe_display_config(frontend_t *this_gen,
   if(this->fullscreen_state_forced)
     fullscreen = this->fullscreen ? 1 : 0;
 
-  if(!fullscreen && (this->width != width || this->height != height)) {
-    this->width      = width;
-    this->height     = height;
+  if(!fullscreen && (this->x.width != width || this->x.height != height)) {
+    this->x.width      = width;
+    this->x.height     = height;
 
     XLockDisplay(this->display);
-    XResizeWindow(this->display, this->window[0], this->width, this->height);
+    XResizeWindow(this->display, this->window[0], this->x.width, this->x.height);
     XUnlockDisplay(this->display);
     if(!fullscreen && !this->fullscreen)
-      xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+      xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
 			      (void*) this->window[0]);
   }
 
@@ -1176,7 +1140,8 @@ static int sxfe_display_config(frontend_t *this_gen,
     update_screen_size(this);
   
   if(fullscreen != this->fullscreen) {
-    Window    tmp_win;
+    Window tmp_win;
+    int    tmp_x, tmp_y;
     XLockDisplay(this->display);
     XUnmapWindow(this->display, this->window[this->fullscreen ? 1 : 0]);
     this->fullscreen = fullscreen ? 1 : 0;
@@ -1186,66 +1151,74 @@ static int sxfe_display_config(frontend_t *this_gen,
       set_above(this, this->stay_above);
     XMapRaised(this->display, this->window[this->fullscreen ? 1 : 0]);
     if(!fullscreen) {
-      XResizeWindow(this->display, this->window[0], this->width, this->height);
-      XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
+      XResizeWindow(this->display, this->window[0], this->x.width, this->x.height);
+      XMoveWindow(this->display, this->window[0], this->x.xpos, this->x.ypos);
       LOGDBG("sxfe_display_config: XMoveWindow called with x=%d and y=%d",
-	     this->xpos, this->ypos);
+	     this->x.xpos, this->x.ypos);
       this->check_move = 1;
       set_above(this, this->stay_above);
     } else {
       set_fullscreen_props(this);
-      XResizeWindow(this->display, this->window[1], this->width, this->height);
+      XResizeWindow(this->display, this->window[1], this->x.width, this->x.height);
       XMoveWindow(this->display, this->window[1], this->xinerama_x, this->xinerama_y);
     }
     XSync(this->display, False);
-    XTranslateCoordinates(this->display, this->window[this->fullscreen ? 1 : 0],
-			  DefaultRootWindow(this->display),
-			  0, 0, &this->xpos, &this->ypos, &tmp_win);
+    if(XTranslateCoordinates(this->display, this->window[this->fullscreen ? 1 : 0],
+			     DefaultRootWindow(this->display),
+			     0, 0, &tmp_x, &tmp_y, &tmp_win)) {
+      this->x.xpos = tmp_x;
+      this->x.ypos = tmp_y;
+    }
     XUnlockDisplay(this->display);
-    xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+    xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
 			    (void*) this->window[this->fullscreen ? 1 : 0]);
   }
 
+#if 0
   if(!modeswitch && strcmp(modeline, this->modeline)) {
-    strn0cpy(this->modeline, modeline, sizeof(this->modeline));
+    free(this->modeline);
+    this->modeline = strdup(modeline ?: "");
     /* #warning TODO - switch vmode */
   }
+#endif
 
-  this->vmode_switch = modeswitch;
-  this->aspect = aspect;
-  this->scale_video = scale_video;
+/*this->vmode_switch = modeswitch;*/
+  this->x.aspect = aspect;
+  this->x.scale_video = scale_video;
 #ifdef HAVE_XV_FIELD_ORDER
-  if(this->field_order != field_order) {
+  if(this->x.field_order != field_order) {
     if(XInternAtom(this->display, "XV_SWAP_FIELDS", True) != None)
       XvSetPortAttribute (this->display, 53, 
 			  XInternAtom (this->display, "XV_SWAP_FIELDS", False), 
 			  field_order);
   }
 #endif
-  this->field_order = field_order ? 1 : 0;
+  this->x.field_order = field_order ? 1 : 0;
   
   return 1;
 }
 
-static void sxfe_toggle_fullscreen(fe_t *this)
+static void sxfe_toggle_fullscreen(fe_t *this_gen)
 {
+  sxfe_t *this = (sxfe_t*)this_gen;
+
   int force = this->fullscreen_state_forced;
   this->fullscreen_state_forced = 0;
 
   if(!this->fullscreen) {
-    this->origwidth  = this->width;
-    this->origheight = this->height;
-    this->origxpos = this->xpos;
-    this->origypos = this->ypos;
+    this->origwidth  = this->x.width;
+    this->origheight = this->x.height;
+    this->origxpos = this->x.xpos;
+    this->origypos = this->x.ypos;
   } else {
-    this->xpos = this->origxpos;
-    this->ypos = this->origypos;
+    this->x.xpos = this->origxpos;
+    this->x.ypos = this->origypos;
   }
 
   this->fe.fe_display_config((frontend_t*)this, this->origwidth, this->origheight,
 			     this->fullscreen ? 0 : 1, 
-			     this->vmode_switch, this->modeline, 
-			     this->aspect, this->scale_video, this->field_order);
+			     0/*this->vmode_switch*/, NULL/*this->modeline*/, 
+			     this->x.aspect, this->x.scale_video, this->x.field_order);
   
   this->fullscreen_state_forced = !force;
 }
@@ -1285,7 +1258,7 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
       case XK_f:
       case XK_F:
-	sxfe_toggle_fullscreen(this);
+	sxfe_toggle_fullscreen((fe_t*)this);
 	return 1;
       case XK_d:
       case XK_D:
@@ -1302,8 +1275,8 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 #ifdef FE_STANDALONE
 	process_xine_keypress((fe_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
 #else
-	if(this->keypress) 
-	  this->keypress("XKeySym", XKeysymToString(ks));
+	if(this->x.keypress) 
+	  this->x.keypress("XKeySym", XKeysymToString(ks));
 #endif
         return 1;
     }
@@ -1339,29 +1312,34 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 #endif
 
   /* update video window size */
-  this->width  = cev->width;
-  this->height = cev->height;
+  this->x.width  = cev->width;
+  this->x.height = cev->height;
 
   if(this->window[0] == cev->window && this->check_move) {
     LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
 	   cev->x, cev->y, this->check_move);
     this->check_move = 0;
-    if(this->xpos != cev->x && this->ypos != cev->y)
+    if(this->x.xpos != cev->x && this->x.ypos != cev->y)
       XMoveWindow(this->display, this->window[0], cev->x, cev->y);
   }
 	
   if ((cev->x == 0) && (cev->y == 0)) {
-    XLockDisplay(cev->display);
-    if(!this->fullscreen) 
-      XTranslateCoordinates(cev->display, cev->window,
+    if(!this->fullscreen) {
+      int tmp_x, tmp_y;
+      XLockDisplay(cev->display);
+      if(XTranslateCoordinates(cev->display, cev->window,
 			    DefaultRootWindow(cev->display),
-			    0, 0, &this->xpos, &this->ypos, &tmp_win);
-    XUnlockDisplay(cev->display);
+			       0, 0, &tmp_x, &tmp_y, &tmp_win)) {
+	this->x.xpos = tmp_x;
+	this->x.ypos = tmp_y;
+      } 
+      XUnlockDisplay(cev->display);
+    }
   } else {
     if(!this->fullscreen) {
       /* update video window position */
-      this->xpos = cev->x;
-      this->ypos = cev->y;
+      this->x.xpos = cev->x;
+      this->x.ypos = cev->y;
     }
   }
 }
@@ -1380,8 +1358,8 @@ static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
 			  DefaultRootWindow(this->display),
 			  0, 0, &xpos, &ypos, &tmp_win);
 
-    this->xpos = (xpos += mev->x_root - this->dragging_x);
-    this->ypos = (ypos += mev->y_root - this->dragging_y);
+    this->x.xpos = (xpos += mev->x_root - this->dragging_x);
+    this->x.ypos = (ypos += mev->y_root - this->dragging_y);
     this->dragging_x = mev->x_root;
     this->dragging_y = mev->y_root;
 
@@ -1399,7 +1377,7 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
       /* Double-click toggles between fullscreen and windowed mode */
       if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
 	/* Toggle fullscreen */
-	sxfe_toggle_fullscreen(this);
+	sxfe_toggle_fullscreen((fe_t*)this);
 	this->prev_click_time = 0; /* don't react to third click ... */
       } else {
 	this->prev_click_time = bev->time;
@@ -1453,7 +1431,7 @@ static int sxfe_run(frontend_t *this_gen)
     switch (event.type) {
       case Expose:
 	if (event.xexpose.count == 0)
-	  xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_EXPOSE_EVENT, &event);
+	  xine_port_send_gui_data (this->x.video_port, XINE_GUI_SEND_EXPOSE_EVENT, &event);
 	break;
 	
       case ConfigureNotify:
@@ -1521,7 +1499,7 @@ static int sxfe_run(frontend_t *this_gen)
     }
     
     if (event.type == this->completion_event)
-      xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
+      xine_port_send_gui_data (this->x.video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
   }
 
   return 1;
@@ -1534,7 +1512,7 @@ static void sxfe_display_close(frontend_t *this_gen)
   if(!this)
     return;
 
-  if(this->xine)
+  if(this->x.xine)
     this->fe.xine_exit(this_gen);
 
   if(this->display) {
@@ -1558,8 +1536,12 @@ static void sxfe_display_close(frontend_t *this_gen)
     this->display = NULL;
   }
 
-  free(this->aspect_controller);
-  this->aspect_controller = NULL;
+  free(this->x.aspect_controller);
+  this->x.aspect_controller = NULL;
+#if 0
+  free(this->modeline);
+  this->modeline = NULL;
+#endif
 }
 
 /*
@@ -1595,10 +1577,10 @@ static int sxfe_xine_play(frontend_t *this_gen)
 # ifdef HAVE_XRENDER
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(r && this->input_plugin && this->hud) {
+  if(r && this->x.input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
-    this->input_plugin->f.fe_handle  = this_gen;
-    this->input_plugin->f.intercept_osd = hud_osd_command;
+    this->x.input_plugin->f.fe_handle     = this_gen;
+    this->x.input_plugin->f.intercept_osd = hud_osd_command;
   }
 # endif /* HAVE_XRENDER */
 #endif /* FE_STANDALONE */
@@ -1636,7 +1618,7 @@ static frontend_t *sxfe_get_frontend(void)
   this->fe.xine_queue_pes_packet = xine_queue_pes_packet;
 #endif /*#ifndef FE_STANDALONE */
 
-  this->toggle_fullscreen_state = sxfe_toggle_fullscreen;
+  this->x.toggle_fullscreen_state = sxfe_toggle_fullscreen;
 
   return (frontend_t*)this;
 }
