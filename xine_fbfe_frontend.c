@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.30 2008-06-19 20:35:31 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.31 2008-06-19 20:36:46 phintuka Exp $
  *
  */
 
@@ -160,20 +160,21 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
   LOGDBG("fbfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
 	 width, height, fullscreen, video_port);
 
-  this->x.xpos            = 0;
-  this->x.ypos            = 0;
-  this->x.width           = width;
-  this->x.height          = height;
-  this->fullscreen      = fullscreen;
-/*this->vmode_switch    = modeswitch*/;
-  this->x.aspect          = aspect;
-/*this->x.cropping        = 0;*/
-  this->x.field_order     = 0/*field_order ? 1 : 0*/;
-  this->x.scale_video     = scale_video;
-  this->x.overscan        = 0;
-/*strn0cpy(this->modeline, modeline, sizeof(this->modeline));*/
-  this->x.display_ratio   = 1.0;
+  this->x.xpos          = 0;
+  this->x.ypos          = 0;
+  this->x.width         = width;
+  this->x.height        = height;
+  this->x.aspect        = aspect;
+/*this->x.cropping      = 0;*/
+  this->x.field_order   = field_order;
+  this->x.scale_video   = scale_video;
+  this->x.overscan      = 0;
+  this->x.display_ratio = 1.0;
   this->x.aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
+
+  this->fullscreen      = fullscreen;
+/*this->vmode_switch    = modeswitch;*/
+/*this->modeline        = strdup(modeline ?: "");*/
 
   this->x.xine_visual_type = XINE_VISUAL_TYPE_FB;
   this->x.vis_fb.frame_output_cb = fe_frame_output_cb;
@@ -216,28 +217,21 @@ static int fbfe_display_config(frontend_t *this_gen, int width, int height, int 
   if(!this)
     return 0;
 
-  if(this->x.width != width || this->x.height != height) {
-    this->x.width           = width;
-    this->x.height          = height;
-  }
-
-  if(fullscreen != this->fullscreen) {
-    this->fullscreen = fullscreen;
-  }
+  this->x.width       = width;
+  this->x.height      = height;
+  this->x.aspect      = aspect;
+  this->x.scale_video = scale_video;
+  this->x.field_order = field_order;
+  this->fullscreen    = fullscreen;
+/*this->vmode_switch  = modeswitch;*/
 #if 0
   if(!modeswitch && strcmp(modeline, this->modeline)) {
-    strn0cpy(this->modeline, modeline, sizeof(this->modeline));
-    /* XXX TODO - switch vmode */
-#ifdef LOG
-    LOGDBG("fbfe_display_config: TODO: switch vmode\n");fflush(stdout);
-#endif
+    free(this->modeline);
+    this->modeline = strdup(modeline ?: "");
+    /* #warning XXX TODO - switch vmode */
   }
 #endif
 
-/*this->vmode_switch = modeswitch;*/
-  this->x.aspect = aspect;
-  this->x.scale_video = scale_video;
-  this->x.field_order = field_order ? 1 : 0;
   return 1;
 }
 
