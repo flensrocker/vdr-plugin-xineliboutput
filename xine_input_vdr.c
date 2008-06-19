@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.153 2008-06-19 08:48:23 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.154 2008-06-19 13:30:21 phintuka Exp $
  *
  */
 
@@ -5165,6 +5165,76 @@ static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif
 
 /*
+ * Preprocess buffer before passing it to demux
+ *  - handle discard
+ *  - handle display blanking
+ *  - handle stream start
+ *  - strip network headers
+ */
+static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf)
+{
+  /* internal control bufs */
+  if(buf->type == CONTROL_BUF_BLANK) {
+
+    pthread_mutex_lock(&this->lock);
+    if(!this->stream_start) {
+      LOGMSG("BLANK in middle of stream! bufs queue %d , video_fifo %d", 
+	     this->block_buffer->fifo_size,
+	     this->stream->video_fifo->fifo_size);
+    } else {
+      vdr_x_demux_control_newpts(this->stream, 0, BUF_FLAG_SEEK);
+      queue_blank_yv12(this);
+    }
+    pthread_mutex_unlock(&this->lock);
+
+    buf->free_buffer(buf);
+    return NULL;
+  }
+
+  /* control buffers go always to demuxer */
+  if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
+    return buf;
+
+  pthread_mutex_lock(&this->lock);
+
+  /* Update stream position and remove network headers */
+  strip_network_headers(this, buf);
+
+  /* Update stream position */
+  this->curpos += buf->size;
+  this->curframe ++;
+
+  /* Handle discard */
+  if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
+    this->last_delivered_vid_pts = INT64_C(-1);
+    pthread_mutex_unlock(&this->lock);
+    buf->free_buffer(buf);
+    return NULL;
+  }
+
+  /* ignore UDP/RTP "idle" padding */
+  if(buf->content[3] == PADDING_STREAM) {
+    pthread_mutex_unlock(&this->lock);
+    return buf;
+  }
+
+  /* Send current PTS ? */
+  if(this->stream_start) {
+    this->last_delivered_vid_pts = INT64_C(-1);
+    this->send_pts     = 1;
+    this->stream_start = 0;
+    this->bih_posted   = 0;
+    this->h264         = -1;
+    pthread_mutex_lock (&this->stream->first_frame_lock);
+    this->stream->first_frame_flag = 2;
+    pthread_mutex_unlock (&this->stream->first_frame_lock);
+  }
+
+  pthread_mutex_unlock(&this->lock);
+  return buf;
+}
+
+/*
  * Demux some buffers not supported by mpeg_block demuxer:
  *  - H.264 video
  *  - DVB Subtitles
@@ -5203,7 +5273,7 @@ static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
       case 0x20: /* SPU */
       case 0x30: /* SPU */
         buf = post_spu(this, buf);
-	break;
+        break;
       default: break;
     }
     return buf;
@@ -5416,73 +5486,22 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     }
     this->padding_cnt = 0;
 
-    /* internal control bufs */
-    if(buf->type == CONTROL_BUF_BLANK) {
-      buf->free_buffer(buf);
-      buf = NULL;
-
-      pthread_mutex_lock(&this->lock);
-      if(!this->stream_start) {
-	LOGMSG("BLANK in middle of stream! bufs queue %d , video_fifo %d", 
-	       this->block_buffer->fifo_size,
-	       this->stream->video_fifo->fifo_size);
-      } else {
-	vdr_x_demux_control_newpts(this->stream, 0, BUF_FLAG_SEEK);
-	queue_blank_yv12(this);
-      }
-      pthread_mutex_unlock(&this->lock);
-
+    if(! (buf = preprocess_buf(this, buf)))
       continue;
-    }
 
     /* control buffers go always to demuxer */
     if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
       return buf;
-
-    pthread_mutex_lock(&this->lock);
-
-    /* Update stream position and remove network headers */
-    strip_network_headers(this, buf);
-
-    /* Update stream position */
-    this->curpos += buf->size;
-    this->curframe ++;
-
-    /* Handle discard */
-    if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
-      this->last_delivered_vid_pts = INT64_C(-1);
-      pthread_mutex_unlock(&this->lock);
-      buf->free_buffer(buf);
-      buf = NULL;
-      continue;
-    }
-
     /* ignore UDP/RTP "idle" padding */
-    if(buf->content[3] == PADDING_STREAM) {
-      pthread_mutex_unlock(&this->lock);
+    if(buf->content[3] == PADDING_STREAM)
       return buf;
-    }
-
-    /* Send current PTS ? */
-    if(this->stream_start) {
-      this->last_delivered_vid_pts = INT64_C(-1);
-      this->send_pts = 1;
-      this->stream_start = 0;
-      this->bih_posted = 0;
-      this->h264 = -1;
-      pthread_mutex_lock (&this->stream->first_frame_lock);
-      this->stream->first_frame_flag = 2;
-      pthread_mutex_unlock (&this->stream->first_frame_lock);
-    }
-
-    pthread_mutex_unlock(&this->lock);
 
     buf = demux_buf(this, buf);
 
   } while(!buf);
 
   postprocess_buf(this, buf, need_pause);
-  
+
   TRACE("vdr_plugin_read_block: return data, pos end = %" PRIu64, this->curpos);
   return buf;
 }
