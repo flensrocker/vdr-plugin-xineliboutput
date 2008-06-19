@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.32 2008-06-19 20:39:57 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.33 2008-06-19 20:43:35 phintuka Exp $
  *
  */
 
@@ -260,22 +260,19 @@ static void fbfe_display_close(frontend_t *this_gen)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
-  if(this) {
-    if(this->x.video_port_name) {
-      free(this->x.video_port_name);
-      this->x.video_port_name = NULL;
-    }
-    if(this->x.xine)
-      this->fe.xine_exit(this_gen);
+  if (!this)
+    return;
 
-    if (this->fd_tty >= 0) {
+  if (this->x.xine)
+    this->fe.xine_exit(this_gen);
+
+  if (this->fd_tty >= 0) {
 #if defined(KDSETMODE) && defined(KD_TEXT)
-      if(ioctl(this->fd_tty, KDSETMODE, KD_TEXT) == -1)
-        LOGERR("fbfe_display_close: failed to set /dev/tty to text mode");
+    if(ioctl(this->fd_tty, KDSETMODE, KD_TEXT) == -1)
+      LOGERR("fbfe_display_close: failed to set /dev/tty to text mode");
 #endif
-      close(this->fd_tty);
-      this->fd_tty = -1;
-    }
+    close(this->fd_tty);
+    this->fd_tty = -1;
   }
 
   free(this->x.video_port_name);
