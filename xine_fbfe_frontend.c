@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.31 2008-06-19 20:36:46 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.32 2008-06-19 20:39:57 phintuka Exp $
  *
  */
 
@@ -176,15 +176,18 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
 /*this->vmode_switch    = modeswitch;*/
 /*this->modeline        = strdup(modeline ?: "");*/
 
+  /* setup xine FB visual */
   this->x.xine_visual_type = XINE_VISUAL_TYPE_FB;
   this->x.vis_fb.frame_output_cb = fe_frame_output_cb;
   this->x.vis_fb.user_data = this;
 
+  /* select framebuffer device ? */
   if(video_port && !strncmp(video_port, "/dev/", 5))
     this->x.video_port_name = strdup(video_port);
   else
     this->x.video_port_name = NULL;
 
+  /* set console to graphics mode */
 #if defined(KDSETMODE) && defined(KD_GRAPHICS)
   if (isatty(STDIN_FILENO))
     this->fd_tty = dup(STDIN_FILENO);
