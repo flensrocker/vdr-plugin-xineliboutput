@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.29 2008-06-19 20:19:35 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.30 2008-06-19 20:35:31 phintuka Exp $
  *
  */
 
@@ -85,7 +85,7 @@ typedef struct fbfe_s {
 static void fbfe_update_display_size(fe_t *this_gen)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
-  if(this->fullscreen) {
+  if(this->fullscreen && this->x.video_port) {
     this->x.width  = this->x.video_port->get_property(this->x.video_port, 
 						      VO_PROP_WINDOW_WIDTH);
     this->x.height = this->x.video_port->get_property(this->x.video_port, 
