@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.67 2008-06-17 19:23:38 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.68 2008-06-19 14:49:29 phintuka Exp $
  *
  */
 
@@ -1531,15 +1531,18 @@ static void sxfe_display_close(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
+  if(!this)
+    return;
+
+  if(this->xine)
+    this->fe.xine_exit(this_gen);
+
+  if(this->display) {
+
 #ifdef HAVE_XRENDER
-  hud_osd_close(this);
+    hud_osd_close(this);
 #endif
 
-  if(this && this->display) {
-    
-    if(this->xine)
-      this->fe.xine_exit(this_gen);
-    
 #ifdef HAVE_XDPMS
     if(this->dpms_state == TRUE)
       DPMSEnable(this->display);
