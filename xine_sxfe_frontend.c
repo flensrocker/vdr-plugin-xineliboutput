@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.69 2008-06-19 20:26:26 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.70 2008-06-19 20:48:53 phintuka Exp $
  *
  */
 
@@ -100,12 +100,12 @@ typedef struct _mwmhints {
 /* HUD Scaling */
 typedef struct _xrender_surf
 {
-  int w, h;
-  int depth;
-  Visual *vis;
-  Drawable draw;
-  Picture pic;
-  int allocated : 1;
+  Visual   *vis;
+  Drawable  draw;
+  Picture   pic;
+  uint16_t  w, h;
+  uint8_t   depth;
+  uint8_t   allocated : 1;
 } Xrender_Surf;
 #endif /* HAVE_XRENDER */
 
@@ -131,12 +131,10 @@ typedef struct sxfe_s {
   int      XF86_modelines_count;
   XF86VidModeModeInfo**  XF86_modelines;
 #endif
+  Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
-  Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
-  int      xinerama_screen;
-  int      xinerama_x, xinerama_y;
 
   /* Atoms */
   Atom     xa_SXFE_INTERRUPT;
@@ -152,33 +150,40 @@ typedef struct sxfe_s {
   Atom     xa_NET_WM_STATE_FULLSCREEN;
   Atom     xa_NET_WM_STATE_STAYS_ON_TOP;
 
-  /* frontend */
-  uint16_t  origxpos, origypos;    /* saved windowed mode pos + size while in fullscreen mode */
-  uint16_t  origwidth, origheight;
-  uint16_t  dragging_x, dragging_y;
-  uint8_t   fullscreen;
-  uint8_t   vmode_switch;
-  uint8_t   fullscreen_state_forced;
-  uint8_t   stay_above;
-  uint8_t   no_border;
-  uint8_t   check_move;
-  uint8_t   dragging;
+  int      xinerama_screen; /* current xinerama screen, -1 = auto */
+  uint16_t xinerama_x;      /* left-top position of current xinerama screen */
+  uint16_t xinerama_y;
+  uint16_t origwidth;       /* saved window-mode window size */
+  uint16_t origheight;
+  uint16_t origxpos;        /* saved window-mode window position */
+  uint16_t origypos;
+  uint16_t dragging_x;
+  uint16_t dragging_y;
+
+  uint8_t  fullscreen : 1;
+/*uint8_t  vmode_switch : 1;*/
+  uint8_t  fullscreen_state_forced : 1;
+  uint8_t  stay_above : 1;
+  uint8_t  no_border : 1;
+  uint8_t  check_move : 1;
+  uint8_t  dragging : 1;
+  uint8_t  hud : 1;
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
-  uint8_t  hud;
-  GC       gc;
-  Window   hud_window;
-  XImage  *hud_img;
-  Visual  *hud_vis;
+  XImage         *hud_img;
+  Visual         *hud_vis;
+  Xrender_Surf   *surf_win;
+  Xrender_Surf   *surf_img;
+  uint32_t       *hud_img_mem;
+  GC              gc;
+  Window          hud_window;
   XShmSegmentInfo hud_shminfo;
-  Xrender_Surf *surf_win;
-  Xrender_Surf *surf_img;
-  int osd_width;
-  int osd_height;
-  int osd_pad_x;
-  int osd_pad_y;
-  uint32_t* hud_img_mem;
+
+  uint16_t      osd_width;
+  uint16_t      osd_height;
+  uint16_t      osd_pad_x;
+  uint16_t      osd_pad_y;
 #endif /* HAVE_XRENDER */
 
 } sxfe_t;
