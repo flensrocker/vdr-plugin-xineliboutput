@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.65 2008-06-17 19:13:14 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.66 2008-06-19 15:49:00 phintuka Exp $
  *
  */
 
@@ -265,10 +265,11 @@ static void fe_frame_output_cb (void *data,
     xine_event_send(this->stream, &event);
     this->video_width = video_width;
     this->video_height = video_height;
-
+#if 0
     /* trigger forced redraw to make cropping changes effective */
     if(this->cropping)
       xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
+#endif
   }
 
   if(this->aspect_controller) {
@@ -557,7 +558,6 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     LOGMSG("fe_xine_init: xine_open_video_driver(\"%s\") failed",
 	   video_driver?video_driver:"(NULL)"); 
     xine_exit(this->xine);
-    this->xine = NULL;
     return 0;
   }
 
@@ -598,15 +598,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(!this->stream) {
     LOGMSG("fe_xine_init: xine_stream_new failed"); 
-
-    if(this->audio_port)
-      xine_close_audio_driver(this->xine, this->audio_port);
-    this->audio_port = NULL;
-    xine_close_video_driver(this->xine, this->video_port);
-    this->video_port = NULL;
     xine_exit(this->xine);
-    this->xine = NULL;
-
     return 0;
   }
 
