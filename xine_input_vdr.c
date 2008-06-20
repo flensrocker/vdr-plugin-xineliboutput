@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.154 2008-06-19 13:30:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.155 2008-06-20 11:36:02 phintuka Exp $
  *
  */
 
@@ -1454,22 +1454,8 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   buf_element_t *buf = NULL;
 
   /* HD buffer */
-  if(this->hd_stream) {
-    if(!this->hd_buffer)
-      this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
-
-    if(size <= HD_BUF_ELEM_SIZE && this->hd_buffer && this->hd_stream)
-      buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
-  } else {
-    if(this->hd_buffer) {
-      LOGMSG("hd_buffer still exists ...");
-      if(this->hd_buffer->num_free(this->hd_buffer) == this->hd_buffer->buffer_pool_capacity) {
-	LOGMSG("disposing hd_buffer ...");
-	this->hd_buffer->dispose(this->hd_buffer);
-	this->hd_buffer = NULL;
-      }
-    }
-  }
+  if(this->hd_stream && size <= HD_BUF_ELEM_SIZE)
+    buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
 
   /* limit max. buffered data */
   if(!force && !buf) {
@@ -3520,7 +3506,13 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   } else if(!strncasecmp(cmd, "HDMODE ", 7)) {
     if(1 == sscanf(cmd, "HDMODE %d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
-      this->hd_stream = tmp32 ? 1 : 0;
+      if(tmp32) {
+	if(!this->hd_buffer)
+	  this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
+	this->hd_stream = 1;
+      } else {
+	this->hd_stream = 0;
+      }
       pthread_mutex_unlock(&this->lock);
     }
 
