@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.158 2008-06-21 22:33:58 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.159 2008-06-21 22:34:46 phintuka Exp $
  *
  */
 
@@ -4913,8 +4913,9 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
     cbuf = get_buf_element (this, 0, 1);
   }
   if (!cbuf) {
-    LOGERR("get_buf_element() for BUF_FLAG_FRAME_END failed - aborting");
-    abort();
+    LOGERR("get_buf_element() for BUF_FLAG_FRAME_END failed !");
+    /*abort();*/
+    return;
   }
 
   cbuf->type = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
