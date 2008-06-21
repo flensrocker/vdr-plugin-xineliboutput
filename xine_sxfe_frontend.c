@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.71 2008-06-19 20:51:35 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.72 2008-06-21 15:53:46 phintuka Exp $
  *
  */
 
@@ -1282,8 +1282,8 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 	return 1;
       case XK_d:
       case XK_D:
-	xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
-		       xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+	xine_set_param(this->x.stream, XINE_PARAM_VO_DEINTERLACE, 
+		       xine_get_param(this->x.stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
 	return 1;
 #endif
 #ifdef FE_STANDALONE
