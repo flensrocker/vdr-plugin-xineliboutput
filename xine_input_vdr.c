@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.155 2008-06-20 11:36:02 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.156 2008-06-21 22:23:17 phintuka Exp $
  *
  */
 
@@ -5773,6 +5773,14 @@ static int vdr_plugin_get_optional_data (input_plugin_t *this_gen,
     return sizeof(preview_data);
 #endif
   }
+
+#ifdef INPUT_OPTIONAL_DATA_DEMUXER
+  else if(data_type == INPUT_OPTIONAL_DATA_DEMUXER) {
+    static const char demux_name[] = "mpeg_block";
+    *((const char **)data) = demux_name;
+    return INPUT_OPTIONAL_SUCCESS;
+  }
+#endif
 
   return INPUT_OPTIONAL_UNSUPPORTED;
 }
