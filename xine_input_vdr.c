@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.157 2008-06-21 22:26:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.158 2008-06-21 22:33:58 phintuka Exp $
  *
  */
 
@@ -4931,7 +4931,7 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
       bmi->biWidth = size.width;
       bmi->biHeight = size.height;
 
-      if (size.pixel_aspect.num) {
+      if (!this->h264 && size.pixel_aspect.num) {
 	cbuf->decoder_flags |= BUF_FLAG_ASPECT;
 	/* pixel ratio -> frame ratio */
 	if(size.pixel_aspect.num > size.height) {
