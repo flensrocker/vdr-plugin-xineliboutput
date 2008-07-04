@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.36 2008-04-14 21:22:08 phintuka Exp $
+ * $Id: i18n.c,v 1.37 2008-07-04 10:48:27 phintuka Exp $
  *
  * Translations provided by:
  *
@@ -1742,7 +1742,7 @@ const tI18nPhrase Phrases[] = {
     "", // Czech
   },
   { "Play DVD disc >>", // English
-    "DVD abspielen", // Deutsch
+    "DVD abspielen >>", // Deutsch
     "", // Slovenski
     "Riproduci disco DVD >>", // Italiano
     "", // Nederlands
