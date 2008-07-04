@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.69 2008-07-04 09:45:14 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.70 2008-07-04 09:58:36 phintuka Exp $
  *
  */
 
@@ -1276,7 +1276,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 
   } else if(!strncmp(cmd, "SLAVE 0x", 8)) {
     unsigned long pt;
-    if(1 == sscanf(cmd, "SLAVE 0x%lx", &pt)) {
+    if(1 == sscanf(cmd+8, "%lx", &pt)) {
       xine_stream_t *slave_stream = (xine_stream_t*)pt;
       if(this->slave_stream != slave_stream) {
 
@@ -1316,7 +1316,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
   } else if(!strncmp(cmd, "SUBSTREAM ", 10)) {
     unsigned int pid;
     int x, y, w, h;
-    if(5 == sscanf(cmd, "SUBSTREAM 0x%x %d %d %d %d", &pid, &x, &y, &w, &h)) {
+    if(5 == sscanf(cmd+10, "0x%x %d %d %d %d", &pid, &x, &y, &w, &h)) {
       char mrl[256];
       if(!posts->pip_stream)
 	posts->pip_stream = xine_stream_new(this->xine, 

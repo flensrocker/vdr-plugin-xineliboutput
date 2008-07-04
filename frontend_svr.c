@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.57 2008-05-18 20:24:51 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.58 2008-07-04 09:58:36 phintuka Exp $
  *
  */
 
@@ -1601,7 +1601,7 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
 
   } else if(!strncasecmp(cmd, "STC ", 4)) {
     int64_t pts = -1;
-    if(1 == sscanf(cmd, "STC %" PRId64, &pts))
+    if(1 == sscanf(cmd+4, "%" PRId64, &pts))
       m_StcFuture->Set(pts);
 
   } else if(!strncasecmp(cmd, "ENDOFSTREAM", 11)) {
@@ -1609,7 +1609,7 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
     
   } else if(!strncasecmp(cmd, "RESULT ", 7)) {
     int token = -1, result = -1;
-    if(2 == sscanf(cmd, "RESULT %d %d", &token, &result)) {      
+    if(2 == sscanf(cmd+7, "%d %d", &token, &result)) {      
       cReplyFuture *f = m_Futures->Get(token);
       if(f) {
 	m_Futures->Del(f, token);

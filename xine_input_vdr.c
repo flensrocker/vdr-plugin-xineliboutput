@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.159 2008-06-21 22:34:46 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.160 2008-07-04 09:58:36 phintuka Exp $
  *
  */
 
@@ -3438,7 +3438,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "VIDEO_PROPERTIES ", 17)) {
     int hue, saturation, brightness, contrast, vo_aspect_ratio;
-    if(5 == sscanf(cmd, "VIDEO_PROPERTIES %d %d %d %d %d", 
+    if(5 == sscanf(cmd+17, "%d %d %d %d %d", 
 		   &hue, &saturation, &brightness, &contrast, &vo_aspect_ratio))
       err = set_video_properties(this, hue, saturation, brightness, contrast, vo_aspect_ratio);
     else
@@ -3451,7 +3451,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       this->funcs.fe_control(this->funcs.fe_handle, cmd);
 
   } else if(!strncasecmp(cmd, "VO_ASPECT ", 10)) {
-    if(1 == sscanf(cmd, "VO_ASPECT %d", &tmp32)) {
+    if(1 == sscanf(cmd+10, "%d", &tmp32)) {
       xine_set_param(stream, XINE_PARAM_VO_ASPECT_RATIO, tmp32);
     } else
       err = CONTROL_PARAM_ERROR;
@@ -3504,7 +3504,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
   } else if(!strncasecmp(cmd, "HDMODE ", 7)) {
-    if(1 == sscanf(cmd, "HDMODE %d", &tmp32)) {
+    if(1 == sscanf(cmd+7, "%d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
       if(tmp32) {
 	if(!this->hd_buffer)
@@ -3517,7 +3517,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
   } else if(!strncasecmp(cmd, "NOVIDEO ", 8)) {
-    if(1 == sscanf(cmd, "NOVIDEO %d", &tmp32)) {
+    if(1 == sscanf(cmd+8, "%d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
       this->no_video = tmp32;
       if(this->no_video) {
@@ -3535,7 +3535,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     signal_buffer_pool_not_empty(this);
 
   } else if(!strncasecmp(cmd, "DISCARD ", 8)) {
-    if(2 == sscanf(cmd, "DISCARD %" PRIu64 " %d", &tmp64, &tmp32)) {
+    if(2 == sscanf(cmd+8, "%" PRIu64 " %d", &tmp64, &tmp32)) {
       pthread_mutex_lock(&this->lock);
       if(this->discard_index < tmp64) {
 	this->discard_frame = tmp32;
@@ -3550,7 +3550,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "STREAMPOS ", 10)) {
-    if(1 == sscanf(cmd, "STREAMPOS %" PRIu64, &tmp64)) {
+    if(1 == sscanf(cmd+10, "%" PRIu64, &tmp64)) {
       pthread_mutex_lock(&this->lock);
       vdr_flush_engine(this, tmp64);
       this->curpos = tmp64;
@@ -3561,14 +3561,14 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "TRICKSPEED ", 11)) {
-    err = (1 == sscanf(cmd, "TRICKSPEED %d", &tmp32)) ? 
+    err = (1 == sscanf(cmd+11, "%d", &tmp32)) ? 
       set_playback_speed(this, tmp32) : 
       CONTROL_PARAM_ERROR;    
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
     pthread_mutex_lock(&this->lock);
     /*if(this->fd_control >= 0) {*/
-      if(1 == sscanf(cmd, "STILL %d", &tmp32)) {
+      if(1 == sscanf(cmd+6, "%d", &tmp32)) {
 	this->still_mode = tmp32;
 	if(this->still_mode)
 	  reset_scr_tunning(this, this->speed_before_pause);
@@ -3595,17 +3595,17 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
     this->still_mode = 0;
     _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
-    err = (1 == sscanf(cmd, "LIVE %d", &tmp32)) ?
+    err = (1 == sscanf(cmd+5, "%d", &tmp32)) ?
            set_live_mode(this, tmp32) : -2 ;
     
   } else if(!strncasecmp(cmd, "MASTER ", 7)) {
-    if(1 == sscanf(cmd, "MASTER %d", &tmp32))
+    if(1 == sscanf(cmd+7, "%d", &tmp32))
       this->fixed_scr = tmp32 ? 1 : 0;
     else
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "VOLUME ", 7)) {
-    if(1 == sscanf(cmd, "VOLUME %d", &tmp32)) {
+    if(1 == sscanf(cmd+7, "%d", &tmp32)) {
       int sw = strstr(cmd, "SW") ? 1 : 0;
       if(!sw) {
 	xine_set_param(stream, XINE_PARAM_AUDIO_VOLUME, tmp32);
@@ -3627,20 +3627,20 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "AUDIOCOMPRESSION ",17)) {
-    if(1 == sscanf(cmd, "AUDIOCOMPRESSION %d", &tmp32)) {
+    if(1 == sscanf(cmd+17, "%d", &tmp32)) {
       xine_set_param(stream, XINE_PARAM_AUDIO_COMPR_LEVEL, tmp32);
     } else
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "AUDIOSURROUND ",14)) {
-    if(1 == sscanf(cmd, "AUDIOSURROUND %d", &tmp32)) {
+    if(1 == sscanf(cmd+14, "%d", &tmp32)) {
       this->class->xine->config->update_num(this->class->xine->config,
 					    "audio.a52.surround_downmix", tmp32?1:0);
     } else
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "SPEAKERS ",9)) {
-    if(1 == sscanf(cmd, "SPEAKERS %d", &tmp32)) {
+    if(1 == sscanf(cmd+9, "%d", &tmp32)) {
       this->class->xine->config->update_num(this->class->xine->config,
 					    "audio.output.speaker_arrangement", tmp32);
     } else
@@ -3648,7 +3648,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "EQUALIZER ", 10)) {
     int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0};
-    sscanf(cmd,"EQUALIZER %d %d %d %d %d %d %d %d %d %d",
+    sscanf(cmd+10,"%d %d %d %d %d %d %d %d %d %d",
 	   eqs,eqs+1,eqs+2,eqs+3,eqs+4,eqs+5,eqs+6,eqs+7,eqs+8,eqs+9);
     for(i=XINE_PARAM_EQ_30HZ,j=0; i<=XINE_PARAM_EQ_16000HZ; i++,j++)
       xine_set_param(stream, i, eqs[j]);
@@ -3666,7 +3666,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       }
 #endif
     } else {
-      if(1 == sscanf(cmd, "AUDIOSTREAM AC3 %d", &tmp32)) {
+      if(1 == sscanf(cmd+12, "AC3 %d", &tmp32)) {
 	tmp32 &= 0xff;
 	LOGDBG("Audio channel -> [%d]", tmp32);
 	xine_set_param(stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL, tmp32);
@@ -3678,11 +3678,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     int old_ch  = _x_get_spu_channel (stream);
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
-    if(strstr(cmd, "NEXT"))
+    if(strstr(cmd+10, "NEXT"))
       ch = ch < max_ch ? ch+1 : -2;
-    else if(strstr(cmd, "PREV"))
+    else if(strstr(cmd+10, "PREV"))
       ch = ch > -2 ? ch-1 : max_ch-1;
-    else if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
+    else if(1 == sscanf(cmd+10, "%d", &tmp32)) {
       ch = tmp32;
     } else
       err = CONTROL_PARAM_ERROR;
@@ -3692,7 +3692,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
   } else if(!strncasecmp(cmd, "AUDIODELAY ", 11)) {
-    if(1 == sscanf(cmd, "AUDIODELAY %d", &tmp32))
+    if(1 == sscanf(cmd+11, "%d", &tmp32))
       xine_set_param(stream, XINE_PARAM_AV_OFFSET, tmp32*90000/1000);
     else
       err = CONTROL_PARAM_ERROR;
@@ -3712,12 +3712,12 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
   } else if(!strncasecmp(cmd, "FLUSH ", 6)) {
-    if(1 == sscanf(cmd, "FLUSH %d", &tmp32)) {
+    if(1 == sscanf(cmd+6, "%d", &tmp32)) {
       if(this->fd_control >= 0) {
 	uint32_t frame = 0;
 	tmp64 = 0ULL; 
 	tmp32 = 0;
-	sscanf(cmd, "FLUSH %d %" PRIu64 " %d", &tmp32, &tmp64, &frame);
+	sscanf(cmd+6, "%d %" PRIu64 " %d", &tmp32, &tmp64, &frame);
 	err = vdr_plugin_flush_remote(this, tmp32, tmp64, frame);
       } else {
 	err = vdr_plugin_flush(this, tmp32);
@@ -3726,7 +3726,10 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "TOKEN ", 6)) {
-    this->token = atoi(cmd+6);
+    if(1 == sscanf(cmd+6, "%d", &tmp32))
+      this->token = tmp32;
+    else
+      err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "SUBSTREAM ", 9)) {
     err = handle_control_substream(this, cmd);
@@ -3799,7 +3802,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   } else if(!strncasecmp(cmd, "SUBTITLES ", 10)) {
     if(this->slave_stream) {
       int vpos = 0;
-      if(1 == sscanf(cmd, "SUBTITLES %d", &vpos))
+      if(1 == sscanf(cmd+10, "%d", &vpos))
 	this->class->xine->config->update_num(this->class->xine->config,
 		          "subtitles.separate.vertical_offset", vpos);
       else
@@ -3808,7 +3811,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "EXTSUBSIZE ", 11)) {
     int size = 0;
-    if(1 == sscanf(cmd, "EXTSUBSIZE %d", &size))
+    if(1 == sscanf(cmd+11, "%d", &size))
       /* size of separate subtitles :
 	 -1 = xine default 
 	 0...6 = { tiny  small  normal  large  very large  huge } */
@@ -4194,7 +4197,7 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
 
   if(!strncasecmp(cmd, "DISCARD ", 8)) {
     uint64_t index;
-    if(1 == sscanf(cmd, "DISCARD %" PRIu64, &index)) {
+    if(1 == sscanf(cmd+8, "%" PRIu64, &index)) {
       struct timespec abstime;
       create_timeout_time(&abstime, 100);
 
@@ -4481,7 +4484,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	/* Re-send failed */ 
 	int seq1 = 0, seq2 = 0;
 	uint64_t rpos = 0ULL;
-	sscanf((char*)pkt_data, "UDP MISSING %d-%d %" PRIu64, 
+	sscanf(((char*)pkt_data)+12, "%d-%d %" PRIu64, 
 	       &seq1, &seq2, &rpos);
 	read_buffer->size = sizeof(stream_udp_header_t);
 	read_buffer->type = BUF_MAJOR_MASK;
