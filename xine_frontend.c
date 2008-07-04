@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.67 2008-06-19 20:18:31 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.68 2008-07-04 09:44:09 phintuka Exp $
  *
  */
 
@@ -314,9 +314,9 @@ static void fe_frame_output_cb (void *data,
       .pan_scan = 0,
     };
     const xine_event_t event = {
-      .type = XINE_EVENT_FRAME_FORMAT_CHANGE,
-      .stream = this->stream,
-      .data = &framedata,
+      .type        = XINE_EVENT_FRAME_FORMAT_CHANGE,
+      .stream      = this->stream,
+      .data        = &framedata,
       .data_length = sizeof(framedata),
     };
     xine_event_send(this->stream, &event);
