@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.68 2008-07-04 09:44:09 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.69 2008-07-04 09:45:14 phintuka Exp $
  *
  */
 
@@ -680,13 +680,10 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   /* multithreaded decoding / post processing */
 
   if(guess_cpu_count() > 1) {
-    int xmajor, xminor, xsub;
-    xine_get_version(&xmajor, &xminor, &xsub);
-    if(xmajor*10000 + xminor*100 + xsub < 10109)
-      LOGMSG("Multithreaded video decoding is not supported in xine-lib %d.%d.%d",
-	     xmajor, xminor, xsub);
+    if(!xine_check_version(1,1,9))
+      LOGMSG("FFmpeg multithreaded video decoding is not supported in xine-lib < 1.1.9");
     else
-      LOGMSG("Enabling multithreaded video decoding");
+      LOGMSG("Enabling FFmpeg multithreaded video decoding");
 
     /* try to enable anyway, maybe someone is using patched 1.1.8 ... */
     x_upd_num("video.processing.ffmpeg_thread_count", guess_cpu_count());
