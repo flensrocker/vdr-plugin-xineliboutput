@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.160 2008-07-04 09:58:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.161 2008-07-08 10:56:43 phintuka Exp $
  *
  */
 
@@ -5056,7 +5056,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
       LOGMSG("H.264: post pts %"PRId64" diff %d", pts, (int)(pts-this->last_delivered_vid_pts));
       vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
     }
-
+#if 0
     /* xine ffmpeg decoder does not handle pts <-> dts difference very well if P/B frames have pts */
     if (abs(pts - this->last_delivered_vid_pts) < 90000 && pts < this->last_delivered_vid_pts) {
       LOGDBG("H.264:    -> pts %"PRId64"  <- 0", pts);
@@ -5068,7 +5068,9 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
       LOGDBG("H.264:    -> pts %"PRId64, pts);
       buf->pts = pts;
     }
-
+#else
+    buf->pts = pts;
+#endif
     this->last_delivered_vid_pts = pts;
   }
 
