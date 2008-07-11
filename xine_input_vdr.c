@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.161 2008-07-08 10:56:43 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.162 2008-07-11 18:07:43 phintuka Exp $
  *
  */
 
@@ -4237,7 +4237,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       /* can't cancel if read_buffer != NULL (disposing fifos would freeze) */
       pthread_testcancel();
 
-      read_buffer = get_buf_element(this, 0, 0);
+      read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
       if(!read_buffer) {
 	VDR_ENTRY_LOCK(XIO_ERROR);
 	vdr_plugin_poll(this, 100);
@@ -4246,7 +4246,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 	if(!this->control_running)
 	  break;
 
-	read_buffer = get_buf_element(this, 0, 0);
+	read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
 	if(!read_buffer) {
 	  /* do not drop any data here ; dropping is done only at server side. */
 	  if(!this->is_paused)
@@ -4370,7 +4370,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       
       pthread_testcancel();
 
-      read_buffer = get_buf_element(this, 0, 0);
+      read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
       if(!read_buffer) {
 	/* if queue is full, skip (video) frame. 
 	   Waiting longer for free buffers just makes things worse ... */
@@ -4393,7 +4393,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	if(!this->control_running)
 	  break;
 
-	read_buffer = get_buf_element(this, 0, 0);
+	read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
 	if(!read_buffer) {
 	  if(!this->is_paused)
 	    LOGMSG("Fifo buffer still full after poll !");
@@ -4909,11 +4909,11 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
 static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 {
   /* signal FRAME_END to video decoder */
-  buf_element_t *cbuf = get_buf_element (this, 0, 1);
+  buf_element_t *cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1);
   if (!cbuf) {
     LOGMSG("get_buf_element() for BUF_FLAG_FRAME_END failed - retrying");
     xine_usec_sleep (10*1000);
-    cbuf = get_buf_element (this, 0, 1);
+    cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1);
   }
   if (!cbuf) {
     LOGERR("get_buf_element() for BUF_FLAG_FRAME_END failed !");
@@ -5132,7 +5132,7 @@ static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
 
     /* Special buffer when payload packet changes */
     if (pts >= 0) {
-      buf_element_t *cbuf = get_buf_element(this, 1, 1);
+      buf_element_t *cbuf = get_buf_element(this, 0, 1);
       int data_id        = *(p+0);
       int substream_id   = *(p+1);
       int segment_type   = *(p+3);
