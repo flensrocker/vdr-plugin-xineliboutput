@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.162 2008-07-11 18:07:43 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.163 2008-07-11 18:09:36 phintuka Exp $
  *
  */
 
@@ -38,6 +38,10 @@
 #ifdef DVD_STREAMING_SPEED
 # include <linux/cdrom.h>
 # include <scsi/sg.h>
+#endif
+
+#if XINE_VERSION_CODE >= 10190
+# include <libavutil/mem.h>
 #endif
 
 #include <xine/xine_internal.h>
@@ -1384,7 +1388,6 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   fifo_buffer_t *ref = stream->video_fifo;
   fifo_buffer_t *this;
   int            i;
-  int            alignment = 2048;
   unsigned char *multi_buffer = NULL;
 
   LOGDBG("fifo_buffer_new...");
@@ -1414,11 +1417,7 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
    * init buffer pool, allocate nNumBuffers of buf_size bytes each
    */
 
-  if (buf_size % alignment != 0)
-    buf_size += alignment - (buf_size % alignment);
-
-  multi_buffer = xine_xmalloc_aligned (alignment, num_buffers * buf_size,
-                                       &this->buffer_pool_base);
+  multi_buffer = this->buffer_pool_base = av_mallocz (num_buffers * buf_size);
 
   pthread_mutex_init (&this->buffer_pool_mutex, NULL);
   pthread_cond_init (&this->buffer_pool_cond_not_empty, NULL);
