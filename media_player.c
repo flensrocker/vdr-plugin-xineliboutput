@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.56 2008-07-14 16:15:19 phintuka Exp $
+ * $Id: media_player.c,v 1.57 2008-07-14 16:20:01 phintuka Exp $
  *
  */
 
@@ -72,7 +72,7 @@ class cXinelibPlayer : public cPlayer
     int  Speed(void) { return m_Speed; };
 
     bool NextFile(int step);
-    bool Replaying(void)  { return !m_Error; }
+    bool Playing(void) { return !(m_Error || cXinelibDevice::Instance().EndOfStreamReached()); }
     void UseResumeFile(bool Val) { m_UseResumeFile = Val; }
 
     /* Playlist access */
@@ -580,10 +580,8 @@ cOsdObject *cXinelibPlayerControl::GetInfo(void)
 
 eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 {
-  if (cXinelibDevice::Instance().EndOfStreamReached() ||
-      !m_Player->Replaying() ) {
+  if ( !m_Player->Playing() ) {
     LOGDBG("cXinelibPlayerControl: EndOfStreamReached");
-    LOGDBG("cXinelibPlayerControl: Replaying = %d", m_Player->Replaying());
     if (m_Mode == ShowMusic && m_Player->Files() == 1) {
       m_Player->NextFile(0);
       return osContinue;
@@ -892,8 +890,7 @@ void cXinelibDvdPlayerControl::Show(void)
 
 eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 {
-  if (cXinelibDevice::Instance().EndOfStreamReached() ||
-      !m_Player->Replaying() ) {
+  if ( !m_Player->Playing() ) {
     LOGDBG("cXinelibDvdPlayerControl: EndOfStreamReached");
     Hide();
     return osEnd;
