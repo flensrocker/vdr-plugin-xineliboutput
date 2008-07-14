@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.54 2008-07-14 08:01:02 phintuka Exp $
+ * $Id: media_player.c,v 1.55 2008-07-14 16:01:45 phintuka Exp $
  *
  */
 
@@ -46,6 +46,7 @@ class cXinelibPlayer : public cPlayer
     cPlaylist m_Playlist;
 
     bool m_Replaying;
+    bool m_UseResumeFile;
     int  m_Speed; 
 
   protected:
@@ -72,8 +73,7 @@ class cXinelibPlayer : public cPlayer
 
     bool NextFile(int step);
     bool Replaying(void)  { return m_Replaying; }
-
-    bool m_UseResume;
+    void UseResumeFile(bool Val) { m_UseResumeFile = Val; }
 
     /* Playlist access */
     cPlaylist& Playlist(void) { return m_Playlist; }
@@ -85,7 +85,7 @@ class cXinelibPlayer : public cPlayer
 cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile) 
 {
   m_ResumeFile = NULL;
-  m_UseResume = true;
+  m_UseResumeFile = true;
   m_Replaying = false;
   m_Speed = 1;
 
@@ -206,9 +206,9 @@ void cXinelibPlayer::Activate(bool On)
 {
   int pos = 0, len = 0, fd = -1;
   if(On) {
-    if(m_UseResume && !*m_ResumeFile)
+    if(m_UseResumeFile && !*m_ResumeFile)
       m_ResumeFile = cString::sprintf("%s.resume", *m_File);
-    if(m_UseResume && 0 <= (fd = open(m_ResumeFile, O_RDONLY))) {
+    if(m_UseResumeFile && 0 <= (fd = open(m_ResumeFile, O_RDONLY))) {
       if(read(fd, &pos, sizeof(int)) != sizeof(int))
 	pos = 0;
       close(fd);
@@ -257,7 +257,7 @@ void cXinelibPlayer::Activate(bool On)
       }
     }
   } else {
-    if(m_UseResume && *m_ResumeFile) {
+    if(m_UseResumeFile && *m_ResumeFile) {
       pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
       len = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
       if(pos>10000 && pos < (len-10000)) {
@@ -447,7 +447,7 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
   number = 0;
   lastTime.Set();
 
-  m_Player->m_UseResume = (Mode==ShowFiles);
+  m_Player->UseResumeFile( (Mode==ShowFiles) );
 
   MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
 }
