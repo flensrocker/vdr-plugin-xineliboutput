@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.163 2008-07-11 18:09:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.164 2008-07-14 19:25:35 phintuka Exp $
  *
  */
 
@@ -1055,7 +1055,11 @@ static void write_control(vdr_input_plugin_t *this, const char *str)
 {
   size_t len = strlen(str);
   pthread_mutex_lock (&this->fd_control_lock);
+  //LOCK_CANCELLABLE(&this->fd_control_lock);
+  //  pthread_cleanup_push (mutex_cleanup, (void *) &stream->frontend_lock);
   write_control_data(this, str, len);
+  //UNLOCK_CANCELLABLE(&this->fd_control_lock);
+  //  pthread_cleanup_pop (0);
   pthread_mutex_unlock (&this->fd_control_lock);
 }
 
@@ -2454,7 +2458,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
   suspend_demuxer(this);
   pthread_mutex_lock( &this->lock );
 
-  reset_scr_tunning(this, this->speed_before_pause);
+  reset_scr_tunning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
 
   /* reset speed again (adjust_realtime_speed might have set pause) */
   if(xine_get_param(this->stream, XINE_PARAM_FINE_SPEED) <= 0) {
@@ -2810,7 +2814,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   const char *pt = cmd + 9;
   char filename[4096], av[256], *pav = av;
   int loop = 0, pos = 0, err = 0, avsize = sizeof(av)-2, mix_streams = 0;
-
   while(*pt==' ') pt++;
 
   if(!strncmp(pt, "Loop ", 5)) {
@@ -2836,7 +2839,11 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   this->autoplay_size = -1;
 
   if(*filename) {
-    int is_file_mrl = !strncmp(filename, "file:/", 6) ? 5 : 0;
+    const int is_file_mrl  = !strncmp(filename, "file:/", 6) ? 5 : 0;
+    const int is_cdda_disc = !strncmp(filename, "cdda:", 5);
+    const int is_dvd       = !strncmp(filename, "dvd:/", 5);
+    const int is_dvd_disc  = !strcmp(filename,  "dvd:/");
+    const int is_disc      = is_cdda_disc || is_dvd_disc;
     this->loop_play = 0;
 
     if(this->slave_stream)
@@ -2880,20 +2887,16 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       free(f);
     }
 
-    if(!strcmp(filename,"dvd:/")) {
-#if 0
-	/* input/media_helper.c */
-	eject_media(0);	/* DVD tray in */
-#endif
+    if(is_dvd_disc) {
 #ifdef DVD_STREAMING_SPEED
-	  xine_cfg_entry_t device;
-	  if (xine_config_lookup_entry(this->class->xine,
-				       "media.dvd.device", &device))
-	    dvd_set_speed(device.str_value, 2700);
+      xine_cfg_entry_t device;
+      if (xine_config_lookup_entry(this->class->xine,
+				   "media.dvd.device", &device))
+	dvd_set_speed(device.str_value, 2700);
 #endif
     }
 #if XINE_VERSION_CODE < 10109
-    else if(!strncmp(filename,"dvd:/", 5)) {
+    else if(is_dvd) {
       /* DVD plugin 'bug': unescaping is not implemented ... */
       char *mrl = unescape_filename(filename);
       strn0cpy(filename, mrl, sizeof(filename));
@@ -2938,8 +2941,18 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					       METRONOM_PREBUFFER, 90000);
 #endif
-      if(!strncmp(filename, "cdda:", 5))
+      if(is_cdda_disc)
 	send_cd_info(this);
+
+#if 0
+      if(is_disc && stream->eject_class)
+	stream->eject_class->eject_media();
+ ** after open only ?
+      xine_eject(stream) - after open ; before play ??? after stop, before close ?
+
+	/* input/media_helper.c */
+	eject_media(0);	/* DVD tray in */
+#endif
 
       this->loop_play = loop;
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
@@ -2995,6 +3008,13 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     if(this->slave_stream) {
       int stream_width, stream_height;
       xine_stop(this->slave_stream);
+
+#if 1
+      if(this->slave_stream->eject_class) {
+	LOGMSG("Ejecting disc");
+ 	xine_eject(this->slave_stream);
+      }
+#endif
 
       if (this->slave_event_queue) {
 	xine_event_dispose_queue (this->slave_event_queue);
@@ -3545,6 +3565,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       }
       pthread_cond_broadcast(&this->engine_flushed);
       pthread_mutex_unlock(&this->lock);
+//**********
+set_playback_speed(this, 1);
+
     } else 
       err = CONTROL_PARAM_ERROR;
 
@@ -3630,21 +3653,49 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       xine_set_param(stream, XINE_PARAM_AUDIO_COMPR_LEVEL, tmp32);
     } else
       err = CONTROL_PARAM_ERROR;
-
+#if 1
   } else if(!strncasecmp(cmd, "AUDIOSURROUND ",14)) {
     if(1 == sscanf(cmd+14, "%d", &tmp32)) {
       this->class->xine->config->update_num(this->class->xine->config,
 					    "audio.a52.surround_downmix", tmp32?1:0);
     } else
       err = CONTROL_PARAM_ERROR;
-
+#endif
+#if 1
   } else if(!strncasecmp(cmd, "SPEAKERS ",9)) {
     if(1 == sscanf(cmd+9, "%d", &tmp32)) {
       this->class->xine->config->update_num(this->class->xine->config,
 					    "audio.output.speaker_arrangement", tmp32);
     } else
       err = CONTROL_PARAM_ERROR;
-
+#endif
+#if 1
+    // TODO -- test ... use CONFIG key value
+  } else if(!strncasecmp(cmd, "CONFIG ", 7)) {
+    char key[64], *value;
+    switch(sscanf(cmd+7, "%64s %d", key, &tmp32)) {
+      case 2:
+	this->class->xine->config->update_num(this->class->xine->config, key, tmp32);
+	break;
+      case 1:
+	if(NULL != (value = strchr(cmd, '\"'))) {
+	  value = strdup(value+1);
+	  char *pt = strchr(value, '\"');
+	  if(pt) {
+	    *pt = 0;
+	    this->class->xine->config->update_string(this->class->xine->config,
+						     key, value);
+	  } else {
+	    err = CONTROL_PARAM_ERROR;
+	  }
+	  free(value);
+	  break;
+	}
+	/* fall thru */
+      default:
+	err = CONTROL_PARAM_ERROR;
+    }
+#endif
   } else if(!strncasecmp(cmd, "EQUALIZER ", 10)) {
     int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0};
     sscanf(cmd+10,"%d %d %d %d %d %d %d %d %d %d",
@@ -3797,7 +3848,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       printf_control(this, "RESULT %d %d\r\n", this->token, err);
       err = CONTROL_OK;
     }
-
+#if 1
   } else if(!strncasecmp(cmd, "SUBTITLES ", 10)) {
     if(this->slave_stream) {
       int vpos = 0;
@@ -3807,7 +3858,8 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       else
 	err = CONTROL_PARAM_ERROR;
     }
-
+#endif
+#if 1
   } else if(!strncasecmp(cmd, "EXTSUBSIZE ", 11)) {
     int size = 0;
     if(1 == sscanf(cmd+11, "%d", &size))
@@ -3818,7 +3870,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 					    "subtitles.separate.subtitle_size", size);
     else
       err = CONTROL_PARAM_ERROR;
-
+#endif
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     handle_control_grab(this, cmd);
 
@@ -4905,8 +4957,23 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
   }
 }
 
+/*
+ * post_frame_end()
+ *
+ * Post special FRAME_END buffer after each video frame. 
+ * This is required for ffmpeg decoders.
+ */
 static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 {
+  if(this->I_frames < 1) {
+  LOGMSG("skip FRAME_END until first I");
+  return;
+  }
+  //static int first = 1; 
+  //if(!first) { first++; LOGMSG("skip frame end"); return;}
+  //LOGMSG("frame end");
+
+
   /* signal FRAME_END to video decoder */
   buf_element_t *cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1);
   if (!cbuf) {
@@ -4916,23 +4983,36 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
   }
   if (!cbuf) {
     LOGERR("get_buf_element() for BUF_FLAG_FRAME_END failed !");
-    /*abort();*/
     return;
   }
 
   cbuf->type = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
   cbuf->decoder_flags = BUF_FLAG_FRAME_END;
+  //cbuf->decoder_info[0] = 1; // ???
 
-  if(!this->bih_posted) {
+  if(!this->h264 && !this->bih_posted) {
     video_size_t size = {0};
     if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->h264 > 0)) {
       xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
       memset(bmi, 0, sizeof(xine_bmiheader));
 
+      //cbuf->decoder_flags |= BUF_FLAG_STDHEADER;
       cbuf->decoder_flags |= BUF_FLAG_HEADER;
+      cbuf->size = sizeof(xine_bmiheader);
       bmi->biSize = sizeof(xine_bmiheader);
       bmi->biWidth = size.width;
       bmi->biHeight = size.height;
+
+      bmi->biPlanes = 1;
+      bmi->biBitCount = 24;
+      bmi->biCompression = 0x34363248; //H264
+      bmi->biSizeImage = 0;
+      bmi->biXPelsPerMeter=10000;
+      bmi->biYPelsPerMeter=10000;
+      bmi->biClrUsed=0;
+      bmi->biClrImportant=0;
+      //bmi->biRatio = (double)size.pixel_aspect.num / (double)size.pixel_aspect.den *
+      //  (double)size.width / (double)size.height;
 
       if (!this->h264 && size.pixel_aspect.num) {
 	cbuf->decoder_flags |= BUF_FLAG_ASPECT;
@@ -4950,12 +5030,18 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 	     size.width, size.height, size.pixel_aspect.num, size.pixel_aspect.den);
 
       this->bih_posted = 1;
-    }      
+    }
   }
 
   this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
 }
 
+/*
+ * update_frames()
+ *
+ * Update frame type counters.
+ * Collected information is used to start replay when enough data has been buffered
+ */
 static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int len)
 {
   uint8_t type = pes_get_picture_type(data, len);
@@ -4972,6 +5058,11 @@ static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int 
   return type;
 }
 
+/*
+ * detect_h264()
+ *
+ * Detect video codec (MPEG2 or H.264)
+ */
 #ifdef TEST_H264
 static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 {
@@ -4980,7 +5071,7 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 
   /* H.264 detection */
   if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1) {
-    if (data[i + 3] == 0x09) {
+    if (data[i + 3] == NAL_AUD) {
       LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
       return 1;
     }
@@ -4995,15 +5086,16 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
     LOGMSG("H.264 scanner: Unregonized header 00 00 01 %02x", data[i + 3]);
   }
 
-#if 0
-  if (this->h264 < 0)
-    LOGDBG("H.264 scanner: unregonized video packet");
-#endif
-
   return this->h264;
 }
 #endif /* TEST_H264 */
 
+/*
+ * post_frame_h264()
+ *
+ * H.264 video stream demuxing
+ *  - mpeg_block demuxer does not regonize H.264 video
+ */
 #ifdef TEST_H264
 buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 {
@@ -5018,16 +5110,26 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
   if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 ) {
 
     /* Access Unit Delimiter */
-    if (data[i + 3] == 0x09)
-      post_frame_end (this, buf);
+    if (data[i + 3] == NAL_AUD) {
 
-    if (data[i + 3] >= 0x80) {
+      /*if(this->live_mode && this->I_frames < 4)*/
+      update_frames(this, buf->content, buf->size);
+
+      post_frame_end (this, buf);
+    }
+
+    else if (data[i + 3] >= 0x80) {
       LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", data[i + 3]);
       /* Should do something ... ? */
     }
+  }
 
-    if(this->live_mode && this->I_frames < 4)
-      update_frames(this, buf->content, buf->size);
+  /* Discard all data until first I-type frame */
+
+  if(this->I_frames < 1) {
+    LOGMSG("skip data until first I");
+    buf->free_buffer(buf);
+    return NULL;
   }
 
   /* Handle PTS and DTS */
@@ -5075,9 +5177,9 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 
   /* bypass demuxer ... */
 
-  buf->type = BUF_VIDEO_H264;
+  buf->type     = BUF_VIDEO_H264;
   buf->content += i;
-  buf->size -= i;
+  buf->size    -= i;
 
   this->stream->video_fifo->put (this->stream->video_fifo, buf);
 
@@ -5086,6 +5188,12 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif /* TEST_H264 */
 
 #ifdef TEST_DVB_SPU
+/*
+ * post_spu()
+ *
+ * Subtitle stream demuxing
+ *  - mpeg_block demuxer does not regonize DVB subtitles
+ */
 static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
 {
   uint8_t *p = buf->content;
