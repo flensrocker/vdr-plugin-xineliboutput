@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.53 2008-05-18 20:24:51 phintuka Exp $
+ * $Id: media_player.c,v 1.54 2008-07-14 08:01:02 phintuka Exp $
  *
  */
 
@@ -894,7 +894,9 @@ void cXinelibDvdPlayerControl::Show(void)
 
 eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 {
-  if (cXinelibDevice::Instance().EndOfStreamReached()) {
+  if (cXinelibDevice::Instance().EndOfStreamReached() ||
+      !m_Player->Replaying() ) {
+    LOGDBG("cXinelibDvdPlayerControl: EndOfStreamReached");
     Hide();
     return osEnd;
   }
