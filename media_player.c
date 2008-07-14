@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.55 2008-07-14 16:01:45 phintuka Exp $
+ * $Id: media_player.c,v 1.56 2008-07-14 16:15:19 phintuka Exp $
  *
  */
 
@@ -45,7 +45,7 @@ class cXinelibPlayer : public cPlayer
 
     cPlaylist m_Playlist;
 
-    bool m_Replaying;
+    bool m_Error;
     bool m_UseResumeFile;
     int  m_Speed; 
 
@@ -72,7 +72,7 @@ class cXinelibPlayer : public cPlayer
     int  Speed(void) { return m_Speed; };
 
     bool NextFile(int step);
-    bool Replaying(void)  { return m_Replaying; }
+    bool Replaying(void)  { return !m_Error; }
     void UseResumeFile(bool Val) { m_UseResumeFile = Val; }
 
     /* Playlist access */
@@ -86,7 +86,7 @@ cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile
 {
   m_ResumeFile = NULL;
   m_UseResumeFile = true;
-  m_Replaying = false;
+  m_Error = false;
   m_Speed = 1;
 
   if(File) {
@@ -194,9 +194,7 @@ bool cXinelibPlayer::NextFile(int step)
     m_SubFile = NULL;
 
     Activate(true);
-    if(!m_Replaying)
-      return false;
-    return true;
+    return !m_Error;
   }
   
   return false;
@@ -228,10 +226,10 @@ void cXinelibPlayer::Activate(bool On)
 			     *cPlaylist::EscapeMrl(m_File));
     else
       mrl = cPlaylist::EscapeMrl(m_File);
-    m_Replaying = cXinelibDevice::Instance().PlayFile(mrl, pos);
-    LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Replaying?"OK":"FAIL");
+    m_Error = !cXinelibDevice::Instance().PlayFile(mrl, pos);
+    LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Error ? "FAIL" : "OK");
 
-    if(m_Replaying) {
+    if(!m_Error) {
       // update playlist metainfo
       const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
       const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTracknumber);
@@ -277,7 +275,7 @@ void cXinelibPlayer::Activate(bool On)
       m_ResumeFile = NULL;
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
-    m_Replaying = false;
+    m_Error = false;
   }
 }
 
