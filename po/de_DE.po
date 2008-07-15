@@ -223,7 +223,7 @@ msgid "Play remote DVD >>"
 msgstr "Entfernte DVD abspielen >>"
 
 msgid "Play DVD disc >>"
-msgstr "DVD abspielen"
+msgstr "DVD abspielen >>"
 
 msgid "Play remote CD >>"
 msgstr "Entfernte CD abspielen >>"
