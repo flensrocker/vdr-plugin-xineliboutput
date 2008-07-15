@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.72 2008-06-21 15:53:46 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.73 2008-07-15 14:54:29 phintuka Exp $
  *
  */
 
@@ -188,8 +188,6 @@ typedef struct sxfe_s {
 
 } sxfe_t;
 
-
-#include "vdrlogo_32x32.c"
 
 #define DOUBLECLICK_TIME   500  // ms
 
@@ -886,6 +884,18 @@ static int open_display(sxfe_t *this, const char *video_port)
   return 1;
 }
 
+static void set_icon(sxfe_t *this)
+{
+# include "vdrlogo_32x32.c"
+
+  /* Icon */
+  XChangeProperty(this->display, this->window[0],
+		  XInternAtom(this->display, "_NET_WM_ICON", False),
+		  XA_CARDINAL, 32, PropModeReplace,
+		  (unsigned char *) &vdrlogo_32x32,
+		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+}
+
 /*
  * sxfe_display_open
  *
@@ -1043,11 +1053,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 #endif
 
     /* Icon */
-    XChangeProperty(this->display, this->window[0],
-		    XInternAtom(this->display, "_NET_WM_ICON", False),
-		    XA_CARDINAL, 32, PropModeReplace,
-		    (unsigned char *) &vdrlogo_32x32, 
-		    2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+    set_icon(this);
   }
 
   /* Map current window */
