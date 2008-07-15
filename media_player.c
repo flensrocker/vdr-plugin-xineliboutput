@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.57 2008-07-14 16:20:01 phintuka Exp $
+ * $Id: media_player.c,v 1.58 2008-07-15 08:07:25 phintuka Exp $
  *
  */
 
@@ -73,6 +73,7 @@ class cXinelibPlayer : public cPlayer
 
     bool NextFile(int step);
     bool Playing(void) { return !(m_Error || cXinelibDevice::Instance().EndOfStreamReached()); }
+    bool Error(void)   { return m_Error; }
     void UseResumeFile(bool Val) { m_UseResumeFile = Val; }
 
     /* Playlist access */
@@ -582,7 +583,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 {
   if ( !m_Player->Playing() ) {
     LOGDBG("cXinelibPlayerControl: EndOfStreamReached");
-    if (m_Mode == ShowMusic && m_Player->Files() == 1) {
+    if (m_Mode == ShowMusic && m_Player->Files() == 1 && !m_Player->Error()) {
       m_Player->NextFile(0);
       return osContinue;
     }
