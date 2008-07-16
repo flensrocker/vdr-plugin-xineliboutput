@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.73 2008-07-15 14:54:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.74 2008-07-16 06:19:58 phintuka Exp $
  *
  */
 
@@ -241,6 +241,24 @@ static void set_fs_size_hint(sxfe_t *this)
   XSetNormalHints(this->display, this->window[1], &hint);
 }
 
+static void set_border(sxfe_t *this, int border)
+{
+  MWMHints   mwmhints;
+
+  if(this->window_id > 0)
+    return;
+
+  this->no_border = border ? 0 : 1;
+
+  /* Set/remove border */
+  mwmhints.flags = MWM_HINTS_DECORATIONS;
+  mwmhints.decorations = this->no_border ? 0 : 1;
+  XChangeProperty(this->display, this->window[0], 
+		  this->xa_MOTIF_WM_HINTS, this->xa_MOTIF_WM_HINTS, 32,
+		  PropModeReplace, (unsigned char *) &mwmhints,
+		  PROP_MWM_HINTS_ELEMENTS);
+}
+
 static void set_fullscreen_props(sxfe_t *this)
 {
   XEvent ev;
@@ -280,24 +298,6 @@ static void set_fullscreen_props(sxfe_t *this)
   XSendEvent(this->display, DefaultRootWindow(this->display), False, 
 	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
-}
-
-static void set_border(sxfe_t *this, int border)
-{
-  MWMHints   mwmhints;
-
-  if(this->window_id > 0)
-    return;
-
-  this->no_border = border ? 0 : 1;
-
-  /* Set/remove border */
-  mwmhints.flags = MWM_HINTS_DECORATIONS;
-  mwmhints.decorations = this->no_border ? 0 : 1;
-  XChangeProperty(this->display, this->window[0], 
-		  this->xa_MOTIF_WM_HINTS, this->xa_MOTIF_WM_HINTS, 32,
-		  PropModeReplace, (unsigned char *) &mwmhints,
-		  PROP_MWM_HINTS_ELEMENTS);
 }
 
 static void set_above(sxfe_t *this, int stay_above)
