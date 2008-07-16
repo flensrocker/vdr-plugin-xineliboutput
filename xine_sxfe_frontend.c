@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.74 2008-07-16 06:19:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.75 2008-07-16 06:22:52 phintuka Exp $
  *
  */
 
@@ -241,19 +241,22 @@ static void set_fs_size_hint(sxfe_t *this)
   XSetNormalHints(this->display, this->window[1], &hint);
 }
 
-static void set_border(sxfe_t *this, int border)
+/* set_border
+ *
+ * Set/remove window border 
+ *
+ */
+static void set_border(sxfe_t *this, Window window, int border)
 {
-  MWMHints   mwmhints;
+  MWMHints mwmhints = {
+    .flags       = MWM_HINTS_DECORATIONS,
+    .decorations = border ? 1 : 0,
+  };
 
   if(this->window_id > 0)
     return;
 
-  this->no_border = border ? 0 : 1;
-
-  /* Set/remove border */
-  mwmhints.flags = MWM_HINTS_DECORATIONS;
-  mwmhints.decorations = this->no_border ? 0 : 1;
-  XChangeProperty(this->display, this->window[0], 
+  XChangeProperty(this->display, window,
 		  this->xa_MOTIF_WM_HINTS, this->xa_MOTIF_WM_HINTS, 32,
 		  PropModeReplace, (unsigned char *) &mwmhints,
 		  PROP_MWM_HINTS_ELEMENTS);
@@ -1440,9 +1443,11 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
 	if(!this->stay_above) {
 	  set_above(this, 1);
 	} else if(!this->no_border) {
-	  set_border(this, 0);
+	  set_border(this, this->window[0], 0);
+	  this->no_border = 1;
 	} else {
-	  set_border(this, 1);
+	  set_border(this, this->window[0], 1);
+	  this->no_border = 0;
 	  set_above(this, 0);
 	}
       }
