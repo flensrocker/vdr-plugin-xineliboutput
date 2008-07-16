@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.76 2008-07-16 06:23:36 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.77 2008-07-16 06:26:03 phintuka Exp $
  *
  */
 
@@ -903,6 +903,42 @@ static void set_icon(sxfe_t *this)
 }
 
 /*
+ * create_windows
+ *
+ * Create and initialize fullscreen and windowed mode X11 windows
+ *  - Borderless fullscreen window
+ *  - Set window title and icon
+ */
+static void create_windows(sxfe_t *this)
+{
+  /* create and display our video window */
+  this->window[0] = XCreateSimpleWindow (this->display,
+					 DefaultRootWindow(this->display),
+					 this->x.xpos, this->x.ypos,
+					 this->x.width, this->x.height,
+					 1, 0, 0);
+  this->window[1] = XCreateSimpleWindow(this->display, XDefaultRootWindow(this->display),
+					this->xinerama_x, this->xinerama_y, 
+					this->x.width, this->x.height,
+					0, 0, 0);
+
+  /* full-screen window */
+  set_fullscreen_props(this);
+
+  /* Window name */
+#ifdef FE_STANDALONE
+  XStoreName(this->display, this->window[0], "VDR - ");
+  XStoreName(this->display, this->window[1], "VDR - ");
+#else
+  XStoreName(this->display, this->window[0], "Local VDR");
+  XStoreName(this->display, this->window[1], "Local VDR");
+#endif
+
+  /* Icon */
+  set_icon(this);
+}
+
+/*
  * sxfe_display_open
  *
  * connect to X server, create windows
@@ -1006,22 +1042,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->window[0] = this->window[1] = (Window)this->window_id;
     XUnmapWindow(this->display, this->window[0]);
   } else {
-    /* create and display our video window */
-    this->window[0] = XCreateSimpleWindow (this->display,
-					   DefaultRootWindow(this->display),
-					   this->x.xpos, this->x.ypos,
-					   this->x.width, this->x.height,
-					   1, 0, 0);
-    this->window[1] = XCreateSimpleWindow(this->display, XDefaultRootWindow(this->display),
-					  this->xinerama_x, this->xinerama_y, 
-					  this->x.width, this->x.height,
-					  0, 0, 0);
-  }
-
-  if(this->window_id <= 0) {
-
-    /* full-screen window */
-    set_fullscreen_props(this);
+    create_windows(this);
   }
 
   /* Select input */
@@ -1037,21 +1058,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 		KeyPressMask | 
 		ButtonPressMask | 
 		FocusChangeMask);
-
-
-  if(this->window_id <= 0) {
-    /* Window name */
-#ifdef FE_STANDALONE
-    XStoreName(this->display, this->window[0], "VDR - ");
-    XStoreName(this->display, this->window[1], "VDR - ");
-#else
-    XStoreName(this->display, this->window[0], "Local VDR");
-    XStoreName(this->display, this->window[1], "Local VDR");
-#endif
-
-    /* Icon */
-    set_icon(this);
-  }
 
   /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
