@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.50 2008-07-20 10:48:04 phintuka Exp $
+ * $Id: config.h,v 1.51 2008-07-20 10:54:32 phintuka Exp $
  *
  */
 
@@ -153,6 +153,17 @@
 #define OSD_SCALING_BILINEAR    2
 #define OSD_SCALING_count       3
 
+// Video decoder
+#define DECODER_MPEG2_auto       0
+#define DECODER_MPEG2_LIBMPEG2   1
+#define DECODER_MPEG2_FFMPEG     2
+#define DECODER_MPEG2_count      3
+
+#define DECODER_H264_auto        0
+#define DECODER_H264_FFMPEG      1
+#define DECODER_H264_COREAVC     2
+#define DECODER_H264_count       3
+
 
 #if VDRVERSNUM >= 10510
 # define DEVICE_SUPPORTS_IBP_TRICKSPEED
@@ -200,6 +211,8 @@ class config_t {
     static const char * const s_osdBlendingMethods     [OSD_BLENDING_count  + 1];
     static const char * const s_osdMixers              [OSD_MIXER_count     + 1];
     static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
+    static const char * const s_decoders_MPEG2         [DECODER_MPEG2_count + 1];
+    static const char * const s_decoders_H264          [DECODER_H264_count  + 1];
 
     static const char * const s_subExts[];
 
@@ -353,6 +366,9 @@ class config_t {
     int live_mode_sync;   /* Sync SCR to transponder clock in live mode */
     int scr_tunning;      /* Fine-tune xine egine SCR (to sync video to graphics output) */
     int scr_hz;           /* Current SCR speed (Hz), default is 90000 */
+
+    int decoder_mpeg2;    /* DECODER_MPEG2_... */
+    int decoder_h264;     /* DECODER_H264_...  */
 
     config_t();
 
