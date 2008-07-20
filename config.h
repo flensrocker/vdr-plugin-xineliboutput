@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.49 2008-07-20 10:44:02 phintuka Exp $
+ * $Id: config.h,v 1.50 2008-07-20 10:48:04 phintuka Exp $
  *
  */
 
@@ -132,6 +132,8 @@
 #define SPEAKERS_A52_PASSTHRU  12 
 #define SPEAKERS_count         13 
 
+#define SUBTITLESIZE_count     7
+
 // OSD blending methods
 #define OSD_BLENDING_SOFTWARE   0  // xine-lib "normal" osd
 #define OSD_BLENDING_HARDWARE   1  // xine-lib "unscaled osd"
@@ -151,7 +153,6 @@
 #define OSD_SCALING_BILINEAR    2
 #define OSD_SCALING_count       3
 
-#define SUBTITLESIZE_count     7
 
 #if VDRVERSNUM >= 10510
 # define DEVICE_SUPPORTS_IBP_TRICKSPEED
@@ -175,31 +176,32 @@ typedef enum {
 
 class config_t {
   public:
-    static const char * const s_bufferSize[];
-    static const int          i_pesBufferSize[];
-    static const char * const s_aspects[];
-    static const char * const s_deinterlaceMethods[];
-    static const char * const s_deinterlaceMethodNames[];
-    static const char * const s_fieldOrder[];
-    static const char * const s_audioDriverNames[];
-    static const char * const s_audioDrivers[];
-    static const char * const s_videoDriverNamesX11[];
-    static const char * const s_videoDriversX11[];
-    static const char * const s_videoDriverNamesFB[];
-    static const char * const s_videoDriversFB[];
-    static const char * const s_frontendNames[];
-    static const char * const s_frontends[];
-    static const char * const s_frontend_files[];
-    static const char * const s_audioEqNames[];
-    static const char * const s_audioVisualizations[];
-    static const char * const s_audioVisualizationNames[];
-    static const char * const s_speakerArrangements[];
-    static const char * const s_subtitleSizes[];
+    static const char * const s_bufferSize             [PES_BUFFERS_count   + 1];
+    static const int          i_pesBufferSize          [PES_BUFFERS_count   + 1];
+    static const char * const s_aspects                [ASPECT_count        + 1];
+    static const char * const s_vo_aspects             [VO_ASPECT_count     + 1];
+    static const char * const s_deinterlaceMethods     [DEINTERLACE_count   + 1];
+    static const char * const s_deinterlaceMethodNames [DEINTERLACE_count   + 1];
+    static const char * const s_fieldOrder             [FIELD_ORDER_count   + 1];
+    static const char * const s_audioDriverNames       [AUDIO_DRIVER_count  + 1];
+    static const char * const s_audioDrivers           [AUDIO_DRIVER_count  + 1];
+    static const char * const s_videoDriverNamesX11    [X11_DRIVER_count    + 1];
+    static const char * const s_videoDriversX11        [X11_DRIVER_count    + 1];
+    static const char * const s_videoDriverNamesFB     [FB_DRIVER_count     + 1];
+    static const char * const s_videoDriversFB         [FB_DRIVER_count     + 1];
+    static const char * const s_frontendNames          [FRONTEND_count      + 1];
+    static const char * const s_frontends              [FRONTEND_count      + 1];
+    static const char * const s_frontend_files         [FRONTEND_count      + 1];
+    static const char * const s_audioEqNames           [AUDIO_EQ_count      + 1];
+    static const char * const s_audioVisualizations    [AUDIO_VIS_count     + 1];
+    static const char * const s_audioVisualizationNames[AUDIO_VIS_count     + 1];
+    static const char * const s_speakerArrangements    [SPEAKERS_count      + 1];
+    static const char * const s_subtitleSizes          [SUBTITLESIZE_count  + 1];
+    static const char * const s_osdBlendingMethods     [OSD_BLENDING_count  + 1];
+    static const char * const s_osdMixers              [OSD_MIXER_count     + 1];
+    static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
+
     static const char * const s_subExts[];
-    static const char * const s_osdBlendingMethods[];
-    static const char * const s_osdMixers[];
-    static const char * const s_osdScalings[];
-    static const char * const s_vo_aspects[];
 
   public:
 
