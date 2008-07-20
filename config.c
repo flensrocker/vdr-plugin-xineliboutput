@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.66 2008-06-11 23:08:44 phintuka Exp $
+ * $Id: config.c,v 1.67 2008-07-20 10:44:02 phintuka Exp $
  *
  */
 
@@ -556,6 +556,7 @@ config_t::config_t() {
   strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
   cache_implicit_playlists = 1;
   enable_id3_scanner = 1;
+  dvd_arrow_keys_control_playback = 1;
 
   main_menu_mode = ShowMenu;
   force_primary_device = 0;
@@ -800,10 +801,11 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
+  else if (!strcasecmp(Name, "Media.DVD.ArrowKeysControlPlayback")) dvd_arrow_keys_control_playback = atoi(Value);
 
-  else if (!strcasecmp(Name, "Advanced.LiveModeSync")) xc.live_mode_sync = atoi(Value);
-  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    xc.scr_tunning = atoi(Value);
-  else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     xc.scr_hz = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.LiveModeSync")) live_mode_sync = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tunning = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     scr_hz = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
     sscanf(Value,"%d %d %d %d %d %d %d %d %d %d",

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.59 2008-06-11 23:08:44 phintuka Exp $
+ * $Id: setup_menu.c,v 1.60 2008-07-20 10:44:02 phintuka Exp $
  *
  */
 
@@ -1646,7 +1646,9 @@ void cMenuSetupMediaPlayer::Set(void)
       new cMenuEditBoolItem(tr("Cache metainfo"),
                             &newconfig.cache_implicit_playlists));
 
-  
+  Add(new cMenuEditBoolItem(tr("Arrow keys control DVD playback"),
+                            &newconfig.dvd_arrow_keys_control_playback));
+
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
   Display();
@@ -1667,6 +1669,8 @@ void cMenuSetupMediaPlayer::Store(void)
   SetupStore("Playlist.Artist", xc.playlist_artist);
   SetupStore("Media.CacheImplicitPlaylists", xc.cache_implicit_playlists);
   SetupStore("Media.EnableID3Scanner", xc.enable_id3_scanner);
+  SetupStore("Media.DVD.ArrowKeysControlPlayback", xc.dvd_arrow_keys_control_playback);
+
   Setup.Save();
 }
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.48 2008-06-11 23:08:44 phintuka Exp $
+ * $Id: config.h,v 1.49 2008-07-20 10:44:02 phintuka Exp $
  *
  */
 
@@ -272,7 +272,8 @@ class config_t {
     int  subtitle_vpos;            // used in media player. Not saved !
     int  playlist_tracknumber;
     int  playlist_artist;
-    int  playlist_album;   
+    int  playlist_album;
+    int  dvd_arrow_keys_control_playback;
 
     // Audio visualization
     char audio_visualization[64];
