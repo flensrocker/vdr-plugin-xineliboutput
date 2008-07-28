@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.80 2008-07-28 18:44:53 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.81 2008-07-28 18:46:21 phintuka Exp $
  *
  */
 
@@ -935,12 +935,25 @@ static void set_icon(sxfe_t *this)
 {
 # include "vdrlogo_32x32.c"
 
+#if defined(__WORDSIZE) && (__WORDSIZE == 32)
   /* Icon */
   XChangeProperty(this->display, this->window[0],
 		  XInternAtom(this->display, "_NET_WM_ICON", False),
 		  XA_CARDINAL, 32, PropModeReplace,
 		  (unsigned char *) &vdrlogo_32x32,
 		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+#else
+  long      q[2+32*32];
+  uint32_t *p = (uint32_t*)&vdrlogo_32x32;
+  int       i;
+  for (i = 0; i < 2 + vdrlogo_32x32.width*vdrlogo_32x32.height; i++)
+    q[i] = p[i];
+  XChangeProperty(this->display, this->window[0],
+		  XInternAtom(this->display, "_NET_WM_ICON", False),
+		  XA_CARDINAL, 32, PropModeReplace,
+		  (unsigned char *) q,
+		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+#endif
 }
 
 /* 
