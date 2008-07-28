@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.78 2008-07-28 18:41:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.79 2008-07-28 18:43:36 phintuka Exp $
  *
  */
 
@@ -89,11 +89,11 @@
 #define MWM_HINTS_DECORATIONS       (1L << 1)
 #define PROP_MWM_HINTS_ELEMENTS     5
 typedef struct _mwmhints {
-  uint32_t                          flags;
-  uint32_t                          functions;
-  uint32_t                          decorations;
-  int32_t                           input_mode;
-  uint32_t                          status;
+  uint32_t     flags;
+  uint32_t     functions;
+  uint32_t     decorations;
+  int32_t      input_mode;
+  uint32_t     status;
 } MWMHints;
 
 #ifdef HAVE_XRENDER
@@ -428,6 +428,11 @@ static void set_above(sxfe_t *this, int stay_above)
 #endif
 }
 
+/*
+ * set_cursor
+ *
+ * Disable mouse cursor in video window (set transparent cursor)
+ */
 static void set_cursor(Display *dpy, Window win, const int enable)
 {
   if(enable)
@@ -482,12 +487,21 @@ static void update_xinerama_info(sxfe_t *this)
 #endif
 }
 
+/*
+ * update_screen_size
+ *
+ * Update screen size (= size of fullscreen window)
+ */
 static void update_screen_size(sxfe_t *this)
 {
   this->x.width = DisplayWidth(this->display, this->screen);
   this->x.height = DisplayHeight(this->display, this->screen);
   update_xinerama_info(this);
 }
+
+/*
+ * HUD OSD stuff
+ */
 
 #ifdef HAVE_XRENDER
 static Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, 
@@ -914,6 +928,9 @@ static int open_display(sxfe_t *this, const char *video_port)
   return 1;
 }
 
+/*
+ * set_icon
+ */
 static void set_icon(sxfe_t *this)
 {
 # include "vdrlogo_32x32.c"
@@ -996,7 +1013,6 @@ static void create_windows(sxfe_t *this)
  *
  * connect to X server, create windows
  */
-
 static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
 			     int modeswitch, const char *modeline, int aspect,
 			     fe_keypress_f keyfunc, const char *video_port,
@@ -1088,7 +1104,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   if(fullscreen)
     update_screen_size(this);
-  
+
+  /* Output to existing window ? (embedded to another app) */  
   if(this->window_id > 0) {
     LOGMSG("sxfe_display_open(): Using X11 window %d for output", this->window_id);
     this->window[0] = this->window[1] = (Window)this->window_id;
