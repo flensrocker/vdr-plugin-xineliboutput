@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.77 2008-07-16 06:26:03 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.78 2008-07-28 18:41:29 phintuka Exp $
  *
  */
 
@@ -306,6 +306,28 @@ static void set_fullscreen_props(sxfe_t *this)
   XUnlockDisplay(this->display);
 }
 
+static void update_window_title(sxfe_t *this)
+{
+#ifdef FE_STANDALONE
+  char *name = NULL;
+  if (XFetchName(this->display, this->window[0], &name) && name) {
+    char *newname = NULL;
+    if (strstr(name, " (top)"))
+      *strstr(name, " (top)") = 0;
+    if (this->stay_above)
+      asprintf(&newname, "%s (top)", name);
+    XStoreName(this->display, this->window[0], newname ?: name);
+    XStoreName(this->display, this->window[1], newname ?: name);
+    XFree(name);
+    free(newname);
+  } else {
+    XStoreName(this->display, this->window[0], this->stay_above ? "VDR - (top)" : "VDR");
+  }
+#else
+  XStoreName(this->display, this->window[0], this->stay_above ? "Local VDR (top)" : "Local VDR");
+#endif
+}
+
 static void set_above(sxfe_t *this, int stay_above)
 {
   XEvent ev;
@@ -315,24 +337,9 @@ static void set_above(sxfe_t *this, int stay_above)
     return;
 
   if(this->stay_above != stay_above) {
-#ifdef FE_STANDALONE
-    char *name, *newname = NULL;
-    if(XFetchName(this->display, this->window[0], &name) && name) {
-      if(strstr(name, " (top)"))
-	*strstr(name, " (top)") = 0;
-      if(stay_above)
-	asprintf(&newname, "%s (top)", name);
-      XStoreName(this->display, this->window[0], newname ?: name);
-      XStoreName(this->display, this->window[1], newname ?: name);
-      XFree(name);
-      free(newname);
-    } else {
-      XStoreName(this->display, this->window[0], stay_above ? "VDR - (top)" : "VDR");
-    }
-#else
-    XStoreName(this->display, this->window[0], stay_above ? "Local VDR (top)" : "Local VDR");
-#endif
     this->stay_above = stay_above;
+    /* Update window title */
+    update_window_title(this);
   }
 
   memset(&ev, 0, sizeof(ev));
@@ -844,6 +851,23 @@ static void hud_osd_close(sxfe_t *this)
 #endif /* HAVE_XRENDER */
 
 /*
+ * disable_DPMS
+ */
+static void disable_DPMS(sxfe_t *this)
+{
+#ifdef HAVE_XDPMS
+  int dpms_dummy;
+  if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
+    CARD16 dpms_level;
+    DPMSInfo(this->display, &dpms_level, &this->dpms_state);
+    DPMSDisable(this->display);
+  } else {
+    LOGMSG("disable_DPMS: DPMS unavailable");
+  }
+#endif
+}
+
+/*
  * open_display
  * 
  * Try to connect to X server, in order
@@ -902,6 +926,35 @@ static void set_icon(sxfe_t *this)
 		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
 }
 
+/* 
+ * detect_display_ratio
+ *
+ * Calculate display aspect ratio
+ */
+static double detect_display_ratio(Display *dpy, int screen)
+{
+  double res_h = DisplayWidth  (dpy, screen) * 1000.0 / DisplayWidthMM  (dpy, screen);
+  double res_v = DisplayHeight (dpy, screen) * 1000.0 / DisplayHeightMM (dpy, screen);
+
+  double display_ratio = res_v / res_h;
+  double diff          = display_ratio - 1.0;
+
+  if ((diff < 0.01) && (diff > -0.01))
+    display_ratio   = 1.0;
+
+  LOGDBG("Display size : %d x %d mm", 
+	 DisplayWidthMM  (dpy, screen), 
+	 DisplayHeightMM (dpy, screen));
+  LOGDBG("               %d x %d pixels", 
+	 DisplayWidth  (dpy, screen),
+	 DisplayHeight (dpy, screen));
+  LOGDBG("               %ddpi / %ddpi", 
+	 (int)(res_v/1000*25.4), (int)(res_h/1000*25.4));
+  LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, display_ratio);
+
+  return display_ratio;
+}
+
 /*
  * create_windows
  *
@@ -951,7 +1004,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 			     const char *aspect_controller, int window_id) 
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
-  double     res_h, res_v, aspect_diff;
 
   if(this->display)
     this->fe.fe_display_close(this_gen);
@@ -1063,24 +1115,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
   
   /* determine display aspect ratio */
-  res_h = (DisplayWidth  (this->display, this->screen)*1000
-	   / DisplayWidthMM (this->display, this->screen));
-  res_v = (DisplayHeight (this->display, this->screen)*1000
-	   / DisplayHeightMM (this->display, this->screen));
-  this->x.display_ratio = res_v / res_h;
-  aspect_diff = this->x.display_ratio - 1.0;
-  if ((aspect_diff < 0.01) && (aspect_diff > -0.01)) {
-    this->x.display_ratio   = 1.0;
-  }
-  LOGDBG("Display size : %d x %d mm", 
-	 DisplayWidthMM (this->display, this->screen),
-	 DisplayHeightMM (this->display, this->screen));
-  LOGDBG("               %d x %d pixels", 
-	 DisplayWidth (this->display, this->screen),
-	 DisplayHeight (this->display, this->screen));
-  LOGDBG("               %ddpi / %ddpi", 
-	 (int)(res_v/1000*25.4), (int)(res_h/1000*25.4));
-  LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, this->x.display_ratio);
+  this->x.display_ratio = detect_display_ratio(this->display, this->screen);
 
   /* we want to get notified if user closes the window */
   XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->xa_WM_DELETE_WINDOW), 1);
@@ -1095,19 +1130,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
   XSetScreenSaver(this->display, 0, 0, DefaultBlanking, DefaultExposures);
 
-#ifdef HAVE_XDPMS
   /* Disable DPMS */
-  {
-    int dpms_dummy;
-    if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
-      CARD16 dpms_level;
-      DPMSInfo(this->display, &dpms_level, &this->dpms_state);
-      DPMSDisable(this->display);
-    } else {
-      LOGMSG("sxfe_display_open: DPMS unavailable");
-    }
-  }
-#endif
+  disable_DPMS(this);
 
   /* setup xine visual type */
   this->x.xine_visual_type         = XINE_VISUAL_TYPE_X11;
