@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.6 2008-02-04 23:59:30 phintuka Exp $
+ * $Id: pes.h,v 1.7 2008-07-29 13:55:41 phintuka Exp $
  *
  */
 
@@ -45,6 +45,7 @@
 #define IS_VIDEO_PACKET(data)  (VIDEO_STREAM == ((data)[3] & ~VIDEO_STREAM_MASK))
 #define IS_AUDIO_PACKET(data) ((AUDIO_STREAM == ((data)[3] & ~AUDIO_STREAM_MASK)) || \
                                (PRIVATE_STREAM1 == (data)[3]))
+#define IS_PADDING_PACKET(data) (PADDING_STREAM == (data)[3])
 
 #define PES_HAS_PTS(data)     ((data)[7] & 0x80)
 #define PES_HAS_DTS(data)     ((data)[7] & 0x40)
