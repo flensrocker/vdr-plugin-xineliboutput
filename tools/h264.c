@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.4 2008-07-29 12:56:32 phintuka Exp $
+ * $Id: h264.c,v 1.5 2008-07-29 14:01:36 phintuka Exp $
  *
  */
 
@@ -186,7 +186,7 @@ int h264_get_video_size(const uint8_t *buf, int len, video_size_t *size)
   int i;
 
   /* H.264 detection, search for NAL AUD */
-  if (!(buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == NAL_AUD))
+  if (!IS_NAL_AUD(buf))
     return 0;
 
   /* if I-frame, search for NAL SPS */
