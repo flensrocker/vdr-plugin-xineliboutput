@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.51 2008-07-20 10:54:32 phintuka Exp $
+ * $Id: config.h,v 1.52 2008-07-29 20:57:54 phintuka Exp $
  *
  */
 
@@ -80,6 +80,30 @@
 #define X11_DRIVER_NONE          9
 #define X11_DRIVER_count         10
 
+#if 0
+class ConfEntry {
+  const enum target {vdr, xine_lib, xine_fe};
+  const enum type { integer, boolean, enumeration, string };
+  const char *key;      /* xineliboutput.xine.$xinekey */
+  const char *xine_key; /* xineliboutput.xine.$xinekey */
+  union {
+    char *strvalue;
+    int   intvalue;
+    bool  boolvalue;
+  };
+
+  //operator T() { return value; };
+  //operator *T() { return &value; };
+  void Store(void); /* store to Setup. Send to xine, etc. */
+  void Parse(const char *value);
+  bool Parse(const char *key, const char *value) {
+    if(strcasecmp(key, )) return false; Parse(); return true; }
+  //void Set(T value);
+};
+//ConfEntry<int> subtitle_offset;
+//ConfEntry<bool> subtitle_offset;
+#endif
+
 #define FB_DRIVER_AUTO           0
 #define FB_DRIVER_FB             1
 #define FB_DRIVER_DIRECTFB       2
@@ -154,16 +178,29 @@
 #define OSD_SCALING_count       3
 
 // Video decoder
-#define DECODER_MPEG2_auto       0
+#define DECODER_MPEG2_auto       0 /* use value from frontend config_xineliboutput */
 #define DECODER_MPEG2_LIBMPEG2   1
 #define DECODER_MPEG2_FFMPEG     2
 #define DECODER_MPEG2_count      3
 
-#define DECODER_H264_auto        0
+#define DECODER_H264_auto        0 /* use value from frontend config_xineliboutput */
 #define DECODER_H264_FFMPEG      1
 #define DECODER_H264_COREAVC     2
 #define DECODER_H264_count       3
 
+#define FF_H264_SKIP_LOOPFILTER_auto    0 /* use value from frontend config_xineliboutput */
+#define FF_H264_SKIP_LOOPFILTER_DEFAULT 1
+#define FF_H264_SKIP_LOOPFILTER_NONE    2
+#define FF_H264_SKIP_LOOPFILTER_NONREF  3
+#define FF_H264_SKIP_LOOPFILTER_BIDIR   4
+#define FF_H264_SKIP_LOOPFILTER_NONKEY  5
+#define FF_H264_SKIP_LOOPFILTER_ALL     6
+#define FF_H264_SKIP_LOOPFILTER_count   7
+
+#define FF_H264_SPEED_OVER_ACCURACY_auto  0  /* use value from frontend config_xineliboutput */
+#define FF_H264_SPEED_OVER_ACCURACY_no    1
+#define FF_H264_SPEED_OVER_ACCURACY_yes   2
+#define FF_H264_SPEED_OVER_ACCURACY_count 3
 
 #if VDRVERSNUM >= 10510
 # define DEVICE_SUPPORTS_IBP_TRICKSPEED
@@ -213,6 +250,8 @@ class config_t {
     static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
     static const char * const s_decoders_MPEG2         [DECODER_MPEG2_count + 1];
     static const char * const s_decoders_H264          [DECODER_H264_count  + 1];
+    static const char * const s_ff_skip_loop_filters   [FF_H264_SKIP_LOOPFILTER_count + 1];
+    static const char * const s_ff_speed_over_accuracy [FF_H264_SPEED_OVER_ACCURACY_count + 1];
 
     static const char * const s_subExts[];
 
@@ -369,6 +408,8 @@ class config_t {
 
     int decoder_mpeg2;    /* DECODER_MPEG2_... */
     int decoder_h264;     /* DECODER_H264_...  */
+    int ff_h264_speed_over_accurancy;
+    int ff_h264_skip_loop_filter; /* FF_H264_SKIP_LOOPFILTER_* */
 
     config_t();
 

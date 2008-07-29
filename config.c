@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.68 2008-07-20 10:54:32 phintuka Exp $
+ * $Id: config.c,v 1.69 2008-07-29 20:57:54 phintuka Exp $
  *
  */
 
@@ -246,6 +246,23 @@ const char * const config_t::s_decoders_H264[] = {
   "FFmpeg",
   "CoreAVC",
   NULL
+};
+
+const char * const config_t::s_ff_skip_loop_filters[] = {
+  trNOOP("automatic"),
+  trNOOP("default"),
+  trNOOP("none"),
+  trNOOP("nonref"),
+  trNOOP("bidir"),
+  trNOOP("nonkey"),
+  trNOOP("all"),
+  NULL
+};
+
+const char * const config_t::s_ff_speed_over_accuracy[] = {
+  trNOOP("automatic"),
+  trNOOP("yes"),
+  trNOOP("no"),
 };
 
 static const char exts_playlist[][4] = {
@@ -567,6 +584,8 @@ config_t::config_t() {
 
   decoder_mpeg2  = DECODER_MPEG2_auto;
   decoder_h264   = DECODER_H264_auto;
+  ff_h264_speed_over_accurancy = FF_H264_SPEED_OVER_ACCURACY_auto;
+  ff_h264_skip_loop_filter     = FF_H264_SKIP_LOOPFILTER_auto;
 
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
@@ -773,6 +792,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.DeinterlaceOptions")) STRN0CPY(deinterlace_opts, Value);
   else if (!strcasecmp(Name, "Video.Deinterlace")) STRN0CPY(deinterlace_method, Value);
   else if (!strcasecmp(Name, "Video.FieldOrder"))  field_order=atoi(Value)?1:0;
+
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.SoftStart"))    autocrop_soft = atoi(Value);
@@ -794,12 +814,16 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.IBPTrickSpeed"))  ibp_trickspeed = atoi(Value);
   else if (!strcasecmp(Name, "Video.MaxTrickSpeed"))  max_trickspeed = atoi(Value);
   else if (!strcasecmp(Name, "Video.AspectRatio"))    vo_aspect_ratio = atoi(Value);
+
   else if (!strcasecmp(Name, "Video.Decoder.MPEG2"))  decoder_mpeg2 = strstra(Value, s_decoders_MPEG2, 0);
   else if (!strcasecmp(Name, "Video.Decoder.H264"))   decoder_h264  = strstra(Value, s_decoders_H264,  0);
+  else if (!strcasecmp(Name, "Video.Decoder.H264.SpeedOverAccuracy")) ff_h264_speed_over_accurancy = strstra(Value, s_ff_speed_over_accuracy,  0);
+  else if (!strcasecmp(Name, "Video.Decoder.H264.SkipLoopFilter"))    ff_h264_skip_loop_filter = strstra(Value, s_ff_skip_loop_filters,  0);
 
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Mode"))      STRN0CPY(ffmpeg_pp_mode, Value);
+
   else if (!strcasecmp(Name, "Post.unsharp.Enable"))               unsharp                      = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.luma_matrix_width"))    unsharp_luma_matrix_width    = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.luma_matrix_height"))   unsharp_luma_matrix_height   = atoi(Value);
@@ -807,6 +831,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.unsharp.chroma_matrix_width"))  unsharp_chroma_matrix_width  = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.chroma_matrix_height")) unsharp_chroma_matrix_height = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.chroma_amount"))        unsharp_chroma_amount        = atoi(Value);
+
   else if (!strcasecmp(Name, "Post.denoise3d.Enable"))  denoise3d        = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.luma"))    denoise3d_luma   = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.chroma"))  denoise3d_chroma = atoi(Value);
@@ -817,10 +842,11 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
   else if (!strcasecmp(Name, "Media.CacheImplicitPlaylists")) cache_implicit_playlists = atoi(Value);
   else if (!strcasecmp(Name, "Media.EnableID3Scanner"))  enable_id3_scanner = atoi(Value);
+  else if (!strcasecmp(Name, "Media.DVD.ArrowKeysControlPlayback")) dvd_arrow_keys_control_playback = atoi(Value);
+
   else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
-  else if (!strcasecmp(Name, "Media.DVD.ArrowKeysControlPlayback")) dvd_arrow_keys_control_playback = atoi(Value);
 
   else if (!strcasecmp(Name, "Advanced.LiveModeSync")) live_mode_sync = atoi(Value);
   else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tunning = atoi(Value);
