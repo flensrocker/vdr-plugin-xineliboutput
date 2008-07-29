@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.5 2008-07-29 14:01:36 phintuka Exp $
+ * $Id: pes.c,v 1.6 2008-07-29 14:03:26 phintuka Exp $
  *
  */
 
@@ -124,12 +124,12 @@ uint8_t pes_get_picture_type(const uint8_t *buf, int len)
   buf += i;
   len -= i;
 
-  if (!buf[0] && !buf[1] && buf[2]) {
+  if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x01) {
     if (buf[3] == NAL_AUD)
       return h264_get_picture_type(buf, len);
-    else
-      return mpeg2_get_picture_type(buf, len);
+    return mpeg2_get_picture_type(buf, len);
   }
+
   return NO_PICTURE;
 }
 
