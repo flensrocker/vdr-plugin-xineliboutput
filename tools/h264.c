@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.3 2008-06-11 15:50:28 phintuka Exp $
+ * $Id: h264.c,v 1.4 2008-07-29 12:56:32 phintuka Exp $
  *
  */
 
@@ -168,7 +168,7 @@ int h264_get_picture_type(const uint8_t *buf, int len)
 {
   int i;
   for (i = 0; i < len-5; i++) {
-    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1 && buf[i + 3] == 9) {
+    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1 && buf[i + 3] == NAL_AUD) {
       uint8_t type = (buf[i + 4] >> 5);
       switch (type) {
         case 0: case 3: case 5: return I_FRAME;
