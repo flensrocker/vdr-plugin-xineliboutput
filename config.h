@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.52 2008-07-29 20:57:54 phintuka Exp $
+ * $Id: config.h,v 1.53 2008-07-29 21:04:35 phintuka Exp $
  *
  */
 
@@ -79,30 +79,6 @@
 #define X11_DRIVER_SDL           8
 #define X11_DRIVER_NONE          9
 #define X11_DRIVER_count         10
-
-#if 0
-class ConfEntry {
-  const enum target {vdr, xine_lib, xine_fe};
-  const enum type { integer, boolean, enumeration, string };
-  const char *key;      /* xineliboutput.xine.$xinekey */
-  const char *xine_key; /* xineliboutput.xine.$xinekey */
-  union {
-    char *strvalue;
-    int   intvalue;
-    bool  boolvalue;
-  };
-
-  //operator T() { return value; };
-  //operator *T() { return &value; };
-  void Store(void); /* store to Setup. Send to xine, etc. */
-  void Parse(const char *value);
-  bool Parse(const char *key, const char *value) {
-    if(strcasecmp(key, )) return false; Parse(); return true; }
-  //void Set(T value);
-};
-//ConfEntry<int> subtitle_offset;
-//ConfEntry<bool> subtitle_offset;
-#endif
 
 #define FB_DRIVER_AUTO           0
 #define FB_DRIVER_FB             1
