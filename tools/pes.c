@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.6 2008-07-29 14:03:26 phintuka Exp $
+ * $Id: pes.c,v 1.7 2008-07-29 14:09:05 phintuka Exp $
  *
  */
 
@@ -94,8 +94,8 @@ int pes_strip_pts_dts(uint8_t *buf, int size)
     pes_len -= n;     /* update packet len */
     buf[4]   = pes_len >> 8;   /* packet len (hi) */
     buf[5]   = pes_len & 0xff; /* packet len (lo) */
-    buf[7]  &= 0x7f;  /* clear pts flag */
-    buf[8]  -= 5;     /* update header len */
+    buf[7]  &= 0x3f;  /* clear pts and dts flags */
+    buf[8]  -= n;     /* update header len */
     memmove(buf+4+n, buf+9+n, size-9-n);
     return size - n;
   }
