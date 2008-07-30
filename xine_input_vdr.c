@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.166 2008-07-30 14:59:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.167 2008-07-30 20:31:26 phintuka Exp $
  *
  */
 
@@ -1183,84 +1183,6 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
   return total_bytes;
 }
 
-static void queue_nosignal(vdr_input_plugin_t *this)
-{
-#define extern static
-#include "nosignal_720x576.c"
-#undef extern
-  char          *data = NULL, *tmp = NULL;
-  int            datalen = 0, pos = 0;
-  buf_element_t *buf = NULL;
-  char *path, *home;
-
-  if(this->stream->video_fifo->num_free(this->stream->video_fifo) < 10) {
-    LOGMSG("queue_nosignal: not enough free buffers (%d) !", 
-	   this->stream->video_fifo->num_free(this->stream->video_fifo));
-    return;
-  }
-
-  asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
-  int fd = open(path=home, O_RDONLY);
-  if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
-  if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
-  if(fd<0) fd = open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
-  if(fd<0) fd = open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
-  if(fd<0) fd = open(path=NOSIGNAL_IMAGE_FILE, O_RDONLY);
-  if(fd>=0) {
-    tmp = data = malloc(NOSIGNAL_MAX_SIZE);
-    datalen = read(fd, data, NOSIGNAL_MAX_SIZE);
-    if(datalen==NOSIGNAL_MAX_SIZE) {
-	LOGMSG("WARNING: custom \"no signal\" image %s too large", path);
-    } else if(datalen<=0) {
-      LOGERR("error reading %s", path);
-    } else {
-      LOGMSG("using custom \"no signal\" image %s", path);
-    }
-    close(fd);
-  }
-  free(home);
-
-  if(datalen<=0) {
-    data    = (char*)&v_mpg_nosignal[0];
-    datalen = v_mpg_nosignal_length;
-  }
-
-  /* need to reset decoder if video format is not the same */
-  _x_demux_control_start(this->stream);
-
-  while(pos < datalen) {
-    buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
-    if(buf) {
-      buf->content = buf->mem;
-      buf->size = MIN(datalen - pos, buf->max_size);
-      buf->type = BUF_VIDEO_MPEG;
-      xine_fast_memcpy(buf->content, &data[pos], buf->size);
-      pos += buf->size;
-      if(pos >= datalen)
-        buf->decoder_flags |= BUF_FLAG_FRAME_END;
-      this->stream->video_fifo->put(this->stream->video_fifo, buf);
-    } else {
-      LOGMSG("Error: queue_nosignal: no buffers !");
-      break;
-    }
-  }
-
-  /* sequence end */
-  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
-  if (buf) {
-    static const uint8_t seq_end[] = {0x00, 0x00, 0x01, 0xb7}; /* mpeg2 */
-    buf->type = BUF_VIDEO_MPEG;
-    buf->size = sizeof(seq_end);
-    buf->decoder_flags = BUF_FLAG_FRAME_END;
-    memcpy(buf->content, seq_end, sizeof(seq_end));
-    this->stream->video_fifo->put(this->stream->video_fifo, buf);
-
-    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);*/
-    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);*/
-  }
-
-  free(tmp);
-}
 
 /************************** BUFFER HANDLING ******************************/
 
@@ -1342,41 +1264,6 @@ static buf_element_t *fifo_buffer_try_get(fifo_buffer_t *fifo)
 
   return buf;
 }
-
-#if 0
-static int fifo_buffer_clear(fifo_buffer_t *fifo)
-{
-  int bytes = 0;
-  buf_element_t *buf, *next, *prev=NULL;
-  pthread_mutex_lock (&fifo->mutex);
-  buf = fifo->first;
-  while (buf != NULL) {
-    next = buf->next;
-    if ((buf->type & BUF_MAJOR_MASK) !=  BUF_CONTROL_BASE) {
-      /* remove this buffer */
-      if (prev)
-	prev->next = next;
-      else
-	fifo->first = next;
-
-      if (!next)
-	fifo->last = prev;
-
-      fifo->fifo_size--;
-      bytes += buf->size;
-      fifo->fifo_data_size -= buf->size;
-      
-      buf->free_buffer(buf);
-    } else {
-      prev = buf;
-    }
-    buf = next;
-  }
-  pthread_mutex_unlock (&fifo->mutex);
-
-  return bytes;
-}
-#endif
 
 static void signal_buffer_pool_not_empty(vdr_input_plugin_t *this)
 {
@@ -1617,6 +1504,84 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
 }
 
+static void queue_nosignal(vdr_input_plugin_t *this)
+{
+#define extern static
+#include "nosignal_720x576.c"
+#undef extern
+  char          *data = NULL, *tmp = NULL;
+  int            datalen = 0, pos = 0;
+  buf_element_t *buf = NULL;
+  char *path, *home;
+
+  if(this->stream->video_fifo->num_free(this->stream->video_fifo) < 10) {
+    LOGMSG("queue_nosignal: not enough free buffers (%d) !", 
+	   this->stream->video_fifo->num_free(this->stream->video_fifo));
+    return;
+  }
+
+  asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
+  int fd = open(path=home, O_RDONLY);
+  if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path="/video/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path="/video/plugins/xine/noSignal.mpg", O_RDONLY);
+  if(fd<0) fd = open(path=NOSIGNAL_IMAGE_FILE, O_RDONLY);
+  if(fd>=0) {
+    tmp = data = malloc(NOSIGNAL_MAX_SIZE);
+    datalen = read(fd, data, NOSIGNAL_MAX_SIZE);
+    if(datalen==NOSIGNAL_MAX_SIZE) {
+	LOGMSG("WARNING: custom \"no signal\" image %s too large", path);
+    } else if(datalen<=0) {
+      LOGERR("error reading %s", path);
+    } else {
+      LOGMSG("using custom \"no signal\" image %s", path);
+    }
+    close(fd);
+  }
+  free(home);
+
+  if(datalen<=0) {
+    data    = (char*)&v_mpg_nosignal[0];
+    datalen = v_mpg_nosignal_length;
+  }
+
+  /* need to reset decoder if video format is not the same */
+  _x_demux_control_start(this->stream);
+
+  while(pos < datalen) {
+    buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+    if(buf) {
+      buf->content = buf->mem;
+      buf->size = MIN(datalen - pos, buf->max_size);
+      buf->type = BUF_VIDEO_MPEG;
+      xine_fast_memcpy(buf->content, &data[pos], buf->size);
+      pos += buf->size;
+      if(pos >= datalen)
+        buf->decoder_flags |= BUF_FLAG_FRAME_END;
+      this->stream->video_fifo->put(this->stream->video_fifo, buf);
+    } else {
+      LOGMSG("Error: queue_nosignal: no buffers !");
+      break;
+    }
+  }
+
+  /* sequence end */
+  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+  if (buf) {
+    static const uint8_t seq_end[] = {0x00, 0x00, 0x01, 0xb7}; /* mpeg2 */
+    buf->type = BUF_VIDEO_MPEG;
+    buf->size = sizeof(seq_end);
+    buf->decoder_flags = BUF_FLAG_FRAME_END;
+    memcpy(buf->content, seq_end, sizeof(seq_end));
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);*/
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);*/
+  }
+
+  free(tmp);
+}
 
 /*************************** slave input (PIP stream) ********************/
 
@@ -2347,68 +2312,6 @@ static void resume_demuxer(vdr_input_plugin_t *this)
   DEMUX_RESUME_SIGNAL;
   pthread_mutex_unlock( &this->stream->demux_lock );
 }
-
-#if 0
-static void vdr_x_demux_flush_engine (xine_stream_t *stream, vdr_input_plugin_t *this) 
-{
-  buf_element_t *buf;
-
-  if(this->curpos > this->discard_index) {
-#if 0
-    LOGMSG("Possibly flushing too much !!! (diff=%"PRIu64" bytes, "
-	   "guard @%" PRIu64 ")", 
-	   this->curpos - this->discard_index, this->guard_index);
-#endif
-    if(this->curpos < this->guard_index) {
-      LOGMSG("Guard > current position, decoder flush skipped");
-      return;
-    }
-  }
-
-  stream->xine->port_ticket->acquire(stream->xine->port_ticket, 1);
-
-  if (stream->video_out)
-    stream->video_out->set_property(stream->video_out, VO_PROP_DISCARD_FRAMES, 1);
-  if (stream->audio_out)
-    stream->audio_out->set_property(stream->audio_out, AO_PROP_DISCARD_BUFFERS, 1);
-
-  fifo_buffer_clear(stream->video_fifo);
-  fifo_buffer_clear(stream->audio_fifo);
-
-  DEMUX_MUTEX_LOCK;
-
-  buf = stream->video_fifo->buffer_pool_alloc (stream->video_fifo);
-  buf->type = BUF_CONTROL_RESET_DECODER;
-  stream->video_fifo->put (stream->video_fifo, buf);
-
-  buf = stream->audio_fifo->buffer_pool_alloc (stream->audio_fifo);
-  buf->type = BUF_CONTROL_RESET_DECODER;
-  stream->audio_fifo->put (stream->audio_fifo, buf);
-
-  DEMUX_MUTEX_UNLOCK;
-
-  this->prev_audio_stream_id = 0;
-
-  /* on seeking we must wait decoder fifos to process before doing flush.
-   * otherwise we flush too early (before the old data has left decoders)
-   */
-  _x_demux_control_headers_done (stream);
-
-  if (stream->video_out) {
-    stream->video_out->flush(stream->video_out);
-    stream->video_out->set_property(stream->video_out, 
-				    VO_PROP_DISCARD_FRAMES, 0);
-  }
-
-  if (stream->audio_out) {
-    stream->audio_out->flush(stream->audio_out);
-    stream->audio_out->set_property(stream->audio_out, 
-				    AO_PROP_DISCARD_BUFFERS, 0);
-  }
-
-  stream->xine->port_ticket->release(stream->xine->port_ticket, 1);
-}
-#endif
 
 static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts, 
 					uint32_t flags ) 
@@ -3233,22 +3136,7 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
   TRACE("vdr_plugin_poll (%d ms), buffer_pool: blocks=%d, bytes=%d", 
 	timeout_ms, this->buffer_pool->size(this->buffer_pool), 
 	this->buffer_pool->data_size(this->buffer_pool));
-#if 0
-  if(this->is_paused) {
-    VDR_ENTRY_UNLOCK();
 
-    create_timeout_time(&abstime, timeout_ms);
-    pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
-    while(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
-				  &this->buffer_pool->buffer_pool_mutex, 
-				  &abstime) != ETIMEDOUT)
-      ;
-    pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
-    timeout_ms = 0;
-
-    VDR_ENTRY_LOCK(0);
-  }
-#endif
   pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
   result = this->buffer_pool->buffer_pool_num_free - 
            (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
@@ -5011,11 +4899,6 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
     LOGMSG("H.264 scanner: Unregonized header 00 00 01 %02x", data[i + 3]);
   }
 
-#if 0
-  if (this->h264 < 0)
-    LOGDBG("H.264 scanner: unregonized video packet");
-#endif
-
   return this->h264;
 }
 #endif /* TEST_H264 */
@@ -6031,12 +5914,6 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
   multicastAddress.sin_family = AF_INET;
   multicastAddress.sin_port   = htons(port);
   multicastAddress.sin_addr.s_addr = htonl((ip0<<24)|(ip1<<16)|(ip2<<8)|ip3);
-#if 0
-  LOGDBG("got address: %s int=0x%x net=0x%x translated=0x%x port=%d",
-	 cmd+4, (ip0<<24)|(ip1<<16)|(ip2<<8)|ip3, 
-	 htonl((ip0<<24)|(ip1<<16)|(ip2<<8)|ip3),
-	 inet_addr("224.0.1.9"), port);
-#endif
 
   if((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     LOGERR("socket() failed");
@@ -6277,7 +6154,6 @@ static int connect_pipe_data_stream(vdr_input_plugin_t *this)
       LOGMSG("connect_pipe_data_stream: client ip=0x%x != server ip=0x%x !",
 	     (unsigned int)sinc.sin_addr.s_addr, (unsigned int)sins.sin_addr.s_addr);
 #if 0
-      LOGMSG(" different host, pipe won't work");      
       return -1;
 #endif
     }
