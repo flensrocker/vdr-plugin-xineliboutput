@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.165 2008-07-15 08:18:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.166 2008-07-30 14:59:36 phintuka Exp $
  *
  */
 
@@ -1236,11 +1236,27 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       buf->type = BUF_VIDEO_MPEG;
       xine_fast_memcpy(buf->content, &data[pos], buf->size);
       pos += buf->size;
+      if(pos >= datalen)
+        buf->decoder_flags |= BUF_FLAG_FRAME_END;
       this->stream->video_fifo->put(this->stream->video_fifo, buf);
     } else {
       LOGMSG("Error: queue_nosignal: no buffers !");
       break;
     }
+  }
+
+  /* sequence end */
+  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+  if (buf) {
+    static const uint8_t seq_end[] = {0x00, 0x00, 0x01, 0xb7}; /* mpeg2 */
+    buf->type = BUF_VIDEO_MPEG;
+    buf->size = sizeof(seq_end);
+    buf->decoder_flags = BUF_FLAG_FRAME_END;
+    memcpy(buf->content, seq_end, sizeof(seq_end));
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);*/
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);*/
   }
 
   free(tmp);
@@ -4980,7 +4996,7 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 
   /* H.264 detection */
   if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1) {
-    if (data[i + 3] == 0x09) {
+    if (data[i + 3] == NAL_AUD) {
       LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
       return 1;
     }
@@ -5218,7 +5234,7 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   }
 
   /* ignore UDP/RTP "idle" padding */
-  if(buf->content[3] == PADDING_STREAM) {
+  if (IS_PADDING_PACKET(buf->content)) {
     pthread_mutex_unlock(&this->lock);
     return buf;
   }
@@ -5498,7 +5514,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
       return buf;
     /* ignore UDP/RTP "idle" padding */
-    if(buf->content[3] == PADDING_STREAM)
+    if(IS_PADDING_PACKET(buf->content))
       return buf;
 
     buf = demux_buf(this, buf);
