@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.59 2008-04-14 19:58:54 phintuka Exp $
+ * $Id: frontend.c,v 1.60 2008-07-30 14:43:16 phintuka Exp $
  *
  */
 
@@ -35,6 +35,7 @@
 #include "device.h"
 
 #include "tools/pes.h"
+#include "tools/h264.h"
 #include "tools/general_remote.h"
 #include "tools/iso639.h"
 
@@ -541,7 +542,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
   uchar *frame = new uchar[PES_CHUNK_SIZE+32];
   cPoller p;
-
+  bool h264 = IS_NAL_AUD(data);
 
   hdr_pts[3] = (uchar)streamID;
   Poll(p, 100);
@@ -572,6 +573,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   // append sequence end code to video 
   if((streamID & 0xF0) == 0xE0) { 
     seq_end[3] = (uchar)streamID;
+    seq_end[12] = h264 ? NAL_END_SEQ : 0xB7;
     Poll(p, 100);
     Play_PES(seq_end, sizeof(seq_end));
   }
