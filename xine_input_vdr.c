@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.167 2008-07-30 20:31:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.168 2008-07-31 08:12:23 phintuka Exp $
  *
  */
 
@@ -1445,6 +1445,26 @@ void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
   }
 }
 
+/* 
+ * post_sequence_end()
+ *
+ * Add MPEG2 or H.264 sequence end code to fifo buffer
+ */
+static void post_sequence_end(fifo_buffer_t *fifo, uint32_t video_type)
+{
+  buf_element_t *buf = fifo->buffer_pool_try_alloc(fifo);
+  if (buf) {
+    buf->type = video_type;
+    buf->size = 4;
+    buf->decoder_flags = BUF_FLAG_FRAME_END;
+    buf->content[0] = 0x00;
+    buf->content[1] = 0x00;
+    buf->content[2] = 0x01;
+    buf->content[3] = (video_type == BUF_VIDEO_H264) ? NAL_END_SEQ : 0xB7;
+    fifo->put(fifo, buf);
+  }
+}
+
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
   int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
@@ -1567,21 +1587,14 @@ static void queue_nosignal(vdr_input_plugin_t *this)
   }
 
   /* sequence end */
-  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
-  if (buf) {
-    static const uint8_t seq_end[] = {0x00, 0x00, 0x01, 0xb7}; /* mpeg2 */
-    buf->type = BUF_VIDEO_MPEG;
-    buf->size = sizeof(seq_end);
-    buf->decoder_flags = BUF_FLAG_FRAME_END;
-    memcpy(buf->content, seq_end, sizeof(seq_end));
-    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+  post_sequence_end(this->stream->video_fifo, BUF_VIDEO_MPEG);
 
-    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);*/
-    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);*/
-  }
+  put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);
+  put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);
 
   free(tmp);
 }
+
 
 /*************************** slave input (PIP stream) ********************/
 
@@ -3220,10 +3233,12 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 						 VO_PROP_BUFS_IN_FIFO);
   this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
 
-  if(result>0) {
-    put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
-    put_control_buf(buffer, pool, BUF_CONTROL_NOP);
-  }
+  post_sequence_end(buffer, this->h264>0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG);
+  put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
+  put_control_buf(buffer, pool, BUF_CONTROL_NOP);
+
+  if (result <= 0) 
+    return 0;
 
   create_timeout_time(&abstime, timeout_ms);
 
