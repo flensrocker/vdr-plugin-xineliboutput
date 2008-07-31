@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.168 2008-07-31 08:12:23 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.169 2008-07-31 14:07:52 phintuka Exp $
  *
  */
 
@@ -3134,6 +3134,12 @@ static const struct {
   {XINE_EVENT_INPUT_PREVIOUS,"XINE_EVENT_INPUT_PREVIOUS"},
 };
 
+/*
+ * vdr_plugin_poll()
+ *
+ * Query buffer state
+ * Returns amount of free PES buffer blocks in queue.
+ */
 static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 {
   struct timespec abstime;
@@ -3200,7 +3206,10 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 }
 
 /*
- * Flush returns 0 if there is no data or frames in stream buffers 
+ * vdr_plugin_flush()
+ *
+ * Flush all data from buffers to output devices.
+ * Returns 0 when there is no data or frames in stream buffers.
  */
 static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 {
@@ -3271,6 +3280,12 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
   return result;
 }
 
+/*
+ * vdr_plugin_flush_remote()
+ *
+ * vdr_plugin_flush() Wrapper for remote mode
+ *  - wait for data in network buffers
+ */
 static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms, 
 				   uint64_t offset, int frame)
 {
@@ -4875,6 +4890,12 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
   this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
 }
 
+/*
+ * update_frames()
+ *
+ * Update frame type counters.
+ * Collected information is used to start replay when enough data has been buffered
+ */
 static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int len)
 {
   uint8_t type = pes_get_picture_type(data, len);
@@ -4891,6 +4912,11 @@ static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int 
   return type;
 }
 
+/*
+ * detect_h264()
+ *
+ * Detect video codec (MPEG2 or H.264)
+ */
 #ifdef TEST_H264
 static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 {
@@ -4919,6 +4945,12 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 #endif /* TEST_H264 */
 
 #ifdef TEST_H264
+/*
+ * post_frame_h264()
+ *
+ * H.264 video stream demuxing
+ *  - mpeg_block demuxer does not regonize H.264 video
+ */
 buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 {
   int64_t pts = pes_get_pts (buf->content, buf->size);
@@ -5000,6 +5032,12 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif /* TEST_H264 */
 
 #ifdef TEST_DVB_SPU
+/*
+ * post_spu()
+ *
+ * Subtitle stream demuxing
+ *  - mpeg_block demuxer does not regonize DVB subtitles
+ */
 static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
 {
   uint8_t *p = buf->content;
