@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.169 2008-07-31 14:07:52 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.170 2008-08-02 18:53:08 phintuka Exp $
  *
  */
 
@@ -64,6 +64,8 @@
        engine.decoder_priorities.ffmpegvideo:1
 */
 #define FFMPEG_DEC
+/* Support for dshowserver/CoreAVC H.264 decoder */
+#define COREAVC_DEC
 
 /*#define LOG_UDP*/
 /*#define LOG_OSD*/
@@ -258,8 +260,9 @@ typedef struct vdr_input_plugin_s {
   /* Playback */
   uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
   int8_t              h264;                 /* -1: unknown, 0: no, 1: yes */
-  int8_t              ffmpeg_video_decoder; /* -1: unknown, 0: no, 1: yes */
   uint8_t             padding_cnt;          /* number of padding frames passed to demux */ 
+  uint8_t             ffmpeg_mpeg2_decoder : 1;
+  uint8_t             coreavc_h264_decoder : 1;
   uint8_t             no_video : 1;
   uint8_t             live_mode : 1;
   uint8_t             still_mode : 1;
@@ -1183,6 +1186,37 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
   return total_bytes;
 }
 
+const char * const get_decoder_name(xine_t *xine, int video_type)
+{
+  int streamtype = (video_type >> 16) & 0xFF;
+  plugin_node_t *node = xine->plugin_catalog->video_decoder_map[streamtype][0];
+  if (node) {
+    plugin_info_t *info = node->info;
+    if (info) {
+#if 0
+      decoder_info_t *decinfo = (decoder_info_t*) info->special_info;
+      if (decinfo)
+	LOGMSG("get_decoder_name(): Video type %02x0000 is handled by %s (priority %d)", 
+	       streamtype, info->id, decinfo->priority);
+#endif
+      return info->id;
+    }
+  }
+  return "";
+}
+
+static void detect_video_decoders(vdr_input_plugin_t *this)
+{
+  if (!strcmp(get_decoder_name(this->class->xine, BUF_VIDEO_MPEG), "ffmpegvideo"))
+    this->ffmpeg_mpeg2_decoder = 1;
+  LOGMSG("Using decoder \"%s\" for mpeg2 video",
+	 this->ffmpeg_mpeg2_decoder ? "FFmpeg" : "libmpeg2");
+
+  if (!strcmp(get_decoder_name(this->class->xine, BUF_VIDEO_H264), "dshowserver"))
+    this->coreavc_h264_decoder = 1;
+  LOGMSG("Using decoder \"%s\" for H.264 video",
+	 this->coreavc_h264_decoder ? "dshowserver (CoreAVC)" : "FFmpeg");
+}
 
 /************************** BUFFER HANDLING ******************************/
 
@@ -5313,10 +5347,10 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
 #else /* FFMPEG_DEC */
 
   /* Count video frames for SCR tunning algorithm */
-  if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
+  if(this->ffmpeg_mpeg2_decoder || (this->live_mode && this->I_frames < 4))
     if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
       uint8_t type = update_frames(this, buf->content, buf->size);
-      if(type && this->ffmpeg_video_decoder) {
+      if(type && this->ffmpeg_mpeg2_decoder) {
 	/* signal FRAME_END to decoder */
 	post_frame_end(this, buf);
 	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
@@ -6434,7 +6468,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
 
   this->stream_start = 1;
   this->max_buffers  = 10;
-  this->ffmpeg_video_decoder = -1;
   this->last_delivered_vid_pts = INT64_C(-1);
   this->autoplay_size = -1;
 
@@ -6498,23 +6531,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   pthread_mutex_init (&this->fd_control_lock, NULL);
   pthread_cond_init  (&this->engine_flushed, NULL);
 
-#ifdef FFMPEG_DEC
-  if(this->ffmpeg_video_decoder < 0) {
-    xine_cfg_entry_t ffmpegprio, mpeg2prio;
-    this->ffmpeg_video_decoder = 0;
-    if (xine_config_lookup_entry(this->class->xine, "engine.decoder_priorities.ffmpegvideo", &ffmpegprio) &&
-	ffmpegprio.num_value > 0) {
-      LOGMSG("ffmpeg video decoder priority: %d", ffmpegprio.num_value);
-      this->ffmpeg_video_decoder = 1;
-      if (xine_config_lookup_entry(this->class->xine, "engine.decoder_priorities.mpeg2", &mpeg2prio)) {
-	LOGMSG("libmpeg2 video decoder priority: %d", mpeg2prio.num_value);
-	if (mpeg2prio.num_value >= ffmpegprio.num_value)
-	  this->ffmpeg_video_decoder = 0;
-      }
-      LOGMSG(" --> using %s mpeg2 video decoder", this->ffmpeg_video_decoder?"ffmpeg":"libmpeg2");
-    }
-  }
-#endif
+  detect_video_decoders(this);
 
   LOGDBG("vdr_class_get_instance done.");
   return &this->input_plugin;
