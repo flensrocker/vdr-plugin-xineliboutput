@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.171 2008-08-03 19:58:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.172 2008-08-03 20:48:26 phintuka Exp $
  *
  */
 
@@ -4992,26 +4992,21 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 {
   int64_t pts = pes_get_pts (buf->content, buf->size);
   uint8_t *data = buf->content;
-  int i = 8;
+  int i = 9 + data[8];
+
+  /* skip PES header */
+  data += i;
 
   /* Detect video frame boundaries */
 
-  i += data[i] + 1;   /* possible additional header bytes */
+  /* Access Unit Delimiter */
+  if (IS_NAL_AUD(data)) {
 
-  if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 ) {
+    if (this->I_frames < 4)
+      update_frames (this, buf->content, buf->size);
 
-    /* Access Unit Delimiter */
-    if (data[i + 3] == 0x09)
       post_frame_end (this, buf);
-
-    if (data[i + 3] >= 0x80) {
-      LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", data[i + 3]);
-      /* Should do something ... ? */
     }
-
-    if(this->live_mode && this->I_frames < 4)
-      update_frames(this, buf->content, buf->size);
-  }
 
   /* Handle PTS and DTS */
 
@@ -5056,11 +5051,26 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
     this->last_delivered_vid_pts = pts;
   }
 
+  if (PES_HAS_DTS(buf->content)) {
+    int64_t dts = pes_get_dts (buf->content, buf->size);
+    buf->decoder_info[0] = pts - dts;
+  }
+
   /* bypass demuxer ... */
 
   buf->type = BUF_VIDEO_H264;
   buf->content += i;
   buf->size -= i;
+
+  /* Check for end of still image.
+     VDR ensures that H.264 still images end with an end of sequence NAL unit */
+  if (buf->size > 4) {
+    uint8_t *end = buf->content + buf->size;
+    if (IS_NAL_END_SEQ(end-4)) {
+      LOGMSG("post_frame_h264: Still frame ? (frame ends with end of sequence NAL unit)");
+      buf->decoder_flags |= BUF_FLAG_FRAME_END;
+    }
+  }
 
   this->stream->video_fifo->put (this->stream->video_fifo, buf);
 
