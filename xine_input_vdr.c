@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.173 2008-08-03 20:52:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.174 2008-08-03 20:56:11 phintuka Exp $
  *
  */
 
@@ -4906,15 +4906,41 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
   if(!this->bih_posted) {
     video_size_t size = {0};
     if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->h264 > 0)) {
+
+      /* reset decoder buffer */
+      cbuf->decoder_flags |= BUF_FLAG_FRAME_START;
+
+      /* Fill xine_bmiheader for CoreAVC / H.264 */
+
+      if (this->h264 > 0 && this->coreavc_h264_decoder) {
       xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
       memset(bmi, 0, sizeof(xine_bmiheader));
 
       cbuf->decoder_flags |= BUF_FLAG_HEADER;
+	cbuf->decoder_flags |= BUF_FLAG_STDHEADER;   /* CoreAVC: buffer contains bmiheader */
+	cbuf->size           = sizeof(xine_bmiheader);
+
       bmi->biSize = sizeof(xine_bmiheader);
       bmi->biWidth = size.width;
       bmi->biHeight = size.height;
 
-      if (!this->h264 && size.pixel_aspect.num) {
+	bmi->biPlanes        = 1;
+	bmi->biBitCount      = 24;
+	bmi->biCompression   = 0x34363248;
+	bmi->biSizeImage     = 0;
+	bmi->biXPelsPerMeter = size.pixel_aspect.num;
+	bmi->biYPelsPerMeter = size.pixel_aspect.den;
+	bmi->biClrUsed       = 0;
+	bmi->biClrImportant  = 0;
+      }
+
+      /* Set aspect ratio for ffmpeg mpeg2 / CoreAVC H.264 decoder
+       * (not for FFmpeg H.264 or libmpeg2 mpeg2 decoders)
+       */
+
+      if (size.pixel_aspect.num &&
+	  (!this->h264 || this->coreavc_h264_decoder)) {
+	cbuf->decoder_flags |= BUF_FLAG_HEADER;
 	cbuf->decoder_flags |= BUF_FLAG_ASPECT;
 	/* pixel ratio -> frame ratio */
 	if(size.pixel_aspect.num > size.height) {
