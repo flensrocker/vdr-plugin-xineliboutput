@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.174 2008-08-03 20:56:11 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.175 2008-08-03 21:01:45 phintuka Exp $
  *
  */
 
@@ -4896,14 +4896,14 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 
     if (!(cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1))) {
       LOGERR("post_frame_end(): get_buf_element() failed !");
-    return;
-  }
+      return;
+    }
   }
 
-  cbuf->type = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
+  cbuf->type          = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
   cbuf->decoder_flags = BUF_FLAG_FRAME_END;
 
-  if(!this->bih_posted) {
+  if (!this->bih_posted) {
     video_size_t size = {0};
     if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->h264 > 0)) {
 
@@ -4913,16 +4913,17 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
       /* Fill xine_bmiheader for CoreAVC / H.264 */
 
       if (this->h264 > 0 && this->coreavc_h264_decoder) {
-      xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
-      memset(bmi, 0, sizeof(xine_bmiheader));
+	xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
 
-      cbuf->decoder_flags |= BUF_FLAG_HEADER;
+	cbuf->decoder_flags |= BUF_FLAG_HEADER;
 	cbuf->decoder_flags |= BUF_FLAG_STDHEADER;   /* CoreAVC: buffer contains bmiheader */
 	cbuf->size           = sizeof(xine_bmiheader);
 
-      bmi->biSize = sizeof(xine_bmiheader);
-      bmi->biWidth = size.width;
-      bmi->biHeight = size.height;
+	memset(bmi, 0, sizeof(xine_bmiheader));
+
+	bmi->biSize   = sizeof(xine_bmiheader);
+	bmi->biWidth  = size.width;
+	bmi->biHeight = size.height;
 
 	bmi->biPlanes        = 1;
 	bmi->biBitCount      = 24;
@@ -4943,7 +4944,7 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 	cbuf->decoder_flags |= BUF_FLAG_HEADER;
 	cbuf->decoder_flags |= BUF_FLAG_ASPECT;
 	/* pixel ratio -> frame ratio */
-	if(size.pixel_aspect.num > size.height) {
+	if (size.pixel_aspect.num > size.height) {
 	  cbuf->decoder_info[1] = size.pixel_aspect.num / size.height;
 	  cbuf->decoder_info[2] = size.pixel_aspect.den / size.width;
 	} else {
@@ -4956,7 +4957,7 @@ static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 	     size.width, size.height, size.pixel_aspect.num, size.pixel_aspect.den);
 
       this->bih_posted = 1;
-    }      
+    }
   }
 
   this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
@@ -5025,23 +5026,29 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
  */
 buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 {
-  int64_t pts = pes_get_pts (buf->content, buf->size);
-  uint8_t *data = buf->content;
-  int i = 9 + data[8];
+  int64_t  pts = pes_get_pts (buf->content, buf->size);
+  uint8_t *payload = buf->content;
+  int      header_len = 9 + payload[8];
 
   /* skip PES header */
-  data += i;
+  payload += header_len;
 
   /* Detect video frame boundaries */
 
   /* Access Unit Delimiter */
-  if (IS_NAL_AUD(data)) {
+  if (IS_NAL_AUD(payload)) {
 
     if (this->I_frames < 4)
       update_frames (this, buf->content, buf->size);
 
-      post_frame_end (this, buf);
-    }
+    post_frame_end (this, buf);
+  }
+#if 0
+  else if (payload[0] == 0 && payload[1] == 0 && payload[2] == 1 && payload[3] >= 0x80) {
+    LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", payload[3]);
+    /* Should do something ... ? */
+  }
+#endif
 
   /* Handle PTS and DTS */
 
@@ -5093,9 +5100,9 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 
   /* bypass demuxer ... */
 
-  buf->type = BUF_VIDEO_H264;
-  buf->content += i;
-  buf->size -= i;
+  buf->type     = BUF_VIDEO_H264;
+  buf->content += header_len;
+  buf->size    -= header_len;
 
   /* Check for end of still image.
      VDR ensures that H.264 still images end with an end of sequence NAL unit */
