@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.47 2008-07-16 21:48:38 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.48 2008-09-05 08:35:58 phintuka Exp $
  *
  */
 
@@ -307,8 +307,8 @@ static const char help_str[] =
     "   --nokbd                       Disable keyboard input\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
-    "   --slave                       Enable slave mode (read commands from stdin)\r\n"
-    "   --reconnect                   Automatically reconnect when connection has been lost"
+    "   --slave                       Enable slave mode (read commands from stdin)\n"
+    "   --reconnect                   Automatically reconnect when connection has been lost\n"
     "   --tcp                         Use TCP transport\n"
     "   --udp                         Use UDP transport\n"
     "   --rtp                         Use RTP transport\n\n"
