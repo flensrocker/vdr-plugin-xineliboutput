@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.59 2008-07-20 10:44:02 phintuka Exp $
+ * $Id: media_player.c,v 1.60 2008-09-06 05:54:44 phintuka Exp $
  *
  */
 
@@ -1100,7 +1100,10 @@ void cXinelibImagePlayer::Activate(bool On)
 {
   if(On) {
     m_Active = true;
-    cXinelibDevice::Instance().PlayFile(*cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File)), 0, true);
+    cXinelibDevice::Instance().PlayFile( ( (*m_File)[0]=='/' 
+					   ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
+					   : *m_File),
+					0, true);
   } else {
     m_Active = false;
     cXinelibDevice::Instance().PlayFile(NULL, 0);
@@ -1111,7 +1114,10 @@ bool cXinelibImagePlayer::ShowImage(const char *File)
 {
   m_File = File;
   if(m_Active)
-    return cXinelibDevice::Instance().PlayFile(*cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File)), 0, true);
+    return cXinelibDevice::Instance().PlayFile( ( (*m_File)[0] == '/' 
+						  ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
+						  : *m_File ),
+					       0, true);
   return true;
 }
 
