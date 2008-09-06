@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.60 2008-09-06 05:54:44 phintuka Exp $
+ * $Id: media_player.c,v 1.61 2008-09-06 06:41:00 phintuka Exp $
  *
  */
 
@@ -1071,8 +1071,11 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 
 class cXinelibImagePlayer : public cPlayer {
   private:
-    cString m_File;
+    cString m_Mrl;
     bool    m_Active;
+    cXinelibDevice *m_Dev;
+
+    bool    Play(void);
 
   protected:
     virtual void Activate(bool On);
@@ -1086,8 +1089,9 @@ class cXinelibImagePlayer : public cPlayer {
 
 cXinelibImagePlayer::cXinelibImagePlayer(const char *File) 
 {
-  m_File = File;
+  m_Mrl = File;
   m_Active = false;
+  m_Dev = &(cXinelibDevice::Instance());
 }
 
 cXinelibImagePlayer::~cXinelibImagePlayer()
@@ -1096,28 +1100,28 @@ cXinelibImagePlayer::~cXinelibImagePlayer()
   Detach();
 }
 
+bool cXinelibImagePlayer::Play(void)
+{
+  if ((*m_Mrl)[0] == '/')
+    m_Mrl = cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_Mrl));
+
+  return m_Dev->PlayFile(m_Mrl, 0, true);
+}
+
 void cXinelibImagePlayer::Activate(bool On)
 {
-  if(On) {
-    m_Active = true;
-    cXinelibDevice::Instance().PlayFile( ( (*m_File)[0]=='/' 
-					   ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
-					   : *m_File),
-					0, true);
-  } else {
-    m_Active = false;
-    cXinelibDevice::Instance().PlayFile(NULL, 0);
-  }
+  m_Active = On;
+  if (On)
+    Play();
+  else
+    m_Dev->PlayFile(NULL);
 }
 
 bool cXinelibImagePlayer::ShowImage(const char *File)
 {
-  m_File = File;
-  if(m_Active)
-    return cXinelibDevice::Instance().PlayFile( ( (*m_File)[0] == '/' 
-						  ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
-						  : *m_File ),
-					       0, true);
+  m_Mrl = File;
+  if (m_Active)
+    return Play();
   return true;
 }
 
