@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.60 2008-07-30 14:43:16 phintuka Exp $
+ * $Id: frontend.c,v 1.61 2008-09-16 07:38:42 phintuka Exp $
  *
  */
 
@@ -108,7 +108,7 @@ void cXinelibThread::InfoHandler(const char *info)
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
     int CurrentTrack = ttXSubtitleAuto;
     map += 12;
-#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
+#if VDRVERSNUM < 10515
     cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
 #endif
     while(*map) {
@@ -130,7 +130,7 @@ void cXinelibThread::InfoHandler(const char *info)
 	char *lang = map;
 	while(*map && *map != ' ') map++;
 	if(*map == ' ') { *map = 0; map++; };
-#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
+#if VDRVERSNUM < 10515
 	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, iso639_2_to_iso639_1(lang), Current);
 #else
 	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang));
@@ -139,7 +139,7 @@ void cXinelibThread::InfoHandler(const char *info)
 #endif
       }
     }
-#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
+#if VDRVERSNUM < 10515
     cXinelibDevice::Instance().EnsureDvdSpuTrack();
 #else
     if (CurrentTrack == ttXSubtitleAuto)
@@ -206,11 +206,11 @@ void cXinelibThread::InfoHandler(const char *info)
   }
 
   else if(!strncmp(info, "DVDTITLE ", 9)) {
-    LOGMSG("DVDTITLE %s", info);
+    LOGMSG("%s", info);
     map += 9;
     while(*map == ' ') map++;
     cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
-#if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
+#if VDRVERSNUM < 10515
     if (*map == '0')  // DVD Menu, set spu track to 0
       cXinelibDevice::Instance().SetCurrentDvdSpuTrack(0);
 #else
