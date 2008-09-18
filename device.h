@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.35 2008-06-11 23:21:49 phintuka Exp $
+ * $Id: device.h,v 1.36 2008-09-18 13:47:10 phintuka Exp $
  *
  */
 
@@ -26,7 +26,8 @@ typedef enum {
   miArtist = 2,
   miAlbum  = 3,
   miDvdTitleNo = 4,
-  mi_Count = 5
+  miDvdButtons = 5,
+  mi_Count = 6
 } eMetainfoType;
 
 # define ttXSubtitleNone  (-2)
