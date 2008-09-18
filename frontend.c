@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.61 2008-09-16 07:38:42 phintuka Exp $
+ * $Id: frontend.c,v 1.62 2008-09-18 18:11:35 phintuka Exp $
  *
  */
 
@@ -199,6 +199,12 @@ void cXinelibThread::InfoHandler(const char *info)
     }
   }
    
+  else if(!strncmp(info, "DVDBUTTONS ", 11)) {
+    map += 11;
+    while(*map == ' ') map++;
+    cXinelibDevice::Instance().SetMetaInfo(miDvdButtons, map);
+  }
+
   else if(!strncmp(info, "TITLE ", 6)) {
     map += 6;
     while(*map == ' ') map++;
