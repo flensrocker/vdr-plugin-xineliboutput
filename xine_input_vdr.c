@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.175 2008-08-03 21:01:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.176 2008-09-19 09:53:01 phintuka Exp $
  *
  */
 
@@ -4069,6 +4069,19 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n%s", data->str, titlen);
 	msg[sizeof(msg)-1] = 0;
 	if(this->funcs.xine_input_event) 
+	  this->funcs.xine_input_event(msg, NULL);
+	else
+	  write_control(this, msg);
+	break;
+      }
+
+    case XINE_EVENT_UI_NUM_BUTTONS:
+      if (event->stream == this->slave_stream) {
+	xine_ui_data_t *data = (xine_ui_data_t*)event->data;
+	char msg[64];
+	snprintf(msg, sizeof(msg), "INFO DVDBUTTONS %d\r\n", data->num_buttons);
+	msg[sizeof(msg)-1] = 0;
+	if (this->funcs.xine_input_event) 
 	  this->funcs.xine_input_event(msg, NULL);
 	else
 	  write_control(this, msg);
