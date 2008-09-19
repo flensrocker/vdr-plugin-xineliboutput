@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.176 2008-09-19 09:53:01 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.177 2008-09-19 10:03:59 phintuka Exp $
  *
  */
 
@@ -999,7 +999,7 @@ static int io_select_rd (int fd)
   return XIO_TIMEOUT;
 }
 
-static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t len)
+static void write_control_data(vdr_input_plugin_t *this, const void *str, size_t len)
 {
   size_t ret;
   while(len>0) {
@@ -1189,7 +1189,7 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
   return total_bytes;
 }
 
-const char * const get_decoder_name(xine_t *xine, int video_type)
+const char * get_decoder_name(xine_t *xine, int video_type)
 {
   int streamtype = (video_type >> 16) & 0xFF;
   plugin_node_t *node = xine->plugin_catalog->video_decoder_map[streamtype][0];
@@ -3024,7 +3024,7 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
       
       if(data && data->size>0 && data->data) {
 	char s[128];
-	sprintf(s, "GRAB %d %d\r\n", this->token, data->size);
+	sprintf(s, "GRAB %d %lu\r\n", this->token, (unsigned long)data->size);
 	pthread_mutex_lock (&this->fd_control_lock);
 	write_control_data(this, s, strlen(s));
 	write_control_data(this, data->data, data->size);
