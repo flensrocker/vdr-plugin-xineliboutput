@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.81 2008-07-28 18:46:21 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.82 2008-09-19 12:17:00 phintuka Exp $
  *
  */
 
@@ -1007,6 +1007,16 @@ static void create_windows(sxfe_t *this)
 
   /* full-screen window */
   set_fullscreen_props(this);
+
+  /* Window hint */
+  XClassHint *classHint = XAllocClassHint();
+  if(classHint) {
+    classHint->res_name = "VDR";
+    classHint->res_class = "VDR";
+    XSetClassHint(this->display, this->window[0], classHint);
+    XSetClassHint(this->display, this->window[1], classHint);
+    XFree(classHint);
+  }
 
   /* Window name */
 #ifdef FE_STANDALONE
