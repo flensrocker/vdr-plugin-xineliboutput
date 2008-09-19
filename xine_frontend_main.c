@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.48 2008-09-05 08:35:58 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.49 2008-09-19 12:13:23 phintuka Exp $
  *
  */
 
@@ -291,7 +291,9 @@ static const char help_str[] =
     "                                 Use script to control HW aspect ratio:\n"
     "                                   --aspect=auto:path_to_script\n"
     "   --fullscreen                  Fullscreen mode\n"
+#ifdef HAVE_XRENDER
     "   --hud                         Head Up Display OSD mode\n"
+#endif
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
     "   --noscaling                   Disable all video scaling\n"
@@ -431,7 +433,11 @@ int main(int argc, char *argv[])
               PRINTF("Fullscreen mode\n");
 	      break;
     case 'D': hud=1;
+#ifdef HAVE_XRENDER
               PRINTF("HUD OSD mode\n");
+#else
+              PRINTF("HUD OSD not supported\n");
+#endif
               break;
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
