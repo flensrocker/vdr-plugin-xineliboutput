@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.46 2008-04-29 12:44:25 phintuka Exp $
+ * $Id: config.h,v 1.53 2008-07-29 21:04:35 phintuka Exp $
  *
  */
 
@@ -132,6 +132,8 @@
 #define SPEAKERS_A52_PASSTHRU  12 
 #define SPEAKERS_count         13 
 
+#define SUBTITLESIZE_count     7
+
 // OSD blending methods
 #define OSD_BLENDING_SOFTWARE   0  // xine-lib "normal" osd
 #define OSD_BLENDING_HARDWARE   1  // xine-lib "unscaled osd"
@@ -151,7 +153,34 @@
 #define OSD_SCALING_BILINEAR    2
 #define OSD_SCALING_count       3
 
-#define SUBTITLESIZE_count     7
+// Video decoder
+#define DECODER_MPEG2_auto       0 /* use value from frontend config_xineliboutput */
+#define DECODER_MPEG2_LIBMPEG2   1
+#define DECODER_MPEG2_FFMPEG     2
+#define DECODER_MPEG2_count      3
+
+#define DECODER_H264_auto        0 /* use value from frontend config_xineliboutput */
+#define DECODER_H264_FFMPEG      1
+#define DECODER_H264_COREAVC     2
+#define DECODER_H264_count       3
+
+#define FF_H264_SKIP_LOOPFILTER_auto    0 /* use value from frontend config_xineliboutput */
+#define FF_H264_SKIP_LOOPFILTER_DEFAULT 1
+#define FF_H264_SKIP_LOOPFILTER_NONE    2
+#define FF_H264_SKIP_LOOPFILTER_NONREF  3
+#define FF_H264_SKIP_LOOPFILTER_BIDIR   4
+#define FF_H264_SKIP_LOOPFILTER_NONKEY  5
+#define FF_H264_SKIP_LOOPFILTER_ALL     6
+#define FF_H264_SKIP_LOOPFILTER_count   7
+
+#define FF_H264_SPEED_OVER_ACCURACY_auto  0  /* use value from frontend config_xineliboutput */
+#define FF_H264_SPEED_OVER_ACCURACY_no    1
+#define FF_H264_SPEED_OVER_ACCURACY_yes   2
+#define FF_H264_SPEED_OVER_ACCURACY_count 3
+
+#if VDRVERSNUM >= 10510
+# define DEVICE_SUPPORTS_IBP_TRICKSPEED
+#endif
 
 #define HIDDEN_OPTION(opt) \
   (xc.IsOptionHidden(xc.opt))
@@ -171,31 +200,36 @@ typedef enum {
 
 class config_t {
   public:
-    static const char * const s_bufferSize[];
-    static const int          i_pesBufferSize[];
-    static const char * const s_aspects[];
-    static const char * const s_deinterlaceMethods[];
-    static const char * const s_deinterlaceMethodNames[];
-    static const char * const s_fieldOrder[];
-    static const char * const s_audioDriverNames[];
-    static const char * const s_audioDrivers[];
-    static const char * const s_videoDriverNamesX11[];
-    static const char * const s_videoDriversX11[];
-    static const char * const s_videoDriverNamesFB[];
-    static const char * const s_videoDriversFB[];
-    static const char * const s_frontendNames[];
-    static const char * const s_frontends[];
-    static const char * const s_frontend_files[];
-    static const char * const s_audioEqNames[];
-    static const char * const s_audioVisualizations[];
-    static const char * const s_audioVisualizationNames[];
-    static const char * const s_speakerArrangements[];
-    static const char * const s_subtitleSizes[];
+    static const char * const s_bufferSize             [PES_BUFFERS_count   + 1];
+    static const int          i_pesBufferSize          [PES_BUFFERS_count   + 1];
+    static const char * const s_aspects                [ASPECT_count        + 1];
+    static const char * const s_vo_aspects             [VO_ASPECT_count     + 1];
+    static const char * const s_deinterlaceMethods     [DEINTERLACE_count   + 1];
+    static const char * const s_deinterlaceMethodNames [DEINTERLACE_count   + 1];
+    static const char * const s_fieldOrder             [FIELD_ORDER_count   + 1];
+    static const char * const s_audioDriverNames       [AUDIO_DRIVER_count  + 1];
+    static const char * const s_audioDrivers           [AUDIO_DRIVER_count  + 1];
+    static const char * const s_videoDriverNamesX11    [X11_DRIVER_count    + 1];
+    static const char * const s_videoDriversX11        [X11_DRIVER_count    + 1];
+    static const char * const s_videoDriverNamesFB     [FB_DRIVER_count     + 1];
+    static const char * const s_videoDriversFB         [FB_DRIVER_count     + 1];
+    static const char * const s_frontendNames          [FRONTEND_count      + 1];
+    static const char * const s_frontends              [FRONTEND_count      + 1];
+    static const char * const s_frontend_files         [FRONTEND_count      + 1];
+    static const char * const s_audioEqNames           [AUDIO_EQ_count      + 1];
+    static const char * const s_audioVisualizations    [AUDIO_VIS_count     + 1];
+    static const char * const s_audioVisualizationNames[AUDIO_VIS_count     + 1];
+    static const char * const s_speakerArrangements    [SPEAKERS_count      + 1];
+    static const char * const s_subtitleSizes          [SUBTITLESIZE_count  + 1];
+    static const char * const s_osdBlendingMethods     [OSD_BLENDING_count  + 1];
+    static const char * const s_osdMixers              [OSD_MIXER_count     + 1];
+    static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
+    static const char * const s_decoders_MPEG2         [DECODER_MPEG2_count + 1];
+    static const char * const s_decoders_H264          [DECODER_H264_count  + 1];
+    static const char * const s_ff_skip_loop_filters   [FF_H264_SKIP_LOOPFILTER_count + 1];
+    static const char * const s_ff_speed_over_accuracy [FF_H264_SPEED_OVER_ACCURACY_count + 1];
+
     static const char * const s_subExts[];
-    static const char * const s_osdBlendingMethods[];
-    static const char * const s_osdMixers[];
-    static const char * const s_osdScalings[];
-    static const char * const s_vo_aspects[];
 
   public:
 
@@ -252,7 +286,8 @@ class config_t {
     int  osd_blending_lowresvideo; // Use hardware blending for low-resolution video
     int  alpha_correction;
     int  alpha_correction_abs;
-    int  extsub_size; /* size of separate subtitles ( -1 = xine default ; 0...6 = { tiny  small  normal  large  very large  huge } */
+    int  extsub_size;              // size of separate subtitles ( -1 = xine default ; 0...6 = { tiny  small  normal  large  very large  huge }
+    int  dvb_subtitles;            // send DVB subtitles in data stream (decode+display using xine-lib or external media player)
 
     // Media player
 #if VDRVERSNUM < 10515
@@ -267,7 +302,8 @@ class config_t {
     int  subtitle_vpos;            // used in media player. Not saved !
     int  playlist_tracknumber;
     int  playlist_artist;
-    int  playlist_album;   
+    int  playlist_album;
+    int  dvd_arrow_keys_control_playback;
 
     // Audio visualization
     char audio_visualization[64];
@@ -345,6 +381,11 @@ class config_t {
     int live_mode_sync;   /* Sync SCR to transponder clock in live mode */
     int scr_tunning;      /* Fine-tune xine egine SCR (to sync video to graphics output) */
     int scr_hz;           /* Current SCR speed (Hz), default is 90000 */
+
+    int decoder_mpeg2;    /* DECODER_MPEG2_... */
+    int decoder_h264;     /* DECODER_H264_...  */
+    int ff_h264_speed_over_accurancy;
+    int ff_h264_skip_loop_filter; /* FF_H264_SKIP_LOOPFILTER_* */
 
     config_t();
 

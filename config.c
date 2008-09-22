@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.63 2008-04-29 12:44:25 phintuka Exp $
+ * $Id: config.c,v 1.71 2008-09-19 12:13:26 phintuka Exp $
  *
  */
 
@@ -234,12 +234,128 @@ const char * const config_t::s_osdScalings[] = {
   NULL
 };
 
+const char * const config_t::s_decoders_MPEG2[] = {
+  trNOOP("automatic"),
+  "libmpeg2",
+  "FFmpeg",
+  NULL
+};
+
+const char * const config_t::s_decoders_H264[] = {
+  trNOOP("automatic"),
+  "FFmpeg",
+  "CoreAVC",
+  NULL
+};
+
+const char * const config_t::s_ff_skip_loop_filters[] = {
+  trNOOP("automatic"),
+  trNOOP("default"),
+  trNOOP("none"),
+  trNOOP("nonref"),
+  trNOOP("bidir"),
+  trNOOP("nonkey"),
+  trNOOP("all"),
+  NULL
+};
+
+const char * const config_t::s_ff_speed_over_accuracy[] = {
+  trNOOP("automatic"),
+  trNOOP("yes"),
+  trNOOP("no"),
+};
+
+static const char exts_playlist[][4] = {
+  "asx",
+  "m3u",
+  "pls",
+  "ram",
+};
+
+static const char exts_audio[][8] = {
+  "ac3",
+  "asf",
+  "au",
+  "aud",
+  "flac",
+  "mpa",
+  "mpega",
+  "mp2",
+  "mp3",
+  "m4a",
+  "ogg",
+  "ogm",
+  "ra",
+  "spx",
+  "wav",
+  "wma",
+};
+
+static const char exts_video[][8] = {
+  "asf",
+  "avi",
+  "dat",
+  "divx",
+  "dv",
+  "fli",
+  "flv",
+  "iso", /* maybe dvd */
+  "mkv",
+  "mov",
+  "mpeg",
+  "mpg",
+  "mpv",
+  "mp4",
+  "m2v",
+  "m4v",
+  "pes",
+  "rm",
+  "ts",
+  "vdr",
+  "vob",
+  "wmv",
+  "xvid",
+};
+
+static const char exts_image[][8] = {
+  "bmp",
+  "gif",
+  "jpeg",
+  "jpg",
+  "mng",
+  "png",
+  "tiff",
+};
+
+#define DEF_EXT_IS(TYPE) \
+static bool ext_is_ ## TYPE(const char *ext) \
+{ \
+  for(unsigned int i=0; i<sizeof(exts_ ## TYPE)/sizeof(exts_ ## TYPE[0]); i++) \
+    if(!strcasecmp(ext, exts_ ## TYPE[i])) \
+      return true; \
+  return false; \
+} 
+DEF_EXT_IS(playlist)
+DEF_EXT_IS(audio)
+DEF_EXT_IS(video)
+DEF_EXT_IS(image)
+
+static const char *get_extension(const char *fname)
+{
+  if(fname) {
+    const char *pos = strrchr(fname, '.');
+    if(pos)
+      return pos+1;
+  }
+  return NULL;
+}
+
 static char *strcatrealloc(char *dest, const char *src)
 {
   if (!src || !*src) 
     return dest;
 
-  int l = (dest ? strlen(dest) : 0) + strlen(src) + 1;
+  size_t l = (dest ? strlen(dest) : 0) + strlen(src) + 1;
   if(dest) {
     dest = (char *)realloc(dest, l);
     strcat(dest, src);
@@ -250,104 +366,29 @@ static char *strcatrealloc(char *dest, const char *src)
   return dest;
 }
 
+
 bool config_t::IsPlaylistFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "pls") || 
-	 !strcasecmp(pos, "m3u") || 
-	 !strcasecmp(pos, "ram") ||
-	 !strcasecmp(pos, "asx"))
-	return true;
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && ext_is_playlist(ext);
 }
 
 bool config_t::IsAudioFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "mpa") ||
-	 !strcasecmp(pos, "mp2") ||
-	 !strcasecmp(pos, "mp3") ||
-	 !strcasecmp(pos, "m4a") ||
-	 !strcasecmp(pos, "mpega") ||
-	 !strcasecmp(pos, "flac") ||
-	 !strcasecmp(pos, "ac3") ||
-	 !strcasecmp(pos, "ogg") ||
-	 !strcasecmp(pos, "ogm") ||
-	 !strcasecmp(pos, "au") ||
-	 !strcasecmp(pos, "aud") ||
-	 !strcasecmp(pos, "wma") ||
-	 !strcasecmp(pos, "asf") ||
-	 !strcasecmp(pos, "wav") ||
-	 !strcasecmp(pos, "spx") ||
-	 !strcasecmp(pos, "ra"))
-	return true;
-      return IsPlaylistFile(fname);
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && (ext_is_audio(ext) || ext_is_playlist(ext));
 }
 
 bool config_t::IsVideoFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "avi") ||
-	 !strcasecmp(pos, "mpv") ||
-	 !strcasecmp(pos, "m2v") ||
-	 !strcasecmp(pos, "m4v") ||
-	 !strcasecmp(pos, "vob") ||
-	 !strcasecmp(pos, "vdr") ||
-	 !strcasecmp(pos, "mpg") ||
-	 !strcasecmp(pos, "mpeg")||
-	 !strcasecmp(pos, "mp4") ||
-	 !strcasecmp(pos, "asf") ||
-	 !strcasecmp(pos, "wmv") ||
-	 !strcasecmp(pos, "mov") ||
-	 !strcasecmp(pos, "ts") ||
-	 !strcasecmp(pos, "pes") ||
-	 !strcasecmp(pos, "xvid") ||
-	 !strcasecmp(pos, "divx") ||
-	 !strcasecmp(pos, "fli") ||
-	 !strcasecmp(pos, "flv") ||
-	 !strcasecmp(pos, "dv") ||
-	 !strcasecmp(pos, "dat") ||
-	 !strcasecmp(pos, "mkv") ||
-	 !strcasecmp(pos, "rm") ||
-	 !strcasecmp(pos, "iso"))  /* maybe dvd */
-	return true;
-      return IsAudioFile(fname);
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && (ext_is_video(ext) || ext_is_audio(ext) || ext_is_playlist(ext));
 }
 
 bool config_t::IsImageFile(const char *fname)
 {
-  if(fname) {
-    char *pos = strrchr(fname,'.');
-    if(pos) {
-      pos++;
-      if(!strcasecmp(pos, "jpg") ||
-	 !strcasecmp(pos, "jpeg") ||
-	 !strcasecmp(pos, "gif") ||
-	 !strcasecmp(pos, "tiff") || 
-	 !strcasecmp(pos, "bmp") || 
-	 !strcasecmp(pos, "mng") ||
-	 !strcasecmp(pos, "png"))
-	return true;
-    }
-  }
-  return false;
+  const char *ext = get_extension(fname);
+  return ext && (ext_is_image(ext) || ext_is_playlist(ext));
 }
 
 cString config_t::AutocropOptions(void)
@@ -471,6 +512,7 @@ config_t::config_t() {
   strn0cpy(spu_lang[3], "" ,   sizeof(spu_lang[3]));
 #endif
   extsub_size = -1;
+  dvb_subtitles = 0;
 
   alpha_correction     = 0;
   alpha_correction_abs = 0;
@@ -540,11 +582,17 @@ config_t::config_t() {
   scr_tunning    = 0;      // Fine-tune xine egine SCR (to sync video to graphics output)
   scr_hz         = 90000;  // Current SCR speed (Hz), default is 90000
 
+  decoder_mpeg2  = DECODER_MPEG2_auto;
+  decoder_h264   = DECODER_H264_auto;
+  ff_h264_speed_over_accurancy = FF_H264_SPEED_OVER_ACCURACY_auto;
+  ff_h264_skip_loop_filter     = FF_H264_SKIP_LOOPFILTER_auto;
+
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
   strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
   cache_implicit_playlists = 1;
   enable_id3_scanner = 1;
+  dvd_arrow_keys_control_playback = 1;
 
   main_menu_mode = ShowMenu;
   force_primary_device = 0;
@@ -596,6 +644,9 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'f': ProcessArg("Fullscreen", "1");
               break;
     case 'D': ProcessArg("X11.HUDOSD", "1");
+#ifndef HAVE_XRENDER
+              LOGMSG("HUD OSD not supported\n");
+#endif
               break;
     case 'w': ProcessArg("Fullscreen", "0");
               ProcessArg("X11.WindowWidth", optarg);
@@ -710,6 +761,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.SpuLang3")) STRN0CPY(spu_lang[3], Value);
 #endif
   else if (!strcasecmp(Name, "OSD.ExtSubSize"))    extsub_size = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.DvbSubtitles"))  dvb_subtitles = atoi(Value);
 
   else if (!strcasecmp(Name, "RemoteMode"))          remote_mode = atoi(Value);
   else if (!strcasecmp(Name, "Remote.ListenPort"))   listen_port = atoi(Value);
@@ -743,6 +795,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.DeinterlaceOptions")) STRN0CPY(deinterlace_opts, Value);
   else if (!strcasecmp(Name, "Video.Deinterlace")) STRN0CPY(deinterlace_method, Value);
   else if (!strcasecmp(Name, "Video.FieldOrder"))  field_order=atoi(Value)?1:0;
+
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.SoftStart"))    autocrop_soft = atoi(Value);
@@ -765,9 +818,15 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.MaxTrickSpeed"))  max_trickspeed = atoi(Value);
   else if (!strcasecmp(Name, "Video.AspectRatio"))    vo_aspect_ratio = atoi(Value);
 
+  else if (!strcasecmp(Name, "Video.Decoder.MPEG2"))  decoder_mpeg2 = strstra(Value, s_decoders_MPEG2, 0);
+  else if (!strcasecmp(Name, "Video.Decoder.H264"))   decoder_h264  = strstra(Value, s_decoders_H264,  0);
+  else if (!strcasecmp(Name, "Video.Decoder.H264.SpeedOverAccuracy")) ff_h264_speed_over_accurancy = strstra(Value, s_ff_speed_over_accuracy,  0);
+  else if (!strcasecmp(Name, "Video.Decoder.H264.SkipLoopFilter"))    ff_h264_skip_loop_filter = strstra(Value, s_ff_skip_loop_filters,  0);
+
   else if (!strcasecmp(Name, "Post.pp.Enable"))    ffmpeg_pp = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Quality"))   ffmpeg_pp_quality = atoi(Value);
   else if (!strcasecmp(Name, "Post.pp.Mode"))      STRN0CPY(ffmpeg_pp_mode, Value);
+
   else if (!strcasecmp(Name, "Post.unsharp.Enable"))               unsharp                      = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.luma_matrix_width"))    unsharp_luma_matrix_width    = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.luma_matrix_height"))   unsharp_luma_matrix_height   = atoi(Value);
@@ -775,6 +834,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.unsharp.chroma_matrix_width"))  unsharp_chroma_matrix_width  = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.chroma_matrix_height")) unsharp_chroma_matrix_height = atoi(Value);
   else if (!strcasecmp(Name, "Post.unsharp.chroma_amount"))        unsharp_chroma_amount        = atoi(Value);
+
   else if (!strcasecmp(Name, "Post.denoise3d.Enable"))  denoise3d        = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.luma"))    denoise3d_luma   = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.chroma"))  denoise3d_chroma = atoi(Value);
@@ -785,13 +845,15 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
   else if (!strcasecmp(Name, "Media.CacheImplicitPlaylists")) cache_implicit_playlists = atoi(Value);
   else if (!strcasecmp(Name, "Media.EnableID3Scanner"))  enable_id3_scanner = atoi(Value);
+  else if (!strcasecmp(Name, "Media.DVD.ArrowKeysControlPlayback")) dvd_arrow_keys_control_playback = atoi(Value);
+
   else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
 
-  else if (!strcasecmp(Name, "Advanced.LiveModeSync")) xc.live_mode_sync = atoi(Value);
-  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    xc.scr_tunning = atoi(Value);
-  else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     xc.scr_hz = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.LiveModeSync")) live_mode_sync = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tunning = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     scr_hz = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
     sscanf(Value,"%d %d %d %d %d %d %d %d %d %d",
