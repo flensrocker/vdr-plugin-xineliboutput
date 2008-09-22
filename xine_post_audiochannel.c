@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_audiochannel.c,v 1.5 2008-01-02 01:55:19 phintuka Exp $
+ * $Id: xine_post_audiochannel.c,v 1.6 2008-05-22 09:56:02 phintuka Exp $
  *
  */
 
@@ -222,7 +222,7 @@ static post_plugin_t *audioch_open_plugin(post_class_t *class_gen,
 					  xine_audio_port_t **audio_target,
 					  xine_video_port_t **video_target)
 {
-  audioch_post_plugin_t *this = (audioch_post_plugin_t*)xine_xmalloc(sizeof(audioch_post_plugin_t));
+  audioch_post_plugin_t *this = calloc(1, sizeof(audioch_post_plugin_t));
   post_in_t             *input;
   post_out_t            *output;
   post_audio_port_t     *port;
@@ -292,7 +292,7 @@ static void audioch_class_dispose(post_class_t *class_gen)
 
 static void *audioch_init_plugin(xine_t *xine, void *data)
 {
-  post_class_t *class = (post_class_t*)malloc(sizeof(post_class_t));
+  post_class_t *class = calloc(1, sizeof(post_class_t));
   
   if(!class)
     return NULL;
