@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.13 2008-05-22 09:56:03 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.14 2008-09-22 10:59:54 phintuka Exp $
  *
  */
 
@@ -27,7 +27,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_autocrop.c,v 1.13 2008-05-22 09:56:03 phintuka Exp $
  *
  * autocrop video filter by Petri Hintukainen 25/03/2006
  *
