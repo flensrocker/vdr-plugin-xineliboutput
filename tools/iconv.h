@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: iconv.h,v 1.5 2007-09-18 09:13:13 phintuka Exp $
+ * $Id: iconv.h,v 1.6 2008-09-22 10:56:31 phintuka Exp $
  *
  */
 
@@ -74,11 +74,7 @@ cString cIConv::Translate(const char *Text) const
 
   size_t  inc  = strlen(Text);
   size_t  outc = inc<2048 ? 2048 : inc+1;
-#ifdef __APPLE__  
-  const char *in = Text;
-#else
   char   *in   = (char*)Text;
-#endif
   char   *buf  = (char*)malloc(outc+1);
   char   *out  = buf;
     
