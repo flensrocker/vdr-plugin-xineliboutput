@@ -4,11 +4,9 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.11 2008-03-13 21:29:00 phintuka Exp $
+ * $Id: menuitems.c,v 1.12 2008-09-22 10:24:53 phintuka Exp $
  *
  */
-
-#include <math.h>
 
 #include "i18n.h"
 
@@ -103,6 +101,13 @@ cMenuEditFpIntItem::cMenuEditFpIntItem(const char *Name, int *Value, int Min, in
   Set();
 }
 
+static int my_exp10(int x)
+{
+  int r = 1;
+  for (; x > 0; x--, r *= 10) ;
+  return r;
+}
+
 void cMenuEditFpIntItem::Set(void)
 {
   if(*value == 0 && *zeroString) 
@@ -112,7 +117,7 @@ void cMenuEditFpIntItem::Set(void)
   else if (maxString && *value == max)
     SetValue(maxString);
   else
-    SetValue(cString::sprintf("%1.1f", ((float)(*value)) / exp10f(decimals)));
+    SetValue(cString::sprintf("%1.1f", ((float)(*value)) / (float)my_exp10(decimals)));
 }
 
 // --- cMenuEditStraI18nItem -------------------------------------------------
