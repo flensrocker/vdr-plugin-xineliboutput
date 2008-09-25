@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.179 2008-09-25 19:25:53 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.180 2008-09-25 19:37:47 phintuka Exp $
  *
  */
 
@@ -2780,7 +2780,8 @@ static void dvd_menu_domain(vdr_input_plugin_t *this, int value)
   if (value) {
     LOGDBG("dvd_menu_domain(1)");
     this->dvd_menu = 1;
-    this->slave_stream->spu_channel = SPU_CHANNEL_AUTO;
+    this->slave_stream->spu_channel_user = SPU_CHANNEL_AUTO;
+    this->slave_stream->spu_channel = this->slave_stream->spu_channel_auto;
   } else {
     LOGDBG("dvd_menu_domain(0)");
     this->dvd_menu = 0;
@@ -3659,9 +3660,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
   } else if(!strncasecmp(cmd, "SPUSTREAM ", 10)) {
-    int old_ch  = _x_get_spu_channel (stream);
+    int old_ch  = _x_get_spu_channel(stream);
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
+    int ch_auto = strstr(cmd+10, "auto") ? 1 : 0;
+
     if(strstr(cmd+10, "NEXT"))
       ch = ch < max_ch ? ch+1 : -2;
     else if(strstr(cmd+10, "PREV"))
@@ -3670,8 +3673,17 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       ch = tmp32;
     } else
       err = CONTROL_PARAM_ERROR;
-    if(ch != old_ch) {
-      select_spu_channel(stream, ch);
+
+    if (old_ch == SPU_CHANNEL_AUTO)
+      old_ch = stream->spu_channel_auto;
+
+    if (ch != old_ch) {
+      if (ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
+	LOGDBG("Automatic SPU channel %d->%d ignored", old_ch, ch);
+      } else {
+	LOGDBG("Forced SPU channel %d->%d", old_ch, ch);
+	select_spu_channel(stream, ch);
+      }
       LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
     }
 
