@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.177 2008-09-19 10:03:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.178 2008-09-25 19:23:41 phintuka Exp $
  *
  */
 
@@ -272,6 +272,7 @@ typedef struct vdr_input_plugin_s {
   uint8_t             stream_start : 1;
   uint8_t             send_pts : 1;
   uint8_t             loop_play : 1;
+  uint8_t             dvd_menu : 1;
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
   uint8_t             bih_posted : 1;
@@ -2774,6 +2775,18 @@ static void select_spu_channel(xine_stream_t *stream, int channel)
   }
 }
 
+static void dvd_menu_domain(vdr_input_plugin_t *this, int value)
+{
+  if (value) {
+    LOGDBG("dvd_menu_domain(1)");
+    this->dvd_menu = 1;
+    this->slave_stream->spu_channel = SPU_CHANNEL_AUTO;
+  } else {
+    LOGDBG("dvd_menu_domain(0)");
+    this->dvd_menu = 0;
+  }
+}
+
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
@@ -2882,6 +2895,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 					 vdr_event_cb, this);
     }
     select_spu_channel(this->slave_stream, SPU_CHANNEL_AUTO);
+    this->dvd_menu = 0;
 
     errno = 0;
     err = !xine_open(this->slave_stream, filename);
@@ -3885,7 +3899,22 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   char tracks[1024], lang[128];
   int i, current, n = 0;
   size_t cnt;
-  
+
+  /* DVD title and menu domain detection */  
+#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
+  i = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+  if(i >= 0) {
+    if (i == 0)
+      dvd_menu_domain(this, 1);
+    sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
+    if(this->funcs.xine_input_event)
+      this->funcs.xine_input_event(tracks, NULL);
+    else
+      write_control(this, tracks);
+    LOGDBG(tracks);
+  }
+#endif
+
   /* Audio tracks */
   
   strcpy(tracks, "INFO TRACKMAP AUDIO ");
@@ -3941,18 +3970,6 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
     strcpy(tracks+cnt, "\r\n");
     write_control(this, tracks);
   }
-
-#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-  i = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
-  if(i >= 0) {
-    sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
-    if(this->funcs.xine_input_event)
-      this->funcs.xine_input_event(tracks, NULL);
-    else
-      write_control(this, tracks);
-    LOGDBG(tracks);
-  }
-#endif
 }
 
 /* Map some xine input events to vdr input (remote key names) */
@@ -4065,6 +4082,8 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 #ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
 	int tt = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
 	snprintf(titlen, sizeof(titlen), "INFO DVDTITLE %d\r\n", tt);
+	if (tt == 0) 
+	  dvd_menu_domain(this, 1);
 #endif
 	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n%s", data->str, titlen);
 	msg[sizeof(msg)-1] = 0;
@@ -4079,6 +4098,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       if (event->stream == this->slave_stream) {
 	xine_ui_data_t *data = (xine_ui_data_t*)event->data;
 	char msg[64];
+	dvd_menu_domain(this, data->num_buttons > 0);
 	snprintf(msg, sizeof(msg), "INFO DVDBUTTONS %d\r\n", data->num_buttons);
 	msg[sizeof(msg)-1] = 0;
 	if (this->funcs.xine_input_event) 
