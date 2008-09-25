@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.180 2008-09-25 19:37:47 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.181 2008-09-25 19:40:00 phintuka Exp $
  *
  */
 
@@ -3671,6 +3671,13 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       ch = ch > -2 ? ch-1 : max_ch-1;
     else if(1 == sscanf(cmd+10, "%d", &tmp32)) {
       ch = tmp32;
+    } else if(cmd[10] && cmd[11] && (cmd[12] < 'a' || cmd[12] > 'z')) {
+      /* ISO 639-1 language code */
+      const char spu_lang[3] = {cmd[10], cmd[11], 0};
+      LOGMSG("Preferred SPU language: %s", spu_lang);
+      this->class->xine->config->update_string(this->class->xine->config,
+					    "media.dvd.language", spu_lang);
+      ch = old_ch = 0;
     } else
       err = CONTROL_PARAM_ERROR;
 
