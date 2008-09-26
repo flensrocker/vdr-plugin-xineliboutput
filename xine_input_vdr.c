@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.8 2008-09-26 20:08:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.9 2008-09-26 20:09:46 phintuka Exp $
  *
  */
 
@@ -3732,6 +3732,8 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     int old_ch  = _x_get_spu_channel (stream);
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
+    int ch_auto = strstr(cmd+10, "auto") ? 1 : 0;
+
     if(strstr(cmd, "NEXT"))
       ch = ch < max_ch ? ch+1 : -2;
     else if(strstr(cmd, "PREV"))
@@ -3747,8 +3749,17 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       ch = old_ch = 0;
     } else
       err = CONTROL_PARAM_ERROR;
-    if(ch != old_ch) {
-      select_spu_channel(stream, ch);
+
+    if (old_ch == SPU_CHANNEL_AUTO)
+      old_ch = stream->spu_channel_auto;
+
+    if (ch != old_ch) {
+      if (ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
+	LOGDBG("Automatic SPU channel %d->%d ignored", old_ch, ch);
+      } else {
+	LOGDBG("Forced SPU channel %d->%d", old_ch, ch);
+	select_spu_channel(stream, ch);
+      }
       LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
     }
 
