@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.30 2008-05-07 12:31:55 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.30.2.1 2008-09-26 19:15:48 phintuka Exp $
  *
  */
 
@@ -119,7 +119,9 @@ const char cmdLineHelp[] =
 "                           (example: )\n" 
 #endif
 "  -f        --fullscreen   Fullscreen mode (X11)\n"
+#ifdef HAVE_XRENDER
 "  -D        --hud          Head Up Display OSD (X11)\n"
+#endif
 "  -w        --width=x      Window width\n"
 "  -h        --height=x     Window width\n"
 "  -d DISP   --display=DISP Use X11 display DISP\n"
