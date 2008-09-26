@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.4 2008-09-26 13:46:49 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.5 2008-09-26 19:59:27 phintuka Exp $
  *
  */
 
@@ -1255,11 +1255,27 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       buf->type = BUF_VIDEO_MPEG;
       xine_fast_memcpy(buf->content, &data[pos], buf->size);
       pos += buf->size;
+      if(pos >= datalen)
+        buf->decoder_flags |= BUF_FLAG_FRAME_END;
       this->stream->video_fifo->put(this->stream->video_fifo, buf);
     } else {
       LOGMSG("Error: queue_nosignal: no buffers !");
       break;
     }
+  }
+
+  /* sequence end */
+  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+  if (buf) {
+    static const uint8_t seq_end[] = {0x00, 0x00, 0x01, 0xb7}; /* mpeg2 */
+    buf->type = BUF_VIDEO_MPEG;
+    buf->size = sizeof(seq_end);
+    buf->decoder_flags = BUF_FLAG_FRAME_END;
+    memcpy(buf->content, seq_end, sizeof(seq_end));
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);*/
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);*/
   }
 
   free(tmp);
