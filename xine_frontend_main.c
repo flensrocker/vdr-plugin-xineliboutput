@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.1 2008-09-26 19:15:48 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.2 2008-09-26 19:17:28 phintuka Exp $
  *
  */
 
@@ -675,7 +675,7 @@ int main(int argc, char *argv[])
     }
 
     /* Connect to VDR xineliboutput server */
-    if(!fe_xine_open(fe, mrl)) {
+    if(!fe->xine_open(fe, mrl)) {
       /*print_xine_log(((fe_t *)fe)->xine);*/
       if(!firsttry) {
 	PRINTF("Error opening %s\n", mrl);
