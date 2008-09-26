@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.56.2.1 2008-09-26 13:09:50 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.56.2.2 2008-09-26 19:37:37 phintuka Exp $
  *
  */
 
@@ -1108,7 +1108,7 @@ void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
   bool repeat = false, release = false;
   strn0cpy(buf, arg, sizeof(buf));
 
-  int n = strlen(buf)-1;
+  size_t n = *buf ? strlen(buf)-1 : 0;
   while(n && buf[n]==' ') buf[n--]=0; /* trailing spaces */
   if(NULL != (key=strchr(buf, ' '))) {
     while(*key == ' ')
