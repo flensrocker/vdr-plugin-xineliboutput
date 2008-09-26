@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.3 2008-09-26 19:20:00 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.4 2008-09-26 19:36:01 phintuka Exp $
  *
  */
 
@@ -16,29 +16,6 @@
 
 #include "tools/vdrdiscovery.h"
 
-
-#if 0
-static void xine_log_cb(void *data, int section)
-{
-  fprintf(stderr, "xine: log section %d\n",section);
-}
-
-static void print_xine_log(xine_t *xine)
-{
-  int i, j;
-  int logs = xine_get_log_section_count(xine);
-  const char * const * names = xine_get_log_names(xine);
-  for(i=0; i<logs; i++) {
-    const char * const * lines = xine_get_log(xine, i);
-    if(lines[0]) {
-      printf("\nLOG: %s\n",names[i]);
-      j=-1;
-      while(lines[++j] && *lines[++j] )
-	printf("  %2d: %s", j, lines[j]);
-    }
-  }
-}
-#endif
 
 static void list_plugins_type(xine_t *xine, const char *msg, typeof (xine_list_audio_output_plugins) list_func)
 {
@@ -291,7 +268,7 @@ static void SignalHandler(int signum)
 
 static char *strcatrealloc(char *dest, const char *src)
 {
-  int l;
+  size_t l;
 
   if (!src || !*src) 
     return dest;
