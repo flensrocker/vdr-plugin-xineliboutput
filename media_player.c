@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.52.2.3 2008-09-26 19:32:41 phintuka Exp $
+ * $Id: media_player.c,v 1.52.2.4 2008-09-26 19:37:37 phintuka Exp $
  *
  */
 
@@ -91,7 +91,7 @@ cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile
   m_Speed = 1;
 
   if(File) {
-    int len = strlen(File);
+    size_t len = strlen(File);
     if(len && File[len-1] == '/') { 
       // whole directory, create temporary playlist
       m_Playlist.Read(File, true);
@@ -486,7 +486,7 @@ void cXinelibPlayerControl::Queue(const char *File)
     OpenPlayer(File, true);
     cControl::Launch(new cXinelibPlayerControl(ShowMusic, NULL));
   } else {
-    int len = strlen(File);
+    size_t len = strlen(File);
     if(len && File[len-1] == '/')
       m_Player->Playlist().Read(File, true);
     else
