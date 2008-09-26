@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.1 2008-09-26 13:07:32 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.2 2008-09-26 13:08:22 phintuka Exp $
  *
  */
 
@@ -983,6 +983,17 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
 
   if(this->window_id <= 0) {
+
+    /* Window hint */
+    XClassHint *classHint = XAllocClassHint();
+    if(classHint) {
+      classHint->res_name = "VDR";
+      classHint->res_class = "VDR";
+      XSetClassHint(this->display, this->window[0], classHint);
+      XSetClassHint(this->display, this->window[1], classHint);
+      XFree(classHint);
+    }
+
     /* Window name */
 #ifdef FE_STANDALONE
     XStoreName(this->display, this->window[0], "VDR - ");
