@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.52.2.1 2008-09-26 13:25:48 phintuka Exp $
+ * $Id: media_player.c,v 1.52.2.2 2008-09-26 13:41:59 phintuka Exp $
  *
  */
 
@@ -932,6 +932,11 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
     if(dt && !strcmp("0", dt)) 
       MenuDomain = true;
+    else {
+      dt = cXinelibDevice::Instance().GetMetaInfo(miDvdButtons);
+      if(dt && *dt && *dt != '0')
+	MenuDomain = true;
+    }
   }
 
   if(MenuDomain) {
