@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.63.2.1 2008-09-26 19:12:30 phintuka Exp $
+ * $Id: config.c,v 1.63.2.2 2008-09-26 19:15:48 phintuka Exp $
  *
  */
 
@@ -596,6 +596,9 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'f': ProcessArg("Fullscreen", "1");
               break;
     case 'D': ProcessArg("X11.HUDOSD", "1");
+#ifndef HAVE_XRENDER
+              LOGMSG("HUD OSD not supported\n");
+#endif
               break;
     case 'w': ProcessArg("Fullscreen", "0");
               ProcessArg("X11.WindowWidth", optarg);
