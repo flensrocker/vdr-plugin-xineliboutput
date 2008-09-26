@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.5 2008-09-26 19:59:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.6 2008-09-26 20:01:32 phintuka Exp $
  *
  */
 
@@ -4982,7 +4982,6 @@ static void post_frame_end(vdr_input_plugin_t *this, int type)
     /* Should not be here ... 
        Failing to send BUF_FLAG_FRAME_END 's freezes the decoder */
     LOGERR("get_buf_element() for H.264 BUF_FLAG_FRAME_END failed - aborting");
-    abort();
   }
 }
 
