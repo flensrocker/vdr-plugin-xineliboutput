@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.59.2.1 2008-09-26 13:41:43 phintuka Exp $
+ * $Id: frontend.c,v 1.59.2.2 2008-09-26 13:46:49 phintuka Exp $
  *
  */
 
@@ -775,6 +775,24 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
   } else {
     if(xc.extsub_size >= 0)
       Xine_Control("EXTSUBSIZE", xc.extsub_size);
+
+#if VDRVERSNUM >= 10515
+    // set preferred subtitle language 
+    if (Setup.DisplaySubtitles) {
+      const char *langs = I18nLanguageCode(Setup.SubtitleLanguages[0]);
+      if (langs) {
+	char lang1[5];
+	strn0cpy(lang1, langs, 4); /* truncate */
+	const char *spu_lang = iso639_1_to_iso639_2(lang1);
+	LOGMSG("Preferred SPU language: %s (%s)", lang1, spu_lang);
+	if (spu_lang && spu_lang[0] && spu_lang[1] && !spu_lang[2])
+	  Xine_Control(cString::sprintf("SPUSTREAM %s", spu_lang));
+      }
+    } else {
+      LOGMSG("Preferred SPU language: (none)");
+      Xine_Control(cString::sprintf("SPUSTREAM %d", ttXSubtitleNone));
+    }
+#endif
   }
 
   return (!GetStopSignal()) && (result==0);
