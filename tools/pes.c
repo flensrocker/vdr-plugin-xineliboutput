@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.2 2008-02-04 23:49:50 phintuka Exp $
+ * $Id: pes.c,v 1.2.2.1 2008-09-26 19:08:25 phintuka Exp $
  *
  */
 
@@ -24,7 +24,7 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
     if ((buf[6] & 0x30) != 0)
       return INT64_C(-1);
       
-    if ((len > 14) && (buf[7] & 0x80)) { /* pts avail */
+    if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
       int64_t pts;
       pts  = ((int64_t)(buf[ 9] & 0x0E)) << 29 ;
       pts |= ((int64_t) buf[10])         << 22 ;
@@ -69,7 +69,7 @@ void pes_change_pts(uint8_t *buf, int len, int64_t new_pts)
     if ((buf[6] & 0x30) != 0)
       return;
       
-    if ((len > 14) && (buf[7] & 0x80)) { /* pts avail */
+    if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
       buf[ 9] = ((new_pts >> 29) & 0x0E) | (buf[ 9] & 0xf1);
       buf[10] = ((new_pts >> 22) & 0xFF);
       buf[11] = ((new_pts >> 14) & 0xFE) | (buf[11] & 0x01);
@@ -94,8 +94,8 @@ int pes_strip_pts_dts(uint8_t *buf, int size)
     pes_len -= n;     /* update packet len */
     buf[4]   = pes_len >> 8;   /* packet len (hi) */
     buf[5]   = pes_len & 0xff; /* packet len (lo) */
-    buf[7]  &= 0x7f;  /* clear pts flag */
-    buf[8]  -= 5;     /* update header len */
+    buf[7]  &= 0x3f;  /* clear pts and dts flags */
+    buf[8]  -= n;     /* update header len */
     memmove(buf+4+n, buf+9+n, size-9-n);
     return size - n;
   }
