@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.10 2008-10-04 06:50:39 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.11 2008-10-04 06:51:35 phintuka Exp $
  *
  */
 
@@ -2084,6 +2084,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     int rle_scaled = 0;
     int xmove = 0, ymove = 0;
     int unscaled_supported = 1;
+
+    stream->video_out->enable_ovl(stream->video_out, 1);
 
     if(handle < 0)
       handle = this->osdhandle[cmd->wnd] = 
