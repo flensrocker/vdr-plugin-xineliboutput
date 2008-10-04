@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.181 2008-09-25 19:40:00 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.182 2008-10-04 06:55:02 phintuka Exp $
  *
  */
 
@@ -1970,6 +1970,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
   video_overlay_event_t   ov_event;
   vo_overlay_t            ov_overlay;
   video_overlay_manager_t *ovl_manager;
+  xine_stream_t           *stream = this->slave_stream ?: this->stream;
   int handle = -1, i;
 
   /* Caller must have locked this->osd_lock ! */
@@ -1978,7 +1979,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* Check parameters */
 
-  if(!cmd || !this || !this->stream) {
+  if(!cmd || !this || !stream) {
     LOGMSG("exec_osd_command: Stream not initialized !");
     return CONTROL_DISCONNECTED;
   }
@@ -1997,7 +1998,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* we already have port ticket */
   ovl_manager = 
-      this->stream->video_out->get_overlay_manager(this->stream->video_out);
+      stream->video_out->get_overlay_manager(stream->video_out);
 
   if(!ovl_manager) {
     LOGMSG("exec_osd_command: Stream has no overlay manager !");
@@ -2008,11 +2009,10 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* calculate exec time */
   if(cmd->pts || cmd->delay_ms) {
-    int64_t vpts = xine_get_current_vpts(this->stream);
+    int64_t vpts = xine_get_current_vpts(stream);
     if(cmd->pts) {
       ov_event.vpts = cmd->pts + 
-          this->stream->metronom->get_option(this->stream->metronom, 
-					     METRONOM_VPTS_OFFSET);
+          stream->metronom->get_option(stream->metronom, METRONOM_VPTS_OFFSET);
     } else {
       if(this->last_changed_vpts[cmd->wnd]) 
 	ov_event.vpts = this->last_changed_vpts[cmd->wnd] + cmd->delay_ms*90;
@@ -2032,7 +2032,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     this->vdr_osd_height = cmd->h;
 
   } else if(cmd->cmd == OSD_Nop) {
-    this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(this->stream);
+    this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
 
   } else if(cmd->cmd == OSD_SetPalette) {
     /* TODO */
@@ -2103,7 +2103,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       ov_event.object.overlay->trans[i] = (cmd->palette[i].alpha + 0x7)/0xf;
     }
 
-    if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
+    if(!(stream->video_out->get_capabilities(stream->video_out) &
 	 VO_CAP_UNSCALED_OVERLAY))
       unscaled_supported = 0;
     else if(cmd->flags & OSDFLAG_UNSCALED)
@@ -2176,10 +2176,10 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     }
 
     if(use_unscaled) {
-      int win_width  = this->stream->video_out->get_property(this->stream->video_out, 
-							     VO_PROP_WINDOW_WIDTH);
-      int win_height = this->stream->video_out->get_property(this->stream->video_out, 
-							     VO_PROP_WINDOW_HEIGHT);
+      int win_width  = stream->video_out->get_property(stream->video_out, 
+						       VO_PROP_WINDOW_WIDTH);
+      int win_height = stream->video_out->get_property(stream->video_out, 
+						       VO_PROP_WINDOW_HEIGHT);
       if(cmd->scaling > 0) {
 	/* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
 	
@@ -2242,7 +2242,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       break;
     } while(1);
 
-    this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(this->stream);
+    this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(stream);
 
   } else {
     LOGMSG("Unknown OSD command %d", cmd->cmd);
@@ -3465,7 +3465,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       if(!strcmp(cmd+6, eventmap[i].name)) {
 	xine_event_t ev = {
 	  .type = eventmap[i].type,
-	  .stream = this->slave_stream ? this->slave_stream : this->stream,
+	  .stream = this->slave_stream ?: this->stream,
 	  /* tag event to prevent circular input events 
 	     (vdr -> here -> event_listener -> vdr -> ...) */
 	  .data = "VDR",
