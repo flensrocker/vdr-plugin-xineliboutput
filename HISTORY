@@ -1,12 +1,13 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2008-09-26: Version 1.0.2  (branch-1_0_x)
+2008-10-04: Version 1.0.2  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
 - Fixed segfault when committing uninitialized OSD (Thanks to Rolf Ahrenberg)
 - Fixed buffer errors when switching from HD channel to SD channel
 - Fixed selecting DVD subtitles language from DVD menus
 - Fixed setting DVD subtitles preferred language
+- Fixed missing VDR OSD while playing DVDs
 - Fixed DVD menu navigation when menu is not in title 0
 - Fixed infinite loop when trying to replay unaccessible DVD
 - Fixed infinite loop when trying to play only one unacessible or very short music file
