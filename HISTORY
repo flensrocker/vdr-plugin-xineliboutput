@@ -1,6 +1,27 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2008-10-04: Version 1.0.2  (branch-1_0_x)
+Backported bugfixes from CVS trunk:
+- Fixed segfault when committing uninitialized OSD (Thanks to Rolf Ahrenberg)
+- Fixed buffer errors when switching from HD channel to SD channel
+- Fixed selecting DVD subtitles language from DVD menus
+- Fixed setting DVD subtitles preferred language
+- Fixed missing VDR OSD while playing DVDs
+- Fixed DVD menu navigation when menu is not in title 0
+- Fixed infinite loop when trying to replay unaccessible DVD
+- Fixed infinite loop when trying to play only one unacessible or very short music file
+- Fixed replaying images from network sources (http://, ...) (Thanks to Rolf Ahrenberg)
+- Fixed segfault when media file meta info contains thumbnails (Thanks to Petri Helin)
+- Fixed smooth trickspeed setup menu entry with VDR-1.5.10+ (Thanks to Timo Eskola)
+- Fixed vdr-sxfe icon in 64-bit systems
+- Fixed updating window title when protocol is part of mrl
+- Fixed German translation for "Play DVD disc >>" (Thanks to Helmar Gerloni)
+- Increased timeout when opening media files from network sources (Thanks to Tobias Grimm)
+- OS X build fixes (Thanks to Tero Siironen)
+- xine-lib 1.2 updates
+- Added WM class hint ("VDR") to vdr-sxfe windows (Thanks to Rolf Ahrenberg)
+
 2008-05-07: Version 1.0.1
 
 - Fixed freezes while zapping and/or seeking

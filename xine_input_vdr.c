@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138 2008-05-06 23:14:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.11 2008-10-04 06:51:35 phintuka Exp $
  *
  */
 
@@ -47,6 +47,13 @@
 #include <xine/io_helper.h>
 #include <xine/buffer.h>
 #include <xine/post.h>
+
+#if XINE_VERSION_CODE >= 10190
+# include <libavutil/mem.h>
+#endif
+#ifndef XINE_VERSION_CODE 
+# error XINE_VERSION_CODE undefined !
+#endif
 
 #include "xine_input_vdr.h"
 #include "xine_input_vdr_net.h"
@@ -247,6 +254,7 @@ typedef struct vdr_input_plugin_s {
   int                 send_pts;
   int                 padding_cnt;
   int                 loop_play;
+  int                 dvd_menu;
   int                 hd_stream;  /* true if current stream is HD */
   int                 h264;       /* -1: unknown, 0: no, 1: yes */
 
@@ -356,7 +364,7 @@ struct udp_data_s {
 
 static udp_data_t *init_udp_data(void)
 {
-  udp_data_t *data = (udp_data_t *)xine_xmalloc(sizeof(udp_data_t));
+  udp_data_t *data = calloc(1, sizeof(udp_data_t));
 
   data->received_frames  = -1; 
 
@@ -1248,11 +1256,27 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       buf->type = BUF_VIDEO_MPEG;
       xine_fast_memcpy(buf->content, &data[pos], buf->size);
       pos += buf->size;
+      if(pos >= datalen)
+        buf->decoder_flags |= BUF_FLAG_FRAME_END;
       this->stream->video_fifo->put(this->stream->video_fifo, buf);
     } else {
       LOGMSG("Error: queue_nosignal: no buffers !");
       break;
     }
+  }
+
+  /* sequence end */
+  buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+  if (buf) {
+    static const uint8_t seq_end[] = {0x00, 0x00, 0x01, 0xb7}; /* mpeg2 */
+    buf->type = BUF_VIDEO_MPEG;
+    buf->size = sizeof(seq_end);
+    buf->decoder_flags = BUF_FLAG_FRAME_END;
+    memcpy(buf->content, seq_end, sizeof(seq_end));
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);*/
+    /*put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);*/
   }
 
   free(tmp);
@@ -1400,11 +1424,10 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   fifo_buffer_t *ref = stream->video_fifo;
   fifo_buffer_t *this;
   int            i;
-  int            alignment = 2048;
-  unsigned char *multi_buffer = NULL;
+  unsigned char *multi_buffer;
 
   LOGDBG("fifo_buffer_new...");
-  this = xine_xmalloc (sizeof (fifo_buffer_t));
+  this = calloc(1, sizeof (fifo_buffer_t));
 
   this->first               = NULL;
   this->last                = NULL;
@@ -1430,13 +1453,7 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
    * init buffer pool, allocate nNumBuffers of buf_size bytes each
    */
 
-  if (buf_size % alignment != 0)
-    buf_size += alignment - (buf_size % alignment);
-
-  multi_buffer = xine_xmalloc_aligned (alignment, num_buffers * buf_size,
-                                       &this->buffer_pool_base);
-
-  this->buffer_pool_top = NULL;
+  multi_buffer = this->buffer_pool_base = av_mallocz (num_buffers * buf_size);
 
   pthread_mutex_init (&this->buffer_pool_mutex, NULL);
   pthread_cond_init (&this->buffer_pool_cond_not_empty, NULL);
@@ -1450,7 +1467,7 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   for (i = 0; i<num_buffers; i++) {
     buf_element_t *buf;
 
-    buf = xine_xmalloc (sizeof (buf_element_t));
+    buf = calloc(1, sizeof (buf_element_t));
 
     buf->mem = multi_buffer;
     multi_buffer += buf_size;
@@ -1479,22 +1496,8 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   buf_element_t *buf = NULL;
 
   /* HD buffer */
-  if(this->hd_stream) {
-    if(!this->hd_buffer)
-      this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
-
-    if(size <= HD_BUF_ELEM_SIZE && this->hd_buffer && this->hd_stream)
-      buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
-  } else {
-    if(this->hd_buffer) {
-      LOGMSG("hd_buffer still exists ...");
-      if(this->hd_buffer->num_free(this->hd_buffer) == this->hd_buffer->buffer_pool_capacity) {
-	LOGMSG("disposing hd_buffer ...");
-	this->hd_buffer->dispose(this->hd_buffer);
-	this->hd_buffer = NULL;
-      }
-    }
-  }
+  if(this->hd_stream && size <= HD_BUF_ELEM_SIZE)
+    buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
 
   /* limit max. buffered data */
   if(!force && !buf) {
@@ -1724,7 +1727,7 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
 						xine_stream_t *stream,
 						const char *data) 
 {
-  fifo_input_plugin_t *slave = (fifo_input_plugin_t *) xine_xmalloc (sizeof(fifo_input_plugin_t));
+  fifo_input_plugin_t *slave = calloc(1, sizeof(fifo_input_plugin_t));
   unsigned long int imaster;
   vdr_input_plugin_t *master;
   LOGDBG("fifo_class_get_instance");
@@ -1978,6 +1981,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
   video_overlay_event_t   ov_event;
   vo_overlay_t            ov_overlay;
   video_overlay_manager_t *ovl_manager;
+  xine_stream_t           *stream = this->slave_stream ?: this->stream;
   int handle = -1, i;
 
   /* Caller must have locked this->osd_lock ! */
@@ -1986,7 +1990,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* Check parameters */
 
-  if(!cmd || !this || !this->stream) {
+  if(!cmd || !this || !stream) {
     LOGMSG("exec_osd_command: Stream not initialized !");
     return CONTROL_DISCONNECTED;
   }
@@ -2005,7 +2009,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* we already have port ticket */
   ovl_manager = 
-      this->stream->video_out->get_overlay_manager(this->stream->video_out);
+      stream->video_out->get_overlay_manager(stream->video_out);
 
   if(!ovl_manager) {
     LOGMSG("exec_osd_command: Stream has no overlay manager !");
@@ -2016,11 +2020,10 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* calculate exec time */
   if(cmd->pts || cmd->delay_ms) {
-    int64_t vpts = xine_get_current_vpts(this->stream);
+    int64_t vpts = xine_get_current_vpts(stream);
     if(cmd->pts) {
       ov_event.vpts = cmd->pts + 
-          this->stream->metronom->get_option(this->stream->metronom, 
-					     METRONOM_VPTS_OFFSET);
+          stream->metronom->get_option(stream->metronom, METRONOM_VPTS_OFFSET);
     } else {
       if(this->last_changed_vpts[cmd->wnd]) 
 	ov_event.vpts = this->last_changed_vpts[cmd->wnd] + cmd->delay_ms*90;
@@ -2040,7 +2043,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     this->vdr_osd_height = cmd->h;
 
   } else if(cmd->cmd == OSD_Nop) {
-    this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(this->stream);
+    this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
 
   } else if(cmd->cmd == OSD_SetPalette) {
     /* TODO */
@@ -2082,6 +2085,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     int xmove = 0, ymove = 0;
     int unscaled_supported = 1;
 
+    stream->video_out->enable_ovl(stream->video_out, 1);
+
     if(handle < 0)
       handle = this->osdhandle[cmd->wnd] = 
 	ovl_manager->get_handle(ovl_manager,0);
@@ -2111,7 +2116,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       ov_event.object.overlay->trans[i] = (cmd->palette[i].alpha + 0x7)/0xf;
     }
 
-    if(!(this->stream->video_out->get_capabilities(this->stream->video_out) &
+    if(!(stream->video_out->get_capabilities(stream->video_out) &
 	 VO_CAP_UNSCALED_OVERLAY))
       unscaled_supported = 0;
     else if(cmd->flags & OSDFLAG_UNSCALED)
@@ -2184,10 +2189,10 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     }
 
     if(use_unscaled) {
-      int win_width  = this->stream->video_out->get_property(this->stream->video_out, 
-							     VO_PROP_WINDOW_WIDTH);
-      int win_height = this->stream->video_out->get_property(this->stream->video_out, 
-							     VO_PROP_WINDOW_HEIGHT);
+      int win_width  = stream->video_out->get_property(stream->video_out, 
+						       VO_PROP_WINDOW_WIDTH);
+      int win_height = stream->video_out->get_property(stream->video_out, 
+						       VO_PROP_WINDOW_HEIGHT);
       if(cmd->scaling > 0) {
 	/* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
 	
@@ -2250,7 +2255,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       break;
     } while(1);
 
-    this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(this->stream);
+    this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(stream);
 
   } else {
     LOGMSG("Unknown OSD command %d", cmd->cmd);
@@ -2846,6 +2851,19 @@ static void select_spu_channel(xine_stream_t *stream, int channel)
   }
 }
 
+static void dvd_menu_domain(vdr_input_plugin_t *this, int value)
+{
+  if (value) {
+    LOGDBG("dvd_menu_domain(1)");
+    this->dvd_menu = 1;
+    this->slave_stream->spu_channel_user = SPU_CHANNEL_AUTO;
+    this->slave_stream->spu_channel = this->slave_stream->spu_channel_auto;
+  } else {
+    LOGDBG("dvd_menu_domain(0)");
+    this->dvd_menu = 0;
+  }
+}
+
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
@@ -2954,6 +2972,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 					 vdr_event_cb, this);
     }
     select_spu_channel(this->slave_stream, SPU_CHANNEL_AUTO);
+    this->dvd_menu = 0;
 
     errno = 0;
     err = !xine_open(this->slave_stream, filename);
@@ -3520,7 +3539,7 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
       if(!strcmp(cmd+6, eventmap[i].name)) {
 	xine_event_t ev;
 	ev.type = eventmap[i].type;
-	ev.stream = this->slave_stream ? this->slave_stream : this->stream;
+	ev.stream = this->slave_stream ?: this->stream;
 	/* tag event to prevent circular input events 
 	   (vdr -> here -> event_listener -> vdr -> ...) */
 	ev.data = "VDR"; 
@@ -3545,7 +3564,13 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
   } else if(!strncasecmp(cmd, "HDMODE ", 7)) {
     if(1 == sscanf(cmd, "HDMODE %d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
-      this->hd_stream = tmp32 ? 1 : 0;
+      if(tmp32) {
+	if(!this->hd_buffer)
+	  this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
+	this->hd_stream = 1;
+      } else {
+	this->hd_stream = 0;
+      }
       pthread_mutex_unlock(&this->lock);
     }
 
@@ -3709,16 +3734,34 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     int old_ch  = _x_get_spu_channel (stream);
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
+    int ch_auto = strstr(cmd+10, "auto") ? 1 : 0;
+
     if(strstr(cmd, "NEXT"))
       ch = ch < max_ch ? ch+1 : -2;
     else if(strstr(cmd, "PREV"))
       ch = ch > -2 ? ch-1 : max_ch-1;
     else if(1 == sscanf(cmd, "SPUSTREAM %d", &tmp32)) {
       ch = tmp32;
+    } else if(cmd[10] && cmd[11] && (cmd[12] < 'a' || cmd[12] > 'z')) {
+      /* ISO 639-1 language code */
+      const char spu_lang[3] = {cmd[10], cmd[11], 0};
+      LOGMSG("Preferred SPU language: %s", spu_lang);
+      this->class->xine->config->update_string(this->class->xine->config,
+					    "media.dvd.language", spu_lang);
+      ch = old_ch = 0;
     } else
       err = CONTROL_PARAM_ERROR;
-    if(ch != old_ch) {
-      select_spu_channel(stream, ch);
+
+    if (old_ch == SPU_CHANNEL_AUTO)
+      old_ch = stream->spu_channel_auto;
+
+    if (ch != old_ch) {
+      if (ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
+	LOGDBG("Automatic SPU channel %d->%d ignored", old_ch, ch);
+      } else {
+	LOGDBG("Forced SPU channel %d->%d", old_ch, ch);
+	select_spu_channel(stream, ch);
+      }
       LOGDBG("SPU channel selected: [%d]", _x_get_spu_channel (stream));
     }
 
@@ -3941,8 +3984,24 @@ static void *vdr_control_thread(void *this_gen)
 static void slave_track_maps_changed(vdr_input_plugin_t *this)
 {
   char tracks[1024], lang[128];
-  int i, current, n = 0, cnt;
-  
+  int i, current, n = 0;
+  size_t cnt;
+
+  /* DVD title and menu domain detection */  
+#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
+  i = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+  if(i >= 0) {
+    if (i == 0)
+      dvd_menu_domain(this, 1);
+    sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
+    if(this->funcs.xine_input_event)
+      this->funcs.xine_input_event(tracks, NULL);
+    else
+      write_control(this, tracks);
+    LOGDBG(tracks);
+  }
+#endif
+
   /* Audio tracks */
   
   strcpy(tracks, "INFO TRACKMAP AUDIO ");
@@ -3980,6 +4039,8 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
 		    "*%d:%s ", current, 
 		    current==SPU_CHANNEL_NONE ? "none" : "auto");
     n++;
+    if(current == SPU_CHANNEL_AUTO)
+      current = this->slave_stream->spu_channel_auto;
   }
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_spu_lang(this->slave_stream, i, lang)) {
@@ -3998,18 +4059,6 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
     strcpy(tracks+cnt, "\r\n");
     write_control(this, tracks);
   }
-
-#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-  i = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
-  if(i >= 0) {
-    sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
-    if(this->funcs.xine_input_event)
-      this->funcs.xine_input_event(tracks, NULL);
-    else
-      write_control(this, tracks);
-    LOGDBG(tracks);
-  }
-#endif
 }
 
 /* Map some xine input events to vdr input (remote key names) */
@@ -4123,10 +4172,26 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 #ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
 	int tt = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
 	snprintf(titlen, sizeof(titlen), "INFO DVDTITLE %d\r\n", tt);
+	if (tt == 0) 
+	  dvd_menu_domain(this, 1);
 #endif
 	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n%s", data->str, titlen);
 	msg[sizeof(msg)-1] = 0;
 	if(this->funcs.xine_input_event) 
+	  this->funcs.xine_input_event(msg, NULL);
+	else
+	  write_control(this, msg);
+	break;
+      }
+
+    case XINE_EVENT_UI_NUM_BUTTONS:
+      if (event->stream == this->slave_stream) {
+	xine_ui_data_t *data = (xine_ui_data_t*)event->data;
+	char msg[64];
+	dvd_menu_domain(this, data->num_buttons > 0);
+	snprintf(msg, sizeof(msg), "INFO DVDBUTTONS %d\r\n", data->num_buttons);
+	msg[sizeof(msg)-1] = 0;
+	if (this->funcs.xine_input_event) 
 	  this->funcs.xine_input_event(msg, NULL);
 	else
 	  write_control(this, msg);
@@ -4953,7 +5018,6 @@ static void post_frame_end(vdr_input_plugin_t *this, int type)
     /* Should not be here ... 
        Failing to send BUF_FLAG_FRAME_END 's freezes the decoder */
     LOGERR("get_buf_element() for H.264 BUF_FLAG_FRAME_END failed - aborting");
-    abort();
   }
 }
 
@@ -6327,7 +6391,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
     return fifo_class_get_instance(class_gen, stream, data);
   }
 
-  this = (vdr_input_plugin_t *) xine_xmalloc (sizeof(vdr_input_plugin_t));
+  this = calloc(1, sizeof(vdr_input_plugin_t));
 
   this->stream       = stream;
   this->mrl          = strdup(mrl); 
@@ -6480,7 +6544,7 @@ static void *init_class (xine_t *xine, void *data)
     }
   }
 
-  this = (vdr_input_class_t *) xine_xmalloc (sizeof (vdr_input_class_t));
+  this = calloc(1, sizeof (vdr_input_class_t));
 
   this->xine   = xine;
   

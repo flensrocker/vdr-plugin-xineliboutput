@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53 2008-04-13 23:11:51 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.1 2008-09-26 13:12:17 phintuka Exp $
  *
  */
 
@@ -744,7 +744,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   x_upd_num("engine.buffers.video_num_buffers", this->pes_buffers);  
 
 #if !defined(IS_FBFE) && defined(FE_STANDALONE)
-  if(!strncmp(mrl, "xvdr:", 5) && strstr(mrl, "//")) {
+  if(!strncmp(mrl, "xvdr", 4) && strstr(mrl, "//")) {
     char *name = NULL, *end;
     asprintf(&name, "VDR - %s", strstr(mrl, "//")+2);
     if(NULL != (end = strstr(name, ":37890"))) *end = 0; /* hide only default port */

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.52 2008-05-07 13:27:15 phintuka Exp $
+ * $Id: media_player.c,v 1.52.2.4 2008-09-26 19:37:37 phintuka Exp $
  *
  */
 
@@ -45,7 +45,7 @@ class cXinelibPlayer : public cPlayer
 
     cPlaylist m_Playlist;
 
-    bool m_Replaying;
+    bool m_Error;
     int  m_Speed; 
 
   protected:
@@ -71,7 +71,8 @@ class cXinelibPlayer : public cPlayer
     int  Speed(void) { return m_Speed; };
 
     bool NextFile(int step);
-    bool Replaying(void)  { return m_Replaying; }
+    bool Playing(void) { return !(m_Error || cXinelibDevice::Instance().EndOfStreamReached()); }
+    bool Error(void)   { return m_Error; }
 
     bool m_UseResume;
 
@@ -86,11 +87,11 @@ cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile
 {
   m_ResumeFile = NULL;
   m_UseResume = true;
-  m_Replaying = false;
+  m_Error = false;
   m_Speed = 1;
 
   if(File) {
-    int len = strlen(File);
+    size_t len = strlen(File);
     if(len && File[len-1] == '/') { 
       // whole directory, create temporary playlist
       m_Playlist.Read(File, true);
@@ -194,9 +195,7 @@ bool cXinelibPlayer::NextFile(int step)
     m_SubFile = NULL;
 
     Activate(true);
-    if(!m_Replaying)
-      return false;
-    return true;
+    return !m_Error;
   }
   
   return false;
@@ -228,10 +227,10 @@ void cXinelibPlayer::Activate(bool On)
 			     *cPlaylist::EscapeMrl(m_File));
     else
       mrl = cPlaylist::EscapeMrl(m_File);
-    m_Replaying = cXinelibDevice::Instance().PlayFile(mrl, pos);
-    LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Replaying?"OK":"FAIL");
+    m_Error = !cXinelibDevice::Instance().PlayFile(mrl, pos);
+    LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Error ? "FAIL" : "OK");
 
-    if(m_Replaying) {
+    if(!m_Error) {
       // update playlist metainfo
       const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
       const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTracknumber);
@@ -277,7 +276,7 @@ void cXinelibPlayer::Activate(bool On)
       m_ResumeFile = NULL;
     }
     cXinelibDevice::Instance().PlayFile(NULL,0);
-    m_Replaying = false;
+    m_Error = false;
   }
 }
 
@@ -487,7 +486,7 @@ void cXinelibPlayerControl::Queue(const char *File)
     OpenPlayer(File, true);
     cControl::Launch(new cXinelibPlayerControl(ShowMusic, NULL));
   } else {
-    int len = strlen(File);
+    size_t len = strlen(File);
     if(len && File[len-1] == '/')
       m_Player->Playlist().Read(File, true);
     else
@@ -582,11 +581,9 @@ cOsdObject *cXinelibPlayerControl::GetInfo(void)
 
 eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 {
-  if (cXinelibDevice::Instance().EndOfStreamReached() ||
-      !m_Player->Replaying() ) {
+  if ( !m_Player->Playing() ) {
     LOGDBG("cXinelibPlayerControl: EndOfStreamReached");
-    LOGDBG("cXinelibPlayerControl: Replaying = %d", m_Player->Replaying());
-    if (m_Mode == ShowMusic && m_Player->Files() == 1) {
+    if (m_Mode == ShowMusic && m_Player->Files() == 1 && !m_Player->Error()) {
       m_Player->NextFile(0);
       return osContinue;
     }
@@ -894,7 +891,8 @@ void cXinelibDvdPlayerControl::Show(void)
 
 eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 {
-  if (cXinelibDevice::Instance().EndOfStreamReached()) {
+  if ( !m_Player->Playing() ) {
+    LOGDBG("cXinelibDvdPlayerControl: EndOfStreamReached");
     Hide();
     return osEnd;
   }
@@ -932,6 +930,11 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
     if(dt && !strcmp("0", dt)) 
       MenuDomain = true;
+    else {
+      dt = cXinelibDevice::Instance().GetMetaInfo(miDvdButtons);
+      if(dt && *dt && *dt != '0')
+	MenuDomain = true;
+    }
   }
 
   if(MenuDomain) {
@@ -1102,7 +1105,10 @@ void cXinelibImagePlayer::Activate(bool On)
 {
   if(On) {
     m_Active = true;
-    cXinelibDevice::Instance().PlayFile(*cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File)), 0, true);
+    cXinelibDevice::Instance().PlayFile( ( (*m_File)[0]=='/' 
+					   ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
+					   : *m_File),
+					0, true);
   } else {
     m_Active = false;
     cXinelibDevice::Instance().PlayFile(NULL, 0);
@@ -1113,7 +1119,10 @@ bool cXinelibImagePlayer::ShowImage(const char *File)
 {
   m_File = File;
   if(m_Active)
-    return cXinelibDevice::Instance().PlayFile(*cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File)), 0, true);
+    return cXinelibDevice::Instance().PlayFile( ( (*m_File)[0] == '/' 
+						  ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
+						  : *m_File ),
+					       0, true);
   return true;
 }
 
