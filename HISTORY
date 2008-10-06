@@ -6,6 +6,7 @@ VDR Plugin 'xineliboutput' Revision History
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
 - Added an option to use xine-lib DVB subtitles decoder
+- Updated Italian translations (Thanks to Diego Pierotto)
 
 2008-10-04: Version 1.0.2  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
@@ -34,7 +35,7 @@ Backported bugfixes from CVS trunk:
 - Added metainfo menu to media player (Petri Helin)
 
 2008-04-14: Version 1.0.0
-- Added Italian translations (Thanks to Gringo)
+- Added Italian translations (Thanks to Diego Pierotto)
 - Added Czech translations (Thanks to Maya)
 - Added HUD OSD (Blend OSD using graphics hardware) and --hud command-line option.
   (Thanks to Antti Seppälä and Rolf Ahrenberg)

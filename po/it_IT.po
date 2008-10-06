@@ -6,9 +6,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-05-23 12:36+0300\n"
-"PO-Revision-Date: 2008-01-16 00:27+0100\n"
-"Last-Translator: Gringo <vdr-italian@tiscali.it>\n"
+"POT-Creation-Date: 2008-04-21 10:36+0300\n"
+"PO-Revision-Date: 2008-10-05 02:58+0100\n"
+"Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=ISO-8859-15\n"
@@ -45,13 +45,13 @@ msgid "CenterCutOut"
 msgstr "CenterCutOut"
 
 msgid "square"
-msgstr ""
+msgstr "quadrato"
 
 msgid "anamorphic"
-msgstr ""
+msgstr "anamorfico"
 
 msgid "DVB"
-msgstr ""
+msgstr "DVB"
 
 msgid "off"
 msgstr "spento"
@@ -147,10 +147,10 @@ msgid "yes"
 msgstr "sì"
 
 msgid "nearest"
-msgstr ""
+msgstr "più vicino"
 
 msgid "bilinear"
-msgstr ""
+msgstr "bilineare"
 
 msgid "Frontend initialization failed"
 msgstr "Inizializzazione frontend fallita"
@@ -186,7 +186,7 @@ msgid "Normal play"
 msgstr "Riproduzione normale"
 
 msgid "Delete image ?"
-msgstr "Cancellare immagine ?"
+msgstr "Eliminare immagine ?"
 
 msgid "Images"
 msgstr "Immagini"
@@ -195,7 +195,7 @@ msgid "Play music"
 msgstr "Riproduci musica"
 
 msgid "Add to playlist"
-msgstr "Aggiungi alla lista esecuzione"
+msgstr "Aggiungi alla lista esec."
 
 msgid "Play file"
 msgstr "Riproduci file"
@@ -267,10 +267,10 @@ msgid "Local Frontend"
 msgstr "Frontend locale"
 
 msgid "Aspect ratio"
-msgstr "Proporzioni"
+msgstr "Formato"
 
 msgid "Video aspect ratio"
-msgstr ""
+msgstr "Formato video"
 
 msgid "On"
 msgstr "Attivo"
@@ -282,7 +282,7 @@ msgid "Upmix stereo to 5.1"
 msgstr "Suono da Stereo a 5.1"
 
 msgid "Downmix AC3 to surround"
-msgstr "Suono da AC3 a surround"
+msgstr "Suono da AC3 a Surround"
 
 msgid "Default playlist not found"
 msgstr "Lista esec. predefinita non trovata"
@@ -352,13 +352,13 @@ msgid "  Detect subtitles"
 msgstr "  Rileva sottotitoli"
 
 msgid "Software scaling"
-msgstr ""
+msgstr "Ridimensionamento software"
 
 msgid "  Change aspect ratio"
-msgstr ""
+msgstr "  Cambia formato video"
 
 msgid "  Change video size"
-msgstr ""
+msgstr "  Cambia dimensione video"
 
 msgid "  Allow downscaling"
 msgstr "  Permetti ridimensionamento"
@@ -376,7 +376,7 @@ msgid "  Method"
 msgstr "  Metodo"
 
 msgid "  Cheap mode"
-msgstr "  Modo economico"
+msgstr "  Modalità economica"
 
 msgid "  Pulldown"
 msgstr "  Pulldown"
@@ -415,7 +415,7 @@ msgid "  Amount of chroma sharpness/blur"
 msgstr "  Valore di nitidezza/blur chroma"
 
 msgid "3D Denoiser"
-msgstr "3D Denoiser"
+msgstr "Denoiser 3D"
 
 msgid "  Spatial luma strength"
 msgstr "  Resistenza luma spaziale"
@@ -442,22 +442,22 @@ msgid "Smooth fast forward"
 msgstr "Avanzamento veloce leggero"
 
 msgid "Fastest trick speed"
-msgstr "Velocità trucco più veloce"
+msgstr "Trucco velocità più rapida"
 
 msgid "On-Screen Display"
-msgstr "Messaggi in sovraimpressione (OSD)"
+msgstr "Messaggi in sovrimpressione (OSD)"
 
 msgid "Hide main menu"
-msgstr "Nascondi voce nel menu principale"
+msgstr "Nascondi voce menu princ."
 
 msgid "Blending method"
-msgstr ""
+msgstr "Metodo di sfocatura"
 
 msgid "  Use hardware for low-res video"
-msgstr ""
+msgstr "Utilizza hardware per video bassa risoluzione"
 
 msgid "Scaling method"
-msgstr ""
+msgstr "Metodo ridimensione"
 
 msgid "Show all layers"
 msgstr "Mostra tutti i livelli"
@@ -580,22 +580,22 @@ msgid "RTSP clients can control VDR"
 msgstr "I client RTSP possono controllare VDR"
 
 msgid "Playlist settings"
-msgstr ""
+msgstr "Impostazioni lista esec."
 
 msgid "Show the track number"
-msgstr ""
+msgstr "Mostra il numero della traccia"
 
 msgid "Show the name of the artist"
-msgstr ""
+msgstr "Mostra il nome dell'artista"
 
 msgid "Show the name of the album"
-msgstr ""
+msgstr "Mostra il nome dell'album"
 
 msgid "Scan for metainfo"
-msgstr ""
+msgstr "Scansione metainfo"
 
 msgid "Cache metainfo"
-msgstr ""
+msgstr "Cache metainfo"
 
 msgid "Grayscale"
 msgstr "Scala di grigi"
