@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-05-23 12:36+0300\n"
+"POT-Creation-Date: 2008-10-16 23:12+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -153,6 +153,21 @@ msgstr "lähin"
 
 msgid "bilinear"
 msgstr "bilineaarinen"
+
+msgid "none"
+msgstr "ei"
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
+msgstr "kaikki"
 
 msgid "Frontend initialization failed"
 msgstr "Näyttölaitteen alustus epäonnistui"
@@ -599,6 +614,9 @@ msgstr "Tutki kappaleiden metatiedot"
 msgid "Cache metainfo"
 msgstr "Tallenna metatieto"
 
+msgid "Arrow keys control DVD playback"
+msgstr ""
+
 msgid "Grayscale"
 msgstr "Harmaasävy"
 
@@ -616,4 +634,3 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
-
