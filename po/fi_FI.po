@@ -6,14 +6,14 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: VDR 1.5.7\n"
+"Project-Id-Version: Xineliboutput 1.0.2\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-04-21 10:36+0300\n"
-"PO-Revision-Date: 2007-11-23 10:17+0200\n"
-"Last-Translator: Petri Hintukainen\n"
+"POT-Creation-Date: 2008-05-23 12:36+0300\n"
+"PO-Revision-Date: 2008-10-06 11:19+0200\n"
+"Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ISO-8859-15\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 msgid "custom"
@@ -47,31 +47,31 @@ msgid "CenterCutOut"
 msgstr "CenterCutOut"
 
 msgid "square"
-msgstr "neliˆ"
+msgstr "neli√∂"
 
 msgid "anamorphic"
 msgstr "anamorfinen"
 
 msgid "DVB"
-msgstr ""
+msgstr "DVB"
 
 msgid "off"
-msgstr "ei k‰ytˆss‰"
+msgstr "ei k√§yt√∂ss√§"
 
 msgid "normal"
 msgstr "normaali"
 
 msgid "inverted"
-msgstr "k‰‰nteinen"
+msgstr "k√§√§nteinen"
 
 msgid "no audio"
-msgstr "ei ‰‰nt‰"
+msgstr "ei √§√§nt√§"
 
 msgid "no video"
 msgstr "ei kuvaa"
 
 msgid "Off"
-msgstr "ei k‰ytˆss‰"
+msgstr "ei k√§yt√∂ss√§"
 
 msgid "Goom"
 msgstr "Goom"
@@ -86,46 +86,46 @@ msgid "FFT Graph"
 msgstr "Spektrogrammi"
 
 msgid "Mono 1.0"
-msgstr ""
+msgstr "Mono 1.0"
 
 msgid "Stereo 2.0"
-msgstr ""
+msgstr "Stereo 2.0"
 
 msgid "Headphones 2.0"
 msgstr "Kuulokkeet 2.0"
 
 msgid "Stereo 2.1"
-msgstr ""
+msgstr "Stereo 2.1"
 
 msgid "Surround 3.0"
-msgstr ""
+msgstr "Surround 3.0"
 
 msgid "Surround 4.0"
-msgstr ""
+msgstr "Surround 4.0"
 
 msgid "Surround 4.1"
-msgstr ""
+msgstr "Surround 4.1"
 
 msgid "Surround 5.0"
-msgstr ""
+msgstr "Surround 5.0"
 
 msgid "Surround 5.1"
-msgstr ""
+msgstr "Surround 5.1"
 
 msgid "Surround 6.0"
-msgstr ""
+msgstr "Surround 6.0"
 
 msgid "Surround 6.1"
-msgstr ""
+msgstr "Surround 6.1"
 
 msgid "Surround 7.1"
-msgstr ""
+msgstr "Surround 7.1"
 
 msgid "Pass Through"
-msgstr "L‰pivienti"
+msgstr "L√§pivienti"
 
 msgid "very large"
-msgstr "eritt‰in suuri"
+msgstr "eritt√§in suuri"
 
 msgid "Software"
 msgstr "Ohjelmallisesti"
@@ -134,31 +134,31 @@ msgid "Hardware"
 msgstr "Laitteistolla"
 
 msgid "no"
-msgstr ""
+msgstr "ei"
 
 msgid "grayscale"
-msgstr ""
+msgstr "harmaas√§vy"
 
 msgid "transparent"
-msgstr ""
+msgstr "l√§pin√§kyv√§"
 
 msgid "transparent grayscale"
-msgstr ""
+msgstr "l√§pin√§kyv√§ harmaas√§vy"
 
 msgid "yes"
-msgstr ""
+msgstr "kyll√§"
 
 msgid "nearest"
-msgstr ""
+msgstr "l√§hin"
 
 msgid "bilinear"
-msgstr ""
+msgstr "bilineaarinen"
 
 msgid "Frontend initialization failed"
-msgstr "N‰yttˆlaitteen alustus ep‰onnistui"
+msgstr "N√§ytt√∂laitteen alustus ep√§onnistui"
 
 msgid "Server initialization failed"
-msgstr "Palvelimen k‰ynnistys ep‰onnistui"
+msgstr "Palvelimen k√§ynnistys ep√§onnistui"
 
 msgid "Playlist"
 msgstr "Soittolista"
@@ -170,16 +170,16 @@ msgid "Button$Normal"
 msgstr "Normaali toisto"
 
 msgid "Button$Add files"
-msgstr "Lis‰‰"
+msgstr "Lis√§√§"
 
 msgid "Button$Remove"
 msgstr "Poista"
 
 msgid "Button$Sort"
-msgstr "J‰rjest‰"
+msgstr "J√§rjest√§"
 
 msgid "Queued to playlist"
-msgstr "Lis‰tty soittolistalle"
+msgstr "Lis√§tty soittolistalle"
 
 msgid "Random play"
 msgstr "Satunnaistoisto"
@@ -197,7 +197,7 @@ msgid "Play music"
 msgstr "Toista musiikkia"
 
 msgid "Add to playlist"
-msgstr "Lis‰‰ soittolistalle"
+msgstr "Lis√§√§ soittolistalle"
 
 msgid "Play file"
 msgstr "Toista tiedosto"
@@ -221,13 +221,13 @@ msgid "View images >>"
 msgstr "Katsele kuvia >>"
 
 msgid "Play remote DVD >>"
-msgstr "Toista DVD-levy et‰koneesta >>"
+msgstr "Toista DVD-levy et√§koneesta >>"
 
 msgid "Play DVD disc >>"
 msgstr "Toista DVD-levy >>"
 
 msgid "Play remote CD >>"
-msgstr "Toista CD-levy et‰koneesta >>"
+msgstr "Toista CD-levy et√§koneesta >>"
 
 msgid "Play audio CD >>"
 msgstr "Toista CD-levy >>"
@@ -239,7 +239,7 @@ msgid "Video settings"
 msgstr "Videoasetukset"
 
 msgid "Play only audio"
-msgstr "Toista pelkk‰ ‰‰ni"
+msgstr "Toista pelkk√§ √§√§ni"
 
 msgid "Crop letterbox 4:3 to 16:9"
 msgstr "Leikkaa 4:3-letterbox 16:9:ksi"
@@ -248,25 +248,25 @@ msgid "Overscan (crop image borders)"
 msgstr "Leikkaa kuvan reunoja (overscan)"
 
 msgid "Interlaced Field Order"
-msgstr "Lomitettujen kenttien j‰rjestys"
+msgstr "Lomitettujen kenttien j√§rjestys"
 
 msgid "Audio settings"
-msgstr "ƒ‰niasetukset"
+msgstr "√Ñ√§niasetukset"
 
 msgid "Headphone audio mode"
-msgstr ""
+msgstr "Kuulokkeiden √§√§nimoodi"
 
 msgid "Audio Compression"
-msgstr "Voimista hiljaisia ‰‰ni‰"
+msgstr "Voimista hiljaisia √§√§ni√§"
 
 msgid "Audio equalizer >>"
 msgstr "Taajuuskorjain >>"
 
 msgid "No subtitles available!"
-msgstr "Ei tekstityst‰"
+msgstr "Ei tekstityst√§"
 
 msgid "Local Frontend"
-msgstr "Paikallinen n‰yttˆ"
+msgstr "Paikallinen n√§ytt√∂"
 
 msgid "Aspect ratio"
 msgstr "Kuvasuhde"
@@ -275,25 +275,25 @@ msgid "Video aspect ratio"
 msgstr "Videon kuvasuhde"
 
 msgid "On"
-msgstr ""
+msgstr "K√§yt√∂ss√§"
 
 msgid "Deinterlacing"
 msgstr "Lomituksen poisto"
 
 msgid "Upmix stereo to 5.1"
-msgstr "Miksaa stereo‰‰ni 5.1-kanavaiseksi"
+msgstr "Miksaa stereo√§√§ni 5.1-kanavaiseksi"
 
 msgid "Downmix AC3 to surround"
-msgstr "Miksaa AC3-‰‰ni surroundiksi"
+msgstr "Miksaa AC3-√§√§ni surroundiksi"
 
 msgid "Default playlist not found"
-msgstr ""
+msgstr "Oletussoittolistaa ei l√∂ydet√§"
 
 msgid "Default playlist is not symlink"
-msgstr ""
+msgstr "Oletussoittolista ei ole symbolinen linkki"
 
 msgid "Default playlist not defined"
-msgstr ""
+msgstr "Oletussoittolistaa ei ole m√§√§ritelty"
 
 msgid "Delay"
 msgstr "Viive"
@@ -303,19 +303,19 @@ msgstr "ms"
 
 #, c-format
 msgid "xineliboutput: hotkey %s not binded"
-msgstr ""
+msgstr "xineliboutput: pikan√§pp√§int√§ %s ei ole kytketty"
 
 msgid "Audio"
-msgstr "ƒ‰ni"
+msgstr "√Ñ√§ni"
 
 msgid "Speakers"
 msgstr "Kaiuttimet"
 
 msgid "Volume control"
-msgstr "ƒ‰nenvoimakkuuden s‰‰tˆ"
+msgstr "√Ñ√§nenvoimakkuuden s√§√§t√∂"
 
 msgid "Mix to headphones"
-msgstr ""
+msgstr "Miksaa kuulokkeille"
 
 msgid "Visualization"
 msgstr "Visualisointi"
@@ -333,7 +333,7 @@ msgid "  Speed"
 msgstr "  Nopeus"
 
 msgid "fps"
-msgstr ""
+msgstr "fps"
 
 msgid "Audio Equalizer"
 msgstr "Taajuuskorjain"
@@ -363,10 +363,10 @@ msgid "  Change video size"
 msgstr "  Muuta videokuvan kokoa"
 
 msgid "  Allow downscaling"
-msgstr "  Salli skaalaus pienemm‰ksi"
+msgstr "  Salli skaalaus pienemm√§ksi"
 
 msgid "Post processing (ffmpeg)"
-msgstr "K‰yt‰ j‰lkik‰sittely‰ (ffmpeg)"
+msgstr "K√§yt√§ j√§lkik√§sittely√§ (ffmpeg)"
 
 msgid "  Quality"
 msgstr "  Laatu"
@@ -375,28 +375,28 @@ msgid "  Mode"
 msgstr "  Moodi"
 
 msgid "  Method"
-msgstr "  Menetelm‰"
+msgstr "  Menetelm√§"
 
 msgid "  Cheap mode"
-msgstr "  K‰yt‰ Cheap-moodia"
+msgstr "  K√§yt√§ Cheap-moodia"
 
 msgid "  Pulldown"
 msgstr "  Pulldown-moodi"
 
 msgid "  Frame rate"
-msgstr "  Ruudunp‰ivitys"
+msgstr "  Ruudunp√§ivitys"
 
 msgid "  Judder Correction"
-msgstr "  K‰yt‰ t‰rin‰nkorjausta"
+msgstr "  K√§yt√§ t√§rin√§nkorjausta"
 
 msgid "  Use progressive frame flag"
 msgstr "  Tunnista progressiivinen kuva"
 
 msgid "  Chroma Filter"
-msgstr "  K‰yt‰ Chroma-suodinta"
+msgstr "  K√§yt√§ Chroma-suodinta"
 
 msgid "Sharpen / Blur"
-msgstr "Ter‰vˆinti / Sumennus"
+msgstr "Ter√§v√∂inti / Sumennus"
 
 msgid "  Width of the luma matrix"
 msgstr "  Luma-matriisin leveys"
@@ -405,7 +405,7 @@ msgid "  Height of the luma matrix"
 msgstr "  Luma-matriisin korkeus"
 
 msgid "  Amount of luma sharpness/blur"
-msgstr "  Luma-ter‰vˆinti/-sumennus"
+msgstr "  Luma-ter√§v√∂inti/-sumennus"
 
 msgid "  Width of the chroma matrix"
 msgstr "  Chroma-matriisin leveys"
@@ -414,7 +414,7 @@ msgid "  Height of the chroma matrix"
 msgstr "  Chroma-matriisin korkeus"
 
 msgid "  Amount of chroma sharpness/blur"
-msgstr "  Chroma-ter‰vˆinti/-sumennus"
+msgstr "  Chroma-ter√§v√∂inti/-sumennus"
 
 msgid "3D Denoiser"
 msgstr "3D kohinanpoisto"
@@ -429,7 +429,7 @@ msgid "  Temporal strength"
 msgstr "  Ajallinen voimakkuus"
 
 msgid "HUE"
-msgstr "V‰ris‰vy"
+msgstr "V√§ris√§vy"
 
 msgid "Saturation"
 msgstr "Saturaatio"
@@ -447,10 +447,10 @@ msgid "Fastest trick speed"
 msgstr "Suurin kelausnopeus"
 
 msgid "On-Screen Display"
-msgstr "Kuvaruutun‰yttˆ"
+msgstr "Kuvaruutun√§ytt√∂"
 
 msgid "Hide main menu"
-msgstr "Piilota valinta p‰‰valikossa"
+msgstr "Piilota valinta p√§√§valikossa"
 
 msgid "Blending method"
 msgstr "Piirtotapa"
@@ -462,13 +462,13 @@ msgid "Scaling method"
 msgstr "Skaalaustapa"
 
 msgid "Show all layers"
-msgstr "N‰yt‰ kaikki kerrokset"
+msgstr "N√§yt√§ kaikki kerrokset"
 
 msgid "Dynamic transparency correction"
-msgstr "Dynaaminen l‰pin‰kyvyyden korjaus"
+msgstr "Dynaaminen l√§pin√§kyvyyden korjaus"
 
 msgid "Static transparency correction"
-msgstr "L‰pin‰kyvyyden korjaus"
+msgstr "L√§pin√§kyvyyden korjaus"
 
 msgid "External subtitle size"
 msgstr "Erillisen tekstityksen koko"
@@ -480,19 +480,19 @@ msgid "Buffer size"
 msgstr "Puskurin koko"
 
 msgid "  Number of PES packets"
-msgstr "  PES-pakettien lukum‰‰r‰"
+msgstr "  PES-pakettien lukum√§√§r√§"
 
 msgid "Local Display Frontend"
-msgstr "Paikallinen n‰yttˆ"
+msgstr "Paikallinen n√§ytt√∂"
 
 msgid "Use keyboard"
-msgstr "K‰yt‰ n‰pp‰imistˆ‰"
+msgstr "K√§yt√§ n√§pp√§imist√∂√§"
 
 msgid "Driver"
 msgstr "Ohjain"
 
 msgid "Display address"
-msgstr "N‰ytˆn osoite"
+msgstr "N√§yt√∂n osoite"
 
 msgid "Framebuffer device"
 msgstr "Framebuffer-laite"
@@ -516,10 +516,10 @@ msgid "Port"
 msgstr "Portti"
 
 msgid "Remote Clients"
-msgstr "Et‰k‰yttˆ"
+msgstr "Et√§k√§ytt√∂"
 
 msgid "Allow remote clients"
-msgstr "Salli et‰k‰yttˆ"
+msgstr "Salli et√§k√§ytt√∂"
 
 msgid "  Listen port (TCP and broadcast)"
 msgstr "  Kuuntele TCP-porttia"
@@ -528,7 +528,7 @@ msgid "  Listen address"
 msgstr "  Kuuntele osoitteessa"
 
 msgid "  Remote keyboard"
-msgstr "  K‰yt‰ et‰n‰pp‰imistˆ‰"
+msgstr "  K√§yt√§ et√§n√§pp√§imist√∂√§"
 
 msgid "  PIPE transport"
 msgstr "  PIPE-siirto"
@@ -552,7 +552,7 @@ msgid "    TTL"
 msgstr "    TTL-aika"
 
 msgid "    Transmit always on"
-msgstr "    Pid‰ l‰hetys aina p‰‰ll‰"
+msgstr "    Pid√§ l√§hetys aina p√§√§ll√§"
 
 msgid "    SAP announcements"
 msgstr "    SAP-ilmoitukset"
@@ -570,25 +570,25 @@ msgid "HTTP server"
 msgstr "HTTP-palvelin"
 
 msgid "HTTP clients can control VDR"
-msgstr "Anna HTTP-asiakkaiden ohjata VDR:‰‰"
+msgstr "Anna HTTP-asiakkaiden ohjata VDR:√§√§"
 
 msgid "RTSP server"
 msgstr "RTSP-palvelin"
 
 msgid "RTSP clients can control VDR"
-msgstr "Anna RTSP-asiakkaiden ohjata VDR:‰‰"
+msgstr "Anna RTSP-asiakkaiden ohjata VDR:√§√§"
 
 msgid "Playlist settings"
 msgstr "Soittolistan asetukset"
 
 msgid "Show the track number"
-msgstr "N‰yt‰ raidan numero"
+msgstr "N√§yt√§ raidan numero"
 
 msgid "Show the name of the artist"
-msgstr "N‰yt‰ esitt‰j‰n nimi"
+msgstr "N√§yt√§ esitt√§j√§n nimi"
 
 msgid "Show the name of the album"
-msgstr "N‰yt‰ levyn nimi"
+msgstr "N√§yt√§ levyn nimi"
 
 msgid "Scan for metainfo"
 msgstr "Tutki kappaleiden metatiedot"
@@ -597,13 +597,13 @@ msgid "Cache metainfo"
 msgstr "Tallenna metatieto"
 
 msgid "Grayscale"
-msgstr "Harmaas‰vy"
+msgstr "Harmaas√§vy"
 
 msgid "Bitmap"
 msgstr "Bittikartta"
 
 msgid "OSD"
-msgstr ""
+msgstr "Kuvaruutun√§ytt√∂"
 
 msgid "Media Player"
 msgstr "Mediasoitin"
@@ -612,4 +612,5 @@ msgid "Test Images"
 msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
-msgstr "X11/xine-lib n‰yttˆlaite"
+msgstr "X11/xine-lib n√§ytt√∂laite"
+
