@@ -4,14 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: i18n.c,v 1.36.2.1 2008-09-26 13:37:19 phintuka Exp $
+ * $Id: i18n.c,v 1.36.2.2 2008-10-17 20:19:50 phintuka Exp $
  *
  * Translations provided by:
  *
  * Finnish   Petri Hintukainen, Rolf Ahrenberg
  * Russian   Vladimir Monchenko
  * German    Udo Richter
- * Italian   Gringo <vdr-italian@tiscali.it
+ * Italian   Diego Pierotto
  *
  */
 
