@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-16 23:12+0300\n"
+"POT-Creation-Date: 2008-10-17 23:59+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -77,13 +77,13 @@ msgid "Goom"
 msgstr "Goom"
 
 msgid "Oscilloscope"
-msgstr "Oskilloskooppi"
+msgstr "oskilloskooppi"
 
 msgid "FFT Scope"
-msgstr "Spektri"
+msgstr "spektri"
 
 msgid "FFT Graph"
-msgstr "Spektrogrammi"
+msgstr "spektrogrammi"
 
 msgid "Mono 1.0"
 msgstr "Mono 1.0"
@@ -122,16 +122,16 @@ msgid "Surround 7.1"
 msgstr "Surround 7.1"
 
 msgid "Pass Through"
-msgstr "Läpivienti"
+msgstr "läpivienti"
 
 msgid "very large"
 msgstr "erittäin suuri"
 
 msgid "Software"
-msgstr "Ohjelmallisesti"
+msgstr "ohjelmallisesti"
 
 msgid "Hardware"
-msgstr "Laitteistolla"
+msgstr "laitteistolla"
 
 msgid "no"
 msgstr "ei"
@@ -158,13 +158,13 @@ msgid "none"
 msgstr "ei"
 
 msgid "nonref"
-msgstr ""
+msgstr "ei referoituja"
 
 msgid "bidir"
-msgstr ""
+msgstr "vain B-ruudut"
 
 msgid "nonkey"
-msgstr ""
+msgstr "ei avainruutuja"
 
 msgid "all"
 msgstr "kaikki"
@@ -352,6 +352,21 @@ msgstr "fps"
 
 msgid "Audio Equalizer"
 msgstr "Taajuuskorjain"
+
+msgid "Use Video-Out Driver"
+msgstr "videoajuri"
+
+msgid "vector"
+msgstr "vektoroitu"
+
+msgid "full"
+msgstr "täysi"
+
+msgid "half (top)"
+msgstr "alempi puolisko"
+
+msgid "half (bottom)"
+msgstr "ylempi puolisko"
 
 msgid "Video"
 msgstr "Kuva"
@@ -615,7 +630,7 @@ msgid "Cache metainfo"
 msgstr "Tallenna metatieto"
 
 msgid "Arrow keys control DVD playback"
-msgstr ""
+msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
 
 msgid "Grayscale"
 msgstr "Harmaasävy"
@@ -634,3 +649,6 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
+
+#~ msgid "None"
+#~ msgstr "ei"
