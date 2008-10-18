@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-04-21 10:36+0300\n"
+"POT-Creation-Date: 2008-10-18 13:41+0300\n"
 "PO-Revision-Date: 2008-10-05 02:58+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -335,6 +335,24 @@ msgstr "fps"
 
 msgid "Audio Equalizer"
 msgstr "Equalizzatore audio"
+
+msgid "Use Video-Out Driver"
+msgstr ""
+
+msgid "none"
+msgstr ""
+
+msgid "vector"
+msgstr ""
+
+msgid "full"
+msgstr ""
+
+msgid "half (top)"
+msgstr ""
+
+msgid "half (bottom)"
+msgstr ""
 
 msgid "Video"
 msgstr "Video"
