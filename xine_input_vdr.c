@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.11 2008-10-04 06:51:35 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.12 2008-10-18 11:34:47 phintuka Exp $
  *
  */
 
@@ -892,8 +892,10 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this,
 
 /******************************* TOOLS ***********************************/
 
-#ifndef __APPLE__
+#ifndef MIN
 # define MIN(a,b) ((a)<(b)?(a):(b))
+#endif
+#ifndef MAX
 # define MAX(a,b) ((a)>(b)?(a):(b))
 #endif
 
