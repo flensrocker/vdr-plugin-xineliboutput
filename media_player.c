@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.52.2.4 2008-09-26 19:37:37 phintuka Exp $
+ * $Id: media_player.c,v 1.52.2.5 2008-10-19 17:47:08 phintuka Exp $
  *
  */
 
@@ -247,7 +247,7 @@ void cXinelibPlayer::Activate(bool On)
 
       // cdda tracks
       if(m_Playlist.Count() == 1 && !strcmp("cdda:/", m_Playlist.First()->Filename)) {
-	int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE");
+	int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE CD");
 	if(count>1) {
 	  for(int i=0; i<count; i++)
 	    m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
