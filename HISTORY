@@ -1,6 +1,7 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+- Fixed playing first track of audio CD (requires xine-lib 1.1.5)
 - OS X build fixes (Thanks to Tero Siironen)
 - Updated finnish translations (Thanks to Rolf Ahrenberg)
 - Updated Italian translations (Thanks to Diego Pierotto)
