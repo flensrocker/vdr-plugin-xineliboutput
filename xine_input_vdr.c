@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.185 2008-10-21 09:42:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.186 2008-10-21 09:49:30 phintuka Exp $
  *
  */
 
@@ -2653,23 +2653,6 @@ static void send_meta_info(vdr_input_plugin_t *this)
   }
 }
 
-static void send_cd_info(vdr_input_plugin_t *this)
-{
-#if 0
-  // get_autoplay_list stops replay ...
-  int count = 0;
-  input_class_t *c = this->slave_stream->input_plugin->input_class;
-  char **list = c->get_autoplay_list(c, &count);
-  if(list) {
-    int i;
-    LOGMSG("cdda: %d entries", count);
-    for(i=0; i<count && list[i]; i++)
-      LOGMSG("cdda: %d: %s", i, list[i]);
-  }
-  this->autoplay_size = count;
-#endif
-}
-
 #ifdef DVD_STREAMING_SPEED
 static void dvd_set_speed(const char *device, int speed)
 {
@@ -2926,8 +2909,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					       METRONOM_PREBUFFER, 90000);
 #endif
-      if(!strncmp(filename, "cdda:", 5))
-	send_cd_info(this);
 
       this->loop_play = loop;
       err = !xine_play(this->slave_stream, 0, 1000 * pos);
