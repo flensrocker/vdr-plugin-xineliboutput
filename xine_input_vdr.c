@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.12 2008-10-18 11:34:47 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.13 2008-10-21 09:51:05 phintuka Exp $
  *
  */
 
@@ -3849,6 +3849,18 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     }
 
   } else if(!strncasecmp(cmd, "GETAUTOPLAYSIZE", 15)) {
+
+    if (cmd[15]==' ' && cmd[16]) {
+      /* query from specific input plugin */
+      const char *cls_name = cmd + 16;
+      this->autoplay_size = 0;
+      if (! xine_get_browse_mrls (stream->xine,
+                                  cls_name,
+                                  NULL, &this->autoplay_size))
+        /* try older method */
+        xine_get_autoplay_mrls(stream->xine, cls_name, &this->autoplay_size);
+    }
+
     if(this->autoplay_size < 0) {
       char **list;
       if(this->slave_stream &&
