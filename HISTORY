@@ -9,6 +9,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 2008-10-21: Version 1.0.3  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
+- Fixed --aspect=auto:path_to_script option (Thanks to Armin Diedering)
 - Fixed playing first track of audio CD (requires xine-lib 1.1.5)
 - OS X build fixes (Thanks to Tero Siironen)
 - Updated finnish translations (Thanks to Rolf Ahrenberg)
