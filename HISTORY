@@ -6,6 +6,12 @@ VDR Plugin 'xineliboutput' Revision History
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
 - Added an option to use xine-lib DVB subtitles decoder
+
+2008-10-21: Version 1.0.3  (branch-1_0_x)
+Backported bugfixes from CVS trunk:
+- Fixed playing first track of audio CD (requires xine-lib 1.1.5)
+- OS X build fixes (Thanks to Tero Siironen)
+- Updated finnish translations (Thanks to Rolf Ahrenberg)
 - Updated Italian translations (Thanks to Diego Pierotto)
 
 2008-10-04: Version 1.0.2  (branch-1_0_x)
