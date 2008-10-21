@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.4 2008-09-26 19:36:01 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.5 2008-10-21 15:10:02 phintuka Exp $
  *
  */
 
@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
 		aspect = 3;
 	      if(!strncmp(optarg, "16:10", 5))
 		aspect = 4;
-              if(aspect == 0 && optarg[5] == ':')
+              if(aspect == 0 && optarg[4] == ':')
                 aspect_controller = strdup(optarg+5);
 	      PRINTF("Aspect ratio: %s\n", 
 		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
