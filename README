@@ -243,6 +243,9 @@ HUD OSD
     - Drawing video (even without OSD) may be slower when composite 
       extension is enabled.
 
+    - Try to adjust OSD size and offsets to get rid of possible graphical
+      corruption.
+
     - For true HD-resolution OSD VDR needs to be patched.
 
   HUD OSD was contributed by Antti Seppälä and Rolf Ahrenberg.

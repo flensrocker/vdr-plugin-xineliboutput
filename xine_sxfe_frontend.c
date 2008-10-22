@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.82 2008-09-19 12:17:00 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.83 2008-10-22 11:19:29 rofafor Exp $
  *
  */
 
@@ -26,6 +26,7 @@
 #include <poll.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <math.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -513,10 +514,7 @@ static Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis,
 	
   rs = calloc(1, sizeof (Xrender_Surf));
 	
-  if(alpha)
-    fmt = XRenderFindStandardFormat (dpy, PictStandardARGB32);
-  else
-    fmt = XRenderFindStandardFormat (dpy, PictStandardRGB24);
+  fmt = XRenderFindStandardFormat(dpy, alpha ? PictStandardARGB32 : PictStandardRGB24);
   rs->w = w;
   rs->h = h;
   rs->depth = fmt->depth;
@@ -541,22 +539,16 @@ static void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *ds
   if(!scale_y)
     scale_y = 1;
 
-  xf.matrix[0][0] = XDoubleToFixed(1 / scale_x); xf.matrix[0][1] = 0; xf.matrix[0][2] = 0;
-  xf.matrix[1][0] = 0; xf.matrix[1][1] = XDoubleToFixed(1 / scale_y); xf.matrix[1][2] = 0;
-  xf.matrix[2][0] = 0; xf.matrix[2][1] = 0; xf.matrix[2][2] = 65536;
-  if(smooth)
-    XRenderSetPictureFilter(dpy, src->pic, "bilinear", NULL, 0);
-  else
-    XRenderSetPictureFilter(dpy, src->pic, "nearest", NULL, 0);
+  xf.matrix[0][0] = XDoubleToFixed(1.0 / scale_x); xf.matrix[0][1] = 0; xf.matrix[0][2] = 0;
+  xf.matrix[1][0] = 0; xf.matrix[1][1] = XDoubleToFixed(1.0 / scale_y); xf.matrix[1][2] = 0;
+  xf.matrix[2][0] = 0; xf.matrix[2][1] = 0; xf.matrix[2][2] = XDoubleToFixed(1.0);
+  XRenderSetPictureFilter(dpy, src->pic, smooth ? "bilinear" : "nearest", NULL, 0);
   XRenderSetPictureTransform(dpy, src->pic, &xf);
-  XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic,
-                   x * scale_x + 1,
-                   y * scale_y + 1,
-                   0, 0,
-                   x * scale_x,
-                   y * scale_y,
-                   w * scale_x + 1,
-                   h * scale_y + 1);
+  x = (int)round((double)x * scale_x);
+  y = (int)round((double)y * scale_y);
+  w = (int)round((double)w * scale_x);
+  h = (int)round((double)h * scale_y);
+  XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic, x, y, 0, 0, x, y, w, h);
 }
 
 static Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
@@ -685,15 +677,15 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                       cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                       cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1,
                        False);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
-                             cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+                             cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1,
 			     (XDouble)(this->x.width) / (XDouble)(this->osd_width + this->osd_pad_x),
 			     (XDouble)(this->x.height) / (XDouble)(this->osd_height + this->osd_pad_y),
 			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
@@ -710,14 +702,14 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                    cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                    cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2);
+                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
-                             cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+                             cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1,
 			     (XDouble)(this->x.width) / (XDouble)(this->osd_width + this->osd_pad_x),
 			     (XDouble)(this->x.height) / (XDouble)(this->osd_height + this->osd_pad_y),
 			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2

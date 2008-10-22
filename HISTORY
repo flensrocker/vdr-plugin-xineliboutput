@@ -3,6 +3,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Modified HUD OSD scaling parameters
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
 - Added an option to use xine-lib DVB subtitles decoder
