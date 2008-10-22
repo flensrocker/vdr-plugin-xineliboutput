@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.3 2008-10-22 16:49:15 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.4 2008-10-22 17:11:19 phintuka Exp $
  *
  */
 
@@ -304,6 +304,7 @@ static void set_above(sxfe_t *this, int stay_above)
     return;
 
   if(this->stay_above != stay_above) {
+    XLockDisplay(this->display);
 #ifdef FE_STANDALONE
     char *name, *newname = NULL;
     if(XFetchName(this->display, this->window[0], &name) && name) {
@@ -322,6 +323,7 @@ static void set_above(sxfe_t *this, int stay_above)
     XStoreName(this->display, this->window[0], stay_above ? "Local VDR (top)" : "Local VDR");
 #endif
     this->stay_above = stay_above;
+    XUnlockDisplay(this->display);
   }
 
   memset(&ev, 0, sizeof(ev));
@@ -786,6 +788,7 @@ static void set_icon(sxfe_t *this)
 {
 # include "vdrlogo_32x32.c"
 
+  XLockDisplay(this->display);
 #if defined(__WORDSIZE) && (__WORDSIZE == 32)
   /* Icon */
   XChangeProperty(this->display, this->window[0],
@@ -805,6 +808,7 @@ static void set_icon(sxfe_t *this)
 		  (unsigned char *) q,
 		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
 #endif
+  XUnlockDisplay(this->display);
 }
 
 /*
@@ -1029,8 +1033,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   if(this->window_id <= 0)
     set_cursor(this->display, this->window[1], 0);
 
-  XUnlockDisplay (this->display);
-
   /* No screen saver */
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
   XSetScreenSaver(this->display, 0, 0, DefaultBlanking, DefaultExposures);
@@ -1058,6 +1060,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->atom_sxfe_interrupt  = XInternAtom(this->display, "SXFE_INTERRUPT", False);
 
   set_fullscreen_props(this);
+
+  XUnlockDisplay (this->display);
 
 #ifdef HAVE_XRENDER
   return hud_osd_open(this_gen);
@@ -1138,10 +1142,12 @@ static int sxfe_display_config(frontend_t *this_gen,
   this->scale_video = scale_video;
 #ifdef HAVE_XV_FIELD_ORDER
   if(this->field_order != field_order) {
+    XLockDisplay (this->display);
     if(XInternAtom(this->display, "XV_SWAP_FIELDS", True) != None)
       XvSetPortAttribute (this->display, 53, 
 			  XInternAtom (this->display, "XV_SWAP_FIELDS", False), 
 			  field_order);
+    XUnlockDisplay (this->display);
   }
 #endif
   this->field_order = field_order ? 1 : 0;
@@ -1187,10 +1193,14 @@ static void sxfe_interrupt(frontend_t *this_gen)
   ev2.message_type = this->atom_sxfe_interrupt;
   ev2.format  = 32;
 
+  XLockDisplay (this->display);
+
   if(!XSendEvent(ev2.display, ev2.window, TRUE, /*KeyPressMask*/0, (XEvent *)&ev2))
     LOGERR("sxfe_interrupt: XSendEvent(ClientMessage) FAILED\n");
 
   XFlush(this->display);
+
+  XUnlockDisplay (this->display);
 }
 
 static int sxfe_run(frontend_t *this_gen) 
@@ -1216,8 +1226,10 @@ static int sxfe_run(frontend_t *this_gen)
 
   while(keep_going && XPending(this->display) > 0) {
 
-    XNextEvent (this->display, &event);   
-    
+    XLockDisplay (this->display);
+    XNextEvent (this->display, &event);
+    XUnlockDisplay (this->display);
+
     switch (event.type) {
       case Expose:
 	if (event.xexpose.count == 0)
@@ -1258,8 +1270,11 @@ static int sxfe_run(frontend_t *this_gen)
 	  LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
 		 cev->x, cev->y, this->check_move);
 	  this->check_move = 0;
-	  if(this->xpos != cev->x && this->ypos != cev->y)
+	  if(this->xpos != cev->x && this->ypos != cev->y) {
+	    XLockDisplay (this->display);
 	    XMoveWindow(this->display, this->window[0], cev->x, cev->y);
+	    XUnlockDisplay (this->display);
+	  }
 	}
 	
 	if ((cev->x == 0) && (cev->y == 0)) {
@@ -1383,7 +1398,9 @@ static int sxfe_run(frontend_t *this_gen)
 	XComposeStatus  status;
 
 	if(kevent->keycode) {
+	  XLockDisplay (this->display);
 	  XLookupString(kevent, buffer, buf_len, &ks, &status);
+	  XUnlockDisplay (this->display);
 	  ksname = XKeysymToString(ks);
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
 	  if(ks == XK_f || ks == XK_F) {
