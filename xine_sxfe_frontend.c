@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.83 2008-10-22 11:19:29 rofafor Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.84 2008-10-22 11:39:56 rofafor Exp $
  *
  */
 
@@ -239,7 +239,9 @@ static void set_fs_size_hint(sxfe_t *this)
   hint.y      = this->xinerama_y;
   hint.width  = this->x.width;
   hint.height = this->x.height;
+  XLockDisplay(this->display);
   XSetNormalHints(this->display, this->window[1], &hint);
+  XUnlockDisplay(this->display);
 }
 
 /* set_border
@@ -257,10 +259,12 @@ static void set_border(sxfe_t *this, Window window, int border)
   if(this->window_id > 0)
     return;
 
+  XLockDisplay(this->display);
   XChangeProperty(this->display, window,
 		  this->xa_MOTIF_WM_HINTS, this->xa_MOTIF_WM_HINTS, 32,
 		  PropModeReplace, (unsigned char *) &mwmhints,
 		  PROP_MWM_HINTS_ELEMENTS);
+  XUnlockDisplay(this->display);
 }
 
 static void set_fullscreen_props(sxfe_t *this)
@@ -309,6 +313,7 @@ static void set_fullscreen_props(sxfe_t *this)
 
 static void update_window_title(sxfe_t *this)
 {
+  XLockDisplay(this->display);
 #ifdef FE_STANDALONE
   char *name = NULL;
   if (XFetchName(this->display, this->window[0], &name) && name) {
@@ -327,6 +332,7 @@ static void update_window_title(sxfe_t *this)
 #else
   XStoreName(this->display, this->window[0], this->stay_above ? "Local VDR (top)" : "Local VDR");
 #endif
+  XUnlockDisplay(this->display);
 }
 
 static void set_above(sxfe_t *this, int stay_above)
@@ -456,11 +462,11 @@ static void update_xinerama_info(sxfe_t *this)
 {
   int screen = this->xinerama_screen;
   this->xinerama_x = this->xinerama_y = 0;
+  XLockDisplay(this->display);
 #ifdef HAVE_XINERAMA
   if(screen >= -1 && XineramaIsActive(this->display)) {
     XineramaScreenInfo *screens;
     int num_screens;
-
     screens = XineramaQueryScreens(this->display, &num_screens);
     if(screen >= num_screens)
       screen = num_screens - 1;
@@ -485,6 +491,7 @@ static void update_xinerama_info(sxfe_t *this)
 
     XFree(screens);
   }
+  XUnlockDisplay(this->display);
 #endif
 }
 
@@ -863,6 +870,7 @@ static void disable_DPMS(sxfe_t *this)
 {
 #ifdef HAVE_XDPMS
   int dpms_dummy;
+  XLockDisplay(this->display);
   if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
     CARD16 dpms_level;
     DPMSInfo(this->display, &dpms_level, &this->dpms_state);
@@ -870,6 +878,7 @@ static void disable_DPMS(sxfe_t *this)
   } else {
     LOGMSG("disable_DPMS: DPMS unavailable");
   }
+  XUnlockDisplay(this->display);
 #endif
 }
 
@@ -926,7 +935,7 @@ static int open_display(sxfe_t *this, const char *video_port)
 static void set_icon(sxfe_t *this)
 {
 # include "vdrlogo_32x32.c"
-
+  XLockDisplay(this->display);
 #if defined(__WORDSIZE) && (__WORDSIZE == 32)
   /* Icon */
   XChangeProperty(this->display, this->window[0],
@@ -946,6 +955,7 @@ static void set_icon(sxfe_t *this)
 		  (unsigned char *) q,
 		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
 #endif
+  XUnlockDisplay(this->display);
 }
 
 /* 
@@ -986,6 +996,7 @@ static double detect_display_ratio(Display *dpy, int screen)
  */
 static void create_windows(sxfe_t *this)
 {
+  XLockDisplay(this->display);
   /* create and display our video window */
   this->window[0] = XCreateSimpleWindow (this->display,
 					 DefaultRootWindow(this->display),
@@ -1021,6 +1032,7 @@ static void create_windows(sxfe_t *this)
 
   /* Icon */
   set_icon(this);
+  XUnlockDisplay(this->display);
 }
 
 /*
@@ -1156,8 +1168,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   if(this->window_id <= 0)
     set_cursor(this->display, this->window[1], 0);
 
-  XUnlockDisplay (this->display);
-
   /* No screen saver */
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
   XSetScreenSaver(this->display, 0, 0, DefaultBlanking, DefaultExposures);
@@ -1176,6 +1186,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   set_fullscreen_props(this);
 
+  XUnlockDisplay (this->display);
 #ifdef HAVE_XRENDER
   return hud_osd_open(this);
 #else
@@ -1195,7 +1206,7 @@ static int sxfe_display_config(frontend_t *this_gen,
 			       int field_order) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  
+
   if(this->fullscreen_state_forced)
     fullscreen = this->fullscreen ? 1 : 0;
 
@@ -1262,10 +1273,12 @@ static int sxfe_display_config(frontend_t *this_gen,
   this->x.scale_video = scale_video;
 #ifdef HAVE_XV_FIELD_ORDER
   if(this->x.field_order != field_order) {
+    XLockDisplay (this->display);
     if(XInternAtom(this->display, "XV_SWAP_FIELDS", True) != None)
       XvSetPortAttribute (this->display, 53, 
 			  XInternAtom (this->display, "XV_SWAP_FIELDS", False), 
 			  field_order);
+    XUnlockDisplay (this->display);
   }
 #endif
   this->x.field_order = field_order ? 1 : 0;
@@ -1319,11 +1332,12 @@ static void sxfe_interrupt(frontend_t *this_gen)
     .message_type = this->xa_SXFE_INTERRUPT,
     .format       = 32,
   };
-
+  XLockDisplay (this->display);
   if(!XSendEvent(event.display, event.window, TRUE, /*KeyPressMask*/0, (XEvent *)&event))
     LOGERR("sxfe_interrupt: XSendEvent(ClientMessage) FAILED\n");
 
   XFlush(this->display);
+  XUnlockDisplay (this->display);
 }
 
 /*
@@ -1337,7 +1351,9 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
     char           buffer[20];
     XComposeStatus status;
 
+    XLockDisplay (this->display);
     XLookupString(kev, buffer, sizeof(buffer), &ks, &status);
+    XUnlockDisplay (this->display);
 
     switch(ks) {
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
@@ -1407,8 +1423,11 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
     LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
 	   cev->x, cev->y, this->check_move);
     this->check_move = 0;
-    if(this->x.xpos != cev->x && this->x.ypos != cev->y)
+    if(this->x.xpos != cev->x && this->x.ypos != cev->y) {
+      XLockDisplay (this->display);
       XMoveWindow(this->display, this->window[0], cev->x, cev->y);
+      XUnlockDisplay (this->display);
+    }
   }
 	
   if ((cev->x == 0) && (cev->y == 0)) {
@@ -1539,8 +1558,10 @@ static int sxfe_run(frontend_t *this_gen)
 
     XEvent event;
 
+    XLockDisplay (this->display);
     XNextEvent (this->display, &event);   
-    
+    XUnlockDisplay (this->display);    
+
     switch (event.type) {
       case Expose:
 	if (event.xexpose.count == 0)
