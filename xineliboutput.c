@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.34 2008-10-04 07:28:48 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.35 2008-10-24 22:09:13 rofafor Exp $
  *
  */
 
@@ -76,8 +76,8 @@ class cPluginXinelibOutput : public cPlugin
     virtual bool SetupParse(const char *Name, const char *Value);
 
     virtual bool Service(const char *Id, void *Data = NULL);
-    //virtual const char **SVDRPHelpPages(void);
-    //virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
+    virtual const char **SVDRPHelpPages(void);
+    virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
 };
 
 cPluginXinelibOutput::cPluginXinelibOutput(void)
@@ -271,6 +271,70 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
 
   }
   return false;
+}
+
+const char **cPluginXinelibOutput::SVDRPHelpPages(void)
+{
+  static const char *HelpPages[] = {
+    "PMDA <file>\n"
+    "    Play media file.",
+    "PDVD <file>\n"
+    "    Play DVD disc.",
+    "PMSC <file>\n"
+    "    Play music file.",
+    "PIMG <file>\n"
+    "    Play/show image file.",
+    NULL
+    };
+  return HelpPages;
+}
+
+cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Option, int &ReplyCode)
+{
+  if(strcasecmp(Command, "PMDA") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibPlayerControl(ShowFiles, Option));
+      return cString("Playing video file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "PDVD") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibDvdPlayerControl(Option));
+      return cString("Playing DVD disc");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "PMSC") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibPlayerControl(ShowMusic, Option));
+      return cString("Playing music file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "PIMG") == 0) {
+    if(*Option) {
+      char **list = new char*[2];
+      list[0] = strdup(Option);
+      list[1] = NULL;
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibImagesControl(list, 0, 1));
+      return cString("Showing image file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  return NULL;
 }
 
 extern "C"
