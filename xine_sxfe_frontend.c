@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.4 2008-10-22 17:11:19 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.5 2008-10-24 06:44:38 phintuka Exp $
  *
  */
 
@@ -596,21 +596,21 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           XShmPutImage(this->display, this->hud_window, this->gc, this->hud_img,
                        cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                        cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
                        False);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
                        cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                        cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
                        False);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
                              cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
 			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
 			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
 			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
@@ -622,19 +622,19 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           XPutImage(this->display, this->hud_window, this->gc, this->hud_img,
                     cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                     cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1);
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
                     cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                     cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1);
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
                              cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
 			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
 			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
 			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
