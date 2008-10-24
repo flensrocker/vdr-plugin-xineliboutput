@@ -3,14 +3,15 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
-- Added missing sxfe display locks (Thanks to Antti Seppälä)
-- Modified HUD OSD scaling parameters (Thanks to Rolf Ahrenberg)
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
 - Added an option to use xine-lib DVB subtitles decoder
 
-2008-10-21: Version 1.0.3  (branch-1_0_x)
+2008-10-24: Version 1.0.3  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
+- Added missing sxfe display locks (Thanks to Antti Seppälä)
+- Modified HUD OSD scaling parameters (Thanks to Rolf Ahrenberg)
+- Fixes to HUD OSD drawing (Thanks to Rolf Ahrenberg)
 - Fixed --aspect=auto:path_to_script option (Thanks to Armin Diedering)
 - Fixed playing first track of audio CD (requires xine-lib 1.1.5)
 - OS X build fixes (Thanks to Tero Siironen)
