@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.5 2008-10-24 06:44:38 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.6 2008-10-26 07:06:49 phintuka Exp $
  *
  */
 
@@ -194,8 +194,6 @@ typedef struct sxfe_s {
   Xrender_Surf *surf_img;
   int osd_width;
   int osd_height;
-  int osd_pad_x;
-  int osd_pad_y;
   uint32_t* hud_img_mem;
 #endif /* HAVE_XRENDER */
 
@@ -583,8 +581,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD Set Size");
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
-      this->osd_pad_x = (this->osd_width != OSD_DEF_WIDTH) ? 96 : 0;
-      this->osd_pad_y = (this->osd_height != OSD_DEF_HEIGHT) ? 90 : 0;
       break;
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
@@ -611,9 +607,9 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                              cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                              cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
                              cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
-			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
-			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
-			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
+			     (XDouble)this->width / (XDouble)this->osd_width,
+			     (XDouble)this->height / (XDouble)this->osd_height,
+			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       } else {
         hud_fill_img_memory(this->hud_img_mem, cmd);
@@ -635,9 +631,9 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                              cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                              cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
                              cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
-			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
-			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
-			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
+			     (XDouble)this->width / (XDouble)this->osd_width,
+			     (XDouble)this->height / (XDouble)this->osd_height,
+			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       }
       break;
@@ -845,8 +841,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->hud = hud;
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
-    this->osd_pad_x  = 0;
-    this->osd_pad_y  = 0;
 #else
     LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
 #endif
