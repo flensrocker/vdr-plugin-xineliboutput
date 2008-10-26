@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.86 2008-10-24 22:06:06 rofafor Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.87 2008-10-26 12:15:28 phintuka Exp $
  *
  */
 
@@ -663,6 +663,11 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD Set Size");
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
+
+      XSetForeground(this->display, this->gc, 0x00000000);
+      XFillRectangle(this->display, this->surf_img->draw, this->gc,
+		     0, 0, this->osd_width+2, this->osd_height+2);
+      XFlush(this->display);
       break;
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
@@ -737,6 +742,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
 		     0, 0, this->x.width, this->x.height);
+      XFillRectangle(this->display, this->surf_img->draw, this->gc,
+                     0, 0, this->osd_width+2, this->osd_height+2);
       XFlush(this->display);
       break;
 
