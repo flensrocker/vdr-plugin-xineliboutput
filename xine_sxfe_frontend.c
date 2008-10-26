@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.8 2008-10-26 07:16:24 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.9 2008-10-26 07:35:17 phintuka Exp $
  *
  */
 
@@ -467,10 +467,10 @@ void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
   xf.matrix[2][0] = 0; xf.matrix[2][1] = 0; xf.matrix[2][2] = XDoubleToFixed(1.0);
   XRenderSetPictureFilter(dpy, src->pic, smooth ? "bilinear" : "nearest", NULL, 0);
   XRenderSetPictureTransform(dpy, src->pic, &xf);
-  x = (int)ceil((double)x * scale_x);
-  y = (int)ceil((double)y * scale_y);
-  w = (int)floor((double)w * scale_x);
-  h = (int)floor((double)h * scale_y);
+  x = (int)ceil((double)(x?x-1:0) * scale_x);
+  y = (int)ceil((double)(y?y-1:0) * scale_y);
+  w = (int)floor((double)(w+2) * scale_x);
+  h = (int)floor((double)(h+2) * scale_y);
   XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic, x, y, 0, 0, x, y, w, h);
 }
 
