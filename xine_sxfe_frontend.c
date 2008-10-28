@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.88 2008-10-26 12:22:33 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.89 2008-10-28 20:05:37 phintuka Exp $
  *
  */
 
@@ -841,6 +841,35 @@ static int hud_osd_open(sxfe_t *this)
   return 1;
 }
 
+/*
+ * hud_osd_resize
+ *
+ * - Move and resize HUD along with main or fullscreen window 
+ */
+static void hud_osd_resize(sxfe_t *this, Window video_window, int width, int height)
+{
+  if(this->hud) {
+    if(video_window == this->window[0]) {
+      int    hud_x, hud_y;
+      Window tmp_win;
+      XLockDisplay(this->display);
+      XTranslateCoordinates(this->display, this->window[0],
+			    DefaultRootWindow(this->display),
+			    0, 0, &hud_x, &hud_y, &tmp_win);
+      XResizeWindow(this->display, this->hud_window, width, height);
+      XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
+      set_cursor(this->display, this->hud_window, 1);
+      XUnlockDisplay(this->display);
+    } else if(video_window == this->window[1]) {
+      XLockDisplay(this->display);
+      XResizeWindow(this->display, this->hud_window, width, height);
+      XMoveWindow(this->display, this->hud_window, 0, 0);
+      set_cursor(this->display, this->hud_window, 0);
+      XUnlockDisplay(this->display);
+    }
+  }
+}
+
 static void hud_osd_close(sxfe_t *this)
 {
   if(this && this->hud) {
@@ -1391,29 +1420,10 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
  */
 static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 {
-  Window tmp_win;
-	
   /* Move and resize HUD along with main or fullscreen window */
 #ifdef HAVE_XRENDER
-  if(this->hud) {
-    if(cev->window == this->window[0]) {
-      int hud_x, hud_y;
-      XLockDisplay(cev->display);
-      XTranslateCoordinates(this->display, this->window[0],
-			    DefaultRootWindow(this->display),
-			    0, 0, &hud_x, &hud_y, &tmp_win);
-      XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
-      XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
-      set_cursor(this->display, this->hud_window, 1);
-      XUnlockDisplay(cev->display);
-    } else if(cev->window == this->window[1]) {
-      XLockDisplay(cev->display);
-      XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
-      XMoveWindow(this->display, this->hud_window, 0, 0);
-      set_cursor(this->display, this->hud_window, 0);
-      XUnlockDisplay(cev->display);
-    }
-  }
+  if(this->hud)
+    hud_osd_resize(this, cev->window, cev->width, cev->height);
 #endif
 
   /* update video window size */
@@ -1434,6 +1444,7 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
   if ((cev->x == 0) && (cev->y == 0)) {
     if(!this->fullscreen) {
       int tmp_x, tmp_y;
+      Window tmp_win;
       XLockDisplay(cev->display);
       if(XTranslateCoordinates(cev->display, cev->window,
 			    DefaultRootWindow(cev->display),
