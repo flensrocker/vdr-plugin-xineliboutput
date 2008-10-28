@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.41 2008-10-28 10:37:02 phintuka Exp $
+# $Id: Makefile,v 1.42 2008-10-28 10:47:52 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -22,6 +22,7 @@ _default: all
 XINELIBOUTPUT_FB  = 0
 XINELIBOUTPUT_X11 = 0
 HAVE_XRENDER      = 0
+HAVE_XRANDR       = 0
 HAVE_XDPMS        = 0
 HAVE_XINERAMA     = 0
 HAVE_LIBEXTRACTOR = 0
@@ -45,9 +46,12 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
         ifeq ($(shell (((echo "\#include <X11/extensions/Xrender.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
             HAVE_XRENDER = 1
         else
-            $(warning ********************************************************)
-            $(warning XRender extension not detected ! HUD OSD disabled.      )
-            $(warning ********************************************************)
+            $(warning XRender extension not detected ! HUD OSD disabled. )
+        endif
+        ifeq ($(shell (((echo "\#include <X11/extensions/Xrandr.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
+            HAVE_XRANDR = 1
+        else
+            $(warning XRandr extension not detected ! Video mode switching disabled. )
         endif
         ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "\#include <X11/extensions/dpms.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
             HAVE_XDPMS = 1
@@ -246,6 +250,9 @@ LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 ifeq ($(HAVE_XRENDER), 1)
     LIBS_X11  += -lXrender
 endif
+ifeq ($(HAVE_XRANDR), 1)
+    LIBS_X11  += -lXrandr
+endif
 ifeq ($(HAVE_XINERAMA), 1)
     LIBS_X11  += -lXinerama
 endif
@@ -263,6 +270,9 @@ DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
 ifeq ($(HAVE_XRENDER), 1)
     DEFINES += -DHAVE_XRENDER=1
+endif
+ifeq ($(HAVE_XRANDR), 1)
+    DEFINES += -DHAVE_XRANDR=1
 endif
 ifeq ($(HAVE_XDPMS), 1)
     DEFINES += -DHAVE_XDPMS=1
