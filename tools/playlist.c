@@ -4,18 +4,18 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.18 2008-07-14 07:57:24 phintuka Exp $
+ * $Id: playlist.c,v 1.19 2008-10-28 10:37:02 phintuka Exp $
  *
  */
 
 #include <stdlib.h> 
 
-#ifdef HAVE_EXTRACTOR_H
+#ifdef HAVE_LIBEXTRACTOR
 # include <extractor.h>
   // libextractor 0.5.20 (2008-03-20) adds support for track numbers
 # if EXTRACTOR_VERSION < 0x00052000
 #  warning libextractor version too old (0.5.20 required for track numbers)
-#  undef HAVE_EXTRACTOR_H
+#  undef HAVE_LIBEXTRACTOR
 # endif
 #endif
 
@@ -107,7 +107,7 @@ int cPlaylistItem::Compare(const cListObject &ListObject) const
 // cID3Scanner
 //
 
-#ifndef HAVE_EXTRACTOR_H
+#ifndef HAVE_LIBEXTRACTOR
 static const char *shell_escape(char *buf, int buflen, const cString& src, char ch)
 {
   const char *pt = *src;
@@ -161,7 +161,7 @@ class cID3Scanner : public cThread
 
       if(xc.IsAudioFile(Item->Filename)) {
         LOGDBG("Scanning metainfo for file %s", *Item->Filename);
-#ifdef HAVE_EXTRACTOR_H
+#ifdef HAVE_LIBEXTRACTOR
         EXTRACTOR_ExtractorList * plugins;
         EXTRACTOR_KeywordList   * md_list;
         plugins = EXTRACTOR_loadDefaultLibraries();

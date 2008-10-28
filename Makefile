@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.40 2008-10-21 14:41:27 phintuka Exp $
+# $Id: Makefile,v 1.41 2008-10-28 10:37:02 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -24,7 +24,7 @@ XINELIBOUTPUT_X11 = 0
 HAVE_XRENDER      = 0
 HAVE_XDPMS        = 0
 HAVE_XINERAMA     = 0
-HAVE_EXTRACTOR_H  = 0
+HAVE_LIBEXTRACTOR = 0
 APPLE_DARWIN      = 0
 XINELIBOUTPUT_XINEPLUGIN = 0
 
@@ -84,7 +84,7 @@ USE_ICONV = 1
 #HAVE_XRENDER             = 1
 #HAVE_XDPMS               = 1
 #HAVE_XINERAMA            = 1
-#HAVE_EXTRACTOR_H         = 1
+#HAVE_LIBEXTRACTOR        = 1
 #XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
 #XINELIBOUTPUT_VDRPLUGIN  = 1
@@ -165,7 +165,7 @@ else
     endif
     XINELIBOUTPUT_VDRPLUGIN = 1
     ifeq ($(shell pkg-config libextractor && echo "1"), 1)
-        HAVE_EXTRACTOR_H = 1
+        HAVE_LIBEXTRACTOR = 1
     else
         $(warning libextractor not found.)
     endif
@@ -270,8 +270,8 @@ endif
 ifeq ($(HAVE_XINERAMA), 1)
     DEFINES += -DHAVE_XINERAMA=1
 endif
-ifeq ($(HAVE_EXTRACTOR_H), 1)
-    DEFINES  += -DHAVE_EXTRACTOR_H=1
+ifeq ($(HAVE_LIBEXTRACTOR), 1)
+    DEFINES  += -DHAVE_LIBEXTRACTOR=1
     INCLUDES += $(shell pkg-config libextractor --cflags-only-I)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-l)

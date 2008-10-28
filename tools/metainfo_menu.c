@@ -4,11 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.4 2008-05-22 10:44:23 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.5 2008-10-28 10:37:03 phintuka Exp $
  *
  */
 
-#ifdef HAVE_EXTRACTOR_H
+#ifdef HAVE_LIBEXTRACTOR
 # include <extractor.h>
 #endif
 
@@ -42,7 +42,7 @@ void cMetainfoMenu::Display(void)
   char metadata[4096];
   metadata[0] = 0;
 
-#ifdef HAVE_EXTRACTOR_H
+#ifdef HAVE_LIBEXTRACTOR
   EXTRACTOR_ExtractorList * plugins;
   EXTRACTOR_KeywordList   * md_list;
   plugins = EXTRACTOR_loadDefaultLibraries();
