@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.89 2008-10-28 20:05:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.90 2008-10-28 20:08:07 phintuka Exp $
  *
  */
 
@@ -1444,15 +1444,15 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
   if ((cev->x == 0) && (cev->y == 0)) {
     if(!this->fullscreen) {
       int tmp_x, tmp_y;
-      Window tmp_win;
-      XLockDisplay(cev->display);
-      if(XTranslateCoordinates(cev->display, cev->window,
-			    DefaultRootWindow(cev->display),
+      Window tmp_win;  
+      XLockDisplay(this->display);
+      if(XTranslateCoordinates(this->display, cev->window,
+			       DefaultRootWindow(this->display),
 			       0, 0, &tmp_x, &tmp_y, &tmp_win)) {
 	this->x.xpos = tmp_x;
 	this->x.ypos = tmp_y;
       } 
-      XUnlockDisplay(cev->display);
+      XUnlockDisplay(this->display);
     }
   } else {
     if(!this->fullscreen) {
@@ -1591,9 +1591,9 @@ static int sxfe_run(frontend_t *this_gen)
            XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
            /* Show HUD again if sxfe window receives focus */
            if(fev->window == this->window[0] || fev->window == this->window[1]) {
-             XLockDisplay(fev->display);
+             XLockDisplay(this->display);
              XMapWindow(this->display, this->hud_window);
-             XUnlockDisplay(fev->display);
+             XUnlockDisplay(this->display);
            }
         }
         break;
@@ -1604,9 +1604,9 @@ static int sxfe_run(frontend_t *this_gen)
 	  XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
 	  /* Dismiss HUD window if focusing away from frontend window */
 	  if(fev->window == this->window[0] || fev->window == this->window[1]) {
-            XLockDisplay(fev->display);
+            XLockDisplay(this->display);
             XUnmapWindow(this->display, this->hud_window);
-            XUnlockDisplay(fev->display);
+            XUnlockDisplay(this->display);
           }
         }
         break;
