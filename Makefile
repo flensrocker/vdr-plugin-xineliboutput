@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.45 2008-10-30 13:00:10 phintuka Exp $
+# $Id: Makefile,v 1.46 2008-10-30 13:16:00 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -92,7 +92,6 @@ USE_ICONV = yes
 #XINELIBOUTPUT_FB         = yes
 #XINELIBOUTPUT_XINEPLUGIN = yes
 #XINELIBOUTPUT_VDRPLUGIN  = yes
-#ENABLE_TEST_POSTPLUGINS  = yes
 #NOSIGNAL_IMAGE_FILE=/usr/share/vdr/xineliboutput/nosignal.mpv
 #STARTUP_IMAGE_FILE=/usr/share/vdr/xineliboutput/logodisplay.mpv
 
@@ -194,7 +193,6 @@ XINEINPUTVDR = xineplug_inp_xvdr.so
 XINEPOSTAUTOCROP  = xineplug_post_autocrop.so
 XINEPOSTSWSCALE = xineplug_post_swscale.so
 XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
-XINEPOSTHEADPHONE = xineplug_post_headphone.so
 
 ###
 ### which programs and libs to build
@@ -204,13 +202,11 @@ VDRSXFE_EXEC =
 VDRPLUGIN_SXFE_SO =
 VDRFBFE_EXEC =
 VDRPLUGIN_FBFE_SO =
-XINEPOSTHEADPHONE_SO =
 XINEINPUTVDR_SO =
 XINEPLUGINDIR = ./
 XINEPOSTAUTOCROP_SO =
 XINEPOSTSWSCALE_SO =
 XINEPOSTAUDIOCHANNEL_SO =
-XINEPOSTHEADPHONE_SO =
 VDRPLUGIN_SO =
 
 ifeq ($(XINELIBOUTPUT_X11), yes)
@@ -231,9 +227,6 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
     XINEPOSTSWSCALE_SO = $(XINEPOSTSWSCALE)
     XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
-    ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
-        XINEPOSTHEADPHONE_SO = $(XINEPOSTHEADPHONE)
-    endif
 endif
 ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
     VDRPLUGIN_SO = libvdr-$(PLUGIN).so
@@ -296,10 +289,6 @@ endif
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags) 
-endif
-
-ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
-    DEFINES += -DENABLE_TEST_POSTPLUGINS
 endif
 
 ifeq ($(USE_ICONV), yes)
@@ -407,8 +396,6 @@ xine_post_swscale.o: xine_post_swscale.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_swscale.c
 xine_post_audiochannel.o: xine_post_audiochannel.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_audiochannel.c
-xine_post_headphone.o: xine_post_headphone.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_headphone.c
 
 xine_sxfe_frontend.o: xine_sxfe_frontend.c xine_frontend.c xine_frontend.h \
 		xine_input_vdr.h xine_osd_command.h xine/post.h logdefs.h \
@@ -469,12 +456,12 @@ install : XINELIBOUTPUT_INSTALL_MSG =
 
 all: $(VDRPLUGIN_SO) $(VDRPLUGIN_SXFE_SO) $(VDRPLUGIN_FBFE_SO) \
 	    $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) $(XINEPOSTHEADPHONE_SO) \
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) \
 	    $(XINEPOSTAUDIOCHANNEL_SO) i18n
 	$(XINELIBOUTPUT_INSTALL_MSG)
 
 frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) $(XINEPOSTHEADPHONE_SO) \
+	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) \
 	    $(XINEPOSTAUDIOCHANNEL_SO)
 
 .PHONY: all
@@ -515,10 +502,6 @@ $(XINEPOSTSWSCALE_SO): xine_post_swscale.o
 $(XINEPOSTAUDIOCHANNEL_SO): xine_post_audiochannel.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_audiochannel.o $(LIBS_XINE) -o $@
 endif
-ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
-$(XINEPOSTHEADPHONE_SO): xine_post_headphone.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_headphone.o $(LIBS_XINE) -o $@
-endif
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
@@ -535,11 +518,6 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 	@$(INSTALL) -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-endif
-ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
-	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
-	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
-	@$(INSTALL) -m 0644 $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 endif
 ifeq ($(XINELIBOUTPUT_FB), yes)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-fbfe
