@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.43 2008-10-28 19:53:59 phintuka Exp $
+# $Id: Makefile,v 1.44 2008-10-30 12:36:36 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -19,47 +19,47 @@ _default: all
 ### check for xine-lib and X11
 ###
 
-XINELIBOUTPUT_FB  = 0
-XINELIBOUTPUT_X11 = 0
-HAVE_XRENDER      = 0
-HAVE_XRANDR       = 0
-HAVE_XDPMS        = 0
-HAVE_XINERAMA     = 0
-HAVE_LIBEXTRACTOR = 0
-APPLE_DARWIN      = 0
-XINELIBOUTPUT_XINEPLUGIN = 0
+XINELIBOUTPUT_FB  = no
+XINELIBOUTPUT_X11 = no
+HAVE_XRENDER      = no
+HAVE_XRANDR       = no
+HAVE_XDPMS        = no
+HAVE_XINERAMA     = no
+HAVE_LIBEXTRACTOR = no
+APPLE_DARWIN      = no
+XINELIBOUTPUT_XINEPLUGIN = no
 
 # check for xine-lib
 ifeq ($(shell (pkg-config libxine && echo 1 || echo 0)), 1)
-    XINELIBOUTPUT_XINEPLUGIN = 1
+    XINELIBOUTPUT_XINEPLUGIN = yes
 else
     ifeq ($(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0"), 1)
-        XINELIBOUTPUT_XINEPLUGIN = 1
+        XINELIBOUTPUT_XINEPLUGIN = yes
     endif
 endif
 
 # check for X11 and Xrender extension
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     XINELIBOUTPUT_FB  = $(XINELIBOUTPUT_XINEPLUGIN)
     ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-        XINELIBOUTPUT_X11 = 1
+        XINELIBOUTPUT_X11 = yes
         ifeq ($(shell (((echo "\#include <X11/extensions/Xrender.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XRENDER = 1
+            HAVE_XRENDER = yes
         else
             $(warning XRender extension not detected ! HUD OSD disabled. )
         endif
         ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "\#include <X11/extensions/Xrandr.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XRANDR = 1
+            HAVE_XRANDR = yes
         else
             $(warning XRandr extension not detected ! Video mode switching disabled. )
         endif
         ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "\#include <X11/extensions/dpms.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XDPMS = 1
+            HAVE_XDPMS = yes
         else
             $(warning XDPMS extension not detected. )
         endif
         ifeq ($(shell (((echo "\#include <X11/extensions/Xinerama.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XINERAMA = 1
+            HAVE_XINERAMA = yes
         else
             $(warning Xinerama extension not detected. )
         endif
@@ -76,23 +76,23 @@ endif
 
 # check for Apple Darwin
 ifeq ($(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0"), 1)
-    APPLE_DARWIN = 1
+    APPLE_DARWIN = yes
 endif
 
 #
 # Override configuration here or in ../../../Make.config
 #
 
-USE_ICONV = 1
-#XINELIBOUTPUT_X11        = 1
-#HAVE_XRENDER             = 1
-#HAVE_XDPMS               = 1
-#HAVE_XINERAMA            = 1
-#HAVE_LIBEXTRACTOR        = 1
-#XINELIBOUTPUT_FB         = 1
-#XINELIBOUTPUT_XINEPLUGIN = 1
-#XINELIBOUTPUT_VDRPLUGIN  = 1
-#ENABLE_TEST_POSTPLUGINS  = 1
+USE_ICONV = yes
+#XINELIBOUTPUT_X11        = yes
+#HAVE_XRENDER             = yes
+#HAVE_XDPMS               = yes
+#HAVE_XINERAMA            = yes
+#HAVE_LIBEXTRACTOR        = yes
+#XINELIBOUTPUT_FB         = yes
+#XINELIBOUTPUT_XINEPLUGIN = yes
+#XINELIBOUTPUT_VDRPLUGIN  = yes
+#ENABLE_TEST_POSTPLUGINS  = yes
 #NOSIGNAL_IMAGE_FILE=/usr/share/vdr/xineliboutput/nosignal.mpv
 #STARTUP_IMAGE_FILE=/usr/share/vdr/xineliboutput/logodisplay.mpv
 
@@ -112,7 +112,7 @@ CXX      ?= g++
 CC       ?= gcc 
 OPTFLAGS ?= 
 
-ifeq ($(APPLE_DARWIN), 1)
+ifeq ($(APPLE_DARWIN), yes)
     CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
     LDFLAGS_SO ?= -fvisibility=hidden
@@ -149,7 +149,7 @@ VDRINCDIR ?= $(VDRDIR)/include
 ### check for VDR
 ###
 
-ifeq ($(APPLE_DARWIN), 1)
+ifeq ($(APPLE_DARWIN), yes)
     VDRVERSION = $(shell sed -ne '/define VDRVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
     APIVERSION = $(shell sed -ne '/define APIVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
 else
@@ -161,15 +161,15 @@ ifeq ($(strip $(VDRVERSION)),)
     $(warning ********************************************************)
     $(warning VDR not detected ! VDR plugin will not be compiled.     )
     $(warning ********************************************************)
-    XINELIBOUTPUT_VDRPLUGIN = 0
+    XINELIBOUTPUT_VDRPLUGIN = no
 else
     ifeq ($(strip $(APIVERSION)),)
         $(warning VDR APIVERSION missing, using VDRVERSION $(VDRVERSION) )
         APIVERSION = $(VDRVERSION)
     endif
-    XINELIBOUTPUT_VDRPLUGIN = 1
+    XINELIBOUTPUT_VDRPLUGIN = yes
     ifeq ($(shell pkg-config libextractor && echo "1"), 1)
-        HAVE_LIBEXTRACTOR = 1
+        HAVE_LIBEXTRACTOR = yes
     else
         $(warning libextractor not found.)
     endif
@@ -213,29 +213,29 @@ XINEPOSTAUDIOCHANNEL_SO =
 XINEPOSTHEADPHONE_SO =
 VDRPLUGIN_SO =
 
-ifeq ($(XINELIBOUTPUT_X11), 1)
+ifeq ($(XINELIBOUTPUT_X11), yes)
     VDRSXFE_EXEC = $(VDRSXFE)
-    ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
+    ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
         VDRPLUGIN_SXFE_SO = lib$(PLUGIN)-sxfe.so
     endif
 endif
-ifeq ($(XINELIBOUTPUT_FB), 1)
+ifeq ($(XINELIBOUTPUT_FB), yes)
     VDRFBFE_EXEC = $(VDRFBFE)
-    ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
+    ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
         VDRPLUGIN_FBFE_SO = lib$(PLUGIN)-fbfe.so
     endif
 endif
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
     XINEPLUGINDIR   = $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --variable=plugindir) || xine-config --plugindir)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
     XINEPOSTSWSCALE_SO = $(XINEPOSTSWSCALE)
     XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
-    ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
+    ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
         XINEPOSTHEADPHONE_SO = $(XINEPOSTHEADPHONE)
     endif
 endif
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
     VDRPLUGIN_SO = libvdr-$(PLUGIN).so
 endif
 
@@ -247,17 +247,17 @@ endif
 INCLUDES  += -I$(VDRINCDIR)
 LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --libs) || xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
-ifeq ($(HAVE_XRENDER), 1)
+ifeq ($(HAVE_XRENDER), yes)
     LIBS_X11  += -lXrender
 endif
-ifeq ($(HAVE_XRANDR), 1)
+ifeq ($(HAVE_XRANDR), yes)
     LIBS_X11  += -lXrandr
 endif
-ifeq ($(HAVE_XINERAMA), 1)
+ifeq ($(HAVE_XINERAMA), yes)
     LIBS_X11  += -lXinerama
 endif
 
-ifeq ($(APPLE_DARWIN), 1)
+ifeq ($(APPLE_DARWIN), yes)
     INCLUDES  += -I/sw/include
     LIBDIRS   += -L/sw/lib
     LIBS      += $(LIBDIRS) -ljpeg -liconv
@@ -268,19 +268,19 @@ endif
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
-ifeq ($(HAVE_XRENDER), 1)
+ifeq ($(HAVE_XRENDER), yes)
     DEFINES += -DHAVE_XRENDER=1
 endif
-ifeq ($(HAVE_XRANDR), 1)
+ifeq ($(HAVE_XRANDR), yes)
     DEFINES += -DHAVE_XRANDR=1
 endif
-ifeq ($(HAVE_XDPMS), 1)
+ifeq ($(HAVE_XDPMS), yes)
     DEFINES += -DHAVE_XDPMS=1
 endif
-ifeq ($(HAVE_XINERAMA), 1)
+ifeq ($(HAVE_XINERAMA), yes)
     DEFINES += -DHAVE_XINERAMA=1
 endif
-ifeq ($(HAVE_LIBEXTRACTOR), 1)
+ifeq ($(HAVE_LIBEXTRACTOR), yes)
     DEFINES  += -DHAVE_LIBEXTRACTOR=1
     INCLUDES += $(shell pkg-config libextractor --cflags-only-I)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
@@ -294,16 +294,16 @@ endif
 #endif
 #DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags) 
 endif
 
-ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
+ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
     DEFINES += -DENABLE_TEST_POSTPLUGINS
 endif
 
-ifdef USE_ICONV
-  DEFINES += -DUSE_ICONV=$(USE_ICONV)
+ifeq ($(USE_ICONV), yes)
+  DEFINES += -DUSE_ICONV=1
 endif
 ifdef NOSIGNAL_IMAGE_FILE
   DEFINES += -DNOSIGNAL_IMAGE_FILE='"$(NOSIGNAL_IMAGE_FILE)"'
@@ -324,7 +324,7 @@ endif
 ### The object files (add further files here):
 ###
 
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
   OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
          i18n.o menuitems.o media_player.o equalizer.o \
          frontend_local.o frontend_svr.o \
@@ -338,7 +338,7 @@ else
   OBJS_MPG = 
 endif
 
-ifeq ($(XINELIBOUTPUT_X11), 1)
+ifeq ($(XINELIBOUTPUT_X11), yes)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
   OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o
 else
@@ -346,7 +346,7 @@ else
   OBJS_SXFE = 
 endif
 
-ifeq ($(XINELIBOUTPUT_FB), 1)
+ifeq ($(XINELIBOUTPUT_FB), yes)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
   OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o
 else
@@ -480,14 +480,14 @@ frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
 .PHONY: all
 
 
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
 $(VDRPLUGIN_SO): $(OBJS) $(OBJS_MPG)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
 	@-rm -rf $(LIBDIR)/$@.$(APIVERSION)
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 endif
 
-ifeq ($(XINELIBOUTPUT_X11), 1)
+ifeq ($(XINELIBOUTPUT_X11), yes)
 $(VDRPLUGIN_SXFE_SO): $(OBJS_SXFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
@@ -496,7 +496,7 @@ $(VDRSXFE): $(OBJS_SXFE)
 	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) -ljpeg $(LIBS_XINE) -o $@
 endif
 
-ifeq ($(XINELIBOUTPUT_FB), 1)
+ifeq ($(XINELIBOUTPUT_FB), yes)
 $(VDRPLUGIN_FBFE_SO): $(OBJS_FBFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
@@ -505,7 +505,7 @@ $(VDRFBFE): $(OBJS_FBFE)
 	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -ljpeg -o $@
 endif
 
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
 $(XINEINPUTVDR_SO): xine_input_vdr.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_input_vdr.o $(LIBS_XINE) -o $@
 $(XINEPOSTAUTOCROP_SO): xine_post_autocrop.o
@@ -515,13 +515,13 @@ $(XINEPOSTSWSCALE_SO): xine_post_swscale.o
 $(XINEPOSTAUDIOCHANNEL_SO): xine_post_audiochannel.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_audiochannel.o $(LIBS_XINE) -o $@
 endif
-ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
+ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
 $(XINEPOSTHEADPHONE_SO): xine_post_headphone.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_headphone.o $(LIBS_XINE) -o $@
 endif
 
 install: all
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
 	@mkdir -p $(DESTDIR)/$(XINEPLUGINDIR)/post
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
@@ -536,18 +536,18 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 	@$(INSTALL) -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 endif
-ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
+ifeq ($(ENABLE_TEST_POSTPLUGINS), yes)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 	@$(INSTALL) -m 0644 $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 endif
-ifeq ($(XINELIBOUTPUT_FB), 1)
+ifeq ($(XINELIBOUTPUT_FB), yes)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-fbfe
 	@mkdir -p $(DESTDIR)/$(BINDIR)
 	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-fbfe
 	@$(INSTALL) -m 0755 vdr-fbfe $(DESTDIR)/$(BINDIR)/vdr-fbfe
 endif
-ifeq ($(XINELIBOUTPUT_X11), 1)
+ifeq ($(XINELIBOUTPUT_X11), yes)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-sxfe
 	@mkdir -p $(DESTDIR)/$(BINDIR)
 	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-sxfe
