@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.5 2008-10-28 10:37:03 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.6 2008-10-31 20:55:57 phintuka Exp $
  *
  */
+
+#include "../features.h"
 
 #ifdef HAVE_LIBEXTRACTOR
 # include <extractor.h>

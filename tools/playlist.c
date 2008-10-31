@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.19 2008-10-28 10:37:02 phintuka Exp $
+ * $Id: playlist.c,v 1.20 2008-10-31 20:55:57 phintuka Exp $
  *
  */
+
+#include "../features.h"
 
 #include <stdlib.h> 
 
