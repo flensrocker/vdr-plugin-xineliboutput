@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.46 2008-10-30 13:16:00 phintuka Exp $
+# $Id: Makefile,v 1.47 2008-10-31 19:28:08 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -15,66 +15,9 @@ PLUGIN = xineliboutput
 
 _default: all
 
-###
-### check for xine-lib and X11
-###
-
-XINELIBOUTPUT_FB  = no
-XINELIBOUTPUT_X11 = no
-HAVE_XRENDER      = no
-HAVE_XRANDR       = no
-HAVE_XDPMS        = no
-HAVE_XINERAMA     = no
-HAVE_LIBEXTRACTOR = no
-ARCH_APPLE_DARWIN = no
-XINELIBOUTPUT_XINEPLUGIN = no
-
-# check for xine-lib
-ifeq ($(shell (pkg-config libxine && echo 1 || echo 0)), 1)
-    XINELIBOUTPUT_XINEPLUGIN = yes
-else
-    ifeq ($(shell (xine-config --cflags >/dev/null 2>&1 && echo "1") || echo "0"), 1)
-        XINELIBOUTPUT_XINEPLUGIN = yes
-    endif
-endif
-
-# check for X11 and Xrender extension
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
-    XINELIBOUTPUT_FB  = $(XINELIBOUTPUT_XINEPLUGIN)
-    ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-        XINELIBOUTPUT_X11 = yes
-        ifeq ($(shell (((echo "\#include <X11/extensions/Xrender.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XRENDER = yes
-        else
-            $(warning XRender extension not detected ! HUD OSD disabled. )
-        endif
-        ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "\#include <X11/extensions/Xrandr.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XRANDR = yes
-        else
-            $(warning XRandr extension not detected ! Video mode switching disabled. )
-        endif
-        ifeq ($(shell (((echo "\#include <X11/Xlib.h>";echo "\#include <X11/extensions/dpms.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XDPMS = yes
-        else
-            $(warning XDPMS extension not detected. )
-        endif
-        ifeq ($(shell (((echo "\#include <X11/extensions/Xinerama.h>";echo "int main(int c,char* v[]) {return 0;}") > testx.c && gcc -c testx.c -o testx.o >/dev/null 2>&1) && echo "1") || echo "0" ; rm -f testx.* >/dev/null), 1)
-            HAVE_XINERAMA = yes
-        else
-            $(warning Xinerama extension not detected. )
-        endif
-    else
-        $(warning ********************************************************)
-        $(warning X11 not detected ! X11 frontends will not be compiled.  )
-        $(warning ********************************************************)
-    endif
-else
-    $(warning ********************************************************)
-    $(warning xine-lib not detected ! frontends will not be compiled. )
-    $(warning ********************************************************)
-endif
 
 # check for Apple Darwin
+ARCH_APPLE_DARWIN = no
 ifeq ($(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0"), 1)
     ARCH_APPLE_DARWIN = yes
 endif
@@ -84,16 +27,9 @@ endif
 #
 
 USE_ICONV = yes
-#XINELIBOUTPUT_X11        = yes
-#HAVE_XRENDER             = yes
-#HAVE_XDPMS               = yes
-#HAVE_XINERAMA            = yes
-#HAVE_LIBEXTRACTOR        = yes
-#XINELIBOUTPUT_FB         = yes
-#XINELIBOUTPUT_XINEPLUGIN = yes
-#XINELIBOUTPUT_VDRPLUGIN  = yes
 #NOSIGNAL_IMAGE_FILE=/usr/share/vdr/xineliboutput/nosignal.mpv
 #STARTUP_IMAGE_FILE=/usr/share/vdr/xineliboutput/logodisplay.mpv
+CONFIGURE_OPTS =
 
 
 ###
@@ -161,19 +97,25 @@ ifeq ($(strip $(VDRVERSION)),)
     $(warning VDR not detected ! VDR plugin will not be compiled.     )
     $(warning ********************************************************)
     XINELIBOUTPUT_VDRPLUGIN = no
+    CONFIGURE_OPTS += --disable-vdr
 else
     ifeq ($(strip $(APIVERSION)),)
         $(warning VDR APIVERSION missing, using VDRVERSION $(VDRVERSION) )
         APIVERSION = $(VDRVERSION)
     endif
     XINELIBOUTPUT_VDRPLUGIN = yes
-    ifeq ($(shell pkg-config libextractor && echo "1"), 1)
-        HAVE_LIBEXTRACTOR = yes
-    else
-        $(warning libextractor not found.)
-    endif
+    CONFIGURE_OPTS += --add-cflags=-I$(VDRDIR)
 endif
 
+
+###
+### run configure script
+###
+
+config.mak: Makefile configure
+	@echo Running configure
+	./configure --cc=$(CC) --cxx=$(CXX) $(CONFIGURE_OPTS)
+include config.mak
 
 ###
 ### The name of the distribution archive:
@@ -546,5 +488,6 @@ clean:
 		tools/*.o tools/*~ tools/*.flc xine/*.o xine/*~ \
 		xine/*.flc $(VDR_FBFE) $(VDR_SXFE) mpg2c black_720x576.c \
 		nosignal_720x576.c vdrlogo_720x576.c vdr-sxfe vdr-fbfe \
-		$(PODIR)/*.mo $(PODIR)/*.pot
+		$(PODIR)/*.mo $(PODIR)/*.pot \
+		features.h config.mak
 

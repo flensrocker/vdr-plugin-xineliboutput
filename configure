@@ -1,0 +1,317 @@
+#!/bin/sh
+#
+# vdr-xinelibout configure script
+#
+# Copyright (c) Petri Hintukainen 2008
+#
+# See the main source file 'xineliboutput.c' for copyright information and
+# how to reach the author.
+#
+
+PKG_CONFIG="pkg-config"
+makefile="config.mak"
+logfile="configure.log"
+debug=no
+
+CC="cc"
+CXX="g++"
+CFLAGS=""
+
+#
+# tools
+#
+
+toupper(){
+  echo "$@" | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ
+}
+
+die(){
+  echo "$1"
+  exit -1
+}
+
+log(){
+  echo "$@"
+  echo "$@" >> $logfile
+}
+
+logdbg(){
+  [ $debug = xyes ] && log "$@" || echo "$@" >> $logfile
+}
+
+not_in_list(){
+  key=$1
+  shift
+  for item in $*; do
+    test $key = $item && return 1
+  done
+  return 0
+}
+
+#
+# enable/disable
+#
+
+set_opt(){
+  eval HAVE_$(toupper $1)=$2
+}
+
+set_opts(){
+  optvalue=$1
+  shift
+  for optname in $*; do
+    set_opt $optname $optvalue
+  done
+}
+
+enable(){
+  set_opts yes $*
+}
+
+disable(){
+  set_opts no $*
+}
+
+enabled(){
+  ucfeature=$(toupper $1)
+  eval test "x\$HAVE_${ucfeature}" = "xyes"
+}
+
+disabled(){
+  ucfeature=$(toupper $1)
+  eval test "x\$HAVE_${ucfeature}" = "xno"
+}
+
+#
+# compile/link tests
+#
+
+generate_test_c(){
+  hdrname=$1
+  subsys=$2
+  func=$3
+  if test x"$subsys" = xX11 ; then
+    cat <<EOF >testhdr.c
+#include <X11/Xlib.h>
+#include <$hdrname>
+int main(int c, char **v) { 
+  $func; 
+  return 0; 
+}
+EOF
+  else
+    cat <<EOF >testhdr.c
+#include <$hdrname>
+int main(int c, char **v) { 
+  $func; 
+}
+EOF
+  fi
+}
+
+test_library_c(){
+
+  log -n "Checking for $libname ... "
+  generate_test_c $hdr $subsys $func
+  $CC -g testhdr.c -o testhdr $CFLAGS $lib
+  err=$?
+
+  if test $err = 0; then
+    log "yes"
+    eval LIBS_$subsys=\""\$LIBS_$subsys $lib"\"
+  else
+    log "no"
+    logdbg "--------"
+    logdbg "/* $CC -g testhdr.c -o testhdr $CFLAGS $lib */"
+    logdbg `cat testhdr.c`
+    logdbg "--------"
+  fi
+
+  rm -f testhdr.c testhdr
+  return $err
+}
+
+#
+# generic test
+#
+
+test_library(){
+  subsys="$1"
+  libname="$2"
+  hdr="$3"
+  lib="$4"
+  func="$5"
+  feature=$(toupper $libname)
+
+  # do not test if disabled from command-line
+  if disabled $feature; then
+    log "Not checking for $libname"
+    disable $feature
+    return 1
+  fi
+
+  disable $feature
+  test_library_c "$subsys" "$libname" "$hdr" "$lib" "$func" && enable $feature
+}
+
+#
+# configurable features
+#
+
+SUBSYSTEMS="
+  x11
+  fb
+  vdr
+  libxine
+"
+FEATURES="
+  $SUBSYSTEMS
+  libextractor
+  xdpms
+  xinerama
+  xrandr
+  xrender
+"
+
+# set defaults
+
+enable x11 vdr fb xine
+
+# clear log file
+
+rm -f $logfile
+
+#
+# Parse command-line arguments
+#
+
+show_help(){
+  echo "Usage: configure [options]"
+  echo "Options: [defaults in brackets after descriptions]"
+  echo
+  echo "  --help                 print this message"
+  echo "  --enable-x11           build X11 frontend (vdr-sxfe) [yes]"
+  echo "  --enable-fb            build framebuffer frontend (vdr-fbfe) [yes]"
+  echo "  --enable-vdr           build VDR plugin [yes]"
+  echo "  --enable-libxine       build xine plugins [yes]"
+  echo
+  echo "  --disable-libextractor disable libextractor support (media file metainfo) [no]"
+  echo "  --disable-xdpms        disable Xdpms support [no]"
+  echo "  --disable-xinerama     disable Xinerama support [no]"
+  echo "  --disable-xrandr       disable Xrandr support (video mode switching) [no]"
+  echo "  --disable-xrender      disable Xrender support (HUD OSD) [no]"
+  echo
+  echo "  --debug                debug configure script"
+  echo "  --cc=CC                select C compiler"
+  echo "  --cxx=CXX              select C++ compiler"
+  echo "  --add-cflags=FLAGS     add compiler flags"
+}
+
+for opt do
+  optval="${opt#*=}"
+  logdbg "Command line: $opt  [$optval]"
+  case "$opt" in
+    --help) 
+      show_help && die
+      ;;
+    --debug) 
+      debug=yes
+      logdbg "Debug mode"
+      ;;
+    --cc=?*) 
+      CC=$optval
+      logdbg "C compiler: $CC"
+      ;;
+    --cxx=?*) 
+      CXX=$optval
+      logdbg "C++ compiler: $CXX"
+      ;;
+    --add-cflags=?*) 
+      CFLAGS="$CFLAGS $optval"
+      logdbg "CFLAGS: $CFLAGS"
+      ;;
+    --enable-?*|--disable-?*)
+      eval `echo "$opt" | sed 's/--/action=/;s/-/ option=/;s/-/_/g'`
+      logdbg "    $action $option"
+      not_in_list $option $FEATURES && die "unknown option $opt"
+      eval $action \${option}
+      ;;
+    -*)
+      die "unknown option $opt"
+      ;;
+  esac
+done
+
+#
+# maintain deps
+#
+
+check_deps(){
+  disabled libxine && disable x11 fb
+  disabled x11     && disable xrender xrandr xdpms xinerama
+  disabled vdr     && disable libextractor
+}
+
+check_deps
+
+#
+# Run the tests
+#
+
+# fake test that should fail
+[ $debug = yes ] && \
+  test_library   X11  do_error     "none.h"         "-lnolib"
+
+test_library     VDR  libextractor "extractor.h"    "-lextractor" "EXTRACTOR_getKeywords(0,0)"
+test_library     XINE libxine      "xine.h"         "-lxine"      "xine_init(0)"
+
+if enabled libxine; then
+  test_library   X11  x11          "X11/X.h"        "-lX11"       "XInitThreads()"
+  if enabled x11; then
+    test_library X11  xrender      "X11/extensions/Xrender.h"  "-lXrender"   "XRenderQueryFormats(0)"
+    test_library X11  xrandr       "X11/extensions/Xrandr.h"   "-lXrandr"    "XRRGetScreenInfo(0,0)"
+    test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
+    test_library X11  xinerama     "X11/extensions/Xinerama.h" "-lXinerama"  "XineramaQueryScreens(0,0)"
+  fi
+fi
+
+check_deps
+
+#
+# Print results
+#
+
+log
+log "Enabled features:"
+for feature in $FEATURES; do
+  enabled $feature && log "  $feature"
+done
+log "Disabled features:"
+for feature in $FEATURES; do
+  enabled $feature || log "  $feature"
+done
+log
+
+#
+# create features.mak
+#
+
+log "Creating $makefile ..."
+
+echo "# Automatically generated by configure.sh - do not modify!" > $makefile
+echo >> $makefile
+
+# subsystems
+echo "XINELIBOUTPUT_VDRPLUGIN=$HAVE_VDR" >> $makefile
+echo "XINELIBOUTPUT_XINEPLUGIN=$HAVE_LIBXINE" >> $makefile
+echo "XINELIBOUTPUT_X11=$HAVE_X11" >> $makefile
+echo "XINELIBOUTPUT_FB=$HAVE_FB" >> $makefile
+echo >> $makefile
+
+# features
+for feature in $FEATURES; do
+  feature="`toupper $feature`"
+  enabled $feature && 
+    echo "HAVE_$feature=yes">>$makefile ||
+    echo "HAVE_$feature=no">>$makefile
+done
