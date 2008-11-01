@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.4 2008-11-01 12:30:47 phintuka Exp $
+# * $Id: configure,v 1.5 2008-11-01 12:36:13 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -149,6 +149,18 @@ test_library_c(){
 }
 
 #
+# pkg-config tests
+#
+
+test_pkgconfig(){
+  disabled pkgconfig && return 1
+  log -n "Checking for $PKG_CONFIG ... "
+  disable pkgconfig
+  $PKG_CONFIG --version>/dev/null && enable pkgconfig
+  log $HAVE_PKGCONFIG
+}
+
+#
 # generic test
 #
 
@@ -219,6 +231,7 @@ show_help(){
   echo "  --disable-xrender      disable Xrender support (HUD OSD) [no]"
   echo
   echo "  --debug                debug configure script"
+  echo "  --disable-pkgconfig    do not use pkg-config"
   echo "  --cc=CC                select C compiler"
   echo "  --cxx=CXX              select C++ compiler"
   echo "  --add-cflags=FLAGS     add compiler flags"
@@ -246,6 +259,10 @@ for opt do
     --add-cflags=?*) 
       CFLAGS="$CFLAGS $optval"
       logdbg "CFLAGS: $CFLAGS"
+      ;;
+    --disable-pkgconfig)
+      disable pkgconfig
+      logdbg "Disabled pkg-config"
       ;;
     --enable-?*|--disable-?*)
       eval `echo "$opt" | sed 's/--/action=/;s/-/ option=/;s/-/_/g'`
@@ -275,6 +292,8 @@ check_deps
 # Run the tests
 #
 
+test_pkgconfig
+
 # fake test that should fail
 [ $debug = yes ] && \
   test_library   X11  do_error     "none.h"         "-lnolib"
@@ -285,8 +304,8 @@ test_library     XINE libxine      "xine.h"         "-lxine"      "xine_init(0)"
 if enabled libxine; then
 
   log -n "Checking for xine plugin directory ..."
-  if enabled pkgconfig && $PKGCONFIG libxine --atleast-version 1.1.90; then
-    XINEPLUGINDIR=`$PKGCONFIG libxine --variable=plugindir`
+  if enabled pkgconfig && $PKG_CONFIG libxine --atleast-version 1.1.90; then
+    XINEPLUGINDIR=`$PKG_CONFIG libxine --variable=plugindir`
   else
     XINEPLUGINDIR=`xine-config --plugindir`
   fi
