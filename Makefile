@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.47 2008-10-31 19:28:08 phintuka Exp $
+# $Id: Makefile,v 1.48 2008-11-01 07:39:27 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -203,20 +203,7 @@ endif
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
-ifeq ($(HAVE_XRENDER), yes)
-    DEFINES += -DHAVE_XRENDER=1
-endif
-ifeq ($(HAVE_XRANDR), yes)
-    DEFINES += -DHAVE_XRANDR=1
-endif
-ifeq ($(HAVE_XDPMS), yes)
-    DEFINES += -DHAVE_XDPMS=1
-endif
-ifeq ($(HAVE_XINERAMA), yes)
-    DEFINES += -DHAVE_XINERAMA=1
-endif
 ifeq ($(HAVE_LIBEXTRACTOR), yes)
-    DEFINES  += -DHAVE_LIBEXTRACTOR=1
     INCLUDES += $(shell pkg-config libextractor --cflags-only-I)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-l)
