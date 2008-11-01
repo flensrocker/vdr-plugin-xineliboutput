@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.2 2008-10-31 20:50:24 phintuka Exp $
+# * $Id: configure,v 1.3 2008-11-01 12:27:29 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -39,7 +39,7 @@ log(){
 }
 
 logdbg(){
-  [ $debug = xyes ] && log "$@" || echo "$@" >> $logfile
+  [ x$debug = xyes ] && log "$@" || echo "$@" >> $logfile
 }
 
 not_in_list(){
@@ -49,6 +49,19 @@ not_in_list(){
     test $key = $item && return 1
   done
   return 0
+}
+
+add_flag(){
+  eval not_in_list $flag \$$flags_list || return 1
+  eval $flags_list=\"\$${flags_list} ${flag}\"
+}
+
+add_flags(){
+  flags_list=$1
+  shift 
+  for flag in $*; do
+    add_flag $flags_list $flag
+  done
 }
 
 #
@@ -121,7 +134,8 @@ test_library_c(){
 
   if test $err = 0; then
     log "yes"
-    eval LIBS_$subsys=\""\$LIBS_$subsys $lib"\"
+    add_flags LIBS_$subsys $lib
+    logdbg adding $lib to LIBS_$subsys
   else
     log "no"
     logdbg "--------"
@@ -341,3 +355,13 @@ for feature in $FEATURES; do
     echo "HAVE_$feature=yes">>$makefile ||
     echo "HAVE_$feature=no">>$makefile
 done
+echo >> $makefile
+
+# cc/ld flags
+echo "CFLAGS_XINE += $CFLAGS_XINE">>$makefile
+echo "CFLAGS_VDR  += $CFLAGS_VDR">>$makefile
+echo "CFLAGS_X11  += $CFLAGS_X11">>$makefile
+echo "LIBS_XINE   += $LIBS_XINE">>$makefile
+echo "LIBS_VDR    += $LIBS_VDR">>$makefile
+echo "LIBS_X11    += $LIBS_X11">>$makefile
+

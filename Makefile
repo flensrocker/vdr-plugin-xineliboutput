@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.48 2008-11-01 07:39:27 phintuka Exp $
+# $Id: Makefile,v 1.49 2008-11-01 12:27:29 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -180,17 +180,7 @@ endif
 ###
 
 INCLUDES  += -I$(VDRINCDIR)
-LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --libs) || xine-config --libs)
-LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
-ifeq ($(HAVE_XRENDER), yes)
-    LIBS_X11  += -lXrender
-endif
-ifeq ($(HAVE_XRANDR), yes)
-    LIBS_X11  += -lXrandr
-endif
-ifeq ($(HAVE_XINERAMA), yes)
-    LIBS_X11  += -lXinerama
-endif
+LIBS_X11  += -L/usr/X11R6/lib -lXv -lXext
 
 ifeq ($(ARCH_APPLE_DARWIN), yes)
     INCLUDES  += -I/sw/include
@@ -203,11 +193,6 @@ endif
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
-ifeq ($(HAVE_LIBEXTRACTOR), yes)
-    INCLUDES += $(shell pkg-config libextractor --cflags-only-I)
-    LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
-    LIBS_VDR += $(shell pkg-config libextractor --libs-only-l)
-endif
 
 # check for yaegp patch
 #YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
@@ -476,5 +461,5 @@ clean:
 		xine/*.flc $(VDR_FBFE) $(VDR_SXFE) mpg2c black_720x576.c \
 		nosignal_720x576.c vdrlogo_720x576.c vdr-sxfe vdr-fbfe \
 		$(PODIR)/*.mo $(PODIR)/*.pot \
-		features.h config.mak
+		features.h config.mak configure.log
 
