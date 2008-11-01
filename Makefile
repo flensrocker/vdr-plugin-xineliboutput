@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.49 2008-11-01 12:27:29 phintuka Exp $
+# $Id: Makefile,v 1.50 2008-11-01 12:30:47 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -145,7 +145,6 @@ VDRPLUGIN_SXFE_SO =
 VDRFBFE_EXEC =
 VDRPLUGIN_FBFE_SO =
 XINEINPUTVDR_SO =
-XINEPLUGINDIR = ./
 XINEPOSTAUTOCROP_SO =
 XINEPOSTSWSCALE_SO =
 XINEPOSTAUDIOCHANNEL_SO =
@@ -165,7 +164,6 @@ ifeq ($(XINELIBOUTPUT_FB), yes)
 endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     XINEINPUTVDR_SO = $(XINEINPUTVDR)
-    XINEPLUGINDIR   = $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --variable=plugindir) || xine-config --plugindir)
     XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
     XINEPOSTSWSCALE_SO = $(XINEPOSTSWSCALE)
     XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)

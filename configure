@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.3 2008-11-01 12:27:29 phintuka Exp $
+# * $Id: configure,v 1.4 2008-11-01 12:30:47 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -283,6 +283,15 @@ test_library     VDR  libextractor "extractor.h"    "-lextractor" "EXTRACTOR_get
 test_library     XINE libxine      "xine.h"         "-lxine"      "xine_init(0)"
 
 if enabled libxine; then
+
+  log -n "Checking for xine plugin directory ..."
+  if enabled pkgconfig && $PKGCONFIG libxine --atleast-version 1.1.90; then
+    XINEPLUGINDIR=`$PKGCONFIG libxine --variable=plugindir`
+  else
+    XINEPLUGINDIR=`xine-config --plugindir`
+  fi
+  log " $XINEPLUGINDIR"
+
   test_library   X11  x11          "X11/X.h"        "-lX11"       "XInitThreads()"
   if enabled x11; then
     test_library X11  xrender      "X11/extensions/Xrender.h"  "-lXrender"   "XRenderQueryFormats(0)"
@@ -356,6 +365,9 @@ for feature in $FEATURES; do
     echo "HAVE_$feature=no">>$makefile
 done
 echo >> $makefile
+
+# xine plugin dir
+enabled libxine && echo "XINEPLUGINDIR=$XINEPLUGINDIR" >> $makefile && echo >> $makefile
 
 # cc/ld flags
 echo "CFLAGS_XINE += $CFLAGS_XINE">>$makefile
