@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.14 2008-09-22 10:59:54 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.15 2008-11-01 07:07:12 phintuka Exp $
  *
  */
 
@@ -40,11 +40,6 @@
  *  - OSD re-positioning (?)
  *
  */
-
-
-#ifdef HAVE_CONFIG_H 
-#include "config.h"     /* ARCH_X86 */
-#endif
 
 #include <stdint.h>
 
