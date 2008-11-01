@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.90 2008-10-28 20:08:07 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.91 2008-11-01 07:23:00 phintuka Exp $
  *
  */
 
 /*#define HAVE_XF86VIDMODE*/
+#include "features.h"
 
 #include <errno.h>
 #include <inttypes.h>

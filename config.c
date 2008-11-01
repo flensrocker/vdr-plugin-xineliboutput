@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.71 2008-09-19 12:13:26 phintuka Exp $
+ * $Id: config.c,v 1.72 2008-11-01 07:23:00 phintuka Exp $
  *
  */
+
+#include "features.h"
 
 #include <stdio.h>
 #include <string.h>

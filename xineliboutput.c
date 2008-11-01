@@ -21,9 +21,11 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.35 2008-10-24 22:09:13 rofafor Exp $
+ * $Id: xineliboutput.c,v 1.36 2008-11-01 07:23:00 phintuka Exp $
  *
  */
+
+#include "features.h"
 
 #include <vdr/plugin.h>
 

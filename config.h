@@ -4,12 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.53 2008-07-29 21:04:35 phintuka Exp $
+ * $Id: config.h,v 1.54 2008-11-01 07:23:00 phintuka Exp $
  *
  */
 
 #ifndef _XINELIB_CONFIG_H_
 #define _XINELIB_CONFIG_H_
+
+#include "features.h"
 
 #include <string.h>
 #include <stdint.h>

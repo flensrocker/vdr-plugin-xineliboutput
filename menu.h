@@ -4,12 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.h,v 1.6 2007-01-04 08:42:47 phintuka Exp $
+ * $Id: menu.h,v 1.7 2008-11-01 07:23:00 phintuka Exp $
  *
  */
 
 #ifndef __XINELIB_MENU_H
 #define __XINELIB_MENU_H
+
+#include "features.h"
 
 #include <vdr/menuitems.h>
 

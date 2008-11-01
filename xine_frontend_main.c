@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.50 2008-10-21 15:08:37 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.51 2008-11-01 07:23:00 phintuka Exp $
  *
  */
+
+#include "features.h"
 
 #include <termios.h>
 #include <unistd.h>

@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.62 2008-10-18 10:33:17 phintuka Exp $
+ * $Id: setup_menu.c,v 1.63 2008-11-01 07:23:00 phintuka Exp $
  *
  */
+
+#include "features.h"
 
 #include <vdr/config.h>
 #include <vdr/plugin.h>

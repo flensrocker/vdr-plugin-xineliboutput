@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.70 2008-07-04 09:58:36 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.71 2008-11-01 07:23:00 phintuka Exp $
  *
  */
+
+#include "features.h"
 
 #ifndef XINE_VERSION_CODE
 #  define XINE_VERSION_CODE (XINE_MAJOR_VERSION*10000 + \

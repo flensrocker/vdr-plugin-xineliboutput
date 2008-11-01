@@ -4,9 +4,11 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57 2008-05-07 13:27:15 phintuka Exp $
+ * $Id: menu.c,v 1.58 2008-11-01 07:23:00 phintuka Exp $
  *
  */
+
+#include "features.h"
 
 #include <dirent.h>
 
