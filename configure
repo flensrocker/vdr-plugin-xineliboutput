@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.5 2008-11-01 12:36:13 phintuka Exp $
+# * $Id: configure,v 1.6 2008-11-02 12:03:50 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -160,6 +160,23 @@ test_pkgconfig(){
   log $HAVE_PKGCONFIG
 }
 
+test_library_pc(){
+  subsys="$1"
+  libname="$2"
+
+  log -n "Checking for pkg-config $libname ... "
+  if $PKG_CONFIG --exists $libname; then
+    add_flags LIBS_$subsys \
+              `pkg-config --libs-only-L $libname` \
+              `pkg-config --libs-only-l $libname`
+    add_flags INCS_$subsys `pkg-config --cflags-only-I $libname`
+    log "yes"
+    return 0
+  fi
+  log "no"
+  return 1
+}
+
 #
 # generic test
 #
@@ -180,7 +197,16 @@ test_library(){
   fi
 
   disable $feature
-  test_library_c "$subsys" "$libname" "$hdr" "$lib" "$func" && enable $feature
+
+  # try pkg-config first
+  if enabled pkgconfig; then
+     test_library_pc "$subsys" "$libname" && enable "$feature"
+  fi
+
+  # compile/link test as fallback
+  if disabled $feature; then
+    test_library_c "$subsys" "$libname" "$hdr" "$lib" "$func" && enable $feature
+  fi
 }
 
 #
@@ -313,6 +339,7 @@ if enabled libxine; then
 
   test_library   X11  x11          "X11/X.h"        "-lX11"       "XInitThreads()"
   if enabled x11; then
+    test_library X11  xext         "X11/extensions/Xext.h"     "-lXext"      ""
     test_library X11  xrender      "X11/extensions/Xrender.h"  "-lXrender"   "XRenderQueryFormats(0)"
     test_library X11  xrandr       "X11/extensions/Xrandr.h"   "-lXrandr"    "XRRGetScreenInfo(0,0)"
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
