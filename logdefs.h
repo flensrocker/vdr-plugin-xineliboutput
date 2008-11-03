@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.8 2008-02-05 01:18:17 phintuka Exp $
+ * $Id: logdefs.h,v 1.9 2008-11-03 15:41:58 phintuka Exp $
  *
  */
 
 #ifndef _LOGDEFS_H_
+#define _LOGDEFS_H_
 
 /*
  * Default module name (goes to every log line)
