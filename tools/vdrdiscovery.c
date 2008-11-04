@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.5 2008-04-03 13:59:37 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.6 2008-11-04 12:08:59 phintuka Exp $
  *
  */
 
@@ -79,12 +79,10 @@ static inline int discovery_init(int port)
   return -1;
 }
 
-#ifndef FE_STANDALONE
 int udp_discovery_init(void)
 {
   return discovery_init(DISCOVERY_PORT);
 }
-#endif
 
 static inline int udp_discovery_send(int fd_discovery, int port, char *msg)
 {
@@ -105,7 +103,6 @@ static inline int udp_discovery_send(int fd_discovery, int port, char *msg)
   return 0;
 }
 
-#ifndef FE_STANDALONE
 int udp_discovery_broadcast(int fd_discovery, int server_port, const char *server_address)
 {
   char *msg = NULL;
@@ -132,7 +129,7 @@ int udp_discovery_broadcast(int fd_discovery, int server_port, const char *serve
   free(msg);
   return result;
 }
-#else
+
 static inline int udp_discovery_search(int fd_discovery, int port)
 {
   char *msg = NULL;
@@ -150,11 +147,7 @@ static inline int udp_discovery_search(int fd_discovery, int port)
   free(msg);
   return result;
 }
-#endif
 
-#ifdef FE_STANDALONE
-static
-#endif
 int udp_discovery_recv(int fd_discovery, char *buf, int timeout,
 		       struct sockaddr_in *source)
 {
@@ -185,10 +178,9 @@ int udp_discovery_recv(int fd_discovery, char *buf, int timeout,
   return err;
 }
 
-#ifndef FE_STANDALONE
 int udp_discovery_is_valid_search(const char *buf)
 {
-  const char *id_string = DISCOVERY_1_0_HDR "Client:";
+  static const char id_string[] = { DISCOVERY_1_0_HDR "Client:" };
 
   if(!strncmp(id_string, buf, strlen(id_string))) {
     LOGMSG("Received valid discovery message %s", buf);
@@ -198,7 +190,7 @@ int udp_discovery_is_valid_search(const char *buf)
   LOGDBG("BROADCAST: %s", buf);
   return 0;
 }
-#else
+
 int udp_discovery_find_server(int *port, char *address)
 {
   static const char mystring[] = DISCOVERY_1_0_HDR "Server port: ";
@@ -276,5 +268,5 @@ int udp_discovery_find_server(int *port, char *address)
   close(fd_discovery);
   return 0;
 }
-#endif
+
 
