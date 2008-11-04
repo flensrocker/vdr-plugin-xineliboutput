@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.51 2008-11-04 12:08:59 phintuka Exp $
+# $Id: Makefile,v 1.52 2008-11-04 14:05:15 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -293,28 +293,28 @@ vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 	@./mpg2c vdrlogo vdrlogo_720x576.mpg vdrlogo_720x576.c
 
 xine_input_vdr.o: xine_input_vdr.c xine_input_vdr.h xine_osd_command.h nosignal_720x576.c logdefs.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_vdr.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_input_http.o: xine_input_http.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_http.c
-xine/post.o: xine/post.c xine/post.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
-tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_post_autocrop.o: xine_post_autocrop.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autocrop.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_post_swscale.o: xine_post_swscale.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_swscale.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_post_audiochannel.o: xine_post_audiochannel.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_audiochannel.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
-xine_sxfe_frontend.o: xine_sxfe_frontend.c xine_frontend.c xine_frontend.h \
-		xine_input_vdr.h xine_osd_command.h xine/post.h logdefs.h \
-		xineliboutput.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_sxfe_frontend.c
-xine_fbfe_frontend.o: xine_fbfe_frontend.c xine_frontend.c xine_frontend.h \
-		xine_input_vdr.h xine_osd_command.h xine/post.h logdefs.h \
-		xineliboutput.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_fbfe_frontend.c
+logdefs.o: logdefs.c logdefs.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine/post.o: xine/post.c xine/post.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+
+xine_sxfe_frontend.o: xine_sxfe_frontend.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine_fbfe_frontend.o: xine_fbfe_frontend.c
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+
 xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
 		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.c \
