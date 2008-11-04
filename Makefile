@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.52 2008-11-04 14:05:15 phintuka Exp $
+# $Id: Makefile,v 1.53 2008-11-04 14:05:46 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -232,7 +232,7 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
          tools/cxsocket.o tools/udp_pes_scheduler.o \
          tools/backgroundwriter.o tools/playlist.o tools/http.o \
          tools/vdrdiscovery.o tools/time_pts.o tools.o \
-         tools/metainfo_menu.o
+         tools/metainfo_menu.o logdefs.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
   OBJS = 
@@ -241,7 +241,7 @@ endif
 
 ifeq ($(XINELIBOUTPUT_X11), yes)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
-  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o
+  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o
 else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
@@ -249,7 +249,7 @@ endif
 
 ifeq ($(XINELIBOUTPUT_FB), yes)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
-  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o
+  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o
 else
   OBJS_FBFE_SO = 
   OBJS_FBFE = 
