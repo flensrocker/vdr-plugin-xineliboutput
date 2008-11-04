@@ -3,6 +3,8 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Added an option to adjust the stepping value that is used for 
+  metronom live mode sync (Thanks to Andreas Auras)
 - Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.187 2008-11-04 13:44:56 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.188 2008-11-04 13:51:41 phintuka Exp $
  *
  */
 
@@ -232,6 +232,7 @@ typedef struct vdr_input_class_s {
   xine_t         *xine;
   char           *mrls[ 2 ];
   int             fast_osd_scaling;
+  double          scr_tuning_step;
 } vdr_input_class_t;
 
 /* input plugin */
@@ -640,11 +641,11 @@ static pvrscr_t* pvrscr_init (void)
 static inline const char *scr_tunning_str(int value)
 {
   switch(value) {
-    case 2:  return "SCR +1.0%";
-    case 1:  return "SCR +0.5%";
-    case SCR_TUNNING_OFF:  return "SCR +0.0%";
-    case -1: return "SCR -0.5%";
-    case -2: return "SCR -1.0%";
+    case 2:  return "SCR +2";
+    case 1:  return "SCR +1";
+    case SCR_TUNNING_OFF:  return "SCR +0";
+    case -1: return "SCR -1";
+    case -2: return "SCR -2";
     case SCR_TUNNING_PAUSED: return "SCR PAUSED";
     default: break;
   }
@@ -846,11 +847,11 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
       else
         scr_tunning = SCR_TUNNING_OFF;
     } else {
-      if( num_used > 4*num_free )
+      if( num_used > 4*num_free && this->class->scr_tuning_step >= 0.001)
         scr_tunning = +2; /* play 1% faster */
       else if( num_used > 2*num_free )
         scr_tunning = +1; /* play .5% faster */
-      else if( num_free > 4*num_used ) /* <20% */
+      else if( num_free > 4*num_used && this->class->scr_tuning_step >= 0.001) /* <20% */
         scr_tunning = -2; /* play 1% slower */
       else if( num_free > 2*num_used ) /* <33% */
         scr_tunning = -1; /* play .5% slower */
@@ -860,14 +861,14 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     }
 
     if( scr_tunning != this->scr_tunning ) {
-      LOGSCR("scr_tunning: %s -> %s (buffer %d/%d)", 
+      LOGSCR("scr_tunning: %s -> %s (buffer %d/%d) (tuning now %f%%)", 
 	     scr_tunning_str(this->scr_tunning), 
-	     scr_tunning_str(scr_tunning), num_used, num_free );
+	     scr_tunning_str(scr_tunning), num_used, num_free, this->class->scr_tuning_step * scr_tunning * 100.0);
       this->scr_tunning = scr_tunning;
 
       /* make it play .5% / 1% faster or slower */
       if(this->scr)
-	pvrscr_speed_tunning(this->scr, 1.0 + (0.005 * scr_tunning) );
+	pvrscr_speed_tunning(this->scr, 1.0 + (this->class->scr_tuning_step * scr_tunning) );
     }
 
   /*
@@ -6536,6 +6537,14 @@ static void vdr_class_default_mrl_change_cb(void *data, xine_cfg_entry_t *cfg)
   class->mrls[0] = cfg->str_value;
 } 
 
+/* callback on scr tuning step change */
+static void vdr_class_scr_tuning_step_cb(void *data, xine_cfg_entry_t *cfg) 
+{
+  vdr_input_class_t *class = (vdr_input_class_t *) data;
+
+  class->scr_tuning_step = cfg->num_value / 1000000.0;
+}
+
 /* callback on OSD scaling mode change */
 static void vdr_class_fast_osd_scaling_cb(void *data, xine_cfg_entry_t *cfg) 
 {
@@ -6723,6 +6732,13 @@ static void *init_class (xine_t *xine, void *data)
 						   "and does not modify palette."),
 						 10, vdr_class_fast_osd_scaling_cb, 
 						 (void *)this);
+
+  this->scr_tuning_step = config->register_num(config,
+						 "input." MRL_ID ".scr_tuning_step", 5000,
+						 _("SRC tuning step"),
+						 _("SCR tuning step width unit %1000000."),
+						 10, vdr_class_scr_tuning_step_cb, 
+						 (void *)this) / 1000000.0;
 
   this->input_class.get_instance       = vdr_class_get_instance;
 #if INPUT_PLUGIN_IFACE_VERSION < 18
