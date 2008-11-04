@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.c,v 1.1 2008-11-04 11:55:42 phintuka Exp $
+ * $Id: logdefs.c,v 1.2 2008-11-04 12:29:36 phintuka Exp $
  *
  */
 
@@ -19,7 +19,8 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-extern int LogToSysLog; /* xine_frontend.c, log to syslog instead of console */
+/* next symbol is dynamically linked from input plugin */
+int LogToSysLog __attribute__((visibility("default"))) = 1; /* log to syslog instead of console */
 
 void x_syslog(int level, const char *module, const char *fmt, ...)
 { 
