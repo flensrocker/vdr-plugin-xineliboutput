@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.71 2008-11-01 07:23:00 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.72 2008-11-04 12:19:07 phintuka Exp $
  *
  */
 
@@ -16,7 +16,6 @@
                              XINE_SUB_VERSION)
 #endif
 
-#define NEED_x_syslog
 #define LOG_MODULENAME "[vdr-fe]    "
 #include "logdefs.h"
 
@@ -78,17 +77,7 @@ typedef struct fe_s {
 
 } fe_t;
 
-
-#ifdef FE_STANDALONE
-  /* next two symbols are dynamically linked from input plugin */
-  int SysLogLevel __attribute__((visibility("default"))) = 2; /* errors and info, no debug */
-  int LogToSysLog __attribute__((visibility("default"))) = 0; /* log to syslog instead of console */
-
-  static int verbose_xine_log = 0;
-#else
-  int LogToSysLog __attribute__((visibility("default"))) = 1; /* dynamically linked from input plugin */
-#endif
-
+static int verbose_xine_log = 0;
 
 static inline char *strn0cpy(char *dest, const char *src, int n) 
 {
