@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.6 2008-11-04 12:08:59 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.7 2008-11-04 12:13:03 phintuka Exp $
  *
  */
 
@@ -20,13 +20,7 @@
 #include <sys/un.h>
 #include <arpa/inet.h>
 
-#ifdef FE_STANDALONE
-#  define LOG_MODULENAME "[discovery] "
-#else
-#  define LogToSysLog 1
-#endif
-
-#define NEED_x_syslog
+#define LOG_MODULENAME "[discovery] "
 #include "../logdefs.h"
 
 #include "vdrdiscovery.h"
