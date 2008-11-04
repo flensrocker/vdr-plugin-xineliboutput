@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.186 2008-10-21 09:49:30 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.187 2008-11-04 13:44:56 phintuka Exp $
  *
  */
 
@@ -119,20 +119,21 @@
 
 /******************************* LOG ***********************************/
 
-#define LOG_MODULENAME "[input_vdr] "
-#define SysLogLevel iSysLogLevel
+#ifndef __APPLE__
+#  include <linux/unistd.h> /* syscall(__NR_gettid) */
+#endif
+
+static const char log_module_input_vdr[] = "[input_vdr] ";
+#define LOG_MODULENAME log_module_input_vdr
+#define SysLogLevel    iSysLogLevel
 
 #include "logdefs.h"
-
-#undef  x_syslog
-#define x_syslog syslog_with_tid
 
 int iSysLogLevel  = 1; /* 0:none, 1:errors, 2:info, 3:debug */
 int bLogToSysLog  = 0;
 int bSymbolsFound = 0;
 
-static void syslog_with_tid(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-static void syslog_with_tid(int level, const char *fmt, ...)
+void x_syslog(int level, const char *module, const char *fmt, ...)
 {
   va_list argp;
   char buf[512];
@@ -141,15 +142,15 @@ static void syslog_with_tid(int level, const char *fmt, ...)
   buf[sizeof(buf)-1] = 0;
 #ifdef __APPLE__
   if(!bLogToSysLog) {
-    fprintf(stderr, LOG_MODULENAME "%s\n", buf);
+    fprintf(stderr, "%s%s\n", module, buf);
   } else {
-    syslog(level, LOG_MODULENAME "%s", buf);
+    syslog(level, "%s%s", module, buf);
   }
 #else
   if(!bLogToSysLog) {
-    fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", syscall(__NR_gettid), buf);
+    fprintf(stderr,"[%ld] %s%s\n", syscall(__NR_gettid), module, buf);
   } else {
-    syslog(level, "[%ld] " LOG_MODULENAME "%s", syscall(__NR_gettid), buf);
+    syslog(level, "[%ld] %s%s", syscall(__NR_gettid), module, buf);
   }
 #endif
   va_end(argp);
