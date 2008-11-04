@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <syslog.h>
 
-#define NEED_x_syslog
 #define LOG_MODULENAME "[xine-post] "
 #include "../logdefs.h"
 
