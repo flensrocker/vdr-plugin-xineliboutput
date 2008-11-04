@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.9 2008-11-03 15:41:58 phintuka Exp $
+ * $Id: logdefs.h,v 1.10 2008-11-04 12:31:22 phintuka Exp $
  *
  */
 
@@ -23,50 +23,27 @@
  * Logging functions, should not be used directly
  */
 
+#include <syslog.h> /* logging levels: LOG_ERR, LOG_INFO, LOG_DEBUG */
+
+
 #if defined(esyslog) || (defined(VDRVERSNUM) && VDRVERSNUM >= 10343)
-#  define x_syslog(l,x...) syslog_with_tid(l, LOG_MODULENAME x)
+#  define x_syslog(l,m,x...) syslog_with_tid(l, m x)
 #else
 
-#  ifndef __APPLE__
-#    include <linux/unistd.h> /* syscall(__NR_gettid) */
-#  endif
+  /* from xine_frontend.c or vdr/tools.c: */
+  extern int SysLogLevel; /* errors, info, debug */
 
-   /* from xine_frontend.c or vdr tools.c: */
-   extern int SysLogLevel; /* errors, info, debug */
+  /* from logdefs.c: */
+  extern int LogToSysLog;
 
-#  ifndef LogToSysLog
-   extern int LogToSysLog; /* xine_frontend_c, log to syslog instead of console */
-#  endif
+  void x_syslog(int level, const char *module, const char *fmt, ...) 
+       __attribute__ ((format (printf, 3, 4)));
 
-#  if defined(NEED_x_syslog)
-#    include <syslog.h>
-#    include <sys/syscall.h>
-#    include <stdarg.h>
-     static void x_syslog(int level, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-     static void x_syslog(int level, const char *fmt, ...)
-     { 
-       va_list argp;
-       char buf[512];
-       va_start(argp, fmt);
-       vsnprintf(buf, 512, fmt, argp);
-       buf[sizeof(buf)-1] = 0;
-#    ifndef __APPLE__
-       if(!LogToSysLog) {
-	 fprintf(stderr,"[%ld] " LOG_MODULENAME "%s\n", (long int)syscall(__NR_gettid), buf);
-       } else {
-	 syslog(level, "[%ld] " LOG_MODULENAME "%s", (long int)syscall(__NR_gettid), buf);
-       }
-#    else
-       if(!LogToSysLog) {
-	 fprintf(stderr, LOG_MODULENAME "%s\n", buf);
-       } else {
-	 syslog(level, LOG_MODULENAME "%s", buf);
-       }
-#    endif
-       va_end(argp);
-     }
-#  endif /* NEED_x_syslog */
 #endif /* VDR */
+
+#ifdef NEED_x_syslog
+# error NEED_x_syslog is deprecated
+#endif
 
 
 /*
@@ -75,18 +52,18 @@
 
 #include <errno.h>
 
-#define LOG_ERRNO  x_syslog(LOG_ERR, "   (ERROR (%s,%d): %s)", \
+#define LOG_ERRNO  x_syslog(LOG_ERR, LOG_MODULENAME, "   (ERROR (%s,%d): %s)", \
                    __FILE__, __LINE__, strerror(errno))
 
 #define LOGERR(x...) do { \
                        if(SysLogLevel > 0) { \
-                          x_syslog(LOG_ERR, x); \
+			 x_syslog(LOG_ERR, LOG_MODULENAME, x);	\
                           if(errno) \
                             LOG_ERRNO; \
                        } \
                      } while(0)
-#define LOGMSG(x...) do{ if(SysLogLevel > 1) x_syslog(LOG_INFO,  x); } while(0)
-#define LOGDBG(x...) do{ if(SysLogLevel > 2) x_syslog(LOG_DEBUG, x); } while(0)
+#define LOGMSG(x...) do{ if(SysLogLevel > 1) x_syslog(LOG_INFO,  LOG_MODULENAME, x); } while(0)
+#define LOGDBG(x...) do{ if(SysLogLevel > 2) x_syslog(LOG_DEBUG, LOG_MODULENAME, x); } while(0)
 
 #define TRACELINE LOGDBG("at %s:%d %s", __FILE__, __LINE__, __FUNCTION__)
 
