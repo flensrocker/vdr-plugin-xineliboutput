@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.188 2008-11-04 13:51:41 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.189 2008-11-10 20:38:47 phintuka Exp $
  *
  */
 
@@ -282,7 +282,7 @@ typedef struct vdr_input_plugin_s {
   /* SCR */
   pvrscr_t           *scr;
   int                 speed_before_pause;
-  int8_t              scr_tunning;
+  int8_t              scr_tuning;
   uint8_t             fixed_scr     : 1;
   uint8_t             scr_live_sync : 1;
   uint8_t             is_paused     : 1;
@@ -409,11 +409,11 @@ static void flush_udp_data(udp_data_t *data)
 #ifdef ADJUST_SCR_SPEED
 /******************************* SCR *************************************
  *
- * unix System Clock Reference + fine tunning
+ * unix System Clock Reference + fine tuning
  *
  * pvrscr code is mostly copied from xine, input_pvr.c
  *
- * fine tunning is used to change playback speed in live mode
+ * fine tuning is used to change playback speed in live mode
  * to keep in sync with mpeg source
  *************************************************************************/
 
@@ -425,7 +425,7 @@ struct pvrscr_s {
   int              xine_speed;
   int              scr_speed_base;
   double           speed_factor;
-  double           speed_tunning;
+  double           speed_tuning;
 
   pthread_mutex_t  lock;
 
@@ -473,22 +473,22 @@ static int pvrscr_set_fine_speed (scr_plugin_t *scr, int speed)
   this->xine_speed     = speed;
   this->speed_factor   = (double) speed * (double)this->scr_speed_base /*90000.0*/ / 
                          (1.0*XINE_FINE_SPEED_NORMAL) *
-                         this->speed_tunning;
+                         this->speed_tuning;
 
   pthread_mutex_unlock (&this->lock);
 
   return speed;
 }
 
-static void pvrscr_speed_tunning (pvrscr_t *this, double factor) 
+static void pvrscr_speed_tuning (pvrscr_t *this, double factor) 
 {
   pthread_mutex_lock (&this->lock);
 
   pvrscr_set_pivot( this );
-  this->speed_tunning = factor;
+  this->speed_tuning = factor;
   this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ / 
                        (1.0*XINE_FINE_SPEED_NORMAL) *
-                       this->speed_tunning;
+                       this->speed_tuning;
 
   pthread_mutex_unlock (&this->lock);
 }
@@ -501,7 +501,7 @@ static void pvrscr_speed_base (pvrscr_t *this, int hz)
   this->scr_speed_base = hz;
   this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ / 
                        (1.0*XINE_FINE_SPEED_NORMAL) *
-                       this->speed_tunning;
+                       this->speed_tuning;
 
   pthread_mutex_unlock (&this->lock);
 }
@@ -622,7 +622,7 @@ static pvrscr_t* pvrscr_init (void)
 
   this->scr_speed_base = 90000;
 
-  pvrscr_speed_tunning(this, 1.0 );
+  pvrscr_speed_tuning(this, 1.0 );
   pvrscr_set_fine_speed (&this->scr, XINE_SPEED_PAUSE);
 
   LOGSCR("SCR init complete");
@@ -631,22 +631,22 @@ static pvrscr_t* pvrscr_init (void)
 }
 
 /*
- *  SCR tunning 
+ *  SCR tuning 
  */
 
-#define SCR_TUNNING_PAUSED -3
-#define SCR_TUNNING_OFF     0
+#define SCR_TUNING_PAUSED -3
+#define SCR_TUNING_OFF     0
 
 #ifdef LOG_SCR
-static inline const char *scr_tunning_str(int value)
+static inline const char *scr_tuning_str(int value)
 {
   switch(value) {
     case 2:  return "SCR +2";
     case 1:  return "SCR +1";
-    case SCR_TUNNING_OFF:  return "SCR +0";
+    case SCR_TUNING_OFF:  return "SCR +0";
     case -1: return "SCR -1";
     case -2: return "SCR -2";
-    case SCR_TUNNING_PAUSED: return "SCR PAUSED";
+    case SCR_TUNING_PAUSED: return "SCR PAUSED";
     default: break;
   }
   return "ERROR";
@@ -671,15 +671,15 @@ static int64_t monotonic_time_ms (void)
   return ms;
 }
 
-static void scr_tunning_set_paused(vdr_input_plugin_t *this)
+static void scr_tuning_set_paused(vdr_input_plugin_t *this)
 {
-  if(this->scr_tunning != SCR_TUNNING_PAUSED &&
+  if(this->scr_tuning != SCR_TUNING_PAUSED &&
      !this->slave_stream &&
      !this->is_trickspeed) {
 
-    this->scr_tunning = SCR_TUNNING_PAUSED;  /* marked as paused */
+    this->scr_tuning = SCR_TUNING_PAUSED;  /* marked as paused */
     if(this->scr)
-      pvrscr_speed_tunning(this->scr, 1.0);
+      pvrscr_speed_tuning(this->scr, 1.0);
     
     this->speed_before_pause = _x_get_fine_speed(this->stream);
 
@@ -693,12 +693,12 @@ static void scr_tunning_set_paused(vdr_input_plugin_t *this)
   }
 }
 
-static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed)
+static void reset_scr_tuning(vdr_input_plugin_t *this, int new_speed)
 {
-  if(this->scr_tunning != SCR_TUNNING_OFF) {
-    this->scr_tunning = SCR_TUNNING_OFF; /* marked as normal */
+  if(this->scr_tuning != SCR_TUNING_OFF) {
+    this->scr_tuning = SCR_TUNING_OFF; /* marked as normal */
     if(this->scr)
-      pvrscr_speed_tunning(this->scr, 1.0);
+      pvrscr_speed_tuning(this->scr, 1.0);
 
     if(new_speed >= 0) {
       if(_x_get_fine_speed(this->stream) != new_speed) {
@@ -717,7 +717,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   int num_used = this->buffer_pool->size(this->buffer_pool) + 
                  this->block_buffer->size(this->block_buffer);
   int num_free = this->buffer_pool->num_free(this->buffer_pool);
-  int scr_tunning = this->scr_tunning;
+  int scr_tuning = this->scr_tuning;
   /*int num_vbufs = 0;*/
 
   if(this->hd_stream && this->hd_buffer) {
@@ -730,21 +730,21 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 
 #ifdef LOG_SCR
   /*
-   * Trace current buffer and tunning status
+   * Trace current buffer and tuning status
    */
   {
     static int fcnt=0;
     if(!((fcnt++)%2500) || 
-       (this->scr_tunning==SCR_TUNNING_PAUSED && !(fcnt%10)) ||
+       (this->scr_tuning==SCR_TUNING_PAUSED && !(fcnt%10)) ||
        (this->no_video        && !(fcnt%50))) {
       LOGSCR("Buffer %2d%% (%3d/%3d) %s", 
 	     100*num_used/(num_used+num_free), 
 	     num_used, num_used+num_free, 
-	     scr_tunning_str(this->scr_tunning));
+	     scr_tuning_str(this->scr_tuning));
     }
   }
 
-  if(this->scr_tunning==SCR_TUNNING_PAUSED) {
+  if(this->scr_tuning==SCR_TUNING_PAUSED) {
     if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE) { 
       LOGMSG("ERROR: SCR PAUSED ; speed=%d bool=%d", 
 	     _x_get_fine_speed(this->stream), 
@@ -759,7 +759,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    *  - If buffer is empty, pause SCR (playback) for a while 
    */
   if( num_used < 1 && 
-      scr_tunning != SCR_TUNNING_PAUSED && 
+      scr_tuning != SCR_TUNING_PAUSED && 
       !this->no_video && !this->still_mode && !this->is_trickspeed) {
 /* 
    #warning TODO:
@@ -777,7 +777,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     if(num_vbufs < 3) {
       LOGSCR("SCR paused by adjust_speed (vbufs=%d)", num_vbufs);
 #endif
-      scr_tunning_set_paused(this);
+      scr_tuning_set_paused(this);
 #if 0
     } else {
       LOGSCR("adjust_speed: no pause, enough vbufs queued (%d)", num_vbufs);
@@ -789,7 +789,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
    *  - If SCR (playback) is currently paused due to previous buffer underflow,
    *    revert to normal if buffer fill is > 66%
    */
-  } else if( scr_tunning == SCR_TUNNING_PAUSED) {
+  } else if( scr_tuning == SCR_TUNING_PAUSED) {
 /* 
    #warning TODO:
    - Using amount of buffers is not good trigger as it depends on channel bitrate
@@ -813,11 +813,11 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 	|| ( this->I_frames > 0
 	     && (this->I_frames > 2 || this->P_frames > 6 ))
 	) {
-      LOGSCR("SCR tunning resetted by adjust_speed, "
+      LOGSCR("SCR tuning resetted by adjust_speed, "
              "I %d B %d P %d", this->I_frames, this->B_frames, this->P_frames);
 
       this->I_frames = 0;
-      reset_scr_tunning(this, this->speed_before_pause);
+      reset_scr_tuning(this, this->speed_before_pause);
     }
 
   /*
@@ -837,47 +837,47 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   } else if( _x_get_fine_speed(this->stream) == XINE_FINE_SPEED_NORMAL) {
 
     if(!this->scr_live_sync) {
-        scr_tunning = SCR_TUNNING_OFF;
+        scr_tuning = SCR_TUNING_OFF;
 
     } else if(this->no_video) {  /* radio stream ? */
       if( num_used >= (RADIO_MAX_BUFFERS-1))
-        scr_tunning = +1; /* play faster */
+        scr_tuning = +1; /* play faster */
       else if( num_used <= (RADIO_MAX_BUFFERS/3))
-        scr_tunning = -1; /* play slower */
+        scr_tuning = -1; /* play slower */
       else
-        scr_tunning = SCR_TUNNING_OFF;
+        scr_tuning = SCR_TUNING_OFF;
     } else {
       if( num_used > 4*num_free && this->class->scr_tuning_step >= 0.001)
-        scr_tunning = +2; /* play 1% faster */
+        scr_tuning = +2; /* play 1% faster */
       else if( num_used > 2*num_free )
-        scr_tunning = +1; /* play .5% faster */
+        scr_tuning = +1; /* play .5% faster */
       else if( num_free > 4*num_used && this->class->scr_tuning_step >= 0.001) /* <20% */
-        scr_tunning = -2; /* play 1% slower */
+        scr_tuning = -2; /* play 1% slower */
       else if( num_free > 2*num_used ) /* <33% */
-        scr_tunning = -1; /* play .5% slower */
-      else if( (scr_tunning > 0 && num_free > num_used) ||
-	       (scr_tunning < 0 && num_used > num_free) )
-        scr_tunning = SCR_TUNNING_OFF;
+        scr_tuning = -1; /* play .5% slower */
+      else if( (scr_tuning > 0 && num_free > num_used) ||
+	       (scr_tuning < 0 && num_used > num_free) )
+        scr_tuning = SCR_TUNING_OFF;
     }
 
-    if( scr_tunning != this->scr_tunning ) {
-      LOGSCR("scr_tunning: %s -> %s (buffer %d/%d) (tuning now %f%%)", 
-	     scr_tunning_str(this->scr_tunning), 
-	     scr_tunning_str(scr_tunning), num_used, num_free, this->class->scr_tuning_step * scr_tunning * 100.0);
-      this->scr_tunning = scr_tunning;
+    if( scr_tuning != this->scr_tuning ) {
+      LOGSCR("scr_tuning: %s -> %s (buffer %d/%d) (tuning now %f%%)", 
+	     scr_tuning_str(this->scr_tuning), 
+	     scr_tuning_str(scr_tuning), num_used, num_free, this->class->scr_tuning_step * scr_tuning * 100.0);
+      this->scr_tuning = scr_tuning;
 
       /* make it play .5% / 1% faster or slower */
       if(this->scr)
-	pvrscr_speed_tunning(this->scr, 1.0 + (this->class->scr_tuning_step * scr_tunning) );
+	pvrscr_speed_tuning(this->scr, 1.0 + (this->class->scr_tuning_step * scr_tuning) );
     }
 
   /*
    * SCR -> NORMAL
-   *  - If we are in replay (or trick speed) mode, switch SCR tunning off
+   *  - If we are in replay (or trick speed) mode, switch SCR tuning off
    *    as we can always have complete control on incoming data rate
    */
-  } else if( this->scr_tunning ) {
-    reset_scr_tunning(this, -1);
+  } else if( this->scr_tuning ) {
+    reset_scr_tuning(this, -1);
   }
 }
 
@@ -894,11 +894,11 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this,
 {
 }
 
-static void reset_scr_tunning(vdr_input_plugin_t *this, int new_speed) 
+static void reset_scr_tuning(vdr_input_plugin_t *this, int new_speed) 
 {
 }
 
-static void scr_tunning_set_paused(vdr_input_plugin_t *this, 
+static void scr_tuning_set_paused(vdr_input_plugin_t *this, 
 				   int speed_before_pause) 
 {
 }
@@ -2430,7 +2430,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
   suspend_demuxer(this);
   pthread_mutex_lock( &this->lock );
 
-  reset_scr_tunning(this, this->speed_before_pause);
+  reset_scr_tuning(this, this->speed_before_pause);
 
   /* reset speed again (adjust_realtime_speed might have set pause) */
   if(xine_get_param(this->stream, XINE_PARAM_FINE_SPEED) <= 0) {
@@ -2565,15 +2565,15 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
   if(this->no_video)
     this->max_buffers = RADIO_MAX_BUFFERS;
 
-  /* SCR tunning */
+  /* SCR tuning */
   if(this->live_mode) {
 #ifndef TEST_SCR_PAUSE
-    LOGSCR("pause scr tunning by set_live_mode");
-    scr_tunning_set_paused(this);
+    LOGSCR("pause scr tuning by set_live_mode");
+    scr_tuning_set_paused(this);
 #endif
   } else {
-    LOGSCR("reset scr tunning by set_live_mode");
-    reset_scr_tunning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
+    LOGSCR("reset scr tuning by set_live_mode");
+    reset_scr_tuning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
   }
 
   this->still_mode = 0;
@@ -2606,7 +2606,7 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
   }
 
   if(speed > 1 || speed < -1) {
-    reset_scr_tunning(this, -1);
+    reset_scr_tuning(this, -1);
     this->is_trickspeed = 1;
   } else {
     this->is_trickspeed = 0;
@@ -2619,7 +2619,7 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
   else
     speed = this->speed_before_pause = XINE_FINE_SPEED_NORMAL*(-speed);
 
-  if(this->scr_tunning != SCR_TUNNING_PAUSED && 
+  if(this->scr_tuning != SCR_TUNING_PAUSED && 
      _x_get_fine_speed(this->stream) != speed) {
     _x_set_fine_speed (this->stream, speed);
   }
@@ -2907,7 +2907,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       this->live_mode = 1;
       set_live_mode(this, 0);
       set_playback_speed(this, 1);
-      reset_scr_tunning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
+      reset_scr_tuning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					       METRONOM_PREBUFFER, 90000);
 #endif
@@ -3207,9 +3207,9 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
     }
     create_timeout_time(&abstime, timeout_ms);
     pthread_mutex_lock(&this->lock);
-    if(this->scr_tunning == SCR_TUNNING_PAUSED) {
-      LOGSCR("scr tunning reset by POLL");
-      reset_scr_tunning(this,this->speed_before_pause);
+    if(this->scr_tuning == SCR_TUNING_PAUSED) {
+      LOGSCR("scr tuning reset by POLL");
+      reset_scr_tuning(this,this->speed_before_pause);
     }
     pthread_mutex_unlock(&this->lock);
 
@@ -3335,8 +3335,8 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
   live_mode = this->live_mode;
   this->live_mode = 0; /* --> 1 again when data arrives ... */
 
-  LOGSCR("reset scr tunning by flush_remote");
-  reset_scr_tunning(this, this->speed_before_pause);
+  LOGSCR("reset scr tuning by flush_remote");
+  reset_scr_tuning(this, this->speed_before_pause);
 
   /* wait until all data has been received */
   while(this->curpos < offset && timeout_ms > 0) {
@@ -3348,8 +3348,8 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
     timeout_ms -= 3;
   }
 
-  LOGSCR("reset scr tunning by flush_remote");
-  reset_scr_tunning(this, this->speed_before_pause);
+  LOGSCR("reset scr tuning by flush_remote");
+  reset_scr_tuning(this, this->speed_before_pause);
 
   pthread_mutex_unlock(&this->lock);
 
@@ -3543,7 +3543,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       if(1 == sscanf(cmd+6, "%d", &tmp32)) {
 	this->still_mode = tmp32;
 	if(this->still_mode)
-	  reset_scr_tunning(this, this->speed_before_pause);
+	  reset_scr_tuning(this, this->speed_before_pause);
 	_x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
 	this->stream_start = 1;
       } else
@@ -3560,7 +3560,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     else if(1 == sscanf(cmd, "SCR NoSync %d", &tmp32)) {
       this->scr_live_sync = 0;
       pvrscr_speed_base(this->scr, tmp32);
-      reset_scr_tunning(this, -1);
+      reset_scr_tuning(this, -1);
     }
     pthread_mutex_unlock(&this->lock);
 
@@ -4401,8 +4401,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	  LOGDBG("UDP Fifo buffer full !");
 	  if(this->scr && !udp->scr_jump_done) {
 	    pvrscr_skip_frame (this->scr);
-	    LOGMSG("SCR jump: +40 ms (live=%d, tunning=%d) time %ds", 
-		   this->live_mode, this->scr_tunning, 
+	    LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d) time %ds", 
+		   this->live_mode, this->scr_tuning, 
 		   (int)(monotonic_time_ms()/1000));
 	    udp->scr_jump_done = 50;
 	    xine_usec_sleep(5*1000);
@@ -5388,7 +5388,7 @@ static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
  * - Detect pts wraps
  * - Signal new pts upstream after stream changes
  * - Special handling for still images
- * - Count video frames for SCR tunning
+ * - Count video frames for SCR tuning
  * - Special handling for ffmpeg mpeg2 video decoder
  */
 static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int need_pause)
@@ -5407,7 +5407,7 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
     if(pts > 0) {
 #ifdef TEST_SCR_PAUSE
       if(need_pause)
-	scr_tunning_set_paused(this);
+	scr_tuning_set_paused(this);
 #endif
       vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
       this->send_pts = 0;
@@ -5447,14 +5447,14 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
 
 #ifndef FFMPEG_DEC
 
-  /* Count video frames for SCR tunning algorithm */
+  /* Count video frames for SCR tuning algorithm */
   if(this->live_mode && this->I_frames < 4)
     if(IS_VIDEO_PACKET(buf->content) && buf->size > 32)
       update_frames(this, buf->content, buf->size);
 
 #else /* FFMPEG_DEC */
 
-  /* Count video frames for SCR tunning algorithm */
+  /* Count video frames for SCR tuning algorithm */
   if(this->ffmpeg_mpeg2_decoder || (this->live_mode && this->I_frames < 4))
     if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
       uint8_t type = update_frames(this, buf->content, buf->size);
@@ -5483,7 +5483,7 @@ static void handle_disconnect(vdr_input_plugin_t *this)
     this->hd_buffer->clear(this->hd_buffer);
   set_playback_speed(this, 1);
   this->live_mode = 0;
-  reset_scr_tunning(this, XINE_FINE_SPEED_NORMAL);
+  reset_scr_tuning(this, XINE_FINE_SPEED_NORMAL);
   this->stream->emergency_brake = 1;
 }
 
@@ -5500,12 +5500,12 @@ static int adjust_scr_speed(vdr_input_plugin_t *this)
   if( (!this->live_mode && (this->fd_control < 0 || 
 			    this->fixed_scr)) ||
       this->slave_stream) {
-    if(this->scr_tunning)
-      reset_scr_tunning(this, this->speed_before_pause);
+    if(this->scr_tuning)
+      reset_scr_tuning(this, this->speed_before_pause);
   } else {
 # ifdef TEST_SCR_PAUSE
     if(this->stream_start || this->send_pts) {
-      reset_scr_tunning(this, this->speed_before_pause);
+      reset_scr_tuning(this, this->speed_before_pause);
       need_pause = 1;
     } else {
       vdr_adjust_realtime_speed(this);
@@ -5918,7 +5918,7 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
     this->scr_live_sync = 1;
  }
 #endif
-  this->scr_tunning = SCR_TUNNING_OFF;
+  this->scr_tuning = SCR_TUNING_OFF;
   this->curpos = 0;
   return 1;
 }
