@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.91 2008-11-01 07:23:00 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.92 2008-11-10 21:28:55 phintuka Exp $
  *
  */
 
@@ -33,7 +33,9 @@
 #include <X11/Xatom.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
-#include <X11/extensions/XShm.h>
+#ifdef HAVE_XSHM
+# include <X11/extensions/XShm.h>
+#endif
 #ifdef HAVE_XRENDER
 #  include <X11/extensions/Xrender.h>
 #endif
@@ -180,7 +182,9 @@ typedef struct sxfe_s {
   uint32_t       *hud_img_mem;
   GC              gc;
   Window          hud_window;
+# ifdef HAVE_XSHM
   XShmSegmentInfo hud_shminfo;
+# endif
 
   uint16_t      osd_width;
   uint16_t      osd_height;
@@ -673,6 +677,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
       LOGDBG("HUD Set RLE");
+#ifdef HAVE_XSHM
       if(this->completion_event != -1) {
         hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
         if(!cmd->scaling) {
@@ -699,7 +704,10 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 			     (XDouble)this->x.height / (XDouble)this->osd_height,
 			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
-      } else {
+      } 
+      else 
+#endif
+      {
         hud_fill_img_memory(this->hud_img_mem, cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window (always unscaled) */
@@ -811,6 +819,7 @@ static int hud_osd_open(sxfe_t *this)
     XStoreName(this->display, this->hud_window, "HUD");
     this->gc = XCreateGC(this->display, this->hud_window, 0, NULL);
 
+#ifdef HAVE_XSHM
     if(this->completion_event != -1) {
       this->hud_img = XShmCreateImage(this->display, this->hud_vis, 32, ZPixmap, NULL, &(this->hud_shminfo),
                                       HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
@@ -822,7 +831,10 @@ static int hud_osd_open(sxfe_t *this)
       this->hud_shminfo.readOnly = True;
 
       XShmAttach(this->display, &(this->hud_shminfo));
-    } else {
+    } 
+    else 
+#endif
+    {
       /* Fall-back to traditional memory */
       LOGMSG("hud_osd_open: XShm not available, falling back to normal (slow) memory");
       this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
@@ -877,12 +889,15 @@ static void hud_osd_close(sxfe_t *this)
     XLockDisplay(this->display);
     LOGDBG("closing hud window...");
 
+#ifdef HAVE_XSHM
     if(this->completion_event != -1) {
       XShmDetach(this->display, &(this->hud_shminfo));
       XDestroyImage(this->hud_img);
       shmdt(this->hud_shminfo.shmaddr);
       shmctl(this->hud_shminfo.shmid, IPC_RMID, 0);
-    } else
+    } 
+    else
+#endif
       XDestroyImage(this->hud_img);
 
     if(this->surf_img)
@@ -1152,11 +1167,12 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   /* #warning sxfe_display_open: TODO: switch vmode */
 
   /* completion event */
+  this->completion_event = -1;
+#ifdef HAVE_XSHM
   if (XShmQueryExtension (this->display) == True) {
     this->completion_event = XShmGetEventBase (this->display) + ShmCompletion;
-  } else {
-    this->completion_event = -1;
   }
+#endif
 
   init_atoms(this);
 
