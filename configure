@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.7 2008-11-10 21:14:07 phintuka Exp $
+# * $Id: configure,v 1.8 2008-11-10 21:17:56 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -222,6 +222,7 @@ SUBSYSTEMS="
 FEATURES="
   $SUBSYSTEMS
   libextractor
+  xshm
   xdpms
   xinerama
   xrandr
@@ -251,6 +252,7 @@ show_help(){
   echo "  --enable-libxine       build xine plugins [yes]"
   echo
   echo "  --disable-libextractor disable libextractor support (media file metainfo) [no]"
+  echo "  --disable-xshm         disable XShm support [no]"
   echo "  --disable-xdpms        disable Xdpms support [no]"
   echo "  --disable-xinerama     disable Xinerama support [no]"
   echo "  --disable-xrandr       disable Xrandr support (video mode switching) [no]"
@@ -308,7 +310,7 @@ done
 
 check_deps(){
   disabled libxine && disable x11 fb
-  disabled x11     && disable xrender xrandr xdpms xinerama
+  disabled x11     && disable xshm xrender xrandr xdpms xinerama
   disabled vdr     && disable libextractor
 }
 
@@ -340,6 +342,7 @@ if enabled libxine; then
   test_library   X11  x11          "X11/X.h"        "-lX11"       "XInitThreads()"
   if enabled x11; then
     test_library X11  xext         "X11/extensions/Xext.h"     "-lXext"      ""
+    test_library X11  xshm         "X11/extensions/XShm.h"     "-lXext"      "XShmQueryExtension(0)"
     test_library X11  xrender      "X11/extensions/Xrender.h"  "-lXrender"   "XRenderQueryFormats(0)"
     test_library X11  xrandr       "X11/extensions/Xrandr.h"   "-lXrandr"    "XRRGetScreenInfo(0,0)"
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
