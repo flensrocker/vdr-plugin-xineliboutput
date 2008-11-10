@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.6 2008-11-02 12:03:50 phintuka Exp $
+# * $Id: configure,v 1.7 2008-11-10 21:14:07 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -169,7 +169,7 @@ test_library_pc(){
     add_flags LIBS_$subsys \
               `pkg-config --libs-only-L $libname` \
               `pkg-config --libs-only-l $libname`
-    add_flags INCS_$subsys `pkg-config --cflags-only-I $libname`
+    add_flags CFLAGS_$subsys `pkg-config --cflags-only-I $libname`
     log "yes"
     return 0
   fi
