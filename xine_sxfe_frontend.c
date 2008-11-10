@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.92 2008-11-10 21:28:55 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.93 2008-11-10 21:30:28 phintuka Exp $
  *
  */
 
@@ -883,6 +883,30 @@ static void hud_osd_resize(sxfe_t *this, Window video_window, int width, int hei
   }
 }
 
+/*
+ * hud_osd_focus
+ *
+ * - show / hide HUD OSD window
+ */
+static void hud_osd_focus(sxfe_t *this, XFocusChangeEvent *fev)
+{
+  if(this && this->hud)
+    if(fev->window == this->window[0] || fev->window == this->window[1]) {
+
+      XLockDisplay(this->display);
+
+      if(fev->type == FocusIn)
+	/* Show HUD again if sxfe window receives focus */
+	XMapWindow(this->display, this->hud_window);
+
+      else if(fev->type == FocusOut)
+	/* Dismiss HUD window if focusing away from frontend window */
+	XUnmapWindow(this->display, this->hud_window);
+
+      XUnlockDisplay(this->display);
+    }
+}
+
 static void hud_osd_close(sxfe_t *this)
 {
   if(this && this->hud) {
@@ -1603,32 +1627,11 @@ static int sxfe_run(frontend_t *this_gen)
 
 #ifdef HAVE_XRENDER
       case FocusIn:
-      {
-         if(this->hud) {
-           XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
-           /* Show HUD again if sxfe window receives focus */
-           if(fev->window == this->window[0] || fev->window == this->window[1]) {
-             XLockDisplay(this->display);
-             XMapWindow(this->display, this->hud_window);
-             XUnlockDisplay(this->display);
-           }
-        }
-        break;
-      }
       case FocusOut:
-      {
-	if(this->hud) {
-	  XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
-	  /* Dismiss HUD window if focusing away from frontend window */
-	  if(fev->window == this->window[0] || fev->window == this->window[1]) {
-            XLockDisplay(this->display);
-            XUnmapWindow(this->display, this->hud_window);
-            XUnlockDisplay(this->display);
-          }
-        }
-        break;
-      }
-#endif /* HAVE_XRENDER */
+	hud_osd_focus(this, (XFocusChangeEvent *) &event);
+	break;
+#endif
+
       case ButtonRelease:
 	this->dragging = 0;
 	break;
