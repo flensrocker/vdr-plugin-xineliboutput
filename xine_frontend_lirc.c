@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.13 2008-06-17 16:12:23 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.14 2008-11-10 23:50:10 phintuka Exp $
  *
  */
 /*
@@ -24,7 +24,11 @@
 
 
 #include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
