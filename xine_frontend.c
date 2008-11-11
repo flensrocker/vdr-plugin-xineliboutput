@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.76 2008-11-11 17:14:43 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.77 2008-11-11 19:04:02 rofafor Exp $
  *
  */
 
@@ -35,8 +35,9 @@
 #undef  MAX
 #define MAX(a,b) ( (a) > (b) ? (a) : (b))
 
+#ifdef FE_STANDALONE
 static int verbose_xine_log = 0;
-
+#endif
 
 char *strn0cpy(char *dest, const char *src, int n) 
 {

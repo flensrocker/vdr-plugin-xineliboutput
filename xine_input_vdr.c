@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.191 2008-11-11 11:00:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.192 2008-11-11 19:04:02 rofafor Exp $
  *
  */
 
@@ -57,7 +57,7 @@
 # ifdef HAVE_LIBAVUTIL
 #  include <libavutil/mem.h>
 # else
-#  error plugin was configured without libavutil. It can't be compiled against xine-lib 1.2 !
+#  error "plugin was configured without libavutil. It can't be compiled against xine-lib 1.2 !"
 # endif
 #endif
 
