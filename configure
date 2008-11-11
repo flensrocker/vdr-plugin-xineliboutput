@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.9 2008-11-11 10:58:33 phintuka Exp $
+# * $Id: configure,v 1.10 2008-11-11 11:41:44 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -117,6 +117,7 @@ int main(int c, char **v) {
 EOF
   else
     cat <<EOF >testhdr.c
+#include <stdio.h>
 #include <$hdrname>
 int main(int c, char **v) { 
   $func; 
@@ -223,6 +224,7 @@ FEATURES="
   $SUBSYSTEMS
   libextractor
   libavutil
+  libjpeg
   xshm
   xdpms
   xinerama
@@ -253,6 +255,7 @@ show_help(){
   echo "  --enable-libxine       build xine plugins [yes]"
   echo
   echo "  --disable-libextractor disable libextractor support (media file metainfo) [no]"
+  echo "  --disable-libjpeg      disable libjpeg support [no]"
   echo "  --disable-xshm         disable XShm support [no]"
   echo "  --disable-xdpms        disable Xdpms support [no]"
   echo "  --disable-xinerama     disable Xinerama support [no]"
@@ -310,7 +313,7 @@ done
 #
 
 check_deps(){
-  disabled libxine && disable x11 fb libavutil
+  disabled libxine && disable x11 fb libavutil libjpeg
   disabled x11     && disable xshm xrender xrandr xdpms xinerama
   disabled vdr     && disable libextractor
 }
@@ -341,6 +344,7 @@ if enabled libxine; then
   log " $XINEPLUGINDIR"
 
   test_library   XINE libavutil    "libavutil/mem.h"           "-lavutil"    "av_mallocz(1)"
+  test_library   XINE libjpeg      "jpeglib.h"                 "-ljpeg"      "jpeg_create_compress(0)"
   test_library   X11  x11          "X11/X.h"                   "-lX11"       "XInitThreads()"
   if enabled x11; then
     test_library X11  xext         "X11/extensions/Xext.h"     "-lXext"      ""
