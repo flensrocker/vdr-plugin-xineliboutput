@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.75 2008-11-11 16:46:49 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.76 2008-11-11 17:14:43 phintuka Exp $
  *
  */
 
@@ -1451,67 +1451,15 @@ static vo_frame_t *yuy2_to_yv12_frame(xine_stream_t *stream, vo_frame_t *frame)
   return frame;
 }
 
-#endif /* HAVE_LIBJPEG */
-
-static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
-		     int quality, int width, int height)
+static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t *frame)
 {
-#ifdef HAVE_LIBJPEG
   struct jpeg_destination_mgr jdm;
   struct jpeg_compress_struct cinfo;
   struct jpeg_error_mgr jerr;
   tJpegCompressData jcd;
-#endif
-
-  fe_t *this = (fe_t*)this_gen;
-  vo_frame_t *frame;
-
-#ifndef HAVE_LIBJPEG
-  if(jpeg) {
-    LOGMSG("fe_grab: JPEG grab support was not compiled in");
-    return 0;
-  }
-#endif /* HAVE_LIBJPEG */
-
-#ifndef PPM_SUPPORTED
-  if(!jpeg) {
-    LOGMSG("fe_grab: PPM grab not implemented");
-    return 0;
-  }
-#else
-  /* #warning TODO: convert to RGB PPM */
-#endif
-
-  if(!find_input_plugin(this))
-    return 0;
-
-  LOGDBG("fe_grab: grabbing %s %d %dx%d", 
-	 jpeg ? "JPEG" : "PNM", quality, width, height);
-
-  if (quality < 0)
-    quality = 0;
-  else if(quality > 100)
-    quality = 100;
-
-  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
-  frame = this->stream->video_out->get_last_frame (this->stream->video_out);
-  if(frame)
-    frame->lock(frame);
-  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
-
-  if(!frame)
-    return NULL;
-
-#ifdef HAVE_LIBJPEG
 
   /* convert yuy2 frames to yv12 */
   frame = yuy2_to_yv12_frame(this->stream, frame);
-
-  /* #warning TODO: no scaling implemented */
-  if(width != frame->width)
-    width = frame->width;
-  if(height != frame->height)
-    height = frame->height;
 
   /* Compress JPEG */
 
@@ -1524,8 +1472,8 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   cinfo.dest = &jdm;
 
   cinfo.client_data = &jcd;
-  cinfo.image_width = width;
-  cinfo.image_height = height;
+  cinfo.image_width = frame->width;
+  cinfo.image_height = frame->height;
 
   cinfo.input_components = 3;
   cinfo.in_color_space = JCS_YCbCr;
@@ -1533,9 +1481,9 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   switch (frame->format) {
     case XINE_IMGFMT_YV12: {
       JSAMPARRAY pp[3];
-      JSAMPROW *rpY = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
-      JSAMPROW *rpU = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
-      JSAMPROW *rpV = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
+      JSAMPROW *rpY = (JSAMPROW*)malloc(sizeof(JSAMPROW) * frame->height);
+      JSAMPROW *rpU = (JSAMPROW*)malloc(sizeof(JSAMPROW) * frame->height);
+      JSAMPROW *rpV = (JSAMPROW*)malloc(sizeof(JSAMPROW) * frame->height);
       int k;
 
       jpeg_set_defaults(&cinfo);
@@ -1551,13 +1499,13 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
       cinfo.comp_info[2].v_samp_factor = 1;
       jpeg_start_compress(&cinfo, TRUE);
       
-      for (k = 0; k < height; k+=2) {
+      for (k = 0; k < frame->height; k+=2) {
 	rpY[k]   = frame->base[0] + k*frame->pitches[0];
 	rpY[k+1] = frame->base[0] + (k+1)*frame->pitches[0];
 	rpU[k/2] = frame->base[1] + (k/2)*frame->pitches[1];
 	rpV[k/2] = frame->base[2] + (k/2)*frame->pitches[2];
       }
-      for (k = 0; k < height; k+=2*DCTSIZE) {
+      for (k = 0; k < frame->height; k+=2*DCTSIZE) {
 	pp[0] = &rpY[k];
 	pp[1] = &rpU[k/2];
 	pp[2] = &rpV[k/2];
@@ -1598,6 +1546,67 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 
   *size = jcd.size;
   return (char*) jcd.mem;
+}
+
+#endif /* HAVE_LIBJPEG */
+
+static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
+		     int quality, int width, int height)
+{
+  fe_t *this = (fe_t*)this_gen;
+  vo_frame_t *frame;
+
+#ifndef HAVE_LIBJPEG
+  if(jpeg) {
+    LOGMSG("fe_grab: JPEG grab support was not compiled in");
+    return 0;
+  }
+#endif /* HAVE_LIBJPEG */
+
+#ifndef PPM_SUPPORTED
+  if(!jpeg) {
+    LOGMSG("fe_grab: PPM grab not implemented");
+    return 0;
+  }
+#else
+  /* #warning TODO: convert to RGB PPM */
+#endif
+
+  if(!find_input_plugin(this))
+    return 0;
+
+  LOGDBG("fe_grab: grabbing %s %d %dx%d", 
+	 jpeg ? "JPEG" : "PNM", quality, width, height);
+
+  /* validate parameters */
+  if (quality < 0)
+    quality = 0;
+  else if(quality > 100)
+    quality = 100;
+  width  = (MIN(16, MAX(width, 1920)) + 1) & ~1; /* 16...1920, even */
+  height = (MIN(16, MAX(width, 1200)) + 1) & ~1; /* 16...1200, even */
+
+  /* get last frame */
+  this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
+  frame = this->stream->video_out->get_last_frame (this->stream->video_out);
+  if(frame)
+    frame->lock(frame);
+  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+
+  if(!frame) {
+    LOGMSG("fe_grab: get_last_frame() failed");
+    return NULL;
+  }
+
+  /* Scale image */
+  /* #warning TODO: no scaling implemented */
+  if(width != frame->width)
+    width = frame->width;
+  if(height != frame->height)
+    height = frame->height;
+
+#ifdef HAVE_LIBJPEG
+  return frame_compress_jpeg(this, size, quality, frame);
 #else /* HAVE_LIBJPEG */
   return NULL;
 #endif
