@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.53 2008-11-10 21:33:42 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.54 2008-11-11 00:02:33 phintuka Exp $
  *
  */
 
@@ -22,6 +22,7 @@
 #include <signal.h>
 
 #include "tools/vdrdiscovery.h"
+#include "xine_frontend_lirc.h"
 
 /* next symbol is dynamically linked from input plugin */
 int SysLogLevel __attribute__((visibility("default"))) = 2; /* errors and info, no debug */
@@ -62,8 +63,6 @@ pthread_t kbd_thread;
 struct termios tm, saved_tm;
 volatile int terminate_key_pressed = 0;
 
-/* include LIRC forwarding code */
-#include "xine_frontend_lirc.c"
 
 static int read_key(void)
 {

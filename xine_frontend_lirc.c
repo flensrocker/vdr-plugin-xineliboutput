@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.14 2008-11-10 23:50:10 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.15 2008-11-11 00:02:33 phintuka Exp $
  *
  */
 /*
@@ -31,6 +31,11 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
+#define LOG_MODULENAME "[lirc]      "
+#include "logdefs.h"
+
+#include "xine_frontend_internal.h"
 
 #define REPEATDELAY     350 /* ms */
 #define REPEATFREQ      100 /* ms */

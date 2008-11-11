@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.53 2008-11-04 14:05:46 phintuka Exp $
+# $Id: Makefile,v 1.54 2008-11-11 00:02:33 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -241,7 +241,8 @@ endif
 
 ifeq ($(XINELIBOUTPUT_X11), yes)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
-  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o
+  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o \
+              xine_frontend_lirc.o
 else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
@@ -249,7 +250,8 @@ endif
 
 ifeq ($(XINELIBOUTPUT_FB), yes)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
-  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o
+  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o \
+              xine_frontend_lirc.o
 else
   OBJS_FBFE_SO = 
   OBJS_FBFE = 
@@ -305,6 +307,8 @@ xine_post_audiochannel.o: xine_post_audiochannel.c
 
 logdefs.o: logdefs.c logdefs.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine_frontend_lirc.o: xine_frontend_lirc.c xine_frontend_lirc.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
@@ -317,12 +321,12 @@ xine_fbfe_frontend.o: xine_fbfe_frontend.c
 
 xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
-		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.c \
+		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.h \
 		xineliboutput.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_sxfe_frontend.c -o $@
 xine_fbfe_frontend_standalone.o: xine_fbfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
-		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.c \
+		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.h \
 		xineliboutput.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_fbfe_frontend.c -o $@
 
