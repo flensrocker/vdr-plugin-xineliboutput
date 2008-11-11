@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.77 2008-11-11 19:04:02 rofafor Exp $
+ * $Id: xine_frontend.c,v 1.78 2008-11-11 20:43:16 phintuka Exp $
  *
  */
 
@@ -35,9 +35,6 @@
 #undef  MAX
 #define MAX(a,b) ( (a) > (b) ? (a) : (b))
 
-#ifdef FE_STANDALONE
-static int verbose_xine_log = 0;
-#endif
 
 char *strn0cpy(char *dest, const char *src, int n) 
 {
@@ -496,11 +493,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   if(!this->xine)
     return 0;
 
-#ifdef FE_STANDALONE
-  this->xine->verbosity = verbose_xine_log;
-#else
+  /* Set xine engine logging verbosity */
   this->xine->verbosity = (SysLogLevel>2);
-#endif
 
   /*xine_register_log_cb(this->xine, xine_log_cb, this);*/
 

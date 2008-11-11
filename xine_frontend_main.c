@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.54 2008-11-11 00:02:33 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.55 2008-11-11 20:43:16 phintuka Exp $
  *
  */
 
@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
     case 'H': printf("\nUsage: %s [options] [" MRL_ID "[+udp|+tcp|+rtp]:[//host[:port]]] \n"
 		     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
-	      list_plugins(NULL, verbose_xine_log);
+	      list_plugins(NULL, SysLogLevel>2);
 	      exit(0);
     case 'A': adrv = strdup(optarg);
               adev = strchr(adrv, ':');
@@ -472,12 +472,10 @@ int main(int argc, char *argv[])
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
 		     repeat_emu?", emulating key repeat":"");
 	      break;
-    case 'v': verbose_xine_log = 1;
-              SysLogLevel = 3;
+    case 'v': SysLogLevel = 3;
 	      PRINTF("Verbose mode\n");
 	      break;
-    case 's': verbose_xine_log = 0;
-              SysLogLevel = 1;
+    case 's': SysLogLevel = 1;
 	      PRINTF("Silent mode\n");
 	      break;
     case 'S': slave_mode = 1;
@@ -613,11 +611,11 @@ int main(int argc, char *argv[])
   if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
     fprintf(stderr, "Error initializing xine\n");
     fe->fe_free(fe);
-    list_plugins(NULL, verbose_xine_log);
+    list_plugins(NULL, SysLogLevel>2);
     return -5;
   }
   if(SysLogLevel>2)
-    list_plugins(((fe_t*)fe)->xine, verbose_xine_log);
+    list_plugins(((fe_t*)fe)->xine, SysLogLevel>2);
 
   /* signal handlers */
 
