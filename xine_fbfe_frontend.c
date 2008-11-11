@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.33 2008-06-19 20:43:35 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.34 2008-11-11 12:38:00 phintuka Exp $
  *
  */
 
@@ -28,12 +28,6 @@
 #if defined(__linux__)
 # include <linux/kd.h>
 #endif
-
-#ifdef boolean
-# define HAVE_BOOLEAN
-#endif
-#include <jpeglib.h>
-#undef boolean
 
 /* framegrab ports */
 #define XINE_ENABLE_EXPERIMENTAL_FEATURES

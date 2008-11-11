@@ -4,11 +4,19 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.73 2008-11-10 23:59:35 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.74 2008-11-11 12:38:00 phintuka Exp $
  *
  */
 
 #include "features.h"
+
+#ifdef HAVE_LIBJPEG
+# ifdef boolean
+#  define HAVE_BOOLEAN
+# endif
+# include <jpeglib.h>
+# undef boolean
+#endif
 
 #ifndef XINE_VERSION_CODE
 #  define XINE_VERSION_CODE (XINE_MAJOR_VERSION*10000 + \
@@ -22,6 +30,10 @@
 #include "xine_frontend_internal.h"
 #include "xine/post.h"
 
+#undef  MIN
+#define MIN(a,b) ( (a) < (b) ? (a) : (b))
+#undef  MAX
+#define MAX(a,b) ( (a) > (b) ? (a) : (b))
 
 static int verbose_xine_log = 0;
 
@@ -1362,6 +1374,8 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
  *        - move to xine_input_vdr ?
  */
 
+#ifdef HAVE_LIBJPEG
+
 #define JPEGCOMPRESSMEM 500000
 
 typedef struct tJpegCompressData_s {
@@ -1407,16 +1421,27 @@ static void JpegCompressTermDestination(const j_compress_ptr cinfo)
      }
 }
 
+#endif /* HAVE_LIBJPEG */
+
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
 		     int quality, int width, int height)
 {
+#ifdef HAVE_LIBJPEG
   struct jpeg_destination_mgr jdm;
   struct jpeg_compress_struct cinfo;
   struct jpeg_error_mgr jerr;
   tJpegCompressData jcd;
+#endif
 
   fe_t *this = (fe_t*)this_gen;
   vo_frame_t *frame, *img;
+
+#ifndef HAVE_LIBJPEG
+  if(jpeg) {
+    LOGMSG("fe_grab: JPEG grab support was not compiled in");
+    return 0;
+  }
+#endif /* HAVE_LIBJPEG */
 
 #ifndef PPM_SUPPORTED
   if(!jpeg) {
@@ -1472,6 +1497,8 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
     frame->free(frame);
     frame = img;
   }
+
+#ifdef HAVE_LIBJPEG
 
   /* #warning TODO: no scaling implemented */
   if(width != frame->width)
@@ -1564,6 +1591,9 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 
   *size = jcd.size;
   return (char*) jcd.mem;
+#else /* HAVE_LIBJPEG */
+  return NULL;
+#endif
 }
 
 
