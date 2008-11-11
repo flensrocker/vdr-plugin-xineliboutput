@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.189 2008-11-10 20:38:47 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.190 2008-11-11 10:16:05 phintuka Exp $
  *
  */
 
@@ -6684,12 +6684,11 @@ static char **vdr_plugin_get_autoplay_list(input_class_t *this_gen, int *num_fil
 static void vdr_class_dispose (input_class_t *this_gen) 
 {
   vdr_input_class_t *this = (vdr_input_class_t *) this_gen;
+  config_values_t *config = this->xine->config;
 
-  this->xine->config->unregister_callback(this->xine->config,
-					  "media." MRL_ID ".default_mrl");
-  this->xine->config->unregister_callback(this->xine->config,
-					  MRL_ID ".osd.fast_scaling");
-
+  config->unregister_callback(config, "media." MRL_ID ".default_mrl");
+  config->unregister_callback(config, "media." MRL_ID ".osd.fast_scaling");
+  config->unregister_callback(config, "media." MRL_ID ".scr_tuning_step");
   free (this);
 }
 
@@ -6722,7 +6721,7 @@ static void *init_class (xine_t *xine, void *data)
   this->mrls[ 1 ] = 0;
 
   this->fast_osd_scaling = config->register_bool(config,
-						 "input." MRL_ID ".fast_osd_scaling", 0,
+						 "media." MRL_ID ".fast_osd_scaling", 0,
 						 _("Fast (low-quality) OSD scaling"),
 						 _("Enable fast (lower quality) OSD scaling.\n"
 						   "Default is to use (slow) linear interpolation "
@@ -6734,11 +6733,11 @@ static void *init_class (xine_t *xine, void *data)
 						 (void *)this);
 
   this->scr_tuning_step = config->register_num(config,
-						 "input." MRL_ID ".scr_tuning_step", 5000,
-						 _("SRC tuning step"),
-						 _("SCR tuning step width unit %1000000."),
-						 10, vdr_class_scr_tuning_step_cb, 
-						 (void *)this) / 1000000.0;
+					       "media." MRL_ID ".scr_tuning_step", 5000,
+					       _("SRC tuning step"),
+					       _("SCR tuning step width unit %1000000."),
+					       10, vdr_class_scr_tuning_step_cb, 
+					       (void *)this) / 1000000.0;
 
   this->input_class.get_instance       = vdr_class_get_instance;
 #if INPUT_PLUGIN_IFACE_VERSION < 18
