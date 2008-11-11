@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.55 2008-11-11 01:20:42 phintuka Exp $
+# $Id: Makefile,v 1.56 2008-11-11 01:24:35 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -251,7 +251,7 @@ endif
 ###
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
+	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $(CFLAGS_VDR) -o $@ $<
 
 
 ###
