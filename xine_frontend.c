@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.74 2008-11-11 12:38:00 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.75 2008-11-11 16:46:49 phintuka Exp $
  *
  */
 
@@ -1370,7 +1370,6 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
  *     source: vdr-1.3.42, tools.c
  *     modified to accept YUV data
  *
- *  TODO: remote version: send to ctrl stream
  *        - move to xine_input_vdr ?
  */
 
@@ -1421,6 +1420,37 @@ static void JpegCompressTermDestination(const j_compress_ptr cinfo)
      }
 }
 
+static vo_frame_t *yuy2_to_yv12_frame(xine_stream_t *stream, vo_frame_t *frame)
+{
+  /* convert yuy12 frames to yv12 */
+  if (frame->format == XINE_IMGFMT_YUY2) {
+    stream->xine->port_ticket->acquire(stream->xine->port_ticket, 0);
+    vo_frame_t *img = stream->video_out->get_frame (stream->video_out,
+						    frame->width, frame->height,
+						    frame->ratio, XINE_IMGFMT_YV12,
+						    VO_BOTH_FIELDS);
+    stream->xine->port_ticket->release(stream->xine->port_ticket, 0);
+
+    if (!img) {
+      LOGMSG("yuy2_to_yv12_frame: get_frame failed");
+      frame->free(frame);
+      return NULL;
+    }
+
+    init_yuv_conversion();
+    yuy2_to_yv12(frame->base[0], frame->pitches[0], 
+                 img->base[0], img->pitches[0],
+                 img->base[1], img->pitches[1],
+                 img->base[2], img->pitches[2],
+                 frame->width, frame->height);     
+
+    frame->free(frame);
+    return img;
+  }
+
+  return frame;
+}
+
 #endif /* HAVE_LIBJPEG */
 
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
@@ -1434,7 +1464,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 #endif
 
   fe_t *this = (fe_t*)this_gen;
-  vo_frame_t *frame, *img;
+  vo_frame_t *frame;
 
 #ifndef HAVE_LIBJPEG
   if(jpeg) {
@@ -1472,33 +1502,10 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   if(!frame)
     return NULL;
 
-  // convert yuy2 frames to yv12
-  if (frame->format == XINE_IMGFMT_YUY2) {
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
-    img = this->stream->video_out->get_frame (this->stream->video_out,
-                                              frame->width, frame->height,
-                                              frame->ratio, XINE_IMGFMT_YV12, 
-                                              VO_BOTH_FIELDS);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
-
-    if(!img) {
-      LOGMSG("fe_grab: get_frame failed");
-      frame->free(frame);
-      return NULL;
-    } 
-
-    init_yuv_conversion();
-    yuy2_to_yv12(frame->base[0], frame->pitches[0], 
-                 img->base[0], img->pitches[0],
-                 img->base[1], img->pitches[1],
-                 img->base[2], img->pitches[2],
-                 frame->width, frame->height);     
-    
-    frame->free(frame);
-    frame = img;
-  }
-
 #ifdef HAVE_LIBJPEG
+
+  /* convert yuy2 frames to yv12 */
+  frame = yuy2_to_yv12_frame(this->stream, frame);
 
   /* #warning TODO: no scaling implemented */
   if(width != frame->width)
