@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.54 2008-11-11 00:02:33 phintuka Exp $
+# $Id: Makefile,v 1.55 2008-11-11 01:20:42 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -129,11 +129,13 @@ PACKAGE = vdr-$(ARCHIVE)
 ### The name of executable and libraries
 ###
 
-VDRSXFE      = vdr-sxfe
-VDRFBFE      = vdr-fbfe
-XINEINPUTVDR = xineplug_inp_xvdr.so
-XINEPOSTAUTOCROP  = xineplug_post_autocrop.so
-XINEPOSTSWSCALE = xineplug_post_swscale.so
+VDRSXFE              = vdr-sxfe
+VDRFBFE              = vdr-fbfe
+VDRPLUGIN_SXFE       = lib$(PLUGIN)-sxfe.so
+VDRPLUGIN_FBFE       = lib$(PLUGIN)-fbfe.so
+XINEINPUTVDR         = xineplug_inp_xvdr.so
+XINEPOSTAUTOCROP     = xineplug_post_autocrop.so
+XINEPOSTSWSCALE      = xineplug_post_swscale.so
 XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
 
 ###
@@ -141,25 +143,25 @@ XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
 ###
 
 VDRSXFE_EXEC =
-VDRPLUGIN_SXFE_SO =
 VDRFBFE_EXEC =
+VDRPLUGIN_SO =
+VDRPLUGIN_SXFE_SO =
 VDRPLUGIN_FBFE_SO =
 XINEINPUTVDR_SO =
 XINEPOSTAUTOCROP_SO =
 XINEPOSTSWSCALE_SO =
 XINEPOSTAUDIOCHANNEL_SO =
-VDRPLUGIN_SO =
 
 ifeq ($(XINELIBOUTPUT_X11), yes)
     VDRSXFE_EXEC = $(VDRSXFE)
     ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-        VDRPLUGIN_SXFE_SO = lib$(PLUGIN)-sxfe.so
+        VDRPLUGIN_SXFE_SO = $(VDRPLUGIN_SXFE)
     endif
 endif
 ifeq ($(XINELIBOUTPUT_FB), yes)
     VDRFBFE_EXEC = $(VDRFBFE)
     ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-        VDRPLUGIN_FBFE_SO = lib$(PLUGIN)-fbfe.so
+        VDRPLUGIN_FBFE_SO = $(VDRPLUGIN_FBFE)
     endif
 endif
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
@@ -192,13 +194,6 @@ DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
 
-# check for yaegp patch
-#YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
-#ifeq ($(YAEPG), 1)
-#  DEFINES += -DYAEGP_PATCH
-#endif
-#DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
-
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
     CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags) 
 endif
@@ -212,13 +207,6 @@ endif
 ifdef STARTUP_IMAGE_FILE
   DEFINES += -DSTARTUP_IMAGE_FILE='"$(STARTUP_IMAGE_FILE)"'
 endif
-
-
-###
-### configuration
-###
-
-#DEFINES += -DHAVE_XV_FIELD_ORDER
 
 
 ###
@@ -380,7 +368,9 @@ frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
 
 .PHONY: all
 
-
+#
+# VDR plugin
+#
 ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
 $(VDRPLUGIN_SO): $(OBJS) $(OBJS_MPG)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
@@ -388,6 +378,9 @@ $(VDRPLUGIN_SO): $(OBJS) $(OBJS_MPG)
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 endif
 
+#
+# vdr-sxfe
+#
 ifeq ($(XINELIBOUTPUT_X11), yes)
 $(VDRPLUGIN_SXFE_SO): $(OBJS_SXFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) -o $@
@@ -397,6 +390,9 @@ $(VDRSXFE): $(OBJS_SXFE)
 	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) -ljpeg $(LIBS_XINE) -o $@
 endif
 
+#
+# vdr-fbfe
+#
 ifeq ($(XINELIBOUTPUT_FB), yes)
 $(VDRPLUGIN_FBFE_SO): $(OBJS_FBFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) -o $@
@@ -406,6 +402,9 @@ $(VDRFBFE): $(OBJS_FBFE)
 	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -ljpeg -o $@
 endif
 
+#
+# xine plugins
+#
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
 $(XINEINPUTVDR_SO): xine_input_vdr.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_input_vdr.o $(LIBS_XINE) -o $@
