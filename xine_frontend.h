@@ -4,14 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.9 2008-11-11 19:04:02 rofafor Exp $
+ * $Id: xine_frontend.h,v 1.10 2008-11-12 10:51:22 rofafor Exp $
  *
  */
 
 #ifndef _XINE_FRONTEND_H
 #define _XINE_FRONTEND_H
-
-#include "xine_osd_command.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +21,8 @@ typedef void (*fe_keypress_f)(const char *keymap, const char *name);
 
 typedef struct frontend_config_s frontend_config_t;
 typedef struct frontend_s frontend_t;
+
+struct osd_command_s;
 
 #if 0
 struct frontend_config_s {
