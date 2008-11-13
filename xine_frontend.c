@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.82 2008-11-13 23:10:16 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.83 2008-11-13 23:51:19 phintuka Exp $
  *
  */
 
@@ -1230,20 +1230,6 @@ static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len
  * control from frontend to xine/vdr
  */
 
-void process_xine_keypress(fe_t *this,
-			   const char *map, const char *key,
-			   int repeat, int release)
-{
-
-  if(find_input_plugin(this)) {
-    if(this->input_plugin->f.input_control)
-      this->input_plugin->f.input_control(this->input_plugin, map, key, repeat, release);
-    else
-      LOGMSG("Keypress --- NO HANDLER SET");
-  } else {
-    LOGMSG("Keypress --- NO PLUGIN FOUND");
-  }
-}
 
 static int fe_send_input_event(frontend_t *this_gen, const char *map, 
 			       const char *key, int repeat, int release)
@@ -1260,9 +1246,15 @@ static int fe_send_input_event(frontend_t *this_gen, const char *map,
   }
 
   /* remote mode: --> input plugin --> vdr */
+  if (find_input_plugin(this)) {
+    if (this->input_plugin->f.input_control) {
+      this->input_plugin->f.input_control(this->input_plugin, map, key, repeat, release);
+      return FE_OK;
+    }
+  }
 
-  process_xine_keypress(this_gen, map, key, repeat, release);
-  return FE_OK;
+  LOGMSG("fe_send_input_event: handler not set, event lost !");
+  return FE_ERROR;
 }
 
 
