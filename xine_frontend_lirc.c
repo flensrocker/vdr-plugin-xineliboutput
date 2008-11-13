@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.16 2008-11-13 10:50:10 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.17 2008-11-13 22:58:40 phintuka Exp $
  *
  */
 /*
@@ -35,7 +35,9 @@
 #define LOG_MODULENAME "[lirc]      "
 #include "logdefs.h"
 
-#include "xine_frontend_internal.h"
+#include "xine_frontend.h"
+#include "xine_frontend_lirc.h"
+
 
 #define REPEATDELAY     350 /* ms */
 #define REPEATFREQ      100 /* ms */
@@ -97,9 +99,9 @@ static void lircd_connect(void)
   }
 }
 
-static void *lirc_receiver_thread(void *fe)
+static void *lirc_receiver_thread(void *fe_gen)
 {
-  fe_t *this = (fe_t*)fe;
+  frontend_t *fe = (frontend_t*)fe;
   int timeout = -1;
   uint64_t FirstTime = time_ms();
   uint64_t LastTime = time_ms();
@@ -172,7 +174,7 @@ static void *lirc_receiver_thread(void *fe)
 	    continue; /* skip keys coming in too fast */
 	  if (repeat) {
 	    alarm(3);
-	    process_xine_keypress(this, "LIRC", LastKeyName, 0, 1);
+	    fe->send_input_event(fe, "LIRC", LastKeyName, 0, 1);
 	    alarm(0);
 	  }
 
@@ -197,22 +199,22 @@ static void *lirc_receiver_thread(void *fe)
 
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
         if(!strcmp(KeyName, "Quit")) {
-          terminate_key_pressed = 1;
+          fe->send_event(fe, "QUIT");
           break;
 
         } else if(!strcmp(KeyName, "Fullscreen")) {
           if(!repeat)
-	    if(this->toggle_fullscreen_state)
-	      this->toggle_fullscreen_state(this);
+	    fe->send_event(fe, "TOGGLE_FULLSCREEN");
 
         } else if(!strcmp(KeyName, "Deinterlace")) {
-          xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
-                         xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+          if(!repeat)
+	    fe->send_event(fe, "TOGGLE_DEINTERLACE");
+
         } else 
 #endif
 	  {
 	    alarm(3);
-	    process_xine_keypress(this, "LIRC", KeyName, repeat, 0);
+	    fe->send_input_event(fe, "LIRC", KeyName, repeat, 0);
 	    alarm(0);
 	  }
 
@@ -220,7 +222,7 @@ static void *lirc_receiver_thread(void *fe)
       else if (repeat) { /* the last one was a repeat, so let's generate a release */
 	if (elapsed(LastTime) >= REPEATTIMEOUT) {
 	  alarm(3);
-	  process_xine_keypress(this, "LIRC", LastKeyName, 0, 1);
+	  fe->send_input_event(fe, "LIRC", LastKeyName, 0, 1);
 	  alarm(0);
 	  repeat = 0;
 	  *LastKeyName = 0;
@@ -239,7 +241,7 @@ static void *lirc_receiver_thread(void *fe)
   return NULL; /* never reached */
 }
 
-void lirc_start(fe_t *fe, char *lirc_dev, int repeat_emu)
+void lirc_start(struct frontend_s *fe, char *lirc_dev, int repeat_emu)
 {
   if(lirc_dev) {
     int err;
