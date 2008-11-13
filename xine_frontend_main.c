@@ -4,23 +4,31 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.57 2008-11-13 23:10:16 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.58 2008-11-13 23:12:40 phintuka Exp $
  *
  */
 
 #include "features.h"
 
 #include <stdio.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <poll.h>
 #include <errno.h>
 #include <termios.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <getopt.h>
 #include <signal.h>
 
+#include <xine.h>  /* xine_get_version */
+
+#include "logdefs.h"
+
+#include "xine_input_vdr_mrl.h"
+#include "xine_frontend.h"
 #include "tools/vdrdiscovery.h"
 #include "xine_frontend_lirc.h"
 
