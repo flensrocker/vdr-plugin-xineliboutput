@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.15 2008-11-11 00:02:33 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.16 2008-11-13 10:50:10 phintuka Exp $
  *
  */
 /*
@@ -81,7 +81,8 @@ static void lircd_connect(void)
   }
 
   addr.sun_family = AF_UNIX;
-  strn0cpy(addr.sun_path, (char*)lirc_device_name, sizeof(addr.sun_path));
+  strncpy(addr.sun_path, (char*)lirc_device_name, sizeof(addr.sun_path));
+  addr.sun_path[sizeof(addr.sun_path)-1] = 0;
 
   if ((fd_lirc = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
     LOGERR("lirc error: socket() < 0");
