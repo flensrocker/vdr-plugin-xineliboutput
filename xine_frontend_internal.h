@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.2 2008-11-13 21:04:03 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.3 2008-11-13 23:48:00 phintuka Exp $
  *
  */
 
@@ -70,10 +70,8 @@ typedef struct fe_s {
 
 } fe_t;
 
-
-void process_xine_keypress(fe_t *this, 
-			   const char *map, const char *key,
-			   int repeat, int release);
+/* setup function pointers */
+void init_fe(fe_t *fe);
 
 char *strn0cpy(char *dest, const char *src, int n);
 
