@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.58 2008-11-13 23:12:40 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.59 2008-11-13 23:29:41 phintuka Exp $
  *
  */
 
@@ -116,13 +116,11 @@ static uint64_t read_key_seq(void)
   return k;
 }
 
-static void *kbd_receiver_thread(void *fe) 
+static void *kbd_receiver_thread(void *fe_gen) 
 {
-  fe_t *this = (fe_t*)fe;
+  frontend_t *fe = (frontend_t*)fe_gen;
   uint64_t code = 0;
   char str[64];
-
-  terminate_key_pressed = 0;
 
   system("setterm -cursor off");
   system("setterm -blank off");
@@ -145,18 +143,15 @@ static void *kbd_receiver_thread(void *fe)
     if(code == 0)
       continue;
     if(code == 27) {
-      terminate_key_pressed = 1;
+      fe->send_event(fe, "QUIT");
       break;
     }
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
     if(code == 'f' || code == 'F') {
-      if(this->toggle_fullscreen_state) {
-	this->toggle_fullscreen_state(this);
-	continue;
-      }
+      fe->send_event(fe, "TOGGLE_FULLSCREEN");
+      continue;
     } else if(code == 'd' || code == 'D') {
-      xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
-		     xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+      fe->send_event(fe, "TOGGLE_DEINTERLACE");
       continue;
     } else
 #endif
@@ -164,9 +159,9 @@ static void *kbd_receiver_thread(void *fe)
       break;
 
     snprintf(str, sizeof(str), "%016" PRIX64, code);
-    process_xine_keypress(this, "KBD", str, 0, 0);
+    fe->send_input_event(fe, "KBD", str, 0, 0);
 
-  } while(!terminate_key_pressed && code != 0xffff);
+  } while(fe->xine_is_finished(fe, 0) != FE_XINE_EXIT && code != 0xffff);
   
   alarm(0);
   LOGDBG("Keyboard thread terminated");
@@ -177,12 +172,11 @@ static void *kbd_receiver_thread(void *fe)
   return NULL; /* never reached */
 }
 
-static void *slave_receiver_thread(void *fe) 
+static void *slave_receiver_thread(void *fe_gen)
 {
-  fe_t *this = (fe_t*)fe;
+  frontend_t *fe = (frontend_t*)fe_gen;
   char str[128], *pt;
 
-  terminate_key_pressed = 0;
   tcgetattr(STDIN_FILENO, &saved_tm);
 
   do {
@@ -199,28 +193,26 @@ static void *slave_receiver_thread(void *fe)
       *pt = 0;
 
     if(!strncasecmp(str, "QUIT", 4)) {
+      fe->send_event(fe, "QUIT");
       break;
 
     } else if(!strncasecmp(str, "FULLSCREEN", 10)) {
-      if(this->toggle_fullscreen_state)
-	this->toggle_fullscreen_state(this);
+      fe->send_event(fe, "TOGGLE_FULLSCREEN");
 
     } else if(!strncasecmp(str, "DEINTERLACE ", 12)) {
-      int val = atoi(str+12);
-      xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, val ? 1 : 0);
+      fe->send_event(fe, str);
 
     } else if(!strncasecmp(str, "HITK ", 5)) {
-      process_xine_keypress(this, NULL, str+5, 0, 0);
+      fe->send_input_event(fe, NULL, str+5, 0, 0);
 
     } else {
       LOGMSG("Unknown slave mode command: %s", str);
     }
 
-  } while(!terminate_key_pressed);
+  } while(fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
   
   LOGDBG("Slave mode receiver terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  terminate_key_pressed = 1;
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -349,6 +341,7 @@ int main(int argc, char *argv[])
   int window_id = -1;
   int xmajor, xminor, xsub;
   int err, c;
+  int xine_finished = FE_XINE_RUNNING;
   frontend_t *fe = NULL;
   extern const fe_creator_f fe_creator;
   char *static_post_plugins = NULL;
@@ -596,7 +589,7 @@ int main(int argc, char *argv[])
   if (signal(SIGPIPE, SignalHandler) == SIG_IGN) signal(SIGPIPE, SIG_IGN);
 
   /* Start LIRC forwarding */
-  lirc_start((fe_t*)fe, lirc_dev, repeat_emu);
+  lirc_start(fe, lirc_dev, repeat_emu);
   
   PRINTF("\n\nPress Esc to exit\n\n");
   
@@ -655,21 +648,24 @@ int main(int argc, char *argv[])
     fflush(stdout);
     fflush(stderr);
 
-    while(fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed) 
+    while(!terminate_key_pressed && fe->fe_run(fe) && 
+	  (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
       ;
 
     fe->xine_close(fe);
     firsttry = 0;
 
-  } while(!terminate_key_pressed && reconnect);
+  } while(!terminate_key_pressed && xine_finished != FE_XINE_EXIT && reconnect);
 
   /* Clean up */
 
   PRINTF("Terminating...\n");
 
+  fe->send_event(fe, "QUIT");
+
   lirc_stop();
   if(!nokbd) kbd_stop();
 
   fe->fe_free(fe); 
-  return terminate_key_pressed ? 0 : 1;
+  return xine_finished==FE_XINE_EXIT ? 0 : 1;
 }
