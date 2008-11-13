@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.13 2008-11-13 21:37:50 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.14 2008-11-13 22:46:23 phintuka Exp $
  *
  */
 
@@ -54,6 +54,10 @@ struct frontend_config_s {
 #define FE_XINE_RUNNING 0
 #define FE_XINE_ERROR  -1
 #define FE_XINE_EXIT    1
+
+/* return values */
+#define FE_OK     1
+#define FE_ERROR  0
 
 struct frontend_s {
   /* Display */
