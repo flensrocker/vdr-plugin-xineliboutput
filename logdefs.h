@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.10 2008-11-04 12:31:22 phintuka Exp $
+ * $Id: logdefs.h,v 1.11 2008-11-13 22:15:29 phintuka Exp $
  *
  */
 
@@ -25,6 +25,11 @@
 
 #include <syslog.h> /* logging levels: LOG_ERR, LOG_INFO, LOG_DEBUG */
 
+#define SYSLOGLEVEL_NONE    0
+#define SYSLOGLEVEL_ERRORS  1
+#define SYSLOGLEVEL_INFO    2
+#define SYSLOGLEVEL_DEBUG   3
+#define SYSLOGLEVEL_VERBOSE 4
 
 #if defined(esyslog) || (defined(VDRVERSNUM) && VDRVERSNUM >= 10343)
 #  define x_syslog(l,m,x...) syslog_with_tid(l, m x)
