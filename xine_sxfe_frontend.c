@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.95 2008-11-13 23:32:42 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.96 2008-11-13 23:37:58 phintuka Exp $
  *
  */
 
@@ -1437,15 +1437,11 @@ static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 #endif
 #ifdef FE_STANDALONE
       case XK_Escape:
-	terminate_key_pressed = 1;
+	this->x.fe.send_event((frontend_t*)this, "QUIT");
 	return 0;
-      default: 
-	process_xine_keypress((fe_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
-#else
-      default: 
-	if(this->x.keypress) 
-	  this->x.keypress("XKeySym", XKeysymToString(ks));
 #endif
+      default:
+	this->x.fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
         return 1;
     }
   }
