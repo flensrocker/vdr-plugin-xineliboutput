@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.1 2008-11-10 23:59:35 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.2 2008-11-13 21:04:03 phintuka Exp $
  *
  */
 
@@ -53,6 +53,7 @@ typedef struct fe_s {
   /* frontend */
   double      video_aspect;    /* aspect ratio of video frame */
   double      display_ratio;   /* aspect ratio of video window */
+  uint        terminate_key_pressed;
   uint16_t    xpos, ypos;      /* position of video window */
   uint16_t    width;           /* size of video window */
   uint16_t    height;          /* */
