@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.56 2008-11-13 11:05:33 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.57 2008-11-13 23:10:16 phintuka Exp $
  *
  */
 
@@ -484,13 +484,6 @@ int main(int argc, char *argv[])
   }
 
   PRINTF("\n");
-
-  /* check xine-lib version */
-  if(!xine_check_version(1, 1, 0)) {
-    fprintf(stderr,"ERROR: xine-lib is too old, require at least "
-	    "xine library version 1.1.0\n");
-    return -1;
-  }
 
 #if 1
   /* backward compability */

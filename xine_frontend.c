@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.81 2008-11-13 22:50:34 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.82 2008-11-13 23:10:16 phintuka Exp $
  *
  */
 
@@ -520,6 +520,13 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(!this)
     return 0;
+
+  /* check xine-lib version */
+  if(!xine_check_version(1, 1, 0)) {
+    LOGERR("xine-lib is too old, require at least xine library version 1.1.0\n");
+    return FE_ERROR;
+  }
+
 
   /*
    * init xine engine
