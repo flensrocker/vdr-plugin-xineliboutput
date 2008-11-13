@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.10 2008-11-12 10:51:22 rofafor Exp $
+ * $Id: xine_frontend.h,v 1.11 2008-11-13 11:06:24 phintuka Exp $
  *
  */
 
@@ -96,6 +96,9 @@ struct frontend_s {
 };
 
 typedef frontend_t *(*fe_creator_f)(void);
+
+void list_xine_plugins(frontend_t *fe, int verbose);
+
 
 #ifdef __cplusplus
 } /* extern "C" { */
