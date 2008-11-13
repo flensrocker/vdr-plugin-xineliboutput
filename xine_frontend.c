@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.79 2008-11-13 11:05:33 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.80 2008-11-13 21:24:56 phintuka Exp $
  *
  */
 
@@ -724,6 +724,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 
   this->input_plugin      = NULL;
   this->playback_finished = 1;
+  this->terminate_key_pressed = 0;
 
   asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : MRL_ID "://");
 
@@ -1171,14 +1172,16 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
   fe_t *this = (fe_t*)this_gen;
 
   if(!this || this->playback_finished)
-    return 1;
+    return FE_XINE_ERROR;
+  if(this->terminate_key_pressed)
+    return FE_XINE_EXIT;
   
   if(slave_stream) {
     if(!this->slave_stream || this->slave_playback_finished)
-      return 1;
+      return FE_XINE_EXIT;
   }
   
-  return 0;
+  return FE_XINE_RUNNING;
 }
 
 /************************** hooks to input plugin ****************************/
