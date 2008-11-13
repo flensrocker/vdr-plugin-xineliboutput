@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.80 2008-11-13 21:24:56 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.81 2008-11-13 22:50:34 phintuka Exp $
  *
  */
 
@@ -1186,7 +1186,9 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 
 /************************** hooks to input plugin ****************************/
 
-#ifndef FE_STANDALONE
+/*
+ * data/control from VDR
+ */
 
 static int xine_control(frontend_t *this_gen, const char *cmd)
 {
@@ -1217,15 +1219,15 @@ static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len
   return this->input_plugin->f.push_input_write(this->input_plugin, data, len);
 }
 
-#else /* #ifndef FE_STANDALONE */
+/*
+ * control from frontend to xine/vdr
+ */
 
-void process_xine_keypress(fe_t *this, 
-				  const char *map, const char *key,
-				  int repeat, int release)
+void process_xine_keypress(fe_t *this,
+			   const char *map, const char *key,
+			   int repeat, int release)
 {
-  /* from UI --> input plugin --> vdr */
-  LOGDBG("Keypress: %s %s %s %s", 
-	 map, key, repeat?"Repeat":"", release?"Release":"");
+
   if(find_input_plugin(this)) {
     if(this->input_plugin->f.input_control)
       this->input_plugin->f.input_control(this->input_plugin, map, key, repeat, release);
@@ -1236,7 +1238,54 @@ void process_xine_keypress(fe_t *this,
   }
 }
 
-#endif /* #ifndef FE_STANDALONE */
+static int fe_send_input_event(frontend_t *this_gen, const char *map, 
+			       const char *key, int repeat, int release)
+{
+  fe_t *this = (fe_t*)this_gen;
+
+  LOGDBG("Keypress: %s %s %s %s", 
+	 map, key, repeat?"Repeat":"", release?"Release":"");
+
+  /* local mode: --> vdr callback */
+  if(this->keypress) {
+    this->keypress(map, key);
+    return FE_OK;
+  }
+
+  /* remote mode: --> input plugin --> vdr */
+
+  process_xine_keypress(this_gen, map, key, repeat, release);
+  return FE_OK;
+}
+
+
+static int fe_send_event(frontend_t *this_gen, const char *data)
+{
+  fe_t *this = (fe_t*)this_gen;
+
+  if (!data)
+    return FE_ERROR;
+
+  if (!strcmp(data, "TOGGLE_FULLSCREEN")) {
+    if(this->toggle_fullscreen_state)
+      this->toggle_fullscreen_state(this);
+
+  } else if (!strcmp(data, "QUIT")) {
+    this->terminate_key_pressed = 1;
+
+  } else if(!strcmp(data, "TOGGLE_DEINTERLACE")) {
+    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
+		   xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+
+  } else if(!strncasecmp(data, "DEINTERLACE ", 12)) {
+    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, atoi(data+12) ? 1 : 0);
+
+  } else {
+    return fe_send_input_event(this_gen, NULL, data, 0, 0);
+  }
+
+  return FE_OK;
+}
 
 /*
  *  Control messages from input plugin
@@ -1655,6 +1704,33 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 #endif
 }
 
+/*
+ * init_fe()
+ *
+ * initialize function pointers
+ */
+void init_fe(fe_t *fe)
+{
+  fe->fe.xine_init        = fe_xine_init;
+  fe->fe.xine_open        = fe_xine_open;
+  fe->fe.xine_play        = fe_xine_play;
+  fe->fe.xine_stop        = fe_xine_stop;
+  fe->fe.xine_close       = fe_xine_close;
+  fe->fe.xine_exit        = fe_xine_exit;
+
+  fe->fe.fe_free          = fe_free;
+
+  fe->fe.xine_is_finished = fe_is_finished;
+
+  fe->fe.xine_osd_command      = xine_osd_command;
+  fe->fe.xine_control          = xine_control;
+  fe->fe.xine_queue_pes_packet = xine_queue_pes_packet;
+
+  fe->fe.grab             = fe_grab;
+
+  fe->fe.send_event       = fe_send_event;
+  fe->fe.send_input_event = fe_send_input_event;
+}
 
 #ifdef FE_STANDALONE
 
@@ -1663,4 +1739,3 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 #include "xine_frontend_main.c"
 
 #endif /* #ifdef FE_STANDALONE */
-
