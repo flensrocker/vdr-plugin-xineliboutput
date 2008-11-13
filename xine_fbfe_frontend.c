@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.34 2008-11-11 12:38:00 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.35 2008-11-13 22:55:04 phintuka Exp $
  *
  */
 
@@ -301,32 +301,19 @@ static frontend_t *fbfe_get_frontend(void)
 
   this->fd_tty = -1;
 
+  init_fe((fe_t*)this);
+
   this->fe.fe_display_open   = fbfe_display_open;
   this->fe.fe_display_config = fbfe_display_config;
   this->fe.fe_display_close  = fbfe_display_close;
 
-  this->fe.xine_init  = fbfe_xine_init;
-  this->fe.xine_open  = fe_xine_open;
-  this->fe.xine_play  = fe_xine_play;
-  this->fe.xine_stop  = fe_xine_stop;
-  this->fe.xine_close = fe_xine_close;
-  this->fe.xine_exit  = fe_xine_exit;
-  this->fe.xine_is_finished = fe_is_finished;
-
   this->fe.fe_run       = fbfe_run;
   this->fe.fe_interrupt = fbfe_interrupt;
 
-  this->fe.fe_free      = fe_free;
-
-  this->fe.grab                  = fe_grab;
-#ifndef FE_STANDALONE
-  this->fe.xine_osd_command      = xine_osd_command;
-  this->fe.xine_control          = xine_control;
-
-  this->fe.xine_queue_pes_packet = xine_queue_pes_packet;
-#endif /*#ifndef FE_STANDALONE */
-
   this->x.update_display_size = fbfe_update_display_size;
+
+  /* override */
+  this->fe.xine_init  = fbfe_xine_init;
 
   return (frontend_t*)this;
 }
