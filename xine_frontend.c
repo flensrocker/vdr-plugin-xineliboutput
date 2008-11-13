@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.83 2008-11-13 23:51:19 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.84 2008-11-13 23:56:58 phintuka Exp $
  *
  */
 
@@ -1731,10 +1731,3 @@ void init_fe(fe_t *fe)
   fe->fe.send_input_event = fe_send_input_event;
 }
 
-#ifdef FE_STANDALONE
-
-/* frontend main() */
-
-#include "xine_frontend_main.c"
-
-#endif /* #ifdef FE_STANDALONE */
