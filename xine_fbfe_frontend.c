@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.36 2008-11-14 00:46:10 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.37 2008-11-14 23:03:02 phintuka Exp $
  *
  */
 
@@ -29,10 +29,18 @@
 
 typedef struct fbfe_s {
 
+  /* function pointers / base class */
   union {
     frontend_t fe;  /* generic frontend */
     fe_t       x;   /* xine frontend */
   };
+
+  /* stored original handlers */
+  int (*fe_xine_init)(frontend_t *this_gen, const char *audio_driver, 
+		      const char *audio_port,
+		      const char *video_driver, 
+		      int pes_buffers,
+		      const char *static_post_plugins);
 
   /* display */
 /*char   *modeline;*/
@@ -254,13 +262,13 @@ static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
 			  int pes_buffers,
 			  const char *static_post_plugins)
 {
-  if (video_driver && !strcmp(video_driver, "DirectFB")) {
-    fbfe_t *this = (fbfe_t*)this_gen;
-    update_DFBARGS(this->x.video_port_name);
-  }
+  fbfe_t *this = (fbfe_t*)this_gen;
 
-  return fe_xine_init(this_gen, audio_driver, audio_port,
-		      video_driver, pes_buffers, static_post_plugins);
+  if (video_driver && !strcmp(video_driver, "DirectFB"))
+    update_DFBARGS(this->x.video_port_name);
+
+  return this->fe_xine_init(this_gen, audio_driver, audio_port,
+			    video_driver, pes_buffers, static_post_plugins);
 }
 
 static frontend_t *fbfe_get_frontend(void)
@@ -281,6 +289,7 @@ static frontend_t *fbfe_get_frontend(void)
   this->x.update_display_size = fbfe_update_display_size;
 
   /* override */
+  this->fe_xine_init  = this->fe.xine_init;
   this->fe.xine_init  = fbfe_xine_init;
 
   return (frontend_t*)this;
