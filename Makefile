@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.61 2008-11-14 14:24:30 rofafor Exp $
+# $Id: Makefile,v 1.62 2008-11-14 22:57:10 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -230,7 +230,7 @@ endif
 ifeq ($(XINELIBOUTPUT_X11), yes)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
   OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o \
-              xine_frontend_main.o xine_frontend_lirc.o
+              xine_frontend.o xine_frontend_main.o xine_frontend_lirc.o
 else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
@@ -239,7 +239,7 @@ endif
 ifeq ($(XINELIBOUTPUT_FB), yes)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
   OBJS_FBFE = xine_fbfe_frontend.o xine/post.o tools/vdrdiscovery.o logdefs.o \
-              xine_frontend_main.o xine_frontend_lirc.o
+              xine_frontend.o xine_frontend_main.o xine_frontend_lirc.o
 else
   OBJS_FBFE_SO = 
   OBJS_FBFE = 
@@ -295,6 +295,8 @@ xine_post_audiochannel.o: xine_post_audiochannel.c
 
 logdefs.o: logdefs.c logdefs.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine_frontend.o: xine_frontend.c xine_frontend.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_frontend_main.o: xine_frontend_main.c xine_frontend.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_frontend_lirc.o: xine_frontend_lirc.c xine_frontend_lirc.h
@@ -309,7 +311,7 @@ xine_sxfe_frontend.o: xine_sxfe_frontend.c
 xine_fbfe_frontend.o: xine_fbfe_frontend.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
-xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend.c \
+xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend_internal.h \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
 		xine/post.h logdefs.h xine_frontend_lirc.h \
 		xineliboutput.c tools/vdrdiscovery.h
