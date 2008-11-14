@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sdp.h,v 1.2 2006-12-14 12:52:49 phintuka Exp $
+ * $Id: sdp.h,v 1.3 2008-11-14 22:44:34 phintuka Exp $
  *
  */
 
@@ -15,16 +15,16 @@
 #define SDP_MIME_TYPE  "application/sdp"
 
 
-static char *vdr_sdp_description(const char *vdr_ip, 
-				 int vdr_svdrp_port,
-				 int vdr_xineliboutput_port,
-				 const char *rtp_ip,
-				 uint32_t rtp_ssrc,
-				 int rtp_port, 
-				 int rtp_ttl)
+static const char *vdr_sdp_description(const char *vdr_ip, 
+				       int vdr_svdrp_port,
+				       int vdr_xineliboutput_port,
+				       const char *rtp_ip,
+				       uint32_t rtp_ssrc,
+				       int rtp_port, 
+				       int rtp_ttl)
 {
   static uint8_t s_serial = 0;
-  static char   *s_data = NULL;
+  static cString s_data;
   static char    s_hostname[257] = {0};
 
   uint64_t serial = (time(NULL) << 2) + ((s_serial++) & 0x03);
@@ -32,9 +32,7 @@ static char *vdr_sdp_description(const char *vdr_ip,
   if(!s_hostname[0])
     gethostname(s_hostname, 256);
 
-  free(s_data);
-
-  asprintf(&s_data,
+  s_data = cString::sprintf(
 	   /*** session ***/
 	   /* version    */        "v=0"
 	   /* origin     */ "\r\n" "o=%s %u %"PRIu64" IN IP4 %s"
@@ -86,8 +84,7 @@ static char *vdr_sdp_description(const char *vdr_ip,
 	   /* tcp control/x-svdrp */
 	   , vdr_ip
 	   , vdr_svdrp_port
-	   );
-
+			    );
   return s_data;
 }
 
