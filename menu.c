@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.58 2008-11-01 07:23:00 phintuka Exp $
+ * $Id: menu.c,v 1.59 2008-11-14 22:29:28 phintuka Exp $
  *
  */
 
@@ -277,11 +277,12 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
     }
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
-    asprintf(&buffer, "%s/%s", m_CurrentDir, d);
-    while(buffer[0] == '/' && buffer[1] == '/')
-      strcpy(buffer, buffer+1);
-    free(m_CurrentDir);
-    m_CurrentDir = buffer;
+    if(asprintf(&buffer, "%s/%s", m_CurrentDir, d) >= 0) {
+      while(buffer[0] == '/' && buffer[1] == '/')
+	strcpy(buffer, buffer+1);
+      free(m_CurrentDir);
+      m_CurrentDir = buffer;
+    }
     Set();
     return osContinue;
     
@@ -319,7 +320,8 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
 	if(it==Get(Current()))
 	  index = i;
 	if(!it->IsDir())
-	  asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name());
+	  if(asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name()) < 0)
+	     i--;
       }
       cControl::Shutdown();
       cControl::Launch(new cXinelibImagesControl(files, index, i));
