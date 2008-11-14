@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.85 2008-11-14 00:49:48 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.86 2008-11-14 23:20:03 phintuka Exp $
  *
  */
 
@@ -621,8 +621,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   this->video_port_none = NULL;
   
   /* re-configure display size (DirectFB driver changes display mode in init) */
-  if(this->update_display_size)
-    this->update_display_size(this);
+  if(this->update_display_size_cb)
+    this->update_display_size_cb(this);
 
   /* create audio port */
 
@@ -1267,8 +1267,8 @@ static int fe_send_event(frontend_t *this_gen, const char *data)
     return FE_ERROR;
 
   if (!strcmp(data, "TOGGLE_FULLSCREEN")) {
-    if(this->toggle_fullscreen_state)
-      this->toggle_fullscreen_state(this);
+    if(this->toggle_fullscreen_cb)
+      this->toggle_fullscreen_cb(this);
 
   } else if (!strcmp(data, "QUIT")) {
     this->terminate_key_pressed = 1;

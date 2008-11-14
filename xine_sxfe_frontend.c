@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.98 2008-11-14 23:11:43 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.99 2008-11-14 23:20:03 phintuka Exp $
  *
  */
 
@@ -1735,7 +1735,7 @@ static frontend_t *sxfe_get_frontend(void)
   this->fe.fe_run       = sxfe_run;
   this->fe.fe_interrupt = sxfe_interrupt;
 
-  this->x.toggle_fullscreen_state = sxfe_toggle_fullscreen;
+  this->x.toggle_fullscreen_cb = sxfe_toggle_fullscreen;
 
   /* override */
 

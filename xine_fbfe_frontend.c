@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.37 2008-11-14 23:03:02 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.38 2008-11-14 23:20:03 phintuka Exp $
  *
  */
 
@@ -286,7 +286,7 @@ static frontend_t *fbfe_get_frontend(void)
   this->fe.fe_run       = fbfe_run;
   this->fe.fe_interrupt = fbfe_interrupt;
 
-  this->x.update_display_size = fbfe_update_display_size;
+  this->x.update_display_size_cb = fbfe_update_display_size;
 
   /* override */
   this->fe_xine_init  = this->fe.xine_init;
