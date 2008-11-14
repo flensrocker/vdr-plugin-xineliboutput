@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.39 2008-11-14 23:31:37 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.40 2008-11-14 23:46:57 phintuka Exp $
  *
  */
 
@@ -217,13 +217,13 @@ static int fbfe_run(frontend_t *this_gen)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
-  if(this && this->x.playback_finished)
-    return !this->x.playback_finished;
+  if (!this || this->fe.xine_is_finished(this_gen, 0) != FE_XINE_RUNNING)
+    return 0;
 
   /* just sleep 500ms */
   select(0, NULL, NULL, NULL, &(struct timeval){ .tv_sec = 0, .tv_usec = 500*1000 }); 
 
-  return !(!this || this->x.playback_finished);
+  return 1;
 }
 
 static void fbfe_display_close(frontend_t *this_gen) 
