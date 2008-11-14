@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.60 2008-11-14 00:54:09 phintuka Exp $
+# $Id: Makefile,v 1.61 2008-11-14 14:24:30 rofafor Exp $
 #
 
 # The official name of this plugin.
@@ -114,7 +114,7 @@ endif
 
 config.mak: Makefile configure
 	@echo Running configure
-	./configure --cc=$(CC) --cxx=$(CXX) $(CONFIGURE_OPTS)
+	@sh configure --cc=$(CC) --cxx=$(CXX) $(CONFIGURE_OPTS)
 -include config.mak
 
 ###
