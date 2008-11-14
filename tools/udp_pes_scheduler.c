@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.34 2008-04-28 20:53:07 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.35 2008-11-14 22:48:35 phintuka Exp $
  *
  */
 
@@ -549,44 +549,51 @@ void cUdpScheduler::Send_RTCP(void)
 
 void cUdpScheduler::Send_SAP(bool Announce)
 {
-  if(xc.remote_rtp_sap && m_fd_rtp.open()) {
-    char ip[64] = "";
-    uint32_t local_addr = m_fd_rtp.get_local_address(ip);
-    if(local_addr) {
-      const char *sdp_descr = vdr_sdp_description(ip,
-						  2001,
-						  xc.listen_port,
-						  xc.remote_rtp_addr,
-						  m_ssrc,
-						  xc.remote_rtp_port,
-						  xc.remote_rtp_ttl);
-#if 1
-      /* store copy of SDP data */
-      if(m_fd_sap < 0) {
-	cString fname = AddDirectory(VideoDirectory,
-				     cString::sprintf("xineliboutput@%s.sdp",
-						      ip));
-	FILE *fp = fopen(fname, "w");
-	if(fp) {
-	  fprintf(fp, "%s", sdp_descr);
-	  fclose(fp);
-	}
-      }
-#endif
-      sap_pdu_t *pdu = sap_create_pdu(local_addr,
-				      Announce, 
-				      (m_ssrc >> 16 | m_ssrc) & 0xffff,
-				      "application/sdp",
-				      sdp_descr);
-      
-      if(!sap_send_pdu(&m_fd_sap, pdu, 0))
-	LOGERR("SAP/SDP announce failed");
-      free(pdu);
+  if(!xc.remote_rtp_sap || !m_fd_rtp.open())
+    return;
 
-      if(!Announce)
-	CLOSESOCKET(m_fd_sap);
+  char ip[64] = "";
+  uint32_t local_addr = m_fd_rtp.get_local_address(ip);
+
+  if(!local_addr)
+    return;
+
+  const char *sdp_descr = vdr_sdp_description(ip,
+					      2001,
+					      xc.listen_port,
+					      xc.remote_rtp_addr,
+					      m_ssrc,
+					      xc.remote_rtp_port,
+					      xc.remote_rtp_ttl);
+  if(!sdp_descr)
+    return;
+
+#if 1
+  /* store copy of SDP data */
+  if(m_fd_sap < 0) {
+    cString fname = AddDirectory(VideoDirectory,
+				 cString::sprintf("xineliboutput@%s.sdp",
+						  ip));
+    FILE *fp = fopen(fname, "w");
+    if(fp) {
+      fprintf(fp, "%s", sdp_descr);
+      fclose(fp);
     }
   }
+#endif
+
+  sap_pdu_t *pdu = sap_create_pdu(local_addr,
+				  Announce, 
+				  (m_ssrc >> 16 | m_ssrc) & 0xffff,
+				  "application/sdp",
+				  sdp_descr);
+      
+  if(!sap_send_pdu(&m_fd_sap, pdu, 0))
+    LOGERR("SAP/SDP announce failed");
+  free(pdu);
+
+  if(!Announce)
+    CLOSESOCKET(m_fd_sap);
 }
   
 void cUdpScheduler::Schedule(const uchar *Data, int Length)
