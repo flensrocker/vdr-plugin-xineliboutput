@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.58 2008-07-04 09:58:36 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.59 2008-11-14 21:59:35 phintuka Exp $
  *
  */
 
@@ -52,7 +52,7 @@
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
 #define PLAYFILE_CTRL_TIMEOUT   300   /* ms */
-#define PLAYFILE_TIMEOUT       5000   /* ms */
+#define PLAYFILE_TIMEOUT      20000   /* ms */
 
 typedef struct {
   int    Size;
