@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.97 2008-11-14 00:46:59 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.98 2008-11-14 23:11:43 phintuka Exp $
  *
  */
 
@@ -85,11 +85,16 @@ typedef struct _xrender_surf
 
 typedef struct sxfe_s {
 
-  /* function pointers */
+  /* function pointers / base class */
   union {
     frontend_t fe;  /* generic frontend */
     fe_t       x;   /* xine frontend */
   };
+
+  /* stored original handlers */
+  int (*fe_xine_open)(frontend_t *this_gen, const char *mrl);
+  int (*fe_xine_play)(frontend_t *this_gen);
+
 
   /* X11 */
   Display *display;
@@ -166,9 +171,9 @@ typedef struct sxfe_s {
 #define HUD_MAX_WIDTH      1920
 #define HUD_MAX_HEIGHT     1080
 
-static void fe_dest_size_cb (void *data,
-			     int video_width, int video_height, double video_pixel_aspect,
-			     int *dest_width, int *dest_height, double *dest_pixel_aspect)  
+static void sxfe_dest_size_cb (void *data,
+			       int video_width, int video_height, double video_pixel_aspect,
+			       int *dest_width, int *dest_height, double *dest_pixel_aspect)  
 { 
   fe_t *this = (fe_t *)data;
   
@@ -1215,7 +1220,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->x.vis_x11.display          = this->display;
   this->x.vis_x11.screen           = this->screen;
   this->x.vis_x11.d                = this->window[this->fullscreen ? 1 : 0];
-  this->x.vis_x11.dest_size_cb     = fe_dest_size_cb;
+  this->x.vis_x11.dest_size_cb     = sxfe_dest_size_cb;
   this->x.vis_x11.frame_output_cb  = fe_frame_output_cb;
   this->x.vis_x11.user_data        = this;
 
@@ -1678,11 +1683,12 @@ static void sxfe_display_close(frontend_t *this_gen)
  */
 static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
 {
-  int result = fe_xine_open(this_gen, mrl);
+  sxfe_t *this = (sxfe_t*)this_gen;
+
+  int result = this->fe_xine_open(this_gen, mrl);
 
 #ifdef FE_STANDALONE
   if(result && !strncmp(mrl, MRL_ID, MRL_ID_LEN) && strstr(mrl, "//")) {
-    sxfe_t *this = (sxfe_t*)this_gen;
     char *name = NULL, *end;
     asprintf(&name, "VDR - %s", strstr(mrl, "//")+2);
     if(NULL != (end = strstr(name, ":37890"))) *end = 0; /* hide only default port */
@@ -1697,12 +1703,12 @@ static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
 
 static int sxfe_xine_play(frontend_t *this_gen)
 {
-  int result = fe_xine_play(this_gen);
+  sxfe_t *this = (sxfe_t*)this_gen;
+
+  int result = this->fe_xine_play(this_gen);
 
 #ifdef FE_STANDALONE
 # ifdef HAVE_XRENDER
-  sxfe_t *this = (sxfe_t*)this_gen;
-
   if (result && this->x.input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     this->x.input_plugin->f.fe_handle     = this_gen;
@@ -1732,6 +1738,10 @@ static frontend_t *sxfe_get_frontend(void)
   this->x.toggle_fullscreen_state = sxfe_toggle_fullscreen;
 
   /* override */
+
+  this->fe_xine_open  = this->fe.xine_open;
+  this->fe_xine_play  = this->fe.xine_play;
+
   this->fe.xine_open  = sxfe_xine_open;
   this->fe.xine_play  = sxfe_xine_play;
 
