@@ -4,26 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.96 2008-11-13 23:37:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.97 2008-11-14 00:46:59 phintuka Exp $
  *
  */
 
 /*#define HAVE_XF86VIDMODE*/
 #include "features.h"
 
-#include <errno.h>
-#include <inttypes.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <time.h>
-#include <pthread.h>
-#include <sched.h>
 #include <poll.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -53,31 +40,13 @@
 #  include <X11/extensions/Xinerama.h>
 #endif
 
-
-/* framegrab ports */
-#define XINE_ENABLE_EXPERIMENTAL_FEATURES
-
 #include <xine.h>
-#ifndef XINE_ENGINE_INTERNAL
-#  define XINE_ENGINE_INTERNAL
-#  include <xine/xine_internal.h>
-#  undef XINE_ENGINE_INTERNAL
-#else
-#  include <xine/xine_internal.h>
-#endif
-#include <xine/xineutils.h>
-#include <xine/input_plugin.h>
-#include <xine/plugin_catalog.h>
 
+#define LOG_MODULENAME "[vdr-sxfe]  "
+#include "logdefs.h"
 
-#include "xine_input_vdr.h"
 #include "xine_osd_command.h"
-
-#include "xine_frontend.h"
-#include "xine/post.h"
-
-/* Common (non-X11/FB) frontend functions */
-#include "xine_frontend.c"
+#include "xine_frontend_internal.h"
 
 
 #ifndef WIN_LAYER_NORMAL
@@ -844,9 +813,7 @@ static int hud_osd_open(sxfe_t *this)
 
     XUnlockDisplay(this->display);
 
-#ifndef FE_STANDALONE
     this->fe.xine_osd_command = hud_osd_command;
-#endif
   }
   return 1;
 }
