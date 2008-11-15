@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.101 2008-11-15 13:33:14 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.102 2008-11-15 13:41:56 phintuka Exp $
  *
  */
 
@@ -143,6 +143,7 @@ typedef struct sxfe_s {
   uint8_t  check_move : 1;
   uint8_t  dragging : 1;
   uint8_t  hud : 1;
+  uint8_t  gui_hotkeys : 1;
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
@@ -1140,6 +1141,11 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   this->xinerama_screen = -1;
 
+#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
+  /* #warning TODO: make this command-line parameter */
+  this->gui_hotkeys = 1;
+#endif
+
   /*
    * init x11 stuff
    */
@@ -1384,40 +1390,40 @@ static void sxfe_interrupt(frontend_t *this_gen)
  * XKeyEvent handler
  *
  */
-static int XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
+static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 {
   if(kev->keycode) {
     KeySym         ks;
     char           buffer[20];
     XComposeStatus status;
+    const char    *fe_event = NULL;
 
     XLockDisplay (this->display);
     XLookupString(kev, buffer, sizeof(buffer), &ks, &status);
     XUnlockDisplay (this->display);
 
     switch(ks) {
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
       case XK_f:
       case XK_F:
-	sxfe_toggle_fullscreen((fe_t*)this);
-	return 1;
+	if (this->gui_hotkeys)
+	  fe_event = "TOGGLE_FULLSCREEN";
+	break;
       case XK_d:
       case XK_D:
-	xine_set_param(this->x.stream, XINE_PARAM_VO_DEINTERLACE, 
-		       xine_get_param(this->x.stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
-	return 1;
-#endif
-#ifdef FE_STANDALONE
+	if (this->gui_hotkeys)
+	  fe_event = "TOGGLE_DEINTERLACE";
+	break;
       case XK_Escape:
-	this->x.fe.send_event((frontend_t*)this, "QUIT");
-	return 0;
-#endif
-      default:
-	this->x.fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
-        return 1;
+	if (!this->x.keypress) /* ESC exits only in remote mode */
+	  fe_event = "QUIT";
+	break;
+      default:;
     }
+    if (fe_event)
+      this->x.fe.send_event((frontend_t*)this, fe_event);
+    else
+      this->x.fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
   }
-  return 1;
 }
 
 /*
@@ -1611,8 +1617,7 @@ static int sxfe_run(frontend_t *this_gen)
 
       case KeyPress:
       case KeyRelease:
-	if (! XKeyEvent_handler(this, (XKeyEvent *) &event))
-	  return 0;
+	XKeyEvent_handler(this, (XKeyEvent *) &event);
 	break;
       
       case ClientMessage:
@@ -1621,11 +1626,13 @@ static int sxfe_run(frontend_t *this_gen)
 	if ( cmessage->message_type == this->xa_SXFE_INTERRUPT )
 	  LOGDBG("ClientMessage: sxfe_interrupt");
 
-	if ( cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW )
+	if ( cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW ) {
 	  /* we got a window deletion message from out window manager.*/
 	  LOGDBG("ClientMessage: WM_DELETE_WINDOW");
 
-	return 0;
+	  this->x.fe.send_event((frontend_t*)this, "QUIT");
+	}
+	break;
       }
     }
     
@@ -1633,7 +1640,7 @@ static int sxfe_run(frontend_t *this_gen)
       xine_port_send_gui_data (this->x.video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
   }
 
-  return 1;
+  return !this->x.fe.xine_is_finished((frontend_t*)this, 0);
 }
 
 static void sxfe_display_close(frontend_t *this_gen) 
