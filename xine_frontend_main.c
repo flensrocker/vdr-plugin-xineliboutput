@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.5 2008-10-21 15:10:02 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.6 2008-11-15 13:04:19 phintuka Exp $
  *
  */
 
@@ -529,7 +529,7 @@ int main(int argc, char *argv[])
 	      !strncmp(mrl, "xvdr:udp:", 9) ||
 	      !strncmp(mrl, "xvdr:rtp:", 9) ||
 	      !strncmp(mrl, "xvdr:pipe:", 10)))
-    mrl[5] = '+';
+    mrl[4] = '+';
 #endif
 
   /* If server address not given, try to find server automatically */
