@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.59 2008-11-13 23:29:41 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.60 2008-11-15 13:52:25 phintuka Exp $
  *
  */
 
@@ -33,7 +33,7 @@
 #include "xine_frontend_lirc.h"
 
 /* next symbol is dynamically linked from input plugin */
-int SysLogLevel __attribute__((visibility("default"))) = 2; /* errors and info, no debug */
+int SysLogLevel __attribute__((visibility("default"))) = SYSLOGLEVEL_INFO; /* errors and info, no debug */
 
 
 /* static data */
@@ -443,7 +443,7 @@ int main(int argc, char *argv[])
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
 		     repeat_emu?", emulating key repeat":"");
 	      break;
-    case 'v': SysLogLevel = 3;
+    case 'v': SysLogLevel = (SysLogLevel<SYSLOGLEVEL_DEBUG) ? SYSLOGLEVEL_DEBUG : SysLogLevel+1;
 	      PRINTF("Verbose mode\n");
 	      break;
     case 's': SysLogLevel = 1;
