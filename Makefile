@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.63 2008-11-15 13:25:39 phintuka Exp $
+# $Id: Makefile,v 1.64 2008-11-15 21:17:02 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -245,6 +245,7 @@ else
   OBJS_FBFE = 
 endif
 
+OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
 
 ###
 ### Implicit rules:
@@ -261,7 +262,9 @@ endif
 MAKEDEP = g++ -MM -MG
 DEPFILE = .dependencies
 $(DEPFILE): Makefile
-	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) > $@
+	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) \
+                    $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) \
+                    $(OBJS_XINE:%.o=%.c) > $@
 
 -include $(DEPFILE)
 
