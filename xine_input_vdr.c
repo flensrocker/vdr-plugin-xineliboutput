@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.192 2008-11-11 19:04:02 rofafor Exp $
+ * $Id: xine_input_vdr.c,v 1.193 2008-11-15 13:45:50 phintuka Exp $
  *
  */
 
@@ -3411,6 +3411,10 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   if(NULL != (pt = strstr(cmd, "\r\n")))
     *((char*)pt) = 0; /* auts */
 
+  /* very verbose logging ? */
+  if (iSysLogLevel>3) 
+    LOGDBG("<control> %s",cmd);
+
   if(!strncasecmp(cmd, "OSDCMD", 6)) {
     err = handle_control_osdcmd(this);
 
@@ -6710,7 +6714,11 @@ static void *init_class (xine_t *xine, void *data)
       iSysLogLevel = xine->verbosity + 1;
       LOGMSG("detected verbose logging xine->verbosity=%d, setting log level to %d:%s",
 	     xine->verbosity, iSysLogLevel, 
-	     iSysLogLevel==2?"INFO":"DEBUG");
+	     (iSysLogLevel < 1) ? "NONE" :
+	     (iSysLogLevel < 2) ? "ERRORS" : 
+	     (iSysLogLevel < 3) ? "INFO" :
+	     (iSysLogLevel < 4) ? "DEBUG" :
+	     "VERBOSE DEBUG");
     }
   }
 
