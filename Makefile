@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.62 2008-11-14 22:57:10 phintuka Exp $
+# $Id: Makefile,v 1.63 2008-11-15 13:25:39 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -227,19 +227,19 @@ else
   OBJS_MPG = 
 endif
 
+OBJS_FE_SO = xine_frontend.o xine/post.o
+OBJS_FE    = $(OBJS_FE_SO) logdefs.o tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o
 ifeq ($(XINELIBOUTPUT_X11), yes)
-  OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
-  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o \
-              xine_frontend.o xine_frontend_main.o xine_frontend_lirc.o
+  OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
+  OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
 else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
 endif
 
 ifeq ($(XINELIBOUTPUT_FB), yes)
-  OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
-  OBJS_FBFE = xine_fbfe_frontend.o xine/post.o tools/vdrdiscovery.o logdefs.o \
-              xine_frontend.o xine_frontend_main.o xine_frontend_lirc.o
+  OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
+  OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 else
   OBJS_FBFE_SO = 
   OBJS_FBFE = 
@@ -261,7 +261,7 @@ endif
 MAKEDEP = g++ -MM -MG
 DEPFILE = .dependencies
 $(DEPFILE): Makefile
-	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) $(OBJS_SXFE_SO:%.o=%.c) $(OBJS_FBFE_SO:%.o=%.c) > $@
+	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) > $@
 
 -include $(DEPFILE)
 
@@ -275,6 +275,7 @@ DEFINES += -Wall
 mpg2c: mpg2c.c
 	$(CC) mpg2c.c -o $@
 
+# data
 black_720x576.c: mpg2c black_720x576.mpg
 	@./mpg2c black black_720x576.mpg black_720x576.c
 nosignal_720x576.c: mpg2c nosignal_720x576.mpg
@@ -282,40 +283,35 @@ nosignal_720x576.c: mpg2c nosignal_720x576.mpg
 vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 	@./mpg2c vdrlogo vdrlogo_720x576.mpg vdrlogo_720x576.c
 
-xine_input_vdr.o: xine_input_vdr.c xine_input_vdr.h xine_osd_command.h nosignal_720x576.c logdefs.h
+# xine plugins
+xine_input_vdr.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_input_http.o: xine_input_http.c
+xine_input_http.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_post_autocrop.o: xine_post_autocrop.c
+xine_post_autocrop.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_post_swscale.o: xine_post_swscale.c
+xine_post_swscale.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_post_audiochannel.o: xine_post_audiochannel.c
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-
-logdefs.o: logdefs.c logdefs.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_frontend.o: xine_frontend.c xine_frontend.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_frontend_main.o: xine_frontend_main.c xine_frontend.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_frontend_lirc.o: xine_frontend_lirc.c xine_frontend_lirc.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine/post.o: xine/post.c xine/post.h
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
+xine_post_audiochannel.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
-xine_sxfe_frontend.o: xine_sxfe_frontend.c
+# fronteds 
+logdefs.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_fbfe_frontend.o: xine_fbfe_frontend.c
+xine_frontend.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-
-xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend_internal.h \
-		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
-		xine/post.h logdefs.h xine_frontend_lirc.h \
-		xineliboutput.c tools/vdrdiscovery.h
-	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_sxfe_frontend.c -o $@
+xine_frontend_main.o:
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine_frontend_lirc.o:
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine/post.o:
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+tools/vdrdiscovery.o:
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine_sxfe_frontend.o:
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+xine_fbfe_frontend.o:
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
 ### Internationalization (I18N):
 
