@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.100 2008-11-14 23:31:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.101 2008-11-15 13:33:14 phintuka Exp $
  *
  */
 
@@ -288,24 +288,28 @@ static void set_fullscreen_props(sxfe_t *this)
 static void update_window_title(sxfe_t *this)
 {
   XLockDisplay(this->display);
-#ifdef FE_STANDALONE
-  char *name = NULL;
-  if (XFetchName(this->display, this->window[0], &name) && name) {
-    char *newname = NULL;
-    if (strstr(name, " (top)"))
-      *strstr(name, " (top)") = 0;
-    if (this->stay_above)
-      asprintf(&newname, "%s (top)", name);
-    XStoreName(this->display, this->window[0], newname ?: name);
-    XStoreName(this->display, this->window[1], newname ?: name);
-    XFree(name);
-    free(newname);
+
+  if (!this->x.keypress) { /* handler is set only in local mode */
+    char *name = NULL;
+    if (XFetchName(this->display, this->window[0], &name) && name) {
+      char *newname = NULL;
+      if (strstr(name, " (top)"))
+	*strstr(name, " (top)") = 0;
+      if (this->stay_above)
+	if (asprintf(&newname, "%s (top)", name) < 0)
+	  newname = NULL;
+      XStoreName(this->display, this->window[0], newname ?: name);
+      XStoreName(this->display, this->window[1], newname ?: name);
+      XFree(name);
+      free(newname);
+    } else {
+      XStoreName(this->display, this->window[0], this->stay_above ? "VDR - (top)" : "VDR");
+      XStoreName(this->display, this->window[1], this->stay_above ? "VDR - (top)" : "VDR");
+    }
   } else {
-    XStoreName(this->display, this->window[0], this->stay_above ? "VDR - (top)" : "VDR");
+    XStoreName(this->display, this->window[0], this->stay_above ? "Local VDR (top)" : "Local VDR");
+    XStoreName(this->display, this->window[1], this->stay_above ? "Local VDR (top)" : "Local VDR");
   }
-#else
-  XStoreName(this->display, this->window[0], this->stay_above ? "Local VDR (top)" : "Local VDR");
-#endif
   XUnlockDisplay(this->display);
 }
 
@@ -1063,13 +1067,9 @@ static void create_windows(sxfe_t *this)
   }
 
   /* Window name */
-#ifdef FE_STANDALONE
-  XStoreName(this->display, this->window[0], "VDR - ");
-  XStoreName(this->display, this->window[1], "VDR - ");
-#else
-  XStoreName(this->display, this->window[0], "Local VDR");
-  XStoreName(this->display, this->window[1], "Local VDR");
-#endif
+  const char *initial_title = (!this->x.keypress) ? "Connecting to VDR ..." : "Local VDR";
+  XStoreName(this->display, this->window[0], initial_title);
+  XStoreName(this->display, this->window[1], initial_title);
 
   /* Icon */
   set_icon(this);
@@ -1687,16 +1687,17 @@ static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
 
   int result = this->fe_xine_open(this_gen, mrl);
 
-#ifdef FE_STANDALONE
-  if(result && !strncmp(mrl, MRL_ID, MRL_ID_LEN) && strstr(mrl, "//")) {
+  if(result && mrl && !strncmp(mrl, MRL_ID, MRL_ID_LEN) && strstr(mrl, "//")) {
     char *name = NULL, *end;
-    asprintf(&name, "VDR - %s", strstr(mrl, "//")+2);
-    if(NULL != (end = strstr(name, ":37890"))) *end = 0; /* hide only default port */
-    XStoreName(this->display, this->window[0], name);
-    XStoreName(this->display, this->window[1], name);
-    free(name);
+    if (asprintf(&name, "VDR - %s", strstr(mrl, "//")+2) >= 0) {
+      if (NULL != (end = strstr(name, ":37890")) || /* hide only default port */
+	  NULL != (end = strchr(name, '#')))        /* hide attributes */
+	*end = 0; 
+      XStoreName(this->display, this->window[0], name);
+      XStoreName(this->display, this->window[1], name);
+      free(name);
+    }
   }
-#endif
 
   return result;
 }
@@ -1707,15 +1708,13 @@ static int sxfe_xine_play(frontend_t *this_gen)
 
   int result = this->fe_xine_play(this_gen);
 
-#ifdef FE_STANDALONE
-# ifdef HAVE_XRENDER
+#ifdef HAVE_XRENDER
   if (result && this->x.input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     this->x.input_plugin->f.fe_handle     = this_gen;
     this->x.input_plugin->f.intercept_osd = hud_osd_command;
   }
-# endif /* HAVE_XRENDER */
-#endif /* FE_STANDALONE */
+#endif /* HAVE_XRENDER */
 
   return result;
 }
