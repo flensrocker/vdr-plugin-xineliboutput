@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.64 2008-11-15 21:17:02 phintuka Exp $
+# $Id: Makefile,v 1.65 2008-11-16 10:00:04 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -262,9 +262,13 @@ OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_
 MAKEDEP = g++ -MM -MG
 DEPFILE = .dependencies
 $(DEPFILE): Makefile
-	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) \
-                    $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) \
-                    $(OBJS_XINE:%.o=%.c) > $@
+	@rm -f $@
+	@for i in $(OBJS:%.o=%.c) $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) $(OBJS_XINE:%.o=%.c) ; do \
+	  $(MAKEDEP) $(DEFINES) $(INCLUDES) -MT "`dirname $$i`/`basename $$i .c`.o" $$i >>$@ ; \
+	done
+#	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) \
+#                    $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) \
+#                    $(OBJS_XINE:%.o=%.c) > $@
 
 -include $(DEPFILE)
 
@@ -298,7 +302,7 @@ xine_post_swscale.o:
 xine_post_audiochannel.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
-# fronteds 
+# frontends 
 logdefs.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 xine_frontend.o:
