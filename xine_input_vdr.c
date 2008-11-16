@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.195 2008-11-16 15:27:54 rofafor Exp $
+ * $Id: xine_input_vdr.c,v 1.196 2008-11-16 21:36:46 phintuka Exp $
  *
  */
 
@@ -411,6 +411,42 @@ static void flush_udp_data(udp_data_t *data)
   /* flush all data immediately even if there are gaps */
 }
 #endif
+
+/********************* cancellable mutex locking *************************/
+
+/*
+ * mutex cleanup()
+ *
+ *  Unlock mutex. Used as thread cleanup handler.
+ */
+static void mutex_cleanup(void *arg)
+{
+  pthread_mutex_unlock((pthread_mutex_t *)arg);
+}
+
+/*
+ * mutex_lock_cancellable() / mutex_unlock_cancellable()
+ *
+ * mutex lock/unlock for cancellable sections
+ *
+ *  - do not enter protected section if locking fails
+ *  - unlock mutex if thread is cancelled while holding the lock
+ *
+ *  - lock/unlock must be used pairwise within the same lexical scope !
+ *
+ */
+#define mutex_lock_cancellable(mutex)                   \
+  if (pthread_mutex_lock(mutex)) {                      \
+    LOGERR("pthread_mutex_lock (%s) failed, skipping locked block !", #mutex); \
+  } else {						\
+    pthread_cleanup_push(mutex_cleanup, (void*) mutex);
+
+#define mutex_unlock_cancellable(mutex)                     \
+    if (pthread_mutex_unlock(mutex))                        \
+      LOGERR("pthread_mutex_unlock (%s) failed !", #mutex); \
+    pthread_cleanup_pop(0);                                 \
+  }
+
 
 #ifdef ADJUST_SCR_SPEED
 /******************************* SCR *************************************
@@ -1071,9 +1107,9 @@ static void write_control_data(vdr_input_plugin_t *this, const void *str, size_t
 static void write_control(vdr_input_plugin_t *this, const char *str)
 {
   size_t len = strlen(str);
-  pthread_mutex_lock (&this->fd_control_lock);
+  mutex_lock_cancellable (&this->fd_control_lock);
   write_control_data(this, str, len);
-  pthread_mutex_unlock (&this->fd_control_lock);
+  mutex_unlock_cancellable (&this->fd_control_lock);
 }
 
 static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
@@ -3035,11 +3071,10 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
       if(data && data->size>0 && data->data) {
 	char s[128];
 	sprintf(s, "GRAB %d %lu\r\n", this->token, (unsigned long)data->size);
-	pthread_mutex_lock (&this->fd_control_lock);
+	mutex_lock_cancellable (&this->fd_control_lock);
 	write_control_data(this, s, strlen(s));
 	write_control_data(this, data->data, data->size);
-	if(pthread_mutex_unlock (&this->fd_control_lock))
-	  LOGERR("pthread_mutex_unlock failed");
+	mutex_unlock_cancellable (&this->fd_control_lock);
       } else {
 	/* failed */
 	printf_control(this, "GRAB %d 0\r\n", this->token);
@@ -4809,15 +4844,21 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
   return len;
 }
 
+/*
+ * vdr_plugin_keypress()
+ *
+ * - Called by frontend and vdr_event_cb()
+ * - forward xine-lib/frontend-generated input events to VDR
+ *
+ * It is safe to cancel thread while this function is being executed.
+ */
 static int vdr_plugin_keypress(vdr_input_plugin_if_t *this_if,
 			       const char *map, const char *key,
 			       int repeat, int release)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
-  if(pthread_mutex_lock(&this->lock)) {
-    LOGERR("vdr_plugin_keypress: pthread_mutex_lock failed");
-    return -1;
-  }
+
+  mutex_lock_cancellable(&this->lock);
 
   if(key && this->fd_control >= 0) {
     if(map)
@@ -4827,7 +4868,7 @@ static int vdr_plugin_keypress(vdr_input_plugin_if_t *this_if,
       printf_control(this, "KEY %s\r\n", key);
   }
 
-  pthread_mutex_unlock(&this->lock);
+  mutex_unlock_cancellable(&this->lock);
   return 0;
 }
 
