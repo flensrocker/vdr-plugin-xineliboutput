@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.61 2008-11-16 15:27:54 rofafor Exp $
+ * $Id: xine_frontend_main.c,v 1.62 2008-11-16 15:37:51 rofafor Exp $
  *
  */
 
@@ -121,9 +121,10 @@ static void *kbd_receiver_thread(void *fe_gen)
   frontend_t *fe = (frontend_t*)fe_gen;
   uint64_t code = 0;
   char str[64];
+  int status;
 
-  system("setterm -cursor off");
-  system("setterm -blank off");
+  status = system("setterm -cursor off");
+  status = system("setterm -blank off");
 
   /* Set stdin to deliver keypresses without buffering whole lines */
   tcgetattr(STDIN_FILENO, &saved_tm);
@@ -166,7 +167,7 @@ static void *kbd_receiver_thread(void *fe_gen)
   alarm(0);
   LOGDBG("Keyboard thread terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  system("setterm -cursor on");
+  status = system("setterm -cursor on");
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -221,12 +222,13 @@ static void *slave_receiver_thread(void *fe_gen)
 static void kbd_stop(void)
 {
   void *p;
+  int status;
 
   pthread_cancel (kbd_thread);
   pthread_join (kbd_thread, &p);
 
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  system("setterm -cursor on");
+  status = system("setterm -cursor on");
 }
 
 static void SignalHandler(int signum)
