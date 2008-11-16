@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.11 2008-11-13 22:15:29 phintuka Exp $
+ * $Id: logdefs.h,v 1.12 2008-11-16 21:41:01 phintuka Exp $
  *
  */
 
@@ -35,14 +35,23 @@
 #  define x_syslog(l,m,x...) syslog_with_tid(l, m x)
 #else
 
+#  ifdef __cplusplus
+  extern "C" {
+#  endif
+
   /* from xine_frontend.c or vdr/tools.c: */
   extern int SysLogLevel; /* errors, info, debug */
 
   /* from logdefs.c: */
   extern int LogToSysLog;
 
-  void x_syslog(int level, const char *module, const char *fmt, ...) 
-       __attribute__ ((format (printf, 3, 4)));
+  void x_syslog(int level, const char *module, const char *fmt, ...)
+       __attribute__((format (printf, 3, 4)))
+       __attribute__((visibility("default")));
+
+#  ifdef __cplusplus
+  } /* extern "C" { */
+#  endif
 
 #endif /* VDR */
 
