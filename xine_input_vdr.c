@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.194 2008-11-16 15:02:45 rofafor Exp $
+ * $Id: xine_input_vdr.c,v 1.195 2008-11-16 15:27:54 rofafor Exp $
  *
  */
 
@@ -1588,7 +1588,8 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     return;
   }
 
-  asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
+  if(asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir()) < 0)
+    return;
   int fd = open(path=home, O_RDONLY);
   if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
   if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
@@ -2648,9 +2649,10 @@ static void send_meta_info(vdr_input_plugin_t *this)
     char *album        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
     char *tracknumber  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TRACK_NUMBER);
 
-    asprintf(&meta,
+    if(asprintf(&meta,
              "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
-             title?:"", artist?:"", album?:"", tracknumber?:"");
+             title?:"", artist?:"", album?:"", tracknumber?:"") < 0)
+      return;
 
     if(this->fd_control < 0)
       this->funcs.xine_input_event(meta, NULL);
@@ -3939,7 +3941,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
       this->funcs.xine_input_event(tracks, NULL);
     else
       write_control(this, tracks);
-    LOGDBG(tracks);
+    LOGDBG("%s", tracks);
   }
 #endif
 

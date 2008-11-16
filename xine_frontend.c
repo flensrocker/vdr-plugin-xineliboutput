@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.89 2008-11-16 00:08:31 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.90 2008-11-16 15:27:54 rofafor Exp $
  *
  */
 
@@ -556,9 +556,10 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   free(this->configfile);
   this->configfile = NULL;
-  asprintf(&this->configfile,
-	   "%s%s", xine_get_homedir(), 
-	  "/.xine/config_xineliboutput");
+  if(asprintf(&this->configfile, "%s%s", xine_get_homedir(), 
+	      "/.xine/config_xineliboutput") < 0)
+    return 0;
+
   xine_config_load (this->xine, this->configfile);
 
   x_reg_num ("engine.buffers.video_num_buffers",
@@ -737,7 +738,8 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   this->playback_finished = 1;
   this->terminate_key_pressed = 0;
 
-  asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : MRL_ID "://");
+  if(asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : MRL_ID "://") < 0)
+    return 0;
 
   result = xine_open(this->stream, url);
 

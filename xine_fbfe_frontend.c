@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.40 2008-11-14 23:46:57 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.41 2008-11-16 15:27:54 rofafor Exp $
  *
  */
 
@@ -85,10 +85,16 @@ static void update_DFBARGS(const char *fb_dev)
 	head = NULL;
       else
 	*head = 0;
-      asprintf(&env_new, "%sfbdev=%s%s",
-	       head ? env_tmp : "", fb_dev, tail ? tail : "");
+      if(asprintf(&env_new, "%sfbdev=%s%s",
+	       head ? env_tmp : "", fb_dev, tail ? tail : "") < 0) {
+        free(env_tmp);
+        return;
+      }
     } else {
-      asprintf(&env_new, "fbdev=%s%s%s", fb_dev, env_tmp ? "," : "", env_tmp ?: "");
+      if(asprintf(&env_new, "fbdev=%s%s%s", fb_dev, env_tmp ? "," : "", env_tmp ?: "") < 0) {
+        free(env_tmp);
+        return;
+      }
     }
     free(env_tmp);
 
@@ -96,7 +102,8 @@ static void update_DFBARGS(const char *fb_dev)
 	   env_new, env_old);
 
   } else {
-    asprintf(&env_new, "fbdev=%s", fb_dev);
+    if(asprintf(&env_new, "fbdev=%s", fb_dev) < 0)
+      return;
 
     LOGMSG("setting environment variable DFBARGS to %s", env_new);
   }

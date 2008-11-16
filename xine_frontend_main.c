@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.60 2008-11-15 13:52:25 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.61 2008-11-16 15:27:54 rofafor Exp $
  *
  */
 
@@ -510,10 +510,13 @@ int main(int argc, char *argv[])
       if(mrl) {
 	char *tmp = mrl;
 	mrl = NULL;
-	asprintf(&mrl, "%s//%s:%d", tmp, address, port);
-	free(tmp);
+	if(asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0) {
+	  free(tmp);
+	  return -1;
+        }
       } else
-	asprintf(&mrl, MRL_ID "://%s:%d", address, port);
+	if(asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
+          return -1;
     } else {
       PRINTF("---------------------------------------------------------------\n"
 	     "WARNING: MRL not given and server not found from local network.\n"
@@ -528,7 +531,8 @@ int main(int argc, char *argv[])
      strncmp(mrl, MRL_ID "+", MRL_ID_LEN+1)) {
     char *mrl2 = mrl;
     PRINTF("WARNING: MRL does not start with \'" MRL_ID ":\' (%s)", mrl);
-    asprintf(&mrl, MRL_ID "://%s", mrl);
+    if(asprintf(&mrl, MRL_ID "://%s", mrl) < 0)
+      return -1;
     free(mrl2);
   }
 
