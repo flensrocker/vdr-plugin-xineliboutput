@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.17 2008-11-13 22:58:40 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.18 2008-11-16 00:09:25 phintuka Exp $
  *
  */
 /*
@@ -111,7 +111,8 @@ static void *lirc_receiver_thread(void *fe_gen)
 
   LOGMSG("lirc forwarding started");
 
-  nice(-1);
+  (void)nice(-1);
+
   lircd_connect();
 
   while(lirc_device_name && fd_lirc >= 0) {
