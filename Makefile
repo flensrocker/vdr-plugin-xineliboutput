@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.68 2008-11-16 23:31:28 phintuka Exp $
+# $Id: Makefile,v 1.69 2008-11-16 23:45:55 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -227,24 +227,16 @@ else
   OBJS_MPG = 
 endif
 
+# frontends
 OBJS_FE_SO = xine_frontend.o xine/post.o logdefs.o
 OBJS_FE    = $(OBJS_FE_SO) tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o
-ifeq ($(XINELIBOUTPUT_X11), yes)
-  OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
-  OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
-else
-  OBJS_SXFE_SO = 
-  OBJS_SXFE = 
-endif
 
-ifeq ($(XINELIBOUTPUT_FB), yes)
-  OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
-  OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
-else
-  OBJS_FBFE_SO = 
-  OBJS_FBFE = 
-endif
+OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
+OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
+OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
+OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
+# xine plugins - used only for .dependencies creation
 OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
 
 ###
