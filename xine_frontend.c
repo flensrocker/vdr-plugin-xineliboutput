@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.87 2008-11-14 23:31:37 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.88 2008-11-16 00:05:21 phintuka Exp $
  *
  */
 
@@ -334,7 +334,8 @@ static void fe_frame_output_cb (void *data,
                   this->aspect_controller, (int)(video_aspect * 10000.0)) 
          < sizeof(cmd)) {
         LOGDBG("Aspect ratio changed, executing %s", cmd);
-        system(cmd);
+        if(system(cmd) == -1)
+	  LOGERR("Executing /bin/sh -c %s failed");
         this->video_aspect = video_aspect;
       }
     }
