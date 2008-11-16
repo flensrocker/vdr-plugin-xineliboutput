@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.66 2008-11-16 21:38:45 phintuka Exp $
+# $Id: Makefile,v 1.67 2008-11-16 21:51:48 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -228,7 +228,7 @@ else
 endif
 
 OBJS_FE_SO = xine_frontend.o xine/post.o logdefs.o
-OBJS_FE    = $(OBJS_FE_SO) logdefs.o tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o
+OBJS_FE    = $(OBJS_FE_SO) tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o
 ifeq ($(XINELIBOUTPUT_X11), yes)
   OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
   OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
