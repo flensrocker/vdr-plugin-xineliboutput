@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.193 2008-11-15 13:45:50 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.194 2008-11-16 15:02:45 rofafor Exp $
  *
  */
 
@@ -4680,7 +4680,10 @@ static void *vdr_data_thread(void *this_gen)
 
   LOGDBG("Data thread started");
 
-  (void)nice(-1);
+  const int priority = -1;
+  errno = 0;
+  if((nice(priority) == -1) && errno)
+    LOGDBG("Data thread: Can't nice to value: %d", priority);
 
   if(this->udp || this->rtp) {
     while(this->control_running) {

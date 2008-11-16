@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.20 2008-10-31 20:55:57 phintuka Exp $
+ * $Id: playlist.c,v 1.21 2008-11-16 15:02:45 rofafor Exp $
  *
  */
 
@@ -144,8 +144,10 @@ class cID3Scanner : public cThread
   {
     cPlaylistItem *Item = NULL;
     unsigned int Version = 0;
-
-    (void)nice(10);
+    const int priority = 10;
+    errno = 0;
+    if((nice(priority) == -1) && errno)
+      LOGDBG("ID3Scanner: Can't nice to value: %d", priority);
 
     LOGDBG("ID3Scanner Started");
     while(Running()) {

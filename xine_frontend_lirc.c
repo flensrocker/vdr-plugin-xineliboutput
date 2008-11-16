@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.18 2008-11-16 00:09:25 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.19 2008-11-16 15:02:45 rofafor Exp $
  *
  */
 /*
@@ -111,7 +111,10 @@ static void *lirc_receiver_thread(void *fe_gen)
 
   LOGMSG("lirc forwarding started");
 
-  (void)nice(-1);
+  const int priority = -1;
+  errno = 0;
+  if((nice(priority) == -1) && errno)
+    LOGDBG("LIRC: Can't nice to value: %d", priority);
 
   lircd_connect();
 
