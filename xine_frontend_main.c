@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.63 2008-11-17 20:12:34 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.64 2008-11-17 22:34:24 phintuka Exp $
  *
  */
 
@@ -39,9 +39,26 @@
 int SysLogLevel __attribute__((visibility("default"))) = SYSLOGLEVEL_INFO; /* errors and info, no debug */
 
 volatile int   last_signal = 0;
+
+/*
+ * stdin (keyboard/slave mode) reading 
+ */
+
+/* static data */
 pthread_t      kbd_thread;
 struct termios tm, saved_tm;
 
+/*
+ * read_key()
+ *
+ * Try to read single char from stdin.
+ *
+ * Returns: >=0  char readed
+ *           -1  nothing to read
+ *           -2  fatal error
+ */
+#define READ_KEY_ERROR   -2
+#define READ_KEY_EAGAIN  -1
 static int read_key(void)
 {
   unsigned char ch;
@@ -51,7 +68,7 @@ static int read_key(void)
   pfd.events = POLLIN;
 
   errno = 0;
-  if(1 == (err=poll(&pfd, 1, 50))) {
+  if (1 == (err = poll(&pfd, 1, 50))) {
 
     if (1 == (err = read(STDIN_FILENO, &ch, 1)))
       return (int)ch;
@@ -60,16 +77,25 @@ static int read_key(void)
       LOGERR("read_key: read(stdin) failed");
     else
       LOGERR("read_key: read(stdin) failed: no stdin");
-    return -2;
+    return READ_KEY_ERROR;
 
-  } else if(err < 0 && errno != EINTR) {
+  } else if (err < 0 && errno != EINTR) {
     LOGERR("read_key: poll(stdin) failed");
-    return -2;
+    return READ_KEY_ERROR;
   }
 
-  return -1;
+  return READ_KEY_EAGAIN;
 }
 
+/*
+ * read_key_seq()
+ *
+ * Read a key sequence from stdin.
+ * Key sequence is either normal key or escape sequence.
+ *
+ * Returns the key or escape sequence as uint64_t.
+ */
+#define READ_KEY_SEQ_ERROR 0xffffffff
 static uint64_t read_key_seq(void)
 {
   /* from vdr, remote.c */
@@ -111,10 +137,18 @@ static uint64_t read_key_seq(void)
       }
     }
   }
-  if(key1==-2)
-    return 0xffff;
+
+  if (key1 == READ_KEY_ERROR)
+    return READ_KEY_SEQ_ERROR;
+
   return k;
 }
+
+/*
+ * kbd_receiver_thread()
+ *
+ * Read key(sequence)s from stdin and pass those to frontend.
+ */
 
 static void *kbd_receiver_thread(void *fe_gen) 
 {
@@ -141,28 +175,29 @@ static void *kbd_receiver_thread(void *fe_gen)
     errno = 0;
     code = read_key_seq();
     alarm(3); /* watchdog */
-    if(code == 0)
+    if (code == 0)
       continue;
-    if(code == 27) {
+    if (code == READ_KEY_SEQ_ERROR)
+      break;
+    if (code == 27) {
       fe->send_event(fe, "QUIT");
       break;
     }
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-    if(code == 'f' || code == 'F') {
+    if (code == 'f' || code == 'F') {
       fe->send_event(fe, "TOGGLE_FULLSCREEN");
       continue;
-    } else if(code == 'd' || code == 'D') {
+    }
+    if (code == 'd' || code == 'D') {
       fe->send_event(fe, "TOGGLE_DEINTERLACE");
       continue;
-    } else
+    }
 #endif
-    if(code == 0xffff) 
-      break;
 
     snprintf(str, sizeof(str), "%016" PRIX64, code);
     fe->send_input_event(fe, "KBD", str, 0, 0);
 
-  } while(fe->xine_is_finished(fe, 0) != FE_XINE_EXIT && code != 0xffff);
+  } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
   
   alarm(0);
   LOGDBG("Keyboard thread terminated");
@@ -172,6 +207,13 @@ static void *kbd_receiver_thread(void *fe_gen)
   pthread_exit(NULL);
   return NULL; /* never reached */
 }
+
+/*
+ * slave_receiver_thread()
+ *
+ * Read slave mode commands from stdin
+ * Interpret and execute valid commands
+ */
 
 static void *slave_receiver_thread(void *fe_gen)
 {
@@ -185,32 +227,34 @@ static void *slave_receiver_thread(void *fe_gen)
     errno = 0;
     str[0] = 0;
 
-    if(!fgets(str, sizeof(str), stdin))
+    if (!fgets(str, sizeof(str), stdin))
       break;
 
-    if(NULL != (pt = strchr(str, '\r')))
+    if (NULL != (pt = strchr(str, '\r')))
       *pt = 0;
-    if(NULL != (pt = strchr(str, '\n')))
+    if (NULL != (pt = strchr(str, '\n')))
       *pt = 0;
 
-    if(!strncasecmp(str, "QUIT", 4)) {
+    if (!strncasecmp(str, "QUIT", 4)) {
       fe->send_event(fe, "QUIT");
       break;
-
-    } else if(!strncasecmp(str, "FULLSCREEN", 10)) {
+    }
+    if (!strncasecmp(str, "FULLSCREEN", 10)) {
       fe->send_event(fe, "TOGGLE_FULLSCREEN");
-
-    } else if(!strncasecmp(str, "DEINTERLACE ", 12)) {
+      continue;
+    }
+    if (!strncasecmp(str, "DEINTERLACE ", 12)) {
       fe->send_event(fe, str);
-
-    } else if(!strncasecmp(str, "HITK ", 5)) {
+      continue;
+    }
+    if (!strncasecmp(str, "HITK ", 5)) {
       fe->send_input_event(fe, NULL, str+5, 0, 0);
-
-    } else {
-      LOGMSG("Unknown slave mode command: %s", str);
+      continue;
     }
 
-  } while(fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
+    LOGMSG("Unknown slave mode command: %s", str);
+
+  } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
   
   LOGDBG("Slave mode receiver terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
@@ -219,6 +263,28 @@ static void *slave_receiver_thread(void *fe_gen)
   return NULL; /* never reached */
 }
 
+/*
+ * kbd_start()
+ *
+ * Start keyboard/slave mode reader thread
+ */
+static void kbd_start(frontend_t *fe, int slave_mode)
+{
+  int err;
+  if ((err = pthread_create (&kbd_thread,
+			     NULL, 
+			     slave_mode ? slave_receiver_thread : kbd_receiver_thread, 
+			     (void*)fe)) != 0) {
+    fprintf(stderr, "Can't create new thread for keyboard (%s)\n", 
+	    strerror(err));
+  }
+}
+
+/*
+ * kbd_stop()
+ *
+ * Stop keyboard/slave mode reader thread
+ */
 static void kbd_stop(void)
 {
   void *p;
@@ -255,6 +321,9 @@ static void SignalHandler(int signum)
   signal(signum, SignalHandler);
 }
 
+/*
+ * strcatrealloc()
+ */
 static char *strcatrealloc(char *dest, const char *src)
 {
   size_t l;
@@ -272,6 +341,10 @@ static char *strcatrealloc(char *dest, const char *src)
   } 
   return dest;
 }
+
+/*
+ * static data
+ */
 
 static const char help_str[] = 
 "When server address is not given, server is searched from local network.\n"
@@ -358,8 +431,8 @@ int main(int argc, char *argv[])
   char *video_port = NULL;
   int window_id = -1;
   int xmajor, xminor, xsub;
-  int err, c;
-  int xine_finished = FE_XINE_RUNNING;
+  int c;
+  int xine_finished = FE_XINE_ERROR;
   frontend_t *fe = NULL;
   extern const fe_creator_f fe_creator;
   char *static_post_plugins = NULL;
@@ -370,7 +443,7 @@ int main(int argc, char *argv[])
 
   LogToSysLog = 0;
 
-  if(strrchr(argv[0],'/'))
+  if (strrchr(argv[0],'/'))
     exec_name = strrchr(argv[0],'/')+1;
 
   xine_get_version(&xmajor, &xminor, &xsub);  
@@ -391,14 +464,14 @@ int main(int argc, char *argv[])
 	      exit(0);
     case 'A': adrv = strdup(optarg);
               adev = strchr(adrv, ':');
-	      if(adev)
+	      if (adev)
 	        *(adev++) = 0;
 	      PRINTF("Audio driver: %s\n",adrv);
-	      if(adev)
+	      if (adev)
 		PRINTF("Audio device: %s\n",adev);
 	      break;
     case 'V': gdrv = strdup(optarg);
-              if(strchr(gdrv, ':')) {
+              if (strchr(gdrv, ':')) {
 		video_port = strchr(gdrv, ':');
 		*video_port = 0;
 		video_port++;
@@ -412,20 +485,20 @@ int main(int argc, char *argv[])
     case 'd': video_port = strdup(optarg);
               break;
 #endif
-    case 'a': if(!strncmp(optarg, "auto", 4))
+    case 'a': if (!strncmp(optarg, "auto", 4))
                 aspect = 0;
-              if(!strncmp(optarg, "4:3", 3))
+              if (!strncmp(optarg, "4:3", 3))
 		aspect = 2;
-	      if(!strncmp(optarg, "16:9", 4))
+	      if (!strncmp(optarg, "16:9", 4))
 		aspect = 3;
-	      if(!strncmp(optarg, "16:10", 5))
+	      if (!strncmp(optarg, "16:10", 5))
 		aspect = 4;
-              if(aspect == 0 && optarg[4] == ':')
+              if (aspect == 0 && optarg[4] == ':')
                 aspect_controller = strdup(optarg+5);
 	      PRINTF("Aspect ratio: %s\n", 
 		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
 		     aspect==4?"16:10":"Default");
-              if(aspect_controller)
+              if (aspect_controller)
                 PRINTF("Using %s to switch aspect ratio\n", 
                        aspect_controller);
 	      break;
@@ -448,14 +521,14 @@ int main(int argc, char *argv[])
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
 	      break;
-    case 'P': if(static_post_plugins)
+    case 'P': if (static_post_plugins)
                 strcatrealloc(static_post_plugins, ";");
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
 	      PRINTF("Post plugins: %s\n", static_post_plugins);
 	      break;
     case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
-              if(strstr((char*)lirc_dev, ",repeatemu")) {
-		*strstr((char*)lirc_dev, ",repeatemu") = 0;
+              if (strstr((char*)lirc_dev, ",repeatemu")) {
+		 *strstr((char*)lirc_dev, ",repeatemu") = 0;
 		repeat_emu = 1;
               }
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
@@ -506,34 +579,34 @@ int main(int argc, char *argv[])
 
 #if 1
   /* backward compability */
-  if(mrl && ( !strncmp(mrl, MRL_ID ":tcp:",  MRL_ID_LEN+5) ||
-	      !strncmp(mrl, MRL_ID ":udp:",  MRL_ID_LEN+5) ||
-	      !strncmp(mrl, MRL_ID ":rtp:",  MRL_ID_LEN+5) ||
-	      !strncmp(mrl, MRL_ID ":pipe:", MRL_ID_LEN+6)))
+  if (mrl && ( !strncmp(mrl, MRL_ID ":tcp:",  MRL_ID_LEN+5) ||
+	       !strncmp(mrl, MRL_ID ":udp:",  MRL_ID_LEN+5) ||
+	       !strncmp(mrl, MRL_ID ":rtp:",  MRL_ID_LEN+5) ||
+	       !strncmp(mrl, MRL_ID ":pipe:", MRL_ID_LEN+6)))
     mrl[5] = '+';
 #endif
 
   /* If server address not given, try to find server automatically */
-  if(!mrl ||
-     !strcmp(mrl, MRL_ID ":") ||
-     !strcmp(mrl, MRL_ID "+tcp:") ||
-     !strcmp(mrl, MRL_ID "+udp:") ||
-     !strcmp(mrl, MRL_ID "+rtp:") ||
-     !strcmp(mrl, MRL_ID "+pipe:")) {
+  if (!mrl ||
+      !strcmp(mrl, MRL_ID ":") ||
+      !strcmp(mrl, MRL_ID "+tcp:") ||
+      !strcmp(mrl, MRL_ID "+udp:") ||
+      !strcmp(mrl, MRL_ID "+rtp:") ||
+      !strcmp(mrl, MRL_ID "+pipe:")) {
     char address[1024] = "";
     int port = -1;
     PRINTF("VDR server not given, searching ...\n");
-    if(udp_discovery_find_server(&port, &address[0])) {
+    if (udp_discovery_find_server(&port, &address[0])) {
       PRINTF("Found VDR server: host %s, port %d\n", address, port);
-      if(mrl) {
+      if (mrl) {
 	char *tmp = mrl;
 	mrl = NULL;
-	if(asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0) {
+	if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0) {
 	  free(tmp);
 	  return -1;
         }
       } else
-	if(asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
+	if (asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
           return -1;
     } else {
       PRINTF("---------------------------------------------------------------\n"
@@ -544,31 +617,31 @@ int main(int argc, char *argv[])
     }
   }
 
-  if(mrl && 
-     strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) && 
-     strncmp(mrl, MRL_ID "+", MRL_ID_LEN+1)) {
+  if (mrl && 
+      strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) && 
+      strncmp(mrl, MRL_ID "+", MRL_ID_LEN+1)) {
     char *mrl2 = mrl;
     PRINTF("WARNING: MRL does not start with \'" MRL_ID ":\' (%s)", mrl);
-    if(asprintf(&mrl, MRL_ID "://%s", mrl) < 0)
+    if (asprintf(&mrl, MRL_ID "://%s", mrl) < 0)
       return -1;
     free(mrl2);
   }
 
   {
     char *tmp = NULL, *mrl2 = mrl;
-    if(frtp && !strstr(mrl, "rtp:"))
+    if (frtp && !strstr(mrl, "rtp:"))
       tmp = strdup(MRL_ID "+rtp:");
-    else if(fudp && !strstr(mrl, "udp:"))
+    else if (fudp && !strstr(mrl, "udp:"))
       tmp = strdup(MRL_ID "+udp:");
-    else if(ftcp && !strstr(mrl, "tcp:"))
+    else if (ftcp && !strstr(mrl, "tcp:"))
       tmp = strdup(MRL_ID "+tcp:");
-    if(tmp) {
+    if (tmp) {
       mrl = strcatrealloc(tmp, strchr(mrl, '/'));
       free(mrl2);
     }
   }
 
-  if(daemon_mode) {
+  if (daemon_mode) {
     PRINTF("Entering daemon mode\n\n");
     if (daemon(1, 0) == -1) {
       fprintf(stderr, "%s: %m\n", exec_name);
@@ -579,28 +652,29 @@ int main(int argc, char *argv[])
 
   /* Create front-end */
   fe = (*fe_creator)();
-  if(!fe) {
+  if (!fe) {
     fprintf(stderr, "Error initializing frontend\n");
     return -3;
   }
 
   /* Initialize display */
-  if(!fe->fe_display_open(fe, width, height, fullscreen, hud, 0, 
-			  "", aspect, NULL, video_port, scale_video, 0,
-			  aspect_controller, window_id)) {
+  if (!fe->fe_display_open(fe, width, height, fullscreen, hud, 0, 
+			   "", aspect, NULL, video_port, scale_video, 0,
+			   aspect_controller, window_id)) {
     fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);
     return -4;
   }
 
   /* Initialize xine */
-  if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
+  if (!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
     fprintf(stderr, "Error initializing xine\n");
+    list_xine_plugins(fe, SysLogLevel>2);
     fe->fe_free(fe);
-    list_xine_plugins(NULL, SysLogLevel>2);
     return -5;
   }
-  if(SysLogLevel>2)
+
+  if (SysLogLevel > 2)
     list_xine_plugins(fe, SysLogLevel>2);
 
   /* signal handlers */
@@ -610,59 +684,48 @@ int main(int argc, char *argv[])
   if (signal(SIGTERM, SignalHandler) == SIG_IGN) signal(SIGTERM, SIG_IGN);
   if (signal(SIGPIPE, SignalHandler) == SIG_IGN) signal(SIGPIPE, SIG_IGN);
 
-  /* Start LIRC forwarding */
-  lirc_start(fe, lirc_dev, repeat_emu);
-  
-  PRINTF("\n\nPress Esc to exit\n\n");
-  
-  /* Start keyboard listener thread */
-  if(!nokbd) {
-    if ((err = pthread_create (&kbd_thread,
-			       NULL, 
-			       slave_mode ? slave_receiver_thread : kbd_receiver_thread, 
-			       (void*)fe)) != 0) {
-      fprintf(stderr, "Can't create new thread for keyboard (%s)\n", 
-	      strerror(err));
-    }
-    sleep(1);
-  }
-  
   do {
 
-    if(!firsttry) {
+    if (!firsttry) {
       PRINTF("Connection to server lost. Reconnecting after two seconds...\n");
       sleep(2);
       PRINTF("Reconnecting...\n");
     }
 
     /* Connect to VDR xineliboutput server */
-    if(!fe->xine_open(fe, mrl)) {
+    if (!fe->xine_open(fe, mrl)) {
       /*print_xine_log(((fe_t *)fe)->xine);*/
-      if(!firsttry) {
+      if (!firsttry) {
 	PRINTF("Error opening %s\n", mrl);
 	continue;
       }
       fprintf(stderr, "Error opening %s\n", mrl);
-      lirc_stop();
-      if(!nokbd) kbd_stop();
       fe->fe_free(fe);
       return -6;
     }
   
-    if(!fe->xine_play(fe)) {
-      /*print_xine_log(((fe_t *)fe)->xine);*/
-      /*printf("Error playing %s//%s:%s\n", argv[1], host, port);*/
-      if(!firsttry) {
+    if (!fe->xine_play(fe)) {
+      if (!firsttry) {
 	PRINTF("Error playing %s\n", argv[1]);
 	continue;
       }
       fprintf(stderr, "Error playing %s\n", argv[1]);
-      lirc_stop();
-      if(!nokbd) kbd_stop();
       fe->fe_free(fe);
       return -7;
     }
-  
+
+    if (firsttry) {
+
+      /* Start LIRC forwarding */
+      lirc_start(fe, lirc_dev, repeat_emu);
+
+      /* Start keyboard listener thread */
+      if (!nokbd) {
+	PRINTF("\n\nPress Esc to exit\n\n");
+	kbd_start(fe, slave_mode);
+      }
+    }
+
     /* Main loop */
 
     sleep(2);  /* give input_vdr some time to establish connection */
@@ -670,8 +733,8 @@ int main(int argc, char *argv[])
     fflush(stdout);
     fflush(stderr);
 
-    while(!last_signal && fe->fe_run(fe) && 
-	  (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
+    while (!last_signal && fe->fe_run(fe) && 
+	   (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
       ;
 
     fe->xine_close(fe);
@@ -681,7 +744,7 @@ int main(int argc, char *argv[])
     if (last_signal == SIGHUP)
       last_signal = 0;
 
-  } while( !last_signal && xine_finished != FE_XINE_EXIT && reconnect);
+  } while (!last_signal && xine_finished != FE_XINE_EXIT && reconnect);
 
   /* Clean up */
 
@@ -689,9 +752,12 @@ int main(int argc, char *argv[])
 
   fe->send_event(fe, "QUIT");
 
+  /* stop input threads */
   lirc_stop();
-  if(!nokbd) kbd_stop();
+  if (!nokbd)
+    kbd_stop();
 
-  fe->fe_free(fe); 
+  fe->fe_free(fe);
+
   return xine_finished==FE_XINE_EXIT ? 0 : 1;
 }
