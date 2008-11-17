@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.66 2008-11-17 22:48:13 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.67 2008-11-17 23:01:48 phintuka Exp $
  *
  */
 
@@ -39,6 +39,7 @@
 int SysLogLevel __attribute__((visibility("default"))) = SYSLOGLEVEL_INFO; /* errors and info, no debug */
 
 volatile int   last_signal = 0;
+int            gui_hotkeys = 0;
 
 /*
  * stdin (keyboard/slave mode) reading 
@@ -197,16 +198,16 @@ static void *kbd_receiver_thread(void *fe_gen)
       fe->send_event(fe, "QUIT");
       break;
     }
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-    if (code == 'f' || code == 'F') {
-      fe->send_event(fe, "TOGGLE_FULLSCREEN");
-      continue;
+
+    if (gui_hotkeys) {
+      if (code == 'f' || code == 'F') {
+	fe->send_event(fe, "TOGGLE_FULLSCREEN");
+	continue;
+      } else if (code == 'd' || code == 'D') {
+	fe->send_event(fe, "TOGGLE_DEINTERLACE");
+	continue;
+      }
     }
-    if (code == 'd' || code == 'D') {
-      fe->send_event(fe, "TOGGLE_DEINTERLACE");
-      continue;
-    }
-#endif
 
     snprintf(str, sizeof(str), "%016" PRIX64, code);
     fe->send_input_event(fe, "KBD", str, 0, 0);
@@ -399,6 +400,7 @@ static const char help_str[] =
     "   --silent                      Silent mode (report only errors)\n"
     "   --syslog                      Write all output to system log\n"
     "   --nokbd                       Disable keyboard input\n"
+    "   --hotkeys                     Enable frontend GUI hotkeys\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\n"
@@ -410,7 +412,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HL:A:V:d:a:fDw:h:P:vslkbtur";
+static const char short_options[] = "HL:A:V:d:a:fDw:h:P:vslkobtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -431,6 +433,7 @@ static const struct option long_options[] = {
   { "silent",  no_argument,  NULL, 's' },
   { "syslog",  no_argument,  NULL, 'l' },
   { "nokbd",   no_argument,  NULL, 'k' },
+  { "hotkeys", no_argument,  NULL, 'o' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
   
@@ -570,6 +573,11 @@ int main(int argc, char *argv[])
 	      break;
     case 'k': nokbd = 1;
               PRINTF("Keyboard input disabled\n");
+	      break;
+    case 'o': gui_hotkeys = 1;
+              PRINTF("GUI hotkeys enabled\n"
+		     "  mapping f,F  -> fullscreen toggle\n"
+		     "          d,D  -> deinterlace toggle\n");
 	      break;
     case 'b': nokbd = daemon_mode = 1;
               PRINTF("Keyboard input disabled\n");
@@ -748,8 +756,6 @@ int main(int argc, char *argv[])
     }
 
     /* Main loop */
-
-    sleep(2);  /* give input_vdr some time to establish connection */
 
     fflush(stdout);
     fflush(stderr);
