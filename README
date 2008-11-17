@@ -506,14 +506,22 @@ Shortcut key macros
   selection with VDR "Audio" key).
 
 
-Special LIRC keys
+Special frontend control keys
 
-  If plugin is compiled with macro INTERPRET_LIRC_KEYS defined, following 
-  LIRC keys are interpreted by vdr-sxfe/vdr-fbfe:
+  When frontend is started with --hotkeys command-line option, following
+  keyboard and LIRC keys are interpreted by vdr-sxfe/vdr-fbfe:
 
-    Fullscreen   Toggle fullscreen state
-    Deinterlace  Toggle deinterlacing
-    Quit         Close program
+    Keyboard (console and X11 window)
+      f, F         Toggle fullscreen state
+      d, D         Toggle deinterlacing
+
+    LIRC
+      Fullscreen   Toggle fullscreen state
+      Deinterlace  Toggle deinterlacing
+      Quit         Close program
+
+  [ this run-time option replaces old build-time options 
+    INTERPRET_LIRC_KEYS and XINELIBOUTPUT_FE_FULLSCREEN_TOGGLE ]
 
 
 Xine-specific settings
