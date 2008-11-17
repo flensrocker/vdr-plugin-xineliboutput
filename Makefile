@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.1 2008-10-21 14:42:21 phintuka Exp $
+# $Id: Makefile,v 1.38.2.2 2008-11-17 17:01:41 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -244,7 +244,8 @@ INCLUDES  += -I$(VDRINCDIR)
 LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --libs) || xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 ifeq ($(HAVE_XRENDER), 1)
-    LIBS_X11  += -lXrender
+# need -lm for ceil/floor in HUD OSD
+    LIBS_X11  += -lXrender -lm
 endif
 
 ifeq ($(APPLE_DARWIN), 1)
