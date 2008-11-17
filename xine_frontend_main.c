@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.65 2008-11-17 22:37:27 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.66 2008-11-17 22:48:13 phintuka Exp $
  *
  */
 
@@ -68,7 +68,10 @@ static int read_key(void)
   pfd.events = POLLIN;
 
   errno = 0;
+  pthread_testcancel();
+
   if (1 == (err = poll(&pfd, 1, 50))) {
+    pthread_testcancel();
 
     if (1 == (err = read(STDIN_FILENO, &ch, 1)))
       return (int)ch;
@@ -84,6 +87,7 @@ static int read_key(void)
     return READ_KEY_ERROR;
   }
 
+  pthread_testcancel();
   return READ_KEY_EAGAIN;
 }
 
@@ -150,6 +154,14 @@ static uint64_t read_key_seq(void)
  * Read key(sequence)s from stdin and pass those to frontend.
  */
 
+static void kbd_receiver_thread_cleanup(void *arg) 
+{
+  int status;
+  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  status = system("setterm -cursor on");
+  LOGMSG("Keyboard thread terminated");
+}
+
 static void *kbd_receiver_thread(void *fe_gen) 
 {
   frontend_t *fe = (frontend_t*)fe_gen;
@@ -169,6 +181,8 @@ static void *kbd_receiver_thread(void *fe_gen)
     tm.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &tm);
   }
+
+  pthread_cleanup_push(kbd_receiver_thread_cleanup, NULL);
 
   do {
     alarm(0);
@@ -200,9 +214,10 @@ static void *kbd_receiver_thread(void *fe_gen)
   } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
   
   alarm(0);
-  LOGDBG("Keyboard thread terminated");
-  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  status = system("setterm -cursor on");
+
+  LOGDBG("Keyboard thread terminating");
+
+  pthread_cleanup_pop(1);
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -215,6 +230,13 @@ static void *kbd_receiver_thread(void *fe_gen)
  * Interpret and execute valid commands
  */
 
+static void slave_receiver_thread_cleanup(void *arg)
+{
+  /* restore terminal settings */
+  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  LOGDBG("Slave mode receiver terminated");
+}
+
 static void *slave_receiver_thread(void *fe_gen)
 {
   frontend_t *fe = (frontend_t*)fe_gen;
@@ -222,13 +244,16 @@ static void *slave_receiver_thread(void *fe_gen)
 
   tcgetattr(STDIN_FILENO, &saved_tm);
 
-  do {
+  pthread_cleanup_push(slave_receiver_thread_cleanup, NULL);
 
+  do {
     errno = 0;
     str[0] = 0;
 
+    pthread_testcancel();
     if (!fgets(str, sizeof(str), stdin))
       break;
+    pthread_testcancel();
 
     if (NULL != (pt = strchr(str, '\r')))
       *pt = 0;
@@ -256,8 +281,9 @@ static void *slave_receiver_thread(void *fe_gen)
 
   } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
   
-  LOGDBG("Slave mode receiver terminated");
-  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  LOGDBG("Slave mode receiver terminating");
+
+  pthread_cleanup_pop(1);
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -288,13 +314,9 @@ static void kbd_start(frontend_t *fe, int slave_mode)
 static void kbd_stop(void)
 {
   void *p;
-  int status;
 
-  pthread_cancel (kbd_thread);
-  pthread_join (kbd_thread, &p);
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  status = system("setterm -cursor on");
+  pthread_cancel(kbd_thread);
+  pthread_join(kbd_thread, &p);
 }
 
 /*
