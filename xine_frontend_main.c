@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.62 2008-11-16 15:37:51 rofafor Exp $
+ * $Id: xine_frontend_main.c,v 1.63 2008-11-17 20:12:34 phintuka Exp $
  *
  */
 
@@ -25,6 +25,7 @@
 
 #include <xine.h>  /* xine_get_version */
 
+#define LOG_MODULENAME "[vdr-fe]    "
 #include "logdefs.h"
 
 #include "xine_input_vdr_mrl.h"
@@ -32,15 +33,14 @@
 #include "tools/vdrdiscovery.h"
 #include "xine_frontend_lirc.h"
 
+/* static data */
+
 /* next symbol is dynamically linked from input plugin */
 int SysLogLevel __attribute__((visibility("default"))) = SYSLOGLEVEL_INFO; /* errors and info, no debug */
 
-
-/* static data */
-pthread_t kbd_thread;
+volatile int   last_signal = 0;
+pthread_t      kbd_thread;
 struct termios tm, saved_tm;
-volatile int terminate_key_pressed = 0;
-
 
 static int read_key(void)
 {
@@ -231,10 +231,26 @@ static void kbd_stop(void)
   status = system("setterm -cursor on");
 }
 
+/*
+ * SignalHandler()
+ */
 static void SignalHandler(int signum)
 {
-  if (signum != SIGPIPE)
-    terminate_key_pressed = 1;
+  LOGMSG("caught signal %d", signum);
+
+  switch (signum) {
+    case SIGHUP:
+      last_signal = signum;
+    case SIGPIPE: 
+      break;
+    default:
+      if (last_signal) {
+	LOGMSG("SignalHandler: exit(-1)");
+	exit(-1);
+      }
+      last_signal = signum;
+      break;
+  }
 
   signal(signum, SignalHandler);
 }
@@ -654,14 +670,18 @@ int main(int argc, char *argv[])
     fflush(stdout);
     fflush(stderr);
 
-    while(!terminate_key_pressed && fe->fe_run(fe) && 
+    while(!last_signal && fe->fe_run(fe) && 
 	  (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
       ;
 
     fe->xine_close(fe);
     firsttry = 0;
 
-  } while(!terminate_key_pressed && xine_finished != FE_XINE_EXIT && reconnect);
+    /* HUP reconnects */
+    if (last_signal == SIGHUP)
+      last_signal = 0;
+
+  } while( !last_signal && xine_finished != FE_XINE_EXIT && reconnect);
 
   /* Clean up */
 
