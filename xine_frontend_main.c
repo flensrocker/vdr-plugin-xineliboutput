@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.64 2008-11-17 22:34:24 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.65 2008-11-17 22:37:27 phintuka Exp $
  *
  */
 
@@ -583,7 +583,7 @@ int main(int argc, char *argv[])
 	       !strncmp(mrl, MRL_ID ":udp:",  MRL_ID_LEN+5) ||
 	       !strncmp(mrl, MRL_ID ":rtp:",  MRL_ID_LEN+5) ||
 	       !strncmp(mrl, MRL_ID ":pipe:", MRL_ID_LEN+6)))
-    mrl[5] = '+';
+    mrl[4] = '+';
 #endif
 
   /* If server address not given, try to find server automatically */
@@ -601,10 +601,9 @@ int main(int argc, char *argv[])
       if (mrl) {
 	char *tmp = mrl;
 	mrl = NULL;
-	if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0) {
-	  free(tmp);
+	if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0)
 	  return -1;
-        }
+	free(tmp);
       } else
 	if (asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
           return -1;
