@@ -3,6 +3,11 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Added math library (-lm) to vdr-sxfe when building with 
+  Xrender / HUD OSD support (Thanks to Anssi Hannula)
+- Implemented build-time configuration script
+- Replaced build-time options INTERPRET_LIRC_KEYS and FE_TOGGLE_FULLSCREEN
+  with run-time option --hotkeys
 - Added an option to adjust the stepping value that is used for 
   metronom live mode sync (Thanks to Andreas Auras)
 - Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
