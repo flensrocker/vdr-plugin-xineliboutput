@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.102 2008-11-15 13:41:56 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.103 2008-11-17 23:39:20 phintuka Exp $
  *
  */
 
@@ -1084,7 +1084,7 @@ static void create_windows(sxfe_t *this)
  */
 static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
 			     int modeswitch, const char *modeline, int aspect,
-			     fe_keypress_f keyfunc, const char *video_port,
+			     fe_keypress_f keyfunc, int gui_hotkeys, const char *video_port,
 			     int scale_video, int field_order,
 			     const char *aspect_controller, int window_id) 
 {
@@ -1141,10 +1141,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   this->xinerama_screen = -1;
 
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-  /* #warning TODO: make this command-line parameter */
-  this->gui_hotkeys = 1;
-#endif
+  this->gui_hotkeys = gui_hotkeys;
 
   /*
    * init x11 stuff
