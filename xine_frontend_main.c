@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.67 2008-11-17 23:01:48 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.68 2008-11-17 23:27:23 phintuka Exp $
  *
  */
 
@@ -576,8 +576,11 @@ int main(int argc, char *argv[])
 	      break;
     case 'o': gui_hotkeys = 1;
               PRINTF("GUI hotkeys enabled\n"
-		     "  mapping f,F  -> fullscreen toggle\n"
-		     "          d,D  -> deinterlace toggle\n");
+		     "  mapping keyboard f,F     -> fullscreen toggle\n"
+		     "          keyboard d,D     -> deinterlace toggle\n"
+		     "          LIRC Deinterlace -> deinterlace toggle\n"
+		     "          LIRC Fullscreen  -> fullscreen toggle\n"
+		     "          LIRC Quit        -> exit\n");
 	      break;
     case 'b': nokbd = daemon_mode = 1;
               PRINTF("Keyboard input disabled\n");

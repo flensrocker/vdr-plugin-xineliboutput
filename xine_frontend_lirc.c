@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.19 2008-11-16 15:02:45 rofafor Exp $
+ * $Id: xine_frontend_lirc.c,v 1.20 2008-11-17 23:27:23 phintuka Exp $
  *
  */
 /*
@@ -54,6 +54,8 @@ static volatile char *lirc_device_name = NULL;
 static volatile int fd_lirc = -1;
 static int lirc_repeat_emu = 0;
 
+/* xine_frontend_main.c: */
+extern int gui_hotkeys;
 
 static uint64_t time_ms()
 {
@@ -124,6 +126,7 @@ static void *lirc_receiver_thread(void *fe_gen)
     FD_ZERO(&set);
     FD_SET(fd_lirc, &set);
 
+    pthread_testcancel();
     if (timeout >= 0) {
       struct timeval tv;
       tv.tv_sec  = timeout / 1000;
@@ -133,6 +136,7 @@ static void *lirc_receiver_thread(void *fe_gen)
       ready = select(FD_SETSIZE, &set, NULL, NULL, NULL) > 0 && FD_ISSET(fd_lirc, &set);
     }
 
+    pthread_testcancel();
     if(ready < 0) {
       LOGMSG("LIRC connection lost ?");
       break;
@@ -143,6 +147,7 @@ static void *lirc_receiver_thread(void *fe_gen)
       do { 
 	errno = 0;
 	ret = read(fd_lirc, buf, sizeof(buf));
+	pthread_testcancel();
       } while(ret < 0 && errno == EINTR);
 
       if (ret <= 0 ) {
@@ -150,6 +155,7 @@ static void *lirc_receiver_thread(void *fe_gen)
 	LOGERR("LIRC connection lost");
 	lircd_connect();
 	while(lirc_device_name && fd_lirc < 0) {
+	  pthread_testcancel();
 	  sleep(RECONNECTDELAY/1000);
 	  lircd_connect();
 	}
@@ -201,26 +207,26 @@ static void *lirc_receiver_thread(void *fe_gen)
 	}
 	LastTime = time_ms();
 
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-        if(!strcmp(KeyName, "Quit")) {
-          fe->send_event(fe, "QUIT");
-          break;
-
-        } else if(!strcmp(KeyName, "Fullscreen")) {
-          if(!repeat)
-	    fe->send_event(fe, "TOGGLE_FULLSCREEN");
-
-        } else if(!strcmp(KeyName, "Deinterlace")) {
-          if(!repeat)
-	    fe->send_event(fe, "TOGGLE_DEINTERLACE");
-
-        } else 
-#endif
-	  {
-	    alarm(3);
-	    fe->send_input_event(fe, "LIRC", KeyName, repeat, 0);
-	    alarm(0);
+	if (gui_hotkeys) {
+	  if(!strcmp(KeyName, "Quit")) {
+	    fe->send_event(fe, "QUIT");
+	    break;
 	  }
+	  if(!strcmp(KeyName, "Fullscreen")) {
+	    if(!repeat)
+	      fe->send_event(fe, "TOGGLE_FULLSCREEN");
+	    continue;
+	  }
+	  if(!strcmp(KeyName, "Deinterlace")) {
+	    if(!repeat)
+	      fe->send_event(fe, "TOGGLE_DEINTERLACE");
+	    continue;
+	  }
+        }
+
+	alarm(3);
+	fe->send_input_event(fe, "LIRC", KeyName, repeat, 0);
+	alarm(0);
 
       }
       else if (repeat) { /* the last one was a repeat, so let's generate a release */
