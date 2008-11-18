@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.69 2008-11-16 23:45:55 phintuka Exp $
+# $Id: Makefile,v 1.70 2008-11-18 15:27:46 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -29,7 +29,7 @@ endif
 USE_ICONV = yes
 #NOSIGNAL_IMAGE_FILE=/usr/share/vdr/xineliboutput/nosignal.mpv
 #STARTUP_IMAGE_FILE=/usr/share/vdr/xineliboutput/logodisplay.mpv
-CONFIGURE_OPTS =
+XINELIBOUTPUT_CONFIGURE_OPTS =
 
 
 ###
@@ -114,7 +114,7 @@ endif
 
 config.mak: Makefile configure
 	@echo Running configure
-	@sh configure --cc=$(CC) --cxx=$(CXX) $(CONFIGURE_OPTS)
+	@sh configure --cc=$(CC) --cxx=$(CXX) $(CONFIGURE_OPTS) $(XINELIBOUTPUT_CONFIGURE_OPTS)
 -include config.mak
 
 ###
