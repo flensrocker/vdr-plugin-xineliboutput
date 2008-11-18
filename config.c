@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.73 2008-11-10 20:10:33 phintuka Exp $
+ * $Id: config.c,v 1.74 2008-11-18 14:09:07 phintuka Exp $
  *
  */
 
@@ -541,6 +541,7 @@ config_t::config_t() {
   remote_mode    = 0;
   listen_port    = LISTEN_PORT;
   remote_keyboard = 1;
+  remote_max_clients = MAXCLIENTS;
   remote_usetcp   = 1;
   remote_useudp   = 1;
   remote_usertp   = 1;
@@ -768,6 +769,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "RemoteMode"))          remote_mode = atoi(Value);
   else if (!strcasecmp(Name, "Remote.ListenPort"))   listen_port = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Keyboard"))     remote_keyboard = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.MaxClients"))   remote_max_clients = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseTcp"))       remote_usetcp = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseUdp"))       remote_useudp = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseRtp"))       remote_usertp = atoi(Value);

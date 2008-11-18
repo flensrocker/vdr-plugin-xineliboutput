@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.63 2008-11-01 07:23:00 phintuka Exp $
+ * $Id: setup_menu.c,v 1.64 2008-11-18 14:09:07 phintuka Exp $
  *
  */
 
@@ -1466,6 +1466,9 @@ void cMenuSetupRemote::Set(void)
 			      &newconfig.remote_local_ip[0], 16, "0123456789."));
     Add(new cMenuEditBoolItem(tr("  Remote keyboard"), 
 			      &newconfig.remote_keyboard));
+    Add(new cMenuEditIntItem( tr("  Max number of clients"), 
+			      &newconfig.remote_max_clients,
+			      1, MAXCLIENTS));
 
     Add(new cMenuEditBoolItem(tr("  PIPE transport"), 
 			      &newconfig.remote_usepipe));
@@ -1570,6 +1573,7 @@ void cMenuSetupRemote::Store(void)
   SetupStore("Remote.LocalIP",    xc.remote_local_ip);
   SetupStore("Remote.Keyboard",   xc.remote_keyboard);
 
+  SetupStore("Remote.MaxClients", xc.remote_max_clients);
   SetupStore("Remote.UsePipe",xc.remote_usepipe);
   SetupStore("Remote.UseTcp", xc.remote_usetcp);
   SetupStore("Remote.UseUdp", xc.remote_useudp);

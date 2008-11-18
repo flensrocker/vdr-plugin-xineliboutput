@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.61 2008-11-16 15:02:45 rofafor Exp $
+ * $Id: frontend_svr.c,v 1.62 2008-11-18 14:09:08 phintuka Exp $
  *
  */
 
@@ -1697,7 +1697,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
     return;    
   }
 
-  if(cli>=MAXCLIENTS) {
+  if(cli>=xc.remote_max_clients || cli>=MAXCLIENTS) {
     const char *msg = "Server busy.\r\n";
     ssize_t len = strlen(msg);
     // too many clients
@@ -1736,8 +1736,20 @@ void cXinelibServer::Handle_Discovery_Broadcast(void)
   struct sockaddr_in from;
 
   if(udp_discovery_recv(fd_discovery, buf, 0, &from) > 0)
-    if(udp_discovery_is_valid_search(buf))
+    if(udp_discovery_is_valid_search(buf)) {
+
+      // Reply only if we can accept one more client
+      int clients = 0;
+      for(int c=0; c<MAXCLIENTS; c++)
+	if(fd_control[c].open())
+	  clients++;
+      if(clients >= xc.remote_max_clients) {
+	LOGMSG("Not replying to discovery broadcast (too many clients)");
+	return;    
+      }
+
       udp_discovery_broadcast(fd_discovery, m_Port, xc.remote_local_ip); 
+    }
 }
 
 void cXinelibServer::Action(void) 

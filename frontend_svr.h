@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.18 2007-03-15 13:29:04 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.19 2008-11-18 14:09:08 phintuka Exp $
  *
  */
 
@@ -12,11 +12,10 @@
 #define __XINELIB_FRONTEND_SVR_H
 
 
+#include "config.h"
 #include "frontend.h"
 
 //----------------------------- cXinelibServer --------------------------------
-
-#define MAXCLIENTS 10
 
 class cBackgroundWriterI;
 class cUdpScheduler;
