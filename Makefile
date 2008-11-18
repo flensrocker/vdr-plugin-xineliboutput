@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.70 2008-11-18 15:27:46 phintuka Exp $
+# $Id: Makefile,v 1.71 2008-11-18 15:47:58 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -52,9 +52,9 @@ ifeq ($(ARCH_APPLE_DARWIN), yes)
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
     LDFLAGS_SO ?= -fvisibility=hidden
 else
-    CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g 
+    CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
-    LDFLAGS_SO ?= -shared -fvisibility=hidden 
+    LDFLAGS_SO ?= -shared -fvisibility=hidden
 endif
 LIBS_VDR ?= 
 
@@ -96,14 +96,12 @@ ifeq ($(strip $(VDRVERSION)),)
     $(warning ********************************************************)
     $(warning VDR not detected ! VDR plugin will not be compiled.     )
     $(warning ********************************************************)
-    XINELIBOUTPUT_VDRPLUGIN = no
     CONFIGURE_OPTS += --disable-vdr
 else
     ifeq ($(strip $(APIVERSION)),)
         $(warning VDR APIVERSION missing, using VDRVERSION $(VDRVERSION) )
         APIVERSION = $(VDRVERSION)
     endif
-    XINELIBOUTPUT_VDRPLUGIN = yes
     CONFIGURE_OPTS += --add-cflags=-I$(VDRDIR)
 endif
 
@@ -213,19 +211,15 @@ endif
 ### The object files (add further files here):
 ###
 
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-  OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
-         i18n.o menuitems.o media_player.o equalizer.o \
-         frontend_local.o frontend_svr.o \
-         tools/cxsocket.o tools/udp_pes_scheduler.o \
-         tools/backgroundwriter.o tools/playlist.o tools/http.o \
-         tools/vdrdiscovery.o tools/time_pts.o tools.o \
-         tools/metainfo_menu.o logdefs.o
-  OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
-else
-  OBJS = 
-  OBJS_MPG = 
-endif
+# VDR plugin
+OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
+       i18n.o menuitems.o media_player.o equalizer.o \
+       frontend_local.o frontend_svr.o \
+       tools/cxsocket.o tools/udp_pes_scheduler.o \
+       tools/backgroundwriter.o tools/playlist.o tools/http.o \
+       tools/vdrdiscovery.o tools/time_pts.o tools.o \
+       tools/metainfo_menu.o logdefs.o
+OBJS_MPG = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 
 # frontends
 OBJS_FE_SO = xine_frontend.o xine/post.o logdefs.o
