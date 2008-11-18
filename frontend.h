@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.22 2008-04-14 19:58:50 phintuka Exp $
+ * $Id: frontend.h,v 1.23 2008-11-18 14:59:17 phintuka Exp $
  *
  */
 
@@ -77,17 +77,17 @@ class cXinelibThread : public cThread, public cListObject
   //
 
   public:
-    virtual int  Poll(cPoller &Poller, int TimeoutMs);
-    virtual bool Flush(int TimeoutMs);
-    virtual void Clear(void);
-    virtual int  Play_PES(const uchar *buf, int len);
-    virtual void OsdCmd(void *cmd) = 0;
+    virtual int     Poll(cPoller &Poller, int TimeoutMs);
+    virtual bool    Flush(int TimeoutMs);
+    virtual void    Clear(void);
+    virtual int     Play_PES(const uchar *buf, int len);
+    virtual void    OsdCmd(void *cmd) = 0;
     virtual int64_t GetSTC(void) { return -1; }
-    virtual void SetHDMode(bool On) { (void)Xine_Control("HDMODE",On?1:0); };
+    virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE",On?1:0); };
 
     // Stream type conversions
-    int  Play_Mpeg1_PES(const uchar *data, int len);
-    bool Play_Mpeg2_ES(const uchar *data, int len, int streamID);
+    int     Play_Mpeg1_PES(const uchar *data, int len);
+    bool    Play_Mpeg2_ES(const uchar *data, int len, int streamID);
 
     // Built-in still images
     bool BlankDisplay(void);

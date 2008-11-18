@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.19 2008-11-18 14:09:08 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.20 2008-11-18 14:54:40 phintuka Exp $
  *
  */
 
@@ -16,6 +16,8 @@
 #include "frontend.h"
 
 //----------------------------- cXinelibServer --------------------------------
+
+#define CTRL_BUF_SIZE 1024
 
 class cBackgroundWriterI;
 class cUdpScheduler;
@@ -33,38 +35,38 @@ class cXinelibServer : public cXinelibThread
     virtual ~cXinelibServer();
 
     // Thread control
-    virtual void Stop(void);
+    virtual void    Stop(void);
 
   protected:
-    virtual void Action(void);
+    virtual void    Action(void);
 
   public:
     // Playback control
-    virtual void TrickSpeed(int Speed);
+    virtual void    TrickSpeed(int Speed);
 
     // Data transfer
-    virtual int  Poll(cPoller &Poller, int TimeoutMs);
-    virtual bool Flush(int TimeoutMs);
-    virtual void Clear(void);
-    virtual int  Play_PES(const uchar *buf, int len);
-    virtual void OsdCmd(void *cmd);
+    virtual int     Poll(cPoller &Poller, int TimeoutMs);
+    virtual bool    Flush(int TimeoutMs);
+    virtual void    Clear(void);
+    virtual int     Play_PES(const uchar *buf, int len);
+    virtual void    OsdCmd(void *cmd);
     virtual int64_t GetSTC();
-    virtual void SetHDMode(bool On);
+    virtual void    SetHDMode(bool On);
 
     // Image grabbing
-    virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality, 
-			     int SizeX, int SizeY);
+    virtual uchar  *GrabImage(int &Size, bool Jpeg, int Quality, 
+			      int SizeX, int SizeY);
     // Playback files
-    virtual int  PlayFileCtrl(const char *Cmd);
-    virtual bool EndOfStreamReached(void);
+    virtual int     PlayFileCtrl(const char *Cmd);
+    virtual bool    EndOfStreamReached(void);
 
     // Configuration						  
-    virtual bool Listen(int port);
+    virtual bool    Listen(int port);
 
 protected:
     // Playback control
-    virtual int  Xine_Control(const char *cmd);  
-    virtual int  Xine_Control_Sync(const char *cmd);  
+    virtual int     Xine_Control(const char *cmd);  
+    virtual int     Xine_Control_Sync(const char *cmd);  
 
 protected:
 
@@ -76,20 +78,20 @@ protected:
     void Read_Control(int cli);
     void Handle_Control(int cli, const char *cmd);
 
-    void Handle_Control_PIPE(int cli, const char *arg);
-    void Handle_Control_RTP(int cli, const char *arg);
-    void Handle_Control_UDP(int cli, const char *arg);
-    void Handle_Control_DATA(int cli, const char *arg);
-    void Handle_Control_KEY(int cli, const char *arg);
+    void Handle_Control_PIPE      (int cli, const char *arg);
+    void Handle_Control_RTP       (int cli, const char *arg);
+    void Handle_Control_UDP       (int cli, const char *arg);
+    void Handle_Control_DATA      (int cli, const char *arg);
+    void Handle_Control_KEY       (int cli, const char *arg);
     void Handle_Control_UDP_RESEND(int cli, const char *arg);
-    void Handle_Control_CONFIG(int cli);
-    void Handle_Control_GRAB(int cli, const char *arg);
-    void Handle_Control_CONTROL(int cli, const char *arg);
-    void Handle_Control_HTTP(int cli, const char *arg);
-    void Handle_Control_RTSP(int cli, const char *arg);
+    void Handle_Control_CONFIG    (int cli);
+    void Handle_Control_GRAB      (int cli, const char *arg);
+    void Handle_Control_CONTROL   (int cli, const char *arg);
+    void Handle_Control_HTTP      (int cli, const char *arg);
+    void Handle_Control_RTSP      (int cli, const char *arg);
 
     void CloseDataConnection(int cli);
-    void CloseConnection(int cli);
+    void CloseConnection    (int cli);
 
 protected:
 
@@ -102,28 +104,29 @@ protected:
     int  fd_discovery;
 
     cxSocket fd_control[MAXCLIENTS];
-    int      fd_data[MAXCLIENTS];
+    int      fd_data   [MAXCLIENTS];
 
     int  m_OsdTimeouts[MAXCLIENTS];
-    char m_CtrlBuf[MAXCLIENTS][1024+1];
-    int  m_CtrlBufPos[MAXCLIENTS];
+    char m_CtrlBuf    [MAXCLIENTS][CTRL_BUF_SIZE + 1];
+    int  m_CtrlBufPos [MAXCLIENTS];
 
-    int  m_MasterCli;
-    bool m_bUdp[MAXCLIENTS];
-    int  m_ConnType[MAXCLIENTS];
-    bool m_bMulticast[MAXCLIENTS];
-    bool m_bConfigOk[MAXCLIENTS];
+    int  m_ConnType   [MAXCLIENTS];  // Control connection type. See frontend_svr.c.
+    bool m_bUdp       [MAXCLIENTS];  // Client uses UDP transport
+    bool m_bMulticast [MAXCLIENTS];  // Client uses multicast RTP
+    bool m_bConfigOk  [MAXCLIENTS];  // Client has been configured
     int  m_iMulticastMask; // bit [cli] is 1 or 0. 1 == multicast in use.
-    int  m_iUdpFlowMask;   // bit [cli] is 1 or 0. 1 == buffer full.
+    int  m_MasterCli;      // Master client (controls playback speed)
 
     cString m_PipesDir;
 
     cBackgroundWriterI *m_Writer[MAXCLIENTS]; // buffered output (pipe/tcp/http)
-    cConnState        *m_State[MAXCLIENTS];  // connection state (http/rtsp)
-    cUdpScheduler     *m_Scheduler;
-    bool               m_Master;
-    cStcFuture        *m_StcFuture;
-    cCmdFutures       *m_Futures;
+    cConnState         *m_State[MAXCLIENTS];  // connection state (http/rtsp)
+    cUdpScheduler      *m_Scheduler;
+    bool                m_Master;
+
+    // Storage for return values of pending RPCs
+    cStcFuture         *m_StcFuture;
+    cCmdFutures        *m_Futures;
 
     int  m_Token;
     int  AllocToken(void);
