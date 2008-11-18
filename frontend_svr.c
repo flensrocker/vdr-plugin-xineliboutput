@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.62 2008-11-18 14:09:08 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.63 2008-11-18 15:07:11 phintuka Exp $
  *
  */
 
@@ -67,7 +67,7 @@ class cCmdFutures : public cHash<cReplyFuture> {};
 
 //----------------------------- cXinelibServer --------------------------------
 
-// (control) connection types
+// (control stream) connection types
 enum {
   ctDetecting = 0x00,
   ctControl   = 0x01,
@@ -114,7 +114,6 @@ cXinelibServer::cXinelibServer(int listen_port) :
   fd_discovery = -1;
 
   m_iMulticastMask = 0;
-  m_iUdpFlowMask   = 0;
   m_MasterCli = -1;
  
   m_Master     = false;
@@ -198,7 +197,6 @@ void cXinelibServer::CloseDataConnection(int cli)
   m_bMulticast[cli] = false;         
   m_bConfigOk[cli] = false;          
 
-  m_iUdpFlowMask &= ~(1<<cli);       
   m_iMulticastMask &= ~(1<<cli);     
 
   if(!m_iMulticastMask && !xc.remote_rtp_always_on) 
@@ -715,7 +713,7 @@ bool cXinelibServer::HasClients(void)
   return false;
 }
 
-int cXinelibServer::PlayFileCtrl(const char *Cmd)
+int cXinelibServer::PlayFileCtrl(const char *Cmd, int TimeoutMs)
 {
   /* Check if there are any clients */
   if(!HasClients()) {
@@ -749,16 +747,17 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
     int64_t t = cTimeMs::Now();
 #endif
 
-    int timeout = bPlayfile ? PLAYFILE_TIMEOUT : PLAYFILE_CTRL_TIMEOUT;
+    if(TimeoutMs < 0)
+      TimeoutMs = bPlayfile ? PLAYFILE_TIMEOUT : PLAYFILE_CTRL_TIMEOUT;
 
-    future.Wait(timeout);
+    future.Wait(TimeoutMs);
 
     Lock();
     m_Futures->Del(&future, token);
     Unlock();
 
     if(!future.IsReady()) {
-      LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, timeout, token);
+      LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, TimeoutMs, token);
       return -1;
     }
 
@@ -1578,11 +1577,7 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
   } else if(!strncasecmp(cmd, "RTP", 3)) {
     Handle_Control_RTP(cli, cmd+4);
 
-  } else if(!strncasecmp(cmd, "UDP FULL 1", 10)) {
-    m_iUdpFlowMask |= (1<<cli);
-
-  } else if(!strncasecmp(cmd, "UDP FULL 0", 10)) {
-    m_iUdpFlowMask &= ~(1<<cli);
+  } else if(!strncasecmp(cmd, "UDP FULL", 8)) {
 
   } else if(!strncasecmp(cmd, "UDP RESEND ", 11)) {
     Handle_Control_UDP_RESEND(cli, cmd+11);
@@ -1640,7 +1635,7 @@ void cXinelibServer::Read_Control(int cli)
 
     ++m_CtrlBufPos[cli];
 
-    if( m_CtrlBufPos[cli] > 512) {
+    if( m_CtrlBufPos[cli] > CTRL_BUF_SIZE-2) {
       LOGMSG("Received too long control message from client %d (%d bytes)", 
 	     cli, m_CtrlBufPos[cli]);
       LOGMSG("%81s",m_CtrlBuf[cli]);
