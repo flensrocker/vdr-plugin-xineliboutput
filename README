@@ -39,6 +39,7 @@ Requirements
     (Required for HUD OSD to blend high-quality OSD using graphics hardware)
   - libextractor 0.5.20 or later (http://libextractor.sourceforge.net).
     (used for media file metadata extraction in media player)
+  - libjpeg for grabbing in JPEG format
 
 WARNING
 
@@ -68,27 +69,36 @@ Public CVS
 
 Buildtime options
 
-  X11 and xine-lib are detected by Makefile.
-  It is possible to override auto-detection by adding
-  following definitions to VDR's Make.config:
+  VDR, X11 and xine-lib are auto-detected by the build system.
+  By default all possible plugins and executables are build.
 
-    enable/disable building of X11 frontends:
-      XINELIBOUTPUT_X11 = 1
-      XINELIBOUTPUT_X11 = 0
+  Default configuration can be overridden by running configure
+  script manually. List of all configurable features can be 
+  acquired by running
+
+      ./configure --help
+
+  For long-time use it is preferred to set configure options
+  in Make.config file. Make.config is first read from VDR source 
+  directory and then from xineliboutput plugin source directory.
+
+  Basic Make.config entries:
+
+    enable/disable building of VDR plugin:
+        XINELIBOUTPUT_CONFIGURE_OPTS += --enable-vdr / --disable-vdr
+
+    enable/disable X11 frontends:
+        XINELIBOUTPUT_CONFIGURE_OPTS += --enable-x11 / --disable-x11
 
     enable/disable framebuffer frontends:
-      XINELIBOUTPUT_FB = 1
-      XINELIBOUTPUT_FB = 0
+        XINELIBOUTPUT_CONFIGURE_OPTS += --enable-fb / --disable-fb
 
     enable/disable xine (input)plugin:
-      XINELIBOUTPUT_XINEPLUGIN = 1
-      XINELIBOUTPUT_XINEPLUGIN = 0
+        XINELIBOUTPUT_CONFIGURE_OPTS += --enable-libxine / --disable-libxine
 
-  or changing corresponding lines in plugin's Makefile.
-
-  It is possible to compile only remote frontends with command 
+  It is possible to compile only remote frontends with command
   "make frontends". Building frontends is possible without VDR.
-  Only xine-lib (and corresponding development package or headers)
+  Only xine-lib and corresponding development package or headers
   are required.
 
 
