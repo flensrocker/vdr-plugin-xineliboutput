@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.20 2008-11-17 23:27:23 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.21 2008-11-19 18:55:20 rofafor Exp $
  *
  */
 /*
@@ -103,7 +103,7 @@ static void lircd_connect(void)
 
 static void *lirc_receiver_thread(void *fe_gen)
 {
-  frontend_t *fe = (frontend_t*)fe;
+  frontend_t *fe = (frontend_t*)fe_gen;
   int timeout = -1;
   uint64_t FirstTime = time_ms();
   uint64_t LastTime = time_ms();
