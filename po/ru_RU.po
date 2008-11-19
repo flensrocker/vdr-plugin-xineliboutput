@@ -562,6 +562,9 @@ msgstr ""
 msgid "  Remote keyboard"
 msgstr "  Удаленная клавиатура"
 
+msgid "  Max number of clients"
+msgstr ""
+
 msgid "  PIPE transport"
 msgstr "  PIPE транспорт"
 

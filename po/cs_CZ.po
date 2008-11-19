@@ -563,6 +563,9 @@ msgstr ""
 msgid "  Remote keyboard"
 msgstr ""
 
+msgid "  Max number of clients"
+msgstr ""
+
 msgid "  PIPE transport"
 msgstr "  PIPE transport"
 

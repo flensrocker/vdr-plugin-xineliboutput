@@ -561,6 +561,9 @@ msgstr "  Indirizzo in ascolto"
 msgid "  Remote keyboard"
 msgstr "  Tastiera remota"
 
+msgid "  Max number of clients"
+msgstr ""
+
 msgid "  PIPE transport"
 msgstr "  Protocollo PIPE"
 

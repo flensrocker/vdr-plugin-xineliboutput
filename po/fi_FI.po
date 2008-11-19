@@ -563,6 +563,9 @@ msgstr "  Kuuntele osoitteessa"
 msgid "  Remote keyboard"
 msgstr "  Käytä etänäppäimistöä"
 
+msgid "  Max number of clients"
+msgstr "  Asiakkaiden maksimimäärä"
+
 msgid "  PIPE transport"
 msgstr "  PIPE-siirto"
 
@@ -649,6 +652,3 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
-
-#~ msgid "None"
-#~ msgstr "ei"
