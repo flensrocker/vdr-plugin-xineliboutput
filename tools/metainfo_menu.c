@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.6 2008-10-31 20:55:57 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.7 2008-11-20 15:44:37 phintuka Exp $
  *
  */
 
@@ -15,8 +15,8 @@
 #endif
 
 #include <vdr/status.h>
+#include <vdr/i18n.h>
 
-#include "../i18n.h"
 #include "../config.h"
 
 #include "metainfo_menu.h"
