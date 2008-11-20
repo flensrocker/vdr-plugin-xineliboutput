@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.25 2008-09-21 13:51:07 phintuka Exp $
+ * $Id: osd.c,v 1.26 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -246,11 +246,7 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
 }
 
 cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
-#if VDRVERSNUM >= 10509
     : cOsd(x, y, Level)
-#else
-    : cOsd(x, y)
-#endif
 {
   TRACEF("cXinelibOsd::cXinelibOsd");
 
@@ -452,11 +448,6 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
   TRACEF("cXinelibOsdProvider::CreateOsd");
 
   cMutexLock ml(&cXinelibOsd::m_Lock);
-
-#if VDRVERSNUM < 10509
-  if(cXinelibOsd::m_OsdStack.First())
-    LOGMSG("cXinelibOsdProvider::CreateOsd - OSD already open !");
-#endif
 
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top, Level);
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.24 2008-11-18 14:59:54 phintuka Exp $
+ * $Id: frontend.h,v 1.25 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -57,11 +57,7 @@ class cXinelibThread : public cThread, public cListObject
     void SetStillMode(bool);
     void SetNoVideo(bool bVal);
     void AudioStreamChanged(bool ac3, int StreamId);
-#if VDRVERSNUM < 10515
-    void SpuStreamChanged(int StreamId);
-#else
     void SetSubtitleTrack(eTrackType Track);
-#endif
 
   protected:
     int  Xine_Control(const char *cmd, const char *p1);

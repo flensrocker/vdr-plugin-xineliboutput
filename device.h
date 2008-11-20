@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.37 2008-11-18 15:14:40 phintuka Exp $
+ * $Id: device.h,v 1.38 2008-11-20 11:46:30 rofafor Exp $
  *
  */
 
@@ -83,9 +83,6 @@ class cXinelibDevice : public cDevice
 
 
   // Device capabilities
-  private:
-    bool      m_VDR_TrickSpeedIBP;
-
   public:
 
     virtual bool HasDecoder(void) const { return true; };
@@ -129,29 +126,10 @@ class cXinelibDevice : public cDevice
     virtual void SetAudioTrackDevice(eTrackType Type);
 
   private:
-#if VDRVERSNUM < 10515
-    // (DVD) SPU tracks
-    tTrackId m_DvdSpuTrack[64];
-    int      m_CurrentDvdSpuTrack;
-    bool     m_ForcedDvdSpuTrack;
-#endif
     char     m_MetaInfo[mi_Count][MAX_METAINFO_LEN+1];
 
   public:
-#if VDRVERSNUM < 10515
-    void ClrAvailableDvdSpuTracks(bool NotifyFrontend = true);
-    bool SetAvailableDvdSpuTrack(int Type, const char *lang = NULL, bool Current = false);
-
-    int   NumDvdSpuTracks(void) const;
-    const tTrackId *GetDvdSpuTrack(int Type) const;
-    const char *GetDvdSpuLang(int Type) const;
-
-    int   GetCurrentDvdSpuTrack(void) const { return m_CurrentDvdSpuTrack; }
-    bool  SetCurrentDvdSpuTrack(int Type, bool Force=false);
-    void  EnsureDvdSpuTrack(void);
-#else
     virtual void SetSubtitleTrackDevice(eTrackType Type);
-#endif
 
     const char *GetMetaInfo(eMetainfoType Type);
     void        SetMetaInfo(eMetainfoType Type, const char *Value);
@@ -268,13 +246,6 @@ class cXinelibDevice : public cDevice
     virtual int  PlayVideo(const uchar *Data, int Length);
     virtual int  PlayAudio(const uchar *Data, int Length, uchar Id);
     virtual int  PlaySubtitle(const uchar *Data, int Length);
-
-#if VDRVERSNUM < 10510
-    // conflicts with vdr-1.5.10+ DVB subtitle handling
-    // override cDevice to get DVD SPUs
-    virtual int PlayPesPacket(const uchar *Data, int Length,
-			      bool VideoOnly = false);
-#endif
 };
 
 #endif // __XINELIB_DEVICE_H

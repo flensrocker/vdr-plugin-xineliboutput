@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.33 2008-11-17 23:39:20 phintuka Exp $
+ * $Id: frontend_local.c,v 1.34 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -17,9 +17,7 @@
 
 #include <vdr/config.h>
 #include <vdr/tools.h>
-#if VDRVERSNUM >= 10501 || (defined(PATCH_SHUTDOWN_REWRITE) && PATCH_SHUTDOWN_REWRITE >= 100)
 #include <vdr/shutdown.h>
-#endif
 
 #include "logdefs.h"
 #include "config.h"
@@ -443,11 +441,7 @@ void cXinelibLocal::Action(void)
 
     if(!m_bReconfigRequest && xc.exit_on_close) {
       LOGMSG("Shutting down VDR");
-#if VDRVERSNUM >= 10501 || (defined(PATCH_SHUTDOWN_REWRITE) && PATCH_SHUTDOWN_REWRITE >= 100)
       ShutdownHandler.RequestEmergencyExit();
-#else
-      cThread::EmergencyExit(true);
-#endif
       break;
     }
   }

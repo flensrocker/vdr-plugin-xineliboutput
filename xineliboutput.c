@@ -21,24 +21,24 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.36 2008-11-01 07:23:00 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.37 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
 #include "features.h"
 
 #include <vdr/plugin.h>
+#include <vdr/i18n.h>
 
 #include "logdefs.h"
-#include "i18n.h"
 #include "config.h"
 #include "device.h"
 #include "setup_menu.h"
 #include "menu.h"
 #include "media_player.h"
 
-#if VDRVERSNUM < 10400
-# error VDR versions < 1.4.0 are not supported !
+#if defined(APIVERSNUM) && (APIVERSNUM < 10600)
+# error VDR API versions < 1.6.0 are not supported !
 #endif
 
 //---------------------------------plugin-------------------------------------
@@ -153,10 +153,6 @@ bool cPluginXinelibOutput::Initialize(void)
 {
   // Initialize any background activities the plugin shall perform.
   TRACEF("cPluginXinelibOutput::Initialize");
-
-#if VDRVERSNUM < 10507
-  RegisterI18n(Phrases);
-#endif
 
   cXinelibDevice::Instance();
   return true;

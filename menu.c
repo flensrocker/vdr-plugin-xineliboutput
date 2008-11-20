@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.59 2008-11-14 22:29:28 phintuka Exp $
+ * $Id: menu.c,v 1.60 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -17,6 +17,7 @@
 #include <vdr/menu.h>
 #include <vdr/plugin.h>
 #include <vdr/videodir.h>
+#include <vdr/i18n.h>
 
 #include "logdefs.h"
 #include "config.h"
@@ -26,14 +27,13 @@
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
-#include "i18n.h"          // trVDR for VDR-1.4.x
 
 #ifndef HOTKEY_START
 # define HOTKEY_START        kRed
 
 # define HOTKEY_DVD          k0    /* */
 # define HOTKEY_DVD_TRACK1   k1    /* */
-# define HOTKEY_DVD_SPU      k2    /* */
+# define HOTKEY_RESERVED     k2    /* */
 
 # define HOTKEY_NEXT_ASPECT  k3    /* auto, 4:3, 16:9 */
 # define HOTKEY_TOGGLE_CROP  k4    /* off, force, auto */
@@ -456,137 +456,6 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 }
 
 
-#if VDRVERSNUM < 10515
-
-//-------------------------- cDisplaySpuTracks ------------------------------
-//
-// cDisplaySpuTracks : almost identical copy of VDR 1.4.5 cDisplayTracks
-//
-
-#define TRACKTIMEOUT 5000 //ms
-
-class cDisplaySpuTracks : public cOsdObject {
-private:
-  cSkinDisplayTracks *displayTracks;
-  cTimeMs timeout;
-  eTrackType types[64+2];
-  char *descriptions[64+2];
-  int numTracks, track;
-  static cDisplaySpuTracks *currentDisplayTracks;
-  virtual void Show(void);
-  cDisplaySpuTracks(void);
-public:
-  virtual ~cDisplaySpuTracks();
-  static bool IsOpen(void) { return currentDisplayTracks != NULL; }
-  static cDisplaySpuTracks *Create(void);
-  static void Process(eKeys Key);
-  eOSState ProcessKey(eKeys Key);
-  };
-
-cDisplaySpuTracks *cDisplaySpuTracks::currentDisplayTracks = NULL;
-
-cDisplaySpuTracks::cDisplaySpuTracks(void) : cOsdObject(true)
-{
-  currentDisplayTracks = this;
-  numTracks = track = 0;
-  int CurrentTrack = cXinelibDevice::Instance().GetCurrentDvdSpuTrack();
-
-  track = numTracks;
-  types[numTracks] = eTrackType(ttXSubtitleNone);
-  descriptions[numTracks] = strdup("(none)");
-  numTracks++;
-
-  for (int i = 0; i <= 63; i++) {
-      const tTrackId *TrackId = cXinelibDevice::Instance().GetDvdSpuTrack(i);
-      if (TrackId) {
-         types[numTracks] = eTrackType(i);
-         descriptions[numTracks] = strdup(*TrackId->description ? TrackId->description : *TrackId->language ? TrackId->language : *itoa(i));
-         if (i == CurrentTrack)
-            track = numTracks;
-         numTracks++;
-         }
-      }
-  timeout.Set(TRACKTIMEOUT);
-  displayTracks = NULL;
-}
-
-cDisplaySpuTracks::~cDisplaySpuTracks()
-{
-  delete displayTracks;
-  currentDisplayTracks = NULL;
-  for (int i = 0; i < numTracks; i++)
-      free(descriptions[i]);
-}
-
-void cDisplaySpuTracks::Show(void)
-{
-  if(!displayTracks)
-    displayTracks = Skins.Current()->DisplayTracks(tr("Subtitles"), numTracks, descriptions);
-
-  displayTracks->SetTrack(track, descriptions);
-  displayTracks->SetAudioChannel(-1);
-  displayTracks->Flush();
-}
-
-cDisplaySpuTracks *cDisplaySpuTracks::Create(void)
-{
-  if (cXinelibDevice::Instance().NumDvdSpuTracks() > 0) {
-     if (!currentDisplayTracks)
-        new cDisplaySpuTracks;
-     return currentDisplayTracks;
-     }
-  return NULL;
-}
-
-void cDisplaySpuTracks::Process(eKeys Key)
-{
-  if (currentDisplayTracks)
-     currentDisplayTracks->ProcessKey(Key);
-}
-
-eOSState cDisplaySpuTracks::ProcessKey(eKeys Key)
-{
-  if(!displayTracks) {
-    Show();
-  }
-
-  int oldTrack = track;
-  switch (Key) {
-    case kUp|k_Repeat:
-    case kUp:
-    case kDown|k_Repeat:
-    case kDown:
-         if (NORMALKEY(Key) == kUp && track > 0)
-            track--;
-         else if (NORMALKEY(Key) == kDown && track < numTracks - 1)
-            track++;
-         timeout.Set(TRACKTIMEOUT);
-         break;
-    case kNext:
-    //case kSubtitle|k_Repeat:
-    //case kSubtitle:
-         if (++track >= numTracks)
-            track = 0;
-         timeout.Set(TRACKTIMEOUT);
-         break;
-    case kOk:
-         if (track != cXinelibDevice::Instance().GetCurrentDvdSpuTrack())
-            oldTrack = -1; // make sure we explicitly switch to that track
-         timeout.Set();
-         break;
-    case kNone: break;
-    default: if ((Key & k_Release) == 0)
-                return osEnd;
-    }
-  if (track != oldTrack)
-     Show();
-  if (track != oldTrack) {
-     cXinelibDevice::Instance().SetCurrentDvdSpuTrack(types[track], true);
-     }
-  return timeout.TimedOut() ? osEnd : osContinue;
-}
-#endif // VDRVERSNUM < 10515
-
 //----------------------------- cMenuXinelib ---------------------------------
 
 #include "tools/display_message.h"
@@ -629,10 +498,6 @@ cMenuXinelib::cMenuXinelib()
     Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
   else
     Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
-#if VDRVERSNUM < 10515
-  if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
-    Add(new cOsdItem(tr("Select subtitle track >>"), osUser5));
-#endif
   Add(NewTitle(tr("Video settings")));
   Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
 					   &novideo));
@@ -745,14 +610,6 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cControl::Shutdown();
       cControl::Launch(new cXinelibPlayerControl(ShowMusic, "cdda:/"));
       return osEnd;
-#if VDRVERSNUM < 10515
-    case osUser5:
-      if(!g_PendingMenuAction) {
-	g_PendingMenuAction = cDisplaySpuTracks::Create();
-	return osPlugin;
-      }
-      return osContinue;
-#endif
     case osUser7:
       if(!g_PendingMenuAction) {
 	g_PendingMenuAction = new cEqualizer();
@@ -804,10 +661,6 @@ void cMenuXinelib::Store(void)
   xc.headphone = headphone;
 }
 
-#if APIVERSNUM < 10404
-#  warning Using hotkeys may segfault with VDR version < 1.4.3-2
-#endif
-
 eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 {
   eOSState NewState = osEnd;
@@ -826,21 +679,6 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       cControl::Launch(new cXinelibDvdPlayerControl("dvd:/1"));
       break;
 
-#if VDRVERSNUM < 10515
-    case HOTKEY_DVD_SPU:
-      /* use audio track display menu */
-      if(!g_PendingMenuAction) {
-	bool WasOpen = cDisplaySpuTracks::IsOpen();
-	g_PendingMenuAction = cDisplaySpuTracks::Create();
-	if(g_PendingMenuAction) {
-	  cRemote::CallPlugin("xineliboutput");
-	  if(WasOpen || !OnlyInfo) cRemote::Put(kNext);
-	} else {
-	  Message = tr("No subtitles available!");
-	}
-      }
-      break;
-#endif
     case HOTKEY_LOCAL_FE:
       /* off, on */
       {

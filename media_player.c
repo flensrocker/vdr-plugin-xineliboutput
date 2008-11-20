@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.64 2008-10-19 17:45:56 phintuka Exp $
+ * $Id: media_player.c,v 1.65 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -130,9 +130,7 @@ void cXinelibPlayer::SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
 
 void cXinelibPlayer::SetSubtitleTrack(eTrackType Type, const tTrackId *TrackId)
 {
-#if VDRVERSNUM >= 10515
   cXinelibDevice::Instance().SetSubtitleTrackDevice(Type);
-#endif
 }
 
 bool cXinelibPlayer::GetIndex(int &Current, int &Total, bool SnapToIFrame) 
@@ -1006,15 +1004,6 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     case kRed:    Hide();
                   Menu = new cDvdMenu();
 		  break;
-#if VDRVERSNUM < 10515
-    // SPU channel
-    case k5:      cXinelibDevice::Instance().SetCurrentDvdSpuTrack(
-                       cXinelibDevice::Instance().GetCurrentDvdSpuTrack() - 2);
-    case k2:      cRemote::CallPlugin("xineliboutput"); 
-                  cRemote::Put(kRed); /* shortcut key */ 
-		  cRemote::Put(k2);
-                  break;
-#endif
     // Playback control
     case kGreen:  m_Player->Control("SEEK -60");  break;
     case kYellow: m_Player->Control("SEEK +60");  break;

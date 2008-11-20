@@ -220,9 +220,6 @@ msgstr "Pøehrát soubor"
 msgid "Button$Queue"
 msgstr "Fronta"
 
-msgid "Subtitles"
-msgstr "Titulky"
-
 msgid "Media"
 msgstr "Média"
 
@@ -246,9 +243,6 @@ msgstr "Pøehrát vzdálené CD >>"
 
 msgid "Play audio CD >>"
 msgstr "Pøehrát zvukové CD >>"
-
-msgid "Select subtitle track >>"
-msgstr "Výbìr titulkù >>"
 
 msgid "Video settings"
 msgstr "Nastavení obrazu"
@@ -276,9 +270,6 @@ msgstr ""
 
 msgid "Audio equalizer >>"
 msgstr "Korekce zvuku (ekvalizér) >>"
-
-msgid "No subtitles available!"
-msgstr "Titulky nejsou k dispozici!"
 
 msgid "Local Frontend"
 msgstr "Lokální rozhraní"

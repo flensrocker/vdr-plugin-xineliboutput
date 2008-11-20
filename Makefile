@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.71 2008-11-18 15:47:58 phintuka Exp $
+# $Id: Makefile,v 1.72 2008-11-20 11:46:30 rofafor Exp $
 #
 
 # The official name of this plugin.
@@ -213,7 +213,7 @@ endif
 
 # VDR plugin
 OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
-       i18n.o menuitems.o media_player.o equalizer.o \
+       menuitems.o media_player.o equalizer.o \
        frontend_local.o frontend_svr.o \
        tools/cxsocket.o tools/udp_pes_scheduler.o \
        tools/backgroundwriter.o tools/playlist.o tools/http.o \

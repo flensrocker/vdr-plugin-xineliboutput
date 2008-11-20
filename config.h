@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.56 2008-11-18 14:09:07 phintuka Exp $
+ * $Id: config.h,v 1.57 2008-11-20 11:46:30 rofafor Exp $
  *
  */
 
@@ -183,10 +183,6 @@
 #define FF_H264_SPEED_OVER_ACCURACY_yes   2
 #define FF_H264_SPEED_OVER_ACCURACY_count 3
 
-#if VDRVERSNUM >= 10510
-# define DEVICE_SUPPORTS_IBP_TRICKSPEED
-#endif
-
 #define HIDDEN_OPTION(opt) \
   (xc.IsOptionHidden(xc.opt))
 #define READONLY_OPTION(opt) \
@@ -295,10 +291,6 @@ class config_t {
     int  dvb_subtitles;            // send DVB subtitles in data stream (decode+display using xine-lib or external media player)
 
     // Media player
-#if VDRVERSNUM < 10515
-    int  spu_autoshow;    // Preferred SPU language(s) for media player
-    char spu_lang[4][4];
-#endif
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: iconv.h,v 1.6 2008-09-22 10:56:31 phintuka Exp $
+ * $Id: iconv.h,v 1.7 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -40,11 +40,7 @@ cIConv::cIConv(const char *SrcCharset, const char * DstCharset)
   if(!SrcCharset)
     SrcCharset = "UTF-8";
   if(!DstCharset) {
-#if APIVERSNUM >= 10503
     DstCharset = cCharSetConv::SystemCharacterTable();
-#else
-    DstCharset = I18nCharSets()[Setup.OSDLanguage];
-#endif
   }
   m_ic = (iconv_t)-1;
 

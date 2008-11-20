@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.64 2008-11-18 14:09:07 phintuka Exp $
+ * $Id: setup_menu.c,v 1.65 2008-11-20 11:46:31 rofafor Exp $
  *
  */
 
@@ -13,12 +13,12 @@
 #include <vdr/config.h>
 #include <vdr/plugin.h>
 #include <vdr/remote.h>
+#include <vdr/i18n.h>
 
 #include "setup_menu.h"
 #include "device.h"
 #include "menuitems.h"
 #include "config.h"
-#include "i18n.h"      // trVDR for vdr-1.4.x
 #include "osd.h"       // cXinelibOsdProvider::RefreshOsd()
 
 
@@ -854,9 +854,6 @@ class cMenuSetupOSD : public cMenuSetupPage
     cOsdItem *ctrl_alpha_abs;
     cOsdItem *ctrl_blending;
     cOsdItem *ctrl_lowres;
-#if VDRVERSNUM < 10515
-    cOsdItem *ctrl_spulang0;
-#endif
 
   protected:
     virtual void Store(void);
@@ -896,9 +893,6 @@ void cMenuSetupOSD::Set(void)
   ctrl_lowres = NULL;
   ctrl_alpha = NULL;
   ctrl_alpha_abs = NULL;
-#if VDRVERSNUM < 10515
-  ctrl_spulang0 = NULL;
-#endif
 
   Add(NewTitle(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"), 
@@ -919,12 +913,10 @@ void cMenuSetupOSD::Set(void)
       new cMenuEditStraI18nItem(tr("Scaling method"), &newconfig.osd_scaling,
 	                        OSD_SCALING_count, xc.s_osdScalings));
 
-#if VDRVERSNUM >= 10509
 # if 0
   Add(new cMenuEditStraI18nItem(tr("Show all layers"), &newconfig.osd_mixer, 
 			OSD_MIXER_count, xc.s_osdMixers));
 # endif
-#endif
 
   Add(ctrl_alpha =
       new cMenuEditTypedIntItem(tr("Dynamic transparency correction"), "%", 
@@ -935,32 +927,13 @@ void cMenuSetupOSD::Set(void)
 				&newconfig.alpha_correction_abs, -0xff, 0xff,
 				tr("Off")));
   
-#if VDRVERSNUM < 10515
-  Add(NewTitle(tr("Subtitles")));
-  Add(new cMenuEditBoolItem(trVDR("Setup.EPG$Preferred languages"), 
-			    &newconfig.spu_autoshow));
-  if(newconfig.spu_autoshow) {
-    Add(ctrl_spulang0 =
-	new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
-			     newconfig.spu_lang[0], 4, LangNameChars));
-    Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
-			     newconfig.spu_lang[1], 4, LangNameChars));
-    Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
-			     newconfig.spu_lang[2], 4, LangNameChars));
-    Add(new cMenuEditStrItem(trVDR("Setup.EPG$Preferred language"),
-			     newconfig.spu_lang[3], 4, LangNameChars));
-  }
-#endif
-
   Add(new cMenuEditStraI18nItem(tr("External subtitle size"),
 				&newconfig.extsub_size, SUBTITLESIZE_count, xc.s_subtitleSizes));
 
-#if VDRVERSNUM >= 10510
   Add(new cMenuEditBoolItem(tr("DVB subtitle decoder"),
 			    &newconfig.dvb_subtitles,
 			    "VDR",
 			    "frontend"));
-#endif
 
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
@@ -990,12 +963,6 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
     Set();
   if(newconfig.osd_blending!=OSD_BLENDING_SOFTWARE && ctrl_lowres)
     Set();
-#if VDRVERSNUM < 10515
-  if(newconfig.spu_autoshow && !ctrl_spulang0)
-    Set();
-  if(!newconfig.spu_autoshow && ctrl_spulang0)
-    Set();
-#endif
   return state;
 }
 
@@ -1028,13 +995,6 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.AlphaCorrectionAbs", xc.alpha_correction_abs);
 
   SetupStore("OSD.ExtSubSize", xc.extsub_size);
-#if VDRVERSNUM < 10515
-  SetupStore("OSD.SpuAutoSelect", xc.spu_autoshow);
-  SetupStore("OSD.SpuLang0", xc.spu_lang[0]);
-  SetupStore("OSD.SpuLang1", xc.spu_lang[1]);
-  SetupStore("OSD.SpuLang2", xc.spu_lang[2]);
-  SetupStore("OSD.SpuLang3", xc.spu_lang[3]);
-#endif
   SetupStore("OSD.DvbSubtitles", xc.dvb_subtitles);
 
   Setup.Save();
@@ -1718,11 +1678,7 @@ void cTestGrayscale::Show()
   int i;
 
   if(!m_Osd)
-#if VDRVERSNUM >= 10509
     m_Osd = cOsdProvider::NewOsd(OSD_X, OSD_Y, 0);
-#else
-    m_Osd = cOsdProvider::NewOsd(OSD_X, OSD_Y);
-#endif
 
   if(m_Osd) {
     if (m_Osd->CanHandleAreas(areas, sizeof(areas) / sizeof(tArea) ) == oeOk) {
@@ -1821,11 +1777,7 @@ void cTestBitmap::Show()
   int x, y, bit = 0;
 
   if(!m_Osd) {
-#if VDRVERSNUM >= 10509
     m_Osd = cOsdProvider::NewOsd(OSD_X, OSD_Y, 0);
-#else
-    m_Osd = cOsdProvider::NewOsd(OSD_X, OSD_Y);
-#endif
 
     if(m_Osd) {
       if (m_Osd->CanHandleAreas(areas, sizeof(areas) / sizeof(tArea) ) == oeOk) {

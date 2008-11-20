@@ -219,9 +219,6 @@ msgstr "Datei abspielen"
 msgid "Button$Queue"
 msgstr "Warteschlange"
 
-msgid "Subtitles"
-msgstr "Untertitel"
-
 msgid "Media"
 msgstr "Medien"
 
@@ -245,9 +242,6 @@ msgstr "Entfernte CD abspielen >>"
 
 msgid "Play audio CD >>"
 msgstr "Musik-CD abspielen >>"
-
-msgid "Select subtitle track >>"
-msgstr "Wähle Untertitel >>"
 
 msgid "Video settings"
 msgstr "Video-Einstellungen"
@@ -275,9 +269,6 @@ msgstr "Audio-Komprimierung"
 
 msgid "Audio equalizer >>"
 msgstr "Audio-Equalizer >>"
-
-msgid "No subtitles available!"
-msgstr "Keine Untertitel verfügbar!"
 
 msgid "Local Frontend"
 msgstr "Lokale Anzeige"

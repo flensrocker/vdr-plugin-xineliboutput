@@ -25,7 +25,7 @@ Description
 
 Requirements
 
-  - vdr-1.4.0 or later
+  - vdr-1.6.0 or later (use "1.0.x" branch for older vdr versions)
     (vdr is required only at server side)
   - xine-lib 1.1.1 or later
     (xine-lib is not required for server in network-only usage)
@@ -393,17 +393,10 @@ Media player key bindings for audio files
   FastRew/FastFwd  Play faster/slower
   User7        Random play / normal play
 
-  with VDR < 1.5.15:
-    If media file includes multiple subtitles (DVD, .mkv file, ...),
-    subtitle language can be selected from xineliboutput plugin menu, 
-    "Select subtitle track" key macro or from DVD subtitle menu.
-    Preferred subtitle languages can be selected from plugin setup menu.
-
-  with VDR >= 1.5.15:
-    If media file includes multiple subtitles (DVD, .mkv file, ...),
-    subtitle language can be selected with VDR Subtitle key or from
-    DVD subtitle menu.
-    Plugin uses VDR's preferred subtitle language settings.
+  If media file includes multiple subtitles (DVD, .mkv file, ...),
+  subtitle language can be selected with VDR Subtitle key or from
+  DVD subtitle menu.
+  Plugin uses VDR's preferred subtitle language settings.
 
 DVD player key bindings
 
@@ -422,8 +415,6 @@ DVD player key bindings
   9              Next title
   7              Previous title
   Info           Show progress display
-  2              Next subtitle track     (with VDR < 1.5.15)
-  5              Previous subtitle track (with VDR < 1.5.15)
   FastRew/FastFwd,
   Left/Right    Play faster/slower
 
@@ -458,16 +449,9 @@ DVD playback
   Audio track can be selected from VDR audio track menu 
   (keys "Menu" + "Green" or "Audio") or from DVD menu.
 
-  with VDR < 1.5.15:
-    DVD subtitle language can be selected from xineliboutput plugin 
-    menu, from DVD menu, with keys "2" and "5" or from subtitle
-    menu (using "Select subtitle track" key macro).
-    Preferred subtitle languages can be selected from plugin setup menu.
-
-  with VDR >= 1.5.15:
-    DVD subtitle language can be selected with VDR Subtitle key or 
-    from DVD subtitle menu.
-    Plugin uses VDR's preferred subtitle language settings.
+  DVD subtitle language can be selected with VDR Subtitle key or 
+  from DVD subtitle menu.
+  Plugin uses VDR's preferred subtitle language settings.
 
 
 Aspect ratio setting
@@ -496,7 +480,7 @@ Shortcut key macros
 
     Start replaying DVD                  (User? @xineliboutput Red 0)
     Start replaying Title 1 from DVD     (User? @xineliboutput Red 1)
-    Select subtitle track (VDR <1.5.15)  (User? @xineliboutput Red 2)
+    <reserved>                           (User? @xineliboutput Red 2)
     Toggle aspect ratio                  (User? @xineliboutput Red 3)
     Toggle letterbox -> 16:9 cropping    (User? @xineliboutput Red 4)
     Toggle stereo -> 5.1 upmix           (User? @xineliboutput Red 5)
@@ -509,11 +493,6 @@ Shortcut key macros
     Increase audio delay                 (User? @xineliboutput Red Up)
     Decrease audio delay                 (User? @xineliboutput Red Down)
     Toggle the video aspect ratio        (User? @xineliboutput Red Right)
-
-  with VDR < 1.5.15:
-  Defining "Select subtitle track" macro key enables VDR-style
-  subtitle track menu for media player (identical to audio track 
-  selection with VDR "Audio" key).
 
 
 Special frontend control keys

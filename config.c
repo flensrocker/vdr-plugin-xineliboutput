@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.74 2008-11-18 14:09:07 phintuka Exp $
+ * $Id: config.c,v 1.75 2008-11-20 11:46:30 rofafor Exp $
  *
  */
 
@@ -18,10 +18,10 @@
 #include <vdr/config.h>
 #include <vdr/videodir.h>
 #include <vdr/device.h>
+#include <vdr/i18n.h>
 
 #include "logdefs.h"
 #include "config.h"
-#include "i18n.h"
 
 #define STRN0CPY(dst, src) \
   do { \
@@ -505,14 +505,6 @@ config_t::config_t() {
   osd_blending             = OSD_BLENDING_SOFTWARE;
   osd_blending_lowresvideo = OSD_BLENDING_HARDWARE;
 
-#if VDRVERSNUM < 10515
-  spu_autoshow = 0;
-  memset(spu_lang, 0, sizeof(spu_lang));
-  strn0cpy(spu_lang[0], "eng", sizeof(spu_lang[0]));
-  strn0cpy(spu_lang[1], "deu", sizeof(spu_lang[1]));
-  strn0cpy(spu_lang[2], "fin", sizeof(spu_lang[2]));
-  strn0cpy(spu_lang[3], "" ,   sizeof(spu_lang[3]));
-#endif
   extsub_size = -1;
   dvb_subtitles = 0;
 
@@ -568,11 +560,7 @@ config_t::config_t() {
   use_x_keyboard = 1;
 
   // video settings
-#ifdef DEVICE_SUPPORTS_IBP_TRICKSPEED
   ibp_trickspeed = 1;
-#else
-  ibp_trickspeed = 0;
-#endif
   max_trickspeed = 12;
   overscan       = 0;
   hue          = -1; 
@@ -756,13 +744,6 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.AlphaCorrection"))    alpha_correction = atoi(Value);
   else if (!strcasecmp(Name, "OSD.AlphaCorrectionAbs")) alpha_correction_abs = atoi(Value);
 
-#if VDRVERSNUM < 10515
-  else if (!strcasecmp(Name, "OSD.SpuAutoSelect")) spu_autoshow = atoi(Value);
-  else if (!strcasecmp(Name, "OSD.SpuLang0")) STRN0CPY(spu_lang[0], Value);
-  else if (!strcasecmp(Name, "OSD.SpuLang1")) STRN0CPY(spu_lang[1], Value);
-  else if (!strcasecmp(Name, "OSD.SpuLang2")) STRN0CPY(spu_lang[2], Value);
-  else if (!strcasecmp(Name, "OSD.SpuLang3")) STRN0CPY(spu_lang[3], Value);
-#endif
   else if (!strcasecmp(Name, "OSD.ExtSubSize"))    extsub_size = atoi(Value);
   else if (!strcasecmp(Name, "OSD.DvbSubtitles"))  dvb_subtitles = atoi(Value);
 

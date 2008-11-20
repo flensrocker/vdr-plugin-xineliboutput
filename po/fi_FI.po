@@ -220,9 +220,6 @@ msgstr "Toista tiedosto"
 msgid "Button$Queue"
 msgstr "Soittolistalle"
 
-msgid "Subtitles"
-msgstr "Tekstitys"
-
 msgid "Media"
 msgstr "Media"
 
@@ -246,9 +243,6 @@ msgstr "Toista CD-levy etäkoneesta >>"
 
 msgid "Play audio CD >>"
 msgstr "Toista CD-levy >>"
-
-msgid "Select subtitle track >>"
-msgstr "Valitse tekstityskieli >>"
 
 msgid "Video settings"
 msgstr "Videoasetukset"
@@ -276,9 +270,6 @@ msgstr "Voimista hiljaisia ääniä"
 
 msgid "Audio equalizer >>"
 msgstr "Taajuuskorjain >>"
-
-msgid "No subtitles available!"
-msgstr "Ei tekstitystä"
 
 msgid "Local Frontend"
 msgstr "Paikallinen näyttö"

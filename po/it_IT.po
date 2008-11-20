@@ -218,9 +218,6 @@ msgstr "Riproduci file"
 msgid "Button$Queue"
 msgstr "Coda"
 
-msgid "Subtitles"
-msgstr "Sottotitoli"
-
 msgid "Media"
 msgstr "Media"
 
@@ -244,9 +241,6 @@ msgstr "Riproduci CD remoto >>"
 
 msgid "Play audio CD >>"
 msgstr "Riproduci CD audio >>"
-
-msgid "Select subtitle track >>"
-msgstr "Seleziona traccia sottotitoli >>"
 
 msgid "Video settings"
 msgstr "Impostazioni video"
@@ -274,9 +268,6 @@ msgstr "Compressione audio"
 
 msgid "Audio equalizer >>"
 msgstr "Equalizzatore audio >>"
-
-msgid "No subtitles available!"
-msgstr "Nessun sottotitolo disponibile!"
 
 msgid "Local Frontend"
 msgstr "Frontend locale"

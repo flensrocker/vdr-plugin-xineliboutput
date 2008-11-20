@@ -219,9 +219,6 @@ msgstr "Проиграть файл"
 msgid "Button$Queue"
 msgstr ""
 
-msgid "Subtitles"
-msgstr ""
-
 msgid "Media"
 msgstr ""
 
@@ -244,9 +241,6 @@ msgid "Play remote CD >>"
 msgstr ""
 
 msgid "Play audio CD >>"
-msgstr ""
-
-msgid "Select subtitle track >>"
 msgstr ""
 
 msgid "Video settings"
@@ -275,9 +269,6 @@ msgstr "Аудио компрессия"
 
 msgid "Audio equalizer >>"
 msgstr "Аудио эквалайзер >>"
-
-msgid "No subtitles available!"
-msgstr ""
 
 msgid "Local Frontend"
 msgstr "Локальный фронтенд"

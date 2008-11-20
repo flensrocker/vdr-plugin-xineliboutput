@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.64 2008-11-10 20:10:33 phintuka Exp $
+ * $Id: frontend.c,v 1.65 2008-11-20 11:46:30 rofafor Exp $
  *
  */
 
@@ -108,9 +108,6 @@ void cXinelibThread::InfoHandler(const char *info)
   if(!strncmp(info, "TRACKMAP SPU", 12)) {
     int CurrentTrack = ttXSubtitleAuto;
     map += 12;
-#if VDRVERSNUM < 10515
-    cXinelibDevice::Instance().ClrAvailableDvdSpuTracks(false);
-#endif
     while(*map) {
       bool Current = false;
       while(*map == ' ') map++;
@@ -130,25 +127,17 @@ void cXinelibThread::InfoHandler(const char *info)
 	char *lang = map;
 	while(*map && *map != ' ') map++;
 	if(*map == ' ') { *map = 0; map++; };
-#if VDRVERSNUM < 10515
-	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, iso639_2_to_iso639_1(lang), Current);
-#else
 	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang));
 	if (Current) 
 	  CurrentTrack = id;
-#endif
       }
     }
-#if VDRVERSNUM < 10515
-    cXinelibDevice::Instance().EnsureDvdSpuTrack();
-#else
     if (CurrentTrack == ttXSubtitleAuto)
       cXinelibDevice::Instance().EnsureSubtitleTrack();
     else if (CurrentTrack == ttXSubtitleNone)
       cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttNone, true);
     else
       cXinelibDevice::Instance().SetCurrentSubtitleTrack(eTrackType(CurrentTrack+ttSubtitleFirst), true);
-#endif
   }
 
   else if(!strncmp(info, "TRACKMAP AUDIO", 14)) {
@@ -215,13 +204,8 @@ void cXinelibThread::InfoHandler(const char *info)
     map += 9;
     while(*map == ' ') map++;
     cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
-#if VDRVERSNUM < 10515
-    if (*map == '0')  // DVD Menu, set spu track to 0
-      cXinelibDevice::Instance().SetCurrentDvdSpuTrack(0);
-#else
     if (*map == '0')  // DVD Menu, set spu track to 0
       cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttSubtitleFirst);
-#endif
   }
 
   free(pmap);
@@ -378,13 +362,6 @@ void cXinelibThread::AudioStreamChanged(bool ac3, int StreamId)
     Xine_Control("AUDIOSTREAM", StreamId);
 }
 
-#if VDRVERSNUM < 10515
-void cXinelibThread::SpuStreamChanged(int StreamId)
-{
-  TRACEF("cXinelibThread::SpuStreamChanged");
-  Xine_Control("SPUSTREAM", StreamId);
-}
-#else
 void cXinelibThread::SetSubtitleTrack(eTrackType Track)
 {
   TRACEF("cXinelibThread::SetSubtitleTrack");
@@ -393,7 +370,6 @@ void cXinelibThread::SetSubtitleTrack(eTrackType Track)
 				 m_SpuLangAuto ? " auto" : "");
   Xine_Control(buf);
 }
-#endif
 
 void cXinelibThread::Clear(void)
 {
@@ -756,11 +732,9 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     m_FileName = FileName;
     m_bPlayingFile = true;
     m_SpuLangAuto = true;
-#if VDRVERSNUM >= 10515
     if (m_StatusMonitor)
       DELETENULL(m_StatusMonitor);
     m_StatusMonitor = new cFrontendStatusMonitor(m_SpuLangAuto);
-#endif
     Unlock();
   }
 
@@ -777,7 +751,6 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     if(xc.extsub_size >= 0)
       Xine_Control("EXTSUBSIZE", xc.extsub_size);
 
-#if VDRVERSNUM >= 10515
     // set preferred subtitle language 
     if (Setup.DisplaySubtitles) {
       const char *langs = I18nLanguageCode(Setup.SubtitleLanguages[0]);
@@ -793,7 +766,6 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
       LOGMSG("Preferred SPU language: (none)");
       Xine_Control(cString::sprintf("SPUSTREAM %d", ttXSubtitleNone));
     }
-#endif
   }
 
   return (!GetStopSignal()) && (result==0);

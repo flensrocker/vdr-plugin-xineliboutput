@@ -3,6 +3,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Supports only for vdr-1.6.0 or later.
 - Added an option to limit number of remote clients
 - Added math library (-lm) to vdr-sxfe when building with 
   Xrender / HUD OSD support (Thanks to Anssi Hannula)
