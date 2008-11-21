@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_hook.c,v 1.1 2008-11-20 09:25:52 phintuka Exp $
+ * $Id: vo_hook.c,v 1.2 2008-11-21 20:07:59 phintuka Exp $
  *
  */
 
@@ -31,25 +31,25 @@
  */
 
 #define DEF_HANDLER3(RET, NAME, ARG1, ARG2, ARG3)                    \
-static RET vo_def_##NAME (vo_driver_t *self, ARG1 a1, ARG2 a2, ARG3 a3) { \
+RET vo_def_##NAME (vo_driver_t *self, ARG1 a1, ARG2 a2, ARG3 a3) { \
   vo_driver_hook_t *this = (vo_driver_hook_t *) self;                \
   return this->orig_driver-> NAME (this->orig_driver, a1, a2, a3);   \
 }
 
 #define DEF_HANDLER2(RET, NAME, ARG1, ARG2)                      \
-static RET vo_def_##NAME (vo_driver_t *self, ARG1 a1, ARG2 a2) { \
+RET vo_def_##NAME (vo_driver_t *self, ARG1 a1, ARG2 a2) { \
   vo_driver_hook_t *this = (vo_driver_hook_t *) self;            \
   return this->orig_driver-> NAME (this->orig_driver, a1, a2);   \
 }
 
 #define DEF_HANDLER1(RET, NAME, ARG1)                       \
-static RET vo_def_##NAME (vo_driver_t *self, ARG1 a1) {     \
+RET vo_def_##NAME (vo_driver_t *self, ARG1 a1) {     \
   vo_driver_hook_t *this = (vo_driver_hook_t *) self;       \
   return this->orig_driver-> NAME (this->orig_driver, a1);  \
 }
 
 #define DEF_HANDLER0(RET, NAME)                               \
-static RET vo_def_##NAME (vo_driver_t *self) {                \
+RET vo_def_##NAME (vo_driver_t *self) {                \
   vo_driver_hook_t *this = (vo_driver_hook_t *) self;         \
   return this->orig_driver-> NAME (this->orig_driver);        \
 }
@@ -79,7 +79,7 @@ DEF_HANDLER3(void, get_property_min_max, int, int*, int*);
 DEF_HANDLER2(int,  gui_data_exchange,    int, void * );
 DEF_HANDLER0(int,  redraw_needed );
 
-static void vo_def_dispose(vo_driver_t *self)
+void vo_def_dispose(vo_driver_t *self)
 {
   vo_driver_hook_t *this = (vo_driver_hook_t *) self;
   if (this->orig_driver)
