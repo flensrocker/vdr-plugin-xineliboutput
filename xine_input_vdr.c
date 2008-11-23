@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.198 2008-11-21 20:15:06 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.199 2008-11-23 20:58:29 phintuka Exp $
  *
  */
 
@@ -2022,13 +2022,38 @@ static void clear_osdcmd(osd_command_t *cmd)
   cmd->palette = NULL;
 }
 
+static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
+{
+  int i;
+
+  ovl->rle       = (rle_elem_t*)cmd->data;
+  ovl->data_size = cmd->datalen;
+  ovl->num_rle   = cmd->datalen / 4;
+
+  ovl->x      = cmd->x;
+  ovl->y      = cmd->y;
+  ovl->width  = cmd->w;
+  ovl->height = cmd->h;
+
+  /* palette */
+  for (i=0; i<cmd->colors; i++) {
+    ovl->color[i] = (*(uint32_t*)(cmd->palette + i)) & 0x00ffffff;
+    ovl->trans[i] = (cmd->palette[i].alpha + 0x7)/0xf;
+  }
+  ovl->rgb_clut = cmd->flags & OSDFLAG_YUV_CLUT ? 0 : 1;
+
+  ovl->unscaled = cmd->flags & OSDFLAG_UNSCALED ? 1 : 0;
+
+  ovl->hili_top = ovl->hili_bottom = ovl->hili_left = ovl->hili_right = -1;
+}
+
 static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 {
   video_overlay_event_t   ov_event;
   vo_overlay_t            ov_overlay;
   video_overlay_manager_t *ovl_manager;
   xine_stream_t           *stream = this->slave_stream ?: this->stream;
-  int handle = -1, i;
+  int handle = -1;
 
   /* Caller must have locked this->osd_lock ! */
 
@@ -2126,7 +2151,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
     int use_unscaled = 0;
     int rle_scaled = 0;
-    int xmove = 0, ymove = 0;
     int unscaled_supported = 1;
 
     stream->video_out->enable_ovl(stream->video_out, 1);
@@ -2140,25 +2164,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     ov_event.object.overlay = &ov_overlay;
     ov_event.object.object_type = 1; /* menu */
     memset( ov_event.object.overlay, 0, sizeof(*ov_event.object.overlay) );
-
-#if XINE_VERSION_CODE < 10101  
-    ov_event.object.overlay->clip_top    = -1;
-    ov_event.object.overlay->clip_bottom = 0;
-    ov_event.object.overlay->clip_left   = 0;
-    ov_event.object.overlay->clip_right  = 0;
-#else
-    ov_event.object.overlay->hili_top    = -1;
-    ov_event.object.overlay->hili_bottom = 0;
-    ov_event.object.overlay->hili_left   = 0;
-    ov_event.object.overlay->hili_right  = 0;
-#endif
-
-    /* palette must contain YUV values for each color index */
-    for(i=0; i<cmd->colors; i++) {
-      uint32_t *tmp = (uint32_t*)(cmd->palette + i);
-      ov_event.object.overlay->color[i] = *tmp & 0xffffff;
-      ov_event.object.overlay->trans[i] = (cmd->palette[i].alpha + 0x7)/0xf;
-    }
 
     if(!(stream->video_out->get_capabilities(stream->video_out) &
 	 VO_CAP_UNSCALED_OVERLAY))
@@ -2220,13 +2225,6 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	  }
 	}
       }
-      if(!use_unscaled && !rle_scaled) {
-	/* no scaling required, but may still need to re-center OSD */
-	if(this->video_width != this->vdr_osd_width)
-	  xmove = (this->video_width - this->vdr_osd_width)/2;
-	if(this->video_height != this->vdr_osd_height)
-	  ymove = (this->video_height - this->vdr_osd_height)/2;
-      }
     }
 
     if(use_unscaled) {
@@ -2255,26 +2253,20 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	  }
 	}
       }
-      if(!rle_scaled) {
-	/* no scaling required, but may still need to re-center OSD */
-	if(win_width != this->vdr_osd_width)
-	  xmove = (win_width - this->vdr_osd_width)/2;
-	if(win_height != this->vdr_osd_height)
-	  ymove = (win_height - this->vdr_osd_height)/2;
-      }
     }
 
-    /* set position and size for this overlay */
-    ov_event.object.overlay->x = cmd->x + xmove;
-    ov_event.object.overlay->y = cmd->y + ymove;
-    ov_event.object.overlay->width = cmd->w;
-    ov_event.object.overlay->height = cmd->h;
+    /* fill ov_overlay */
+    osdcmd_to_overlay(&ov_overlay, cmd);
 
-    /* RLE image */
-    ov_event.object.overlay->unscaled = use_unscaled;
-    ov_event.object.overlay->rle = (rle_elem_t*)cmd->data;
-    ov_event.object.overlay->num_rle = cmd->datalen/4; /* two uint_16's in one element */
-    ov_event.object.overlay->data_size = cmd->datalen;
+    ov_overlay.unscaled = use_unscaled;
+
+    /* no scaling required, but may still need to re-center OSD */
+    if(!rle_scaled) {
+      if(this->video_width != this->vdr_osd_width)
+	ov_overlay.x += (this->video_width - this->vdr_osd_width)/2;
+      if(this->video_height != this->vdr_osd_height)
+	ov_overlay.y += (this->video_height - this->vdr_osd_height)/2;
+    }
 
     /* store rle for later scaling (done if video size changes) */
     if(/*!use_unscaled &&*/
@@ -2338,8 +2330,7 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
 	  }
 	  exec_osd_command(this, &tmp);
 
-	  free(tmp.palette);
-	  free(tmp.data);
+	  clear_osdcmd(&tmp);
 	}
       if(ticket)
 	this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
