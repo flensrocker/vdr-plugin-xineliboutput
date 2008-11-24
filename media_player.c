@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.65 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: media_player.c,v 1.66 2008-11-24 10:49:29 rofafor Exp $
  *
  */
 
@@ -23,8 +23,6 @@
 #include "menu.h"
 
 #include "logdefs.h"
-
-#include "tools/iconv.h"
 
 static void BackToMenu(void)
 {
@@ -292,7 +290,7 @@ class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
     cPlaylist& m_Playlist;
     bool       m_NeedsUpdate;
     bool&      m_RandomPlay;
-    cIConv     ic;
+    cCharSetConv m_IC;
 
   public:
 
@@ -314,9 +312,9 @@ cPlaylistMenu::cPlaylistMenu(cPlaylist &Playlist, bool& RandomPlay) :
      cOsdMenu(tr("Playlist")),
      m_Playlist(Playlist),
      m_RandomPlay(RandomPlay),
-     ic()
+     m_IC("UTF-8", cCharSetConv::SystemCharacterTable())
 {
-  SetTitle(cString::sprintf("%s: %s", tr("Playlist"), *ic.Translate(Playlist.Name())));
+  SetTitle(cString::sprintf("%s: %s", tr("Playlist"), m_IC.Convert(*Playlist.Name())));
   Playlist.Listen(this);
   Set(true);
 }
@@ -411,7 +409,7 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
 
   for(cPlaylistItem *i = m_Playlist.First(); i; i = m_Playlist.Next(i), j++) {
     cString Title = cPlaylist::GetEntry(i, true, j==currentPlaying);
-    Add(new cOsdItem( ic.Translate(Title), (eOSState)(os_User + j)));
+    Add(new cOsdItem(m_IC.Convert(*Title), (eOSState)(os_User + j)));
   }
 
   if(setCurrentPlaying)
@@ -545,8 +543,8 @@ void cXinelibPlayerControl::Show()
       Current = (m_CurrentPos + 500) / 1000;
 
       cString Title = cPlaylist::GetEntry(m_Player->Playlist().Current());
-      cIConv ic;
-      m_DisplayReplay->SetTitle(ic.Translate(Title));
+      cCharSetConv ic("UTF-8", cCharSetConv::SystemCharacterTable());
+      m_DisplayReplay->SetTitle(ic.Convert(*Title));
 
       m_DisplayReplay->SetProgress(Current, Total);
       sprintf(t, "%d:%02d:%02d", Total/3600, (Total%3600)/60, Total%60);
