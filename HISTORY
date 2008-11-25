@@ -20,7 +20,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 2008-10-24: Version 1.0.3  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
-- Added missing sxfe display locks (Thanks to Antti Sepp‰l‰)
+- Added missing sxfe display locks (Thanks to Antti Sepp√§l√§)
 - Modified HUD OSD scaling parameters (Thanks to Rolf Ahrenberg)
 - Fixes to HUD OSD drawing (Thanks to Rolf Ahrenberg)
 - Fixed --aspect=auto:path_to_script option (Thanks to Armin Diedering)
@@ -59,7 +59,7 @@ Backported bugfixes from CVS trunk:
 - Added Italian translations (Thanks to Diego Pierotto)
 - Added Czech translations (Thanks to Maya)
 - Added HUD OSD (Blend OSD using graphics hardware) and --hud command-line option.
-  (Thanks to Antti Sepp‰l‰ and Rolf Ahrenberg)
+  (Thanks to Antti Sepp√§l√§ and Rolf Ahrenberg)
 - Added support for libextractor metadata parsing library (Petri Helin)
 - Added service interface for launching media player (Suggested by Tobias Grimm) 
 - Added configuration options for unsharp and denoise3d post plugins (Petri Helin)
@@ -130,7 +130,7 @@ Backported bugfixes from CVS trunk:
 - Adapted for xine-lib 1.1.4
 - Adapted for vdr-1.5.1 (Thanks to Rolf Ahrenberg)
 - Mac OS X compability fixes (Thanks to Tero Siironen)
-- DXR3 added to list of output devices (experimental; Thanks to Ville Skytt‰)
+- DXR3 added to list of output devices (experimental; Thanks to Ville Skytt√§)
 - Subtitle selection menu updated to use VDR audio menu skin
 - New subtitle macro key handling (identical to VDR kAudio)
 - Added preferred subtitle language selection for media player
@@ -142,12 +142,12 @@ Backported bugfixes from CVS trunk:
 - Added automatic re-connection to remote frontends (--reconnect option)
 - Slow down DVD drive speed
 - Initialize video size from stream info when playing slave streams,
-  (Thanks to Antti Sepp‰l‰)
+  (Thanks to Antti Sepp√§l√§)
 - Makefile shell scripts modified to run in dash (Ubuntu). 
   (Thanks to realKano@directbox.com)
 - Increased frame-based buffering time after channel changes
 - Use iconv to translate id3 tags from utf8 to VDR charset
-- Use /dev/dsp as OSS default device (Thanks to Ville Skytt‰)
+- Use /dev/dsp as OSS default device (Thanks to Ville Skytt√§)
 - Lot of small fixes and enhancements, complete log in CVS
 
 2007-01-07: Version 1.0.0pre7
@@ -156,7 +156,7 @@ Backported bugfixes from CVS trunk:
 - Added playlist menu to media player
 - Added "Play Audio CD" / "Play remote Audio CD" entry to plugin menu
 - Makefile modified to allow overriding default directory environment.
-  Using "install" to install files. (Thanks to Timo Weing‰rtner)
+  Using "install" to install files. (Thanks to Timo Weing√§rtner)
 - Added metainfo caching to media player. Cached metainfo is stored to
   ".xineliboutput-playlist.m3u" files by default.
 - Added support for playlists inside playlists
@@ -173,7 +173,7 @@ Backported bugfixes from CVS trunk:
 - Subtitle type .ssa added
 - Parsing for .pls, .asx and .ram playlists added
 - Eliminated some warnings when compiling to 64bit (Thanks to Anssi Hannula)
-- Vidix(fb) added to supported video drivers (Thanks to Antti Sepp‰l‰)
+- Vidix(fb) added to supported video drivers (Thanks to Antti Sepp√§l√§)
 - Media player/audio file browser does not anymore show video files
 - When replaying music files, replay moves to next file automatically
 - Decoder setup menu moved to Local setup menu 
