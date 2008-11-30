@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.199 2008-11-23 20:58:29 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.200 2008-11-30 21:08:17 phintuka Exp $
  *
  */
 
@@ -2047,11 +2047,75 @@ static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
   ovl->hili_top = ovl->hili_bottom = ovl->hili_left = ovl->hili_right = -1;
 }
 
+static int exec_osd_command(vdr_input_plugin_t *, osd_command_t *);
+
+static void exec_osd_set_palette(vdr_input_plugin_t *this, osd_command_t *cmd)
+{
+  if (!this->osddata[cmd->wnd].data) {
+    LOGMSG("OSD_SetPalette(%d): old RLE data missing !", cmd->wnd);
+    return;
+  }
+  if (!cmd->palette) {
+    LOGMSG("OSD_SetPalette(%d): new palette missing !", cmd->wnd);
+    return;
+  }
+
+  /* use cached event to re-create Set_RLE command with modified palette */
+  osd_command_t tmp;
+  /* steal the original command */
+  memcpy(&tmp, &this->osddata[cmd->wnd], sizeof(osd_command_t));
+  memset(&this->osddata[cmd->wnd], 0, sizeof(osd_command_t));
+
+  /* replace palette */
+  free(tmp.palette);
+  tmp.palette  = cmd->palette;
+  cmd->palette = NULL; /* take ownership */
+  tmp.colors   = cmd->colors;
+
+  tmp.cmd      = OSD_Set_RLE;
+  tmp.pts      = cmd->pts;
+  tmp.delay_ms = cmd->delay_ms;
+
+  /* redraw */
+  exec_osd_command(this, &tmp);
+
+  clear_osdcmd(&tmp);
+}
+
+static void exec_osd_move(vdr_input_plugin_t *this, osd_command_t *cmd)
+{
+  if (!this->osddata[cmd->wnd].data) {
+    LOGMSG("OSD_Move(%d): old RLE data missing !", cmd->wnd);
+    return;
+  }
+  if (!this->osddata[cmd->wnd].palette) {
+    LOGMSG("OSD_Move(%d): old palette missing !", cmd->wnd);
+    return;
+  }
+
+  /* use cached event to re-create Set_RLE command with modified palette */
+  osd_command_t tmp;
+  /* steal the original command */
+  memcpy(&tmp, &this->osddata[cmd->wnd], sizeof(osd_command_t));
+  memset(&this->osddata[cmd->wnd], 0, sizeof(osd_command_t));
+
+  /* replace position */
+  tmp.cmd      = OSD_Set_RLE;
+  tmp.x        = cmd->x;
+  tmp.y        = cmd->y;
+  tmp.pts      = cmd->pts;
+  tmp.delay_ms = cmd->delay_ms;
+
+  /* redraw */
+  exec_osd_command(this, &tmp);
+
+  clear_osdcmd(&tmp);
+}
+
 static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 {
-  video_overlay_event_t   ov_event;
-  vo_overlay_t            ov_overlay;
   video_overlay_manager_t *ovl_manager;
+  video_overlay_event_t    ov_event = {0};
   xine_stream_t           *stream = this->slave_stream ?: this->stream;
   int handle = -1;
 
@@ -2061,33 +2125,37 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 
   /* Check parameters */
 
-  if(!cmd || !this || !stream) {
+  if (!cmd || !this || !stream) {
     LOGMSG("exec_osd_command: Stream not initialized !");
     return CONTROL_DISCONNECTED;
   }
 
-  if(cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
+  if (cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
     LOGMSG("exec_osd_command: OSD window handle %d out of range !", cmd->wnd);
     return CONTROL_PARAM_ERROR;
   }
 
   handle = this->osdhandle[cmd->wnd];
 
-  if(handle < 0 && cmd->cmd == OSD_Close) {
-    LOGMSG("exec_osd_command: Attempt to close non-existing OSD (%d) !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-
   /* we already have port ticket */
-  ovl_manager = 
-      stream->video_out->get_overlay_manager(stream->video_out);
-
+  ovl_manager = stream->video_out->get_overlay_manager(stream->video_out);
   if(!ovl_manager) {
     LOGMSG("exec_osd_command: Stream has no overlay manager !");
     return CONTROL_DISCONNECTED;
   }
 
-  memset(&ov_event, 0, sizeof(ov_event));
+  /* Does the OSD exist ? */
+  if (handle < 0) {
+    if (cmd->cmd == OSD_Close) {
+      LOGMSG("exec_osd_command: Attempt to close non-existing OSD (%d) !", cmd->wnd);
+      return CONTROL_PARAM_ERROR;
+    }
+    if (cmd->cmd == OSD_Move  ||
+	cmd->cmd == OSD_SetPalette) {
+      LOGMSG("exec_osd_command: Attempt to modify non-existing OSD (%d) !", cmd->wnd);
+      return CONTROL_PARAM_ERROR;
+    }
+  }
 
   /* calculate exec time */
   if(cmd->pts || cmd->delay_ms) {
@@ -2113,19 +2181,24 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     this->vdr_osd_width  = cmd->w;
     this->vdr_osd_height = cmd->h;
 
-    if(stream->video_out->get_capabilities(stream->video_out) &
-       VO_CAP_OSDSCALING) {
-      stream->video_out->set_property(stream->video_out, VO_PROP_OSD_WIDTH, cmd->w);
+    if (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_OSDSCALING) {
+      stream->video_out->set_property(stream->video_out, VO_PROP_OSD_WIDTH,  cmd->w);
       stream->video_out->set_property(stream->video_out, VO_PROP_OSD_HEIGHT, cmd->h);
     }
 
   } else if(cmd->cmd == OSD_Nop) {
     this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
 
+  } else if(cmd->cmd == OSD_Flush) {
+    LOGMSG("OSD_Flush()");
+    ovl_manager->flush_events(ovl_manager);
+
   } else if(cmd->cmd == OSD_SetPalette) {
-    /* TODO */
+    exec_osd_set_palette(this, cmd);
+
   } else if(cmd->cmd == OSD_Move) {
-    /* TODO */
+    exec_osd_move(this, cmd);
+
   } else if(cmd->cmd == OSD_Set_YUV) {
     /* TODO */
   } else if(cmd->cmd == OSD_Close) {
@@ -2135,36 +2208,33 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     clear_osdcmd(&this->osddata[cmd->wnd]);
 
     while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
-      LOGDBG("OSD_Close(%d): overlay manager queue full !", cmd->wnd);
+      LOGMSG("OSD_Close(%d): overlay manager queue full !", cmd->wnd);
       ovl_manager->flush_events(ovl_manager);
     }
 
     this->last_changed_vpts[cmd->wnd] = 0;
 
-    if((cmd->wnd==0 || this->osdhandle[cmd->wnd-1]<0) &&
-       (cmd->wnd==MAX_OSD_OBJECT || this->osdhandle[cmd->wnd+1]<0)) {
-      /*LOGMSG("OSD_Close(%d): last, flush ovl manager");*/
-      ovl_manager->flush_events(ovl_manager);
-    }
-
   } else if(cmd->cmd == OSD_Set_RLE) {
 
+    vo_overlay_t ov_overlay = {0};
     int use_unscaled = 0;
     int rle_scaled = 0;
     int unscaled_supported = 1;
 
     stream->video_out->enable_ovl(stream->video_out, 1);
 
+    /* allocate OSD handle */
     if(handle < 0)
       handle = this->osdhandle[cmd->wnd] = 
 	ovl_manager->get_handle(ovl_manager,0);
 
+    /* fill SHOW event */
     ov_event.event_type = OVERLAY_EVENT_SHOW;
     ov_event.object.handle = handle;
     ov_event.object.overlay = &ov_overlay;
     ov_event.object.object_type = 1; /* menu */
-    memset( ov_event.object.overlay, 0, sizeof(*ov_event.object.overlay) );
 
+    /* check for unscaled OSD capability and request */
     if(!(stream->video_out->get_capabilities(stream->video_out) &
 	 VO_CAP_UNSCALED_OVERLAY))
       unscaled_supported = 0;
@@ -2172,6 +2242,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       use_unscaled = 1;
 
     /* store osd for later rescaling (done if video size changes) */
+
     clear_osdcmd(&this->osddata[cmd->wnd]);
 
     memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
@@ -2284,7 +2355,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       continue;
     }
 
-    this->last_changed_vpts[cmd->wnd] =  xine_get_current_vpts(stream);
+    this->last_changed_vpts[cmd->wnd] = 
+      ov_event.vpts ?: xine_get_current_vpts(stream);
 
   } else {
     LOGMSG("Unknown OSD command %d", cmd->cmd);
