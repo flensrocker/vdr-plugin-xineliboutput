@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.27 2008-11-30 10:38:39 phintuka Exp $
+ * $Id: osd.c,v 1.28 2008-11-30 10:56:27 phintuka Exp $
  *
  */
 
@@ -136,7 +136,10 @@ class cXinelibOsd : public cOsd, public cListObject
 		int W, int H, unsigned char *Data,
 		int Colors, unsigned int *Palette, 
 		osd_rect_t *DirtyArea);
+    void CmdPalette(int Wnd, int Colors, unsigned int *Palette);
+    void CmdMove(int Wnd, int Width, int Height);
     void CmdClose(int Wnd);
+    void CmdFlush(void);
 
   protected:
     static cMutex             m_Lock;
@@ -182,6 +185,41 @@ void cXinelibOsd::CmdSize(int Width, int Height)
   }
 }
 
+void cXinelibOsd::CmdMove(int Wnd, int NewX, int NewY)
+{
+  TRACEF("cXinelibOsd::CmdMove");
+
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd = OSD_Move;
+    osdcmd.wnd = Wnd;
+    osdcmd.x   = NewX;
+    osdcmd.y   = NewY;
+
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+void cXinelibOsd::CmdPalette(int Wnd, int Colors, unsigned int *Palette)
+{
+  TRACEF("cXinelibOsd::CmdPalette");
+
+  if (m_Device) {
+    xine_clut_t   clut[Colors];
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd     = OSD_SetPalette;
+    osdcmd.wnd     = Wnd;
+    osdcmd.palette = clut;
+    osdcmd.colors  = Colors;
+
+    prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
+
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
 void cXinelibOsd::CmdClose(int Wnd)
 {
   TRACEF("cXinelibOsd::CmdClose");
@@ -194,6 +232,19 @@ void cXinelibOsd::CmdClose(int Wnd)
 
     if (m_Refresh)
       osdcmd.flags |= OSDFLAG_REFRESH;
+    
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+void cXinelibOsd::CmdFlush(void)
+{
+  TRACEF("cXinelibOsd::CmdFlush");
+
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd = OSD_Flush;
     
     m_Device->OsdCmd((void*)&osdcmd);
   }
@@ -388,6 +439,9 @@ void cXinelibOsd::CloseWindows(void)
       CmdClose(i);
     }
   }
+
+  if (!m_Refresh)
+    CmdFlush();
 }
 
 void cXinelibOsd::Hide(void)
