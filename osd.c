@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.26 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: osd.c,v 1.27 2008-11-30 10:38:39 phintuka Exp $
  *
  */
 
@@ -171,13 +171,12 @@ void cXinelibOsd::CmdSize(int Width, int Height)
 {
   TRACEF("cXinelibOsd::CmdSize");
 
-  if(m_Device) {
-    osd_command_t osdcmd;
-    memset(&osdcmd,0,sizeof(osdcmd));
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Size;
-    osdcmd.w = Width;
-    osdcmd.h = Height;
+    osdcmd.w   = Width;
+    osdcmd.h   = Height;
 
     m_Device->OsdCmd((void*)&osdcmd);
   }
@@ -187,14 +186,13 @@ void cXinelibOsd::CmdClose(int Wnd)
 {
   TRACEF("cXinelibOsd::CmdClose");
 
-  if(m_Device) {
-    osd_command_t osdcmd;
-    memset(&osdcmd,0,sizeof(osdcmd));
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Close;
     osdcmd.wnd = Wnd;
 
-    if(m_Refresh)
+    if (m_Refresh)
       osdcmd.flags |= OSDFLAG_REFRESH;
     
     m_Device->OsdCmd((void*)&osdcmd);
@@ -208,40 +206,38 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
 {
   TRACEF("cXinelibOsd::CmdRle");
 
-  if(m_Device) {
+  if (m_Device) {
 
-    osd_command_t osdcmd;
-    xine_clut_t clut[Colors];
+    xine_clut_t   clut[Colors];
+    osd_command_t osdcmd = {0};
 
-    memset(&osdcmd, 0, sizeof(osdcmd));
     osdcmd.cmd = OSD_Set_RLE;
     osdcmd.wnd = Wnd;
-    osdcmd.x = X0;
-    osdcmd.y = Y0;
-    osdcmd.w = W;
-    osdcmd.h = H;
-    if(DirtyArea)
+    osdcmd.x   = X0;
+    osdcmd.y   = Y0;
+    osdcmd.w   = W;
+    osdcmd.h   = H;
+    osdcmd.colors  = Colors;
+    osdcmd.palette = clut;
+    osdcmd.scaling = xc.osd_scaling;
+
+    if (DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
-    if(m_Refresh)
+    if (m_Refresh)
       osdcmd.flags |= OSDFLAG_REFRESH;
-    if(xc.osd_blending == OSD_BLENDING_HARDWARE)
+    if (xc.osd_blending == OSD_BLENDING_HARDWARE)
       osdcmd.flags |= OSDFLAG_UNSCALED;
-    if(xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
+    if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
       osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
 
     prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
-    osdcmd.colors = Colors;
-    osdcmd.palette = clut;
 
     osdcmd.num_rle = rle_compress(&osdcmd.data, Data, W, H);
     osdcmd.datalen = 4 * osdcmd.num_rle;
 
-    osdcmd.scaling = xc.osd_scaling;
-    
     m_Device->OsdCmd((void*)&osdcmd);
 
-    if(osdcmd.data)
-      free(osdcmd.data);
+    free(osdcmd.data);
   }
 }
 
