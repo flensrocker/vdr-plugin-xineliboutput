@@ -4,13 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.200 2008-11-30 21:08:17 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.201 2008-12-03 23:01:04 phintuka Exp $
  *
  */
 
 
 #define XINE_ENGINE_INTERNAL
-#define METRONOM_CLOCK_INTERNAL
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -62,6 +61,7 @@
 #endif
 
 #include "xine/vo_props.h"
+#include "xine/adjustable_scr.h"
 
 #include "xine_input_vdr.h"
 #include "xine_input_vdr_net.h"
@@ -84,7 +84,6 @@
 /*#define LOG_SCR*/
 /*#define LOG_TRACE*/
 
-#define ADJUST_SCR_SPEED        1
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 #define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
 #define HD_BUF_ELEM_SIZE        (2048+64)
@@ -231,7 +230,6 @@ static void SetupLogLevel(void)
 
 #define KILOBYTE(x)   (1024 * (x))
 
-typedef struct pvrscr_s pvrscr_t;
 typedef struct udp_data_s udp_data_t;
 
 /* plugin class */
@@ -288,7 +286,7 @@ typedef struct vdr_input_plugin_s {
   uint8_t             bih_posted : 1;
 
   /* SCR */
-  pvrscr_t           *scr;
+  adjustable_scr_t   *scr;
   int                 speed_before_pause;
   int8_t              scr_tuning;
   uint8_t             fixed_scr     : 1;
@@ -449,233 +447,14 @@ static void mutex_cleanup(void *arg)
     pthread_cleanup_pop(0);                                 \
   }
 
-
-#ifdef ADJUST_SCR_SPEED
-/******************************* SCR *************************************
- *
- * unix System Clock Reference + fine tuning
- *
- * pvrscr code is mostly copied from xine, input_pvr.c
+/******************************* SCR ***********************************/
+/*
+ * SCR fine tuning 
  *
  * fine tuning is used to change playback speed in live mode
  * to keep in sync with mpeg source
- *************************************************************************/
-
-struct pvrscr_s {
-  scr_plugin_t     scr;
-
-  struct timeval   cur_time;
-  int64_t          cur_pts;
-  int              xine_speed;
-  int              scr_speed_base;
-  double           speed_factor;
-  double           speed_tuning;
-
-  pthread_mutex_t  lock;
-
-  struct timeval   last_time;
-};
-
-static int pvrscr_get_priority (scr_plugin_t *scr) 
-{
-  return 50; /* high priority */
-}
-
-/* Only call pvrscr_set_pivot when already mutex locked ! */
-static void pvrscr_set_pivot (pvrscr_t *this) 
-{
-  struct   timeval tv;
-  int64_t pts;
-  double   pts_calc;
-
-  xine_monotonic_clock(&tv,NULL);
-
-  pts_calc = (tv.tv_sec  - this->cur_time.tv_sec) * this->speed_factor;
-  pts_calc += (tv.tv_usec - this->cur_time.tv_usec) * this->speed_factor / 1e6;
-  pts = this->cur_pts + pts_calc;
-
-  /* This next part introduces a one off inaccuracy
-   * to the scr due to rounding tv to pts.
-   */
-  this->cur_time.tv_sec=tv.tv_sec;
-  this->cur_time.tv_usec=tv.tv_usec;
-  this->cur_pts=pts;
-
-  this->last_time.tv_sec  = tv.tv_sec;
-  this->last_time.tv_usec = tv.tv_usec;
-
-  return ;
-}
-
-static int pvrscr_set_fine_speed (scr_plugin_t *scr, int speed) 
-{
-  pvrscr_t *this = (pvrscr_t*) scr;
-
-  pthread_mutex_lock (&this->lock);
-
-  pvrscr_set_pivot( this );
-  this->xine_speed     = speed;
-  this->speed_factor   = (double) speed * (double)this->scr_speed_base /*90000.0*/ / 
-                         (1.0*XINE_FINE_SPEED_NORMAL) *
-                         this->speed_tuning;
-
-  pthread_mutex_unlock (&this->lock);
-
-  return speed;
-}
-
-static void pvrscr_speed_tuning (pvrscr_t *this, double factor) 
-{
-  pthread_mutex_lock (&this->lock);
-
-  pvrscr_set_pivot( this );
-  this->speed_tuning = factor;
-  this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ / 
-                       (1.0*XINE_FINE_SPEED_NORMAL) *
-                       this->speed_tuning;
-
-  pthread_mutex_unlock (&this->lock);
-}
-
-static void pvrscr_speed_base (pvrscr_t *this, int hz) 
-{
-  pthread_mutex_lock (&this->lock);
-
-  pvrscr_set_pivot( this );
-  this->scr_speed_base = hz;
-  this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ / 
-                       (1.0*XINE_FINE_SPEED_NORMAL) *
-                       this->speed_tuning;
-
-  pthread_mutex_unlock (&this->lock);
-}
-
-static void pvrscr_skip_frame (pvrscr_t *this) 
-{
-  pthread_mutex_lock (&this->lock);
-
-  pvrscr_set_pivot( this );
-  this->cur_pts += (90000/25)*1ULL;
-
-  pthread_mutex_unlock (&this->lock);
-}
-
-static void pvrscr_adjust (scr_plugin_t *scr, int64_t vpts) 
-{
-  pvrscr_t *this = (pvrscr_t*) scr;
-  struct   timeval tv;
-
-  pthread_mutex_lock (&this->lock);
-
-  xine_monotonic_clock(&tv,NULL);
-  this->cur_time.tv_sec=tv.tv_sec;
-  this->cur_time.tv_usec=tv.tv_usec;
-  this->cur_pts = vpts;
-
-  this->last_time.tv_sec  = tv.tv_sec;
-  this->last_time.tv_usec = tv.tv_usec;
-
-  pthread_mutex_unlock (&this->lock);
-}
-
-static void pvrscr_start (scr_plugin_t *scr, int64_t start_vpts) 
-{
-  pvrscr_t *this = (pvrscr_t*) scr;
-
-  pthread_mutex_lock (&this->lock);
-
-  xine_monotonic_clock(&this->cur_time, NULL);
-  this->cur_pts = start_vpts;
-
-  this->last_time.tv_sec  = this->cur_time.tv_sec;
-  this->last_time.tv_usec = this->cur_time.tv_usec;
-
-  pthread_mutex_unlock (&this->lock);
-
-  pvrscr_set_fine_speed (&this->scr, XINE_FINE_SPEED_NORMAL);
-}
-
-static int64_t pvrscr_get_current (scr_plugin_t *scr) 
-{
-  pvrscr_t *this = (pvrscr_t*) scr;
-
-  struct   timeval tv;
-  int64_t pts;
-  double   pts_calc;
-  pthread_mutex_lock (&this->lock);
-
-  xine_monotonic_clock(&tv,NULL);
-
-#ifdef LOG_SCR
-  if(this->last_time.tv_sec+3 < tv.tv_sec && this->last_time.tv_sec) {
-    LOGMSG("ERROR - CLOCK JUMPED FORWARDS ? "
-	   "(pvrscr_get_current diff %d.%06d sec)\n",
-           (int)(tv.tv_sec - this->last_time.tv_sec),
-	   (int)(tv.tv_usec - this->last_time.tv_usec));
-    pthread_mutex_unlock (&this->lock);
-    pvrscr_adjust(scr,this->cur_pts);
-    pthread_mutex_lock (&this->lock);
-  }
-  else if(this->last_time.tv_sec > tv.tv_sec) {
-    LOGMSG("ERROR - CLOCK JUMPED BACKWARDS ! "
-	   "(pvrscr_get_current diff %d.%06d sec)\n",
-           (int)(tv.tv_sec - this->last_time.tv_sec),
-	   (int)(tv.tv_usec - this->last_time.tv_usec));
-    pthread_mutex_unlock (&this->lock);
-    pvrscr_adjust(scr,this->cur_pts);
-    pthread_mutex_lock (&this->lock);
-  }
-#endif
-
-  pts_calc = (tv.tv_sec  - this->cur_time.tv_sec) * this->speed_factor;
-  pts_calc += (tv.tv_usec - this->cur_time.tv_usec) * this->speed_factor / 1e6;
-  
-  pts = this->cur_pts + pts_calc;
-
-  this->last_time.tv_sec  = tv.tv_sec;
-  this->last_time.tv_usec = tv.tv_usec;
-
-  pthread_mutex_unlock (&this->lock);
-
-  return pts;
-}
-
-static void pvrscr_exit (scr_plugin_t *scr) 
-{
-  pvrscr_t *this = (pvrscr_t*) scr;
-
-  pthread_mutex_destroy (&this->lock);
-  free(this);
-}
-
-static pvrscr_t* pvrscr_init (void) 
-{
-  pvrscr_t *this;
-
-  this = calloc(1, sizeof(pvrscr_t));
-
-  this->scr.interface_version = 3;
-  this->scr.set_fine_speed    = pvrscr_set_fine_speed;
-  this->scr.get_priority      = pvrscr_get_priority;
-  this->scr.adjust            = pvrscr_adjust;
-  this->scr.start             = pvrscr_start;
-  this->scr.get_current       = pvrscr_get_current;
-  this->scr.exit              = pvrscr_exit;
-
-  pthread_mutex_init (&this->lock, NULL);
-
-  this->scr_speed_base = 90000;
-
-  pvrscr_speed_tuning(this, 1.0 );
-  pvrscr_set_fine_speed (&this->scr, XINE_SPEED_PAUSE);
-
-  LOGSCR("SCR init complete");
-
-  return this;
-}
-
-/*
- *  SCR tuning 
+ *
+ * SCR code is mostly copied from xine-lib (src/input/input_pvr.c)
  */
 
 #define SCR_TUNING_PAUSED -3
@@ -697,24 +476,6 @@ static inline const char *scr_tuning_str(int value)
 }
 #endif
 
-static int64_t monotonic_time_ms (void) 
-{
-  static struct timeval tv_0;
-  static int init_done = 0;
-  struct timeval tv;
-  int64_t ms;
-
-  if(!init_done) {
-    init_done = 1;
-    xine_monotonic_clock(&tv_0, NULL);    
-  }
-  xine_monotonic_clock(&tv, NULL);
-
-  ms = 1000LL * (tv.tv_sec - tv_0.tv_sec);
-  ms += tv.tv_usec / 1000;
-  return ms;
-}
-
 static void scr_tuning_set_paused(vdr_input_plugin_t *this)
 {
   if(this->scr_tuning != SCR_TUNING_PAUSED &&
@@ -723,7 +484,7 @@ static void scr_tuning_set_paused(vdr_input_plugin_t *this)
 
     this->scr_tuning = SCR_TUNING_PAUSED;  /* marked as paused */
     if(this->scr)
-      pvrscr_speed_tuning(this->scr, 1.0);
+      this->scr->set_speed_tuning(this->scr, 1.0);
     
     this->speed_before_pause = _x_get_fine_speed(this->stream);
 
@@ -742,13 +503,13 @@ static void reset_scr_tuning(vdr_input_plugin_t *this, int new_speed)
   if(this->scr_tuning != SCR_TUNING_OFF) {
     this->scr_tuning = SCR_TUNING_OFF; /* marked as normal */
     if(this->scr)
-      pvrscr_speed_tuning(this->scr, 1.0);
+      this->scr->set_speed_tuning(this->scr, 1.0);
 
     if(new_speed >= 0) {
       if(_x_get_fine_speed(this->stream) != new_speed) {
 	_x_set_fine_speed(this->stream, XINE_FINE_SPEED_NORMAL);
       }
-      pvrscr_set_fine_speed((scr_plugin_t*)this->scr, XINE_FINE_SPEED_NORMAL);
+      this->scr->scr.set_fine_speed(&this->scr->scr, XINE_FINE_SPEED_NORMAL);
     }
   }
 }
@@ -912,7 +673,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 
       /* make it play .5% / 1% faster or slower */
       if(this->scr)
-	pvrscr_speed_tuning(this->scr, 1.0 + (this->class->scr_tuning_step * scr_tuning) );
+	this->scr->set_speed_tuning(this->scr, 1.0 + (this->class->scr_tuning_step * scr_tuning) );
     }
 
   /*
@@ -924,30 +685,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     reset_scr_tuning(this, -1);
   }
 }
-
-#else /* ADJUST_SCR_SPEED */
-
-struct pvrscr_s { 
-  int dummy; 
-};
-
-static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this, 
-				      fifo_buffer_t *fifo1, 
-				      fifo_buffer_t *fifo2, 
-				      int speed ) 
-{
-}
-
-static void reset_scr_tuning(vdr_input_plugin_t *this, int new_speed) 
-{
-}
-
-static void scr_tuning_set_paused(vdr_input_plugin_t *this, 
-				   int speed_before_pause) 
-{
-}
-
-#endif /* ADJUST_SCR_SPEED */
 
 /******************************* TOOLS ***********************************/
 
@@ -3121,7 +2858,6 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
     if(this->fd_control >= 0) {
 
       grab_data_t *data = NULL; 
-      uint64_t t = monotonic_time_ms();
       LOGDBG("GRAB: jpeg=%d quality=%d w=%d h=%d", jpeg, quality, width, height);  
 
       /* grab takes long time and we don't want to lose data connection 
@@ -3146,11 +2882,11 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
 
       pthread_mutex_lock(&this->vdr_entry_lock);
 
-      if(data)
+      if(data) {
 	free(data->data);
-      free(data);
+	free(data);
+      }
 
-      LOGDBG("grab took %d ms", (int)(monotonic_time_ms() - t));
       return CONTROL_OK;
     }
   }
@@ -3666,11 +3402,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     pthread_mutex_lock(&this->lock);
     if(1 == sscanf(cmd, "SCR Sync %d", &tmp32)) {
       this->scr_live_sync = 1;
-      pvrscr_speed_base(this->scr, tmp32);
+      this->scr->set_speed_base(this->scr, tmp32);
     }
     else if(1 == sscanf(cmd, "SCR NoSync %d", &tmp32)) {
       this->scr_live_sync = 0;
-      pvrscr_speed_base(this->scr, tmp32);
+      this->scr->set_speed_base(this->scr, tmp32);
       reset_scr_tuning(this, -1);
     }
     pthread_mutex_unlock(&this->lock);
@@ -4511,10 +4247,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	if(!this->is_paused) {
 	  LOGDBG("UDP Fifo buffer full !");
 	  if(this->scr && !udp->scr_jump_done) {
-	    pvrscr_skip_frame (this->scr);
-	    LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d) time %ds", 
-		   this->live_mode, this->scr_tuning, 
-		   (int)(monotonic_time_ms()/1000));
+	    this->scr->jump (this->scr, 40*90);
+	    LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d)", this->live_mode, this->scr_tuning);
 	    udp->scr_jump_done = 50;
 	    xine_usec_sleep(5*1000);
 	  }
@@ -5536,24 +5270,6 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
     }
   }
 
-#ifdef LOG_FIRSTFRAME_FLAG
-  {
-    /* trace first frame flag changes */
-    static uint64_t timer = 0;
-    static int tfd = 0;
-    pthread_mutex_lock (&this->stream->first_frame_lock);
-    if(tfd != this->stream->first_frame_flag) {
-      uint64_t now = monotonic_time_ms();
-      if(tfd)
-	LOGMSG("FIRST FRAME FLAG %d -> %d (%d ms)", 
-	       tfd, this->stream->first_frame_flag, (int)(now-timer));
-      timer = now;
-      tfd = this->stream->first_frame_flag;
-    }
-    pthread_mutex_unlock (&this->stream->first_frame_lock);
-  }
-#endif
-
   /* generated still images start with empty video PES, PTS = 0.
      Reset metronom pts so images will be displayed */
   if(this->still_mode && buf->size == 14) {
@@ -5611,7 +5327,6 @@ static int adjust_scr_speed(vdr_input_plugin_t *this)
 {
   int need_pause = 0;
 
-#ifdef ADJUST_SCR_SPEED
   if(pthread_mutex_lock(&this->lock)) {
     LOGERR("adjust_scr_speed: pthread_mutex_lock failed");
     return 0;
@@ -5623,19 +5338,18 @@ static int adjust_scr_speed(vdr_input_plugin_t *this)
     if(this->scr_tuning)
       reset_scr_tuning(this, this->speed_before_pause);
   } else {
-# ifdef TEST_SCR_PAUSE
+#ifdef TEST_SCR_PAUSE
     if(this->stream_start || this->send_pts) {
       reset_scr_tuning(this, this->speed_before_pause);
       need_pause = 1;
     } else {
       vdr_adjust_realtime_speed(this);
     }
-# else
+#else
     vdr_adjust_realtime_speed(this);
-# endif
+#endif
   }
   pthread_mutex_unlock(&this->lock); 
-#endif
 
   return need_pause;
 }
@@ -5922,11 +5636,8 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   signal_buffer_not_empty(this);
 
   /* SCR */
-  if (this->scr) {
-    this->class->xine->clock->unregister_scr(this->class->xine->clock, 
-					     &this->scr->scr);
-    this->scr->scr.exit(&this->scr->scr);
-  }
+  if (this->scr)
+    this->scr->dispose(this->scr);
 
   free (this->mrl);
 
@@ -6022,22 +5733,16 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   this->buffer_pool = this->stream->video_fifo;
 
-#ifdef ADJUST_SCR_SPEED
   /* enable resample method */
   xine->config->update_num(xine->config,
 			   "audio.synchronization.av_sync_method",1);
 
   /* register our own scr provider */
- {
-    uint64_t time;
-    time = xine->clock->get_current_time(xine->clock);
-    this->scr = pvrscr_init();
-    this->scr->scr.start(&this->scr->scr, time);
-    if(xine->clock->register_scr(this->class->xine->clock, &this->scr->scr))
-      LOGMSG("xine->clock->register_scr FAILED !");
-    this->scr_live_sync = 1;
- }
-#endif
+  this->scr = adjustable_scr_start(this->class->xine);
+  if (!this->scr)
+    LOGMSG("adjustable_scr_start() FAILED !");
+  this->scr_live_sync = 1;
+
   this->scr_tuning = SCR_TUNING_OFF;
   this->curpos = 0;
   return 1;
