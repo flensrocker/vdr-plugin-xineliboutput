@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.74 2008-12-03 01:04:49 phintuka Exp $
+# $Id: Makefile,v 1.75 2008-12-03 22:52:27 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -213,7 +213,8 @@ OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
 OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
 # xine plugins
-OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
+OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o \
+            xine/adjustable_scr.o
 
 ###
 ### Implicit rules:
@@ -362,8 +363,8 @@ $(VDRFBFE): $(OBJS_FBFE)
 # xine plugins
 #
 
-$(XINEINPUTVDR): xine_input_vdr.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+$(XINEINPUTVDR): xine_input_vdr.o xine/adjustable_scr.o
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ xine/adjustable_scr.o $<
 $(XINEPOSTAUTOCROP): xine_post_autocrop.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
 $(XINEPOSTSWSCALE): xine_post_swscale.o
