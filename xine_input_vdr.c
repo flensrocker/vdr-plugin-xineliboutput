@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.202 2008-12-03 23:42:01 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.203 2008-12-03 23:59:22 phintuka Exp $
  *
  */
 
@@ -1724,6 +1724,11 @@ static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
   return tmp;
 }
 
+/*
+ * clear_osdcmd()
+ *
+ *  - free allocated memory from osd_command_t
+ */
 static void clear_osdcmd(osd_command_t *cmd)
 {
   free(cmd->data);
@@ -1732,6 +1737,11 @@ static void clear_osdcmd(osd_command_t *cmd)
   cmd->palette = NULL;
 }
 
+/*
+ * osdcmd_to_overlay()
+ *
+ *  - fill xine-lib vo_overlay_t from osd_command_t
+ */
 static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
 {
   int i;
@@ -1757,17 +1767,26 @@ static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
   ovl->hili_top = ovl->hili_bottom = ovl->hili_left = ovl->hili_right = -1;
 }
 
+/*
+ * OSD command handlers
+ */
+
 static int exec_osd_command(vdr_input_plugin_t *, osd_command_t *);
 
-static void exec_osd_set_palette(vdr_input_plugin_t *this, osd_command_t *cmd)
+/*
+ * exec_osd_set_palette()
+ *
+ * - replace palette of an already existing OSD
+ */
+static int exec_osd_set_palette(vdr_input_plugin_t *this, osd_command_t *cmd)
 {
   if (!this->osddata[cmd->wnd].data) {
     LOGMSG("OSD_SetPalette(%d): old RLE data missing !", cmd->wnd);
-    return;
+    return CONTROL_PARAM_ERROR;
   }
   if (!cmd->palette) {
     LOGMSG("OSD_SetPalette(%d): new palette missing !", cmd->wnd);
-    return;
+    return CONTROL_PARAM_ERROR;
   }
 
   /* use cached event to re-create Set_RLE command with modified palette */
@@ -1777,30 +1796,34 @@ static void exec_osd_set_palette(vdr_input_plugin_t *this, osd_command_t *cmd)
   memset(&this->osddata[cmd->wnd], 0, sizeof(osd_command_t));
 
   /* replace palette */
-  free(tmp.palette);
-  tmp.palette  = cmd->palette;
-  cmd->palette = NULL; /* take ownership */
-  tmp.colors   = cmd->colors;
-
   tmp.cmd      = OSD_Set_RLE;
+  free(tmp.palette);
+  tmp.palette  = malloc(cmd->colors*sizeof(xine_rle_elem_t));
+  memcpy(tmp.palette, cmd->palette, cmd->colors*sizeof(xine_rle_elem_t));
+  tmp.colors   = cmd->colors;
   tmp.pts      = cmd->pts;
   tmp.delay_ms = cmd->delay_ms;
 
   /* redraw */
-  exec_osd_command(this, &tmp);
-
+  int r = exec_osd_command(this, &tmp);
   clear_osdcmd(&tmp);
+  return r;
 }
 
-static void exec_osd_move(vdr_input_plugin_t *this, osd_command_t *cmd)
+/*
+ * exec_osd_move()
+ *
+ * - move existing OSD to new position
+ */
+static int exec_osd_move(vdr_input_plugin_t *this, osd_command_t *cmd)
 {
   if (!this->osddata[cmd->wnd].data) {
     LOGMSG("OSD_Move(%d): old RLE data missing !", cmd->wnd);
-    return;
+    return CONTROL_PARAM_ERROR;
   }
   if (!this->osddata[cmd->wnd].palette) {
     LOGMSG("OSD_Move(%d): old palette missing !", cmd->wnd);
-    return;
+    return CONTROL_PARAM_ERROR;
   }
 
   /* use cached event to re-create Set_RLE command with modified palette */
@@ -1817,9 +1840,9 @@ static void exec_osd_move(vdr_input_plugin_t *this, osd_command_t *cmd)
   tmp.delay_ms = cmd->delay_ms;
 
   /* redraw */
-  exec_osd_command(this, &tmp);
-
+  int r = exec_osd_command(this, &tmp);
   clear_osdcmd(&tmp);
+  return r;
 }
 
 static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
