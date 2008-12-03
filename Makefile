@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.73 2008-11-24 10:49:29 rofafor Exp $
+# $Id: Makefile,v 1.74 2008-12-03 01:04:49 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -126,10 +126,11 @@ PACKAGE = vdr-$(ARCHIVE)
 ### The name of executable and libraries
 ###
 
-VDRSXFE              = vdr-sxfe
-VDRFBFE              = vdr-fbfe
+VDRPLUGIN            = libvdr-$(PLUGIN).so
 VDRPLUGIN_SXFE       = lib$(PLUGIN)-sxfe.so
 VDRPLUGIN_FBFE       = lib$(PLUGIN)-fbfe.so
+VDRSXFE              = vdr-sxfe
+VDRFBFE              = vdr-fbfe
 XINEINPUTVDR         = xineplug_inp_xvdr.so
 XINEPOSTAUTOCROP     = xineplug_post_autocrop.so
 XINEPOSTSWSCALE      = xineplug_post_swscale.so
@@ -139,36 +140,26 @@ XINEPOSTAUDIOCHANNEL = xineplug_post_audiochannel.so
 ### which programs and libs to build
 ###
 
-VDRSXFE_EXEC =
-VDRFBFE_EXEC =
-VDRPLUGIN_SO =
-VDRPLUGIN_SXFE_SO =
-VDRPLUGIN_FBFE_SO =
-XINEINPUTVDR_SO =
-XINEPOSTAUTOCROP_SO =
-XINEPOSTSWSCALE_SO =
-XINEPOSTAUDIOCHANNEL_SO =
-
+TARGETS_VDR  =
+TARGETS_FE   =
+TARGETS_XINE =
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
+    TARGETS_VDR += $(VDRPLUGIN)
+endif
+ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
+    TARGETS_XINE += $(XINEINPUTVDR) $(XINEPOSTAUTOCROP) $(XINEPOSTSWSCALE) $(XINEPOSTAUDIOCHANNEL)
+endif
 ifeq ($(XINELIBOUTPUT_X11), yes)
-    VDRSXFE_EXEC = $(VDRSXFE)
+    TARGETS_FE += $(VDRSXFE)
     ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-        VDRPLUGIN_SXFE_SO = $(VDRPLUGIN_SXFE)
+        TARGETS_VDR += $(VDRPLUGIN_SXFE)
     endif
 endif
 ifeq ($(XINELIBOUTPUT_FB), yes)
-    VDRFBFE_EXEC = $(VDRFBFE)
+    TARGETS_FE += $(VDRFBFE)
     ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-        VDRPLUGIN_FBFE_SO = $(VDRPLUGIN_FBFE)
+        TARGETS_VDR += $(VDRPLUGIN_FBFE)
     endif
-endif
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
-    XINEINPUTVDR_SO = $(XINEINPUTVDR)
-    XINEPOSTAUTOCROP_SO = $(XINEPOSTAUTOCROP)
-    XINEPOSTSWSCALE_SO = $(XINEPOSTSWSCALE)
-    XINEPOSTAUDIOCHANNEL_SO = $(XINEPOSTAUDIOCHANNEL)
-endif
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-    VDRPLUGIN_SO = libvdr-$(PLUGIN).so
 endif
 
 
@@ -177,7 +168,6 @@ endif
 ###
 
 INCLUDES  += -I$(VDRINCDIR)
-LIBS_X11  += -L/usr/X11R6/lib -lXv -lXext
 
 ifeq ($(ARCH_APPLE_DARWIN), yes)
     INCLUDES  += -I/sw/include
@@ -190,10 +180,6 @@ endif
 DEFINES   += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' \
              -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	     -DXINELIBOUTPUT_VERSION='"$(VERSION)"'
-
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
-    CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags) 
-endif
 
 ifdef NOSIGNAL_IMAGE_FILE
   DEFINES += -DNOSIGNAL_IMAGE_FILE='"$(NOSIGNAL_IMAGE_FILE)"'
@@ -226,7 +212,7 @@ OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
 OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
 OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
-# xine plugins - used only for .dependencies creation
+# xine plugins
 OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
 
 ###
@@ -248,9 +234,6 @@ $(DEPFILE): Makefile config.mak
 	@for i in $(OBJS:%.o=%.c) $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) $(OBJS_XINE:%.o=%.c) ; do \
 	  $(MAKEDEP) $(DEFINES) $(INCLUDES) -MT "`dirname $$i`/`basename $$i .c`.o" $$i >>$@ ; \
 	done
-#	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) \
-#                    $(OBJS_SXFE:%.o=%.c) $(OBJS_FBFE:%.o=%.c) \
-#                    $(OBJS_XINE:%.o=%.c) > $@
 
 -include $(DEPFILE)
 
@@ -273,15 +256,7 @@ vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 	@./mpg2c vdrlogo vdrlogo_720x576.mpg vdrlogo_720x576.c
 
 # xine plugins
-xine_input_vdr.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_input_http.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_post_autocrop.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_post_swscale.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_post_audiochannel.o:
+$(OBJS_XINE):
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
 # frontends 
@@ -336,69 +311,69 @@ XINELIBOUTPUT_INSTALL_MSG =  \
 	    $(warning  Xine plugins and frontends will not be installed automatically. ) \
 	    $(warning  To install files execute "make install" in                      ) \
 	    $(warning  $(shell echo `pwd`)) \
-	    $(warning *****************************************************************) \
+	    $(warning *****************************************************************)
 
 install : XINELIBOUTPUT_INSTALL_MSG =
 
-all: $(VDRPLUGIN_SO) $(VDRPLUGIN_SXFE_SO) $(VDRPLUGIN_FBFE_SO) \
-	    $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) \
-	    $(XINEPOSTAUDIOCHANNEL_SO) i18n
+.PHONY: all
+all: config $(TARGETS_VDR) frontends i18n
+
+frontends: config $(TARGETS_FE) $(TARGETS_XINE)
 	$(XINELIBOUTPUT_INSTALL_MSG)
 
-frontends: $(VDRSXFE_EXEC) $(VDRFBFE_EXEC) $(XINEINPUTVDR_SO) \
-	    $(XINEPOSTAUTOCROP_SO) $(XINEPOSTSWSCALE_SO) \
-	    $(XINEPOSTAUDIOCHANNEL_SO)
+config: config.mak
 
-.PHONY: all
+.PHONY: config 
+
+.PHONY: frontends install dist clean
 
 #
 # VDR plugin
 #
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
-$(VDRPLUGIN_SO): $(OBJS) $(OBJS_MPG)
+
+$(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
 	@-rm -rf $(LIBDIR)/$@.$(APIVERSION)
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
-endif
 
 #
 # vdr-sxfe
 #
-ifeq ($(XINELIBOUTPUT_X11), yes)
-$(VDRPLUGIN_SXFE_SO): $(OBJS_SXFE_SO)
+
+$(VDRPLUGIN_SXFE): $(OBJS_SXFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) -o $@
-	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
-	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
+	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
+	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
 	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) -o $@
-endif
 
 #
 # vdr-fbfe
 #
-ifeq ($(XINELIBOUTPUT_FB), yes)
-$(VDRPLUGIN_FBFE_SO): $(OBJS_FBFE_SO)
+
+$(VDRPLUGIN_FBFE): $(OBJS_FBFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) -o $@
-	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
-	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
+	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
+	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
 	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -o $@
-endif
 
 #
 # xine plugins
 #
-ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
-$(XINEINPUTVDR_SO): xine_input_vdr.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_input_vdr.o $(LIBS_XINE) -o $@
-$(XINEPOSTAUTOCROP_SO): xine_post_autocrop.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_autocrop.o $(LIBS_XINE) -o $@
-$(XINEPOSTSWSCALE_SO): xine_post_swscale.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_swscale.o $(LIBS_XINE) -o $@
-$(XINEPOSTAUDIOCHANNEL_SO): xine_post_audiochannel.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) xine_post_audiochannel.o $(LIBS_XINE) -o $@
-endif
+
+$(XINEINPUTVDR): xine_input_vdr.o
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+$(XINEPOSTAUTOCROP): xine_post_autocrop.o
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+$(XINEPOSTSWSCALE): xine_post_swscale.o
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+$(XINEPOSTAUDIOCHANNEL): xine_post_audiochannel.o
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+
+#
+# install
+#
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
