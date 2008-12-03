@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.201 2008-12-03 23:01:04 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.202 2008-12-03 23:42:01 phintuka Exp $
  *
  */
 
@@ -1533,33 +1533,6 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
 
 /******************************** OSD ************************************/
 
-static int update_video_size(vdr_input_plugin_t *this)
-{
-#if 0
-  int w = 0, h = 0;
-  int64_t duration;
-
-  this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
-  this->stream->video_out->status(this->stream->video_out, 
-				  this->stream, &w, &h, &duration);
-  this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
-
-  if(w>0 && h>0) {
-    if(this->video_width  != w ||
-       this->video_height != h) {
-    
-      LOGOSD("update_video_size: new video size (%dx%d->%dx%d)",
-	     this->video_width, this->video_height, w, h);
-      this->video_width = w;
-      this->video_height = h;
-      this->video_changed = 1;
-      return 1;
-    }
-  }
-#endif
-  return 0;
-}
-
 #define saturate(x,min,max) ( (x)<(min) ? (min) : (x)>(max) ? (max) : (x))
 
 static void palette_rgb_to_yuy(xine_clut_t *clut, int colors)
@@ -1998,12 +1971,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
       int h_hi = this->vdr_osd_height * 1100 / 1000;
       int h_lo = this->vdr_osd_height *  950 / 1000;
       int width_diff = 0, height_diff = 0;
-#if 0
-      int video_changed = update_video_size(this);
-      LOGOSD("video size %dx%d, margins %d..%dx%d..%d (changed: %s)", 
-	     this->video_width, this->video_height, w_lo, w_hi, h_lo, h_hi
-	     video_changed ? "yes" : "no");
-#endif
+
       if(this->video_width  < w_lo)  width_diff  = -1;
       else if(this->video_width  > w_hi)  width_diff  =  1;
       if(this->video_height < h_lo) height_diff = -1;
@@ -2156,7 +2124,6 @@ static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   int result = CONTROL_DISCONNECTED;
-  int video_changed = 0;
 
   if (this->fd_control >= 0 &&  /* remote mode */
       this->funcs.intercept_osd /* frontend handles OSD */ ) {
@@ -2168,7 +2135,6 @@ static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
       palette_rgb_to_yuy(cmd->palette, cmd->colors);
     cmd->flags &= ~OSDFLAG_YUV_CLUT;
 
-    video_changed = update_video_size(this);
     this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
     result = exec_osd_command(this, cmd);
     this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);	  
@@ -2176,9 +2142,6 @@ static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
   } else {
     LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
   }
-
-  if(video_changed)
-    vdr_scale_osds(this, this->video_width, this->video_height);
 
   return result;
 }
