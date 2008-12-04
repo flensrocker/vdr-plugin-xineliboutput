@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.203 2008-12-03 23:59:22 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.204 2008-12-04 00:21:32 phintuka Exp $
  *
  */
 
@@ -1768,6 +1768,38 @@ static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
 }
 
 /*
+ * osd_exec_vpts()
+ *
+ *  - calculate execution time (vpts) for OSD update
+ */
+static int64_t osd_exec_vpts(vdr_input_plugin_t *this, xine_stream_t *stream, osd_command_t *cmd)
+{
+  int64_t vpts = 0; /* now */
+
+  /* calculate exec time */
+  if (cmd->pts || cmd->delay_ms) {
+    int64_t now = xine_get_current_vpts(stream);
+
+    if (cmd->pts)
+      vpts = cmd->pts + stream->metronom->get_option(stream->metronom, METRONOM_VPTS_OFFSET);
+    else
+      vpts = this->last_changed_vpts[cmd->wnd] + cmd->delay_ms*90;
+
+    /* execution time must be in future */
+    if (vpts < now)
+      vpts = 0;
+
+    /* limit delay to 5 seconds */
+    if (vpts > now + 5*90000)
+      vpts = vpts + 5*90000;
+
+    LOGMSG("OSD Command %d scheduled to +%dms", cmd->cmd, (int)(vpts>now ? vpts-now : 0)/90);
+  }
+
+  return vpts;
+}
+
+/*
  * OSD command handlers
  */
 
@@ -1845,10 +1877,85 @@ static int exec_osd_move(vdr_input_plugin_t *this, osd_command_t *cmd)
   return r;
 }
 
+/*
+ * exec_osd_size()
+ *
+ * - set the assumed full OSD size
+ */
+static int exec_osd_size(vdr_input_plugin_t *this, xine_stream_t *stream, osd_command_t *cmd)
+{
+  this->vdr_osd_width  = cmd->w;
+  this->vdr_osd_height = cmd->h;
+
+  if (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_OSDSCALING) {
+    stream->video_out->set_property(stream->video_out, VO_PROP_OSD_WIDTH,  cmd->w);
+    stream->video_out->set_property(stream->video_out, VO_PROP_OSD_HEIGHT, cmd->h);
+  }
+
+  return CONTROL_OK;
+}
+
+/*
+ * exec_osd_nop()
+ *
+ * - update last changed time of an OSD window
+ */
+static int exec_osd_nop(vdr_input_plugin_t *this, xine_stream_t *stream, osd_command_t *cmd)
+{
+  this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
+  return CONTROL_OK;
+}
+
+/*
+ * exec_osd_flush()
+ *
+ * - commit all pending OSD events immediately
+ */
+static int exec_osd_flush(vdr_input_plugin_t *this, video_overlay_manager_t *ovl_manager, 
+			  osd_command_t *cmd)
+{
+  ovl_manager->flush_events(ovl_manager);
+  return CONTROL_OK;
+}
+
+/*
+ * exec_osd_close()
+ *
+ */
+static int exec_osd_close(vdr_input_plugin_t *this, xine_stream_t *stream, 
+			  video_overlay_manager_t *ovl_manager, osd_command_t *cmd)
+{
+  int handle = this->osdhandle[cmd->wnd];
+  if (handle < 0) {
+    LOGMSG("OSD_Close(%d): non-existing OSD !", cmd->wnd);
+    return CONTROL_PARAM_ERROR;
+  }
+
+  video_overlay_event_t ov_event = {0};
+  ov_event.event_type    = OVERLAY_EVENT_FREE_HANDLE;
+  ov_event.vpts          = osd_exec_vpts(this, stream, cmd);
+  ov_event.object.handle = handle;
+
+  while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
+    LOGMSG("OSD_Close(%d): overlay manager queue full !", cmd->wnd);
+    ovl_manager->flush_events(ovl_manager);
+  }
+
+  this->osdhandle[cmd->wnd] = -1;
+  clear_osdcmd(&this->osddata[cmd->wnd]);
+  this->last_changed_vpts[cmd->wnd] = 0;
+
+  return CONTROL_OK;
+}
+
+/*
+ * exec_osd_command()
+ *
+ * - handler for VDR-based osd_command_t events
+ */
 static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 {
   video_overlay_manager_t *ovl_manager;
-  video_overlay_event_t    ov_event = {0};
   xine_stream_t           *stream = this->slave_stream ?: this->stream;
   int handle = -1;
 
@@ -1890,62 +1997,28 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     }
   }
 
-  /* calculate exec time */
-  if(cmd->pts || cmd->delay_ms) {
-    int64_t vpts = xine_get_current_vpts(stream);
-    if(cmd->pts) {
-      ov_event.vpts = cmd->pts + 
-          stream->metronom->get_option(stream->metronom, METRONOM_VPTS_OFFSET);
-    } else {
-      if(this->last_changed_vpts[cmd->wnd]) 
-	ov_event.vpts = this->last_changed_vpts[cmd->wnd] + cmd->delay_ms*90;
-    }
-    /* execution time must be in future */
-    if(ov_event.vpts < vpts)
-      ov_event.vpts = 0;
-    /* limit delay to 5 seconds (because of seeks and channel switches ...) */
-    if(ov_event.vpts > vpts + 5*90000)
-      ov_event.vpts = vpts + 5*90000;
-  }
-
   /* Execute command */
 
-  if(cmd->cmd == OSD_Size) {
-    this->vdr_osd_width  = cmd->w;
-    this->vdr_osd_height = cmd->h;
+  if (cmd->cmd == OSD_Nop)
+    return exec_osd_nop(this, stream, cmd);
 
-    if (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_OSDSCALING) {
-      stream->video_out->set_property(stream->video_out, VO_PROP_OSD_WIDTH,  cmd->w);
-      stream->video_out->set_property(stream->video_out, VO_PROP_OSD_HEIGHT, cmd->h);
-    }
+  if (cmd->cmd == OSD_Size)
+    return exec_osd_size(this, stream, cmd);
 
-  } else if(cmd->cmd == OSD_Nop) {
-    this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
+  if (cmd->cmd == OSD_SetPalette)
+    return exec_osd_set_palette(this, cmd);
 
-  } else if(cmd->cmd == OSD_Flush) {
-    LOGMSG("OSD_Flush()");
-    ovl_manager->flush_events(ovl_manager);
+  if (cmd->cmd == OSD_Move)
+    return exec_osd_move(this, cmd);
 
-  } else if(cmd->cmd == OSD_SetPalette) {
-    exec_osd_set_palette(this, cmd);
+  if (cmd->cmd == OSD_Flush)
+    return exec_osd_flush(this, ovl_manager, cmd);
 
-  } else if(cmd->cmd == OSD_Move) {
-    exec_osd_move(this, cmd);
+  if (cmd->cmd == OSD_Close)
+    return exec_osd_close(this, stream, ovl_manager, cmd);
 
-  } else if(cmd->cmd == OSD_Set_YUV) {
+  if(cmd->cmd == OSD_Set_YUV) {
     /* TODO */
-  } else if(cmd->cmd == OSD_Close) {
-    ov_event.event_type = OVERLAY_EVENT_FREE_HANDLE;
-    ov_event.object.handle = handle;
-    this->osdhandle[cmd->wnd] = -1;
-    clear_osdcmd(&this->osddata[cmd->wnd]);
-
-    while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
-      LOGMSG("OSD_Close(%d): overlay manager queue full !", cmd->wnd);
-      ovl_manager->flush_events(ovl_manager);
-    }
-
-    this->last_changed_vpts[cmd->wnd] = 0;
 
   } else if(cmd->cmd == OSD_Set_RLE) {
 
@@ -1962,7 +2035,9 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 	ovl_manager->get_handle(ovl_manager,0);
 
     /* fill SHOW event */
+    video_overlay_event_t ov_event = {0};
     ov_event.event_type = OVERLAY_EVENT_SHOW;
+    ov_event.vpts = osd_exec_vpts(this, stream, cmd);
     ov_event.object.handle = handle;
     ov_event.object.overlay = &ov_overlay;
     ov_event.object.object_type = 1; /* menu */
