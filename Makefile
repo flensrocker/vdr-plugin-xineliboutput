@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.75 2008-12-03 22:52:27 phintuka Exp $
+# $Id: Makefile,v 1.76 2008-12-05 20:29:11 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -55,7 +55,6 @@ else
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
     LDFLAGS_SO ?= -shared -fvisibility=hidden
 endif
-LIBS_VDR ?= 
 
 ###
 ### The directory environment:
@@ -200,11 +199,13 @@ OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
        tools/cxsocket.o tools/udp_pes_scheduler.o \
        tools/backgroundwriter.o tools/playlist.o tools/http.o \
        tools/vdrdiscovery.o tools/time_pts.o tools.o \
-       tools/metainfo_menu.o logdefs.o
+       tools/metainfo_menu.o logdefs.o tools/rle.o
 OBJS_MPG = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 
 # frontends
-OBJS_FE_SO = xine_frontend.o xine/post.o logdefs.o
+OBJS_FE_SO = xine_frontend.o logdefs.o \
+             xine/post.o \
+             tools/rle.o
 OBJS_FE    = $(OBJS_FE_SO) tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o
 
 OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
@@ -213,8 +214,9 @@ OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
 OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
 # xine plugins
-OBJS_XINE = xine_input_vdr.o xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o \
-            xine/adjustable_scr.o
+OBJS_XINEINPUTVDR = xine_input_vdr.o xine/adjustable_scr.o tools/rle.o
+
+OBJS_XINE = $(OBJS_XINEINPUTVDR) xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
 
 ###
 ### Implicit rules:
@@ -256,26 +258,8 @@ nosignal_720x576.c: mpg2c nosignal_720x576.mpg
 vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 	@./mpg2c vdrlogo vdrlogo_720x576.mpg vdrlogo_720x576.c
 
-# xine plugins
-$(OBJS_XINE):
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-
-# frontends 
-logdefs.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_frontend.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_frontend_main.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_frontend_lirc.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine/post.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-tools/vdrdiscovery.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_sxfe_frontend.o:
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
-xine_fbfe_frontend.o:
+# C code (xine plugins and frontends)
+$(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)):
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
 
 ### Internationalization (I18N):
@@ -363,8 +347,8 @@ $(VDRFBFE): $(OBJS_FBFE)
 # xine plugins
 #
 
-$(XINEINPUTVDR): xine_input_vdr.o xine/adjustable_scr.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ xine/adjustable_scr.o $<
+$(XINEINPUTVDR): $(OBJS_XINEINPUTVDR)
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $(OBJS_XINEINPUTVDR)
 $(XINEPOSTAUTOCROP): xine_post_autocrop.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
 $(XINEPOSTSWSCALE): xine_post_swscale.o
