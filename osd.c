@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.28 2008-11-30 10:56:27 phintuka Exp $
+ * $Id: osd.c,v 1.29 2008-12-05 20:32:13 phintuka Exp $
  *
  */
 
@@ -16,6 +16,7 @@
 #include "device.h"
 #include "config.h"
 #include "xine_osd_command.h"
+#include "tools/rle.h"
 
 #include "osd.h"
 
@@ -76,46 +77,6 @@ static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palett
 	}
     }
   }
-}
-
-static int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, int w, int h)
-{
-  xine_rle_elem_t rle, *rle_p = 0, *rle_base;
-  int x, y, num_rle = 0, rle_size = 8128;
-  const uint8_t *c;
-
-  rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
-  rle_base = rle_p;
-
-  for( y = 0; y < h; y++ ) {
-    rle.len = 0;
-    rle.color = 0;
-    c = data + y * w;
-    for( x = 0; x < w; x++, c++ ) {
-      if( rle.color != *c ) {
-	if( rle.len ) {
-	  if( (num_rle + h-y+1) > rle_size ) {
-	    rle_size *= 2;
-	    rle_base = (xine_rle_elem_t*)realloc( rle_base, 4*rle_size );
-	    rle_p = rle_base + num_rle;
-	  }
-	  *rle_p++ = rle;
-	  num_rle++;
-	}
-	rle.color = *c;
-	rle.len = 1;
-      } else {
-	rle.len++;
-      }
-    }
-    *rle_p++ = rle;
-    num_rle++;
-  }
-
-  TRACE("xinelib_osd.c:CmdRle uncompressed="<< (w*h) <<", compressed=" << (4*num_rle));
-
-  *rle_data = rle_base;
-  return num_rle;
 }
 
 //
