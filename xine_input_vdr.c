@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.204 2008-12-04 00:21:32 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.205 2008-12-05 21:30:19 phintuka Exp $
  *
  */
 
@@ -1581,147 +1581,35 @@ static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
   return data;
 }
 
-
-/*#define NEW_SCALING*/
-#ifdef NEW_SCALING
 #include "tools/rle.h"
-#else
-typedef enum {
-  scale_fast = 0,         /* simple pixel doubling/dropping */
-  scale_good_BW = 1,      /* linear interpolation, palette re-generation */
-} scale_mode_t;
-#endif
 
-/* re-scale compressed RLE image */
-static xine_rle_elem_t *scale_rle_image(osd_command_t *osdcmd,
-                                        int new_w, int new_h, 
-					scale_mode_t mode)
+/*
+ * scale_rle_image()
+ *
+ * Scale OSD_Set_RLE data
+ * - modified fields: x, y, w, h, (RLE) data and datalen
+ * - old RLE data is not stored, freed or returned !
+ */
+static void scale_rle_image(osd_command_t *osdcmd,
+			    int new_w, int new_h, 
+			    scale_mode_t mode)
 {
-  #define FACTORBASE      0x100
-  #define FACTOR2PIXEL(f) ((f)>>8)
-  #define SCALEX(x) FACTOR2PIXEL(factor_x*(x))
-  #define SCALEY(y) FACTOR2PIXEL(factor_y*(y))
+  xine_rle_elem_t *old_rle   = osdcmd->data;
+  int              rle_elems = osdcmd->datalen / sizeof(xine_rle_elem_t);
 
-  xine_rle_elem_t *old_rle = osdcmd->data;
-  int old_w = osdcmd->w, old_h = osdcmd->h;
-  int old_y = 0, new_y = 0;
-  int factor_x = FACTORBASE*new_w/old_w;
-  int factor_y = FACTORBASE*new_h/old_h;
+  /*if (mode == scale_fast)*/
+  osdcmd->data = rle_scale_nearest(old_rle, &rle_elems, osdcmd->w, osdcmd->h,
+				   new_w, new_h);
+  osdcmd->datalen = rle_elems * sizeof(xine_rle_elem_t);
 
-  xine_rle_elem_t *new_rle_start, *new_rle, *tmp;
-  int rle_size = 8128;
-  int num_rle = 0;
-
-#ifdef NEW_SCALING
-  /* try better quality grayscale 100%...200% */
-  if(mode != scale_fast &&
-     old_w <= new_w && old_w*2 >= new_w &&
-     old_h <= new_h && old_h*2 >= new_h) {
-    tmp = upscale_grayscale_rle_image(osdcmd, new_w, new_h);
-    if(tmp)
-      return tmp;
-  }
-#endif
-
-  new_rle_start = new_rle = (xine_rle_elem_t*)malloc(4*rle_size);  
-
-  /* we assume rle elements are breaked at end of line */
-  while(old_y < old_h) {
-    int elems_current_line = 0;
-    int old_x = 0, new_x = 0;
-
-    while(old_x < old_w) { 
-      int new_x_end = SCALEX(old_x + old_rle->len);
-
-      if(new_x_end > new_w) {
-	new_x_end = new_w;
-      }
-
-      new_rle->len   = new_x_end - new_x;
-      new_rle->color = old_rle->color;
-
-      old_x += old_rle->len;
-      old_rle++; /* may be incremented to last element + 1 (element is not accessed anymore) */
-
-      if(new_rle->len > 0) { 
-	new_x += new_rle->len;
-	new_rle++;
-
-	num_rle++;
-	elems_current_line++;
-	
-	if( (num_rle + 1) >= rle_size ) {
-	  rle_size *= 2;
-	  new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
-	  new_rle = new_rle_start + num_rle;
-	}
-      }
-    }
-    if(new_x < new_w)
-      (new_rle-1)->len += new_w - new_x;
-    old_y++; 
-    new_y++;
-
-    if(factor_y > FACTORBASE) {
-      /* scale up -- duplicate current line ? */
-      int dup = SCALEY(old_y) - new_y;
-
-      /* if no lines left in (old) rle, copy all lines still missing from new */
-      if(old_y == old_h) 
-	dup = new_h - new_y - 1;
-
-      while(dup-- && (new_y+1<new_h)) {
-	xine_rle_elem_t *prevline;
-	int n;
-	if( (num_rle + elems_current_line + 1) >= rle_size ) {
-	  rle_size *= 2;
-	  new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
-	  new_rle = new_rle_start + num_rle;
-	}
-	
-	/* duplicate previous line */
-	prevline = new_rle - elems_current_line;
-	for(n = 0; n < elems_current_line; n++) {
-	  *new_rle++ = *prevline++;
-	  num_rle++;
-	}
-	new_y++;
-      }
-
-    } else if(factor_y < FACTORBASE) {
-      /* scale down -- drop next line ? */
-      int skip = new_y - SCALEY(old_y);
-      if(old_y == old_h-1) {
-	/* one (old) line left ; don't skip it if new rle is not complete */
-	if(new_y < new_h)
-	  skip = 0;
-      }
-      while(skip-- && 
-	    old_y<old_h /* rounding error may add one line, filter it out */) {
-	for(old_x = 0; old_x < old_w;) {
-	  old_x += old_rle->len;
-	  old_rle++;
-	}
-	old_y++;
-      }
-    }
-  }
-
-  tmp = osdcmd->data;
-
-  osdcmd->data = new_rle_start;
-  osdcmd->datalen = num_rle*4;
-
-  if(old_w != new_w) {
-    osdcmd->x = (0x100*osdcmd->x * new_w/old_w)>>8;
+  if (osdcmd->w != new_w) {
+    osdcmd->x = osdcmd->x * new_w / osdcmd->w;
     osdcmd->w = new_w;
   }
-  if(old_h != new_h) {
-    osdcmd->y = (0x100*osdcmd->y * new_h/old_h)>>8;
+  if (osdcmd->h != new_h) {
+    osdcmd->y = osdcmd->y * new_h / osdcmd->h;
     osdcmd->h = new_h;
   }
-
-  return tmp;
 }
 
 /*
