@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_props.h,v 1.1 2008-11-19 22:53:04 phintuka Exp $
+ * $Id: vo_props.h,v 1.2 2008-12-06 15:17:33 phintuka Exp $
  *
  */
 
@@ -21,6 +21,9 @@
 #define VO_PROP_OSD_WIDTH   0x1002
 /* OSD height */
 #define VO_PROP_OSD_HEIGHT  0x1003
+
+/* VDR OSD , hili_rgb_clut */
+#define VDR_OSD_MAGIC       -9999
 
 
 #endif /* XINELIBOUTPUT_VO_PROPS_H_ */
