@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.205 2008-12-05 21:30:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.206 2008-12-06 00:34:09 phintuka Exp $
  *
  */
 
@@ -1837,55 +1837,185 @@ static int exec_osd_close(vdr_input_plugin_t *this, xine_stream_t *stream,
 }
 
 /*
+ * exec_osd_set_rle()
+ *
+ */
+static int exec_osd_set_rle(vdr_input_plugin_t *this, xine_stream_t *stream, 
+			    video_overlay_manager_t *ovl_manager, osd_command_t *cmd)
+{
+  video_overlay_event_t ov_event   = {0};
+  vo_overlay_t          ov_overlay = {0};
+  int use_unscaled       = 0;
+  int rle_scaled         = 0;
+  int unscaled_supported = 1;
+  int vo_scaling         = 0;
+  int handle             = this->osdhandle[cmd->wnd];
+
+  stream->video_out->enable_ovl(stream->video_out, 1);
+
+  /* get / allocate OSD handle */
+  if (handle < 0)
+    handle = this->osdhandle[cmd->wnd] = ovl_manager->get_handle(ovl_manager,0);
+
+  /* fill SHOW event */
+  ov_event.event_type         = OVERLAY_EVENT_SHOW;
+  ov_event.vpts               = osd_exec_vpts(this, stream, cmd);
+  ov_event.object.handle      = handle;
+  ov_event.object.overlay     = &ov_overlay;
+  ov_event.object.object_type = 1; /* menu */
+
+  /* check for unscaled OSD capability and request */
+  if (! (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_UNSCALED_OVERLAY))
+    unscaled_supported = 0;
+  else if (cmd->flags & OSDFLAG_UNSCALED)
+    use_unscaled = 1;
+
+  /* store osd for later rescaling (done if video size changes) */
+
+  clear_osdcmd(&this->osddata[cmd->wnd]);
+
+  memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
+  this->osddata[cmd->wnd].data = NULL;
+  if (cmd->palette) {
+    this->osddata[cmd->wnd].palette = malloc(sizeof(xine_clut_t)*cmd->colors);
+    memcpy(this->osddata[cmd->wnd].palette, cmd->palette, 4*cmd->colors);
+  }
+
+  /* request OSD scaling from video_out layer */
+  if (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_OSDSCALING) {
+    stream->video_out->set_property(stream->video_out, VO_PROP_OSD_SCALING, cmd->scaling ? 1 : 0);
+    vo_scaling = 1;
+  }
+
+  /* if video size differs from expected (VDR osd is designed for 720x576),
+     scale osd to video size or use unscaled (display resolution)
+     blending */
+  if (!vo_scaling && !use_unscaled) {
+    int w_hi = this->vdr_osd_width  * 1100 / 1000;
+    int w_lo = this->vdr_osd_width  *  950 / 1000;
+    int h_hi = this->vdr_osd_height * 1100 / 1000;
+    int h_lo = this->vdr_osd_height *  950 / 1000;
+    int width_diff = 0, height_diff = 0;
+
+    if      (this->video_width  < w_lo) width_diff  = -1;
+    else if (this->video_width  > w_hi) width_diff  =  1;
+    if      (this->video_height < h_lo) height_diff = -1;
+    else if (this->video_height > h_hi) height_diff =  1;
+
+    if (width_diff || height_diff) {
+      int new_w = (0x100*cmd->w * this->video_width 
+		   / this->vdr_osd_width)>>8;
+      int new_h = (0x100*cmd->h * this->video_height 
+		   / this->vdr_osd_height)>>8;
+      LOGOSD("Size out of margins, rescaling rle image");
+      if (width_diff < 0 || height_diff < 0)
+	if (unscaled_supported && (cmd->flags & OSDFLAG_UNSCALED_LOWRES))
+	  use_unscaled = 1;
+
+      if (!use_unscaled && cmd->scaling > 0) {
+
+	if (height_diff || width_diff) {
+	  /* store original RLE data */
+	  this->osddata[cmd->wnd].data = cmd->data;
+	  this->osddata[cmd->wnd].datalen = cmd->datalen;
+	    
+	  rle_scaled = 1;
+	  scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
+	} else {
+	  LOGOSD("osd_command: size out of margins, using UNSCALED");
+	  use_unscaled = unscaled_supported;
+	}
+      }
+    }
+  }
+
+  if (!vo_scaling && use_unscaled) {
+    int win_width  = stream->video_out->get_property(stream->video_out, 
+						     VO_PROP_WINDOW_WIDTH);
+    int win_height = stream->video_out->get_property(stream->video_out, 
+						     VO_PROP_WINDOW_HEIGHT);
+    if (cmd->scaling > 0) {
+      /* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
+
+      if (win_width > 240 && win_height > 196) {
+	if (cmd->scaling > 0) {
+	  /*LOGMSG("Scaling unscaled OSD to %dx%d", win_width, win_height);*/
+	  if (win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
+	    int new_w = (0x100*cmd->w * win_width 
+			 / this->vdr_osd_width)>>8;
+	    int new_h = (0x100*cmd->h * win_height 
+			 / this->vdr_osd_height)>>8;
+
+	    /* store original RLE data */
+	    this->osddata[cmd->wnd].data = cmd->data;
+	    this->osddata[cmd->wnd].datalen = cmd->datalen;
+	    
+	    rle_scaled = 1;
+	    scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
+	  }
+	}
+      }
+    }
+  }
+
+  /* fill ov_overlay */
+  osdcmd_to_overlay(&ov_overlay, cmd);
+  ov_overlay.unscaled = use_unscaled;
+
+  /* tag this overlay */
+  ov_overlay.hili_rgb_clut = -9999;
+    
+  /* if no scaling was required, we may still need to re-center OSD */
+  if (!vo_scaling && !rle_scaled) {
+    if (this->video_width != this->vdr_osd_width)
+      ov_overlay.x += (this->video_width - this->vdr_osd_width)/2;
+    if (this->video_height != this->vdr_osd_height)
+      ov_overlay.y += (this->video_height - this->vdr_osd_height)/2;
+  }
+
+  /* store rle for later scaling (done if video size changes) */
+  if (!rle_scaled /* if scaled, we already have a copy (original data) */ ) {
+    this->osddata[cmd->wnd].data = malloc(cmd->datalen);
+    memcpy(this->osddata[cmd->wnd].data, cmd->data, cmd->datalen);
+  }
+  cmd->data = NULL; /* we 'consume' data (ownership goes for xine-lib osd manager) */
+
+  /* send event to overlay manager */
+  while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
+    LOGDBG("OSD_Set_RLE(%d): overlay manager queue full !", cmd->wnd);
+    ovl_manager->flush_events(ovl_manager);
+    continue;
+  }
+
+  this->last_changed_vpts[cmd->wnd] = ov_event.vpts ?: xine_get_current_vpts(stream);
+
+  return CONTROL_OK;
+}
+
+/*
  * exec_osd_command()
  *
  * - handler for VDR-based osd_command_t events
  */
 static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
 {
-  video_overlay_manager_t *ovl_manager;
-  xine_stream_t           *stream = this->slave_stream ?: this->stream;
-  int handle = -1;
+  xine_stream_t *stream = this->slave_stream ?: this->stream;
 
   /* Caller must have locked this->osd_lock ! */
 
   LOGOSD("exec_osd_command %d", cmd ? cmd->cmd : -1); 
 
   /* Check parameters */
-
-  if (!cmd || !this || !stream) {
+  if (!cmd || !stream) {
     LOGMSG("exec_osd_command: Stream not initialized !");
     return CONTROL_DISCONNECTED;
   }
-
   if (cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
     LOGMSG("exec_osd_command: OSD window handle %d out of range !", cmd->wnd);
     return CONTROL_PARAM_ERROR;
   }
 
-  handle = this->osdhandle[cmd->wnd];
-
-  /* we already have port ticket */
-  ovl_manager = stream->video_out->get_overlay_manager(stream->video_out);
-  if(!ovl_manager) {
-    LOGMSG("exec_osd_command: Stream has no overlay manager !");
-    return CONTROL_DISCONNECTED;
-  }
-
-  /* Does the OSD exist ? */
-  if (handle < 0) {
-    if (cmd->cmd == OSD_Close) {
-      LOGMSG("exec_osd_command: Attempt to close non-existing OSD (%d) !", cmd->wnd);
-      return CONTROL_PARAM_ERROR;
-    }
-    if (cmd->cmd == OSD_Move  ||
-	cmd->cmd == OSD_SetPalette) {
-      LOGMSG("exec_osd_command: Attempt to modify non-existing OSD (%d) !", cmd->wnd);
-      return CONTROL_PARAM_ERROR;
-    }
-  }
-
-  /* Execute command */
+  /* execute */
 
   if (cmd->cmd == OSD_Nop)
     return exec_osd_nop(this, stream, cmd);
@@ -1899,163 +2029,30 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
   if (cmd->cmd == OSD_Move)
     return exec_osd_move(this, cmd);
 
+  /* Get overlay manager. We already have port ticket. */
+  video_overlay_manager_t *ovl_manager = stream->video_out->get_overlay_manager(stream->video_out);
+  if (!ovl_manager) {
+    LOGMSG("exec_osd_command: Stream has no overlay manager !");
+    return CONTROL_DISCONNECTED;
+  }
+
   if (cmd->cmd == OSD_Flush)
     return exec_osd_flush(this, ovl_manager, cmd);
+
+  if (cmd->cmd == OSD_Set_RLE)
+    return exec_osd_set_rle(this, stream, ovl_manager, cmd);
 
   if (cmd->cmd == OSD_Close)
     return exec_osd_close(this, stream, ovl_manager, cmd);
 
-  if(cmd->cmd == OSD_Set_YUV) {
+  if (cmd->cmd == OSD_Set_YUV) {
     /* TODO */
-
-  } else if(cmd->cmd == OSD_Set_RLE) {
-
-    vo_overlay_t ov_overlay = {0};
-    int use_unscaled = 0;
-    int rle_scaled = 0;
-    int unscaled_supported = 1;
-
-    stream->video_out->enable_ovl(stream->video_out, 1);
-
-    /* allocate OSD handle */
-    if(handle < 0)
-      handle = this->osdhandle[cmd->wnd] = 
-	ovl_manager->get_handle(ovl_manager,0);
-
-    /* fill SHOW event */
-    video_overlay_event_t ov_event = {0};
-    ov_event.event_type = OVERLAY_EVENT_SHOW;
-    ov_event.vpts = osd_exec_vpts(this, stream, cmd);
-    ov_event.object.handle = handle;
-    ov_event.object.overlay = &ov_overlay;
-    ov_event.object.object_type = 1; /* menu */
-
-    /* check for unscaled OSD capability and request */
-    if(!(stream->video_out->get_capabilities(stream->video_out) &
-	 VO_CAP_UNSCALED_OVERLAY))
-      unscaled_supported = 0;
-    else if(cmd->flags & OSDFLAG_UNSCALED)
-      use_unscaled = 1;
-
-    /* store osd for later rescaling (done if video size changes) */
-
-    clear_osdcmd(&this->osddata[cmd->wnd]);
-
-    memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
-    this->osddata[cmd->wnd].data = NULL;
-    if(cmd->palette) {
-      this->osddata[cmd->wnd].palette = malloc(sizeof(xine_clut_t)*cmd->colors);
-      memcpy(this->osddata[cmd->wnd].palette, cmd->palette, 4*cmd->colors);
-    }
-
-    /* if video size differs from expected (VDR osd is designed for 720x576),
-       scale osd to video size or use unscaled (display resolution)
-       blending */
-    if(!use_unscaled) {
-      int w_hi = this->vdr_osd_width  * 1100 / 1000;
-      int w_lo = this->vdr_osd_width  *  950 / 1000;
-      int h_hi = this->vdr_osd_height * 1100 / 1000;
-      int h_lo = this->vdr_osd_height *  950 / 1000;
-      int width_diff = 0, height_diff = 0;
-
-      if(this->video_width  < w_lo)  width_diff  = -1;
-      else if(this->video_width  > w_hi)  width_diff  =  1;
-      if(this->video_height < h_lo) height_diff = -1;
-      else if(this->video_height > h_hi) height_diff =  1;
-
-      if(width_diff || height_diff) {
-	int new_w = (0x100*cmd->w * this->video_width 
-		     / this->vdr_osd_width)>>8;
-	int new_h = (0x100*cmd->h * this->video_height 
-		     / this->vdr_osd_height)>>8;
-	LOGOSD("Size out of margins, rescaling rle image");
-	if(width_diff < 0 || height_diff < 0)
-	  if(unscaled_supported && (cmd->flags & OSDFLAG_UNSCALED_LOWRES))
-	    use_unscaled = 1;
-
-	if(!use_unscaled && cmd->scaling > 0) {
-
-	  if(height_diff || width_diff) {
-	    this->osddata[cmd->wnd].data = cmd->data;
-	    this->osddata[cmd->wnd].datalen = cmd->datalen;
-	    
-	    rle_scaled = 1;
-	    scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
-	  } else {
-	    LOGOSD("osd_command: size out of margins, using UNSCALED");
-	    use_unscaled = unscaled_supported;
-	  }
-	}
-      }
-    }
-
-    if(use_unscaled) {
-      int win_width  = stream->video_out->get_property(stream->video_out, 
-						       VO_PROP_WINDOW_WIDTH);
-      int win_height = stream->video_out->get_property(stream->video_out, 
-						       VO_PROP_WINDOW_HEIGHT);
-      if(cmd->scaling > 0) {
-	/* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
-	
-	if(win_width > 240 && win_height > 196) {
-	  if(cmd->scaling > 0) {
-	    /*LOGMSG("Scaling unscaled OSD to %dx%d", win_width, win_height);*/
-	    if(win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
-	      int new_w = (0x100*cmd->w * win_width 
-			   / this->vdr_osd_width)>>8;
-	      int new_h = (0x100*cmd->h * win_height 
-			   / this->vdr_osd_height)>>8;
-
-	      this->osddata[cmd->wnd].data = cmd->data;
-	      this->osddata[cmd->wnd].datalen = cmd->datalen;
-	    
-	      rle_scaled = 1;
-	      scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
-	    }
-	  }
-	}
-      }
-    }
-
-    /* fill ov_overlay */
-    osdcmd_to_overlay(&ov_overlay, cmd);
-
-    ov_overlay.unscaled = use_unscaled;
-
-    /* no scaling required, but may still need to re-center OSD */
-    if(!rle_scaled) {
-      if(this->video_width != this->vdr_osd_width)
-	ov_overlay.x += (this->video_width - this->vdr_osd_width)/2;
-      if(this->video_height != this->vdr_osd_height)
-	ov_overlay.y += (this->video_height - this->vdr_osd_height)/2;
-    }
-
-    /* store rle for later scaling (done if video size changes) */
-    if(/*!use_unscaled &&*/
-       /*!this->osddata[cmd->wnd].data && */
-       !rle_scaled /*if scaled, we already have a copy (original data)*/ ) {
-      this->osddata[cmd->wnd].data = malloc(cmd->datalen);
-      memcpy(this->osddata[cmd->wnd].data, cmd->data, cmd->datalen);
-    }
-    cmd->data = NULL;/* we 'consume' data (ownership goes for osd manager) */
-
-    /* send event to overlay manager */
-    while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
-      LOGDBG("OSD_Set_RLE(%d): overlay manager queue full !", cmd->wnd);
-      ovl_manager->flush_events(ovl_manager);
-      continue;
-    }
-
-    this->last_changed_vpts[cmd->wnd] = 
-      ov_event.vpts ?: xine_get_current_vpts(stream);
-
-  } else {
-    LOGMSG("Unknown OSD command %d", cmd->cmd);
+    LOGMSG("exec_osd_command: OSD_Set_YUV not implemented !");
     return CONTROL_PARAM_ERROR;
   }
 
-  LOGOSD("OSD command %d done", cmd->cmd); 
-  return CONTROL_OK;
+  LOGMSG("Unknown OSD command %d", cmd->cmd);
+  return CONTROL_PARAM_ERROR;
 }
 
 static void vdr_scale_osds(vdr_input_plugin_t *this, 
