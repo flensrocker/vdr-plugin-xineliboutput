@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.206 2008-12-06 00:34:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.207 2008-12-06 22:25:25 phintuka Exp $
  *
  */
 
@@ -60,12 +60,13 @@
 # endif
 #endif
 
-#include "xine/vo_props.h"
 #include "xine/adjustable_scr.h"
+#include "xine/osd_manager.h"
 
 #include "xine_input_vdr.h"
 #include "xine_input_vdr_net.h"
 #include "xine_osd_command.h"
+
 #include "tools/pes.h"
 
 /***************************** DEFINES *********************************/
@@ -255,6 +256,7 @@ typedef struct vdr_input_plugin_s {
   vdr_input_class_t  *class;
   xine_stream_t      *stream;
   xine_event_queue_t *event_queue;
+  osd_manager_t      *osd_manager;
 
   char               *mrl;
 
@@ -336,15 +338,6 @@ typedef struct vdr_input_plugin_s {
   int   orig_saturation;
   int   orig_contrast;
   int   orig_vo_aspect_ratio;
-
-  /* OSD */
-  pthread_mutex_t osd_lock;
-  uint16_t vdr_osd_width, vdr_osd_height;
-  uint16_t video_width, video_height;
-  uint8_t  video_changed;
-  int      osdhandle[MAX_OSD_OBJECT];
-  int64_t  last_changed_vpts[MAX_OSD_OBJECT];
-  osd_command_t osddata[MAX_OSD_OBJECT];
 
 } vdr_input_plugin_t;
 
@@ -1302,25 +1295,20 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
   else dratio = ((double)ratio)/10000.0;
 
   if(this->stream && this->stream->video_out) {
-    /* our video size is size _after_ cropping, so generate 
-       larger image if cropping is active. This will result 
-       in right sized image after cropping ...*/
-    int width  = this->video_width;
-    int height = this->video_height;
-    vo_frame_t *img = NULL;
 
-    width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_LEFT);
-    width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_RIGHT);
-    height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_TOP);
-    height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM);
+    vo_frame_t *img    = NULL;
+    int         width  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
+    int         height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
 
-    if(width >= 360 && height >= 288 && width <= 1920 && height <= 1024) {
+    if (width >= 360 && height >= 288 && width <= 1920 && height <= 1024) {
       this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
       img = this->stream->video_out->get_frame (this->stream->video_out,
 						width, height,
 						dratio, XINE_IMGFMT_YV12, 
 						VO_BOTH_FIELDS);
       this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
+    } else {
+      LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
     }
 
     if(img) {
@@ -1533,26 +1521,6 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
 
 /******************************** OSD ************************************/
 
-#define saturate(x,min,max) ( (x)<(min) ? (min) : (x)>(max) ? (max) : (x))
-
-static void palette_rgb_to_yuy(xine_clut_t *clut, int colors)
-{
-  if (clut && colors>0) {
-    int c;
-    for (c=0; c<colors; c++) {
-      int R  = clut[c].r;
-      int G  = clut[c].g;
-      int B  = clut[c].b;
-      int Y  = (( +  66*R + 129*G +  25*B + 0x80) >> 8) +  16;
-      int CR = (( + 112*R -  94*G -  18*B + 0x80) >> 8) + 128;
-      int CB = (( -  38*R -  74*G + 112*B + 0x80) >> 8) + 128;
-      clut[c].y  = saturate( Y, 16, 235);
-      clut[c].cb = saturate(CB, 16, 240);
-      clut[c].cr = saturate(CR, 16, 240);
-    }
-  }
-}
-
 static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
 {
   xine_rle_elem_t *data = (xine_rle_elem_t*)malloc(elems*sizeof(xine_rle_elem_t));
@@ -1581,552 +1549,22 @@ static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
   return data;
 }
 
-#include "tools/rle.h"
-
 /*
- * scale_rle_image()
+ * vdr_plugin_exec_osd_command()
  *
- * Scale OSD_Set_RLE data
- * - modified fields: x, y, w, h, (RLE) data and datalen
- * - old RLE data is not stored, freed or returned !
+ * - entry point for VDR-based osd_command_t events
  */
-static void scale_rle_image(osd_command_t *osdcmd,
-			    int new_w, int new_h, 
-			    scale_mode_t mode)
-{
-  xine_rle_elem_t *old_rle   = osdcmd->data;
-  int              rle_elems = osdcmd->datalen / sizeof(xine_rle_elem_t);
-
-  /*if (mode == scale_fast)*/
-  osdcmd->data = rle_scale_nearest(old_rle, &rle_elems, osdcmd->w, osdcmd->h,
-				   new_w, new_h);
-  osdcmd->datalen = rle_elems * sizeof(xine_rle_elem_t);
-
-  if (osdcmd->w != new_w) {
-    osdcmd->x = osdcmd->x * new_w / osdcmd->w;
-    osdcmd->w = new_w;
-  }
-  if (osdcmd->h != new_h) {
-    osdcmd->y = osdcmd->y * new_h / osdcmd->h;
-    osdcmd->h = new_h;
-  }
-}
-
-/*
- * clear_osdcmd()
- *
- *  - free allocated memory from osd_command_t
- */
-static void clear_osdcmd(osd_command_t *cmd)
-{
-  free(cmd->data);
-  cmd->data = NULL;
-  free(cmd->palette);
-  cmd->palette = NULL;
-}
-
-/*
- * osdcmd_to_overlay()
- *
- *  - fill xine-lib vo_overlay_t from osd_command_t
- */
-static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
-{
-  int i;
-
-  ovl->rle       = (rle_elem_t*)cmd->data;
-  ovl->data_size = cmd->datalen;
-  ovl->num_rle   = cmd->datalen / 4;
-
-  ovl->x      = cmd->x;
-  ovl->y      = cmd->y;
-  ovl->width  = cmd->w;
-  ovl->height = cmd->h;
-
-  /* palette */
-  for (i=0; i<cmd->colors; i++) {
-    ovl->color[i] = (*(uint32_t*)(cmd->palette + i)) & 0x00ffffff;
-    ovl->trans[i] = (cmd->palette[i].alpha + 0x7)/0xf;
-  }
-  ovl->rgb_clut = cmd->flags & OSDFLAG_YUV_CLUT ? 0 : 1;
-
-  ovl->unscaled = cmd->flags & OSDFLAG_UNSCALED ? 1 : 0;
-
-  ovl->hili_top = ovl->hili_bottom = ovl->hili_left = ovl->hili_right = -1;
-}
-
-/*
- * osd_exec_vpts()
- *
- *  - calculate execution time (vpts) for OSD update
- */
-static int64_t osd_exec_vpts(vdr_input_plugin_t *this, xine_stream_t *stream, osd_command_t *cmd)
-{
-  int64_t vpts = 0; /* now */
-
-  /* calculate exec time */
-  if (cmd->pts || cmd->delay_ms) {
-    int64_t now = xine_get_current_vpts(stream);
-
-    if (cmd->pts)
-      vpts = cmd->pts + stream->metronom->get_option(stream->metronom, METRONOM_VPTS_OFFSET);
-    else
-      vpts = this->last_changed_vpts[cmd->wnd] + cmd->delay_ms*90;
-
-    /* execution time must be in future */
-    if (vpts < now)
-      vpts = 0;
-
-    /* limit delay to 5 seconds */
-    if (vpts > now + 5*90000)
-      vpts = vpts + 5*90000;
-
-    LOGMSG("OSD Command %d scheduled to +%dms", cmd->cmd, (int)(vpts>now ? vpts-now : 0)/90);
-  }
-
-  return vpts;
-}
-
-/*
- * OSD command handlers
- */
-
-static int exec_osd_command(vdr_input_plugin_t *, osd_command_t *);
-
-/*
- * exec_osd_set_palette()
- *
- * - replace palette of an already existing OSD
- */
-static int exec_osd_set_palette(vdr_input_plugin_t *this, osd_command_t *cmd)
-{
-  if (!this->osddata[cmd->wnd].data) {
-    LOGMSG("OSD_SetPalette(%d): old RLE data missing !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-  if (!cmd->palette) {
-    LOGMSG("OSD_SetPalette(%d): new palette missing !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-
-  /* use cached event to re-create Set_RLE command with modified palette */
-  osd_command_t tmp;
-  /* steal the original command */
-  memcpy(&tmp, &this->osddata[cmd->wnd], sizeof(osd_command_t));
-  memset(&this->osddata[cmd->wnd], 0, sizeof(osd_command_t));
-
-  /* replace palette */
-  tmp.cmd      = OSD_Set_RLE;
-  free(tmp.palette);
-  tmp.palette  = malloc(cmd->colors*sizeof(xine_rle_elem_t));
-  memcpy(tmp.palette, cmd->palette, cmd->colors*sizeof(xine_rle_elem_t));
-  tmp.colors   = cmd->colors;
-  tmp.pts      = cmd->pts;
-  tmp.delay_ms = cmd->delay_ms;
-
-  /* redraw */
-  int r = exec_osd_command(this, &tmp);
-  clear_osdcmd(&tmp);
-  return r;
-}
-
-/*
- * exec_osd_move()
- *
- * - move existing OSD to new position
- */
-static int exec_osd_move(vdr_input_plugin_t *this, osd_command_t *cmd)
-{
-  if (!this->osddata[cmd->wnd].data) {
-    LOGMSG("OSD_Move(%d): old RLE data missing !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-  if (!this->osddata[cmd->wnd].palette) {
-    LOGMSG("OSD_Move(%d): old palette missing !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-
-  /* use cached event to re-create Set_RLE command with modified palette */
-  osd_command_t tmp;
-  /* steal the original command */
-  memcpy(&tmp, &this->osddata[cmd->wnd], sizeof(osd_command_t));
-  memset(&this->osddata[cmd->wnd], 0, sizeof(osd_command_t));
-
-  /* replace position */
-  tmp.cmd      = OSD_Set_RLE;
-  tmp.x        = cmd->x;
-  tmp.y        = cmd->y;
-  tmp.pts      = cmd->pts;
-  tmp.delay_ms = cmd->delay_ms;
-
-  /* redraw */
-  int r = exec_osd_command(this, &tmp);
-  clear_osdcmd(&tmp);
-  return r;
-}
-
-/*
- * exec_osd_size()
- *
- * - set the assumed full OSD size
- */
-static int exec_osd_size(vdr_input_plugin_t *this, xine_stream_t *stream, osd_command_t *cmd)
-{
-  this->vdr_osd_width  = cmd->w;
-  this->vdr_osd_height = cmd->h;
-
-  if (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_OSDSCALING) {
-    stream->video_out->set_property(stream->video_out, VO_PROP_OSD_WIDTH,  cmd->w);
-    stream->video_out->set_property(stream->video_out, VO_PROP_OSD_HEIGHT, cmd->h);
-  }
-
-  return CONTROL_OK;
-}
-
-/*
- * exec_osd_nop()
- *
- * - update last changed time of an OSD window
- */
-static int exec_osd_nop(vdr_input_plugin_t *this, xine_stream_t *stream, osd_command_t *cmd)
-{
-  this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
-  return CONTROL_OK;
-}
-
-/*
- * exec_osd_flush()
- *
- * - commit all pending OSD events immediately
- */
-static int exec_osd_flush(vdr_input_plugin_t *this, video_overlay_manager_t *ovl_manager, 
-			  osd_command_t *cmd)
-{
-  ovl_manager->flush_events(ovl_manager);
-  return CONTROL_OK;
-}
-
-/*
- * exec_osd_close()
- *
- */
-static int exec_osd_close(vdr_input_plugin_t *this, xine_stream_t *stream, 
-			  video_overlay_manager_t *ovl_manager, osd_command_t *cmd)
-{
-  int handle = this->osdhandle[cmd->wnd];
-  if (handle < 0) {
-    LOGMSG("OSD_Close(%d): non-existing OSD !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-
-  video_overlay_event_t ov_event = {0};
-  ov_event.event_type    = OVERLAY_EVENT_FREE_HANDLE;
-  ov_event.vpts          = osd_exec_vpts(this, stream, cmd);
-  ov_event.object.handle = handle;
-
-  while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
-    LOGMSG("OSD_Close(%d): overlay manager queue full !", cmd->wnd);
-    ovl_manager->flush_events(ovl_manager);
-  }
-
-  this->osdhandle[cmd->wnd] = -1;
-  clear_osdcmd(&this->osddata[cmd->wnd]);
-  this->last_changed_vpts[cmd->wnd] = 0;
-
-  return CONTROL_OK;
-}
-
-/*
- * exec_osd_set_rle()
- *
- */
-static int exec_osd_set_rle(vdr_input_plugin_t *this, xine_stream_t *stream, 
-			    video_overlay_manager_t *ovl_manager, osd_command_t *cmd)
-{
-  video_overlay_event_t ov_event   = {0};
-  vo_overlay_t          ov_overlay = {0};
-  int use_unscaled       = 0;
-  int rle_scaled         = 0;
-  int unscaled_supported = 1;
-  int vo_scaling         = 0;
-  int handle             = this->osdhandle[cmd->wnd];
-
-  stream->video_out->enable_ovl(stream->video_out, 1);
-
-  /* get / allocate OSD handle */
-  if (handle < 0)
-    handle = this->osdhandle[cmd->wnd] = ovl_manager->get_handle(ovl_manager,0);
-
-  /* fill SHOW event */
-  ov_event.event_type         = OVERLAY_EVENT_SHOW;
-  ov_event.vpts               = osd_exec_vpts(this, stream, cmd);
-  ov_event.object.handle      = handle;
-  ov_event.object.overlay     = &ov_overlay;
-  ov_event.object.object_type = 1; /* menu */
-
-  /* check for unscaled OSD capability and request */
-  if (! (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_UNSCALED_OVERLAY))
-    unscaled_supported = 0;
-  else if (cmd->flags & OSDFLAG_UNSCALED)
-    use_unscaled = 1;
-
-  /* store osd for later rescaling (done if video size changes) */
-
-  clear_osdcmd(&this->osddata[cmd->wnd]);
-
-  memcpy(&this->osddata[cmd->wnd], cmd, sizeof(osd_command_t));
-  this->osddata[cmd->wnd].data = NULL;
-  if (cmd->palette) {
-    this->osddata[cmd->wnd].palette = malloc(sizeof(xine_clut_t)*cmd->colors);
-    memcpy(this->osddata[cmd->wnd].palette, cmd->palette, 4*cmd->colors);
-  }
-
-  /* request OSD scaling from video_out layer */
-  if (stream->video_out->get_capabilities(stream->video_out) & VO_CAP_OSDSCALING) {
-    stream->video_out->set_property(stream->video_out, VO_PROP_OSD_SCALING, cmd->scaling ? 1 : 0);
-    vo_scaling = 1;
-  }
-
-  /* if video size differs from expected (VDR osd is designed for 720x576),
-     scale osd to video size or use unscaled (display resolution)
-     blending */
-  if (!vo_scaling && !use_unscaled) {
-    int w_hi = this->vdr_osd_width  * 1100 / 1000;
-    int w_lo = this->vdr_osd_width  *  950 / 1000;
-    int h_hi = this->vdr_osd_height * 1100 / 1000;
-    int h_lo = this->vdr_osd_height *  950 / 1000;
-    int width_diff = 0, height_diff = 0;
-
-    if      (this->video_width  < w_lo) width_diff  = -1;
-    else if (this->video_width  > w_hi) width_diff  =  1;
-    if      (this->video_height < h_lo) height_diff = -1;
-    else if (this->video_height > h_hi) height_diff =  1;
-
-    if (width_diff || height_diff) {
-      int new_w = (0x100*cmd->w * this->video_width 
-		   / this->vdr_osd_width)>>8;
-      int new_h = (0x100*cmd->h * this->video_height 
-		   / this->vdr_osd_height)>>8;
-      LOGOSD("Size out of margins, rescaling rle image");
-      if (width_diff < 0 || height_diff < 0)
-	if (unscaled_supported && (cmd->flags & OSDFLAG_UNSCALED_LOWRES))
-	  use_unscaled = 1;
-
-      if (!use_unscaled && cmd->scaling > 0) {
-
-	if (height_diff || width_diff) {
-	  /* store original RLE data */
-	  this->osddata[cmd->wnd].data = cmd->data;
-	  this->osddata[cmd->wnd].datalen = cmd->datalen;
-	    
-	  rle_scaled = 1;
-	  scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
-	} else {
-	  LOGOSD("osd_command: size out of margins, using UNSCALED");
-	  use_unscaled = unscaled_supported;
-	}
-      }
-    }
-  }
-
-  if (!vo_scaling && use_unscaled) {
-    int win_width  = stream->video_out->get_property(stream->video_out, 
-						     VO_PROP_WINDOW_WIDTH);
-    int win_height = stream->video_out->get_property(stream->video_out, 
-						     VO_PROP_WINDOW_HEIGHT);
-    if (cmd->scaling > 0) {
-      /* it is not nice to have subs in _middle_ of display when using 1440x900 etc... */
-
-      if (win_width > 240 && win_height > 196) {
-	if (cmd->scaling > 0) {
-	  /*LOGMSG("Scaling unscaled OSD to %dx%d", win_width, win_height);*/
-	  if (win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
-	    int new_w = (0x100*cmd->w * win_width 
-			 / this->vdr_osd_width)>>8;
-	    int new_h = (0x100*cmd->h * win_height 
-			 / this->vdr_osd_height)>>8;
-
-	    /* store original RLE data */
-	    this->osddata[cmd->wnd].data = cmd->data;
-	    this->osddata[cmd->wnd].datalen = cmd->datalen;
-	    
-	    rle_scaled = 1;
-	    scale_rle_image(cmd, new_w, new_h, this->class->fast_osd_scaling ? 0 : 1);
-	  }
-	}
-      }
-    }
-  }
-
-  /* fill ov_overlay */
-  osdcmd_to_overlay(&ov_overlay, cmd);
-  ov_overlay.unscaled = use_unscaled;
-
-  /* tag this overlay */
-  ov_overlay.hili_rgb_clut = -9999;
-    
-  /* if no scaling was required, we may still need to re-center OSD */
-  if (!vo_scaling && !rle_scaled) {
-    if (this->video_width != this->vdr_osd_width)
-      ov_overlay.x += (this->video_width - this->vdr_osd_width)/2;
-    if (this->video_height != this->vdr_osd_height)
-      ov_overlay.y += (this->video_height - this->vdr_osd_height)/2;
-  }
-
-  /* store rle for later scaling (done if video size changes) */
-  if (!rle_scaled /* if scaled, we already have a copy (original data) */ ) {
-    this->osddata[cmd->wnd].data = malloc(cmd->datalen);
-    memcpy(this->osddata[cmd->wnd].data, cmd->data, cmd->datalen);
-  }
-  cmd->data = NULL; /* we 'consume' data (ownership goes for xine-lib osd manager) */
-
-  /* send event to overlay manager */
-  while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
-    LOGDBG("OSD_Set_RLE(%d): overlay manager queue full !", cmd->wnd);
-    ovl_manager->flush_events(ovl_manager);
-    continue;
-  }
-
-  this->last_changed_vpts[cmd->wnd] = ov_event.vpts ?: xine_get_current_vpts(stream);
-
-  return CONTROL_OK;
-}
-
-/*
- * exec_osd_command()
- *
- * - handler for VDR-based osd_command_t events
- */
-static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
-{
-  xine_stream_t *stream = this->slave_stream ?: this->stream;
-
-  /* Caller must have locked this->osd_lock ! */
-
-  LOGOSD("exec_osd_command %d", cmd ? cmd->cmd : -1); 
-
-  /* Check parameters */
-  if (!cmd || !stream) {
-    LOGMSG("exec_osd_command: Stream not initialized !");
-    return CONTROL_DISCONNECTED;
-  }
-  if (cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
-    LOGMSG("exec_osd_command: OSD window handle %d out of range !", cmd->wnd);
-    return CONTROL_PARAM_ERROR;
-  }
-
-  /* execute */
-
-  if (cmd->cmd == OSD_Nop)
-    return exec_osd_nop(this, stream, cmd);
-
-  if (cmd->cmd == OSD_Size)
-    return exec_osd_size(this, stream, cmd);
-
-  if (cmd->cmd == OSD_SetPalette)
-    return exec_osd_set_palette(this, cmd);
-
-  if (cmd->cmd == OSD_Move)
-    return exec_osd_move(this, cmd);
-
-  /* Get overlay manager. We already have port ticket. */
-  video_overlay_manager_t *ovl_manager = stream->video_out->get_overlay_manager(stream->video_out);
-  if (!ovl_manager) {
-    LOGMSG("exec_osd_command: Stream has no overlay manager !");
-    return CONTROL_DISCONNECTED;
-  }
-
-  if (cmd->cmd == OSD_Flush)
-    return exec_osd_flush(this, ovl_manager, cmd);
-
-  if (cmd->cmd == OSD_Set_RLE)
-    return exec_osd_set_rle(this, stream, ovl_manager, cmd);
-
-  if (cmd->cmd == OSD_Close)
-    return exec_osd_close(this, stream, ovl_manager, cmd);
-
-  if (cmd->cmd == OSD_Set_YUV) {
-    /* TODO */
-    LOGMSG("exec_osd_command: OSD_Set_YUV not implemented !");
-    return CONTROL_PARAM_ERROR;
-  }
-
-  LOGMSG("Unknown OSD command %d", cmd->cmd);
-  return CONTROL_PARAM_ERROR;
-}
-
-static void vdr_scale_osds(vdr_input_plugin_t *this, 
-			   int video_width, int video_height)
-{  
-  if(! pthread_mutex_lock(&this->osd_lock)) {
-
-    if((this->video_width  != video_width ||
-	this->video_height != video_height ||
-	this->video_changed) &&
-       video_width > 0 && video_height > 0) {
-      int i, ticket = 0;
-
-      LOGOSD("New video size (%dx%d->%dx%d)",
-	     this->video_width, this->video_height, 
-	     video_width, video_height);
-
-      this->video_width = video_width;
-      this->video_height = video_height;
-      this->video_changed = 0;
-
-      /* just call exec_osd_command for all stored osd's.
-         scaling is done automatically if required. */
-      for(i=0; i<MAX_OSD_OBJECT; i++)
-	if(this->osdhandle[i] >= 0 &&
-	   this->osddata[i].data &&
-	   this->osddata[i].scaling > 0) {
-	  osd_command_t tmp;
-	  memcpy(&tmp, &this->osddata[i], sizeof(osd_command_t));
-	  memset(&this->osddata[i], 0, sizeof(osd_command_t));
-
-	  if(!ticket) {
-	    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
-	    ticket++;
-	  }
-	  exec_osd_command(this, &tmp);
-
-	  clear_osdcmd(&tmp);
-	}
-      if(ticket)
-	this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
-    }
-    pthread_mutex_unlock(&this->osd_lock);
-
-  } else {
-    LOGERR("vdr_scale_osds: pthread_mutex_lock failed");
-  }
-}
-
 static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if, 
 				       osd_command_t *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
-  int result = CONTROL_DISCONNECTED;
 
   if (this->fd_control >= 0 &&  /* remote mode */
       this->funcs.intercept_osd /* frontend handles OSD */ ) {
     return this->funcs.intercept_osd(this->funcs.fe_handle, cmd) ? CONTROL_OK : CONTROL_DISCONNECTED;
   }
-
-  if(!pthread_mutex_lock (&this->osd_lock)) {
-    if(!(cmd->flags & OSDFLAG_YUV_CLUT))
-      palette_rgb_to_yuy(cmd->palette, cmd->colors);
-    cmd->flags &= ~OSDFLAG_YUV_CLUT;
-
-    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
-    result = exec_osd_command(this, cmd);
-    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);	  
-    pthread_mutex_unlock (&this->osd_lock);
-  } else {
-    LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
-  }
-
-  return result;
+  
+  return this->osd_manager->command(this->osd_manager, cmd, this->slave_stream ?: this->stream);
 }
 
 
@@ -2719,18 +2157,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 		  mix_streams ? av : "");
 	  this->funcs.fe_control(this->funcs.fe_handle, tmp);
 	  has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
-
-	  if(has_video) {
-	    int stream_width, stream_height;
-	    stream_width = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_VIDEO_WIDTH);
-	    stream_height = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
-
-	    if(stream_width != this->video_width || stream_height != this->video_height) {
-	      this->video_width = stream_width;
-	      this->video_height = stream_height;
-	      this->video_changed = 1;
-	    }
-	  }
 	  this->funcs.fe_control(this->funcs.fe_handle, 
 				 has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
 	  if(!has_video && !mix_streams && *av && strcmp(av, "none")) {
@@ -2755,7 +2181,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
     this->loop_play = 0;
     if(this->slave_stream) {
-      int stream_width, stream_height;
       xine_stop(this->slave_stream);
 
       if (this->slave_event_queue) {
@@ -2773,15 +2198,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 
       if(this->funcs.fe_control)
 	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE CLOSED\r\n");
-
-      stream_width = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
-      stream_height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
-
-      if(stream_width != this->video_width || stream_height != this->video_height) {
-	this->video_width = stream_width;
-	this->video_height = stream_height;
-	this->video_changed = 1;
-      }
 
       _x_demux_control_start(this->stream);
 
@@ -3933,8 +3349,9 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
         LOGOSD("XINE_EVENT_FRAME_FORMAT_CHANGE (%dx%d, aspect=%d)", 
 	       frame_change->width, frame_change->height, 
 	       frame_change->aspect);
-	if(!frame_change->aspect) /* from frontend */
-	  vdr_scale_osds(this, frame_change->width, frame_change->height);
+	if (!frame_change->aspect) /* from frontend */
+	  this->osd_manager->video_size_changed(this->osd_manager, event->stream, 
+						frame_change->width, frame_change->height);
 #if 0
 	if(frame_change->aspect)
 	  queue_blank_yv12(this);
@@ -5442,7 +4859,7 @@ static off_t vdr_plugin_get_current_pos (input_plugin_t *this_gen)
 static void vdr_plugin_dispose (input_plugin_t *this_gen) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int i, local;
+  int local;
   int fd = -1, fc = -1;
 
   if(!this_gen)
@@ -5529,11 +4946,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     pthread_mutex_lock(&this->vdr_entry_lock);
     pthread_mutex_unlock(&this->vdr_entry_lock);
   }
-  while(pthread_mutex_destroy(&this->osd_lock) == EBUSY) {
-    LOGMSG("osd_lock busy ...");
-    pthread_mutex_lock(&this->osd_lock);
-    pthread_mutex_unlock(&this->osd_lock);
-  }
   while(pthread_mutex_destroy(&this->lock) == EBUSY) {
     LOGMSG("lock busy ...");
     pthread_mutex_lock(&this->lock);
@@ -5563,16 +4975,8 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   }
 
   /* OSD */
-  for(i=0; i<MAX_OSD_OBJECT; i++) {
-    if(this->osdhandle[i] != -1) {
-      osd_command_t cmd = {
-	.cmd = OSD_Close,
-	.wnd = i,
-      };
-      LOGDBG("Closing osd %d", i);
-      exec_osd_command(this, &cmd);
-    }
-  }
+  this->osd_manager->dispose(this->osd_manager, this->stream);
+  this->osd_manager = NULL;
 
   /* restore video properties */
   if(this->video_properties_saved)
@@ -6331,7 +5735,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   vdr_input_class_t  *class = (vdr_input_class_t *) class_gen;
   vdr_input_plugin_t *this;
   char               *mrl = (char *) data;
-  int                local_mode, i;
+  int                local_mode;
 
   LOGDBG("vdr_class_get_instance");
 
@@ -6357,11 +5761,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   this->max_buffers  = 10;
   this->last_delivered_vid_pts = INT64_C(-1);
   this->autoplay_size = -1;
-
-  for(i=0; i<MAX_OSD_OBJECT; i++)
-    this->osdhandle[i] = -1;
-  this->video_width  = this->vdr_osd_width  = 720;
-  this->video_height = this->vdr_osd_height = 576;
 
   local_mode         = ( (!strncasecmp(mrl, MRL_ID "://", MRL_ID_LEN+3)) && 
 			 (strlen(mrl)==7))
@@ -6411,9 +5810,11 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   /* buffer */
   this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
   
+  /* OSD */
+  this->osd_manager = init_osd_manager();
+
   /* sync */
   pthread_mutex_init (&this->lock, NULL);
-  pthread_mutex_init (&this->osd_lock, NULL);
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
   pthread_mutex_init (&this->fd_control_lock, NULL);
   pthread_cond_init  (&this->engine_flushed, NULL);
