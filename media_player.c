@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.52.2.5 2008-10-19 17:47:08 phintuka Exp $
+ * $Id: media_player.c,v 1.52.2.6 2008-12-10 23:00:18 phintuka Exp $
  *
  */
 
@@ -47,6 +47,8 @@ class cXinelibPlayer : public cPlayer
 
     bool m_Error;
     int  m_Speed; 
+
+    void UpdateNumTracks(void);
 
   protected:
     virtual void Activate(bool On);
@@ -201,6 +203,19 @@ bool cXinelibPlayer::NextFile(int step)
   return false;
 }
 
+void cXinelibPlayer::UpdateNumTracks(void)
+{
+  // cdda tracks
+  if(m_Playlist.Count() == 1 && !strcmp("cdda:/", m_Playlist.First()->Filename)) {
+    int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE CD", 10000);
+    if(count>1) {
+      for(int i=0; i<count; i++)
+	m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
+      m_Playlist.Del(m_Playlist.First());
+    }
+  }
+}
+
 void cXinelibPlayer::Activate(bool On)
 {
   int pos = 0, len = 0, fd = -1;
@@ -227,6 +242,8 @@ void cXinelibPlayer::Activate(bool On)
 			     *cPlaylist::EscapeMrl(m_File));
     else
       mrl = cPlaylist::EscapeMrl(m_File);
+
+    UpdateNumTracks();
     m_Error = !cXinelibDevice::Instance().PlayFile(mrl, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Error ? "FAIL" : "OK");
 
@@ -245,15 +262,7 @@ void cXinelibPlayer::Activate(bool On)
       if(ar && ar[0])
 	m_Playlist.Current()->Artist = ar;
 
-      // cdda tracks
-      if(m_Playlist.Count() == 1 && !strcmp("cdda:/", m_Playlist.First()->Filename)) {
-	int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE CD");
-	if(count>1) {
-	  for(int i=0; i<count; i++)
-	    m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
-	  m_Playlist.Del(m_Playlist.First());
-	}
-      }
+      UpdateNumTracks();
     }
   } else {
     if(m_UseResume && *m_ResumeFile) {
