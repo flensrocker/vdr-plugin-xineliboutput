@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.56.2.2 2008-09-26 19:37:37 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.56.2.3 2008-12-10 22:56:15 phintuka Exp $
  *
  */
 
@@ -715,7 +715,7 @@ bool cXinelibServer::HasClients(void)
   return false;
 }
 
-int cXinelibServer::PlayFileCtrl(const char *Cmd)
+int cXinelibServer::PlayFileCtrl(const char *Cmd, int TimeoutMs)
 {
   /* Check if there are any clients */
   if(!HasClients()) {
@@ -750,6 +750,7 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
 #endif
 
     int timeout = bPlayfile ? PLAYFILE_TIMEOUT : PLAYFILE_CTRL_TIMEOUT;
+    if(TimeoutMs > 0) timeout = TimeoutMs;
 
     future.Wait(timeout);
 
