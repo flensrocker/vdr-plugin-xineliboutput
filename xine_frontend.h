@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.15 2008-11-17 23:39:20 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.16 2008-12-13 23:59:05 phintuka Exp $
  *
  */
 
@@ -27,15 +27,15 @@ struct osd_command_s;
 #if 0
 struct frontend_config_s {
   /* Display */
-  int width; 
+  int width;
   int height;
   int fullscreen;
-  int modeswitch; 
+  int modeswitch;
   char *modeline;
   int aspect;
-                          
+
   char *video_port;
-                          
+
   int scale_video;
   int field_order;
 
@@ -61,25 +61,25 @@ struct frontend_config_s {
 
 struct frontend_s {
   /* Display */
-  int (*fe_display_open)(frontend_t*, int winwidth, int winheight, 
-			 int fullscreen, int hud, int modeswitch, const char *modeline, 
-			 int aspect, fe_keypress_f keypresshandler, int gui_hotkeys,
-			 const char *video_port,
-			 int scale_video, int field_order,
-			 const char *aspect_controller, int window_id);
-  int  (*fe_display_config)(frontend_t *, int width, int height, 
-			    int fullscreen,
-                            int modeswitch, const char *modeline, 
-			    int aspect, int scale_video, int field_order);
+  int (*fe_display_open)(frontend_t*, int winwidth, int winheight,
+                         int fullscreen, int hud, int modeswitch, const char *modeline,
+                         int aspect, fe_keypress_f keypresshandler, int gui_hotkeys,
+                         const char *video_port,
+                         int scale_video, int field_order,
+                         const char *aspect_controller, int window_id);
+  int  (*fe_display_config)(frontend_t *, int width, int height,
+                            int fullscreen,
+                            int modeswitch, const char *modeline,
+                            int aspect, int scale_video, int field_order);
   void (*fe_display_close)(frontend_t*);
 
   /* Xine engine */
-  int  (*xine_init)(frontend_t*, 
-		    const char *audio_driver, 
-		    const char *audio_port, 
-		    const char *video_driver, 
-		    int pes_buffers,
-		    const char *static_post);
+  int  (*xine_init)(frontend_t*,
+                    const char *audio_driver,
+                    const char *audio_port,
+                    const char *video_driver,
+                    int pes_buffers,
+                    const char *static_post);
   int  (*xine_open)(frontend_t*, const char *mrl);
   int  (*xine_play)(frontend_t*);
   int  (*xine_stop)(frontend_t*);
@@ -99,13 +99,13 @@ struct frontend_s {
   int  (*xine_queue_pes_packet)(frontend_t*, const char *data, int len);
 
   char *(*grab)(frontend_t*, int *size, int jpeg, int quality,
-		int width, int height);
+                int width, int height);
 
   /* events from frontend -> xine/vdr */
   int  (*send_event)(frontend_t *fe, const char *data);
-  int  (*send_input_event)(frontend_t *fe, 
-			   const char *map, const char *key, 
-			   int repeat, int release);
+  int  (*send_input_event)(frontend_t *fe,
+                           const char *map, const char *key,
+                           int repeat, int release);
 #if 0
   frontend_config_t config;
 #endif
