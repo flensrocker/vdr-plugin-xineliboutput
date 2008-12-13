@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.8 2008-05-22 09:56:03 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.9 2008-12-13 14:24:03 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -1594,7 +1594,7 @@ static vo_frame_t *got_frame(vo_frame_t *frame)
        adiff < 0.1  && 
        adiff > -0.1 ) {
       this->enable = 0;
-      DBG("--> nothing to do, disabling processing for now");
+      DBG("--> nothing to do, disabling processing for now\n");
       return NULL;
     }
 
