@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.1 2008-12-06 16:17:18 phintuka Exp $
+ * $Id: osd_manager.c,v 1.2 2008-12-13 23:33:21 phintuka Exp $
  *
  */
 
@@ -393,7 +393,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 	/* store original RLE data */
 	osd->cmd.data    = cmd->data;
 	osd->cmd.datalen = cmd->datalen;
-	    
+
 	osdcmd_scale(cmd, new_w, new_h /*, this->class->fast_osd_scaling ? 0 : 1*/);
 	rle_scaled = 1;
       }
@@ -414,7 +414,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 	/* store original RLE data */
 	osd->cmd.data    = cmd->data;
 	osd->cmd.datalen = cmd->datalen;
-	    
+
 	osdcmd_scale(cmd, new_w, new_h /*, this->class->fast_osd_scaling ? 0 : 1*/);
 	rle_scaled = 1;
       }
@@ -427,7 +427,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 
   /* tag this overlay */
   ov_overlay.hili_rgb_clut = VDR_OSD_MAGIC;
-    
+
   /* if no scaling was required, we may still need to re-center OSD */
   if (!vo_scaling && !rle_scaled) {
     if (this->video_width != this->vdr_osd_width)
@@ -447,7 +447,6 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
     LOGMSG("OSD_Set_RLE(%d): overlay manager queue full !", cmd->wnd);
     ovl_manager->flush_events(ovl_manager);
-    continue;
   }
 
   osd->last_changed_vpts = ov_event.vpts ?: xine_get_current_vpts(this->stream);
@@ -602,17 +601,27 @@ static void video_size_changed(osd_manager_t *this_gen, xine_stream_t *stream, i
   osd_manager_impl_t *this = (osd_manager_impl_t*)this_gen;
   int i;
 
-  if (this->video_width == width  && this->video_height == height)
+  if (!stream) {
+    LOGMSG("video_size_changed: Stream not initialized !");
     return;
-  if (width < 1 || height < 1)
-    return;
+  }
 
-  LOGOSD("New video size (%dx%d->%dx%d)", this->video_width, this->video_height, width, height);
+  if (width < 1 || height < 1) {
+    LOGMSG("video_size_changed: Invalid video size %dx%d", width, height);
+    return;
+  }
 
   if (pthread_mutex_lock(&this->lock)) {
     LOGERR("video_size_changed: mutex lock failed");
     return;
   }
+
+  if (this->video_width == width && this->video_height == height) {
+    pthread_mutex_unlock(&this->lock);
+    return;
+  }
+
+  LOGOSD("New video size (%dx%d->%dx%d)", this->video_width, this->video_height, width, height);
 
   this->stream       = stream;
   this->video_width  = width;
@@ -629,7 +638,7 @@ static void video_size_changed(osd_manager_t *this_gen, xine_stream_t *stream, i
       memset(&this->osd[i].cmd, 0, sizeof(osd_command_t));
 
       acquire_ticket(this);
-      exec_osd_command(this_gen, &tmp, this->stream);
+      exec_osd_command_internal(this, &tmp);
 
       clear_osdcmd(&tmp);
     }
@@ -664,10 +673,7 @@ static void osd_manager_dispose(osd_manager_t *this_gen, xine_stream_t *stream)
     }
   }
 
-  if (this->ticket_acquired) {
-    stream->xine->port_ticket->release(stream->xine->port_ticket, 1);
-    this->ticket_acquired = 0;
-  }
+  release_ticket(this);
 
   free(this);
 }
