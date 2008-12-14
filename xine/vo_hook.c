@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_hook.c,v 1.2 2008-11-21 20:07:59 phintuka Exp $
+ * $Id: vo_hook.c,v 1.3 2008-12-14 01:14:54 phintuka Exp $
  *
  */
 
@@ -62,8 +62,8 @@ DEF_HANDLER0(uint32_t,    get_capabilities);
 DEF_HANDLER0(vo_frame_t*, alloc_frame);
 
 void vo_def_update_frame_format (vo_driver_t *self, vo_frame_t *img,
-			     uint32_t width, uint32_t height,
-			     double ratio, int format, int flags)
+                                 uint32_t width, uint32_t height,
+                                 double ratio, int format, int flags)
 {
   vo_driver_hook_t *this = (vo_driver_hook_t *) self;
   return this->orig_driver-> update_frame_format (this->orig_driver, img, width, height, ratio, format, flags);
@@ -159,7 +159,7 @@ int wire_video_driver(xine_video_port_t *video_port, vo_driver_t *hook)
 
   /* append original driver chain to new driver */
   ((vo_driver_hook_t *)hook)->orig_driver = video_port->driver;
-    
+
   /* push new driver to start of driver chain */
   video_port->driver  = hook;
   ((vos_t*)video_port)->driver = hook;

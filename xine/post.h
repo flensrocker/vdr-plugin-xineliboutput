@@ -1,18 +1,18 @@
-/* 
+/*
  * Copyright (C) 2003 by Dirk Meyer
- * 
+ *
  * This file is part of xine, a unix video player.
- * 
+ *
  * xine is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * xine is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
@@ -79,21 +79,21 @@ void vpplugin_parse_and_store_post(post_plugins_t *fe, const char *post);
 void applugin_parse_and_store_post(post_plugins_t *fe, const char *post);
 
 /* enable (and load if not loaded), but don't rewire */
-/* result indicates only unwiring condition, not enable result */ 
+/* result indicates only unwiring condition, not enable result */
 /* -> if result <> 0, something was enabled and post chain is unwired */
 int  vpplugin_enable_post(post_plugins_t *fe, const char *name, int *found);
 int  applugin_enable_post(post_plugins_t *fe, const char *name, int *found);
 
 /* disable (and unwire if found), but don't unload */
-/* result indicates only unwiring condition, not disable result */ 
+/* result indicates only unwiring condition, not disable result */
 int  vpplugin_disable_post(post_plugins_t *fe, const char *name);
 int  applugin_disable_post(post_plugins_t *fe, const char *name);
 
 /* unload (and unwire) plugin(s) */
-/* result indicates only unwiring condition, not unload result */ 
+/* result indicates only unwiring condition, not unload result */
 int  vpplugin_unload_post(post_plugins_t *fe, const char *name);
 int  applugin_unload_post(post_plugins_t *fe, const char *name);
 
-#endif 
+#endif
 
 /* end of post.h */

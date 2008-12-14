@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_hook.h,v 1.2 2008-11-21 20:07:59 phintuka Exp $
+ * $Id: vo_hook.h,v 1.3 2008-12-14 01:14:54 phintuka Exp $
  *
  */
 
@@ -13,9 +13,9 @@
 
 #include <xine/video_out.h>
 
-/* 
- * synchronous video post plugins 
- * internal API 
+/*
+ * synchronous video post plugins
+ * internal API
  */
 
 
