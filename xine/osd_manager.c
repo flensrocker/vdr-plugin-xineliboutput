@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.3 2008-12-14 23:00:18 phintuka Exp $
+ * $Id: osd_manager.c,v 1.4 2008-12-14 23:57:41 phintuka Exp $
  *
  */
 
@@ -54,6 +54,7 @@ typedef struct osd_manager_impl_s {
   uint16_t         vdr_osd_height;
   uint16_t         video_width;
   uint16_t         video_height;
+  uint8_t          vo_scaling;
 
   osd_data_t       osd[MAX_OSD_OBJECT];
 
@@ -236,9 +237,11 @@ static int exec_osd_size(osd_manager_impl_t *this, osd_command_t *cmd)
   acquire_ticket(this);
 
   xine_video_port_t *video_out = this->stream->video_out;
+  this->vo_scaling = 0;
   if (video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING) {
     video_out->set_property(video_out, VO_PROP_OSD_WIDTH,  cmd->w);
     video_out->set_property(video_out, VO_PROP_OSD_HEIGHT, cmd->h);
+    this->vo_scaling = 1;
   }
 
   return CONTROL_OK;
@@ -318,7 +321,6 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   int use_unscaled       = 0;
   int rle_scaled         = 0;
   int unscaled_supported = 1;
-  int vo_scaling         = 0;
   int handle             = osd->handle;
 
   if (!ovl_manager)
@@ -362,9 +364,10 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   }
 
   /* request OSD scaling from video_out layer */
+  this->vo_scaling = 0;
   if (video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING) {
     video_out->set_property(video_out, VO_PROP_OSD_SCALING, cmd->scaling ? 1 : 0);
-    vo_scaling = 1;
+    this->vo_scaling = 1;
   }
 
   /* if video size differs from expected (VDR osd is designed for 720x576),
@@ -372,7 +375,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
      blending */
 
   /* scale OSD ? */
-  if (!vo_scaling && !use_unscaled) {
+  if (!this->vo_scaling && !use_unscaled) {
     int w_diff = (this->video_width  < ((this->vdr_osd_width *242) >> 8) /*  95% */) ? -1 :
                  (this->video_width  > ((this->vdr_osd_width *280) >> 8) /* 110% */) ?  1 : 0;
     int h_diff = (this->video_height < ((this->vdr_osd_height*242) >> 8) /*  95% */) ? -1 :
@@ -402,7 +405,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   }
 
   /* Scale unscaled OSD ? */
-  if (!vo_scaling && use_unscaled && cmd->scaling > 0) {
+  if (!this->vo_scaling && use_unscaled && cmd->scaling > 0) {
     int win_width  = video_out->get_property(video_out, VO_PROP_WINDOW_WIDTH);
     int win_height = video_out->get_property(video_out, VO_PROP_WINDOW_HEIGHT);
 
@@ -430,7 +433,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   ov_overlay.hili_rgb_clut = VDR_OSD_MAGIC;
 
   /* if no scaling was required, we may still need to re-center OSD */
-  if (!vo_scaling && !rle_scaled) {
+  if (!this->vo_scaling && !rle_scaled) {
     if (this->video_width != this->vdr_osd_width)
       ov_overlay.x += (this->video_width - this->vdr_osd_width)/2;
     if (this->video_height != this->vdr_osd_height)
@@ -630,19 +633,19 @@ static void video_size_changed(osd_manager_t *this_gen, xine_stream_t *stream, i
 
   /* just call exec_osd_command for all stored osd's.
      scaling is done automatically if required. */
-  for (i = 0; i < MAX_OSD_OBJECT; i++)
-    if (this->osd[i].handle >= 0 &&
-	this->osd[i].cmd.data &&
-	this->osd[i].cmd.scaling > 0) {
-      osd_command_t tmp;
-      memcpy(&tmp, &this->osd[i].cmd, sizeof(osd_command_t));
-      memset(&this->osd[i].cmd, 0, sizeof(osd_command_t));
+  if (!this->vo_scaling)
+    for (i = 0; i < MAX_OSD_OBJECT; i++)
+      if (this->osd[i].handle >= 0 &&
+          this->osd[i].cmd.data &&
+          this->osd[i].cmd.scaling > 0) {
+        osd_command_t tmp;
+        memcpy(&tmp, &this->osd[i].cmd, sizeof(osd_command_t));
+        memset(&this->osd[i].cmd, 0, sizeof(osd_command_t));
 
-      acquire_ticket(this);
-      exec_osd_command_internal(this, &tmp);
+        exec_osd_command_internal(this, &tmp);
 
-      clear_osdcmd(&tmp);
-    }
+        clear_osdcmd(&tmp);
+      }
 
   release_ticket(this);
   pthread_mutex_unlock(&this->lock);
