@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.69 2008-11-17 23:39:20 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.70 2008-12-14 00:11:53 phintuka Exp $
  *
  */
 
@@ -42,7 +42,7 @@ volatile int   last_signal = 0;
 int            gui_hotkeys = 0;
 
 /*
- * stdin (keyboard/slave mode) reading 
+ * stdin (keyboard/slave mode) reading
  */
 
 /* static data */
@@ -106,39 +106,39 @@ static uint64_t read_key_seq(void)
   /* from vdr, remote.c */
   uint64_t k = 0;
   int key1;
-  
+
   if ((key1 = read_key()) >= 0) {
     k = key1;
     if (key1 == 0x1B) {
-      // Start of escape sequence
+      /* Start of escape sequence */
       if ((key1 = read_key()) >= 0) {
-	k <<= 8;
-	k |= key1 & 0xFF;
-	switch (key1) {
-	  case 0x4F: // 3-byte sequence
-	    if ((key1 = read_key()) >= 0) {
-	      k <<= 8;
-	      k |= key1 & 0xFF;
-	    }
-	    break;
-	  case 0x5B: // 3- or more-byte sequence
-	    if ((key1 = read_key()) >= 0) {
-	      k <<= 8;
-	      k |= key1 & 0xFF;
-	      switch (key1) {
-	        case 0x31 ... 0x3F: // more-byte sequence
-	        case 0x5B: // strange, may apparently occur
-		  do {
-		    if ((key1 = read_key()) < 0)
-		      break; // Sequence ends here
-		    k <<= 8;
-		    k |= key1 & 0xFF;
-		  } while (key1 != 0x7E);
-		  break;
-	      }
-	    }
-	    break;
-	}
+        k <<= 8;
+        k |= key1 & 0xFF;
+        switch (key1) {
+          case 0x4F: /* 3-byte sequence */
+            if ((key1 = read_key()) >= 0) {
+              k <<= 8;
+              k |= key1 & 0xFF;
+            }
+            break;
+          case 0x5B: /* 3- or more-byte sequence */
+            if ((key1 = read_key()) >= 0) {
+              k <<= 8;
+              k |= key1 & 0xFF;
+              switch (key1) {
+                case 0x31 ... 0x3F: /* more-byte sequence */
+                case 0x5B: /* strange, may apparently occur */
+                  do {
+                    if ((key1 = read_key()) < 0)
+                      break; /* Sequence ends here */
+                    k <<= 8;
+                    k |= key1 & 0xFF;
+                  } while (key1 != 0x7E);
+                  break;
+              }
+            }
+            break;
+        }
       }
     }
   }
@@ -155,7 +155,7 @@ static uint64_t read_key_seq(void)
  * Read key(sequence)s from stdin and pass those to frontend.
  */
 
-static void kbd_receiver_thread_cleanup(void *arg) 
+static void kbd_receiver_thread_cleanup(void *arg)
 {
   int status;
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
@@ -163,7 +163,7 @@ static void kbd_receiver_thread_cleanup(void *arg)
   LOGMSG("Keyboard thread terminated");
 }
 
-static void *kbd_receiver_thread(void *fe_gen) 
+static void *kbd_receiver_thread(void *fe_gen)
 {
   frontend_t *fe = (frontend_t*)fe_gen;
   uint64_t code = 0;
@@ -201,11 +201,11 @@ static void *kbd_receiver_thread(void *fe_gen)
 
     if (gui_hotkeys) {
       if (code == 'f' || code == 'F') {
-	fe->send_event(fe, "TOGGLE_FULLSCREEN");
-	continue;
+        fe->send_event(fe, "TOGGLE_FULLSCREEN");
+        continue;
       } else if (code == 'd' || code == 'D') {
-	fe->send_event(fe, "TOGGLE_DEINTERLACE");
-	continue;
+        fe->send_event(fe, "TOGGLE_DEINTERLACE");
+        continue;
       }
     }
 
@@ -213,7 +213,7 @@ static void *kbd_receiver_thread(void *fe_gen)
     fe->send_input_event(fe, "KBD", str, 0, 0);
 
   } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
-  
+
   alarm(0);
 
   LOGDBG("Keyboard thread terminating");
@@ -281,7 +281,7 @@ static void *slave_receiver_thread(void *fe_gen)
     LOGMSG("Unknown slave mode command: %s", str);
 
   } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
-  
+
   LOGDBG("Slave mode receiver terminating");
 
   pthread_cleanup_pop(1);
@@ -299,11 +299,11 @@ static void kbd_start(frontend_t *fe, int slave_mode)
 {
   int err;
   if ((err = pthread_create (&kbd_thread,
-			     NULL, 
-			     slave_mode ? slave_receiver_thread : kbd_receiver_thread, 
-			     (void*)fe)) != 0) {
-    fprintf(stderr, "Can't create new thread for keyboard (%s)\n", 
-	    strerror(err));
+                             NULL,
+                             slave_mode ? slave_receiver_thread : kbd_receiver_thread,
+                             (void*)fe)) != 0) {
+    fprintf(stderr, "Can't create new thread for keyboard (%s)\n",
+            strerror(err));
   }
 }
 
@@ -330,12 +330,12 @@ static void SignalHandler(int signum)
   switch (signum) {
     case SIGHUP:
       last_signal = signum;
-    case SIGPIPE: 
+    case SIGPIPE:
       break;
     default:
       if (last_signal) {
-	LOGMSG("SignalHandler: exit(-1)");
-	exit(-1);
+        LOGMSG("SignalHandler: exit(-1)");
+        exit(-1);
       }
       last_signal = signum;
       break;
@@ -351,7 +351,7 @@ static char *strcatrealloc(char *dest, const char *src)
 {
   size_t l;
 
-  if (!src || !*src) 
+  if (!src || !*src)
     return dest;
 
   l = (dest ? strlen(dest) : 0) + strlen(src) + 1;
@@ -361,7 +361,7 @@ static char *strcatrealloc(char *dest, const char *src)
   } else {
     dest = (char*)malloc(l);
     strcpy(dest, src);
-  } 
+  }
   return dest;
 }
 
@@ -369,7 +369,7 @@ static char *strcatrealloc(char *dest, const char *src)
  * static data
  */
 
-static const char help_str[] = 
+static const char help_str[] =
 "When server address is not given, server is searched from local network.\n"
 "If server is not found, localhost (127.0.0.1) is used as default.\n\n"
     "   --help                        Show (this) help message\n"
@@ -436,14 +436,14 @@ static const struct option long_options[] = {
   { "hotkeys", no_argument,  NULL, 'o' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
-  
+
   { "reconnect", no_argument,  NULL, 'R' },
   { "tcp",       no_argument,  NULL, 't' },
   { "udp",       no_argument,  NULL, 'u' },
   { "rtp",       no_argument,  NULL, 'r' },
   { NULL }
 };
- 
+
 #define PRINTF(x...) do { if(SysLogLevel>1) printf(x); } while(0)
 
 int main(int argc, char *argv[])
@@ -471,37 +471,37 @@ int main(int argc, char *argv[])
   if (strrchr(argv[0],'/'))
     exec_name = strrchr(argv[0],'/')+1;
 
-  xine_get_version(&xmajor, &xminor, &xsub);  
+  xine_get_version(&xmajor, &xminor, &xsub);
   printf("%s %s  (build with xine-lib %d.%d.%d, using xine-lib %d.%d.%d)\n\n",
-	 exec_name,
-	 FE_VERSION_STR,
-	 XINE_MAJOR_VERSION, XINE_MINOR_VERSION, XINE_SUB_VERSION,
-	 xmajor, xminor, xsub);
+         exec_name,
+         FE_VERSION_STR,
+         XINE_MAJOR_VERSION, XINE_MINOR_VERSION, XINE_SUB_VERSION,
+         xmajor, xminor, xsub);
 
   /* Parse arguments */
   while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
     switch (c) {
     default:
     case 'H': printf("\nUsage: %s [options] [" MRL_ID "[+udp|+tcp|+rtp]:[//host[:port]]] \n"
-		     "\nAvailable options:\n", exec_name);
+                     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
-	      list_xine_plugins(NULL, SysLogLevel>2);
-	      exit(0);
+              list_xine_plugins(NULL, SysLogLevel>2);
+              exit(0);
     case 'A': adrv = strdup(optarg);
               adev = strchr(adrv, ':');
-	      if (adev)
-	        *(adev++) = 0;
-	      PRINTF("Audio driver: %s\n",adrv);
-	      if (adev)
-		PRINTF("Audio device: %s\n",adev);
-	      break;
+              if (adev)
+                *(adev++) = 0;
+              PRINTF("Audio driver: %s\n",adrv);
+              if (adev)
+                PRINTF("Audio device: %s\n",adev);
+              break;
     case 'V': gdrv = strdup(optarg);
               if (strchr(gdrv, ':')) {
-		video_port = strchr(gdrv, ':');
-		*video_port = 0;
-		video_port++;
-		PRINTF("Video port: %s\n",video_port);
-	      }
+                video_port = strchr(gdrv, ':');
+                *video_port = 0;
+                video_port++;
+                PRINTF("Video port: %s\n",video_port);
+              }
               PRINTF("Video driver: %s\n",gdrv);
               break;
 #ifndef IS_FBFE
@@ -513,23 +513,23 @@ int main(int argc, char *argv[])
     case 'a': if (!strncmp(optarg, "auto", 4))
                 aspect = 0;
               if (!strncmp(optarg, "4:3", 3))
-		aspect = 2;
-	      if (!strncmp(optarg, "16:9", 4))
-		aspect = 3;
-	      if (!strncmp(optarg, "16:10", 5))
-		aspect = 4;
+                aspect = 2;
+              if (!strncmp(optarg, "16:9", 4))
+                aspect = 3;
+              if (!strncmp(optarg, "16:10", 5))
+                aspect = 4;
               if (aspect == 0 && optarg[4] == ':')
                 aspect_controller = strdup(optarg+5);
-	      PRINTF("Aspect ratio: %s\n", 
-		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
-		     aspect==4?"16:10":"Default");
+              PRINTF("Aspect ratio: %s\n",
+                     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
+                     aspect==4?"16:10":"Default");
               if (aspect_controller)
-                PRINTF("Using %s to switch aspect ratio\n", 
+                PRINTF("Using %s to switch aspect ratio\n",
                        aspect_controller);
-	      break;
+              break;
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
-	      break;
+              break;
     case 'D': hud=1;
 #ifdef HAVE_XRENDER
               PRINTF("HUD OSD mode\n");
@@ -539,64 +539,64 @@ int main(int argc, char *argv[])
               break;
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
-	      break;
+              break;
     case 'h': height = atoi(optarg);
               PRINTF("Height: %d\n", height);
-	      break;
+              break;
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
-	      break;
+              break;
     case 'P': if (static_post_plugins)
                 strcatrealloc(static_post_plugins, ";");
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
-	      PRINTF("Post plugins: %s\n", static_post_plugins);
-	      break;
+              PRINTF("Post plugins: %s\n", static_post_plugins);
+              break;
     case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
               if (strstr((char*)lirc_dev, ",repeatemu")) {
-		 *strstr((char*)lirc_dev, ",repeatemu") = 0;
-		repeat_emu = 1;
+                 *strstr((char*)lirc_dev, ",repeatemu") = 0;
+                repeat_emu = 1;
               }
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
-		     repeat_emu?", emulating key repeat":"");
-	      break;
+                     repeat_emu?", emulating key repeat":"");
+              break;
     case 'v': SysLogLevel = (SysLogLevel<SYSLOGLEVEL_DEBUG) ? SYSLOGLEVEL_DEBUG : SysLogLevel+1;
-	      PRINTF("Verbose mode\n");
-	      break;
+              PRINTF("Verbose mode\n");
+              break;
     case 's': SysLogLevel = 1;
-	      PRINTF("Silent mode\n");
-	      break;
+              PRINTF("Silent mode\n");
+              break;
     case 'S': slave_mode = 1;
-	      PRINTF("Slave mode\n");
-	      break;
+              PRINTF("Slave mode\n");
+              break;
     case 'l': LogToSysLog = 1;
               openlog(exec_name, LOG_PID|LOG_CONS, LOG_USER);
-	      break;
+              break;
     case 'k': nokbd = 1;
               PRINTF("Keyboard input disabled\n");
-	      break;
+              break;
     case 'o': gui_hotkeys = 1;
               PRINTF("GUI hotkeys enabled\n"
-		     "  mapping keyboard f,F     -> fullscreen toggle\n"
-		     "          keyboard d,D     -> deinterlace toggle\n"
-		     "          LIRC Deinterlace -> deinterlace toggle\n"
-		     "          LIRC Fullscreen  -> fullscreen toggle\n"
-		     "          LIRC Quit        -> exit\n");
-	      break;
+                     "  mapping keyboard f,F     -> fullscreen toggle\n"
+                     "          keyboard d,D     -> deinterlace toggle\n"
+                     "          LIRC Deinterlace -> deinterlace toggle\n"
+                     "          LIRC Fullscreen  -> fullscreen toggle\n"
+                     "          LIRC Quit        -> exit\n");
+              break;
     case 'b': nokbd = daemon_mode = 1;
               PRINTF("Keyboard input disabled\n");
-	      break;
+              break;
     case 'R': reconnect = 1;
               PRINTF("Automatic reconnection enabled\n");
-	      break;
+              break;
     case 't': ftcp = 1;
               PRINTF("Protocol: TCP\n");
-	      break;
+              break;
     case 'u': fudp = 1;
               PRINTF("Protocol: UDP\n");
-	      break;
+              break;
     case 'r': frtp = 1;
               PRINTF("Protocol: RTP\n");
-	      break;
+              break;
     case 1:   printf("arg 1 (%s)\n", long_options[optind].name); exit(0);
     }
   }
@@ -613,9 +613,9 @@ int main(int argc, char *argv[])
 #if 1
   /* backward compability */
   if (mrl && ( !strncmp(mrl, MRL_ID ":tcp:",  MRL_ID_LEN+5) ||
-	       !strncmp(mrl, MRL_ID ":udp:",  MRL_ID_LEN+5) ||
-	       !strncmp(mrl, MRL_ID ":rtp:",  MRL_ID_LEN+5) ||
-	       !strncmp(mrl, MRL_ID ":pipe:", MRL_ID_LEN+6)))
+               !strncmp(mrl, MRL_ID ":udp:",  MRL_ID_LEN+5) ||
+               !strncmp(mrl, MRL_ID ":rtp:",  MRL_ID_LEN+5) ||
+               !strncmp(mrl, MRL_ID ":pipe:", MRL_ID_LEN+6)))
     mrl[4] = '+';
 #endif
 
@@ -632,25 +632,25 @@ int main(int argc, char *argv[])
     if (udp_discovery_find_server(&port, &address[0])) {
       PRINTF("Found VDR server: host %s, port %d\n", address, port);
       if (mrl) {
-	char *tmp = mrl;
-	mrl = NULL;
-	if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0)
-	  return -1;
-	free(tmp);
+        char *tmp = mrl;
+        mrl = NULL;
+        if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0)
+          return -1;
+        free(tmp);
       } else
-	if (asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
+        if (asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
           return -1;
     } else {
       PRINTF("---------------------------------------------------------------\n"
-	     "WARNING: MRL not given and server not found from local network.\n"
-	     "         Trying to connect to default port on local host.\n"
-	     "---------------------------------------------------------------\n");
+             "WARNING: MRL not given and server not found from local network.\n"
+             "         Trying to connect to default port on local host.\n"
+             "---------------------------------------------------------------\n");
       mrl = strdup(MRL_ID "://127.0.0.1");
     }
   }
 
-  if (mrl && 
-      strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) && 
+  if (mrl &&
+      strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) &&
       strncmp(mrl, MRL_ID "+", MRL_ID_LEN+1)) {
     char *mrl2 = mrl;
     PRINTF("WARNING: MRL does not start with \'" MRL_ID ":\' (%s)", mrl);
@@ -690,10 +690,10 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize display */
-  if (!fe->fe_display_open(fe, width, height, fullscreen, hud, 0, 
-			   "", aspect, NULL, gui_hotkeys,
-			   video_port, scale_video, 0,
-			   aspect_controller, window_id)) {
+  if (!fe->fe_display_open(fe, width, height, fullscreen, hud, 0,
+                           "", aspect, NULL, gui_hotkeys,
+                           video_port, scale_video, 0,
+                           aspect_controller, window_id)) {
     fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);
     return -4;
@@ -729,18 +729,18 @@ int main(int argc, char *argv[])
     if (!fe->xine_open(fe, mrl)) {
       /*print_xine_log(((fe_t *)fe)->xine);*/
       if (!firsttry) {
-	PRINTF("Error opening %s\n", mrl);
-	continue;
+        PRINTF("Error opening %s\n", mrl);
+        continue;
       }
       fprintf(stderr, "Error opening %s\n", mrl);
       fe->fe_free(fe);
       return -6;
     }
-  
+
     if (!fe->xine_play(fe)) {
       if (!firsttry) {
-	PRINTF("Error playing %s\n", argv[1]);
-	continue;
+        PRINTF("Error playing %s\n", argv[1]);
+        continue;
       }
       fprintf(stderr, "Error playing %s\n", argv[1]);
       fe->fe_free(fe);
@@ -754,8 +754,8 @@ int main(int argc, char *argv[])
 
       /* Start keyboard listener thread */
       if (!nokbd) {
-	PRINTF("\n\nPress Esc to exit\n\n");
-	kbd_start(fe, slave_mode);
+        PRINTF("\n\nPress Esc to exit\n\n");
+        kbd_start(fe, slave_mode);
       }
     }
 
@@ -764,8 +764,8 @@ int main(int argc, char *argv[])
     fflush(stdout);
     fflush(stderr);
 
-    while (!last_signal && fe->fe_run(fe) && 
-	   (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
+    while (!last_signal && fe->fe_run(fe) &&
+           (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
       ;
 
     fe->xine_close(fe);
