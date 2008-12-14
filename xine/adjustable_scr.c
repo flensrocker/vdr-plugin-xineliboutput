@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: adjustable_scr.c,v 1.1 2008-12-03 22:50:04 phintuka Exp $
+ * $Id: adjustable_scr.c,v 1.2 2008-12-14 01:21:20 phintuka Exp $
  *
  */
 
@@ -24,12 +24,12 @@
  * This plugin was sponsored by 1Control
  *
  * This file is part of xine, a free video player.
- * 
+ *
  * xine is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * xine is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -38,7 +38,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
- * 
+ *
  */
 
 typedef struct scr_impl_s scr_impl_t;
@@ -64,7 +64,7 @@ struct scr_impl_s {
 };
 
 /* Only call set_pivot when already mutex locked ! */
-static void set_pivot (scr_impl_t *this) 
+static void set_pivot (scr_impl_t *this)
 {
   struct   timeval tv;
   int64_t pts;
@@ -93,12 +93,12 @@ static void set_pivot (scr_impl_t *this)
  * xine interface (scr_plugin_t)
  */
 
-static int scr_get_priority (scr_plugin_t *scr) 
+static int scr_get_priority (scr_plugin_t *scr)
 {
   return 50; /* high priority */
 }
 
-static int scr_set_fine_speed (scr_plugin_t *scr, int speed) 
+static int scr_set_fine_speed (scr_plugin_t *scr, int speed)
 {
   scr_impl_t *this = (scr_impl_t*) scr;
 
@@ -106,7 +106,7 @@ static int scr_set_fine_speed (scr_plugin_t *scr, int speed)
 
   set_pivot( this );
   this->xine_speed     = speed;
-  this->speed_factor   = (double) speed * (double)this->scr_speed_base /*90000.0*/ / 
+  this->speed_factor   = (double) speed * (double)this->scr_speed_base /*90000.0*/ /
                          (1.0*XINE_FINE_SPEED_NORMAL) *
                          this->speed_tuning;
 
@@ -150,7 +150,7 @@ static void scr_start (scr_plugin_t *scr, int64_t start_vpts)
   scr_set_fine_speed (&this->scr, XINE_FINE_SPEED_NORMAL);
 }
 
-static int64_t scr_get_current (scr_plugin_t *scr) 
+static int64_t scr_get_current (scr_plugin_t *scr)
 {
   scr_impl_t *this = (scr_impl_t*) scr;
 
@@ -163,7 +163,7 @@ static int64_t scr_get_current (scr_plugin_t *scr)
 
   pts_calc = (tv.tv_sec  - this->cur_time.tv_sec) * this->speed_factor;
   pts_calc += (tv.tv_usec - this->cur_time.tv_usec) * this->speed_factor / 1e6;
-  
+
   pts = this->cur_pts + pts_calc;
 
   this->last_time.tv_sec  = tv.tv_sec;
@@ -174,7 +174,7 @@ static int64_t scr_get_current (scr_plugin_t *scr)
   return pts;
 }
 
-static void scr_exit (scr_plugin_t *scr) 
+static void scr_exit (scr_plugin_t *scr)
 {
   scr_impl_t *this = (scr_impl_t*) scr;
 
@@ -191,7 +191,7 @@ static void scr_exit (scr_plugin_t *scr)
  *
  * - fine-tune SCR speed. Actual speed is base_speed * factor.
  */
-static void adjustable_scr_speed_tuning (adjustable_scr_t *scr, double factor) 
+static void adjustable_scr_speed_tuning (adjustable_scr_t *scr, double factor)
 {
   scr_impl_t *this = (scr_impl_t*) scr;
 
@@ -199,7 +199,7 @@ static void adjustable_scr_speed_tuning (adjustable_scr_t *scr, double factor)
 
   set_pivot( this );
   this->speed_tuning = factor;
-  this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ / 
+  this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ /
                        (1.0*XINE_FINE_SPEED_NORMAL) *
                        this->speed_tuning;
 
@@ -211,15 +211,15 @@ static void adjustable_scr_speed_tuning (adjustable_scr_t *scr, double factor)
  *
  * - set base speed of SCR (default is 90kHz)
  */
-static void adjustable_scr_speed_base (adjustable_scr_t *scr, int hz) 
+static void adjustable_scr_speed_base (adjustable_scr_t *scr, int hz)
 {
   scr_impl_t *this = (scr_impl_t*) scr;
-  
+
   pthread_mutex_lock (&this->lock);
 
   set_pivot( this );
   this->scr_speed_base = hz;
-  this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ / 
+  this->speed_factor = (double) this->xine_speed * (double)this->scr_speed_base /*90000.0*/ /
                        (1.0*XINE_FINE_SPEED_NORMAL) *
                        this->speed_tuning;
 
@@ -264,7 +264,7 @@ static void adjustable_scr_dispose(adjustable_scr_t *scr)
  * adjusteble_scr_start()
  *
  */
-adjustable_scr_t* adjustable_scr_start (xine_t *xine) 
+adjustable_scr_t* adjustable_scr_start (xine_t *xine)
 {
   scr_impl_t *this;
 
