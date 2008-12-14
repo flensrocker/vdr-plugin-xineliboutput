@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.2 2008-12-13 23:33:21 phintuka Exp $
+ * $Id: osd_manager.c,v 1.3 2008-12-14 23:00:18 phintuka Exp $
  *
  */
 
@@ -354,10 +354,11 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
     /* RGB -> YUV */
     if(!(cmd->flags & OSDFLAG_YUV_CLUT))
       palette_argb_to_ayuv(cmd->palette, cmd->colors);
-    cmd->flags &= ~OSDFLAG_YUV_CLUT;
+    cmd->flags |= OSDFLAG_YUV_CLUT;
 
     osd->cmd.palette = malloc(sizeof(xine_clut_t)*cmd->colors);
     memcpy(osd->cmd.palette, cmd->palette, 4*cmd->colors);
+    osd->cmd.flags |= OSDFLAG_YUV_CLUT;
   }
 
   /* request OSD scaling from video_out layer */
