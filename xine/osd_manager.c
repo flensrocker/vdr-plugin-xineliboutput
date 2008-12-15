@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.4 2008-12-14 23:57:41 phintuka Exp $
+ * $Id: osd_manager.c,v 1.5 2008-12-15 00:43:15 phintuka Exp $
  *
  */
 
@@ -168,26 +168,37 @@ static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
  *
  * Scale OSD_Set_RLE data
  * - modified fields: x, y, w, h, (RLE) data and datalen
- * - old RLE data is not stored, freed or returned !
+ * - old RLE data is stored to osd_data_t *osd
  */
-static void osdcmd_scale(osd_command_t *osdcmd, int new_w, int new_h /*, scale_mode_t mode*/)
+static void osdcmd_scale(osd_manager_impl_t *this, osd_command_t *cmd, 
+                         osd_data_t *osd, int output_width, int output_height)
 {
-  xine_rle_elem_t *old_rle   = osdcmd->data;
-  int              rle_elems = osdcmd->datalen / sizeof(xine_rle_elem_t);
+  LOGOSD("Size out of margins, rescaling rle image");
 
-  /*if (mode == scale_fast)*/
-  osdcmd->data = rle_scale_nearest(old_rle, &rle_elems, osdcmd->w, osdcmd->h,
-				   new_w, new_h);
-  osdcmd->datalen = rle_elems * sizeof(xine_rle_elem_t);
+  /* new position and size */
+  int new_x = cmd->x * this->video_width  / this->vdr_osd_width;
+  int new_y = cmd->y * this->video_height / this->vdr_osd_height;
+  int x2 = cmd->x + cmd->w + 1;
+  int y2 = cmd->y + cmd->h + 1;
+  x2  = ((x2+1) * this->video_width  - 1) / this->vdr_osd_width  ;
+  y2  = ((y2+1) * this->video_height - 1) / this->vdr_osd_height ;
+  int new_w = x2 - new_x - 1;
+  int new_h = y2 - new_y - 1;
 
-  if (osdcmd->w != new_w) {
-    osdcmd->x = osdcmd->x * new_w / osdcmd->w;
-    osdcmd->w = new_w;
-  }
-  if (osdcmd->h != new_h) {
-    osdcmd->y = osdcmd->y * new_h / osdcmd->h;
-    osdcmd->h = new_h;
-  }
+  /* store original RLE data */
+  osd->cmd.data    = cmd->data;
+  osd->cmd.datalen = cmd->datalen;
+
+  /* scale */
+  int rle_elems = cmd->datalen / sizeof(xine_rle_elem_t);
+  cmd->data = rle_scale_nearest(cmd->data, &rle_elems, cmd->w, cmd->h,
+                                new_w, new_h);
+  cmd->datalen = rle_elems * sizeof(xine_rle_elem_t);
+
+  cmd->x = new_x;
+  cmd->y = new_y;
+  cmd->w = new_w;
+  cmd->h = new_h;
 }
 
 /*
@@ -390,16 +401,8 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 	    LOGOSD("Size out of margins, using unscaled overlay");
 
       if (!use_unscaled && cmd->scaling > 0) {
-	int new_w = cmd->w * this->video_width  / this->vdr_osd_width;
-	int new_h = cmd->h * this->video_height / this->vdr_osd_height;
-	LOGOSD("Size out of margins, rescaling rle image");
-
-	/* store original RLE data */
-	osd->cmd.data    = cmd->data;
-	osd->cmd.datalen = cmd->datalen;
-
-	osdcmd_scale(cmd, new_w, new_h /*, this->class->fast_osd_scaling ? 0 : 1*/);
-	rle_scaled = 1;
+        osdcmd_scale(this, cmd, osd, this->video_width, this->video_height);
+        rle_scaled = 1;
       }
     }
   }
@@ -410,16 +413,8 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
     int win_height = video_out->get_property(video_out, VO_PROP_WINDOW_HEIGHT);
 
     if (win_width >= 360 && win_height >= 288) {
-      LOGOSD("Scaling unscaled OSD to %dx%d", win_width, win_height);
       if (win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
-	int new_w = cmd->w * win_width  / this->vdr_osd_width;
-	int new_h = cmd->h * win_height / this->vdr_osd_height;
-
-	/* store original RLE data */
-	osd->cmd.data    = cmd->data;
-	osd->cmd.datalen = cmd->datalen;
-
-	osdcmd_scale(cmd, new_w, new_h /*, this->class->fast_osd_scaling ? 0 : 1*/);
+        osdcmd_scale(this, cmd, osd, win_width, win_height);
 	rle_scaled = 1;
       }
     }
