@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.5 2008-12-15 00:43:15 phintuka Exp $
+ * $Id: osd_manager.c,v 1.6 2008-12-18 14:05:05 phintuka Exp $
  *
  */
 
@@ -170,7 +170,7 @@ static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
  * - modified fields: x, y, w, h, (RLE) data and datalen
  * - old RLE data is stored to osd_data_t *osd
  */
-static void osdcmd_scale(osd_manager_impl_t *this, osd_command_t *cmd, 
+static void osdcmd_scale(osd_manager_impl_t *this, osd_command_t *cmd,
                          osd_data_t *osd, int output_width, int output_height)
 {
   LOGOSD("Size out of margins, rescaling rle image");
@@ -396,9 +396,9 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 
       /* unscaled OSD instead of downscaling ? */
       if (w_diff < 0 || h_diff < 0)
-	if (cmd->flags & OSDFLAG_UNSCALED_LOWRES)
-	  if (0 < (use_unscaled = unscaled_supported))
-	    LOGOSD("Size out of margins, using unscaled overlay");
+        if (cmd->flags & OSDFLAG_UNSCALED_LOWRES)
+          if (0 < (use_unscaled = unscaled_supported))
+            LOGOSD("Size out of margins, using unscaled overlay");
 
       if (!use_unscaled && cmd->scaling > 0) {
         osdcmd_scale(this, cmd, osd, this->video_width, this->video_height);
@@ -415,7 +415,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
     if (win_width >= 360 && win_height >= 288) {
       if (win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
         osdcmd_scale(this, cmd, osd, win_width, win_height);
-	rle_scaled = 1;
+        rle_scaled = 1;
       }
     }
   }
@@ -562,8 +562,8 @@ static int exec_osd_command_internal(osd_manager_impl_t *this, struct osd_comman
  *
  * - handler for VDR-based osd_command_t events
  */
-static int exec_osd_command(osd_manager_t *this_gen, 
-			    struct osd_command_s *cmd, xine_stream_t *stream)
+static int exec_osd_command(osd_manager_t *this_gen,
+                            struct osd_command_s *cmd, xine_stream_t *stream)
 {
   osd_manager_impl_t *this = (osd_manager_impl_t*)this_gen;
   int result;
@@ -664,8 +664,8 @@ static void osd_manager_dispose(osd_manager_t *this_gen, xine_stream_t *stream)
   for (i=0; i<MAX_OSD_OBJECT; i++) {
     if (this->osd[i].handle >= 0) {
       osd_command_t cmd = {
-	.cmd = OSD_Close,
-	.wnd = i,
+        .cmd = OSD_Close,
+        .wnd = i,
       };
       LOGOSD("Closing osd %d", i);
       exec_osd_close(this, &cmd);
@@ -686,7 +686,7 @@ osd_manager_t *init_osd_manager(void)
 {
   osd_manager_impl_t *this = calloc(1, sizeof(osd_manager_impl_t));
   int i;
-  
+
   this->mgr.command            = exec_osd_command;
   this->mgr.dispose            = osd_manager_dispose;
   this->mgr.video_size_changed = video_size_changed;
