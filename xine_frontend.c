@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.91 2008-11-19 01:08:39 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.92 2008-12-18 14:12:43 phintuka Exp $
  *
  */
 
@@ -33,10 +33,23 @@
 #include "xine_frontend_internal.h"
 #include "xine/post.h"
 
+#include "xine/vo_post.h"
+#include "xine/vo_osdscaler.h"
+
 #undef  MIN
 #define MIN(a,b) ( (a) < (b) ? (a) : (b))
 #undef  MAX
 #define MAX(a,b) ( (a) > (b) ? (a) : (b))
+
+
+static void intercept_video_driver(xine_video_port_t *video_port)
+{
+  vo_driver_t *osdscaler = osdscaler_init();
+  if (! wire_video_driver(video_port, osdscaler)) {
+    LOGMSG("wire_video_driver() for osdscaler failed");
+    osdscaler->dispose(osdscaler);
+  }
+}
 
 
 char *strn0cpy(char *dest, const char *src, int n) 
@@ -619,6 +632,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     xine_exit(this->xine);
     return 0;
   }
+
+  intercept_video_driver(this->video_port);
 
   this->video_port_none = NULL;
   
