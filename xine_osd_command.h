@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.13 2008-11-29 22:02:24 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.14 2008-12-19 15:08:19 phintuka Exp $
  *
  */
 
@@ -39,6 +39,8 @@ typedef enum  {
 #define OSDFLAG_UNSCALED        0x04 /* xine-lib unscaled (hardware) blending                   */
 #define OSDFLAG_UNSCALED_LOWRES 0x08 /* unscaled blending when video resolution < .95 * 720x576 */
 
+#define OSDFLAG_TOP_LAYER       0x10 /* window is part of top layer OSD */
+
 typedef struct xine_clut_s {
   union {
     uint8_t cb  /*: 8*/;
@@ -68,9 +70,12 @@ typedef struct osd_rect_s {
 } osd_rect_t;
 
 typedef struct osd_command_s {
-  uint32_t cmd;      /* osd_command_id_t */
+  uint8_t  size;     /* size of osd_command_t struct */
 
-  uint32_t wnd;      /* OSD window handle */
+  uint8_t  cmd;      /* osd_command_id_t */
+
+  uint8_t  wnd;      /* OSD window handle */
+  uint8_t  layer;    /* OSD layer */
 
   int64_t  pts;      /* execute at given pts */
   uint32_t delay_ms; /* execute 'delay_ms' ms after previous command (for same window). */
@@ -103,8 +108,6 @@ typedef struct osd_command_s {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 # define hton_osdcmd(cmdP) \
   do { \
-    cmdP.cmd      = htonl (cmdP.cmd);                \
-    cmdP.wnd      = htonl (cmdP.wnd);                \
     cmdP.pts      = htonll(cmdP.pts);                \
     cmdP.delay_ms = htonl (cmdP.delay_ms);           \
     cmdP.x        = htons (cmdP.x);                  \
@@ -122,8 +125,6 @@ typedef struct osd_command_s {
 
 # define ntoh_osdcmd(cmdP) \
   do { \
-    cmdP.cmd      = ntohl (cmdP.cmd);                \
-    cmdP.wnd      = ntohl (cmdP.wnd);                \
     cmdP.pts      = ntohll(cmdP.pts);                \
     cmdP.delay_ms = ntohl (cmdP.delay_ms);           \
     cmdP.x        = ntohs (cmdP.x);                  \
