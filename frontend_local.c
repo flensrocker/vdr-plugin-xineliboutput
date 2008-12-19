@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.35 2008-12-19 16:01:55 rofafor Exp $
+ * $Id: frontend_local.c,v 1.36 2008-12-19 22:53:02 phintuka Exp $
  *
  */
 
@@ -18,6 +18,7 @@
 #include <vdr/config.h>
 #include <vdr/tools.h>
 #include <vdr/shutdown.h>
+#include <vdr/plugin.h>
 
 #include "logdefs.h"
 #include "config.h"
@@ -70,17 +71,23 @@ extern "C" {
 //----------------------------- cXinelibLocal --------------------------------
 
 cXinelibLocal::cXinelibLocal(const char *frontend_name) :
-  cXinelibThread("Local decoder/display (cXinelibThread)"), m_feLock(true) 
+  cXinelibThread("Local decoder/display (cXinelibThread)"), m_feLock(true)
 {
   fe = NULL;
   h_fe_lib = NULL;
   m_bReconfigRequest = true;
+
+  if (!xc.config_file &&
+      0 < asprintf(&xc.config_file,
+                   "%s/xineliboutput/config",
+                   cPlugin::ConfigDirectory()))
+    LOGMSG("cXinelibLocal: Using xine-lib configuration file %s", xc.config_file);
 }
 
-cXinelibLocal::~cXinelibLocal() 
+cXinelibLocal::~cXinelibLocal()
 {
   TRACEF("cXinelibLocal::~cXinelibLocal");
-  
+
   m_bReady = false;
 
   Stop();
@@ -359,7 +366,7 @@ void cXinelibLocal::Action(void)
       // init and start xine engine
       LOCK_FE_WR;
       LOGDBG("cXinelibLocal::Action - xine_init");
-      
+
       fe = curr_fe;
       if(m_bReconfigRequest) {
 	if(!fe->xine_init(fe, xc.audio_driver, xc.audio_port,
