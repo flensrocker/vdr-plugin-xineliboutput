@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.42 2008-11-17 23:39:20 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.43 2008-12-19 16:01:55 rofafor Exp $
  *
  */
 
@@ -40,7 +40,8 @@ typedef struct fbfe_s {
 		      const char *audio_port,
 		      const char *video_driver, 
 		      int pes_buffers,
-		      const char *static_post_plugins);
+		      const char *static_post_plugins,
+		      const char *config_file);
 
   /* display */
 /*char   *modeline;*/
@@ -267,7 +268,8 @@ static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
 			  const char *audio_port,
 			  const char *video_driver, 
 			  int pes_buffers,
-			  const char *static_post_plugins)
+			  const char *static_post_plugins,
+			  const char *config_file)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
@@ -275,7 +277,7 @@ static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
     update_DFBARGS(this->x.video_port_name);
 
   return this->fe_xine_init(this_gen, audio_driver, audio_port,
-			    video_driver, pes_buffers, static_post_plugins);
+			    video_driver, pes_buffers, static_post_plugins, config_file);
 }
 
 static frontend_t *fbfe_get_frontend(void)

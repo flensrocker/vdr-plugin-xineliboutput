@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.70 2008-12-14 00:11:53 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.71 2008-12-19 16:01:55 rofafor Exp $
  *
  */
 
@@ -396,6 +396,7 @@ static const char help_str[] =
     "                                 --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
     "   --lirc[=devicename]           Use lirc input device\n"
     "                                 Optional lirc socket name can be given\n"
+    "   --config=file                 Use config file (default: ~/.xine/config_xineliboutput).\n"
     "   --verbose                     Verbose debug output\n"
     "   --silent                      Silent mode (report only errors)\n"
     "   --syslog                      Write all output to system log\n"
@@ -412,7 +413,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HL:A:V:d:a:fDw:h:P:vslkobtur";
+static const char short_options[] = "HA:V:d:a:fDw:h:P:L:C:vslkobtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -428,6 +429,7 @@ static const struct option long_options[] = {
   { "noscaling",  no_argument,       NULL, 'n' },
   { "post",       required_argument, NULL, 'P' },
   { "lirc",       optional_argument, NULL, 'L' },
+  { "config",     required_argument, NULL, 'C' },
 
   { "verbose", no_argument,  NULL, 'v' },
   { "silent",  no_argument,  NULL, 's' },
@@ -465,6 +467,7 @@ int main(int argc, char *argv[])
   char *aspect_controller = NULL;
   int repeat_emu = 0;
   char *exec_name = argv[0];
+  char *config_file = NULL;
 
   LogToSysLog = 0;
 
@@ -550,6 +553,9 @@ int main(int argc, char *argv[])
                 strcatrealloc(static_post_plugins, ";");
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
               PRINTF("Post plugins: %s\n", static_post_plugins);
+              break;
+    case 'C': config_file = strdup(optarg);
+              PRINTF("Config file: %s\n", config_file);
               break;
     case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
               if (strstr((char*)lirc_dev, ",repeatemu")) {
@@ -700,7 +706,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize xine */
-  if (!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
+  if (!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins, config_file)) {
     fprintf(stderr, "Error initializing xine\n");
     list_xine_plugins(fe, SysLogLevel>2);
     fe->fe_free(fe);
@@ -789,6 +795,15 @@ int main(int argc, char *argv[])
     kbd_stop();
 
   fe->fe_free(fe);
+
+  if (config_file) free(config_file);
+  if (static_post_plugins) free(static_post_plugins);
+  if (mrl) free(mrl);
+  if (adrv) free(adrv);
+  if (gdrv) free(gdrv);
+  if (video_port) free(video_port);
+  if (aspect_controller) free(aspect_controller);
+  if (lirc_dev) free(lirc_dev);
 
   return xine_finished==FE_XINE_EXIT ? 0 : 1;
 }

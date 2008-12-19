@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.57 2008-11-20 11:46:30 rofafor Exp $
+ * $Id: config.h,v 1.58 2008-12-19 16:01:55 rofafor Exp $
  *
  */
 
@@ -244,6 +244,7 @@ class config_t {
     char audio_driver[32];
     char audio_port[64];
     char *post_plugins;      // static post plugins from command line options
+    char *config_file;       // config file from command line options
     int  pes_buffers;
 
     char modeline[64];

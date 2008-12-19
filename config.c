@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.75 2008-11-20 11:46:30 rofafor Exp $
+ * $Id: config.c,v 1.76 2008-12-19 16:01:54 rofafor Exp $
  *
  */
 
@@ -462,6 +462,7 @@ config_t::config_t() {
   speaker_type = SPEAKERS_STEREO;
 
   post_plugins = NULL;
+  config_file = NULL;
 
   audio_delay       = 0;
   audio_compression = 0;
@@ -606,7 +607,7 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
 
 bool config_t::ProcessArgs(int argc, char *argv[])
 {
-  static const char short_options[] = "fDw:h:l:r:A:V:d:P:pc";
+  static const char short_options[] = "fDw:h:l:r:A:V:d:P:C:pc";
 
   static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
@@ -622,6 +623,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       { "video",        required_argument, NULL, 'V' },
       { "display",      required_argument, NULL, 'd' },
       { "post",         required_argument, NULL, 'P' },
+      { "config",       required_argument, NULL, 'C' },
       { "primary",      no_argument,       NULL, 'p' },
       { "exit-on-close",no_argument,     NULL, 'c' },
       { NULL }
@@ -685,6 +687,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'P': if(post_plugins)
                 post_plugins = strcatrealloc(post_plugins, ";");
               post_plugins = strcatrealloc(post_plugins, optarg);
+              break;
+    case 'C': config_file = strdup(optarg);
               break;
     case 'p': ProcessArg("ForcePrimaryDevice", "1");
               break;
