@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.63 2008-11-18 15:07:11 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.64 2008-12-19 15:15:07 phintuka Exp $
  *
  */
 
@@ -256,6 +256,8 @@ static int write_osd_command(cxSocket& s, osd_command_t *cmd)
 	   (int)max, (int)size);
     return 0;
   }
+
+  cmd->size = sizeof(osd_command_t);
 
   if(8 != s.write("OSDCMD\r\n", 8, 100)) {
     LOGDBG("write_osd_command: write (command) failed");
