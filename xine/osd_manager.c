@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.6 2008-12-18 14:05:05 phintuka Exp $
+ * $Id: osd_manager.c,v 1.7 2008-12-19 16:25:11 phintuka Exp $
  *
  */
 
@@ -572,7 +572,7 @@ static int exec_osd_command(osd_manager_t *this_gen,
     LOGMSG("exec_osd_command: Stream not initialized !");
     return CONTROL_DISCONNECTED;
   }
-  if (cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
+  if (cmd->wnd >= MAX_OSD_OBJECT) {
     LOGMSG("exec_osd_command: OSD window handle %d out of range !", cmd->wnd);
     return CONTROL_PARAM_ERROR;
   }
