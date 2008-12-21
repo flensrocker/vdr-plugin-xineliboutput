@@ -4,12 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.7 2008-07-29 13:55:41 phintuka Exp $
+ * $Id: pes.h,v 1.8 2008-12-21 12:10:57 phintuka Exp $
  *
  */
 
-#ifndef _PES_H_
-#define _PES_H_
+#ifndef _XINELIBOUTPUT_PES_H_
+#define _XINELIBOUTPUT_PES_H_
 
 #include "mpeg.h"
 
@@ -49,6 +49,8 @@
 
 #define PES_HAS_PTS(data)     ((data)[7] & 0x80)
 #define PES_HAS_DTS(data)     ((data)[7] & 0x40)
+
+#define DATA_IS_PES(data) (!(data)[0] && !(data)[1] && (data)[2] == 1)
 
 /*
  * timestamps
@@ -99,4 +101,4 @@ static inline int pes_packet_len(const uint8_t *data, const int len)
 }
 
 
-#endif /* _PES_H_ */
+#endif /* _XINELIBOUTPUT_PES_H_ */
