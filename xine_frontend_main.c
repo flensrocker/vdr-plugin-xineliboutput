@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.71 2008-12-19 16:01:55 rofafor Exp $
+ * $Id: xine_frontend_main.c,v 1.72 2008-12-21 11:50:06 phintuka Exp $
  *
  */
 
@@ -770,9 +770,9 @@ int main(int argc, char *argv[])
     fflush(stdout);
     fflush(stderr);
 
-    while (!last_signal && fe->fe_run(fe) &&
-           (FE_XINE_RUNNING == (xine_finished = fe->xine_is_finished(fe,0))))
+    while (!last_signal && fe->fe_run(fe))
       ;
+    xine_finished = fe->xine_is_finished(fe,0);
 
     fe->xine_close(fe);
     firsttry = 0;
