@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.103 2008-11-17 23:39:20 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.104 2009-01-02 17:54:02 rofafor Exp $
  *
  */
 
@@ -439,10 +439,10 @@ static void set_cursor(Display *dpy, Window win, const int enable)
 
 static void update_xinerama_info(sxfe_t *this)
 {
+#ifdef HAVE_XINERAMA
   int screen = this->xinerama_screen;
   this->xinerama_x = this->xinerama_y = 0;
   XLockDisplay(this->display);
-#ifdef HAVE_XINERAMA
   if(screen >= -1 && XineramaIsActive(this->display)) {
     XineramaScreenInfo *screens;
     int num_screens;
