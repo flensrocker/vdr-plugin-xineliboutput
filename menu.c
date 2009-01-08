@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.60 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: menu.c,v 1.61 2009-01-08 11:58:33 rofafor Exp $
  *
  */
 
@@ -549,8 +549,9 @@ cMenuXinelib::~cMenuXinelib()
 						       xc.audio_surround, xc.speaker_type);
 
   if(xc.overscan != overscan)
-    cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-					      xc.contrast, xc.overscan, xc.vo_aspect_ratio);
+    cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+					      xc.noise_reduction, xc.contrast, xc.overscan,
+					      xc.vo_aspect_ratio);
 
   if(xc.headphone != headphone)
     cXinelibDevice::Instance().ConfigurePostprocessing("headphone", 
@@ -627,8 +628,9 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 							 compression, xc.audio_equalizer, 
 							 xc.audio_surround, xc.speaker_type);
     else if(item == ctrl_overscan)
-      cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-                                                xc.contrast, overscan, xc.vo_aspect_ratio);
+      cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                                                xc.noise_reduction, xc.contrast, overscan,
+                                                xc.vo_aspect_ratio);
   }
   if(Key==kLeft || Key==kRight) {
     if(item == ctrl_headphone)
@@ -738,8 +740,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* auto, square, 4:3, anamorphic or DVB */
       if(!OnlyInfo) {
         xc.vo_aspect_ratio = (xc.vo_aspect_ratio < VO_ASPECT_count-1) ? xc.vo_aspect_ratio + 1 : 0;
-        cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-                                              xc.contrast, xc.overscan, xc.vo_aspect_ratio);
+        cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                                              xc.noise_reduction, xc.contrast, xc.overscan,
+                                              xc.vo_aspect_ratio);
       }
       Message = cString::sprintf("%s %s %s", tr("Video aspect ratio"),
 				 OnlyInfo ? ":" : "->",

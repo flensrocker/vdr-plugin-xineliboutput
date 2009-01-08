@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.63 2008-11-20 11:46:30 rofafor Exp $
+ * $Id: device.c,v 1.64 2009-01-08 11:58:33 rofafor Exp $
  *
  */
 
@@ -436,15 +436,15 @@ void cXinelibDevice::ConfigurePostprocessing(const char *name, bool on,
     m_server->ConfigurePostprocessing(name, on, args);
 }
 
-void cXinelibDevice::ConfigureVideo(int hue, int saturation, int brightness, int contrast,
-				    int overscan, int vo_aspect_ratio)
+void cXinelibDevice::ConfigureVideo(int hue, int saturation, int brightness, int sharpness,
+				    int noise_reduction, int contrast, int overscan, int vo_aspect_ratio)
 {
   TRACEF("cXinelibDevice::ConfigureVideo");
 
   if(m_local)
-    m_local->ConfigureVideo(hue, saturation, brightness, contrast, overscan, vo_aspect_ratio);
+    m_local->ConfigureVideo(hue, saturation, brightness, sharpness, noise_reduction, contrast, overscan, vo_aspect_ratio);
   if(m_server)
-    m_server->ConfigureVideo(hue, saturation, brightness, contrast, overscan, vo_aspect_ratio);
+    m_server->ConfigureVideo(hue, saturation, brightness, sharpness, noise_reduction, contrast, overscan, vo_aspect_ratio);
 }
 
 void cXinelibDevice::ConfigureDecoder(int pes_buffers)

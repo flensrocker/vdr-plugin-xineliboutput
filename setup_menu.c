@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.65 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: setup_menu.c,v 1.66 2009-01-08 11:58:33 rofafor Exp $
  *
  */
 
@@ -498,6 +498,8 @@ class cMenuSetupVideo : public cMenuSetupPage
     cOsdItem *ctrl_saturation;
     cOsdItem *ctrl_contrast;
     cOsdItem *ctrl_brightness;
+    cOsdItem *ctrl_sharpness;
+    cOsdItem *ctrl_noise_reduction;
     cOsdItem *ctrl_overscan;
     cOsdItem *ctrl_pp;
     cOsdItem *ctrl_deinterlace;
@@ -528,6 +530,8 @@ cMenuSetupVideo::cMenuSetupVideo(void)
   newconfig.saturation = CONTROL_TO_INDEX(newconfig.saturation);
   newconfig.contrast   = CONTROL_TO_INDEX(newconfig.contrast);
   newconfig.brightness = CONTROL_TO_INDEX(newconfig.brightness);
+  newconfig.sharpness  = CONTROL_TO_INDEX(newconfig.sharpness);
+  newconfig.noise_reduction = CONTROL_TO_INDEX(newconfig.noise_reduction);
 
   deinterlace = strstra(xc.deinterlace_method, xc.s_deinterlaceMethods, 0);
 
@@ -539,7 +543,8 @@ cMenuSetupVideo::cMenuSetupVideo(void)
 cMenuSetupVideo::~cMenuSetupVideo(void)
 {
   cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, 
-					    xc.brightness, xc.contrast,
+					    xc.brightness, xc.sharpness,
+					    xc.noise_reduction, xc.contrast,
 					    xc.overscan, xc.vo_aspect_ratio);
   cXinelibDevice::Instance().ConfigurePostprocessing(
        "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
@@ -678,6 +683,10 @@ void cMenuSetupVideo::Set(void)
   Add(new cMenuEditIntItem(tr("Saturation"), &newconfig.saturation,-1,0xffff));
   Add(new cMenuEditIntItem(tr("Contrast"),   &newconfig.contrast, -1, 0xffff));
   Add(new cMenuEditIntItem(tr("Brightness"), &newconfig.brightness,-1,0xffff));
+#ifdef HAVE_VDPAU
+  Add(new cMenuEditIntItem(tr("Sharpness"),  &newconfig.sharpness, -1,0xffff));
+  Add(new cMenuEditIntItem(tr("Noise Reduction"), &newconfig.noise_reduction, -1,0xffff));
+#endif
 #else
   Add(ctrl_hue = new cMenuEditStraItem(tr("HUE"), &newconfig.hue, 33, 
 				       controls));
@@ -690,6 +699,14 @@ void cMenuSetupVideo::Set(void)
   Add(ctrl_brightness = 
       new cMenuEditStraItem(tr("Brightness"), &newconfig.brightness, 33, 
 			    controls));
+#ifdef HAVE_VDPAU
+  Add(ctrl_sharpness = 
+      new cMenuEditStraItem(tr("Sharpness"), &newconfig.sharpness, 33, 
+			    controls));
+  Add(ctrl_noise_reduction = 
+      new cMenuEditStraItem(tr("Noise Reduction"), &newconfig.noise_reduction, 33, 
+			    controls));
+#endif
 #endif
 
 #ifdef DEVICE_SUPPORTS_IBP_TRICKSPEED
@@ -717,12 +734,15 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
     return state;
 
   if(item == ctrl_hue || item == ctrl_saturation || 
+     item == ctrl_sharpness || item == ctrl_noise_reduction ||
      item == ctrl_contrast || item == ctrl_brightness ||
      item == ctrl_overscan || item == ctrl_vo_aspect_ratio)
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
     cXinelibDevice::Instance().ConfigureVideo(newconfig.hue, 
 					      newconfig.saturation,
 					      newconfig.brightness, 
+					      newconfig.sharpness, 
+					      newconfig.noise_reduction, 
 					      newconfig.contrast,
 					      newconfig.overscan,
                                               newconfig.vo_aspect_ratio);
@@ -731,6 +751,8 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
        INDEX_TO_CONTROL(newconfig.hue), 
        INDEX_TO_CONTROL(newconfig.saturation),
        INDEX_TO_CONTROL(newconfig.brightness), 
+       INDEX_TO_CONTROL(newconfig.sharpness), 
+       INDEX_TO_CONTROL(newconfig.noise_reduction), 
        INDEX_TO_CONTROL(newconfig.contrast),
        newconfig.overscan, newconfig.vo_aspect_ratio);
 #endif
@@ -789,6 +811,8 @@ void cMenuSetupVideo::Store(void)
   xc.saturation = INDEX_TO_CONTROL(xc.saturation);
   xc.contrast   = INDEX_TO_CONTROL(xc.contrast);
   xc.brightness = INDEX_TO_CONTROL(xc.brightness);
+  xc.sharpness  = INDEX_TO_CONTROL(xc.sharpness);
+  xc.noise_reduction = INDEX_TO_CONTROL(xc.noise_reduction);
 #endif
 
   strn0cpy(xc.deinterlace_method, xc.s_deinterlaceMethods[deinterlace], sizeof(xc.deinterlace_method));
@@ -811,6 +835,8 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.Saturation", xc.saturation);
   SetupStore("Video.Contrast",   xc.contrast);
   SetupStore("Video.Brightness", xc.brightness);
+  SetupStore("Video.Sharpness",  xc.sharpness);
+  SetupStore("Video.NoiseReduction", xc.noise_reduction);
   SetupStore("Video.Overscan",   xc.overscan);
   SetupStore("Video.IBPTrickSpeed", xc.ibp_trickspeed);
   SetupStore("Video.MaxTrickSpeed", xc.max_trickspeed);
@@ -1730,7 +1756,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	br -= 0xffff/1024;
 	sprintf(s, "b %d", br);
 	m_Osd->DrawText(400, 100, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan, xc.vo_aspect_ratio);
+	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;	
       case kUp:
@@ -1739,7 +1765,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	co -= 0xffff/1024;
 	sprintf(s, "c %d", co);
 	m_Osd->DrawText(400, 130, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, co, xc.overscan, xc.vo_aspect_ratio);
+	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;
     }

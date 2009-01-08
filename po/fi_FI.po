@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-17 23:59+0300\n"
+"POT-Creation-Date: 2009-01-07 15:46+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -417,7 +417,7 @@ msgid "  Chroma Filter"
 msgstr "  Käytä Chroma-suodinta"
 
 msgid "Sharpen / Blur"
-msgstr "Terävöinti / Sumennus"
+msgstr "Terävöinti / sumennus"
 
 msgid "  Width of the luma matrix"
 msgstr "  Luma-matriisin leveys"
@@ -438,7 +438,7 @@ msgid "  Amount of chroma sharpness/blur"
 msgstr "  Chroma-terävöinti/-sumennus"
 
 msgid "3D Denoiser"
-msgstr "3D kohinanpoisto"
+msgstr "3D-kohinanpoisto"
 
 msgid "  Spatial luma strength"
 msgstr "  Luman tilavoimakkuus"
@@ -460,6 +460,12 @@ msgstr "Kontrasti"
 
 msgid "Brightness"
 msgstr "Kirkkaus"
+
+msgid "Sharpness"
+msgstr "Terävöinti"
+
+msgid "Noise Reduction"
+msgstr "Kohinanpoisto"
 
 msgid "Smooth fast forward"
 msgstr "Tasainen kuvakelaus"

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.58 2008-12-19 16:01:55 rofafor Exp $
+ * $Id: config.h,v 1.59 2009-01-08 11:58:33 rofafor Exp $
  *
  */
 
@@ -276,6 +276,8 @@ class config_t {
     int  saturation;          // 0...0xffff, -1 == off
     int  contrast;            // 0...0xffff, -1 == off
     int  brightness;          // 0...0xffff, -1 == off
+    int  sharpness;           // 0...0xffff, -1 == off
+    int  noise_reduction;     // 0...0xffff, -1 == off
     int  vo_aspect_ratio;
 
     // OSD settings 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.207 2008-12-06 22:25:25 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.208 2009-01-08 11:58:33 rofafor Exp $
  *
  */
 
@@ -336,6 +336,8 @@ typedef struct vdr_input_plugin_s {
   int   orig_hue;
   int   orig_brightness;
   int   orig_saturation;
+  int   orig_sharpness;
+  int   orig_noise_reduction;
   int   orig_contrast;
   int   orig_vo_aspect_ratio;
 
@@ -1717,7 +1719,8 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
 
 static int set_video_properties(vdr_input_plugin_t *this, 
 				int hue, int saturation, 
-				int brightness, int contrast,
+				int brightness, int sharpness,
+				int noise_reduction, int contrast,
                                 int vo_aspect_ratio)
 {
   pthread_mutex_lock(&this->lock);
@@ -1733,6 +1736,14 @@ static int set_video_properties(vdr_input_plugin_t *this,
 					   XINE_PARAM_VO_SATURATION );
     this->orig_brightness = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_BRIGHTNESS );
+#ifdef XINE_PARAM_VO_SHARPNESS
+    this->orig_sharpness  = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_SHARPNESS );
+#endif
+#ifdef XINE_PARAM_VO_NOISE_REDUCTION
+    this->orig_noise_reduction = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_NOISE_REDUCTION );
+#endif
     this->orig_contrast   = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_CONTRAST );
     this->orig_vo_aspect_ratio   = xine_get_param(this->stream,
@@ -1749,6 +1760,16 @@ static int set_video_properties(vdr_input_plugin_t *this,
   if(brightness>=0 || this->video_properties_saved)
     xine_set_param(this->stream, XINE_PARAM_VO_BRIGHTNESS, 
 		   brightness>=0 ? brightness : this->orig_brightness );
+#ifdef XINE_PARAM_VO_SHARPNESS
+  if(sharpness>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_SHARPNESS, 
+		   sharpness>=0 ? sharpness : this->orig_sharpness );
+#endif
+#ifdef XINE_PARAM_VO_NOISE_REDUCTION
+  if(noise_reduction>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_NOISE_REDUCTION, 
+		   noise_reduction>=0 ? noise_reduction : this->orig_noise_reduction );
+#endif
   if(contrast>=0 || this->video_properties_saved)
     xine_set_param(this->stream, XINE_PARAM_VO_CONTRAST, 
 		   contrast>=0 ? contrast : this->orig_contrast );
@@ -2618,10 +2639,10 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     err = handle_control_osdcmd(this);
 
   } else if(!strncasecmp(cmd, "VIDEO_PROPERTIES ", 17)) {
-    int hue, saturation, brightness, contrast, vo_aspect_ratio;
-    if(5 == sscanf(cmd+17, "%d %d %d %d %d", 
-		   &hue, &saturation, &brightness, &contrast, &vo_aspect_ratio))
-      err = set_video_properties(this, hue, saturation, brightness, contrast, vo_aspect_ratio);
+    int hue, saturation, brightness, sharpness, noise_reduction, contrast, vo_aspect_ratio;
+    if(7 == sscanf(cmd+17, "%d %d %d %d %d %d %d", 
+		   &hue, &saturation, &brightness, &sharpness, &noise_reduction, &contrast, &vo_aspect_ratio))
+      err = set_video_properties(this, hue, saturation, brightness, sharpness, noise_reduction, contrast, vo_aspect_ratio);
     else
       err = CONTROL_PARAM_ERROR;
 
@@ -4980,7 +5001,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* restore video properties */
   if(this->video_properties_saved)
-    set_video_properties(this, -1,-1,-1,-1,-1); /* restore defaults */
+    set_video_properties(this, -1,-1,-1,-1,-1, -1, -1); /* restore defaults */
 
   signal_buffer_pool_not_empty(this);
   signal_buffer_not_empty(this);

@@ -4,9 +4,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.2\n"
+"Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:34+0300\n"
+"POT-Creation-Date: 2009-01-07 15:46+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -460,6 +460,12 @@ msgstr "Kontrast"
 
 msgid "Brightness"
 msgstr "Jas"
+
+msgid "Sharpness"
+msgstr ""
+
+msgid "Noise Reduction"
+msgstr ""
 
 msgid "Smooth fast forward"
 msgstr "Plynulé pøetáèení"
