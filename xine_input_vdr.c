@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.209 2009-01-09 08:39:08 rofafor Exp $
+ * $Id: xine_input_vdr.c,v 1.210 2009-01-09 22:51:35 rofafor Exp $
  *
  */
 
@@ -1723,7 +1723,6 @@ static int set_video_properties(vdr_input_plugin_t *this,
 				int noise_reduction, int contrast,
                                 int vo_aspect_ratio)
 {
-  int min, max;
   pthread_mutex_lock(&this->lock);
 
   /* when changed first time, save original/default values */
@@ -1731,95 +1730,52 @@ static int set_video_properties(vdr_input_plugin_t *this,
      (hue>=0 || saturation>=0 || contrast>=0 || brightness>=0 || 
       sharpness>=0 || noise_reduction>=0 || vo_aspect_ratio>=0)) {
     this->video_properties_saved = 1;
-    this->orig_hue             = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_HUE);
-    this->orig_saturation      = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_SATURATION);
-    this->orig_brightness      = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_BRIGHTNESS);
+    this->orig_hue        = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_HUE );
+    this->orig_saturation = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_SATURATION );
+    this->orig_brightness = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_BRIGHTNESS );
 #ifdef XINE_PARAM_VO_SHARPNESS
-    this->orig_sharpness       = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_SHARPNESS);
+    this->orig_sharpness   = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_SHARPNESS );
 #endif
 #ifdef XINE_PARAM_VO_NOISE_REDUCTION
-    this->orig_noise_reduction = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_NOISE_REDUCTION);
+    this->orig_noise_reduction = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_NOISE_REDUCTION );
 #endif
-    this->orig_contrast        = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_CONTRAST);
-    this->orig_vo_aspect_ratio = xine_get_param(this->stream,
-                                                XINE_PARAM_VO_ASPECT_RATIO);
+    this->orig_contrast   = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_CONTRAST );
+    this->orig_vo_aspect_ratio   = xine_get_param(this->stream,
+                                           XINE_PARAM_VO_ASPECT_RATIO );
   }
 
   /* set new values, or restore default/original values */
-  if(hue>=0 || this->video_properties_saved) {
-    this->stream->video_out->driver->get_property_min_max(this->stream->video_out->driver,
-                                                  VO_PROP_HUE, &min, &max);
-    int scaled_hue = min + (float)(max - min + 1) * hue / 0xffff;
-    if (scaled_hue < min)      scaled_hue = min;
-    else if (scaled_hue > max) scaled_hue = max;
-    TRACE("Hue=%d Scaled=%d Min=%d Max=%d\n", hue, scaled_hue, min, max);
-    xine_set_param(this->stream, XINE_PARAM_VO_HUE,
-                   hue>=0 ? scaled_hue : this->orig_hue);
-  }
-  if(saturation>=0 || this->video_properties_saved) {
-    this->stream->video_out->driver->get_property_min_max(this->stream->video_out->driver,
-                                                  VO_PROP_SATURATION, &min, &max);
-    int scaled_saturation = min + (float)(max - min + 1) * saturation / 0xffff;
-    if (scaled_saturation < min)      scaled_saturation = min;
-    else if (scaled_saturation > max) scaled_saturation = max;
-    TRACE("Saturation=%d Scaled=%d Min=%d Max=%d\n", saturation, scaled_saturation, min, max);
-    xine_set_param(this->stream, XINE_PARAM_VO_SATURATION,
-                   saturation>0 ? scaled_saturation : this->orig_saturation);
-  }
-  if(brightness>=0 || this->video_properties_saved) {
-    this->stream->video_out->driver->get_property_min_max(this->stream->video_out->driver,
-                                                  VO_PROP_BRIGHTNESS, &min, &max);
-    int scaled_brightness = min + (float)(max - min + 1) * brightness / 0xffff;
-    if (scaled_brightness < min)      scaled_brightness = min;
-    else if (scaled_brightness > max) scaled_brightness = max;
-    TRACE("Brightness=%d Scaled=%d Min=%d Max=%d\n", brightness, scaled_brightness, min, max);
-    xine_set_param(this->stream, XINE_PARAM_VO_BRIGHTNESS,
-                   brightness>=0 ? scaled_brightness : this->orig_brightness);
-  }
+  if(hue>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_HUE, 
+		   hue>=0 ? hue : this->orig_hue );
+  if(saturation>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_SATURATION, 
+		   saturation>0 ? saturation : this->orig_saturation );
+  if(brightness>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_BRIGHTNESS, 
+		   brightness>=0 ? brightness : this->orig_brightness );
 #ifdef XINE_PARAM_VO_SHARPNESS
-  if(sharpness>=0 || this->video_properties_saved) {
-    this->stream->video_out->driver->get_property_min_max(this->stream->video_out->driver,
-                                                  VO_PROP_SHARPNESS, &min, &max);
-    int scaled_sharpness = min + (float)(max - min + 1) * sharpness / 0xffff;
-    if (scaled_sharpness < min)      scaled_sharpness = min;
-    else if (scaled_sharpness > max) scaled_sharpness = max;
-    TRACE("Sharpness=%d Scaled=%d Min=%d Max=%d\n", sharpness, scaled_sharpness, min, max);
-    xine_set_param(this->stream, XINE_PARAM_VO_SHARPNESS,
-                   sharpness>=0 ? scaled_sharpness : this->orig_sharpness);
-  }
+  if(sharpness>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_SHARPNESS, 
+		   sharpness>=0 ? sharpness : this->orig_sharpness );
 #endif
 #ifdef XINE_PARAM_VO_NOISE_REDUCTION
-  if(noise_reduction>=0 || this->video_properties_saved) {
-    this->stream->video_out->driver->get_property_min_max(this->stream->video_out->driver,
-                                                  VO_PROP_NOISE_REDUCTION, &min, &max);
-    int scaled_noise_reduction = min + (float)(max - min + 1) * noise_reduction / 0xffff;
-    if (scaled_noise_reduction < min)      scaled_noise_reduction = min;
-    else if (scaled_noise_reduction > max) scaled_noise_reduction = max;
-    TRACE("Noise=%d Scaled=%d Min=%d Max=%d\n", noise_reduction, scaled_noise_reduction, min, max);
-    xine_set_param(this->stream, XINE_PARAM_VO_NOISE_REDUCTION,
-                   noise_reduction>=0 ? scaled_noise_reduction : this->orig_noise_reduction);
-  }
+  if(noise_reduction>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_NOISE_REDUCTION, 
+		   noise_reduction>=0 ? noise_reduction : this->orig_noise_reduction );
 #endif
-  if(contrast>=0 || this->video_properties_saved) {
-    this->stream->video_out->driver->get_property_min_max(this->stream->video_out->driver,
-                                                  VO_PROP_CONTRAST, &min, &max);
-    int scaled_contrast = min + (float)(max - min + 1) * contrast / 0xffff;
-    if (scaled_contrast < min)      scaled_contrast = min;
-    else if (scaled_contrast > max) scaled_contrast = max;
-    TRACE("Contrast=%d Scaled=%d Min=%d Max=%d\n", contrast, scaled_contrast, min, max);
-    xine_set_param(this->stream, XINE_PARAM_VO_CONTRAST,
-                   contrast>=0 ? scaled_contrast : this->orig_contrast);
-  }
-  if(vo_aspect_ratio>=0 || this->video_properties_saved) {
+  if(contrast>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_CONTRAST, 
+		   contrast>=0 ? contrast : this->orig_contrast );
+  if(vo_aspect_ratio>=0 || this->video_properties_saved)
     xine_set_param(this->stream, XINE_PARAM_VO_ASPECT_RATIO,
                    vo_aspect_ratio>=0 ? vo_aspect_ratio : this->orig_vo_aspect_ratio );
-  }
 
   if(hue<0 && saturation<0 && contrast<0 && brightness<0 && sharpness<0 && noise_reduction<0 && vo_aspect_ratio<0)
     this->video_properties_saved = 0;
