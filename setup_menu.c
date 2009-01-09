@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.66 2009-01-08 11:58:33 rofafor Exp $
+ * $Id: setup_menu.c,v 1.67 2009-01-09 08:39:08 rofafor Exp $
  *
  */
 
@@ -26,6 +26,7 @@ namespace XinelibOutputSetupMenu {
 
 //#define INTEGER_CONFIG_VIDEO_CONTROLS
 //#define LINEAR_VIDEO_CONTROLS
+//#define LOGARITHM_SCALING
 
 #define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
 
@@ -65,12 +66,22 @@ const char *controls[] =
 #  define CONTROL_TO_INDEX(val) ((val)>=0 ? ((val)>>11)+1 : 0)
 #  define INDEX_TO_CONTROL(ind) ((ind)==0 ? -1 : ((ind)-1)<<11)
 #else
+#ifdef LOGARITHM_SCALING
 const int ind2ctrl_tbl[33] = {
       -1,      0, 0x0001, 0x0002, 0x0003, 0x0004, 0x0007, 0x000a, 
   0x000f, 0x0014, 0x001f,     42, 0x003f,     80, 0x007f,    170, 
   0x00ff,    336, 0x01ff,    682, 0x03ff,   1630, 0x07ff,   2730,
   0x0fff,   5726, 0x1fff,  10858, 0x3fff,  22110, 0x7fff,  43224,
   0xffff  };
+#else
+const int ind2ctrl_tbl[33] = {
+      -1,
+  0x0000, 0x0843, 0x1085, 0x18c7, 0x2109, 0x294b, 0x318d, 0x39cf,
+  0x4211, 0x4a53, 0x5295, 0x5ad7, 0x6319, 0x6b5b, 0x739d, 0x7bdf,
+  0x8421, 0x8c63, 0x94a5, 0x9ce7, 0xa529, 0xad6b, 0xb5ad, 0xbdef,
+  0xc631, 0xce73, 0xd6b5, 0xdef7, 0xe739, 0xef7b, 0xf7bd, 0xffff
+};
+#endif
 static int CONTROL_TO_INDEX(int val) 
 {
   for(int i=0; i<33;i++)
