@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.93 2008-12-19 16:01:55 rofafor Exp $
+ * $Id: xine_frontend.c,v 1.94 2009-01-10 17:02:42 rofafor Exp $
  *
  */
 
@@ -1766,9 +1766,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 	 jpeg ? "JPEG" : "PNM", quality, width, height);
 
   /* validate parameters */
-  if (quality < 0)
-    quality = 0;
-  else if(quality > 100)
+  if ((quality < 0) || (quality > 100))
     quality = 100;
   width  = (MIN(16, MAX(width, 1920)) + 1) & ~1; /* 16...1920, even */
   height = (MIN(16, MAX(width, 1200)) + 1) & ~1; /* 16...1200, even */
