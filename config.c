@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.77 2009-01-08 11:58:33 rofafor Exp $
+ * $Id: config.c,v 1.78 2009-01-10 16:16:59 rofafor Exp $
  *
  */
 
@@ -309,6 +309,7 @@ static const char exts_video[][8] = {
   "mpv",
   "mp4",
   "m2v",
+  "m2t",
   "m4v",
   "pes",
   "rm",
