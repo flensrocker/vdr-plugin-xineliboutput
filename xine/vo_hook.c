@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_hook.c,v 1.3 2008-12-14 01:14:54 phintuka Exp $
+ * $Id: vo_hook.c,v 1.4 2009-01-17 00:48:30 rofafor Exp $
  *
  */
 
@@ -19,8 +19,8 @@
 #include "vo_post.h"
 
 /* This module supports only video driver interface version 21 */
-#if VIDEO_OUT_DRIVER_IFACE_VERSION != 21
-#  error xine-lib VIDEO_OUT_DRIVER_IFACE_VERSION != 21
+#if (VIDEO_OUT_DRIVER_IFACE_VERSION < 21)
+#  error xine-lib VIDEO_OUT_DRIVER_IFACE_VERSION < 21
 #endif
 
 
