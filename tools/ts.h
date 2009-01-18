@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.2 2009-01-18 18:27:36 phintuka Exp $
+ * $Id: ts.h,v 1.3 2009-01-18 19:01:36 phintuka Exp $
  *
  */
 
@@ -32,14 +32,14 @@
 #define TS_ERROR              0x80
 #define TS_PID_MASK_HI        0x1F
 
-#define TS_HAS_PAYLOAD(ts)      ((ts)[3] & TS_PAYLOAD_EXISTS)
-#define TS_PAYLOAD_START(ts)    ((ts)[1] & TS_PAYLOAD_START)
-#define TS_HAS_ERROR(ts)        ((ts)[1] & TS_ERROR)
-#define TS_PID(ts)            ((((ts)[1] & TS_PID_MASK_HI) << 8) + (ts)[2])
-#define TS_PAYLOAD_OFFSET(ts)  (((ts)[3] & TS_ADAPT_FIELD_EXISTS) ? (ts)[4] + 5 : 4)
+#define ts_HAS_PAYLOAD(ts)      ((ts)[3] & TS_PAYLOAD_EXISTS)
+#define ts_PAYLOAD_START(ts)    ((ts)[1] & TS_PAYLOAD_START)
+#define ts_HAS_ERROR(ts)        ((ts)[1] & TS_ERROR)
+#define ts_PID(ts)            ((((ts)[1] & TS_PID_MASK_HI) << 8) + (ts)[2])
+#define ts_PAYLOAD_OFFSET(ts)  (((ts)[3] & TS_ADAPT_FIELD_EXISTS) ? (ts)[4] + 5 : 4)
 
-#define TS_GET_PAYLOAD(ts)      ((ts) + TS_PAYLOAD_OFFSET(ts))
-#define TS_PAYLOAD_SIZE(ts)     (TS_SIZE - TS_PAYLOAD_OFFSET(ts))
+#define ts_GET_PAYLOAD(ts)      ((ts) + TS_PAYLOAD_OFFSET(ts))
+#define ts_PAYLOAD_SIZE(ts)     (TS_SIZE - TS_PAYLOAD_OFFSET(ts))
 
 #define DATA_IS_TS(data)        ((data)[0] == TS_SYNC_BYTE)
 
