@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.65 2009-01-26 09:02:08 phintuka Exp $
+ * $Id: device.c,v 1.66 2009-01-26 12:28:53 phintuka Exp $
  *
  */
 
@@ -33,6 +33,7 @@
 
 #include "tools/listiter.h"
 #include "tools/pes.h"
+#include "tools/ts.h"
 #include "tools/functor.h"
 
 #include "frontend_local.h"
@@ -1081,6 +1082,51 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   
   return length;
 }
+
+#if VDRVERSNUM >= 10701
+/*
+ * hook to PlayTs() to get PAT and PMT
+ */
+int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
+{
+  if (Length == TS_SIZE) {
+    if (!TsHasPayload(Data))
+      return Length; // silently ignore TS packets w/o payload
+    int PayloadOffset = TsPayloadOffset(Data);
+    if (PayloadOffset < Length) {
+      int Pid = TsPid(Data);
+      if (Pid == 0) {
+        m_PatPmtParser.ParsePat(Data + PayloadOffset, Length - PayloadOffset);
+        LOGMSG("Got PAT: PMT pid = %d", m_PatPmtParser.PmtPid());
+        PlayAny(Data, Length);
+      } else if (Pid == m_PatPmtParser.PmtPid()) {
+        m_PatPmtParser.ParsePmt(Data + PayloadOffset, Length - PayloadOffset);
+        LOGMSG("Got PMT packet");
+        PlayAny(Data, Length);
+      }
+
+      return cDevice::PlayTs(Data, Length, VideoOnly);
+    }
+  }
+  return -1;
+}
+
+int cXinelibDevice::PlayTsSubtitle(const uchar *Data, int Length)
+{
+  return cDevice::PlayTsSubtitle(Data, Length);
+}
+
+int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
+{
+  return cDevice::PlayTsAudio(Data, Length);
+}
+
+int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
+{
+  return cDevice::PlayTsVideo(Data, Length);
+}
+
+#endif // VDRVERSNUM >= 10701
 
 int cXinelibDevice::PlayVideo(const uchar *buf, int length) 
 {

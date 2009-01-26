@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.40 2009-01-26 09:02:08 phintuka Exp $
+ * $Id: device.h,v 1.41 2009-01-26 12:28:53 phintuka Exp $
  *
  */
 
@@ -247,6 +247,15 @@ class cXinelibDevice : public cDevice
     virtual int  PlayVideo(const uchar *Data, int Length);
     virtual int  PlayAudio(const uchar *Data, int Length, uchar Id);
     virtual int  PlaySubtitle(const uchar *Data, int Length);
+
+#if VDRVERSNUM >= 10701
+    cPatPmtParser m_PatPmtParser;
+
+    virtual int PlayTsVideo(const uchar *Data, int Length);
+    virtual int PlayTsAudio(const uchar *Data, int Length);
+    virtual int PlayTsSubtitle(const uchar *Data, int Length);
+    virtual int PlayTs(const uchar *Data, int Length, bool VideoOnly = false);
+#endif
 };
 
 #endif // __XINELIB_DEVICE_H
