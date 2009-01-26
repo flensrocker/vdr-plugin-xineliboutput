@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.26 2009-01-08 11:58:33 rofafor Exp $
+ * $Id: frontend.h,v 1.27 2009-01-26 08:58:52 phintuka Exp $
  *
  */
 
@@ -93,7 +93,8 @@ class cXinelibThread : public cThread, public cListObject
 
     // Playback files
     virtual bool PlayFile(const char *FileName, int Position, 
-			  bool LoopPlay = false, ePlayMode PlayMode = pmAudioVideo);
+			  bool LoopPlay = false, ePlayMode PlayMode = pmAudioVideo,
+			  int TimeoutMs = -1);
     virtual int  PlayFileCtrl(const char *Cmd, int TimeoutMs=-1) { return Xine_Control(Cmd); }
     virtual bool EndOfStreamReached(void);
 

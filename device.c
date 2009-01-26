@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.64 2009-01-08 11:58:33 rofafor Exp $
+ * $Id: device.c,v 1.65 2009-01-26 09:02:08 phintuka Exp $
  *
  */
 
@@ -872,7 +872,8 @@ bool cXinelibDevice::EndOfStreamReached(void)
 }
 
 bool cXinelibDevice::PlayFile(const char *FileName, int Position, 
-			      bool LoopPlay, ePlayMode PlayMode)
+			      bool LoopPlay, ePlayMode PlayMode,
+			      int TimeoutMs)
 {
   TRACEF("cXinelibDevice::PlayFile");
   TRACE("cXinelibDevice::PlayFile(\"" << FileName << "\")");
@@ -888,14 +889,14 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
     for(int i = 0; i < mi_Count; i++) 
       m_MetaInfo[i][0] = 0;
     if(m_server)
-      result = m_server->PlayFile(FileName, Position, LoopPlay, PlayMode);
+      result = m_server->PlayFile(FileName, Position, LoopPlay, PlayMode, TimeoutMs);
     if(m_local)
-      result = m_local->PlayFile(FileName, Position, LoopPlay, PlayMode);
+      result = m_local->PlayFile(FileName, Position, LoopPlay, PlayMode, TimeoutMs);
   } else if(/*!FileName &&*/m_PlayingFile != pmNone) {
     if(m_server) 
-      result = m_server->PlayFile(NULL, 0);
+      result = m_server->PlayFile(NULL, 0, 0, pmNone, TimeoutMs);
     if(m_local)
-      result = m_local->PlayFile(NULL, 0);
+      result = m_local->PlayFile(NULL, 0, 0, pmNone, TimeoutMs);
     if(!m_liveMode)
       SetReplayMode();
     else

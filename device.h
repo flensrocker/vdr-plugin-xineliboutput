@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.39 2009-01-08 11:58:33 rofafor Exp $
+ * $Id: device.h,v 1.40 2009-01-26 09:02:08 phintuka Exp $
  *
  */
 
@@ -216,7 +216,8 @@ class cXinelibDevice : public cDevice
 
   public:
     bool PlayFile(const char *Filename, int Position=0, 
-		  bool LoopPlay=false, ePlayMode PlayMode=pmAudioVideo);
+		  bool LoopPlay=false, ePlayMode PlayMode=pmAudioVideo,
+		  int TimeoutMs = -1);
     int  PlayFileCtrl(const char *Cmd, int TimeoutMs=-1);
     bool EndOfStreamReached(void);
 
