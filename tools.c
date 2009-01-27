@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: tools.c,v 1.1 2008-02-04 23:05:34 phintuka Exp $
+ * $Id: tools.c,v 1.2 2009-01-27 09:25:22 phintuka Exp $
  *
  */
 
@@ -16,8 +16,9 @@
 #include <vdr/tools.h>
 #include "logdefs.h"
 
+//#include "tools/vdrdiscovery.c"
 
 #include "tools/pes.c"
 #include "tools/mpeg.c"
 #include "tools/h264.c"
-
+#include "tools/ts.c"
