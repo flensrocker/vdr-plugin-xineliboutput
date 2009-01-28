@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.1 2009-01-27 09:24:34 phintuka Exp $
+ * $Id: ts.c,v 1.2 2009-01-28 12:24:11 phintuka Exp $
  *
  */
 
@@ -14,6 +14,11 @@
 
 #include "ts.h"
 #include "pes.h"
+
+#ifndef LOGPMT
+#  define LOGPMT LOGMSG
+#endif
+
 
 /*
  * ts_compute_crc32()
@@ -134,6 +139,324 @@ int ts_parse_pat(pat_data_t *pat, uint8_t *pkt)
   pat->program_number[program_count] = 0;
 
   return program_count;
+}
+
+/*
+ * ts_get_reg_desc()
+ *
+ * Find the registration code (tag=5) and return it as a uint32_t
+ * This should return "AC-3" or 0x41432d33 for AC3/A52 audio tracks.
+ *
+ * taken from xine-lib demux_ts.c
+ */
+static void ts_get_reg_desc(uint32_t *dest, const uint8_t *data, int length)
+{
+  const unsigned char *d = data;
+
+  while (d < (data + length)) {
+    if (d[0] == 5 && d[1] >= 4) {
+      *dest = (d[2] << 24) | (d[3] << 16) | (d[4] << 8) | d[5];
+      LOGPMT("parse_pmt: found registration format identifier 0x%.4x", *dest);
+      return;
+    }
+    d += 2 + d[1];
+  }
+  LOGPMT("pare_pmt: found no format id");
+  *dest = 0;
+}
+
+/*
+ * ts_parse_pmt()
+ *
+ * modified from xine-lib demux_ts.c
+ */
+int ts_parse_pmt (pmt_data_t *pmt, uint program_no, uint8_t *pkt)
+{
+  uint8_t *originalPkt = pkt;
+  uint     pusi        = ts_PAYLOAD_START(pkt);
+
+  uint32_t section_syntax_indicator;
+  uint32_t section_length = 0; /* to calm down gcc */
+  uint32_t program_number;
+  uint32_t version_number;
+  uint32_t current_next_indicator;
+  uint32_t section_number;
+  uint32_t last_section_number;
+  uint32_t program_info_length;
+  uint32_t crc32;
+  uint32_t calc_crc32;
+  uint32_t coded_length;
+  uint     pid;
+  uint8_t *stream;
+  uint     i;
+  int      count;
+  uint8_t *ptr = NULL;
+  uint8_t  len;
+  uint     offset = 0;
+
+  /*
+   * A new section should start with the payload unit start
+   * indicator set. We allocate some mem (max. allowed for a PM section)
+   * to copy the complete section into one chunk.
+   */
+  if (pusi) {
+    pkt += pkt[4]; /* pointer */
+    offset = 1;
+
+    if (pmt->pmt != NULL) 
+      free(pmt->pmt);
+    pmt->pmt = (uint8_t *) calloc(4096, sizeof(uint8_t));
+    pmt->pmt_write_ptr = pmt->pmt;
+
+    section_syntax_indicator  = (pkt[6] >> 7) & 0x01;
+    section_length            = ((pkt[6] << 8) | pkt[7]) & 0x03ff;
+    program_number            =  (pkt[8] << 8) | pkt[9];
+    version_number            = (pkt[10] >> 1) & 0x1f;
+    current_next_indicator    =  pkt[10] & 0x01;
+    section_number            =  pkt[11];
+    last_section_number       =  pkt[12];
+
+    LOGPMT("PMT: section_syntax: %d", section_syntax_indicator);
+    LOGPMT("     section_length: %d", section_length);
+    LOGPMT("     program_number: %#.4x", program_number);
+    LOGPMT("     version_number: %d", version_number);
+    LOGPMT("     c/n indicator:  %d", current_next_indicator);
+    LOGPMT("     section_number: %d", section_number);
+    LOGPMT("     last_section_number: %d", last_section_number);
+
+    if ((section_syntax_indicator != 1) || !current_next_indicator) {
+      LOGMSG("parse_pmt: ssi error");
+      return 0;
+    }
+
+    if (program_number != program_no) {
+      /* several programs can share the same PMT pid */
+      LOGMSG("parse_pmt: program number %i, looking for %i", program_number, program_no);
+      return 0;
+    }
+
+    if ((section_number != 0) || (last_section_number != 0)) {
+      LOGMSG("parse_pmt: unsupported PMT (%d sections)", last_section_number);
+      return 0;
+    }
+  }
+
+  if (!pusi) {
+    section_length = (pmt->pmt[1] << 8 | pmt->pmt[2]) & 0x03ff;
+    version_number = (pkt[10] >> 1) & 0x1f;
+  }
+
+  count = ts_PAYLOAD_SIZE(originalPkt);
+
+  ptr = originalPkt + offset + (TS_SIZE - count);
+  len = count - offset;
+  memcpy(pmt->pmt_write_ptr, ptr, len);
+  pmt->pmt_write_ptr += len;
+
+  if (pmt->pmt_write_ptr < pmt->pmt + section_length) {
+    LOGPMT("parse_pmt: didn't get all PMT TS packets yet...");
+    return 0;
+  }
+
+  if (!section_length) {
+    free(pmt->pmt);
+    pmt->pmt = NULL;
+    LOGMSG("parse_pmt: zero-length section");
+    return 0;
+  }
+
+  LOGPMT("parse_pmt: have all TS packets for the PMT section");
+
+  crc32  = (uint32_t) pmt->pmt[section_length+3-4] << 24;
+  crc32 |= (uint32_t) pmt->pmt[section_length+3-3] << 16;
+  crc32 |= (uint32_t) pmt->pmt[section_length+3-2] << 8;
+  crc32 |= (uint32_t) pmt->pmt[section_length+3-1] ;
+
+  /* Check CRC. */
+  calc_crc32 = ts_compute_crc32 (pmt->pmt, section_length + 3 - 4, 0xffffffff);
+  if (crc32 != calc_crc32) {
+    LOGMSG("parse_pmt: invalid CRC32");
+    return 0;
+  }
+
+  if (crc32 == pmt->crc32 && version_number == pmt->version_number) {
+    LOGPMT("parse_pmt: PMT with CRC32=%d already parsed. Skipping.", crc32);
+    return 0;
+  }
+
+  LOGPMT("parse_pmt: new PMT, parsing...");
+  pmt->crc32 = crc32;
+  pmt->version_number = version_number;
+
+  /* reset PIDs */
+  pmt->audio_tracks_count = 0;
+  pmt->spu_tracks_count = 0;
+  pmt->video_pid = INVALID_PID;
+
+  /* ES definitions start here */
+  program_info_length = ((pmt->pmt[10] << 8) | pmt->pmt[11]) & 0x0fff;
+
+  stream = &pmt->pmt[12] + program_info_length;
+  coded_length = 13 + program_info_length;
+  if (coded_length > section_length) {
+    LOGMSG("parse_pmt: PMT with inconsistent progInfo length");
+    return 0;
+  }
+  section_length -= coded_length;
+
+
+  /*
+   * Extract the elementary streams.
+   */
+  while (section_length > 0) {
+    unsigned int stream_info_length;
+
+    pid = ((stream[1] << 8) | stream[2]) & 0x1fff;
+    stream_info_length = ((stream[3] << 8) | stream[4]) & 0x0fff;
+    coded_length = 5 + stream_info_length;
+    if (coded_length > section_length) {
+      LOGMSG("parse_pmt: PMT with inconsistent streamInfo length");
+      return 0;
+    }
+
+    switch (stream[0]) {
+      case ISO_11172_VIDEO:
+      case ISO_13818_VIDEO:
+      case ISO_14496_PART2_VIDEO:
+      case ISO_14496_PART10_VIDEO:
+        LOGPMT("parse_pmt: PMT video pid 0x%.4x type %2.2x", pid, stream[0]);
+        if (pmt->video_pid == INVALID_PID) {
+          pmt->video_pid  = pid;
+          pmt->video_type = (ts_stream_type)stream[0];
+        }
+        break;
+
+      case ISO_11172_AUDIO:
+      case ISO_13818_AUDIO:
+      case ISO_13818_PART7_AUDIO:
+      case ISO_14496_PART3_AUDIO:
+        if (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS) {
+          int i, found = 0;
+          for (i = 0; i < pmt->audio_tracks_count; i++) {
+            if (pmt->audio_tracks[i].pid == pid) {
+              found = 1;
+              break;
+            }
+          }
+          if (!found) {
+            LOGPMT("parse_pmt: PMT audio pid 0x%.4x type %2.2x", pid, stream[0]);
+            pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
+            pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
+            /* ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
+            /*                  stream + 5, stream_info_length); */
+            pmt->audio_tracks_count++;
+          }
+        }
+        break;
+
+      case ISO_13818_PRIVATE:
+      case ISO_13818_TYPE_C:
+        break;
+
+      case ISO_13818_PES_PRIVATE:
+        for (i = 5; i < coded_length; i += stream[i+1] + 2) {
+          if ((stream[i] == 0x6a) && (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
+            int i, found = 0;
+            for (i = 0; i < pmt->audio_tracks_count; i++) {
+              if (pmt->audio_tracks[i].pid == pid) {
+                found = 1;
+                break;
+              }
+            }
+            if (!found) {
+              LOGPMT("parse_pmt: PMT AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
+              pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
+              pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
+              /* demux_ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
+              /*                        stream + 5, stream_info_length); */
+              pmt->audio_tracks_count++;
+              break;
+            }
+          }
+          /* DVBSUB */
+          else if (stream[i] == 0x59) {
+            uint pos;
+            for (pos = i + 2;
+                 pos + 8 <= i + 2 + stream[i + 1]
+                   && pmt->spu_tracks_count < TS_MAX_SPU_TRACKS;
+                 pos += 8) {
+              int no = pmt->spu_tracks_count;
+
+              pmt->spu_tracks_count++;
+
+              memcpy(pmt->spu_tracks[no].lang, &stream[pos], 3);
+              pmt->spu_tracks[no].lang[3] = 0;
+              pmt->spu_tracks[no].comp_page_id = (stream[pos + 4] << 8) | stream[pos + 5];
+              pmt->spu_tracks[no].aux_page_id = (stream[pos + 6] << 8) | stream[pos + 7];
+              pmt->spu_tracks[no].pid = pid;
+
+              LOGPMT("parse_pmt: DVBSUB: pid 0x%.4x: %s  page %d %d type %2.2x", pid,
+                     pmt->spu_tracks[no].lang, pmt->spu_tracks[no].comp_page_id,
+                     pmt->spu_tracks[no].aux_page_id, stream[0]);
+            }
+          }
+        }
+        break;
+
+      default:
+
+        /* This following section handles all the cases where the audio track info is stored
+         * in PMT user info with stream id >= 0x80
+         * We first check that the stream id >= 0x80, because all values below that are
+         * invalid if not handled above, then we check the registration format identifier
+         * to see if it holds "AC-3" (0x41432d33) and if is does, we tag this as an audio stream.
+         */
+        if ((pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS) && (stream[0] >= 0x80) ) {
+          int i, found = 0;
+          for (i = 0; i < pmt->audio_tracks_count; i++) {
+            if (pmt->audio_tracks[i].pid == pid) {
+              found = 1;
+              break;
+            }
+          }
+          if (!found) {
+            uint32_t format_identifier = 0;
+            ts_get_reg_desc(&format_identifier, stream + 5, stream_info_length);
+            /* If no format identifier, assume A52 */
+            if ((format_identifier == 0x41432d33) || (format_identifier == 0)) {
+              pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
+              pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
+              /* ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
+              /*                  stream + 5, stream_info_length); */
+              pmt->audio_tracks_count++;
+              break;
+            }
+          }
+        } else {
+          LOGPMT("parse_pmt: PMT unknown stream_type: 0x%.2x pid: 0x%.4x", stream[0], pid);
+        }
+        break;
+    }
+    stream += coded_length;
+    section_length -= coded_length;
+  }
+
+
+  /*
+   * Get the current PCR PID.
+   */
+  pid = ((pmt->pmt[8] << 8) | pmt->pmt[9]) & 0x1fff;
+  if (pmt->pcr_pid != pid) {
+
+    if (pmt->pcr_pid == INVALID_PID)
+      LOGPMT("parse_pmt: PMT pcr pid 0x%.4x", pid);
+    else
+      LOGPMT("parse_pmt: PMT pcr pid changed 0x%.4x", pid);
+
+    pmt->pcr_pid = pid;
+  }
+
+  return 1;
 }
 
 
