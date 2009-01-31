@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.66 2009-01-26 12:28:53 phintuka Exp $
+ * $Id: device.c,v 1.67 2009-01-31 19:20:57 phintuka Exp $
  *
  */
 
@@ -212,6 +212,8 @@ cXinelibDevice::cXinelibDevice()
   m_FreeBufs = 0;
   m_Cleared = true;
   m_h264 = false;
+
+  TsBufferClear();
 }
 
 cXinelibDevice::~cXinelibDevice() 
@@ -786,6 +788,8 @@ void cXinelibDevice::Clear(void)
   TRACEF("cXinelibDevice::Clear");
   TRACK_TIME(100);
 
+  TsBufferClear();
+
   if(m_Cleared && m_StreamStart && m_TrickSpeed == -1) {
     //LOGMSG("************ Double Clear ***************");
   } else {
@@ -814,6 +818,7 @@ void cXinelibDevice::Freeze(void)
 {
   TRACEF("cXinelibDevice::Freeze");
 
+  TsBufferFlush();
   TrickSpeed(0);
 }
 
@@ -832,6 +837,8 @@ bool cXinelibDevice::Flush(int TimeoutMs)
 {
   TRACEF("cXinelibDevice::Flush");
   TRACK_TIME(500);
+
+  TsBufferFlush();
 
   if(m_TrickSpeed == 0) {
     ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
@@ -1037,6 +1044,26 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     return length;
 #endif
 
+#if VDRVERSNUM >= 10701
+  if (!buf) {
+    /* flush cache */
+    buf = m_TsBuf;
+    length = m_TsBufSize;
+    m_TsBufSize = 0;
+  }
+  else if (DATA_IS_TS(buf) && length == TS_SIZE) {
+    memcpy(m_TsBuf + m_TsBufSize, buf, length);
+    m_TsBufSize += length;
+    if (m_TsBufSize < 2048-TS_SIZE+1)
+      return TS_SIZE;
+    buf = m_TsBuf;
+    length = m_TsBufSize;
+    m_TsBufSize = 0;
+  }
+#endif
+  if (!buf || length <= 0)
+    return length;
+
   //
   // Need to be sure Poll has been called for every frame:
   //  - cDevice can feed multiple frames after each poll from player/transfer.
@@ -1054,10 +1081,13 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     }
   }
 
-  int isMpeg1 = pes_is_mpeg1(buf);
-  int len = pes_packet_len(buf, length);
-  if(len>0 && len != length) 
-    LOGMSG("cXinelibDevice::PlayAny: invalid data !");
+  bool isMpeg1 = false;
+  if (DATA_IS_PES(buf)) {
+    isMpeg1 = pes_is_mpeg1(buf);
+    int len = pes_packet_len(buf, length);
+    if (len>0 && len != length)
+      LOGMSG("cXinelibDevice::PlayAny: invalid data !");
+  }
 
   if(m_TrickSpeed > 0) {
     if(PlayTrickSpeed(buf, length) < 0)
@@ -1113,19 +1143,24 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
 
 int cXinelibDevice::PlayTsSubtitle(const uchar *Data, int Length)
 {
-  return cDevice::PlayTsSubtitle(Data, Length);
+  if (!xc.dvb_subtitles)
+    return cDevice::PlayTsSubtitle(Data, Length);
+
+  int r = PlayAny(Data, Length);
+  return r > 0 ? TS_SIZE : r;
 }
 
 int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
 {
-  return cDevice::PlayTsAudio(Data, Length);
+  int r = PlayAny(Data, Length);
+  return r > 0 ? TS_SIZE : r;
 }
 
 int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
-  return cDevice::PlayTsVideo(Data, Length);
+  int r = PlayAny(Data, Length);
+  return r > 0 ? TS_SIZE : r;
 }
-
 #endif // VDRVERSNUM >= 10701
 
 int cXinelibDevice::PlayVideo(const uchar *buf, int length) 
@@ -1136,14 +1171,18 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
   if(m_PlayMode == pmAudioOnlyBlack)
     return length;
 
+  if (!DATA_IS_PES(buf)) {
+    LOGMSG("PlayVideo: data is not PES !");
+    return length;
+  }
+
   if(m_RadioStream) {
     m_RadioStream = false;
     m_AudioCount  = 0;
     ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
   }
-  
-  if(m_StreamStart) {
 
+  if(m_StreamStart) {
 #ifdef START_IFRAME
     // Start with I-frame if stream has video
     // wait for first I-frame
@@ -1200,16 +1239,17 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
     skipped = 0;
   }
 
-  bool isPes   = (!Data[0] && !Data[1] && Data[2] == 0x01 && 
-		  (Data[3] & 0xF0) == 0xE0);
+  bool isPes   = DATA_IS_PES(Data) && ((Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
+  bool isH264  = isPes && pes_is_frame_h264(Data, Length);
+  bool isTs    = DATA_IS_TS(Data);
+
   int i;
 
   if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly))
     return;
 
-  TRACE("cXinelibDevice::StillPicture: isPes = "<<isPes
-	<<", isMpeg1 = "<<isMpeg1);
+  TsBufferFlush();
 
   ForEach(m_clients, &cXinelibThread::Clear);
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
@@ -1226,16 +1266,22 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	      &mmin<int>, Length);
     } else if(isPes) {
       /*cDevice::*/PlayPes(Data, Length, m_SkipAudio);
+    } else if(isTs) {
+      /*cDevice::*/PlayTs(Data, Length, m_SkipAudio);
     } else {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES, 
 	      Data, Length, VIDEO_STREAM,
 	      &mand<bool>, true);
     }
 
-  // creates empty video PES with pseudo-pts
-  ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
-	  Data, 0, VIDEO_STREAM,
-	  &mand<bool>, true);
+  if(!isH264) {
+    // creates empty video PES with pseudo-pts
+    ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
+	    Data, 0, VIDEO_STREAM,
+	    &mand<bool>, true);
+  }
+
+  TsBufferFlush();
 
   ForEach(m_clients, &cXinelibThread::Flush, 60, 
 	  &mand<bool>, true);
@@ -1326,7 +1372,7 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
 
     m_FreeBufs = max(result, 0);
   }
-  
+
   return m_FreeBufs > 0 /*|| Poller.Poll(0)*/;
 }
 
