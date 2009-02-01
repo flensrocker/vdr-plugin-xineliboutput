@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.67 2009-01-31 19:20:57 phintuka Exp $
+ * $Id: device.c,v 1.68 2009-02-01 23:13:02 rofafor Exp $
  *
  */
 
@@ -1266,8 +1266,10 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	      &mmin<int>, Length);
     } else if(isPes) {
       /*cDevice::*/PlayPes(Data, Length, m_SkipAudio);
+#if VDRVERSNUM >= 10701
     } else if(isTs) {
       /*cDevice::*/PlayTs(Data, Length, m_SkipAudio);
+#endif
     } else {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES, 
 	      Data, Length, VIDEO_STREAM,
