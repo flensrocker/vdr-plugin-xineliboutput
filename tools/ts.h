@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.4 2009-01-28 12:23:13 phintuka Exp $
+ * $Id: ts.h,v 1.5 2009-02-02 22:59:10 phintuka Exp $
  *
  */
 
@@ -64,6 +64,7 @@ typedef enum {
   ISO_14496_PART10_VIDEO = 0x1b,  /* ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264) */
   STREAM_VIDEO_MPEG      = 0x80,
   STREAM_AUDIO_AC3       = 0x81,
+  STREAM_DVBSUB          = 0x100
 } ts_stream_type;
 
 
