@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.212 2009-02-03 12:16:10 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.213 2009-02-03 12:43:31 phintuka Exp $
  *
  */
 
@@ -91,6 +91,7 @@
 #define HD_BUF_ELEM_SIZE        (2048+64)
 #define TEST_H264               1
 #define TEST_DVB_SPU            1  /* process DVB SPUs */
+#define TEST_DVD_SPU            1  /* process DVD SPUs */
 #define VDR_SUBTITLES           1  /* compability mode for vdr-subtitles plugin */
 
 #define RADIO_MAX_BUFFERS  10
@@ -290,6 +291,7 @@ typedef struct vdr_input_plugin_s {
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
   uint8_t             bih_posted : 1;
+  uint8_t             dvd_subtitles : 1;
 
   /* SCR */
   adjustable_scr_t   *scr;
@@ -4634,7 +4636,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 }
 #endif /* TEST_H264 */
 
-#ifdef TEST_DVB_SPU
+#if defined(TEST_DVB_SPU) || defined(TEST_DVD_SPU)
 /*
  * post_spu()
  *
@@ -4666,7 +4668,7 @@ static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
     uint spu_id = (p[0] & 0x1f);
 # if 0
     uint payload_len = (buf->content[4] << 8) | buf->content[5];
-    LOGMSG("DVB SPU: %d (%5d bytes : %d %s) -- %02x %02x %02x %02x %02x %02x %02x %02x", 
+    LOGMSG("DV? SPU: %d (%5d bytes : %d %s) -- %02x %02x %02x %02x %02x %02x %02x %02x", 
 	   spu_id, packet_len, payload_len, pts>=0?"pts":"   ",
 	   (unsigned)p[0], (unsigned)p[1], (unsigned)p[2], (unsigned)p[3],
 	   (unsigned)p[4], (unsigned)p[5], (unsigned)p[6], (unsigned)p[7]);
@@ -4679,6 +4681,33 @@ static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
     spu_id = 0;
 # endif
 
+# ifdef TEST_DVD_SPU
+    if (pts >= 0)
+      this->dvd_subtitles = 0;
+
+    if (this->dvd_subtitles ||
+	( pts >= 0 && substream_header_len != 1 &&
+	  (p[2] || (p[3] & 0xfe)))) {
+      // || if (p[4] == 20 && p[5] == 00 && p[6] == 0f || p[4] == 0f) --> DVB
+      LOGMSG("post_spu: Detected DVD SPU");
+      this->dvd_subtitles = 1;
+      spu_id = (p[0] & 0x1f);
+
+      buf->content   = p+1;
+      buf->size      = packet_len-1;
+
+      buf->type      = BUF_SPU_DVD + spu_id;
+      buf->decoder_flags |= BUF_FLAG_SPECIAL;
+      buf->decoder_info[1] = BUF_SPECIAL_SPU_DVD_SUBTYPE;
+      buf->decoder_info[2] = SPU_DVD_SUBTYPE_PACKAGE;
+      buf->pts       = pts;
+
+      this->stream->video_fifo->put (this->stream->video_fifo, buf);   
+      return NULL;
+    }
+# endif
+
+# ifdef TEST_DVB_SPU
     /* Skip substream header */
     p += substream_header_len;
     buf->content = p;
@@ -4718,6 +4747,7 @@ static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
 
     return NULL;
   }
+#endif
 
   LOGDBG("post_spu: PES packet left unprocessed !");
   return buf;
@@ -4942,8 +4972,8 @@ static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
   }
 #endif
 
-#ifdef TEST_DVB_SPU
-  /* DVB subtitles */
+#if defined(TEST_DVB_SPU) || defined(TEST_DVD_SPU)
+  /* DVB/DVD subtitles */
   if (buf->content[3] == PRIVATE_STREAM1) {
     uint8_t *data           = buf->content;
     int      payload_offset = data[8] + 9;
