@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.8 2008-12-21 12:10:57 phintuka Exp $
+ * $Id: pes.h,v 1.9 2009-02-04 11:04:36 phintuka Exp $
  *
  */
 
@@ -51,6 +51,9 @@
 #define PES_HAS_DTS(data)     ((data)[7] & 0x40)
 
 #define DATA_IS_PES(data) (!(data)[0] && !(data)[1] && (data)[2] == 1)
+
+#define PES_HEADER_LEN(data) (8 + (data)[8] + 1)
+
 
 /*
  * timestamps
