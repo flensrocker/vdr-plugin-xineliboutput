@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.72 2008-12-21 11:50:06 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.73 2009-02-04 12:00:34 phintuka Exp $
  *
  */
 
@@ -413,7 +413,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:a:fDw:h:P:L:C:vslkobtur";
+static const char short_options[] = "HA:V:d:W:a:fDw:h:nP:L:C:vslkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
     case 'C': config_file = strdup(optarg);
               PRINTF("Config file: %s\n", config_file);
               break;
-    case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
+    case 'L': lirc_dev = strdup(optarg ? : "/dev/lircd");
               if (strstr((char*)lirc_dev, ",repeatemu")) {
                  *strstr((char*)lirc_dev, ",repeatemu") = 0;
                 repeat_emu = 1;
@@ -796,14 +796,14 @@ int main(int argc, char *argv[])
 
   fe->fe_free(fe);
 
-  if (config_file) free(config_file);
-  if (static_post_plugins) free(static_post_plugins);
-  if (mrl) free(mrl);
-  if (adrv) free(adrv);
-  if (gdrv) free(gdrv);
-  if (video_port) free(video_port);
-  if (aspect_controller) free(aspect_controller);
-  if (lirc_dev) free(lirc_dev);
+  free(config_file);
+  free(static_post_plugins);
+  free(mrl);
+  free(adrv);
+  free(gdrv);
+  free(video_port);
+  free(aspect_controller);
+  free(lirc_dev);
 
   return xine_finished==FE_XINE_EXIT ? 0 : 1;
 }
