@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.70 2009-02-04 10:48:47 phintuka Exp $
+ * $Id: device.c,v 1.71 2009-02-04 21:49:06 rofafor Exp $
  *
  */
 
@@ -1253,7 +1253,9 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   bool isPes   = DATA_IS_PES(Data) && ((Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
   bool isH264  = isPes && pes_is_frame_h264(Data, Length);
+#if VDRVERSNUM >= 10701
   bool isTs    = DATA_IS_TS(Data);
+#endif
 
   int i;
 
