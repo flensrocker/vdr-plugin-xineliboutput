@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.7 2008-07-29 14:09:05 phintuka Exp $
+ * $Id: pes.c,v 1.8 2009-02-04 12:11:58 phintuka Exp $
  *
  */
 
@@ -18,12 +18,12 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
 {
   /* assume mpeg2 pes header ... */
   if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
-      
+
     if ((buf[6] & 0xC0) != 0x80)
       return INT64_C(-1);
     if ((buf[6] & 0x30) != 0)
       return INT64_C(-1);
-      
+
     if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
       int64_t pts;
       pts  = ((int64_t)(buf[ 9] & 0x0E)) << 29 ;
@@ -40,7 +40,7 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
 int64_t pes_get_dts(const uint8_t *buf, int len)
 {
   if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
-      
+
     if ((buf[6] & 0xC0) != 0x80)
       return INT64_C(-1);
     if ((buf[6] & 0x30) != 0)
@@ -63,12 +63,12 @@ void pes_change_pts(uint8_t *buf, int len, int64_t new_pts)
 {
   /* assume mpeg2 pes header ... Assume header already HAS pts */
   if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
-      
+
     if ((buf[6] & 0xC0) != 0x80)
       return;
     if ((buf[6] & 0x30) != 0)
       return;
-      
+
     if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
       buf[ 9] = ((new_pts >> 29) & 0x0E) | (buf[ 9] & 0xf1);
       buf[10] = ((new_pts >> 22) & 0xFF);
@@ -118,8 +118,7 @@ int pes_is_frame_h264(const uint8_t *buf, int len)
 
 uint8_t pes_get_picture_type(const uint8_t *buf, int len)
 {
-  int i = 8;         /* the minimum length of the video packet header */
-  i += buf[i] + 1;   /* possible additional header bytes */
+  int i = PES_HEADER_LEN(buf);
 
   buf += i;
   len -= i;
@@ -135,9 +134,7 @@ uint8_t pes_get_picture_type(const uint8_t *buf, int len)
 
 int pes_get_video_size(const uint8_t *buf, int len, video_size_t *size, int h264)
 {
-  int i = 8;
-
-  i += buf[i] + 1;   /* possible additional header bytes */
+  int i = PES_HEADER_LEN(buf);
 
   buf += i;
   len -= i;
