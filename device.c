@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.69 2009-02-04 08:28:02 phintuka Exp $
+ * $Id: device.c,v 1.70 2009-02-04 10:48:47 phintuka Exp $
  *
  */
 
@@ -1059,6 +1059,8 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     buf = m_TsBuf;
     length = m_TsBufSize;
     m_TsBufSize = 0;
+  } else if (m_TsBufSize) {
+    LOGMSG("PlayAny: TS cache error !");
   }
 #endif
   if (!buf || length <= 0)
@@ -1094,7 +1096,8 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
       return 0; /* wait if data is coming in too fast */
   } else if(m_SkipAudio) {
     /* needed for still images when moving cutting marks */
-    pes_change_pts((uchar*)buf, length, INT64_C(0));
+    if (DATA_IS_PES(buf))
+      pes_change_pts((uchar*)buf, length, INT64_C(0));
   }
   m_Cleared = false;
   m_FreeBufs --;
@@ -1126,11 +1129,19 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
     if (PayloadOffset < Length) {
       int Pid = TsPid(Data);
       if (Pid == 0) {
+#if VDRVERSNUM >= 10704
+        m_PatPmtParser.ParsePat(Data, Length);
+#else
         m_PatPmtParser.ParsePat(Data + PayloadOffset, Length - PayloadOffset);
+#endif
         LOGMSG("Got PAT: PMT pid = %d", m_PatPmtParser.PmtPid());
         PlayAny(Data, Length);
       } else if (Pid == m_PatPmtParser.PmtPid()) {
+#if VDRVERSNUM >= 10704
+        m_PatPmtParser.ParsePmt(Data, Length);
+#else
         m_PatPmtParser.ParsePmt(Data + PayloadOffset, Length - PayloadOffset);
+#endif
         LOGMSG("Got PMT packet");
         PlayAny(Data, Length);
       }
