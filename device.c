@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.68 2009-02-01 23:13:02 rofafor Exp $
+ * $Id: device.c,v 1.69 2009-02-04 08:28:02 phintuka Exp $
  *
  */
 
@@ -861,7 +861,7 @@ int cXinelibDevice::PlayFileCtrl(const char *Cmd, int TimeoutMs)
   TRACEF("cXinelibDevice::PlayFile");
   int result = -1;
 
-  if(m_PlayingFile != pmNone) {
+  /*if(m_PlayingFile != pmNone)*/ {
     if(m_server)
       result = m_server->PlayFileCtrl(Cmd, TimeoutMs);
     if(m_local) 
