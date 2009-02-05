@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.2 2009-01-28 12:24:11 phintuka Exp $
+ * $Id: ts.c,v 1.3 2009-02-05 20:11:10 phintuka Exp $
  *
  */
 
@@ -25,7 +25,7 @@
  *
  * taken from xine-lib demux_ts.c
  */
-static uint32_t ts_compute_crc32(uint8_t *data, uint32_t length, uint32_t crc32)
+static uint32_t ts_compute_crc32(const uint8_t *data, uint32_t length, uint32_t crc32)
 {
   static uint32_t crc32_table[256];
   static uint     init_done = 0;
@@ -55,9 +55,9 @@ static uint32_t ts_compute_crc32(uint8_t *data, uint32_t length, uint32_t crc32)
  *
  * modified from xine-lib demux_ts.c
  */
-int ts_parse_pat(pat_data_t *pat, uint8_t *pkt)
+int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
 {
-  uint8_t *original_pkt = pkt;
+  const uint8_t *original_pkt = pkt;
 
   if (! ts_PAYLOAD_START(pkt)) {
     LOGMSG ("parse_pat: PAT without payload unit start indicator");
@@ -111,8 +111,8 @@ int ts_parse_pat(pat_data_t *pat, uint8_t *pkt)
    * Process all programs in the program loop
    */
 
-  uint8_t *program;
-  uint     program_count;
+  const uint8_t *program;
+  uint           program_count;
 
   program_count = 0;
   for (program = pkt + 13;
@@ -170,10 +170,11 @@ static void ts_get_reg_desc(uint32_t *dest, const uint8_t *data, int length)
  *
  * modified from xine-lib demux_ts.c
  */
-int ts_parse_pmt (pmt_data_t *pmt, uint program_no, uint8_t *pkt)
+int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
 {
-  uint8_t *originalPkt = pkt;
-  uint     pusi        = ts_PAYLOAD_START(pkt);
+  const uint8_t *originalPkt = pkt;
+  const uint8_t *ptr         = NULL;
+  uint           pusi        = ts_PAYLOAD_START(pkt);
 
   uint32_t section_syntax_indicator;
   uint32_t section_length = 0; /* to calm down gcc */
@@ -190,7 +191,6 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, uint8_t *pkt)
   uint8_t *stream;
   uint     i;
   int      count;
-  uint8_t *ptr = NULL;
   uint8_t  len;
   uint     offset = 0;
 

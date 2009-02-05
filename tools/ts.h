@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.5 2009-02-02 22:59:10 phintuka Exp $
+ * $Id: ts.h,v 1.6 2009-02-05 20:11:10 phintuka Exp $
  *
  */
 
@@ -82,7 +82,7 @@ typedef struct {
   uint16_t pmt_pid[TS_MAX_PROGRAMS];
 } pat_data_t;
 
-int ts_parse_pat(pat_data_t *pat_data, uint8_t *ts_data);
+int ts_parse_pat(pat_data_t *pat_data, const uint8_t *ts_data);
 
 
 /*
@@ -126,7 +126,7 @@ typedef struct {
  * returns 1 : PMT parsed and changed
  *         0 : error or unchanged pmt
  */
-int ts_parse_pmt(pmt_data_t *pmt, uint program_no, uint8_t *ts_data);
+int ts_parse_pmt(pmt_data_t *pmt, uint program_no, const uint8_t *ts_data);
 
 
 /*
