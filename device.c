@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.71 2009-02-04 21:49:06 rofafor Exp $
+ * $Id: device.c,v 1.72 2009-02-06 07:58:40 phintuka Exp $
  *
  */
 
@@ -1122,9 +1122,7 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
  */
 int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
 {
-  if (Length == TS_SIZE) {
-    if (!TsHasPayload(Data))
-      return Length; // silently ignore TS packets w/o payload
+  if (Length == TS_SIZE && TsHasPayload(Data)) {
     int PayloadOffset = TsPayloadOffset(Data);
     if (PayloadOffset < Length) {
       int Pid = TsPid(Data);
@@ -1142,14 +1140,18 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
 #else
         m_PatPmtParser.ParsePmt(Data + PayloadOffset, Length - PayloadOffset);
 #endif
-        LOGMSG("Got PMT packet");
+        m_h264 = (m_PatPmtParser.Vtype() == 0x1b); /* ISO_14496_PART10_VIDEO */
+        LOGMSG("Got PMT packet, h264 = %d", m_h264?1:0);
         PlayAny(Data, Length);
+        TsBufferFlush();
       }
-
-      return cDevice::PlayTs(Data, Length, VideoOnly);
     }
+  } else if (!Data) {
+    TsBufferFlush();
+    m_PatPmtParser.Reset();
   }
-  return -1;
+
+  return cDevice::PlayTs(Data, Length, VideoOnly);
 }
 
 int cXinelibDevice::PlayTsSubtitle(const uchar *Data, int Length)
