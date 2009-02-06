@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.215 2009-02-06 16:19:51 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.216 2009-02-06 16:29:48 phintuka Exp $
  *
  */
 
@@ -4944,6 +4944,40 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
  *
  * MPEG TS processing
  */
+
+static void demux_ts_proc_audio(vdr_input_plugin_t *this, buf_element_t *abuf, int stream_index)
+{
+  /* Send current PTS ? */
+  if (this->send_pts && abuf->pts > 0) {
+    LOGMSG("TS: post AUDIO pts %"PRId64, abuf->pts);
+    vdr_x_demux_control_newpts(this->stream, abuf->pts, BUF_FLAG_SEEK);
+    this->send_pts = 0;
+#ifdef TEST_SCR_PAUSE
+    scr_tuning_set_paused(this);
+#endif
+  }
+
+  /* track audio stream changes */
+#ifdef BUF_CONTROL_RESET_TRACK_MAP
+  if (this->prev_audio_stream_id != stream_index) {
+    this->prev_audio_stream_id = stream_index;
+    put_control_buf(this->stream->audio_fifo,
+                    this->stream->audio_fifo,
+                    BUF_CONTROL_RESET_TRACK_MAP);
+  }
+#endif
+
+  /* PTS wrap workaround */
+  if(abuf->pts > 0x40400000 &&
+     this->last_delivered_vid_pts < 0x40000000 &&
+     this->last_delivered_vid_pts > 0) {
+    LOGMSG("TS: VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, abuf->pts);
+    abuf->pts = 0;
+  }
+
+  this->stream->audio_fifo->put(this->stream->audio_fifo, abuf);
+}
+
 static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
 {
   if (!this->ts_data)
@@ -4977,7 +5011,6 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
 
         /* PMT changed, reset ts->es converters */
         LOGMSG("demux_ts: PMT changed");
-
         ts_data_ts2es_init(ts_data, this->stream->video_fifo, this->stream->audio_fifo);
 
         /* Inform UI of channels changes */
@@ -5026,19 +5059,18 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
 
     /* demux audio and subtitles */
     else {
-#if 0
       int i, done = 0;
       for (i=0; i < ts_data->pmt.audio_tracks_count; i++)
         if (ts_pid == ts_data->pmt.audio_tracks[i].pid) {
           if (ts_data->audio[i]) {
             buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content);
             if (abuf)
-              this->stream->audio_fifo->put(this->stream->audio_fifo, abuf);
+              demux_ts_proc_audio(this, buf, i);
           }
           done = 1;
           break;
         }
-
+#if 0
       if (!done)
       for (i=0; i < ts_data->pmt.spu_tracks_count; i++)
         if (ts_pid == ts_data->pmt.spu_tracks[i].pid) {
@@ -5056,8 +5088,8 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif
     }
 
-    buf->size -= TS_SIZE;
     buf->content += TS_SIZE;
+    buf->size    -= TS_SIZE;
   }
 
   buf->free_buffer(buf);
