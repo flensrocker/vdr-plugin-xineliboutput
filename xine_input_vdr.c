@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.214 2009-02-06 09:35:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.215 2009-02-06 16:19:51 phintuka Exp $
  *
  */
 
@@ -721,6 +721,94 @@ static void ts2es_flush(ts2es_t *this)
   }
 }
 
+static void ts2es_parse_pes(ts2es_t *this)
+{
+  if (!DATA_IS_PES(this->buf->content)) {
+    LOGMSG("ts2es: payload not PES ?");
+    return;
+  }
+
+  /* parse PES header */
+  uint    hdr_len = PES_HEADER_LEN(this->buf->content);
+  uint8_t pes_pid = this->buf->content[3];
+  uint    pes_len = (this->buf->content[4] << 8) | this->buf->content[5];
+
+  /* parse PTS */
+  this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
+  if(this->buf->pts >= 0)
+    this->pts = this->buf->pts;
+  else
+    this->pts = 0;
+
+  /* strip PES header */
+  this->buf->content += hdr_len;
+  this->buf->size    -= hdr_len;
+
+  /* parse substream header */
+
+  if (pes_pid != PRIVATE_STREAM1)
+    return;
+
+  /* RAW AC3 audio ? -> do nothing */
+  if (this->stream_type == STREAM_AUDIO_AC3) {
+    this->xine_buf_type |= BUF_AUDIO_A52;
+    this->buf->type = this->xine_buf_type;
+    return;
+  }
+
+  /* AC3 syncword in beginning of PS1 payload ? */
+  if (this->buf->content[0] == 0x0B &&
+      this->buf->content[1] == 0x77) {
+    /* --> RAW AC3 audio - do nothing */
+    this->xine_buf_type |= BUF_AUDIO_A52;
+    this->buf->type = this->xine_buf_type;
+    return;
+  }
+
+  /* audio in PS1 */
+  if (this->stream_type == ISO_13818_PES_PRIVATE) {
+
+    if ((this->buf->content[0] & 0xf0) == 0x80) {
+      /* AC3, strip substream header */
+      this->buf->content += 4;
+      this->buf->size    -= 4;
+      this->xine_buf_type |= BUF_AUDIO_A52;
+      this->buf->type = this->xine_buf_type;
+      return;
+    }
+
+    if ((this->buf->content[0] & 0xf0) == 0xa0) {
+      /* PCM, strip substream header */
+      int pcm_offset;
+      for (pcm_offset=0; ++pcm_offset < this->buf->size-1 ; ) {
+        if (this->buf->content[pcm_offset] == 0x01 && 
+            this->buf->content[pcm_offset+1] == 0x80 ) { /* START */
+          pcm_offset += 2;
+          break;
+        }
+      }
+      this->buf->content += pcm_offset;
+      this->buf->size    -= pcm_offset;
+
+      this->xine_buf_type |= BUF_AUDIO_LPCM_BE;
+      this->buf->type = this->xine_buf_type;
+      return;
+    }
+
+    LOGMSG("demux_ts: unhandled PS1 substream 0x%x", this->buf->content[0]);
+    return;
+  }
+
+  /* DVB SPU */
+  if (this->stream_type == STREAM_DVBSUB) {
+    if (this->buf->content[0] != 0x20 ||
+        this->buf->content[1] != 0x00)
+      LOGMSG("demux_ts: DVB SPU, invalid PES substream header");
+    this->buf->decoder_info[2] = pes_len - hdr_len - 3 + 9;
+    return;
+  }
+}
+
 static buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
 {
   int bytes = ts_PAYLOAD_SIZE(data);
@@ -767,20 +855,7 @@ static buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
   if (this->pes_start) {
     this->pes_start = 0;
 
-    if (!DATA_IS_PES(this->buf->content))
-      LOGMSG("ts2es: payload not PES ?");
-
-    /* PTS */
-    this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
-    if(this->buf->pts >= 0)
-      this->pts = this->buf->pts;
-    else
-      this->pts = 0;
-
-    /* strip PES header */
-    uint hdr_len = PES_HEADER_LEN(this->buf->content);
-    this->buf->content += hdr_len;
-    this->buf->size -= hdr_len;
+    ts2es_parse_pes(this);
   }
 
   /* split large packets */
