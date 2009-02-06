@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.216 2009-02-06 16:29:48 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.217 2009-02-06 16:39:42 phintuka Exp $
  *
  */
 
@@ -5065,7 +5065,7 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
           if (ts_data->audio[i]) {
             buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content);
             if (abuf)
-              demux_ts_proc_audio(this, buf, i);
+              demux_ts_proc_audio(this, abuf, i);
           }
           done = 1;
           break;
