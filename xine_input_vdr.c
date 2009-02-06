@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.217 2009-02-06 16:39:42 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.218 2009-02-06 17:07:16 phintuka Exp $
  *
  */
 
@@ -4945,6 +4945,35 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
  * MPEG TS processing
  */
 
+static void demux_ts_proc_video(vdr_input_plugin_t *this, buf_element_t *vbuf)
+{
+  /* PTS */
+  if (vbuf->pts > INT64_C(0)) {
+    /* stream start */
+    if (this->send_pts) {
+      LOGMSG("TS: post VIDEO pts %"PRId64, vbuf->pts);
+      vdr_x_demux_control_newpts (this->stream, vbuf->pts, BUF_FLAG_SEEK);
+      this->send_pts = 0;
+#ifdef TEST_SCR_PAUSE
+      scr_tuning_set_paused(this);
+#endif
+    }
+    /* seek */
+    else if (this->last_delivered_vid_pts > 0 &&
+             abs(vbuf->pts - this->last_delivered_vid_pts) > 270000 /* 3 sec */) {
+      LOGMSG("TS: post pts %"PRId64" diff %d", vbuf->pts, (int)(vbuf->pts - this->last_delivered_vid_pts));
+      vdr_x_demux_control_newpts (this->stream, vbuf->pts, BUF_FLAG_SEEK);
+    }
+
+    this->last_delivered_vid_pts = vbuf->pts;
+
+  } else {
+    vbuf->pts = INT64_C(0);
+  }
+
+  this->stream->video_fifo->put(this->stream->video_fifo, vbuf);
+}
+
 static void demux_ts_proc_audio(vdr_input_plugin_t *this, buf_element_t *abuf, int stream_index)
 {
   /* Send current PTS ? */
@@ -5026,34 +5055,8 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
 
       if (ts_data->video) {
         buf_element_t *vbuf = ts2es_put(ts_data->video, buf->content);
-        if (vbuf) {
-          if (vbuf->pts > INT64_C(0)) {
-            int64_t pts = vbuf->pts;
-            if (this->send_pts) {
-              LOGMSG("TS: post VIDEO pts %"PRId64, pts);
-              vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
-              this->send_pts = 0;
-#ifdef TEST_SCR_PAUSE
-#if 0
-              scr_tuning_set_paused(this);
-#endif
-#endif
-            } else if (this->last_delivered_vid_pts > 0 &&
-                       abs(pts - this->last_delivered_vid_pts) > 270000 /* 3 sec */) {
-              LOGMSG("TS: post pts %"PRId64" diff %d", pts, (int)(pts-this->last_delivered_vid_pts));
-              vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
-            }
-            this->last_delivered_vid_pts = pts;
-#if 0
-            int f = update_frames(this, buf->content, buf->size);
-            if (f)
-              LOGMSG("frame %d I %d", f, this->I_frames);
-#endif
-          } else {
-            vbuf->pts = INT64_C(0);
-          }
-          this->stream->video_fifo->put(this->stream->video_fifo, vbuf);
-        }
+        if (vbuf)
+          demux_ts_proc_video(this, vbuf);
       }
     }
 
