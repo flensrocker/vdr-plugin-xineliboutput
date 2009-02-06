@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.213 2009-02-03 12:43:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.214 2009-02-06 09:35:45 phintuka Exp $
  *
  */
 
@@ -709,6 +709,18 @@ void ts2es_put_video(void)
 {
 }
 
+static void ts2es_flush(ts2es_t *this)
+{
+  if (this->buf) {
+
+    this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
+    this->buf->pts = this->pts;
+
+    this->fifo->put (this->fifo, this->buf);
+    this->buf = NULL;
+  }
+}
+
 static buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
 {
   int bytes = ts_PAYLOAD_SIZE(data);
@@ -791,7 +803,7 @@ static void ts2es_dispose(ts2es_t *data)
   }
 }
 
-ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type)
+ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type, uint stream_index)
 {
   ts2es_t *data = calloc(1, sizeof(ts2es_t));
   data->fifo = dst_fifo;
@@ -823,6 +835,10 @@ ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type)
       break;
 
     /* AUDIO (PES stream 0xbd) */
+    case ISO_13818_PES_PRIVATE:
+      data->xine_buf_type = 0;
+      /* detect from PES substream header */
+      break;
 
     /* DVB SPU (PES stream 0xbd) */
     case STREAM_DVBSUB:
@@ -838,6 +854,9 @@ ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type)
       LOGMSG("ts2es: unknown stream type 0x%x", stream_type);
       break;
   }
+
+  /* substream ID (audio/SPU) */
+  data->xine_buf_type |= stream_index;
 
   return data;
 }
@@ -883,15 +902,15 @@ static void ts_data_ts2es_init(ts_data_t *this, fifo_buffer_t *video_fifo, fifo_
 
   if (video_fifo) {
     if (this->pmt.video_pid != INVALID_PID)
-      this->video = ts2es_init(video_fifo, this->pmt.video_type);
+      this->video = ts2es_init(video_fifo, this->pmt.video_type, 0);
 
     for (i=0; i < this->pmt.spu_tracks_count; i++)
-      this->spu[i] = ts2es_init(video_fifo, STREAM_DVBSUB);
+      this->spu[i] = ts2es_init(video_fifo, STREAM_DVBSUB, i);
   }
 
   if (audio_fifo) {
     for (i=0; i < this->pmt.audio_tracks_count; i++)
-      this->audio[i] = ts2es_init(audio_fifo, this->pmt.audio_tracks[i].type);
+      this->audio[i] = ts2es_init(audio_fifo, this->pmt.audio_tracks[i].type, i);
   }
 }
 
@@ -903,6 +922,23 @@ static void ts_data_dispose(vdr_input_plugin_t *this)
 
     free(this->ts_data);
     this->ts_data = NULL;
+  }
+}
+
+static void ts_data_flush(vdr_input_plugin_t *this)
+{
+  if (this->ts_data) {
+    ts_data_t *ts_data = this->ts_data;
+    int i;
+
+    if (ts_data->video)
+      ts2es_flush(ts_data->video);
+
+    for (i = 0; ts_data->audio[i]; i++)
+      ts2es_flush(ts_data->audio[i]);
+
+    for (i = 0; ts_data->spu[i]; i++)
+      ts2es_flush(ts_data->spu[i]);
   }
 }
 
@@ -1861,6 +1897,8 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
     LOGMSG("vdr_flush_engine: stream_start, flush skipped");
     return;
   }
+
+  ts_data_flush(this);
 
   if(this->curpos > discard_index) {
     if(this->curpos < this->guard_index) {
@@ -4845,6 +4883,9 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
     /* parse PAT */
     if (ts_pid == 0) {
       pat_data_t pat;
+
+      ts_data_flush(this);
+
       if (ts_parse_pat(&pat, buf->content)) {
         ts_data->pmt_pid        = pat.pmt_pid[0];
         ts_data->program_number = pat.program_number[0];
@@ -4854,6 +4895,8 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
 
     /* parse PMT */
     else if (ts_pid == ts_data->pmt_pid) {
+
+      ts_data_flush(this);
 
       if (ts_parse_pmt(&ts_data->pmt, ts_data->program_number, buf->content)) {
 
@@ -4876,10 +4919,10 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
       if (ts_data->video) {
         buf_element_t *vbuf = ts2es_put(ts_data->video, buf->content);
         if (vbuf) {
-          int64_t pts = vbuf->pts;
-          if (pts > INT64_C(0)) {
+          if (vbuf->pts > INT64_C(0)) {
+            int64_t pts = vbuf->pts;
             if (this->send_pts) {
-              LOGMSG("TS: post pts %"PRId64, pts);
+              LOGMSG("TS: post VIDEO pts %"PRId64, pts);
               vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
               this->send_pts = 0;
 #ifdef TEST_SCR_PAUSE
@@ -5189,8 +5232,10 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       continue;
 
     /* control buffers go always to demuxer */
-    if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
+    if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE) {
+      ts_data_flush(this);
       return buf;
+    }
 
     int is_ts = DATA_IS_TS(buf->content);
     /* ignore UDP/RTP "idle" padding */
