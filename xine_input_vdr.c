@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.220 2009-02-07 18:59:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.221 2009-02-07 19:01:58 phintuka Exp $
  *
  */
 
@@ -4896,8 +4896,14 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   }
 
   /* control buffers go always to demuxer */
-  if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE)
+  if ((buf->type & BUF_MAJOR_MASK) == BUF_CONTROL_BASE) {
+    if (buf->type == BUF_CONTROL_FLUSH_DECODER) {
+      /* decoder flush only to video fifo */
+      this->stream->video_fifo->put(this->stream->video_fifo, buf);
+      return NULL;
+    }
     return buf;
+  }
 
   pthread_mutex_lock(&this->lock);
 
@@ -4905,8 +4911,18 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   strip_network_headers(this, buf);
 
   /* Update stream position */
-  this->curpos += buf->size;
-  this->curframe ++;
+  if ((buf->type & BUF_MAJOR_MASK) == BUF_DEMUX_BLOCK) {
+    this->curpos += buf->size;
+    this->curframe ++;
+  } else {
+    if ((buf->type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE) {
+      /* demuxed video */
+      pthread_mutex_unlock(&this->lock);
+      this->stream->video_fifo->put(this->stream->video_fifo, buf);
+      return NULL;
+    }
+    LOGMSG("!!! curpos not updated for unregonized buffer type 0x%x !!!", buf->type);
+  }
 
   /* Handle discard */
   if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
