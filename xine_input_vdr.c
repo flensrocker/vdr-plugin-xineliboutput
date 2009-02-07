@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.218 2009-02-06 17:07:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.219 2009-02-07 16:19:41 phintuka Exp $
  *
  */
 
@@ -120,9 +120,10 @@
 /*#define TEST_PIP 1*/
 
 
-#define  CONTROL_BUF       (0x0f000000)              /* 0x0f000000 */
-#define  CONTROL_BUF_BLANK (CONTROL_BUF|0x00010000)  /* 0x0f010000 */
-#define  CONTROL_BUF_CLEAR (CONTROL_BUF|0x00020000)  /* 0x0f020000 */
+#define CONTROL_BUF_BASE  (                 0x0f000000) /* 0x0f000000 */
+#define CONTROL_BUF_BLANK (CONTROL_BUF_BASE|0x00010000) /* 0x0f010000 */
+#define CONTROL_BUF_CLEAR (CONTROL_BUF_BASE|0x00020000) /* 0x0f020000 */
+#define BUF_NETWORK_BLOCK (BUF_DEMUX_BLOCK |0x00010000) /* 0x05010000 */
 
 #define SPU_CHANNEL_NONE   (-2)
 #define SPU_CHANNEL_AUTO   (-1)
@@ -1554,17 +1555,17 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
 static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
 {
-  if(buf->type == BUF_MAJOR_MASK) {
-    if(this->udp||this->rtp) {
+  if (buf->type == BUF_NETWORK_BLOCK) {
+    if (this->udp || this->rtp) {
       stream_udp_header_t *header = (stream_udp_header_t *)buf->content;
-      this->curpos = header->pos;
+      this->curpos  = header->pos;
       buf->content += sizeof(stream_udp_header_t);
-      buf->size -= sizeof(stream_udp_header_t);
+      buf->size    -= sizeof(stream_udp_header_t);
     } else {
       stream_tcp_header_t *header = (stream_tcp_header_t *)buf->content;
-      this->curpos = header->pos;
+      this->curpos  = header->pos;
       buf->content += sizeof(stream_tcp_header_t);
-      buf->size -= sizeof(stream_tcp_header_t);
+      buf->size    -= sizeof(stream_tcp_header_t);
     }
     buf->type = BUF_DEMUX_BLOCK;
   }
@@ -3901,7 +3902,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
  
       /* frame ready */
       read_buffer->size = cnt;
-      read_buffer->type = BUF_MAJOR_MASK;
+      read_buffer->type = BUF_NETWORK_BLOCK;
       this->block_buffer->put(this->block_buffer, read_buffer);
       read_buffer = NULL;
     }
@@ -4033,7 +4034,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     }
 
     read_buffer->size = n;
-    read_buffer->type = BUF_MAJOR_MASK;
+    read_buffer->type = BUF_NETWORK_BLOCK;
 
     pkt = (stream_udp_header_t*)read_buffer->mem;
     pkt_data = read_buffer->mem + sizeof(stream_udp_header_t);
@@ -4077,7 +4078,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	sscanf(((char*)pkt_data)+12, "%d-%d %" PRIu64, 
 	       &seq1, &seq2, &rpos);
 	read_buffer->size = sizeof(stream_udp_header_t);
-	read_buffer->type = BUF_MAJOR_MASK;
+	read_buffer->type = BUF_NETWORK_BLOCK;
 	pkt->pos = rpos;
 	LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
 	if(seq1 == udp->next_seq) {
