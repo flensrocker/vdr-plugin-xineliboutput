@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.222 2009-02-08 08:13:15 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.223 2009-02-08 09:08:26 phintuka Exp $
  *
  */
 
@@ -5058,6 +5058,8 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
         /* PMT changed, reset ts->es converters */
         LOGMSG("demux_ts: PMT changed");
         ts_data_ts2es_init(ts_data, this->stream->video_fifo, this->stream->audio_fifo);
+
+        this->h264 = (ts_data->pmt.video_type == ISO_14496_PART10_VIDEO) ? 1 : 0;
 
         /* Inform UI of channels changes */
         xine_event_t event;
