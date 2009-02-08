@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.223 2009-02-08 09:08:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.224 2009-02-08 09:11:17 phintuka Exp $
  *
  */
 
@@ -5295,53 +5295,53 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   buf_element_t      *buf  = NULL;
-  int need_pause = 0;
+  int                 need_pause = 0;
 
   TRACE("vdr_plugin_read_block");
 
   do {
 
-  /* check for disconnection/termination */
-  if(!this->funcs.push_input_write /* reading from socket */ &&
-     !this->control_running) {
-    handle_disconnect(this);
-    return NULL; /* disconnected ? */
-  }
+    /* check for disconnection/termination */
+    if (!this->funcs.push_input_write /* reading from socket */ &&
+        !this->control_running) {
+      handle_disconnect(this);
+      return NULL; /* disconnected ? */
+    }
 
-  /* Return immediately if demux_action_pending flag is set */
-  if(this->stream->demux_action_pending) {
-    if(NULL != (buf = make_padding_frame(this)))
-      return buf;
-    LOGMSG("vdr_plugin_read_block: demux_action_pending, make_padding_frame failed");
-  }
+    /* Return immediately if demux_action_pending flag is set */
+    if (this->stream->demux_action_pending) {
+      if (NULL != (buf = make_padding_frame(this)))
+        return buf;
+      LOGMSG("vdr_plugin_read_block: demux_action_pending, make_padding_frame failed");
+    }
 
 #ifdef CACHE_FIRST_IFRAME
-  if(NULL != (buf = get_cached_iframe(this)))
-    return buf;
+    if (NULL != (buf = get_cached_iframe(this)))
+      return buf;
 #endif
 
-  /* adjust SCR speed */
-  need_pause = adjust_scr_speed(this);
+    /* adjust SCR speed */
+    need_pause = adjust_scr_speed(this);
 
     /* get next buffer */
     buf = fifo_buffer_try_get(this->block_buffer);
-    if(!buf) {
+    if (!buf) {
       struct timespec abstime;
       create_timeout_time(&abstime, 500);
       pthread_mutex_lock(&this->block_buffer->mutex);
-      if(this->block_buffer->fifo_size <= 0)
-	pthread_cond_timedwait (&this->block_buffer->not_empty, 
+      if (this->block_buffer->fifo_size <= 0)
+	pthread_cond_timedwait (&this->block_buffer->not_empty,
 				&this->block_buffer->mutex, &abstime);
       pthread_mutex_unlock(&this->block_buffer->mutex);
 #if 1
-      if(!this->is_paused && 
-	 !this->still_mode &&
-	 !this->is_trickspeed &&
-	 !this->slave_stream && 
-	 this->stream->video_fifo->fifo_size <= 0) {
+      if (!this->is_paused &&
+          !this->still_mode &&
+          !this->is_trickspeed &&
+          !this->slave_stream &&
+          this->stream->video_fifo->fifo_size <= 0) {
 	this->padding_cnt++;
 
-	if(this->padding_cnt > 16) {
+	if (this->padding_cnt > 16) {
 	  LOGMSG("No data in 8 seconds, queuing no signal image");
 	  queue_nosignal(this);
 	  this->padding_cnt = 0;
@@ -5350,14 +5350,14 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	this->padding_cnt = 0;
       }
 #endif
-      if(NULL != (buf = make_padding_frame(this)))
+      if (NULL != (buf = make_padding_frame(this)))
 	return buf;
       LOGMSG("make_padding_frame FAILED");
       continue;
     }
     this->padding_cnt = 0;
 
-    if(! (buf = preprocess_buf(this, buf)))
+    if (! (buf = preprocess_buf(this, buf)))
       continue;
 
     /* control buffers go always to demuxer */
