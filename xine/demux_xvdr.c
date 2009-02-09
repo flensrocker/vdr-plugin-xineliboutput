@@ -17,8 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
- * demultiplexer for mpeg 1/2 program streams
- * used with fixed blocksize devices (like dvd/vcd)
+ * demultiplexer for xineliboutput (xvdr)
  */
 
 #include <stdlib.h>
@@ -27,7 +26,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define LOG_MODULE "demux_mpeg_block"
+#define LOG_MODULE "demux_xvdr"
 
 #include <xine/xine_internal.h>
 #include <xine/xineutils.h>
@@ -44,10 +43,10 @@
    i guess llabs may not be available everywhere */
 #define abs(x) ( ((x)<0) ? -(x) : (x) )
 
-typedef struct demux_mpeg_block_s {
+typedef struct demux_xvdr_s {
   demux_plugin_t        demux_plugin;
 
-  xine_stream_t        *stream; 
+  xine_stream_t        *stream;
   fifo_buffer_t        *audio_fifo;
   fifo_buffer_t        *video_fifo;
 
@@ -55,7 +54,7 @@ typedef struct demux_mpeg_block_s {
 
   int                   status;
 
-  char                  cur_mrl[256];
+  char                  mrl[256];
 
   int64_t               last_pts[2];
   int                   send_newpts;
@@ -66,7 +65,7 @@ typedef struct demux_mpeg_block_s {
   uint32_t              stream_id;
   int32_t               mpeg1;
 
-} demux_mpeg_block_t ;
+} demux_xvdr_t ;
 
 typedef struct {
 
@@ -76,52 +75,50 @@ typedef struct {
 
   xine_t           *xine;
   config_values_t  *config;
-} demux_mpeg_block_class_t;
+} demux_xvdr_class_t;
 
-static int32_t parse_video_stream(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf);
-static int32_t parse_audio_stream(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf);
-static int32_t parse_private_stream_1(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf);
-static int32_t parse_padding_stream(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf);
+static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
+static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
+static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
+static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 
 
-static void check_newpts( demux_mpeg_block_t *this, int64_t pts, int video )
+static void check_newpts(demux_xvdr_t *this, int64_t pts, int video )
 {
-  int64_t diff;
+  int64_t diff = pts - this->last_pts[video];
 
-  diff = pts - this->last_pts[video];
+  if (pts && (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD))) {
 
-  if( pts && (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD) ) ) {
-
-      if (this->buf_flag_seek) {
-        _x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
-        this->buf_flag_seek = 0;
-      } else {
-        _x_demux_control_newpts(this->stream, pts, 0);
-      }
-      this->send_newpts = 0;
+    if (this->buf_flag_seek) {
+      _x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
+      this->buf_flag_seek = 0;
+    } else {
+      _x_demux_control_newpts(this->stream, pts, 0);
+    }
+    this->send_newpts = 0;
 
     this->last_pts[1-video] = 0;
   }
 
-  if( pts )
+  if (pts)
     this->last_pts[video] = pts;
 }
 
-static void demux_mpeg_block_parse_pack (demux_mpeg_block_t *this) {
-
+static void demux_xvdr_parse_pack (demux_xvdr_t *this)
+{
   buf_element_t *buf = NULL;
   uint8_t       *p;
   int32_t        result;
 
-  this->scr = 0;
-
   lprintf ("read_block\n");
 
-  buf = this->input->read_block (this->input, this->video_fifo, this->blocksize);
+  buf = this->input->read_block (this->input, this->video_fifo, 8128);
 
   if (buf==NULL) {
+    if (errno == EAGAIN)
+      return;
     this->status = DEMUX_FINISHED;
-    return ;
+    return;
   }
 
   /* If this is not a block for the demuxer, pass it
@@ -152,16 +149,11 @@ static void demux_mpeg_block_parse_pack (demux_mpeg_block_t *this) {
   p = buf->content; /* len = this->blocksize; */
   buf->decoder_flags = 0;
 
-  while(p < (buf->content + this->blocksize)) {
+  /*while(p < (buf->content + this->blocksize))*/ {
     if (p[0] || p[1] || (p[2] != 1)) {
       xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
-	       "demux_mpeg_block: error! %02x %02x %02x (should be 0x000001)\n", p[0], p[1], p[2]);
-      xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG, "demux_mpeg_block: bad block. skipping.\n");
-      /* FIXME: We should find some way for the input plugin to inform us of: -
-       * 1) Normal sector read.
-       * 2) Sector error read due to bad crc etc.
-       * Because we would like to handle these two cases differently.
-       */
+	       "demux_xvdr: error! %02x %02x %02x (should be 0x000001)\n", p[0], p[1], p[2]);
+      xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG, "demux_xvdr: bad block. skipping.\n");
       buf->free_buffer (buf);
       return;
     }
@@ -196,15 +188,16 @@ static void demux_mpeg_block_parse_pack (demux_mpeg_block_t *this) {
   return ;
 }
 
-static int32_t parse_padding_stream(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf) {
-  /* Just skip padding. */
+static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
+{
   buf->free_buffer (buf);
   return -1;
 }
 
 /* FIXME: Extension data is not parsed, and is also not skipped. */
 
-static int32_t parse_pes_for_pts(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf) {
+static int32_t parse_pes_for_pts(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
+{
   int32_t header_len;
 
   this->packet_len = p[4] << 8 | p[5];
@@ -321,7 +314,7 @@ static int32_t parse_pes_for_pts(demux_mpeg_block_t *this, uint8_t *p, buf_eleme
   return 0;
 }
 
-static int32_t parse_private_stream_1(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf) {
+static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf) {
 
     int track, spu_id;
     int32_t result;
@@ -330,9 +323,9 @@ static int32_t parse_private_stream_1(demux_mpeg_block_t *this, uint8_t *p, buf_
     if (result < 0) return -1;
 
     p += result;
-    /* printf("demux_mpeg_block: private_stream_1: p[0] = 0x%02X\n", p[0]); */
 
-    if((p[0] & 0xE0) == 0x20) {
+    /* DVD SPU */
+    if ((p[0] & 0xE0) == 0x20) {
       spu_id = (p[0] & 0x1f);
 
       buf->content   = p+1;
@@ -454,10 +447,10 @@ static int32_t parse_private_stream_1(demux_mpeg_block_t *this, uint8_t *p, buf_
         buf->type      = BUF_AUDIO_A52 + track;
       }
       buf->pts       = this->pts;
-      if( !this->preview_mode )
-        check_newpts( this, this->pts, PTS_AUDIO );
 
-      if(this->audio_fifo) {
+      check_newpts( this, this->pts, PTS_AUDIO );
+
+      if (this->audio_fifo) {
 	this->audio_fifo->put (this->audio_fifo, buf);
         lprintf ("A52 PACK put on fifo\n");
 
@@ -520,10 +513,10 @@ static int32_t parse_private_stream_1(demux_mpeg_block_t *this, uint8_t *p, buf_
       buf->size      = this->packet_len-pcm_offset;
       buf->type      = BUF_AUDIO_LPCM_BE + track;
       buf->pts       = this->pts;
-      if( !this->preview_mode )
-        check_newpts( this, this->pts, PTS_AUDIO );
 
-      if(this->audio_fifo) {
+      check_newpts( this, this->pts, PTS_AUDIO );
+
+      if (this->audio_fifo) {
 	this->audio_fifo->put (this->audio_fifo, buf);
         lprintf ("LPCM PACK put on fifo\n");
 
@@ -534,16 +527,15 @@ static int32_t parse_private_stream_1(demux_mpeg_block_t *this, uint8_t *p, buf_
       }
 
     }
-    /* Some new streams have been encountered.
-       1) DVD+RW disc recorded with a Philips DVD recorder: -  new unknown sub-stream id of 0xff
-     */
+
     xprintf(this->stream->xine, XINE_VERBOSITY_LOG,
 	    "demux_mpeg_block:Unrecognised private stream 1 0x%02x. Please report this to xine developers.\n", p[0]);
     buf->free_buffer(buf);
     return -1;
 }
 
-static int32_t parse_video_stream(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf) {
+static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
+{
   int32_t result;
 
   result = parse_pes_for_pts(this, p, buf);
@@ -556,8 +548,8 @@ static int32_t parse_video_stream(demux_mpeg_block_t *this, uint8_t *p, buf_elem
   buf->type      = BUF_VIDEO_MPEG;
   buf->pts       = this->pts;
   buf->decoder_info[0] = this->pts - this->dts;
-  if( !this->preview_mode )
-    check_newpts( this, this->pts, PTS_VIDEO );
+
+  check_newpts( this, this->pts, PTS_VIDEO );
 
   this->video_fifo->put (this->video_fifo, buf);
   lprintf ("MPEG Video PACK put on fifo\n");
@@ -565,8 +557,8 @@ static int32_t parse_video_stream(demux_mpeg_block_t *this, uint8_t *p, buf_elem
   return -1;
 }
 
-static int32_t parse_audio_stream(demux_mpeg_block_t *this, uint8_t *p, buf_element_t *buf) {
-
+static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
+{
   int track;
   int32_t result;
 
@@ -581,10 +573,10 @@ static int32_t parse_audio_stream(demux_mpeg_block_t *this, uint8_t *p, buf_elem
   buf->size      = this->packet_len;
   buf->type      = BUF_AUDIO_MPEG + track;
   buf->pts       = this->pts;
-  if( !this->preview_mode )
-      check_newpts( this, this->pts, PTS_AUDIO );
 
-  if(this->audio_fifo) {
+  check_newpts( this, this->pts, PTS_AUDIO );
+
+  if (this->audio_fifo) {
     this->audio_fifo->put (this->audio_fifo, buf);
     lprintf ("MPEG Audio PACK put on fifo\n");
 
@@ -595,32 +587,36 @@ static int32_t parse_audio_stream(demux_mpeg_block_t *this, uint8_t *p, buf_elem
   return -1;
 }
 
-static int demux_mpeg_block_send_chunk (demux_plugin_t *this_gen) {
+/*
+ * interface
+ */
 
-  demux_mpeg_block_t *this = (demux_mpeg_block_t *) this_gen;
+static int demux_xvdr_send_chunk (demux_plugin_t *this_gen)
+{
+  demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
-  demux_mpeg_block_parse_pack(this);
+  demux_xvdr_parse_pack(this);
 
   return this->status;
 }
 
-static void demux_mpeg_block_dispose (demux_plugin_t *this_gen) {
+static void demux_xvdr_dispose (demux_plugin_t *this_gen)
+{
+  demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
-  demux_mpeg_block_t *this = (demux_mpeg_block_t *) this_gen;
-
-  av_free (this->scratch);
   free (this);
 }
 
-static int demux_mpeg_block_get_status (demux_plugin_t *this_gen) {
-  demux_mpeg_block_t *this = (demux_mpeg_block_t *) this_gen;
+static int demux_xvdr_get_status (demux_plugin_t *this_gen)
+{
+  demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
   return this->status;
 }
 
-static void demux_mpeg_block_send_headers (demux_plugin_t *this_gen) {
-
-  demux_mpeg_block_t *this = (demux_mpeg_block_t *) this_gen;
+static void demux_xvdr_send_headers (demux_plugin_t *this_gen)
+{
+  demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
   this->video_fifo  = this->stream->video_fifo;
   this->audio_fifo  = this->stream->audio_fifo;
@@ -635,23 +631,23 @@ static void demux_mpeg_block_send_headers (demux_plugin_t *this_gen) {
 
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_VIDEO, 1);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_AUDIO, 1);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_BITRATE, this->rate * 50 * 8);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_BITRATE, 5000000);
 }
 
 
-static int demux_mpeg_block_seek (demux_plugin_t *this_gen,
-				   off_t start_pos, int start_time, int playing) {
-
-  demux_mpeg_block_t *this = (demux_mpeg_block_t *) this_gen;
+static int demux_xvdr_seek (demux_plugin_t *this_gen,
+                            off_t start_pos, int start_time, int playing)
+{
+  demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
   /*
    * now start demuxing
    */
   this->send_newpts = 1;
-  if( !playing ) {
+  if (!playing) {
 
     this->buf_flag_seek = 0;
-    this->status   = DEMUX_OK ;
+    this->status        = DEMUX_OK;
     this->last_pts[0]   = 0;
     this->last_pts[1]   = 0;
   } else {
@@ -662,115 +658,117 @@ static int demux_mpeg_block_seek (demux_plugin_t *this_gen,
   return this->status;
 }
 
-static int demux_mpeg_block_get_stream_length (demux_plugin_t *this_gen) {
+/*
+ * demux class
+ */
 
-  demux_mpeg_block_t *this = (demux_mpeg_block_t *) this_gen;
-  /*
-   * find input plugin
-   */
-
-    return 0;
+static int demux_xvdr_get_stream_length (demux_plugin_t *this_gen)
+{
+  return 0;
 }
 
-static uint32_t demux_mpeg_block_get_capabilities(demux_plugin_t *this_gen) {
+static uint32_t demux_xvdr_get_capabilities(demux_plugin_t *this_gen)
+{
   return DEMUX_CAP_NOCAP;
 }
 
-static int demux_mpeg_block_get_optional_data(demux_plugin_t *this_gen,
-					void *data, int data_type) {
+static int demux_xvdr_get_optional_data(demux_plugin_t *this_gen,
+                                        void *data, int data_type)
+{
   return DEMUX_OPTIONAL_UNSUPPORTED;
 }
 
-static demux_plugin_t *open_plugin (demux_class_t *class_gen, xine_stream_t *stream,
-                                   input_plugin_t *input_gen) {
+static demux_plugin_t *demux_xvdr_open_plugin (demux_class_t *class_gen,
+                                               xine_stream_t *stream,
+                                               input_plugin_t *input_gen)
+{
+LOGMSG("demux open");
+  input_plugin_t *input = (input_plugin_t *) input_gen;
+  demux_xvdr_t   *this;
+  const char     *mrl = input->get_mrl(input);
 
-  input_plugin_t     *input = (input_plugin_t *) input_gen;
-  demux_mpeg_block_t *this;
+  if (strncmp(mrl, MRL_ID ":/",       MRL_ID_LEN + 2 ) &&
+      strncmp(mrl, MRL_ID "+pipe://", MRL_ID_LEN + 8) &&
+      strncmp(mrl, MRL_ID "+tcp://",  MRL_ID_LEN + 7) &&
+      strncmp(mrl, MRL_ID "+udp://",  MRL_ID_LEN + 7) &&
+      strncmp(mrl, MRL_ID "+rtp://",  MRL_ID_LEN + 7))
+    return NULL;
 
-  this         = calloc(1, sizeof(demux_mpeg_block_t));
+  this         = calloc(1, sizeof(demux_xvdr_t));
   this->stream = stream;
   this->input  = input;
 
-  this->demux_plugin.send_headers      = demux_mpeg_block_send_headers;
-  this->demux_plugin.send_chunk        = demux_mpeg_block_send_chunk;
-  this->demux_plugin.seek              = demux_mpeg_block_seek;
-  this->demux_plugin.dispose           = demux_mpeg_block_dispose;
-  this->demux_plugin.get_status        = demux_mpeg_block_get_status;
-  this->demux_plugin.get_stream_length = demux_mpeg_block_get_stream_length;
-  this->demux_plugin.get_capabilities  = demux_mpeg_block_get_capabilities;
-  this->demux_plugin.get_optional_data = demux_mpeg_block_get_optional_data;
+  this->demux_plugin.send_headers      = demux_xvdr_send_headers;
+  this->demux_plugin.send_chunk        = demux_xvdr_send_chunk;
+  this->demux_plugin.seek              = demux_xvdr_seek;
+  this->demux_plugin.dispose           = demux_xvdr_dispose;
+  this->demux_plugin.get_status        = demux_xvdr_get_status;
+  this->demux_plugin.get_stream_length = demux_xvdr_get_stream_length;
+  this->demux_plugin.get_capabilities  = demux_xvdr_get_capabilities;
+  this->demux_plugin.get_optional_data = demux_xvdr_get_optional_data;
   this->demux_plugin.demux_class       = class_gen;
 
-  this->scratch    = av_mallocz(4096);
   this->status     = DEMUX_FINISHED;
 
   return &this->demux_plugin;
 }
 
 #if DEMUXER_PLUGIN_IFACE_VERSION < 27
-static const char *get_description (demux_class_t *this_gen) {
-  return "DVD/VOB demux plugin";
+static const char *demux_xvdr_get_description (demux_class_t *this_gen)
+{
+  return MRL_ID " demux plugin";
 }
 
-static const char *get_identifier (demux_class_t *this_gen) {
-  return "MPEG_BLOCK";
+static const char *demux_xvdr_get_identifier (demux_class_t *this_gen)
+{
+  return MRL_ID;
 }
 
-static const char *get_extensions (demux_class_t *this_gen) {
-  return "vob";
-}
-
-static const char *get_mimetypes (demux_class_t *this_gen) {
+static const char *demux_xvdr_get_extensions (demux_class_t *this_gen)
+{
   return NULL;
 }
 
-static void class_dispose (demux_class_t *this_gen) {
+static const char *demux_xvdr_get_mimetypes (demux_class_t *this_gen)
+{
+  return NULL;
+}
 
-  demux_mpeg_block_class_t *this = (demux_mpeg_block_class_t *) this_gen;
+static void demux_xvdr_class_dispose (demux_class_t *this_gen)
+{
+  demux_xvdr_class_t *this = (demux_xvdr_class_t *) this_gen;
 
   free (this);
 }
 #endif
 
-static void *init_plugin (xine_t *xine, void *data) {
-
-  demux_mpeg_block_class_t     *this;
-
-  this         = calloc(1, sizeof(demux_mpeg_block_class_t));
+static void *demux_init_class (xine_t *xine, void *data)
+{
+  demux_xvdr_class_t     *this;
+LOGMSG("demux calss init");
+  this         = calloc(1, sizeof(demux_xvdr_class_t));
   this->config = xine->config;
   this->xine   = xine;
 
-  this->demux_class.open_plugin     = open_plugin;
+  this->demux_class.open_plugin     = demux_xvdr_open_plugin;
 #if DEMUXER_PLUGIN_IFACE_VERSION < 27
-  this->demux_class.get_description = get_description;
-  this->demux_class.get_identifier  = get_identifier;
-  this->demux_class.get_mimetypes   = get_mimetypes;
-  this->demux_class.get_extensions  = get_extensions;
-  this->demux_class.dispose         = class_dispose;
+  this->demux_class.get_description = demux_xvdr_get_description;
+  this->demux_class.get_identifier  = demux_xvdr_get_identifier;
+  this->demux_class.get_mimetypes   = demux_xvdr_get_mimetypes;
+  this->demux_class.get_extensions  = demux_xvdr_get_extensions;
+  this->demux_class.dispose         = demux_xvdr_class_dispose;
 #else
-  this->demux_class.description     = N_("DVD/VOB demux plugin");
-  this->demux_class.identifier      = "MPEG_BLOCK";
+  this->demux_class.description     = N_("XVDR demux plugin");
+  this->demux_class.identifier      = MRL_ID;
   this->demux_class.mimetypes       = NULL;
-  this->demux_class.extensions      = "vob vcd:/ dvd:/ pvr:/";
+  this->demux_class.extensions      = MRL_ID":/ "MRL_ID"+pipe:/ "MRL_ID"+tcp:/ "MRL_ID"+udp:/ "MRL_ID"+rtp:/";
   this->demux_class.dispose         = default_demux_class_dispose;
 #endif
 
   return this;
 }
 
-/*
- * exported plugin catalog entry
- */
-static const demuxer_info_t demux_info_mpeg_block = {
-  10                       /* priority */
+static const demuxer_info_t demux_info_xvdr = {
+  100                      /* priority */
 };
 
-const plugin_info_t xine_plugin_info[] EXPORTED = {
-  /* type, API, "name", version, special_info, init_function */  
-#if DEMUXER_PLUGIN_IFACE_VERSION < 27
-  { PLUGIN_DEMUX, 26, "mpeg_block", XINE_VERSION_CODE, &demux_info_mpeg_block, init_plugin },
-#if DEMUXER_PLUGIN_IFACE_VERSION >= 27
-  { PLUGIN_DEMUX, 27, "mpeg_block", XINE_VERSION_CODE, &demux_info_mpeg_block, init_plugin },
-#endif
-  { PLUGIN_NONE, 0, "", 0, NULL, NULL }
-};
