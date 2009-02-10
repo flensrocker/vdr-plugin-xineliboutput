@@ -93,23 +93,24 @@ static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_
 
 static void check_newpts(demux_xvdr_t *this, int64_t pts, int video )
 {
-  int64_t diff = pts - this->last_pts[video];
+  if (pts) {
+    int64_t diff = pts - this->last_pts[video];
 
-  if (pts && (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD))) {
+    if (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD)) {
 
-    if (this->buf_flag_seek) {
-      _x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
-      this->buf_flag_seek = 0;
-    } else {
-      _x_demux_control_newpts(this->stream, pts, 0);
+      if (this->buf_flag_seek) {
+        _x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
+        this->buf_flag_seek = 0;
+      } else {
+        _x_demux_control_newpts(this->stream, pts, 0);
+      }
+      this->send_newpts = 0;
+
+      this->last_pts[1-video] = 0;
     }
-    this->send_newpts = 0;
 
-    this->last_pts[1-video] = 0;
-  }
-
-  if (pts)
     this->last_pts[video] = pts;
+  }
 }
 
 static void demux_xvdr_parse_pack (demux_xvdr_t *this)
@@ -120,10 +121,9 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
 
   buf = this->input->read_block (this->input, this->video_fifo, 8128);
 
-  if (buf==NULL) {
-    if (errno == EAGAIN)
-      return;
-    this->status = DEMUX_FINISHED;
+  if (!buf) {
+    if (errno != EAGAIN)
+      this->status = DEMUX_FINISHED;
     return;
   }
 
@@ -648,7 +648,13 @@ LOGMSG("demux calss init");
   this->demux_class.description     = N_("XVDR demux plugin");
   this->demux_class.identifier      = MRL_ID;
   this->demux_class.mimetypes       = NULL;
-  this->demux_class.extensions      = MRL_ID":/ "MRL_ID"+pipe:/ "MRL_ID"+tcp:/ "MRL_ID"+udp:/ "MRL_ID"+rtp:/";
+  this->demux_class.extensions      = 
+    MRL_ID":/ "
+    MRL_ID"+pipe:/ "
+    MRL_ID"+tcp:/ "
+    MRL_ID"+udp:/ "
+    MRL_ID"+rtp:/ "
+    MRL_ID"+slave:/";
   this->demux_class.dispose         = default_demux_class_dispose;
 #endif
 
