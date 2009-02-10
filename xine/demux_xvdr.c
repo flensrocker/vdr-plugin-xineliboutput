@@ -26,11 +26,19 @@
 #include <unistd.h>
 #include <string.h>
 
-#define LOG_MODULE "demux_xvdr"
-
 #include <xine/xine_internal.h>
 #include <xine/xineutils.h>
 #include <xine/demux.h>
+
+#include "../xine_input_vdr_mrl.h"
+#include "../tools/pes.h"
+
+static const char log_module_demux_xvdr[] = "[demux_vdr] ";
+#define LOG_MODULENAME log_module_demux_xvdr
+#define SysLogLevel    iSysLogLevel
+
+#include "../logdefs.h"
+
 
 #define DISC_TRESHOLD       90000
 
@@ -110,8 +118,6 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   uint8_t       *p;
   int32_t        result;
 
-  lprintf ("read_block\n");
-
   buf = this->input->read_block (this->input, this->video_fifo, 8128);
 
   if (buf==NULL) {
@@ -141,7 +147,7 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
       this->audio_fifo->put (this->audio_fifo, cbuf);
     }
 
-    lprintf ("type %08x != BUF_DEMUX_BLOCK\n", buf->type);
+    LOGMSG("buffer type %08x != BUF_DEMUX_BLOCK", buf->type);
 
     return;
   }
@@ -149,14 +155,11 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   p = buf->content; /* len = this->blocksize; */
   buf->decoder_flags = 0;
 
-  /*while(p < (buf->content + this->blocksize))*/ {
-    if (p[0] || p[1] || (p[2] != 1)) {
-      xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
-	       "demux_xvdr: error! %02x %02x %02x (should be 0x000001)\n", p[0], p[1], p[2]);
-      xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG, "demux_xvdr: bad block. skipping.\n");
-      buf->free_buffer (buf);
-      return;
-    }
+  if (p[0] || p[1] || (p[2] != 1)) {
+    LOGMSG("PES header %02x %02x %02x (should be 0x000001)", p[0], p[1], p[2]);
+    buf->free_buffer (buf);
+    return;
+  }
 
     this->stream_id  = p[3];
 
@@ -182,10 +185,13 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
     }
     p+=result;
   }
-  xprintf (this->stream->xine, XINE_VERBOSITY_LOG,
-	   _("demux_mpeg_block: error! freeing. Please report this to xine developers.\n"));
+  if (result < 0) {
+    return;
+  }
+
+  LOGMSG("error! freeing buffer.");
   buf->free_buffer (buf);
-  return ;
+  return;
 }
 
 static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
@@ -260,22 +266,15 @@ static int32_t parse_pes_for_pts(demux_xvdr_t *this, uint8_t *p, buf_element_t *
 
 
     if ((p[6] & 0xC0) != 0x80) {
-      xine_log (this->stream->xine, XINE_LOG_MSG,
-		_("demux_mpeg_block: warning: PES header reserved 10 bits not found\n"));
+      LOGMSG("warning: PES header reserved 10 bits not found");
       buf->free_buffer(buf);
       return -1;
     }
 
 
     /* check PES scrambling_control */
-
     if ((p[6] & 0x30) != 0) {
-      xprintf(this->stream->xine, XINE_VERBOSITY_LOG,
-	      _("demux_mpeg_block: warning: PES header indicates that this stream "
-		"may be encrypted (encryption mode %d)\n"), (p[6] & 0x30) >> 4);
-      _x_message (this->stream, XINE_MSG_ENCRYPTED_SOURCE,
-		  "Media stream scrambled/encrypted", NULL);
-      this->status = DEMUX_FINISHED;
+      LOGMSG("encrypted PES ?");
       buf->free_buffer(buf);
       return -1;
     }
