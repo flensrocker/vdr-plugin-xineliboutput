@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.226 2009-02-10 15:52:14 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.227 2009-02-10 16:04:48 phintuka Exp $
  *
  */
 
@@ -4471,16 +4471,7 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen, char *buf_gen, off_t len
 static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len)
 #endif
 {
-  /* from xine_input_dvd.c: */
-  /* FIXME: Tricking the demux_mpeg_block plugin */
-  if(len > 3) {
-    uint8_t *buf = (uint8_t*)buf_gen;
-    buf[0] = 0;
-    buf[1] = 0;
-    buf[2] = 0x01;
-    buf[3] = 0xba;
-    return 4;
-  }
+  memset(buf_gen, 0, len);
   return 0;
 }
 
@@ -5387,52 +5378,28 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   return buf;
 }
 
-static off_t vdr_plugin_seek (input_plugin_t *this_gen, off_t offset,
-			      int origin) 
+static off_t vdr_plugin_seek (input_plugin_t *this_gen, off_t offset, int origin)
 {
   return -1;
 }
 
-static off_t vdr_plugin_get_length (input_plugin_t *this_gen) 
+static off_t vdr_plugin_get_length (input_plugin_t *this_gen)
 {
   return -1;
 }
 
-static uint32_t vdr_plugin_get_capabilities (input_plugin_t *this_gen) 
+static uint32_t vdr_plugin_get_capabilities (input_plugin_t *this_gen)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-
-  if(!this->stream->demux_plugin) {
-    return
-      INPUT_CAP_PREVIEW |
-#ifdef INPUT_CAP_NOCACHE
-      INPUT_CAP_NOCACHE |
-#endif
-      INPUT_CAP_SEEKABLE | /* help demux detection */
-      INPUT_CAP_BLOCK;
-  }
-
   return
-    INPUT_CAP_PREVIEW |
 #ifdef INPUT_CAP_NOCACHE
     INPUT_CAP_NOCACHE |
 #endif
     INPUT_CAP_BLOCK;
 }
 
-static uint32_t vdr_plugin_get_blocksize (input_plugin_t *this_gen) 
+static uint32_t vdr_plugin_get_blocksize (input_plugin_t *this_gen)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-  int ret = 2048;
-
-  if(this->block_buffer) {
-    pthread_mutex_lock(&this->block_buffer->buffer_pool_mutex);
-    if(this->block_buffer->first &&  this->block_buffer->first->size > 0)
-      ret = this->block_buffer->first->size;
-    pthread_mutex_unlock(&this->block_buffer->buffer_pool_mutex);
-  }
-
-  return ret;
+  return 2048;
 }
 
 static off_t vdr_plugin_get_current_pos (input_plugin_t *this_gen)
@@ -5617,44 +5584,19 @@ static char* vdr_plugin_get_mrl (input_plugin_t *this_gen)
 #endif
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
-
-  if(!this->stream->demux_plugin) {
-    /* help in demuxer selection */
-    static char fake[128] = {0};
-    snprintf(fake, sizeof(fake)-1, "%s/.vob", this->mrl);
-    fake[sizeof(fake)-1] = 0;
-    return fake;
-  }
-
   return this->mrl;
 }
 
 static int vdr_plugin_get_optional_data (input_plugin_t *this_gen,
-					 void *data, int data_type) 
+					 void *data, int data_type)
 {
-  if(data_type == INPUT_OPTIONAL_DATA_PREVIEW) {
-
-    static const uint8_t preview_data[] = {0x00,0x00,0x01,0xBA, /* sequence start */
-					   0x00,0x00,0x01,0xBE, /* padding */
-					   0x00,0x02,0xff,0xff};
-#if MAX_PREVIEW_SIZE < 12
-#  warning MAX_PREVIEW_SIZE < 12 !
-    memcpy(data, preview_data, MAX_PREVIEW_SIZE);
-    return MAX_PREVIEW_SIZE;
-#else
-    memcpy(data, preview_data, sizeof(preview_data));
-    return sizeof(preview_data);
-#endif
-  }
-
 #ifdef INPUT_OPTIONAL_DATA_DEMUXER
-  else if(data_type == INPUT_OPTIONAL_DATA_DEMUXER) {
-    static const char demux_name[] = "mpeg_block";
+  if (data_type == INPUT_OPTIONAL_DATA_DEMUXER) {
+    static const char demux_name[] = "xvdr";
     *((const char **)data) = demux_name;
     return INPUT_OPTIONAL_SUCCESS;
   }
 #endif
-
   return INPUT_OPTIONAL_UNSUPPORTED;
 }
 
