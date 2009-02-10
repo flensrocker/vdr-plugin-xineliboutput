@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.105 2009-02-10 16:28:43 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.106 2009-02-10 16:30:21 phintuka Exp $
  *
  */
 
@@ -1311,18 +1311,8 @@ static int sxfe_display_config(frontend_t *this_gen,
 /*this->vmode_switch = modeswitch;*/
   this->x.aspect = aspect;
   this->x.scale_video = scale_video;
-#ifdef HAVE_XV_FIELD_ORDER
-  if(this->x.field_order != field_order) {
-    XLockDisplay (this->display);
-    if(XInternAtom(this->display, "XV_SWAP_FIELDS", True) != None)
-      XvSetPortAttribute (this->display, 53, 
-			  XInternAtom (this->display, "XV_SWAP_FIELDS", False), 
-			  field_order);
-    XUnlockDisplay (this->display);
-  }
-#endif
   this->x.field_order = field_order ? 1 : 0;
-  
+
   return 1;
 }
 
