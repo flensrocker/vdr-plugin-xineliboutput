@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.h,v 1.3 2008-06-11 15:50:28 phintuka Exp $
+ * $Id: mpeg.h,v 1.4 2009-02-10 11:23:23 phintuka Exp $
  *
  */
 
@@ -28,7 +28,7 @@ extern "C" {
 
 typedef struct {
   int num;
-  int den;  
+  int den;
 } mpeg_rational_t;
 
 typedef struct {
