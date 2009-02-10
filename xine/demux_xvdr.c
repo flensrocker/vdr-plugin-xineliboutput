@@ -210,7 +210,6 @@ static int32_t parse_pes_for_pts(demux_xvdr_t *this, uint8_t *p, buf_element_t *
       p++;
       header_len++;
       this->packet_len--;
-      /* printf ("stuffing\n");*/
     }
 
     if ((p[0] & 0xc0) == 0x40) {
@@ -289,8 +288,6 @@ static int32_t parse_pes_for_pts(demux_xvdr_t *this, uint8_t *p, buf_element_t *
       this->pts |=  p[12]         <<  7 ;
       this->pts |= (p[13] & 0xFE) >>  1 ;
 
-      lprintf ("pts = %"PRId64"\n", this->pts);
-
     } else
       this->pts = 0;
 
@@ -314,224 +311,127 @@ static int32_t parse_pes_for_pts(demux_xvdr_t *this, uint8_t *p, buf_element_t *
   return 0;
 }
 
-static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf) {
+static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
+{
+  int track, spu_id;
+  int32_t result;
 
-    int track, spu_id;
-    int32_t result;
+  result = parse_pes_for_pts(this, p, buf);
+  if (result < 0) return -1;
 
-    result = parse_pes_for_pts(this, p, buf);
-    if (result < 0) return -1;
+  p += result;
 
-    p += result;
+  /* DVD SPU */
+  if ((p[0] & 0xE0) == 0x20) {
+    spu_id = (p[0] & 0x1f);
 
-    /* DVD SPU */
-    if ((p[0] & 0xE0) == 0x20) {
-      spu_id = (p[0] & 0x1f);
+    buf->content   = p+1;
+    buf->size      = this->packet_len-1;
 
-      buf->content   = p+1;
-      buf->size      = this->packet_len-1;
+    buf->type      = BUF_SPU_DVD + spu_id;
+    buf->decoder_flags |= BUF_FLAG_SPECIAL;
+    buf->decoder_info[1] = BUF_SPECIAL_SPU_DVD_SUBTYPE;
+    buf->decoder_info[2] = SPU_DVD_SUBTYPE_PACKAGE;
+    buf->pts       = this->pts;
 
-      buf->type      = BUF_SPU_DVD + spu_id;
-      buf->decoder_flags |= BUF_FLAG_SPECIAL;
-      buf->decoder_info[1] = BUF_SPECIAL_SPU_DVD_SUBTYPE;
-      buf->decoder_info[2] = SPU_DVD_SUBTYPE_PACKAGE;
-      buf->pts       = this->pts;
+    this->video_fifo->put (this->video_fifo, buf);
 
-      this->video_fifo->put (this->video_fifo, buf);
-      lprintf ("SPU PACK put on fifo\n");
+    return -1;
+  }
 
+  if ((p[0]&0xF0) == 0x80) {
+
+    track = p[0] & 0x0F; /* hack : ac3 track */
+
+    buf->decoder_info[1] = p[1];             /* Number of frame headers */
+    buf->decoder_info[2] = p[2] << 8 | p[3]; /* First access unit pointer */
+
+    buf->content   = p+4;
+    buf->size      = this->packet_len-4;
+    if (track & 0x8) {
+      buf->type      = BUF_AUDIO_DTS + (track & 0x07); /* DVDs only have 8 tracks */
+    } else {
+      buf->type      = BUF_AUDIO_A52 + track;
+    }
+    buf->pts       = this->pts;
+
+    check_newpts( this, this->pts, PTS_AUDIO );
+
+    if (this->audio_fifo) {
+      this->audio_fifo->put (this->audio_fifo, buf);
+      return -1;
+    } else {
+      buf->free_buffer(buf);
       return -1;
     }
 
-    if ((p[0]&0xF0) == 0x80) {
+  } else if ((p[0]&0xf0) == 0xa0) {
 
-      track = p[0] & 0x0F; /* hack : ac3 track */
+    int pcm_offset;
+    int number_of_frame_headers;
+    int first_access_unit_pointer;
+    int audio_frame_number;
+    int bits_per_sample;
+    int sample_rate;
+    int num_channels;
+    int dynamic_range;
 
-      /* Number of frame headers
-       *
-       * Describes the number of a52 frame headers that start in this pack (One pack per DVD sector).
-       *
-       * Likely values: 1 or 2.
-       */
-      buf->decoder_info[1] = p[1];
-      /* First access unit pointer.
-       *
-       * Describes the byte offset within this pack to the beginning of the first A52 frame header.
-       * The PTS from this pack applies to the beginning of the first A52 frame that starts in this pack.
-       * Any bytes before this offset should be considered to belong to the previous A52 frame.
-       * and therefore be tagged with a PTS value derived from the previous pack.
-       *
-       * Likely values: Anything from 1 to the size of an A52 frame.
-       */
-      buf->decoder_info[2] = p[2] << 8 | p[3];
-      /* Summary: If the first pack contains the beginning of 2 A52 frames( decoder_info[1]=2),
-       *            the PTS value applies to the first A52 frame.
-       *          The second A52 frame will have no PTS value.
-       *          The start of the next pack will contain the rest of the second A52 frame and thus, no PTS value.
-       *          The third A52 frame will have the PTS value from the second pack.
-       *
-       *          If the first pack contains the beginning of 1 frame( decoder_info[1]=1 ),
-       *            this first pack must then contain a certain amount of the previous A52 frame.
-       *            the PTS value will not apply to this previous A52 frame,
-       *            the PTS value will apply to the beginning of the frame that begins in this pack.
-       *
-       * LPCM note: The first_access_unit_pointer will point to
-       *            the PCM sample within the pack at which the PTS values applies.
-       *
-       * Example to values in a real stream, each line is a pack (dvd sector): -
-       * decoder_info[1], decoder_info[2],  PTS
-       * 2                   5             125640
-       * 1                1061             131400
-       * 1                 581             134280
-       * 2                 101             137160
-       * 1                1157             142920
-       * 1                 677             145800
-       * 2                 197             148680
-       * 1                1253             154440
-       * 1                 773             157320
-       * 2                 293             160200
-       * 1                1349             165960
-       * 1                 869             168840
-       * 2                 389             171720
-       * 1                1445             177480
-       * 1                 965             180360
-       * 1                 485             183240
-       * 2                   5             186120
-       * 1                1061             191880
-       * 1                 581             194760
-       * 2                 101             197640
-       * 1                1157             203400
-       * 1                 677             206280
-       * 2                 197             209160
-       * Notice the repeating pattern of both decoder_info[1] and decoder_info[2].
-       * The resulting A52 frames will have these PTS values: -
-       *  PTS
-       * 125640
-       *      0
-       * 131400
-       * 134280
-       * 137160
-       *      0
-       * 142920
-       * 145800
-       * 148680
-       *      0
-       * 154440
-       * 157320
-       * 160200
-       *      0
-       * 165960
-       * 168840
-       * 171720
-       *      0
-       * 177480
-       * 180360
-       * 183240
-       * 186120
-       *      0
-       * 191880
-       * 194760
-       * 197640
-       *      0
-       * 203400
-       * 206280
-       * 209160
-       *      0 (Partial A52 frame.)
-       */
+    /*
+     * found in http://members.freemail.absa.co.za/ginggs/dvd/mpeg2_lpcm.txt
+     * appears to be correct.
+     */
 
-      buf->content   = p+4;
-      buf->size      = this->packet_len-4;
-      if (track & 0x8) {
-        buf->type      = BUF_AUDIO_DTS + (track & 0x07); /* DVDs only have 8 tracks */
-      } else {
-        buf->type      = BUF_AUDIO_A52 + track;
-      }
-      buf->pts       = this->pts;
+    track = p[0] & 0x0F;
+    number_of_frame_headers = p[1];
+    /* unknown = p[2]; */
+    first_access_unit_pointer = p[3];
+    audio_frame_number = p[4];
 
-      check_newpts( this, this->pts, PTS_AUDIO );
-
-      if (this->audio_fifo) {
-	this->audio_fifo->put (this->audio_fifo, buf);
-        lprintf ("A52 PACK put on fifo\n");
-
-        return -1;
-      } else {
-	buf->free_buffer(buf);
-        return -1;
-      }
-
-    } else if ((p[0]&0xf0) == 0xa0) {
-
-      int pcm_offset;
-      int number_of_frame_headers;
-      int first_access_unit_pointer;
-      int audio_frame_number;
-      int bits_per_sample;
-      int sample_rate;
-      int num_channels;
-      int dynamic_range;
-
-      /*
-       * found in http://members.freemail.absa.co.za/ginggs/dvd/mpeg2_lpcm.txt
-       * appears to be correct.
-       */
-
-      track = p[0] & 0x0F;
-      number_of_frame_headers = p[1];
-      /* unknown = p[2]; */
-      first_access_unit_pointer = p[3];
-      audio_frame_number = p[4];
-
-      /*
-       * 000 => mono
-       * 001 => stereo
-       * 010 => 3 channel
-       * ...
-       * 111 => 8 channel
-       */
-      num_channels = (p[5] & 0x7) + 1;
-      sample_rate = p[5] & 0x10 ? 96000 : 48000;
-      switch ((p[5]>>6) & 3) {
-      case 3: /* illegal, use 16-bits? */
+    /*
+     * 000 => mono
+     * 001 => stereo
+     * 010 => 3 channel
+     * ...
+     * 111 => 8 channel
+     */
+    num_channels = (p[5] & 0x7) + 1;
+    sample_rate = p[5] & 0x10 ? 96000 : 48000;
+    switch ((p[5]>>6) & 3) {
+    case 3: /* illegal, use 16-bits? */
       default:
 	xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
 		 "illegal lpcm sample format (%d), assume 16-bit samples\n", (p[5]>>6) & 3 );
       case 0: bits_per_sample = 16; break;
       case 1: bits_per_sample = 20; break;
       case 2: bits_per_sample = 24; break;
-      }
-      dynamic_range = p[6];
-
-      /* send lpcm config byte */
-      buf->decoder_flags |= BUF_FLAG_SPECIAL;
-      buf->decoder_info[1] = BUF_SPECIAL_LPCM_CONFIG;
-      buf->decoder_info[2] = p[5];
-
-      pcm_offset = 7;
-
-      buf->content   = p+pcm_offset;
-      buf->size      = this->packet_len-pcm_offset;
-      buf->type      = BUF_AUDIO_LPCM_BE + track;
-      buf->pts       = this->pts;
-
-      check_newpts( this, this->pts, PTS_AUDIO );
-
-      if (this->audio_fifo) {
-	this->audio_fifo->put (this->audio_fifo, buf);
-        lprintf ("LPCM PACK put on fifo\n");
-
-        return -1;
-      } else {
-	buf->free_buffer(buf);
-        return -1;
-      }
-
     }
+    dynamic_range = p[6];
 
-    xprintf(this->stream->xine, XINE_VERBOSITY_LOG,
-	    "demux_mpeg_block:Unrecognised private stream 1 0x%02x. Please report this to xine developers.\n", p[0]);
-    buf->free_buffer(buf);
-    return -1;
+    /* send lpcm config byte */
+    buf->decoder_flags |= BUF_FLAG_SPECIAL;
+    buf->decoder_info[1] = BUF_SPECIAL_LPCM_CONFIG;
+    buf->decoder_info[2] = p[5];
+
+    pcm_offset = 7;
+
+    buf->content   = p+pcm_offset;
+    buf->size      = this->packet_len-pcm_offset;
+    buf->type      = BUF_AUDIO_LPCM_BE + track;
+    buf->pts       = this->pts;
+
+    check_newpts( this, this->pts, PTS_AUDIO );
+
+    if (this->audio_fifo) {
+      this->audio_fifo->put (this->audio_fifo, buf);
+      return -1;
+    } else {
+      buf->free_buffer(buf);
+      return -1;
+    }
+  }
+
+  buf->free_buffer(buf);
+  return -1;
 }
 
 static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
@@ -552,7 +452,6 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
   check_newpts( this, this->pts, PTS_VIDEO );
 
   this->video_fifo->put (this->video_fifo, buf);
-  lprintf ("MPEG Video PACK put on fifo\n");
 
   return -1;
 }
@@ -578,8 +477,6 @@ static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
 
   if (this->audio_fifo) {
     this->audio_fifo->put (this->audio_fifo, buf);
-    lprintf ("MPEG Audio PACK put on fifo\n");
-
   } else {
     buf->free_buffer(buf);
   }
