@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.225 2009-02-10 15:16:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.226 2009-02-10 15:52:14 phintuka Exp $
  *
  */
 
@@ -6449,7 +6449,7 @@ static void vdr_class_dispose (input_class_t *this_gen)
   free (this);
 }
 
-static void *init_class (xine_t *xine, void *data) 
+static void *input_xvdr_init_class (xine_t *xine, void *data)
 {
   vdr_input_class_t  *this;
   config_values_t     *config = xine->config;
@@ -6516,6 +6516,15 @@ static void *init_class (xine_t *xine, void *data)
   return this;
 }
 
+/*
+ * demuxer (xine/demux_xvdr.c)
+ */
+
+void *demux_xvdr_init_class (xine_t *xine, void *data);
+
+static const demuxer_info_t demux_info_xvdr = {
+  100                      /* priority */
+};
 
 /*
  * exported plugin catalog entry
@@ -6523,7 +6532,10 @@ static void *init_class (xine_t *xine, void *data)
 
 const plugin_info_t xine_plugin_info[] __attribute__((visibility("default"))) = {
   /* type, API, "name", version, special_info, init_function */
-  { PLUGIN_INPUT, INPUT_PLUGIN_IFACE_VERSION, MRL_ID, XINE_VERSION_CODE, NULL, init_class },
+  { PLUGIN_INPUT, INPUT_PLUGIN_IFACE_VERSION,   MRL_ID, XINE_VERSION_CODE, NULL,             input_xvdr_init_class },
+
+  { PLUGIN_DEMUX, DEMUXER_PLUGIN_IFACE_VERSION, MRL_ID, XINE_VERSION_CODE, &demux_info_xvdr, demux_xvdr_init_class },
+
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 
