@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.106 2009-02-10 16:30:21 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.107 2009-02-10 16:34:19 phintuka Exp $
  *
  */
 
@@ -644,12 +644,14 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
-		     0, 0, this->osd_width+2, this->osd_height+2);
+                     0, 0, this->osd_width+2, this->osd_height+2);
       XFlush(this->display);
       break;
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
       LOGDBG("HUD Set RLE");
+      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+        break;
 #ifdef HAVE_XSHM
       if(this->completion_event != -1) {
         hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
@@ -721,9 +723,11 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Close: /* Close OSD window */
       LOGDBG("HUD osd Close");
+      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+        break;
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
-		     0, 0, this->x.width, this->x.height);
+                     0, 0, this->x.width, this->x.height);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
                      0, 0, this->osd_width+2, this->osd_height+2);
       XFlush(this->display);
@@ -773,7 +777,7 @@ static int hud_osd_open(sxfe_t *this)
     attributes.border_pixel = 0;
     attributes.colormap = hud_colormap;
     attributes.backing_store = Always;
-    
+
     this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
                                      this->x.xpos, this->x.ypos,
                                      this->x.width, this->x.height,
