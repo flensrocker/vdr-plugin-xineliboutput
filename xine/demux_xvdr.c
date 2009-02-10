@@ -130,14 +130,26 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   /* If this is not a block for the demuxer, pass it
    * straight through. */
   if (buf->type != BUF_DEMUX_BLOCK) {
-    buf_element_t *cbuf;
 
-    this->video_fifo->put (this->video_fifo, buf);
+    if ((buf->type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE) {
+      check_newpts (this, buf->pts, PTS_VIDEO);
+      this->video_fifo->put (this->video_fifo, buf);
+      return;
+    }
+
+    if ((buf->type & BUF_MAJOR_MASK) == BUF_AUDIO_BASE) {
+      if (this->audio_fifo) {
+        check_newpts (this, buf->pts, PTS_AUDIO);
+        this->audio_fifo->put (this->audio_fifo, buf);
+      } else {
+        buf->free_buffer (buf);
+      }
+      return;
+    }
 
     /* duplicate goes to audio fifo */
-
     if (this->audio_fifo) {
-      cbuf = this->audio_fifo->buffer_pool_alloc (this->audio_fifo);
+      buf_element_t *cbuf = this->audio_fifo->buffer_pool_alloc (this->audio_fifo);
 
       cbuf->type = buf->type;
       cbuf->decoder_flags = buf->decoder_flags;
@@ -146,6 +158,7 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
 
       this->audio_fifo->put (this->audio_fifo, cbuf);
     }
+    this->video_fifo->put (this->video_fifo, buf);
 
     LOGMSG("buffer type %08x != BUF_DEMUX_BLOCK", buf->type);
 
