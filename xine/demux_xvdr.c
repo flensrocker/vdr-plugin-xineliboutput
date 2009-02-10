@@ -642,7 +642,7 @@ static void demux_xvdr_class_dispose (demux_class_t *this_gen)
 }
 #endif
 
-static void *demux_init_class (xine_t *xine, void *data)
+void *demux_xvdr_init_class (xine_t *xine, void *data)
 {
   demux_xvdr_class_t     *this;
 LOGMSG("demux calss init");
@@ -674,7 +674,4 @@ LOGMSG("demux calss init");
   return this;
 }
 
-static const demuxer_info_t demux_info_xvdr = {
-  100                      /* priority */
-};
 
