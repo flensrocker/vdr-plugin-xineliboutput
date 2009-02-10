@@ -73,6 +73,8 @@ typedef struct demux_xvdr_s {
   uint32_t              stream_id;
   int32_t               mpeg1;
 
+  uint32_t              last_audio_stream_id;
+  int64_t               last_vpts;
 } demux_xvdr_t ;
 
 typedef struct {
@@ -90,28 +92,69 @@ static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
 static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 
-
-static void check_newpts(demux_xvdr_t *this, int64_t pts, int video )
+static void pts_wrap_workaround(demux_xvdr_t *this, buf_element_t *buf, int video)
 {
-  if (pts) {
-    int64_t diff = pts - this->last_pts[video];
+  /* PTS wrap workaround */
+  if (buf->pts >= 0) {
+    if (video)
+      this->last_vpts = buf->pts;
+    else if (buf->pts        > INT64_C( 0x40400000 ) &&
+             this->last_vpts < INT64_C( 0x40000000 ) &&
+             this->last_vpts > INT64_C( 0 )) {
+      LOGMSG("VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, buf->pts);
+      buf->pts = INT64_C(0);
+    }
+  }
+}
+
+static void check_newpts(demux_xvdr_t *this, buf_element_t *buf, int video )
+{
+  pts_wrap_workaround(this, buf, video);
+
+  if (buf->pts) {
+    int64_t diff = buf->pts - this->last_pts[video];
 
     if (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD)) {
 
       if (this->buf_flag_seek) {
-        _x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
+        _x_demux_control_newpts(this->stream, buf->pts, BUF_FLAG_SEEK);
         this->buf_flag_seek = 0;
       } else {
-        _x_demux_control_newpts(this->stream, pts, 0);
+        _x_demux_control_newpts(this->stream, buf->pts, 0);
       }
       this->send_newpts = 0;
 
       this->last_pts[1-video] = 0;
     }
 
-    this->last_pts[video] = pts;
+    this->last_pts[video] = buf->pts;
   }
 }
+
+static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
+{
+  buf_element_t *buf = pool->buffer_pool_try_alloc(pool);
+  if(buf) {
+    buf->type = cmd;
+    buffer->put(buffer, buf);
+  }
+}
+
+static void track_audio_stream_change(demux_xvdr_t *this, buf_element_t *buf)
+{
+#if !defined(BUF_CONTROL_RESET_TRACK_MAP)
+#  warning xine-lib is older than 1.1.2. Multiple audio streams are not supported.
+#else
+  if (this->last_audio_stream_id != buf->type) {
+    LOGDBG("audio stream changed: %08x -> %08x", this->last_audio_stream_id, buf->type);
+    this->last_audio_stream_id = buf->type;
+    put_control_buf(this->audio_fifo,
+                    this->audio_fifo,
+                    BUF_CONTROL_RESET_TRACK_MAP);
+  }
+#endif
+}
+
 
 static void demux_xvdr_parse_pack (demux_xvdr_t *this)
 {
@@ -132,14 +175,15 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   if (buf->type != BUF_DEMUX_BLOCK) {
 
     if ((buf->type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE) {
-      check_newpts (this, buf->pts, PTS_VIDEO);
+      check_newpts (this, buf, PTS_VIDEO);
       this->video_fifo->put (this->video_fifo, buf);
       return;
     }
 
     if ((buf->type & BUF_MAJOR_MASK) == BUF_AUDIO_BASE) {
       if (this->audio_fifo) {
-        check_newpts (this, buf->pts, PTS_AUDIO);
+        check_newpts (this, buf, PTS_AUDIO);
+        track_audio_stream_change (this, buf);
         this->audio_fifo->put (this->audio_fifo, buf);
       } else {
         buf->free_buffer (buf);
@@ -358,9 +402,9 @@ static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_elemen
     }
     buf->pts       = this->pts;
 
-    check_newpts( this, this->pts, PTS_AUDIO );
-
     if (this->audio_fifo) {
+      check_newpts( this, buf, PTS_AUDIO );
+      track_audio_stream_change (this, buf);
       this->audio_fifo->put (this->audio_fifo, buf);
       return -1;
     } else {
@@ -422,9 +466,9 @@ static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_elemen
     buf->type      = BUF_AUDIO_LPCM_BE + track;
     buf->pts       = this->pts;
 
-    check_newpts( this, this->pts, PTS_AUDIO );
-
     if (this->audio_fifo) {
+      check_newpts( this, buf, PTS_AUDIO );
+      track_audio_stream_change (this, buf);
       this->audio_fifo->put (this->audio_fifo, buf);
       return -1;
     } else {
@@ -452,7 +496,7 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
   buf->pts       = this->pts;
   buf->decoder_info[0] = this->pts - this->dts;
 
-  check_newpts( this, this->pts, PTS_VIDEO );
+  check_newpts( this, buf, PTS_VIDEO );
 
   this->video_fifo->put (this->video_fifo, buf);
 
@@ -476,9 +520,9 @@ static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
   buf->type      = BUF_AUDIO_MPEG + track;
   buf->pts       = this->pts;
 
-  check_newpts( this, this->pts, PTS_AUDIO );
-
   if (this->audio_fifo) {
+    check_newpts( this, buf, PTS_AUDIO );
+    track_audio_stream_change (this, buf);
     this->audio_fifo->put (this->audio_fifo, buf);
   } else {
     buf->free_buffer(buf);
@@ -552,6 +596,7 @@ static int demux_xvdr_seek (demux_plugin_t *this_gen,
     this->last_pts[1]   = 0;
   } else {
     this->buf_flag_seek = 1;
+    this->last_vpts     = INT64_C(-1);
     _x_demux_flush_engine(this->stream);
   }
 
@@ -582,10 +627,11 @@ static demux_plugin_t *demux_xvdr_open_plugin (demux_class_t *class_gen,
                                                xine_stream_t *stream,
                                                input_plugin_t *input_gen)
 {
-LOGMSG("demux open");
   input_plugin_t *input = (input_plugin_t *) input_gen;
   demux_xvdr_t   *this;
   const char     *mrl = input->get_mrl(input);
+
+  LOGMSG("demux open");
 
   if (strncmp(mrl, MRL_ID ":/",       MRL_ID_LEN + 2 ) &&
       strncmp(mrl, MRL_ID "+pipe://", MRL_ID_LEN + 8) &&
@@ -645,7 +691,7 @@ static void demux_xvdr_class_dispose (demux_class_t *this_gen)
 void *demux_xvdr_init_class (xine_t *xine, void *data)
 {
   demux_xvdr_class_t     *this;
-LOGMSG("demux calss init");
+
   this         = calloc(1, sizeof(demux_xvdr_class_t));
   this->config = xine->config;
   this->xine   = xine;
