@@ -161,29 +161,20 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
     return;
   }
 
-    this->stream_id  = p[3];
+  this->stream_id  = p[3];
 
-    if (this->stream_id == 0xBD) {
-      result = parse_private_stream_1(this, p, buf);
-    } else if (this->stream_id == 0xBE) {
-      result = parse_padding_stream(this, p, buf);
-    } else if ((this->stream_id >= 0xC0)
-            && (this->stream_id < 0xDF)) {
-      result = parse_audio_stream(this, p, buf);
-    } else if ((this->stream_id >= 0xE0)
-            && (this->stream_id < 0xEF)) {
-      result = parse_video_stream(this, p, buf);
-    } else {
-      xprintf(this->stream->xine, XINE_VERBOSITY_LOG,
-	      _("xine-lib:demux_mpeg_block: "
-		"Unrecognised stream_id 0x%02x. Please report this to xine developers.\n"), this->stream_id);
-      buf->free_buffer (buf);
-      return;
-    }
-    if (result < 0) {
-      return;
-    }
-    p+=result;
+  if (IS_VIDEO_PACKET(p)) {
+    result = parse_video_stream(this, p, buf);
+  } else if (IS_MPEG_AUDIO_PACKET(p)) {
+    result = parse_audio_stream(this, p, buf);
+  } else if (IS_PADDING_PACKET(p)) {
+    result = parse_padding_stream(this, p, buf);
+  } else if (IS_PS1_PACKET(p)) {
+    result = parse_private_stream_1(this, p, buf);
+  } else {
+    LOGMSG("Unrecognised PES stream 0x%02x", this->stream_id);
+    buf->free_buffer (buf);
+    return;
   }
   if (result < 0) {
     return;
