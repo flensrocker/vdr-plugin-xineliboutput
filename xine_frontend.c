@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.94 2009-01-10 17:02:42 rofafor Exp $
+ * $Id: xine_frontend.c,v 1.95 2009-02-10 16:07:52 phintuka Exp $
  *
  */
 
@@ -756,7 +756,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   this->playback_finished = 1;
   this->terminate_key_pressed = 0;
 
-  if(asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : MRL_ID "://") < 0)
+  if (asprintf(&url, "%s#nocache", mrl ? : MRL_ID "://") < 0)
     return 0;
 
   result = xine_open(this->stream, url);
@@ -1387,7 +1387,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 					    this->video_port);
       LOGMSG("  PIP %d: %dx%d @ (%d,%d)", pid & 0x0f, w, h, x, y);
       LOGMSG("create pip stream done");
-      sprintf(mrl, MRL_ID "+slave://0x%lx#nocache;demux:mpeg_block",
+      sprintf(mrl, MRL_ID "+slave://0x%lx#nocache",
 	      (unsigned long int)this);
       if(!xine_open(posts->pip_stream, mrl) ||
 	 !xine_play(posts->pip_stream, 0, 0)) {
