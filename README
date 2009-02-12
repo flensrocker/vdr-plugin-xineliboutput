@@ -199,7 +199,7 @@ Using remote frontends
 
   Video driver (and display / device):
     With X11 frontend (vdr-sxfe):
-        vdr-sxfe --video [xshm | xv | xvmc | xxmc | vidix |
+        vdr-sxfe --video [xshm | xv | xvmc | xxmc | vidix | vdpau |
                           XDirectFB | opengl | sdl | none [:display]]
       Examples:
         --video xv
@@ -223,6 +223,16 @@ Using remote frontends
       vdr -P"xineliboutput --post=tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
     Disable deinterlacing:
       vdr-sxfe --post tvtime:enable=0
+
+
+VDPAU
+
+  All video scaling, cropping, and postprocessing options must be disabled
+  if the VDPAU output device is used.
+  De-interlacing can be enabled with command-line option --post tvtime:
+  Examples:
+    vdr-sxfe --video vdpau --post tvtime:method=use_vo_driver
+    vdr -P"xineliboutput --video=vdpau --post=tvtime:method=use_vo_driver"
 
 
 HUD OSD
