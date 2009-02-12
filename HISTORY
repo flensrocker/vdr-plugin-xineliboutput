@@ -9,17 +9,24 @@ VDR Plugin 'xineliboutput' Revision History
 - Replaced cIConv with VDR's cCharConv.
 - Supports only for vdr-1.6.0 or later.
 - Added an option to limit number of remote clients
-- Added math library (-lm) to vdr-sxfe when building with 
-  Xrender / HUD OSD support (Thanks to Anssi Hannula)
 - Implemented build-time configuration script
 - Replaced build-time options INTERPRET_LIRC_KEYS and FE_TOGGLE_FULLSCREEN
   with run-time option --hotkeys
-- Added an option to adjust the stepping value that is used for 
+- Added an option to adjust the stepping value that is used for
   metronom live mode sync (Thanks to Andreas Auras)
 - Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
 - Added an option to use xine-lib DVB subtitles decoder
+
+2009-02-12: Version 1.0.4  (branch-1_0_x)
+Backported bugfixes from CVS trunk:
+- Fixed default grab quality (Thanks to Jochen Dolze, patch #2454827)
+- Added math library (-lm) to vdr-sxfe when building with
+  Xrender / HUD OSD support (Thanks to Anssi Hannula)
+- Reduced H.264 logging
+- Fixed CD track count query
+- Fixed mrl backwards compability
 
 2008-10-24: Version 1.0.3  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
