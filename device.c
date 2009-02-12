@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.3 2008-12-10 23:00:18 phintuka Exp $
+ * $Id: device.c,v 1.57.2.4 2009-02-12 10:36:00 phintuka Exp $
  *
  */
 
@@ -1476,6 +1476,9 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 				 int Quality, int SizeX, int SizeY)
 {
   TRACEF("cXinelibDevice::GrabImage");
+
+  if (Quality < 0)
+    Quality = 100;
 
   if(m_local)
     return m_local->GrabImage(Size, Jpeg, Quality, SizeX, SizeY);
