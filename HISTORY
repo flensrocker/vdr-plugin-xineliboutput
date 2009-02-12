@@ -1,6 +1,15 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+2009-02-12: Version 1.0.4  (branch-1_0_x)
+Backported bugfixes from CVS trunk:
+- Fixed default grab quality (Thanks to Jochen Dolze, patch #2454827)
+- Added math library (-lm) to vdr-sxfe when building with
+  Xrender / HUD OSD support (Thanks to Anssi Hannula)
+- Reduced H.264 logging
+- Fixed CD track count query
+- Fixed mrl backwards compability
+
 2008-10-24: Version 1.0.3  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
 - Added missing sxfe display locks (Thanks to Antti Seppälä)
