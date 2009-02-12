@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.6 2008-11-15 13:04:19 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.7 2009-02-12 12:53:29 phintuka Exp $
  *
  */
 
@@ -140,8 +140,8 @@ static void *kbd_receiver_thread(void *fe)
 
   terminate_key_pressed = 0;
 
-  system("setterm -cursor off");
-  system("setterm -blank off");
+  if (system("setterm -cursor off") == -1) ;
+  if (system("setterm -blank off")  == -1) ;
 
   /* Set stdin to deliver keypresses without buffering whole lines */
   tcgetattr(STDIN_FILENO, &saved_tm);
@@ -190,7 +190,7 @@ static void *kbd_receiver_thread(void *fe)
   alarm(0);
   LOGDBG("Keyboard thread terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  system("setterm -cursor on");
+  if (system("setterm -cursor on") == -1) ;
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -255,7 +255,7 @@ static void kbd_stop(void)
   pthread_join (kbd_thread, &p);
 
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  system("setterm -cursor on");
+  if (system("setterm -cursor on") == -1) ;
 }
 
 static void SignalHandler(int signum)
@@ -547,10 +547,12 @@ int main(int argc, char *argv[])
       if(mrl) {
 	char *tmp = mrl;
 	mrl = NULL;
-	asprintf(&mrl, "%s//%s:%d", tmp, address, port);
+	if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0)
+          mrl = NULL;
 	free(tmp);
       } else
-	asprintf(&mrl, "xvdr://%s:%d", address, port);
+	if (asprintf(&mrl, "xvdr://%s:%d", address, port) < 0)
+          mrl = NULL;
     } else {
       PRINTF("---------------------------------------------------------------\n"
 	     "WARNING: MRL not given and server not found from local network.\n"
@@ -563,8 +565,8 @@ int main(int argc, char *argv[])
   if(mrl && strncmp(mrl, "xvdr:", 5) && strncmp(mrl, "xvdr+", 5)) {
     char *mrl2 = mrl;
     PRINTF("WARNING: MRL does not start with \'xvdr:\' (%s)", mrl);
-    asprintf(&mrl, "xvdr://%s", mrl);
-    free(mrl2);
+    if (asprintf(&mrl, "xvdr://%s", mrl) >= 0)
+      free(mrl2);
   }
 
   {
