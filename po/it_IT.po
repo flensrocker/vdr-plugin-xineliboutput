@@ -7,12 +7,15 @@ msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
 "POT-Creation-Date: 2009-01-07 15:46+0200\n"
-"PO-Revision-Date: 2008-10-05 02:58+0100\n"
+"PO-Revision-Date: 2009-02-08 20:09+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ISO-8859-15\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Italian\n"
+"X-Poedit-Country: ITALY\n"
+"X-Poedit-SourceCharset: utf-8\n"
 
 msgid "custom"
 msgstr "personalizza"
@@ -144,16 +147,16 @@ msgid "transparent grayscale"
 msgstr "scala di grigi trasparente"
 
 msgid "yes"
-msgstr "sÏ"
+msgstr "s√¨"
 
 msgid "nearest"
-msgstr "pi˘ vicino"
+msgstr "pi√π vicino"
 
 msgid "bilinear"
 msgstr "bilineare"
 
 msgid "none"
-msgstr ""
+msgstr "nessuno"
 
 msgid "nonref"
 msgstr ""
@@ -261,7 +264,7 @@ msgid "Audio settings"
 msgstr "Impostazioni audio"
 
 msgid "Headphone audio mode"
-msgstr "Modalit‡ cuffie audio"
+msgstr "Modalit√† cuffie audio"
 
 msgid "Audio Compression"
 msgstr "Compressione audio"
@@ -294,7 +297,7 @@ msgid "Default playlist not found"
 msgstr "Lista esec. predefinita non trovata"
 
 msgid "Default playlist is not symlink"
-msgstr "La lista esec. predefinita non Ë un link simbolico"
+msgstr "La lista esec. predefinita non √® un link simbolico"
 
 msgid "Default playlist not defined"
 msgstr "Lista esec. predefinita non definita"
@@ -334,7 +337,7 @@ msgid "  Height"
 msgstr "  Altezza"
 
 msgid "  Speed"
-msgstr "  Velocit‡"
+msgstr "  Velocit√†"
 
 msgid "fps"
 msgstr "fps"
@@ -343,19 +346,19 @@ msgid "Audio Equalizer"
 msgstr "Equalizzatore audio"
 
 msgid "Use Video-Out Driver"
-msgstr ""
+msgstr "Utilizza driver uscita video"
 
 msgid "vector"
-msgstr ""
+msgstr "vettoriale"
 
 msgid "full"
-msgstr ""
+msgstr "intero"
 
 msgid "half (top)"
-msgstr ""
+msgstr "met√† (superiore)"
 
 msgid "half (bottom)"
-msgstr ""
+msgstr "met√† (inferiore)"
 
 msgid "Video"
 msgstr "Video"
@@ -388,16 +391,16 @@ msgid "Post processing (ffmpeg)"
 msgstr "Codifica (ffmpeg)"
 
 msgid "  Quality"
-msgstr "  Qualit‡"
+msgstr "  Qualit√†"
 
 msgid "  Mode"
-msgstr "  Modalit‡"
+msgstr "  Modalit√†"
 
 msgid "  Method"
 msgstr "  Metodo"
 
 msgid "  Cheap mode"
-msgstr "  Modalit‡ economica"
+msgstr "  Modalit√† economica"
 
 msgid "  Pulldown"
 msgstr "  Pulldown"
@@ -448,7 +451,7 @@ msgid "  Temporal strength"
 msgstr "  Resistenza temporale"
 
 msgid "HUE"
-msgstr "Tonalit‡"
+msgstr "Tonalit√†"
 
 msgid "Saturation"
 msgstr "Saturazione"
@@ -457,7 +460,7 @@ msgid "Contrast"
 msgstr "Contrasto"
 
 msgid "Brightness"
-msgstr "Luminosit‡"
+msgstr "Luminosit√†"
 
 msgid "Sharpness"
 msgstr ""
@@ -469,7 +472,7 @@ msgid "Smooth fast forward"
 msgstr "Avanzamento veloce leggero"
 
 msgid "Fastest trick speed"
-msgstr "Trucco velocit‡ pi˘ rapida"
+msgstr "Trucco velocit√† pi√π rapida"
 
 msgid "On-Screen Display"
 msgstr "Messaggi in sovrimpressione (OSD)"
@@ -647,3 +650,4 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+
