@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.56.2.3 2008-12-10 22:56:15 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.56.2.4 2009-02-12 11:14:15 phintuka Exp $
  *
  */
 
@@ -1690,7 +1690,8 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   bool accepted = SVDRPhosts.Acceptable(sin.sin_addr.s_addr);
   if(!accepted) {
     LOGMSG("Address not allowed to connect (svdrphosts.conf).");
-    write(fd, "Access denied.\r\n", 16);
+    if (write(fd, "Access denied.\r\n", 16) != 16)
+      LOGERR("Write failed");
     CLOSESOCKET(fd);  
     return;    
   }
