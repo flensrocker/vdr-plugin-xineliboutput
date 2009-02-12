@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.34 2008-04-28 20:53:07 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.34.2.1 2009-02-12 11:18:37 phintuka Exp $
  *
  */
 
@@ -676,9 +676,11 @@ void cUdpScheduler::Action(void)
 #endif
 
   /* UDP Scheduler needs high priority */
-  SetPriority(-5);
-  (void)nice(-5);
+  const int priority = -5;
+  SetPriority(priority);
   errno = 0;
+  if ((nice(priority) == -1) && errno)
+    LOGDBG("cUdpScheduler: Can't nice to value: %d", priority);
 
   m_Lock.Lock();
 
