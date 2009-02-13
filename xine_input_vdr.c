@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.227 2009-02-10 16:04:48 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.228 2009-02-13 15:10:31 phintuka Exp $
  *
  */
 
@@ -90,9 +90,6 @@
 #define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
 #define HD_BUF_ELEM_SIZE        (2048+64)
 #define TEST_H264               1
-#define TEST_DVB_SPU            1  /* process DVB SPUs */
-#define TEST_DVD_SPU            1  /* process DVD SPUs */
-#define VDR_SUBTITLES           1  /* compability mode for vdr-subtitles plugin */
 
 #define RADIO_MAX_BUFFERS  10
 
@@ -292,7 +289,6 @@ typedef struct vdr_input_plugin_s {
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
   uint8_t             bih_posted : 1;
-  uint8_t             dvd_subtitles : 1;
 
   /* SCR */
   adjustable_scr_t   *scr;
@@ -4397,74 +4393,6 @@ static int vdr_plugin_keypress(vdr_input_plugin_if_t *this_if,
 
 /******************************* Plugin **********************************/
 
-static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  /* track audio stream changes */
-  int audio_changed = 0;
-  if(buf->content[3] >= 0xc0 && buf->content[3] < 0xe0) {
-    /* audio */
-    if(this->prev_audio_stream_id != (buf->content[3] << 8)) {
-      /*LOGDBG("Audio changed -> %d (%02X)", buf->content[3] - 0xc0, buf->content[3]);*/
-      this->prev_audio_stream_id = buf->content[3] << 8;
-      audio_changed = 1;
-    }
-  }
-  else if(buf->content[3] == PRIVATE_STREAM1) {
-    /* PS1 */
-    int PayloadOffset  = buf->content[8] + 9;
-    int SubStreamId    = buf->content[PayloadOffset];
-    int SubStreamType  = SubStreamId & 0xF0;
-    int SubStreamIndex = SubStreamId & 0x1F;
-    switch (SubStreamType) {
-      case 0x20: /* SPU */
-      case 0x30: /* SPU */
-	/*LOGMSG("SPU %d", SubStreamId);*/
-        break;
-      case 0x80: /* AC3 & DTS */
-	if(this->prev_audio_stream_id != ((PRIVATE_STREAM1<<8) | SubStreamId)) {
-	  LOGDBG("Audio changed -> AC3 %d (BD:%02X)", SubStreamIndex, SubStreamId);
-	  this->prev_audio_stream_id = ((PRIVATE_STREAM1<<8) | SubStreamId);
-	  audio_changed = 1;
-	}
-	break;
-      case 0xA0: /* LPCM */
-	if(this->prev_audio_stream_id != ((PRIVATE_STREAM1<<8) | SubStreamId)) {
-	  LOGDBG("Audio changed -> LPCM %d (BD:%02X)", SubStreamIndex, SubStreamId);
-	  this->prev_audio_stream_id = ((PRIVATE_STREAM1<<8) | SubStreamId);
-	  audio_changed = 1;
-	}
-	break;
-      default:
-	/*LOGMSG("Unknown PS1 substream %d", SubStreamId);*/
-	break;
-    }
-  } else {
-    /* no audio */
-    return;
-  }
-
-  if(audio_changed) {
-#if !defined(BUF_CONTROL_RESET_TRACK_MAP)
-#  warning xine-lib is older than 1.1.2. Multiple audio streams are not supported.
-#else
-    put_control_buf(this->stream->audio_fifo,
-		    this->stream->audio_fifo,
-		    BUF_CONTROL_RESET_TRACK_MAP);
-#endif
-#if 0
-    put_control_buf(this->stream->audio_fifo,
-		    this->stream->audio_fifo,
-		    BUF_CONTROL_RESET_DECODER);
-    put_control_buf(this->stream->audio_fifo,
-		    this->stream->audio_fifo,
-		    BUF_CONTROL_START);
-#endif
-#if 0
-    LOGMSG("VDR-Given stream: %04x", this->audio_stream_id);
-#endif
-  }
-}
-
 #if XINE_VERSION_CODE < 10190
 static off_t vdr_plugin_read (input_plugin_t *this_gen, char *buf_gen, off_t len)
 #else
@@ -4479,24 +4407,6 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len
 #ifdef CACHE_FIRST_IFRAME
 #  include "cache_iframe.c"
 #endif
-
-static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  /* PTS wrap workaround for mpeg_block demuxer */
-  int64_t pts = pes_get_pts(buf->content, buf->size);
-  if(pts >= 0) {
-    if (IS_VIDEO_PACKET(buf->content))
-      this->last_delivered_vid_pts = pts;
-    else {
-      if(pts > 0x40400000 && 
-	 this->last_delivered_vid_pts < 0x40000000 && 
-	 this->last_delivered_vid_pts > 0) {
-	LOGMSG("VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, pts);
-	pes_strip_pts(buf->content, buf->size);
-      }
-    }
-  }
-}
 
 /*
  * post_frame_end()
@@ -4742,123 +4652,6 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 }
 #endif /* TEST_H264 */
 
-#if defined(TEST_DVB_SPU) || defined(TEST_DVD_SPU)
-/*
- * post_spu()
- *
- * Subtitle stream demuxing
- *  - mpeg_block demuxer does not regonize DVB subtitles
- */
-static buf_element_t *post_spu(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  uint8_t *p = buf->content;
-  uint     packet_len  = buf->size;
-  uint     header_len  = p[8];
-  uint     substream_header_len = 4;
-  int64_t  pts = pes_get_pts(buf->content, buf->size);
-
-# ifdef VDR_SUBTITLES
-  /* Compatibility mode for old subtitles plugin: */
-  if ((p[7] & 0x01) && (p[header_len + 6] & 0x81) == 0x01 && p[header_len + 7] == 0x81) {
-    header_len--;
-    substream_header_len = 1;
-  }
-# endif
-
-  /* Skip PES header */
-  p          += header_len + 9;
-  packet_len -= header_len + 9;
-
-  /* Process only PS1 SPU frames */
-  if ((p[0] & 0xE0) == 0x20) {
-    uint spu_id = (p[0] & 0x1f);
-# if 0
-    uint payload_len = (buf->content[4] << 8) | buf->content[5];
-    LOGMSG("DV? SPU: %d (%5d bytes : %d %s) -- %02x %02x %02x %02x %02x %02x %02x %02x", 
-	   spu_id, packet_len, payload_len, pts>=0?"pts":"   ",
-	   (unsigned)p[0], (unsigned)p[1], (unsigned)p[2], (unsigned)p[3],
-	   (unsigned)p[4], (unsigned)p[5], (unsigned)p[6], (unsigned)p[7]);
-# endif
-
-# if 1
-    _x_select_spu_channel(this->stream, spu_id);
-# else
-    /* only one SPU channel */
-    spu_id = 0;
-# endif
-
-# ifdef TEST_DVD_SPU
-    if (pts >= 0)
-      this->dvd_subtitles = 0;
-
-    if (this->dvd_subtitles ||
-	( pts >= 0 && substream_header_len != 1 &&
-	  (p[2] || (p[3] & 0xfe)))) {
-      // || if (p[4] == 20 && p[5] == 00 && p[6] == 0f || p[4] == 0f) --> DVB
-      LOGMSG("post_spu: Detected DVD SPU");
-      this->dvd_subtitles = 1;
-      spu_id = (p[0] & 0x1f);
-
-      buf->content   = p+1;
-      buf->size      = packet_len-1;
-
-      buf->type      = BUF_SPU_DVD + spu_id;
-      buf->decoder_flags |= BUF_FLAG_SPECIAL;
-      buf->decoder_info[1] = BUF_SPECIAL_SPU_DVD_SUBTYPE;
-      buf->decoder_info[2] = SPU_DVD_SUBTYPE_PACKAGE;
-      buf->pts       = pts;
-
-      this->stream->video_fifo->put (this->stream->video_fifo, buf);   
-      return NULL;
-    }
-# endif
-
-# ifdef TEST_DVB_SPU
-    /* Skip substream header */
-    p += substream_header_len;
-    buf->content = p;
-    buf->size    = packet_len - substream_header_len;
-
-    /* Special buffer when payload packet changes */
-    if (pts >= 0) {
-      buf_element_t *cbuf = get_buf_element(this, 0, 1);
-      int data_id        = *(p+0);
-      int substream_id   = *(p+1);
-      int segment_type   = *(p+3);
-      int page_id        = (*(p+4) << 8) | *(p+5);
-      int segment_length = (*(p+6) << 8) | *(p+7);
-
-      spu_dvb_descriptor_t *spu_descriptor = (spu_dvb_descriptor_t *) cbuf->content;
-      memset(spu_descriptor, 0, sizeof(spu_dvb_descriptor_t));
-      spu_descriptor->comp_page_id = page_id;
-
-      LOGDBG("DVB SPU: data_id %02x, substream_id %02x, segment_type %02x, page_id %04x, segment_len %d",
-	     data_id, substream_id, segment_type, page_id, segment_length);
-
-      cbuf->type = BUF_SPU_DVB + spu_id;
-      cbuf->size = 0;
-      cbuf->decoder_flags   = BUF_FLAG_SPECIAL;
-      cbuf->decoder_info[1] = BUF_SPECIAL_SPU_DVB_DESCRIPTOR;
-      cbuf->decoder_info[2] = sizeof(spu_dvb_descriptor_t);
-      cbuf->decoder_info_ptr[2] = spu_descriptor;
-
-      this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
-    }
-
-    buf->type      = BUF_SPU_DVB + spu_id;
-    buf->pts       = pts;
-    buf->decoder_info[2] = pts >= 0 ? 0xffff : 0; /* hack - size unknown here (?) */
-
-    this->stream->video_fifo->put (this->stream->video_fifo, buf);
-
-    return NULL;
-  }
-#endif
-
-  LOGDBG("post_spu: PES packet left unprocessed !");
-  return buf;
-}
-#endif
 
 /*
  * Preprocess buffer before passing it to demux
@@ -4888,14 +4681,8 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   }
 
   /* control buffers go always to demuxer */
-  if ((buf->type & BUF_MAJOR_MASK) == BUF_CONTROL_BASE) {
-    if (buf->type == BUF_CONTROL_FLUSH_DECODER) {
-      /* decoder flush only to video fifo */
-      this->stream->video_fifo->put(this->stream->video_fifo, buf);
-      return NULL;
-    }
+  if ((buf->type & BUF_MAJOR_MASK) == BUF_CONTROL_BASE)
     return buf;
-  }
 
   pthread_mutex_lock(&this->lock);
 
@@ -5113,10 +4900,12 @@ static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
  * Demux some buffers not supported by mpeg_block demuxer:
  *  - MPEG TS
  *  - H.264 video
- *  - DVB Subtitles
  */
 static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
 {
+  if (buf->type != BUF_DEMUX_BLOCK)
+    return buf;
+
   if (DATA_IS_TS(buf->content)) {
     demux_ts(this, buf);
     return NULL;
@@ -5136,38 +4925,11 @@ static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
   }
 #endif
 
-#if defined(TEST_DVB_SPU) || defined(TEST_DVD_SPU)
-  /* DVB/DVD subtitles */
-  if (buf->content[3] == PRIVATE_STREAM1) {
-    uint8_t *data           = buf->content;
-    int      payload_offset = data[8] + 9;
-# ifdef VDR_SUBTITLES
-    /* Compatibility mode for old subtitles plugin: */
-    if ((data[7] & 0x01) && (data[payload_offset - 3] & 0x81) == 0x01 && data[payload_offset - 2] == 0x81) {
-      payload_offset--;
-      LOGDBG("DVB SPU: Old vdr-subtitles compability mode");
-    }
-# endif
-    uint8_t substream_id   = data[payload_offset];
-    uint8_t substream_type = substream_id & 0xF0;
-    switch (substream_type) {
-      case 0x20: /* SPU */
-      case 0x30: /* SPU */
-        buf = post_spu(this, buf);
-        break;
-      default: break;
-    }
-    return buf;
-  }
-#endif
-
   return buf;
 }
 
 /*
  * Postprocess buffer before passing it to demuxer
- * - Track audio stream changes
- * - Detect pts wraps
  * - Signal new pts upstream after stream changes
  * - Special handling for still images
  * - Count video frames for SCR tuning
@@ -5179,9 +4941,8 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
   cache_iframe(this, buf);
 #endif
 
-  track_audio_stream_change(this, buf);
-
-  pts_wrap_workaround(this, buf);
+  if (buf->type != BUF_DEMUX_BLOCK)
+    return;
 
   /* Send current PTS ? */
   if(this->send_pts) {
