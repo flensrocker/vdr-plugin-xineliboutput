@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.228 2009-02-13 15:10:31 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.229 2009-02-13 15:19:06 phintuka Exp $
  *
  */
 
@@ -1567,27 +1567,7 @@ static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
   }
 }
 
-static buf_element_t *make_padding_frame(vdr_input_plugin_t *this)
-{
-  static const uint8_t padding[] = {0x00,0x00,0x01,PADDING_STREAM,0x00,0x02,0xff,0xff};
-  buf_element_t *buf;
-
-  buf = get_buf_element(this, 8, 1);
-
-  if(!buf && this->stream->audio_fifo)
-    buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
-
-  if(buf) {
-    buf->size = 8;
-    buf->content = buf->mem;
-    buf->type = BUF_DEMUX_BLOCK;
-    memcpy(buf->content, padding, 8);
-  }
-
-  return buf;
-}
-
-void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
+static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
 {
   buf_element_t *buf = pool->buffer_pool_try_alloc(pool);
   if(buf) {
@@ -1596,7 +1576,7 @@ void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
   }
 }
 
-/* 
+/*
  * post_sequence_end()
  *
  * Add MPEG2 or H.264 sequence end code to fifo buffer
@@ -1806,6 +1786,7 @@ static buf_element_t *fifo_read_block (input_plugin_t *this_gen,
   }
 
   LOGDBG("fifo_read_block: return NULL !");
+  errno = EAGAIN;
   return NULL;
 }
 
@@ -5057,15 +5038,16 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     /* check for disconnection/termination */
     if (!this->funcs.push_input_write /* reading from socket */ &&
         !this->control_running) {
+      /* disconnected ? */
       handle_disconnect(this);
-      return NULL; /* disconnected ? */
+      errno = ENOTCONN;
+      return NULL;
     }
 
     /* Return immediately if demux_action_pending flag is set */
     if (this->stream->demux_action_pending) {
-      if (NULL != (buf = make_padding_frame(this)))
-        return buf;
-      LOGMSG("vdr_plugin_read_block: demux_action_pending, make_padding_frame failed");
+      errno = EAGAIN;
+      return NULL;
     }
 
 #ifdef CACHE_FIRST_IFRAME
@@ -5103,10 +5085,8 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 	this->padding_cnt = 0;
       }
 #endif
-      if (NULL != (buf = make_padding_frame(this)))
-	return buf;
-      LOGMSG("make_padding_frame FAILED");
-      continue;
+      errno = EAGAIN;
+      return NULL;
     }
     this->padding_cnt = 0;
 
@@ -5119,17 +5099,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       return buf;
     }
 
-    int is_ts = DATA_IS_TS(buf->content);
-    /* ignore UDP/RTP "idle" padding */
-    if (!is_ts && IS_PADDING_PACKET(buf->content))
-      return buf;
-
     buf = demux_buf(this, buf);
-
-#ifdef TEST_SCR_PAUSE
-    //    if (is_ts && !buf && need_pause)
-    //      scr_tuning_set_paused(this);
-#endif
 
   } while (!buf);
 
@@ -5372,8 +5342,7 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
   this->buffer_pool = this->stream->video_fifo;
 
   /* enable resample method */
-  xine->config->update_num(xine->config,
-			   "audio.synchronization.av_sync_method",1);
+  xine->config->update_num(xine->config, "audio.synchronization.av_sync_method", 1);
 
   /* register our own scr provider */
   this->scr = adjustable_scr_start(this->class->xine);
