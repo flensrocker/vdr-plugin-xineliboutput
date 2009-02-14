@@ -4,14 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: bitstream.h,v 1.2 2008-02-04 22:41:14 phintuka Exp $
+ * $Id: bitstream.h,v 1.3 2009-02-14 20:44:15 phintuka Exp $
  *
  */
 
 #ifndef _XINELIBOUTPUT_BITSTREAM_H_
 #define _XINELIBOUTPUT_BITSTREAM_H_
-
-#include <stdint.h>
 
 
 # ifdef NOCACHE
