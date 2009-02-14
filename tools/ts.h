@@ -4,12 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.6 2009-02-05 20:11:10 phintuka Exp $
+ * $Id: ts.h,v 1.7 2009-02-14 20:44:30 phintuka Exp $
  *
  */
 
 #ifndef _XINELIBOUTPUT_TS_H_
 #define _XINELIBOUTPUT_TS_H_
+
+#include "mpeg.h"
 
 /* Avoid warnings when included to VDR plugin */
 #undef TS_SYNC_BYTE
