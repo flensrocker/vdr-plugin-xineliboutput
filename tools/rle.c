@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.2 2009-02-16 16:11:51 phintuka Exp $
+ * $Id: rle.c,v 1.3 2009-02-16 16:14:58 phintuka Exp $
  *
  */
 
@@ -23,7 +23,7 @@
  * rle_compress()
  *
  */
-int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, int w, int h)
+int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint h)
 {
   xine_rle_elem_t rle, *rle_p = 0, *rle_base;
   int x, y, num_rle = 0, rle_size = 8128;
@@ -68,29 +68,29 @@ int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, int w, int h)
  * - fast scaling in compressed form without decompression
  */
 xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elems,
-                                   int w, int h, int new_w, int new_h)
+                                   uint w, uint h, uint new_w, uint new_h)
 {
   #define FACTORBASE      0x100
   #define FACTOR2PIXEL(f) ((f)>>8)
   #define SCALEX(x) FACTOR2PIXEL(factor_x*(x))
   #define SCALEY(y) FACTOR2PIXEL(factor_y*(y))
 
-  int old_w = w, old_h = h;
-  int old_y = 0, new_y = 0;
-  int factor_x = FACTORBASE*new_w/old_w;
-  int factor_y = FACTORBASE*new_h/old_h;
-  int rle_size = MAX(8128, *rle_elems * new_h/h ); /* guess ... */
-  int num_rle  = 0;
+  uint old_w = w, old_h = h;
+  uint old_y = 0, new_y = 0;
+  uint factor_x = FACTORBASE*new_w/old_w;
+  uint factor_y = FACTORBASE*new_h/old_h;
+  uint rle_size = MAX(8128, *rle_elems * new_h/h ); /* guess ... */
+  uint num_rle  = 0;
   xine_rle_elem_t *new_rle = (xine_rle_elem_t*)malloc(sizeof(xine_rle_elem_t)*rle_size);
   xine_rle_elem_t *new_rle_start = new_rle;
 
   /* we assume rle elements are breaked at end of line */
   while (old_y < old_h) {
-    int elems_current_line = 0;
-    int old_x = 0, new_x = 0;
+    uint elems_current_line = 0;
+    uint old_x = 0, new_x = 0;
 
     while (old_x < old_w) {
-      int new_x_end = SCALEX(old_x + old_rle->len);
+      uint new_x_end = SCALEX(old_x + old_rle->len);
 
       if (new_x_end > new_w) {
         new_x_end = new_w;
@@ -109,7 +109,7 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
         num_rle++;
         elems_current_line++;
 
-        if( (num_rle + 1) >= rle_size ) {
+        if ( (num_rle + 1) >= rle_size ) {
           rle_size *= 2;
           new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
           new_rle = new_rle_start + num_rle;
@@ -131,7 +131,7 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
 
       while (dup-- && (new_y+1<new_h)) {
         xine_rle_elem_t *prevline;
-        int n;
+        uint n;
         if ( (num_rle + elems_current_line + 1) >= rle_size ) {
           rle_size *= 2;
           new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
@@ -149,7 +149,7 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
 
     } else if (factor_y < FACTORBASE) {
       /* scale down -- drop next line ? */
-      int skip = new_y - SCALEY(old_y);
+      uint skip = new_y - SCALEY(old_y);
       if (old_y == old_h-1) {
         /* one (old) line left ; don't skip it if new rle is not complete */
         if (new_y < new_h)
