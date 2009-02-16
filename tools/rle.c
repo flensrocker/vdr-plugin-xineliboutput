@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.1 2008-12-05 16:34:21 phintuka Exp $
+ * $Id: rle.c,v 1.2 2009-02-16 16:11:51 phintuka Exp $
  *
  */
 
@@ -32,25 +32,25 @@ int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, int w, int h)
   rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
   rle_base = rle_p;
 
-  for( y = 0; y < h; y++ ) {
+  for (y = 0; y < h; y++) {
     rle.len = 0;
     rle.color = 0;
     c = data + y * w;
-    for( x = 0; x < w; x++, c++ ) {
-      if( rle.color != *c ) {
-	if( rle.len ) {
-	  if( (num_rle + h-y+1) > rle_size ) {
-	    rle_size *= 2;
-	    rle_base = (xine_rle_elem_t*)realloc( rle_base, 4*rle_size );
-	    rle_p = rle_base + num_rle;
-	  }
-	  *rle_p++ = rle;
-	  num_rle++;
-	}
-	rle.color = *c;
-	rle.len = 1;
+    for (x = 0; x < w; x++, c++) {
+      if (rle.color != *c) {
+        if (rle.len) {
+          if ( (num_rle + h-y+1) > rle_size ) {
+            rle_size *= 2;
+            rle_base = (xine_rle_elem_t*)realloc( rle_base, 4*rle_size );
+            rle_p = rle_base + num_rle;
+          }
+          *rle_p++ = rle;
+          num_rle++;
+        }
+        rle.color = *c;
+        rle.len = 1;
       } else {
-	rle.len++;
+        rle.len++;
       }
     }
     *rle_p++ = rle;
@@ -68,7 +68,7 @@ int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, int w, int h)
  * - fast scaling in compressed form without decompression
  */
 xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elems,
-				   int w, int h, int new_w, int new_h)
+                                   int w, int h, int new_w, int new_h)
 {
   #define FACTORBASE      0x100
   #define FACTOR2PIXEL(f) ((f)>>8)
@@ -85,15 +85,15 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
   xine_rle_elem_t *new_rle_start = new_rle;
 
   /* we assume rle elements are breaked at end of line */
-  while(old_y < old_h) {
+  while (old_y < old_h) {
     int elems_current_line = 0;
     int old_x = 0, new_x = 0;
 
-    while(old_x < old_w) { 
+    while (old_x < old_w) {
       int new_x_end = SCALEX(old_x + old_rle->len);
 
-      if(new_x_end > new_w) {
-	new_x_end = new_w;
+      if (new_x_end > new_w) {
+        new_x_end = new_w;
       }
 
       new_rle->len   = new_x_end - new_x;
@@ -102,66 +102,66 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
       old_x += old_rle->len;
       old_rle++; /* may be incremented to last element + 1 (element is not accessed anymore) */
 
-      if(new_rle->len > 0) { 
-	new_x += new_rle->len;
-	new_rle++;
+      if (new_rle->len > 0) {
+        new_x += new_rle->len;
+        new_rle++;
 
-	num_rle++;
-	elems_current_line++;
-	
-	if( (num_rle + 1) >= rle_size ) {
-	  rle_size *= 2;
-	  new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
-	  new_rle = new_rle_start + num_rle;
-	}
+        num_rle++;
+        elems_current_line++;
+
+        if( (num_rle + 1) >= rle_size ) {
+          rle_size *= 2;
+          new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
+          new_rle = new_rle_start + num_rle;
+        }
       }
     }
-    if(new_x < new_w)
+    if (new_x < new_w)
       (new_rle-1)->len += new_w - new_x;
-    old_y++; 
+    old_y++;
     new_y++;
 
-    if(factor_y > FACTORBASE) {
+    if (factor_y > FACTORBASE) {
       /* scale up -- duplicate current line ? */
       int dup = SCALEY(old_y) - new_y;
 
       /* if no lines left in (old) rle, copy all lines still missing from new */
-      if(old_y == old_h) 
-	dup = new_h - new_y - 1;
+      if (old_y == old_h)
+        dup = new_h - new_y - 1;
 
-      while(dup-- && (new_y+1<new_h)) {
-	xine_rle_elem_t *prevline;
-	int n;
-	if( (num_rle + elems_current_line + 1) >= rle_size ) {
-	  rle_size *= 2;
-	  new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
-	  new_rle = new_rle_start + num_rle;
-	}
-	
-	/* duplicate previous line */
-	prevline = new_rle - elems_current_line;
-	for(n = 0; n < elems_current_line; n++) {
-	  *new_rle++ = *prevline++;
-	  num_rle++;
-	}
-	new_y++;
+      while (dup-- && (new_y+1<new_h)) {
+        xine_rle_elem_t *prevline;
+        int n;
+        if ( (num_rle + elems_current_line + 1) >= rle_size ) {
+          rle_size *= 2;
+          new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
+          new_rle = new_rle_start + num_rle;
+        }
+
+        /* duplicate previous line */
+        prevline = new_rle - elems_current_line;
+        for (n = 0; n < elems_current_line; n++) {
+          *new_rle++ = *prevline++;
+          num_rle++;
+        }
+        new_y++;
       }
 
-    } else if(factor_y < FACTORBASE) {
+    } else if (factor_y < FACTORBASE) {
       /* scale down -- drop next line ? */
       int skip = new_y - SCALEY(old_y);
-      if(old_y == old_h-1) {
-	/* one (old) line left ; don't skip it if new rle is not complete */
-	if(new_y < new_h)
-	  skip = 0;
+      if (old_y == old_h-1) {
+        /* one (old) line left ; don't skip it if new rle is not complete */
+        if (new_y < new_h)
+          skip = 0;
       }
-      while(skip-- && 
-	    old_y<old_h /* rounding error may add one line, filter it out */) {
-	for(old_x = 0; old_x < old_w;) {
-	  old_x += old_rle->len;
-	  old_rle++;
-	}
-	old_y++;
+      while (skip-- &&
+             old_y<old_h /* rounding error may add one line, filter it out */) {
+        for (old_x = 0; old_x < old_w;) {
+          old_x += old_rle->len;
+          old_rle++;
+        }
+        old_y++;
       }
     }
   }
