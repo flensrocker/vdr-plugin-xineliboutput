@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.67 2009-01-26 08:58:52 phintuka Exp $
+ * $Id: frontend.c,v 1.68 2009-02-16 16:27:20 phintuka Exp $
  *
  */
 
@@ -35,6 +35,7 @@
 #include "device.h"
 
 #include "tools/pes.h"
+#include "tools/mpeg.h"
 #include "tools/h264.h"
 #include "tools/general_remote.h"
 #include "tools/iso639.h"
