@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.8 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: ts.h,v 1.9 2009-02-16 16:21:10 phintuka Exp $
  *
  */
 
@@ -12,7 +12,7 @@
 #define _XINELIBOUTPUT_TS_H_
 
 #ifdef __cplusplus
-} /* extern "C" { */
+extern "C" {
 #endif
 
 
