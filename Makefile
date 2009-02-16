@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.79 2009-02-10 15:49:17 phintuka Exp $
+# $Id: Makefile,v 1.80 2009-02-16 16:19:19 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -214,7 +214,10 @@ OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
 OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
 # xine plugins
-OBJS_XINEINPUTVDR = xine_input_vdr.o xine/adjustable_scr.o xine/osd_manager.o tools/rle.o xine/demux_xvdr.o
+OBJS_XINEINPUTVDR = xine_input_vdr.o xine/demux_xvdr.o \
+                    xine/adjustable_scr.o xine/osd_manager.o \
+                    tools/rle.o \
+                    tools/ts.o tools/pes.o tools/mpeg.o tools/h264.o
 
 OBJS_XINE = $(OBJS_XINEINPUTVDR) xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
 
