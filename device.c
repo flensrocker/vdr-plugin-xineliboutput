@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.72 2009-02-06 07:58:40 phintuka Exp $
+ * $Id: device.c,v 1.73 2009-02-16 16:18:24 phintuka Exp $
  *
  */
 
@@ -32,6 +32,7 @@
 #include "osd.h"
 
 #include "tools/listiter.h"
+#include "tools/mpeg.h"
 #include "tools/pes.h"
 #include "tools/ts.h"
 #include "tools/functor.h"
