@@ -4,14 +4,17 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.4 2009-02-12 16:23:41 rofafor Exp $
+ * $Id: ts.c,v 1.5 2009-02-16 16:03:18 phintuka Exp $
  *
  */
 
-#ifndef LOGDBG
-# include "../logdefs.h"
-#endif
+#include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "../logdefs.h"
+
+#include "mpeg.h"
 #include "ts.h"
 #include "pes.h"
 

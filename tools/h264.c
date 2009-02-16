@@ -4,15 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.5 2008-07-29 14:01:36 phintuka Exp $
+ * $Id: h264.c,v 1.6 2009-02-16 16:03:18 phintuka Exp $
  *
  */
 
+#include <stdint.h>
+#include <string.h>
 
-#ifndef LOGDBG
-# include <vdr/tools.h>
-# include "../logdefs.h"
-#endif
+#include "../logdefs.h"
 
 #define NOCACHE 1
 #include "bitstream.h"

@@ -4,9 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.c,v 1.2 2008-06-11 15:51:19 phintuka Exp $
+ * $Id: mpeg.c,v 1.3 2009-02-16 16:03:18 phintuka Exp $
  *
  */
+
+#include <inttypes.h>
+#include <string.h>
 
 #include "mpeg.h"
 

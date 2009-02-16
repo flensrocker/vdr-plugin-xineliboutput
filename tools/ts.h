@@ -4,14 +4,17 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.7 2009-02-14 20:44:30 phintuka Exp $
+ * $Id: ts.h,v 1.8 2009-02-16 16:03:18 phintuka Exp $
  *
  */
 
 #ifndef _XINELIBOUTPUT_TS_H_
 #define _XINELIBOUTPUT_TS_H_
 
-#include "mpeg.h"
+#ifdef __cplusplus
+} /* extern "C" { */
+#endif
+
 
 /* Avoid warnings when included to VDR plugin */
 #undef TS_SYNC_BYTE
@@ -136,6 +139,7 @@ int ts_parse_pmt(pmt_data_t *pmt, uint program_no, const uint8_t *ts_data);
  */
 
 typedef struct ts_state_s ts_state_t;
+struct video_size_s;
 
 ts_state_t *ts_state_init(int buffer_size);
 void        ts_state_reset(ts_state_t *ts);
@@ -143,7 +147,11 @@ void        ts_state_dispose(ts_state_t *ts);
 
 int64_t ts_get_pts(ts_state_t *ts, const uint8_t *data);
 int     ts_get_picture_type(ts_state_t *ts, const uint8_t *data, int h264);
-int     ts_get_video_size(ts_state_t *ts, const uint8_t *data, video_size_t *size, int h264);
+int     ts_get_video_size(ts_state_t *ts, const uint8_t *data, struct video_size_s *size, int h264);
 
+
+#ifdef __cplusplus
+} /* extern "C" { */
+#endif
 
 #endif // _XINELIBOUTPUT_TS_H_

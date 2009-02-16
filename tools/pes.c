@@ -4,9 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.8 2009-02-04 12:11:58 phintuka Exp $
+ * $Id: pes.c,v 1.9 2009-02-16 16:03:18 phintuka Exp $
  *
  */
+
+#include <inttypes.h>
+#include <string.h>
+
+#include "../logdefs.h"
 
 #include "mpeg.h"
 #include "h264.h"
