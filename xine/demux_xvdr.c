@@ -32,6 +32,7 @@
 
 #include "../xine_input_vdr_mrl.h"
 #include "../tools/pes.h"
+#include "../tools/ts.h"
 
 #define VDR_SUBTITLES
 #define TEST_DVB_SPU
@@ -91,6 +92,9 @@ typedef struct {
   xine_t           *xine;
   config_values_t  *config;
 } demux_xvdr_class_t;
+
+static void demux_xvdr_parse_ts(demux_xvdr_t *this, buf_element_t *buf);
+static void demux_xvdr_parse_pes(demux_xvdr_t *this, buf_element_t *buf);
 
 static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
@@ -160,12 +164,10 @@ static void track_audio_stream_change(demux_xvdr_t *this, buf_element_t *buf)
 #endif
 }
 
-
 static void demux_xvdr_parse_pack (demux_xvdr_t *this)
 {
   buf_element_t *buf = NULL;
   uint8_t       *p;
-  int32_t        result;
 
   buf = this->input->read_block (this->input, this->video_fifo, 8128);
 
@@ -218,19 +220,30 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
     }
     this->video_fifo->put (this->video_fifo, buf);
 
-    LOGMSG("buffer type %08x != BUF_DEMUX_BLOCK", buf->type);
-
     return;
   }
 
   p = buf->content; /* len = this->blocksize; */
   buf->decoder_flags = 0;
 
-  if (p[0] || p[1] || (p[2] != 1)) {
-    LOGMSG("PES header %02x %02x %02x (should be 0x000001)", p[0], p[1], p[2]);
-    buf->free_buffer (buf);
+  if (DATA_IS_TS(p)) {
+    demux_xvdr_parse_ts(this, buf);
     return;
   }
+  if (DATA_IS_PES(p)) {
+    demux_xvdr_parse_pes(this, buf);
+    return;
+  }
+
+  LOGMSG("Header %02x %02x %02x (should be 0x000001 or 0x47)", p[0], p[1], p[2]);
+  buf->free_buffer (buf);
+  return;
+}
+
+static void demux_xvdr_parse_pes (demux_xvdr_t *this, buf_element_t *buf)
+{
+  uint8_t       *p = buf->content;
+  int32_t        result;
 
   this->stream_id  = p[3];
 
@@ -247,13 +260,18 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
     buf->free_buffer (buf);
     return;
   }
+
   if (result < 0) {
     return;
   }
 
   LOGMSG("error! freeing buffer.");
   buf->free_buffer (buf);
-  return;
+}
+
+static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
+{
+  buf->free_buffer (buf);
 }
 
 static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
