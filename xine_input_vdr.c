@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.229 2009-02-13 15:19:06 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.230 2009-02-16 16:28:21 phintuka Exp $
  *
  */
 
@@ -67,6 +67,8 @@
 #include "xine_input_vdr_net.h"
 #include "xine_osd_command.h"
 
+#include "tools/mpeg.h"
+#include "tools/h264.h"
 #include "tools/pes.h"
 #include "tools/ts.h"
 
@@ -220,13 +222,6 @@ static void SetupLogLevel(void)
 #ifdef DEBUG_LOCKING
 # include "tools/debug_mutex.h"
 #endif
-
-/************************************************************************/
-
-#include "tools/pes.c"
-#include "tools/mpeg.c"
-#include "tools/h264.c"
-#include "tools/ts.c"
 
 /******************************* DATA ***********************************/
 
