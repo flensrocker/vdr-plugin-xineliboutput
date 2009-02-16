@@ -196,6 +196,15 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
       return;
     }
 
+    if (buf->type == BUF_CONTROL_FLUSH_DECODER) {
+      /* decoder flush only to video fifo */
+      this->stream->video_fifo->put(this->stream->video_fifo, buf);
+      return;
+    }
+
+    if ((buf->type & BUF_MAJOR_MASK) != BUF_CONTROL_BASE)
+      LOGMSG("buffer type %08x != BUF_DEMUX_BLOCK", buf->type);
+
     /* duplicate goes to audio fifo */
     if (this->audio_fifo) {
       buf_element_t *cbuf = this->audio_fifo->buffer_pool_alloc (this->audio_fifo);
