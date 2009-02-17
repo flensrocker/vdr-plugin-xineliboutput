@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.13 2009-01-08 11:58:33 rofafor Exp $
+# * $Id: configure,v 1.14 2009-02-17 10:25:01 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -53,6 +53,7 @@ not_in_list(){
 
 add_flag(){
   eval not_in_list $flag \$$flags_list || return 1
+  logdbg "adding $flag to $flags_list"
   eval $flags_list=\"\$${flags_list} ${flag}\"
 }
 
@@ -136,7 +137,6 @@ test_library_c(){
   if test $err = 0; then
     log "yes"
     add_flags LIBS_$subsys $lib
-    logdbg adding $lib to LIBS_$subsys
   else
     log "no"
     logdbg "--------"
