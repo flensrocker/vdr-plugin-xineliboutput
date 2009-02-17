@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.107 2009-02-10 16:34:19 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.108 2009-02-17 16:18:28 phintuka Exp $
  *
  */
 
@@ -45,6 +45,9 @@
 #include "xine_osd_command.h"
 #include "xine_frontend_internal.h"
 
+#ifdef HAVE_DBUS_GLIB_1
+#  include "tools/gnome_screensaver.h"
+#endif
 
 #ifndef WIN_LAYER_NORMAL
   #define WIN_LAYER_NORMAL 4
@@ -1219,6 +1222,11 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   /* Disable DPMS */
   disable_DPMS(this);
 
+#ifdef HAVE_DBUS_GLIB_1
+  /* Disable GNOME screensaver */
+  gnome_screensaver_control(0);
+#endif
+
   /* setup xine visual type */
   this->x.xine_visual_type         = XINE_VISUAL_TYPE_X11;
   this->x.vis_x11.display          = this->display;
@@ -1645,6 +1653,11 @@ static void sxfe_display_close(frontend_t *this_gen)
 
 #ifdef HAVE_XRENDER
     hud_osd_close(this);
+#endif
+
+#ifdef HAVE_DBUS_GLIB_1
+    /* Restore GNOE screensaver */
+    gnome_screensaver_control(1);
 #endif
 
 #ifdef HAVE_XDPMS
