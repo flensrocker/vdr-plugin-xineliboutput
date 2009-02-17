@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.80 2009-02-16 16:19:19 phintuka Exp $
+# $Id: Makefile,v 1.81 2009-02-17 16:14:14 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -213,6 +213,12 @@ OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
 OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
 OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
+
+ifeq ($(HAVE_DBUS_GLIB_1), yes)
+OBJS_SXFE    += tools/gnome_screensaver.o
+OBJS_SXFE_SO += tools/gnome_screensaver.o
+endif
+
 # xine plugins
 OBJS_XINEINPUTVDR = xine_input_vdr.o xine/demux_xvdr.o \
                     xine/adjustable_scr.o xine/osd_manager.o \
@@ -263,7 +269,7 @@ vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 
 # C code (xine plugins and frontends)
 $(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)):
-	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(CFLAGS_X11) $(OPTFLAGS) -o $@ $<
 
 ### Internationalization (I18N):
 
