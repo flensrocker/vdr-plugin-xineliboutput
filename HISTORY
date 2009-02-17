@@ -3,6 +3,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Added Gnome screensaver support to vdr-sxfe (Thanks to Alex Stansfield)
 - Changed the default grab quality to match VDR's documentation.
 - Added sharpness and noise reduction setup options for VDPAU.
 - Added '-C'/'--config' command-line option to specify xine's configuration file.
