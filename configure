@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.14 2009-02-17 10:25:01 phintuka Exp $
+# * $Id: configure,v 1.15 2009-02-17 10:27:47 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -104,9 +104,9 @@ disabled(){
 #
 
 generate_test_c(){
-  hdrname=$1
-  subsys=$2
-  func=$3
+  hdrname="$1"
+  subsys="$2"
+  func="$3"
   if test x"$subsys" = xX11 ; then
     cat <<EOF >testhdr.c
 #include <X11/Xlib.h>
@@ -130,8 +130,8 @@ EOF
 test_library_c(){
 
   log -n "Checking for $libname ... "
-  generate_test_c $hdr $subsys $func
-  $CC -g testhdr.c -o testhdr $CFLAGS $lib > /dev/null 2>&1
+  generate_test_c "$hdr" "$subsys" "$func"
+  $CC -g testhdr.c -o testhdr $CFLAGS $lib >> $logfile 2>&1
   err=$?
 
   if test $err = 0; then
