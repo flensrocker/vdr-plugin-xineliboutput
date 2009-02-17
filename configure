@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.15 2009-02-17 10:27:47 phintuka Exp $
+# * $Id: configure,v 1.16 2009-02-17 11:15:34 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -131,16 +131,17 @@ test_library_c(){
 
   log -n "Checking for $libname ... "
   generate_test_c "$hdr" "$subsys" "$func"
-  $CC -g testhdr.c -o testhdr $CFLAGS $lib >> $logfile 2>&1
+  $CC -g testhdr.c -o testhdr $CFLAGS $inc $lib >> $logfile 2>&1
   err=$?
 
   if test $err = 0; then
     log "yes"
     add_flags LIBS_$subsys $lib
+    add_flags CFLAGS_$subsys $inc
   else
     log "no"
     logdbg "--------"
-    logdbg "/* $CC -g testhdr.c -o testhdr $CFLAGS $lib */"
+    logdbg "/* $CC -g testhdr.c -o testhdr $CFLAGS $inc $lib */"
     logdbg `cat testhdr.c`
     logdbg "--------"
   fi
@@ -188,6 +189,7 @@ test_library(){
   hdr="$3"
   lib="$4"
   func="$5"
+  inc="$6"
   feature=$(toupper $libname)
 
   # do not test if disabled from command-line
@@ -206,7 +208,7 @@ test_library(){
 
   # compile/link test as fallback
   if disabled $feature; then
-    test_library_c "$subsys" "$libname" "$hdr" "$lib" "$func" && enable $feature
+    test_library_c "$subsys" "$libname" "$hdr" "$lib" "$func" "$inc" && enable $feature
   fi
 }
 
