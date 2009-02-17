@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.230 2009-02-16 16:28:21 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.231 2009-02-17 10:46:34 phintuka Exp $
  *
  */
 
@@ -1610,7 +1610,7 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
     int         width  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
     int         height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
 
-    if (width >= 360 && height >= 288 && width <= 1920 && height <= 1024) {
+    if (width >= 360 && height >= 288 && width <= 1920 && height <= 1200) {
       this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
       img = this->stream->video_out->get_frame (this->stream->video_out,
 						width, height,
