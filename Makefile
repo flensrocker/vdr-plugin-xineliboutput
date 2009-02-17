@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.81 2009-02-17 16:14:14 phintuka Exp $
+# $Id: Makefile,v 1.82 2009-02-17 17:21:49 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -213,8 +213,7 @@ OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
 OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
 OBJS_FBFE    = xine_fbfe_frontend.o $(OBJS_FE)
 
-
-ifeq ($(HAVE_DBUS_GLIB_1), yes)
+ifneq ($(HAVE_DBUS_GLIB_1), no)
 OBJS_SXFE    += tools/gnome_screensaver.o
 OBJS_SXFE_SO += tools/gnome_screensaver.o
 endif
