@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.17 2009-02-17 11:16:35 phintuka Exp $
+# * $Id: configure,v 1.18 2009-02-17 13:01:16 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -227,6 +227,7 @@ FEATURES="
   libextractor
   libavutil
   libjpeg
+  dbus_glib_1
   xshm
   xdpms
   xinerama
@@ -259,6 +260,7 @@ show_help(){
   echo
   echo "  --disable-libextractor disable libextractor support (media file metainfo) [no]"
   echo "  --disable-libjpeg      disable libjpeg support [no]"
+  echo "  --disable-dbus-glib-1  disable dbus-glib support [no]"
   echo "  --disable-xshm         disable XShm support [no]"
   echo "  --disable-xdpms        disable Xdpms support [no]"
   echo "  --disable-xinerama     disable Xinerama support [no]"
@@ -319,6 +321,7 @@ done
 check_deps(){
   disabled libxine && disable x11 fb libavutil libjpeg
   disabled x11     && disable xshm xrender xrandr xdpms xinerama vdpau
+  disabled x11     && disable dbus-glib-1 xshm xrender xrandr xdpms xinerama vdpau
   disabled vdr     && disable libextractor
 }
 
@@ -358,6 +361,11 @@ if enabled libxine; then
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
     test_library X11  xinerama     "X11/extensions/Xinerama.h" "-lXinerama"  "XineramaQueryScreens(0,0)"
     test_library X11  vdpau        "vdpau/vdpau_x11.h"         "-lvdpau"     "vdp_device_create_x11(0,0,0,0)"
+    test_library X11  dbus-glib-1  \
+      "dbus/dbus-glib.h" \
+      "-ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0" \
+      "dbus_g_bus_get(0,0)" \
+      "-I/usr/include/dbus-1.0 -I/usr/lib64/dbus-1.0/include -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include"
   fi
 fi
 
