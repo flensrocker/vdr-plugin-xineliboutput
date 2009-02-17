@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.16 2009-02-17 11:15:34 phintuka Exp $
+# * $Id: configure,v 1.17 2009-02-17 11:16:35 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -25,7 +25,7 @@ CFLAGS=""
 #
 
 toupper(){
-  echo "$@" | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ
+  echo "$@" | tr abcdefghijklmnopqrstuvwxyz- ABCDEFGHIJKLMNOPQRSTUVWXYZ_
 }
 
 die(){
