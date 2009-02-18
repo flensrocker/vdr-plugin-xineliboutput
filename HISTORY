@@ -1,6 +1,8 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+- Fixed setting focus in vdr-sxfe fullscreen mode
+
 2009-02-12: Version 1.0.4  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
 - Updated Italian translations (Thanks to Diego Pierotto)
