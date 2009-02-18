@@ -3,6 +3,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Fixed setting focus in vdr-sxfe fullscreen mode
 - Added Gnome screensaver support to vdr-sxfe (Thanks to Alex Stansfield)
 - Changed the default grab quality to match VDR's documentation.
 - Added sharpness and noise reduction setup options for VDPAU.
@@ -22,6 +23,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 2009-02-12: Version 1.0.4  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
+- Updated Italian translations (Thanks to Diego Pierotto)
 - Fixed default grab quality (Thanks to Jochen Dolze, patch #2454827)
 - Added math library (-lm) to vdr-sxfe when building with
   Xrender / HUD OSD support (Thanks to Anssi Hannula)

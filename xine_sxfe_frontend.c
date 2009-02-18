@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.108 2009-02-17 16:18:28 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.109 2009-02-18 21:14:37 phintuka Exp $
  *
  */
 
@@ -117,6 +117,7 @@ typedef struct sxfe_s {
   Atom     xa_MOTIF_WM_HINTS;
   Atom     xa_WIN_LAYER;
   Atom     xa_WIN_STATE;
+  Atom     xa_NET_ACTIVE_WINDOW;
   Atom     xa_NET_WM_STATE;
   Atom     xa_NET_WM_STATE_ADD;
   Atom     xa_NET_WM_STATE_DEL;
@@ -196,6 +197,7 @@ static void init_atoms(sxfe_t *this)
     this->xa_MOTIF_WM_HINTS     = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
     this->xa_WIN_LAYER          = XInternAtom(this->display, "_WIN_LAYER", False);
     this->xa_WIN_STATE          = XInternAtom(this->display, "_WIN_STATE", False);
+    this->xa_NET_ACTIVE_WINDOW  = XInternAtom(this->display, "_NET_ACTIVE_WINDOW", False);
     this->xa_NET_WM_STATE       = XInternAtom(this->display, "_NET_WM_STATE", False);
     this->xa_NET_WM_STATE_ADD   = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
     this->xa_NET_WM_STATE_DEL   = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
@@ -281,6 +283,15 @@ static void set_fullscreen_props(sxfe_t *this)
   /* _NET_WM_STATE_ON_TOP */
   XLockDisplay(this->display);
   ev.xclient.data.l[1] = this->xa_NET_WM_STATE_STAYS_ON_TOP;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
+
+  /* _NET_ACTIVE_WINDOW */
+  XLockDisplay(this->display);
+  ev.xclient.message_type = this->xa_NET_ACTIVE_WINDOW;
+  ev.xclient.data.l[0] = 0;
+  ev.xclient.data.l[1] = 0;
   XSendEvent(this->display, DefaultRootWindow(this->display), False,
              SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
