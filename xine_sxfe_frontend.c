@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.109 2009-02-18 21:14:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.110 2009-02-21 11:55:37 phintuka Exp $
  *
  */
 
@@ -145,6 +145,7 @@ typedef struct sxfe_s {
   uint8_t  dragging : 1;
   uint8_t  hud : 1;
   uint8_t  gui_hotkeys : 1;
+  uint8_t  no_x_kbd : 1;
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
@@ -1099,8 +1100,8 @@ static void create_windows(sxfe_t *this)
  */
 static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
                              int modeswitch, const char *modeline, int aspect,
-                             fe_keypress_f keyfunc, int gui_hotkeys, const char *video_port,
-                             int scale_video, int field_order,
+                             fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
+                             const char *video_port, int scale_video, int field_order,
                              const char *aspect_controller, int window_id)
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
@@ -1157,6 +1158,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->xinerama_screen = -1;
 
   this->gui_hotkeys = gui_hotkeys;
+  this->no_x_kbd    = no_x_kbd ? 1 : 0;
 
   /*
    * init x11 stuff
@@ -1428,7 +1430,7 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
     }
     if (fe_event)
       this->x.fe.send_event((frontend_t*)this, fe_event);
-    else
+    else if (!this->no_x_kbd)
       this->x.fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
   }
 }

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.73 2009-02-04 12:00:34 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.74 2009-02-21 11:55:37 phintuka Exp $
  *
  */
 
@@ -400,7 +400,10 @@ static const char help_str[] =
     "   --verbose                     Verbose debug output\n"
     "   --silent                      Silent mode (report only errors)\n"
     "   --syslog                      Write all output to system log\n"
-    "   --nokbd                       Disable keyboard input\n"
+    "   --nokbd                       Disable console keyboard input\n"
+#ifndef IS_FBFE
+    "   --noxkbd                      Disable X11 keyboard input\n"
+#endif
     "   --hotkeys                     Enable frontend GUI hotkeys\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
@@ -413,7 +416,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fDw:h:nP:L:C:vslkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fDw:h:nP:L:C:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -435,6 +438,7 @@ static const struct option long_options[] = {
   { "silent",  no_argument,  NULL, 's' },
   { "syslog",  no_argument,  NULL, 'l' },
   { "nokbd",   no_argument,  NULL, 'k' },
+  { "noxkbd",  no_argument,  NULL, 'x' },
   { "hotkeys", no_argument,  NULL, 'o' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
@@ -454,7 +458,7 @@ int main(int argc, char *argv[])
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, hud = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
-  int daemon_mode = 0, nokbd = 0, slave_mode = 0;
+  int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   char *video_port = NULL;
   int window_id = -1;
   int xmajor, xminor, xsub;
@@ -511,6 +515,8 @@ int main(int argc, char *argv[])
     case 'W': window_id = atoi(optarg);
               break;
     case 'd': video_port = strdup(optarg);
+              break;
+    case 'x': noxkbd = 1;
               break;
 #endif
     case 'a': if (!strncmp(optarg, "auto", 4))
@@ -697,7 +703,7 @@ int main(int argc, char *argv[])
 
   /* Initialize display */
   if (!fe->fe_display_open(fe, width, height, fullscreen, hud, 0,
-                           "", aspect, NULL, gui_hotkeys,
+                           "", aspect, NULL, noxkbd, gui_hotkeys,
                            video_port, scale_video, 0,
                            aspect_controller, window_id)) {
     fprintf(stderr, "Error opening display\n");
