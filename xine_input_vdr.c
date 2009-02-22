@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.231 2009-02-17 10:46:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.232 2009-02-22 12:18:53 phintuka Exp $
  *
  */
 
@@ -271,7 +271,7 @@ typedef struct vdr_input_plugin_s {
   ts_data_t          *ts_data;              /* MPEG-TS stuff */
   uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
   int8_t              h264;                 /* -1: unknown, 0: no, 1: yes */
-  uint8_t             padding_cnt;          /* number of padding frames passed to demux */ 
+  uint8_t             read_timeouts;        /* number of timeouts in read_block */
   uint8_t             ffmpeg_mpeg2_decoder : 1;
   uint8_t             coreavc_h264_decoder : 1;
   uint8_t             no_video : 1;
@@ -314,7 +314,6 @@ typedef struct vdr_input_plugin_s {
   /* buffer */
   fifo_buffer_t      *block_buffer;  /* blocks to be demuxed */
   fifo_buffer_t      *buffer_pool;   /* stream's video fifo */
-  fifo_buffer_t      *big_buffer;    /* for jumbo PES */
   fifo_buffer_t      *hd_buffer;     /* more buffer for HD streams */
   fifo_buffer_t      *iframe_buffer; /* buffer for cached I-frame */
   int                 saving_iframe;
@@ -1521,9 +1520,6 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
       LOGDBG("get_buf_element: big PES (%d bytes) !", size);
     }
     else { /* len>64k */
-      if(!this->big_buffer)
-	this->big_buffer = fifo_buffer_new(this->stream, 4, 512*1024);
-      buf = this->big_buffer->buffer_pool_try_alloc(this->big_buffer);
       LOGDBG("get_buf_element: jumbo PES (%d bytes) !", size);
     }
   }
@@ -4978,8 +4974,6 @@ static void handle_disconnect(vdr_input_plugin_t *this)
   LOGMSG("read_block: no data source, returning NULL");
   if(this->block_buffer)
     this->block_buffer->clear(this->block_buffer);
-  if(this->big_buffer)
-    this->big_buffer->clear(this->big_buffer);
   if(this->hd_buffer)
     this->hd_buffer->clear(this->hd_buffer);
   set_playback_speed(this, 1);
@@ -5069,21 +5063,21 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
           !this->is_trickspeed &&
           !this->slave_stream &&
           this->stream->video_fifo->fifo_size <= 0) {
-	this->padding_cnt++;
+	this->read_timeouts++;
 
-	if (this->padding_cnt > 16) {
+	if (this->read_timeouts > 16) {
 	  LOGMSG("No data in 8 seconds, queuing no signal image");
 	  queue_nosignal(this);
-	  this->padding_cnt = 0;
+	  this->read_timeouts = 0;
 	}
       } else {
-	this->padding_cnt = 0;
+	this->read_timeouts = 0;
       }
 #endif
       errno = EAGAIN;
       return NULL;
     }
-    this->padding_cnt = 0;
+    this->read_timeouts = 0;
 
     if (! (buf = preprocess_buf(this, buf)))
       continue;
@@ -5285,15 +5279,11 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     this->iframe_buffer->clear(this->iframe_buffer);
   if(this->block_buffer)
     this->block_buffer->clear(this->block_buffer);
-  if(this->big_buffer) 
-    this->big_buffer->clear(this->big_buffer);
   if(this->hd_buffer)
     this->hd_buffer->clear(this->hd_buffer);
 
   if(this->iframe_buffer)
     this->iframe_buffer->dispose(this->iframe_buffer);
-  if(this->big_buffer) 
-    this->big_buffer->dispose(this->big_buffer);
   if(this->block_buffer)
     this->block_buffer->dispose(this->block_buffer);
   if(this->hd_buffer)
