@@ -32,6 +32,7 @@
 
 #include "../xine_input_vdr_mrl.h"
 #include "../tools/mpeg.h"
+#include "../tools/h264.h"
 #include "../tools/pes.h"
 #include "../tools/ts.h"
 
@@ -754,6 +755,33 @@ static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_elemen
   return -1;
 }
 
+/*
+ * detect_h264()
+ *
+ * Detect video codec (MPEG2 or H.264)
+ */
+static int detect_h264(uint8_t *data)
+{
+  /* H.264 detection */
+  if (data[0] == 0 && data[1] == 0 && data[2] == 1) {
+    if (data[3] == NAL_AUD) {
+      LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
+      return BUF_VIDEO_H264;
+    }
+    if (data[3] == 0) {
+      LOGDBG("H.264 scanner: Possible MPEG2 start code PICTURE (0x00)");
+      return BUF_VIDEO_MPEG;
+    }
+    if (data[3] >= 0x80) {
+      LOGDBG("H.264 scanner: Possible MPEG2 start code (0x%02x)", data[3]);
+      return BUF_VIDEO_MPEG;
+    }
+    LOGMSG("H.264 scanner: Unregonized header 00 00 01 %02x", data[3]);
+  }
+
+  return 0;
+}
+
 static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
 {
   int32_t result;
@@ -764,7 +792,7 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
   p += result;
 
   if (this->video_type == 0) {
-    this->video_type = BUF_VIDEO_MPEG;
+    this->video_type = detect_h264(p);
   }
 
   buf->type      = this->video_type ?: BUF_VIDEO_MPEG;
@@ -784,6 +812,23 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
          * Anyway, without this block of code B frames with pts are dropped. */
         if (type == B_FRAME)
           buf->pts = 0;
+      }
+    }
+  }
+
+  /* H.264 */
+  else if (this->video_type == BUF_VIDEO_H264) {
+    /* Access Unit Delimiter */
+    if (IS_NAL_AUD(p))
+      post_frame_end (this, buf);
+
+    /* Check for end of still image.
+       VDR ensures that H.264 still images end with an end of sequence NAL unit */
+    if (buf->size > 4) {
+      uint8_t *end = buf->content + buf->size;
+      if (IS_NAL_END_SEQ(end-4)) {
+        LOGMSG("post_frame_h264: Still frame ? (frame ends with end of sequence NAL unit)");
+        buf->decoder_flags |= BUF_FLAG_FRAME_END;
       }
     }
   }
