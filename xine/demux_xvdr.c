@@ -76,11 +76,11 @@ typedef struct demux_xvdr_s {
   int64_t               pts;
   int64_t               dts;
   uint32_t              stream_id;
-  int32_t               mpeg1;
 
-  uint32_t              last_audio_stream_id;
   int64_t               last_vpts;
-  uint8_t               dvd_subtitles : 1;
+
+  uint32_t              audio_type;
+  uint32_t              subtitle_type;
 
   uint8_t               ffmpeg_mpeg2_decoder : 1;
   uint8_t               coreavc_h264_decoder : 1;
@@ -183,9 +183,9 @@ static void track_audio_stream_change(demux_xvdr_t *this, buf_element_t *buf)
 #if !defined(BUF_CONTROL_RESET_TRACK_MAP)
 #  warning xine-lib is older than 1.1.2. Multiple audio streams are not supported.
 #else
-  if (this->last_audio_stream_id != buf->type) {
-    LOGDBG("audio stream changed: %08x -> %08x", this->last_audio_stream_id, buf->type);
-    this->last_audio_stream_id = buf->type;
+  if (this->audio_type != buf->type) {
+    LOGDBG("audio stream changed: %08x -> %08x", this->audio_type, buf->type);
+    this->audio_type = buf->type;
     put_control_buf(this->audio_fifo,
                     this->audio_fifo,
                     BUF_CONTROL_RESET_TRACK_MAP);
@@ -317,7 +317,7 @@ static int32_t parse_pes_for_pts(demux_xvdr_t *this, uint8_t *p, buf_element_t *
 
   this->packet_len = p[4] << 8 | p[5];
 
-  if (this->mpeg1) {
+  if ((p[6] & 0xC0) != 0x80 /* mpeg1 */) {
     header_len = 6;
     p   += 6; /* packet_len -= 6; */
 
@@ -479,12 +479,12 @@ int detect_dvb_spu(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
   /* If PES packet has PTS, it starts new subtitle (ES) packet. */
   if (this->pts > 0) {
     /* Reset SPU type */
-    this->dvd_subtitles = 0;
+    this->subtitle_type = 0;
   }
 
 # ifdef VDR_SUBTITLES
   /* Compatibility mode for old subtitles plugin */
-  if (!this->dvd_subtitles) {
+  if (this->subtitle_type != BUF_SPU_DVD) {
     if ((buf->content[7] & 0x01) && (p[-3] & 0x81) == 0x01 && p[-2] == 0x81) {
       LOGDBG("DVB SPU: Old vdr-subtitles compability mode");
       return parse_dvb_spu(this, p, buf, 1);
@@ -495,19 +495,19 @@ int detect_dvb_spu(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
   /* Start of subtitle packet. Guess substream type */
   if (this->pts > 0) {
     if (p[4] == 0x20 && p[5] == 0x00 && (p[6] == 0x0f || p[4] == 0x0f)) {
-      this->dvd_subtitles = 0;
+      this->subtitle_type = BUF_SPU_DVB;
       LOGSPU(" -> DVB SPU");
     } else if (p[2] || (p[3] & 0xfe)) {
-      this->dvd_subtitles = 1;
+      this->subtitle_type = BUF_SPU_DVD;
       LOGSPU(" -> DVD SPU");
     } else {
-      this->dvd_subtitles = 1;
+      this->subtitle_type = BUF_SPU_DVD;
       LOGMSG(" -> DV? SPU -> DVD");
     }
   }
 
   /* DVD SPU ? */
-  if (this->dvd_subtitles)
+  if (this->subtitle_type == BUF_SPU_DVD)
     return this->packet_len;
 
   /* DVB SPU */
@@ -530,10 +530,17 @@ static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_elemen
   if ((p[0] & 0xE0) == 0x20) {
     spu_id = (p[0] & 0x1f);
 
+    if (this->pts <= 0 && !this->subtitle_type) {
+      /* need whole ES packet (after seek etc.) */
+      buf->free_buffer(buf);
+      return -1;
+    }
+
 #ifdef TEST_DVB_SPU
     if (detect_dvb_spu(this, p, buf) < 0)
       return -1;
 #endif /* TEST_DVB_SPU */
+    this->subtitle_type = BUF_SPU_DVD;
 
     /* DVD SPU */
     buf->content   = p+1;
@@ -751,7 +758,10 @@ static int demux_xvdr_seek (demux_plugin_t *this_gen,
   /*
    * now start demuxing
    */
-  this->send_newpts = 1;
+  this->send_newpts   = 1;
+  this->audio_type    = 0;
+  this->subtitle_type = 0;
+
   if (!playing) {
 
     this->buf_flag_seek = 0;
