@@ -31,12 +31,20 @@
 #include <xine/demux.h>
 
 #include "../xine_input_vdr_mrl.h"
+#include "../tools/mpeg.h"
 #include "../tools/pes.h"
 #include "../tools/ts.h"
 
+/*
+ * features
+ */
+
 #define VDR_SUBTITLES
 #define TEST_DVB_SPU
-#define LOGSPU(x...)
+
+/*
+ * logging
+ */
 
 static const char log_module_demux_xvdr[] = "[demux_vdr] ";
 #define LOG_MODULENAME log_module_demux_xvdr
@@ -44,9 +52,13 @@ static const char log_module_demux_xvdr[] = "[demux_vdr] ";
 
 #include "../logdefs.h"
 
+#define LOGSPU(x...)
+
+/*
+ * constants
+ */
 
 #define DISC_TRESHOLD       90000
-
 #define WRAP_THRESHOLD     120000
 #define PTS_AUDIO 0
 #define PTS_VIDEO 1
@@ -79,11 +91,13 @@ typedef struct demux_xvdr_s {
 
   int64_t               last_vpts;
 
+  uint32_t              video_type;
   uint32_t              audio_type;
   uint32_t              subtitle_type;
 
   uint8_t               ffmpeg_mpeg2_decoder : 1;
   uint8_t               coreavc_h264_decoder : 1;
+  uint8_t               bih_posted : 1;
 } demux_xvdr_t ;
 
 typedef struct {
@@ -176,6 +190,94 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
     buf->type = cmd;
     buffer->put(buffer, buf);
   }
+}
+
+/*
+ * post_frame_end()
+ *
+ * Signal end of video frame to decoder.
+ *
+ * This function is used with:
+ *  - FFmpeg mpeg2 decoder
+ *  - FFmpeg and CoreAVC H.264 decoders
+ *  - NOT with libmpeg2 mpeg decoder
+ */
+static void post_frame_end(demux_xvdr_t *this, buf_element_t *vid_buf)
+{
+  buf_element_t *cbuf = this->video_fifo->buffer_pool_try_alloc (this->video_fifo) ?:
+                        this->audio_fifo->buffer_pool_try_alloc (this->audio_fifo);
+
+  if (!cbuf) {
+    LOGMSG("post_frame_end(): buffer_pool_try_alloc() failed, retrying");
+    xine_usec_sleep (10*1000);
+    cbuf = this->video_fifo->buffer_pool_try_alloc (this->video_fifo);
+    if (!cbuf) {
+      LOGERR("post_frame_end(): get_buf_element() failed !");
+      return;
+    }
+  }
+
+  cbuf->type          = this->video_type;
+  cbuf->decoder_flags = BUF_FLAG_FRAME_END;
+
+  if (!this->bih_posted) {
+    video_size_t size = {0};
+    if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->video_type == BUF_VIDEO_H264)) {
+
+      /* reset decoder buffer */
+      cbuf->decoder_flags |= BUF_FLAG_FRAME_START;
+
+      /* Fill xine_bmiheader for CoreAVC / H.264 */
+
+      if (this->video_type == BUF_VIDEO_H264 && this->coreavc_h264_decoder) {
+        xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
+
+        cbuf->decoder_flags |= BUF_FLAG_HEADER;
+        cbuf->decoder_flags |= BUF_FLAG_STDHEADER;   /* CoreAVC: buffer contains bmiheader */
+        cbuf->size           = sizeof(xine_bmiheader);
+
+        memset (bmi, 0, sizeof(xine_bmiheader));
+
+        bmi->biSize   = sizeof(xine_bmiheader);
+        bmi->biWidth  = size.width;
+        bmi->biHeight = size.height;
+
+        bmi->biPlanes        = 1;
+        bmi->biBitCount      = 24;
+        bmi->biCompression   = 0x34363248;
+        bmi->biSizeImage     = 0;
+        bmi->biXPelsPerMeter = size.pixel_aspect.num;
+        bmi->biYPelsPerMeter = size.pixel_aspect.den;
+        bmi->biClrUsed       = 0;
+        bmi->biClrImportant  = 0;
+      }
+
+      /* Set aspect ratio for ffmpeg mpeg2 / CoreAVC H.264 decoder
+       * (not for FFmpeg H.264 or libmpeg2 mpeg2 decoders)
+       */
+
+      if (size.pixel_aspect.num &&
+          (this->video_type != BUF_VIDEO_H264 || this->coreavc_h264_decoder)) {
+        cbuf->decoder_flags |= BUF_FLAG_HEADER;
+        cbuf->decoder_flags |= BUF_FLAG_ASPECT;
+        /* pixel ratio -> frame ratio */
+        if (size.pixel_aspect.num > size.height) {
+          cbuf->decoder_info[1] = size.pixel_aspect.num / size.height;
+          cbuf->decoder_info[2] = size.pixel_aspect.den / size.width;
+        } else {
+          cbuf->decoder_info[1] = size.pixel_aspect.num * size.width;
+          cbuf->decoder_info[2] = size.pixel_aspect.den * size.height;
+        }
+      }
+
+      LOGDBG("post_frame_end: video width %d, height %d, pixel aspect %d:%d",
+             size.width, size.height, size.pixel_aspect.num, size.pixel_aspect.den);
+
+      this->bih_posted = 1;
+    }
+  }
+
+  this->video_fifo->put (this->video_fifo, cbuf);
 }
 
 static void track_audio_stream_change(demux_xvdr_t *this, buf_element_t *buf)
@@ -661,11 +763,33 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
 
   p += result;
 
-  buf->content   = p;
-  buf->size      = this->packet_len;
-  buf->type      = BUF_VIDEO_MPEG;
+  if (this->video_type == 0) {
+    this->video_type = BUF_VIDEO_MPEG;
+  }
+
+  buf->type      = this->video_type ?: BUF_VIDEO_MPEG;
   buf->pts       = this->pts;
   buf->decoder_info[0] = this->pts - this->dts;
+
+  /* MPEG2 */
+  if (this->video_type == BUF_VIDEO_MPEG) {
+    /* Special handling for FFMPEG MPEG2 decoder */
+    if (this->ffmpeg_mpeg2_decoder) {
+      uint8_t type = pes_get_picture_type(buf->content, buf->size);
+      if (type) {
+        /* signal FRAME_END to decoder */
+        post_frame_end(this, buf);
+        /* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ?
+         * (B-frame pts's are smaller than in previous P-frame)
+         * Anyway, without this block of code B frames with pts are dropped. */
+        if (type == B_FRAME)
+          buf->pts = 0;
+      }
+    }
+  }
+
+  buf->content   = p;
+  buf->size      = this->packet_len;
 
   check_newpts( this, buf, PTS_VIDEO );
 
@@ -759,8 +883,10 @@ static int demux_xvdr_seek (demux_plugin_t *this_gen,
    * now start demuxing
    */
   this->send_newpts   = 1;
+  this->video_type    = 0;
   this->audio_type    = 0;
   this->subtitle_type = 0;
+  this->bih_posted    = 0;
 
   if (!playing) {
 
