@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.83 2009-02-23 22:16:53 phintuka Exp $
+# $Id: Makefile,v 1.84 2009-02-24 19:51:19 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -221,7 +221,7 @@ endif
 # xine plugins
 OBJS_XINEINPUTVDR = xine_input_vdr.o xine/demux_xvdr.o \
                     xine/adjustable_scr.o xine/osd_manager.o \
-                    xine/ts2es.o \
+                    xine/ts2es.o xine/demux_xvdr_tsdata.o \
                     tools/rle.o \
                     tools/ts.o tools/pes.o tools/mpeg.o tools/h264.o
 
