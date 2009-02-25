@@ -359,11 +359,11 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   buf->decoder_flags = 0;
 
   if (DATA_IS_TS(p)) {
-    demux_xvdr_parse_ts(this, buf);
+    demux_xvdr_parse_ts (this, buf);
     return;
   }
   if (DATA_IS_PES(p)) {
-    demux_xvdr_parse_pes(this, buf);
+    demux_xvdr_parse_pes (this, buf);
     return;
   }
 
@@ -401,9 +401,113 @@ static void demux_xvdr_parse_pes (demux_xvdr_t *this, buf_element_t *buf)
   buf->free_buffer (buf);
 }
 
+/*
+ * demux_xvdr_parse_ts()
+ *
+ * MPEG-TS demuxing
+ */
 static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
 {
-  buf->free_buffer (buf);
+  if (!this->ts_data)
+    this->ts_data = calloc(1, sizeof(ts_data_t));
+
+  ts_data_t *ts_data = this->ts_data;
+
+  while (buf->size >= TS_SIZE) {
+
+    unsigned int ts_pid = ts_PID(buf->content);
+
+    /* parse PAT */
+    if (ts_pid == 0) {
+      pat_data_t pat;
+
+      ts_data_flush(ts_data);
+
+      if (ts_parse_pat(&pat, buf->content)) {
+        ts_data->pmt_pid        = pat.pmt_pid[0];
+        ts_data->program_number = pat.program_number[0];
+        LOGMSG("Got PAT, PMT pid = %d, program = %d", ts_data->pmt_pid, ts_data->program_number);
+      }
+    }
+
+    /* parse PMT */
+    else if (ts_pid == ts_data->pmt_pid) {
+
+      ts_data_flush(ts_data);
+
+      if (ts_parse_pmt(&ts_data->pmt, ts_data->program_number, buf->content)) {
+
+        /* PMT changed, reset ts->es converters */
+        LOGMSG("PMT changed");
+        ts_data_ts2es_init(&ts_data, this->stream->video_fifo, this->stream->audio_fifo);
+
+        this->video_type = (ts_data->pmt.video_type == ISO_14496_PART10_VIDEO) ?
+                           BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
+
+        /* Inform UI of channels changes */
+        xine_event_t event;
+        event.type = XINE_EVENT_UI_CHANNELS_CHANGED;
+        event.data_length = 0;
+        xine_event_send(this->stream, &event);
+      }
+    }
+
+    /* demux video */
+    else if (ts_pid == ts_data->pmt.video_pid) {
+
+      if (ts_data->video) {
+        buf_element_t *vbuf = ts2es_put(ts_data->video, buf->content);
+        if (vbuf) {
+          this->pts = vbuf->pts;
+          check_newpts( this, vbuf, PTS_VIDEO );
+
+          this->stream->video_fifo->put(this->stream->video_fifo, vbuf);
+        }
+      }
+    }
+
+    /* demux audio */
+    else {
+      int i, done = 0;
+      for (i=0; i < ts_data->pmt.audio_tracks_count; i++)
+        if (ts_pid == ts_data->pmt.audio_tracks[i].pid) {
+          if (ts_data->audio[i]) {
+            buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content);
+            if (abuf) {
+              this->pts = abuf->pts;
+              check_newpts( this, abuf, PTS_AUDIO );
+              track_audio_stream_change (this, abuf);
+
+              this->stream->audio_fifo->put(this->stream->audio_fifo, abuf);
+            }
+          }
+          done = 1;
+          break;
+        }
+#if 0
+      /* demux subtitles */
+      if (!done)
+      for (i=0; i < ts_data->pmt.spu_tracks_count; i++)
+        if (ts_pid == ts_data->pmt.spu_tracks[i].pid) {
+          if (ts_data->spu[i]) {
+            buf_element_t *sbuf = ts2es_put(ts_data->spu[i], buf->content);
+            if (sbuf)
+              this->stream->video_fifo->put(this->stream->video_fifo, sbuf);
+          }
+          done = 1;
+          break;
+        }
+
+      if (!done)
+        LOGMSG("Got unknown TS packet, pid = %d", ts_pid);
+#endif
+    }
+
+    buf->content += TS_SIZE;
+    buf->size    -= TS_SIZE;
+  }
+
+  buf->free_buffer(buf);
 }
 
 static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
@@ -720,8 +824,8 @@ static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_elemen
     switch ((p[5]>>6) & 3) {
     case 3: /* illegal, use 16-bits? */
       default:
-	xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
-		 "illegal lpcm sample format (%d), assume 16-bit samples\n", (p[5]>>6) & 3 );
+        xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
+                 "illegal lpcm sample format (%d), assume 16-bit samples\n", (p[5]>>6) & 3 );
       case 0: bits_per_sample = 16; break;
       case 1: bits_per_sample = 20; break;
       case 2: bits_per_sample = 24; break;
@@ -932,6 +1036,7 @@ static int demux_xvdr_seek (demux_plugin_t *this_gen,
   this->audio_type    = 0;
   this->subtitle_type = 0;
   this->bih_posted    = 0;
+  ts_data_dispose(&this->ts_data);
 
   if (!playing) {
 
