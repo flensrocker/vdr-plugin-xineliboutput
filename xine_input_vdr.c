@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.232 2009-02-22 12:18:53 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.233 2009-02-25 12:40:39 phintuka Exp $
  *
  */
 
@@ -68,19 +68,10 @@
 #include "xine_osd_command.h"
 
 #include "tools/mpeg.h"
-#include "tools/h264.h"
 #include "tools/pes.h"
 #include "tools/ts.h"
 
 /***************************** DEFINES *********************************/
-
-/* Support for ffmpeg mpeg2 decoder. 
-   Priority must be increased in $HOME/.xine/config_xineliboutput:
-       engine.decoder_priorities.ffmpegvideo:1
-*/
-#define FFMPEG_DEC
-/* Support for dshowserver/CoreAVC H.264 decoder */
-#define COREAVC_DEC
 
 /*#define LOG_UDP*/
 /*#define LOG_OSD*/
@@ -91,7 +82,6 @@
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 #define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
 #define HD_BUF_ELEM_SIZE        (2048+64)
-#define TEST_H264               1
 
 #define RADIO_MAX_BUFFERS  10
 
@@ -268,22 +258,15 @@ typedef struct vdr_input_plugin_s {
   pthread_cond_t      engine_flushed;
 
   /* Playback */
-  ts_data_t          *ts_data;              /* MPEG-TS stuff */
-  uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
-  int8_t              h264;                 /* -1: unknown, 0: no, 1: yes */
   uint8_t             read_timeouts;        /* number of timeouts in read_block */
-  uint8_t             ffmpeg_mpeg2_decoder : 1;
-  uint8_t             coreavc_h264_decoder : 1;
   uint8_t             no_video : 1;
   uint8_t             live_mode : 1;
   uint8_t             still_mode : 1;
   uint8_t             stream_start : 1;
-  uint8_t             send_pts : 1;
   uint8_t             loop_play : 1;
   uint8_t             dvd_menu : 1;
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
-  uint8_t             bih_posted : 1;
 
   /* SCR */
   adjustable_scr_t   *scr;
@@ -326,7 +309,6 @@ typedef struct vdr_input_plugin_s {
   uint64_t            curpos;        /* current position (demux side) */
   int                 curframe;      
   int                 max_buffers;   /* max no. of non-demuxed buffers */
-  int64_t             last_delivered_vid_pts; /* detect PTS wraps */
 
   /* saved video properties */
   int   video_properties_saved;
@@ -678,336 +660,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   }
 }
 
-/****************************** MPEG-TS **********************************/
-
-/*
- * TS -> ES
- */
-
-typedef struct ts2es_s ts2es_t;
-
-struct ts2es_s {
-  fifo_buffer_t *fifo;
-  uint32_t       stream_type;
-  uint32_t       xine_buf_type;
-
-  buf_element_t *buf;
-  int            pes_start;
-  int64_t pts;
-};
-
-void ts2es_put_video(void)
-{
-}
-
-static void ts2es_flush(ts2es_t *this)
-{
-  if (this->buf) {
-
-    this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
-    this->buf->pts = this->pts;
-
-    this->fifo->put (this->fifo, this->buf);
-    this->buf = NULL;
-  }
-}
-
-static void ts2es_parse_pes(ts2es_t *this)
-{
-  if (!DATA_IS_PES(this->buf->content)) {
-    LOGMSG("ts2es: payload not PES ?");
-    return;
-  }
-
-  /* parse PES header */
-  uint    hdr_len = PES_HEADER_LEN(this->buf->content);
-  uint8_t pes_pid = this->buf->content[3];
-  uint    pes_len = (this->buf->content[4] << 8) | this->buf->content[5];
-
-  /* parse PTS */
-  this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
-  if(this->buf->pts >= 0)
-    this->pts = this->buf->pts;
-  else
-    this->pts = 0;
-
-  /* strip PES header */
-  this->buf->content += hdr_len;
-  this->buf->size    -= hdr_len;
-
-  /* parse substream header */
-
-  if (pes_pid != PRIVATE_STREAM1)
-    return;
-
-  /* RAW AC3 audio ? -> do nothing */
-  if (this->stream_type == STREAM_AUDIO_AC3) {
-    this->xine_buf_type |= BUF_AUDIO_A52;
-    this->buf->type = this->xine_buf_type;
-    return;
-  }
-
-  /* AC3 syncword in beginning of PS1 payload ? */
-  if (this->buf->content[0] == 0x0B &&
-      this->buf->content[1] == 0x77) {
-    /* --> RAW AC3 audio - do nothing */
-    this->xine_buf_type |= BUF_AUDIO_A52;
-    this->buf->type = this->xine_buf_type;
-    return;
-  }
-
-  /* audio in PS1 */
-  if (this->stream_type == ISO_13818_PES_PRIVATE) {
-
-    if ((this->buf->content[0] & 0xf0) == 0x80) {
-      /* AC3, strip substream header */
-      this->buf->content += 4;
-      this->buf->size    -= 4;
-      this->xine_buf_type |= BUF_AUDIO_A52;
-      this->buf->type = this->xine_buf_type;
-      return;
-    }
-
-    if ((this->buf->content[0] & 0xf0) == 0xa0) {
-      /* PCM, strip substream header */
-      int pcm_offset;
-      for (pcm_offset=0; ++pcm_offset < this->buf->size-1 ; ) {
-        if (this->buf->content[pcm_offset] == 0x01 && 
-            this->buf->content[pcm_offset+1] == 0x80 ) { /* START */
-          pcm_offset += 2;
-          break;
-        }
-      }
-      this->buf->content += pcm_offset;
-      this->buf->size    -= pcm_offset;
-
-      this->xine_buf_type |= BUF_AUDIO_LPCM_BE;
-      this->buf->type = this->xine_buf_type;
-      return;
-    }
-
-    LOGMSG("demux_ts: unhandled PS1 substream 0x%x", this->buf->content[0]);
-    return;
-  }
-
-  /* DVB SPU */
-  if (this->stream_type == STREAM_DVBSUB) {
-    if (this->buf->content[0] != 0x20 ||
-        this->buf->content[1] != 0x00)
-      LOGMSG("demux_ts: DVB SPU, invalid PES substream header");
-    this->buf->decoder_info[2] = pes_len - hdr_len - 3 + 9;
-    return;
-  }
-}
-
-static buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
-{
-  int bytes = ts_PAYLOAD_SIZE(data);
-  int pusi  = ts_PAYLOAD_START(data);
-  buf_element_t *result = NULL;
-
-  if (ts_HAS_ERROR(data)) {
-    LOGDBG("ts2es: transport error");
-    return NULL;
-  }
-  if (!ts_HAS_PAYLOAD(data)) {
-    LOGDBG("ts2es: no payload, size %d", bytes);
-    return NULL;
-  }
-
-  /* handle new payload unit */
-  if (pusi) {
-    this->pes_start = 1;
-    if (this->buf) {
-
-      this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
-      this->buf->pts = this->pts;
-
-      result = this->buf;
-      this->buf = NULL;
-    }
-  }
-
-  /* need new buffer ? */
-  if (!this->buf) {
-    this->buf = this->fifo->buffer_pool_alloc(this->fifo);
-    this->buf->type = this->xine_buf_type;
-    this->buf->decoder_info[0] = 1;
-  }
-
-  /* strip ts header */
-  data += TS_SIZE - bytes;
-
-  /* copy payload */
-  memcpy(this->buf->content + this->buf->size, data, bytes);
-  this->buf->size += bytes;
-
-  /* parse PES header */
-  if (this->pes_start) {
-    this->pes_start = 0;
-
-    ts2es_parse_pes(this);
-  }
-
-  /* split large packets */
-  if (this->buf->size > 2048) {
-    this->buf->pts = this->pts;
-
-    result = this->buf;
-    this->buf = NULL;
-  }
-
-  return result;
-}
-
-static void ts2es_dispose(ts2es_t *data)
-{
-  if (data) {
-    if (data->buf)
-      data->buf->free_buffer(data->buf);
-    free(data);
-  }
-}
-
-ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type, uint stream_index)
-{
-  ts2es_t *data = calloc(1, sizeof(ts2es_t));
-  data->fifo = dst_fifo;
-
-  data->stream_type = stream_type;
-
-  switch(stream_type) {
-    /* VIDEO (PES streams 0xe0...0xef) */
-    case ISO_11172_VIDEO:
-    case ISO_13818_VIDEO:
-    case STREAM_VIDEO_MPEG:
-      data->xine_buf_type = BUF_VIDEO_MPEG;
-      break;
-    case ISO_14496_PART2_VIDEO:
-      data->xine_buf_type = BUF_VIDEO_MPEG4;
-      break;
-    case ISO_14496_PART10_VIDEO:
-      data->xine_buf_type = BUF_VIDEO_H264;
-      break;
-
-    /* AUDIO (PES streams 0xc0...0xdf) */
-    case  ISO_11172_AUDIO:
-    case  ISO_13818_AUDIO:
-      data->xine_buf_type = BUF_AUDIO_MPEG;
-      break;
-    case  ISO_13818_PART7_AUDIO:
-    case  ISO_14496_PART3_AUDIO:
-      data->xine_buf_type = BUF_AUDIO_AAC;
-      break;
-
-    /* AUDIO (PES stream 0xbd) */
-    case ISO_13818_PES_PRIVATE:
-      data->xine_buf_type = 0;
-      /* detect from PES substream header */
-      break;
-
-    /* DVB SPU (PES stream 0xbd) */
-    case STREAM_DVBSUB:
-      data->xine_buf_type = BUF_SPU_DVB;
-      break;
-
-    /* RAW AC3 */
-    case STREAM_AUDIO_AC3:
-      data->xine_buf_type = BUF_AUDIO_A52;
-      break;
-
-    default:
-      LOGMSG("ts2es: unknown stream type 0x%x", stream_type);
-      break;
-  }
-
-  /* substream ID (audio/SPU) */
-  data->xine_buf_type |= stream_index;
-
-  return data;
-}
-
-/*
- * TS demux
- */
-
-struct ts_data_s {
-  uint16_t    pmt_pid;
-  uint16_t    program_number;
-
-  pmt_data_t  pmt;
-
-  ts2es_t     *video;
-  ts2es_t     *audio[TS_MAX_AUDIO_TRACKS];
-  ts2es_t     *spu[TS_MAX_SPU_TRACKS];
-};
-
-static void ts_data_ts2es_reset(ts_data_t *this)
-{
-  int i;
-
-  ts2es_dispose(this->video);
-  this->video = NULL;
-
-  for (i = 0; this->audio[i]; i++) {
-    ts2es_dispose(this->audio[i]);
-    this->audio[i] = NULL;
-  }
-
-  for (i = 0; this->spu[i]; i++) {
-    ts2es_dispose(this->spu[i]);
-    this->spu[i] = NULL;
-  }
-}
-
-static void ts_data_ts2es_init(ts_data_t *this, fifo_buffer_t *video_fifo, fifo_buffer_t *audio_fifo)
-{
-  int i;
-
-  ts_data_ts2es_reset(this);
-
-  if (video_fifo) {
-    if (this->pmt.video_pid != INVALID_PID)
-      this->video = ts2es_init(video_fifo, this->pmt.video_type, 0);
-
-    for (i=0; i < this->pmt.spu_tracks_count; i++)
-      this->spu[i] = ts2es_init(video_fifo, STREAM_DVBSUB, i);
-  }
-
-  if (audio_fifo) {
-    for (i=0; i < this->pmt.audio_tracks_count; i++)
-      this->audio[i] = ts2es_init(audio_fifo, this->pmt.audio_tracks[i].type, i);
-  }
-}
-
-static void ts_data_dispose(vdr_input_plugin_t *this)
-{
-  if (this->ts_data) {
-
-    ts_data_ts2es_reset(this->ts_data);
-
-    free(this->ts_data);
-    this->ts_data = NULL;
-  }
-}
-
-static void ts_data_flush(vdr_input_plugin_t *this)
-{
-  if (this->ts_data) {
-    ts_data_t *ts_data = this->ts_data;
-    int i;
-
-    if (ts_data->video)
-      ts2es_flush(ts_data->video);
-
-    for (i = 0; ts_data->audio[i]; i++)
-      ts2es_flush(ts_data->audio[i]);
-
-    for (i = 0; ts_data->spu[i]; i++)
-      ts2es_flush(ts_data->spu[i]);
-  }
-}
-
 /******************************* TOOLS ***********************************/
 
 #ifndef MIN
@@ -1041,23 +693,6 @@ static char *unescape_filename(const char *fn)
   }
   *d = 0;
   return result;
-}
-
-static void pes_strip_pts(uint8_t *buf, int size)
-{
-  if(size > 13 && buf[7] & 0x80) { /* pts avail */
-    int pes_len = (buf[4] << 8) | buf[5];
-    if ((buf[6] & 0xC0) != 0x80)
-      return;
-    if ((buf[6] & 0x30) != 0)
-      return;
-    pes_len -= 5;     /* update packet len */
-    buf[4]   = pes_len >> 8;   /* packet len (hi) */
-    buf[5]   = pes_len & 0xff; /* packet len (lo) */
-    buf[7]  &= 0x7f;  /* clear pts flag */
-    buf[8]  -= 5;     /* update header len */
-    memmove(buf+9, buf+14, size-14);
-  }
 }
 
 static void create_timeout_time(struct timespec *abstime, int timeout_ms)
@@ -1295,38 +930,6 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
   }
 
   return total_bytes;
-}
-
-const char * get_decoder_name(xine_t *xine, int video_type)
-{
-  int streamtype = (video_type >> 16) & 0xFF;
-  plugin_node_t *node = xine->plugin_catalog->video_decoder_map[streamtype][0];
-  if (node) {
-    plugin_info_t *info = node->info;
-    if (info) {
-#if 0
-      decoder_info_t *decinfo = (decoder_info_t*) info->special_info;
-      if (decinfo)
-	LOGMSG("get_decoder_name(): Video type %02x0000 is handled by %s (priority %d)", 
-	       streamtype, info->id, decinfo->priority);
-#endif
-      return info->id;
-    }
-  }
-  return "";
-}
-
-static void detect_video_decoders(vdr_input_plugin_t *this)
-{
-  if (!strcmp(get_decoder_name(this->class->xine, BUF_VIDEO_MPEG), "ffmpegvideo"))
-    this->ffmpeg_mpeg2_decoder = 1;
-  LOGMSG("Using decoder \"%s\" for mpeg2 video",
-	 this->ffmpeg_mpeg2_decoder ? "FFmpeg" : "libmpeg2");
-
-  if (!strcmp(get_decoder_name(this->class->xine, BUF_VIDEO_H264), "dshowserver"))
-    this->coreavc_h264_decoder = 1;
-  LOGMSG("Using decoder \"%s\" for H.264 video",
-	 this->coreavc_h264_decoder ? "dshowserver (CoreAVC)" : "FFmpeg");
 }
 
 /************************** BUFFER HANDLING ******************************/
@@ -1567,26 +1170,6 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
   }
 }
 
-/*
- * post_sequence_end()
- *
- * Add MPEG2 or H.264 sequence end code to fifo buffer
- */
-static void post_sequence_end(fifo_buffer_t *fifo, uint32_t video_type)
-{
-  buf_element_t *buf = fifo->buffer_pool_try_alloc(fifo);
-  if (buf) {
-    buf->type = video_type;
-    buf->size = 4;
-    buf->decoder_flags = BUF_FLAG_FRAME_END;
-    buf->content[0] = 0x00;
-    buf->content[1] = 0x00;
-    buf->content[2] = 0x01;
-    buf->content[3] = (video_type == BUF_VIDEO_H264) ? NAL_END_SEQ : 0xB7;
-    fifo->put(fifo, buf);
-  }
-}
-
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
   int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
@@ -1703,9 +1286,6 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       break;
     }
   }
-
-  /* sequence end */
-  post_sequence_end(this->stream->video_fifo, BUF_VIDEO_MPEG);
 
   put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);
   put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);
@@ -1965,8 +1545,6 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
   suspend_demuxer(this);
   pthread_mutex_lock( &this->lock );
 
-  ts_data_flush(this);
-
   reset_scr_tuning(this, this->speed_before_pause);
 
   /* reset speed again (adjust_realtime_speed might have set pause) */
@@ -1991,7 +1569,6 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 #else
   _x_demux_control_start(this->stream);
 #endif
-  this->prev_audio_stream_id = 0;
   this->stream_start = 1;
   this->I_frames = this->B_frames = this->P_frames = 0;
   this->discard_index = discard_index;
@@ -2814,7 +2391,6 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 						 VO_PROP_BUFS_IN_FIFO);
   this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
 
-  post_sequence_end(buffer, this->h264>0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG);
   put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
   put_control_buf(buffer, pool, BUF_CONTROL_NOP);
 
@@ -4381,93 +3957,6 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len
 #endif
 
 /*
- * post_frame_end()
- *
- * Signal end of video frame to decoder.
- *
- * This function is used with:
- *  - FFmpeg mpeg2 decoder
- *  - FFmpeg and CoreAVC H.264 decoders
- *  - NOT with libmpeg2 mpeg decoder
- */
-static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
-{
-  buf_element_t *cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1);
-
-  if (!cbuf) {
-    LOGMSG("post_frame_end(): get_buf_element() failed, retrying");
-    xine_usec_sleep (10*1000);
-
-    if (!(cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1))) {
-      LOGERR("post_frame_end(): get_buf_element() failed !");
-      return;
-    }
-  }
-
-  cbuf->type          = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
-  cbuf->decoder_flags = BUF_FLAG_FRAME_END;
-
-  if (!this->bih_posted) {
-    video_size_t size = {0};
-    if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->h264 > 0)) {
-
-      /* reset decoder buffer */
-      cbuf->decoder_flags |= BUF_FLAG_FRAME_START;
-
-      /* Fill xine_bmiheader for CoreAVC / H.264 */
-
-      if (this->h264 > 0 && this->coreavc_h264_decoder) {
-	xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
-
-	cbuf->decoder_flags |= BUF_FLAG_HEADER;
-	cbuf->decoder_flags |= BUF_FLAG_STDHEADER;   /* CoreAVC: buffer contains bmiheader */
-	cbuf->size           = sizeof(xine_bmiheader);
-
-	memset(bmi, 0, sizeof(xine_bmiheader));
-
-	bmi->biSize   = sizeof(xine_bmiheader);
-	bmi->biWidth  = size.width;
-	bmi->biHeight = size.height;
-
-	bmi->biPlanes        = 1;
-	bmi->biBitCount      = 24;
-	bmi->biCompression   = 0x34363248;
-	bmi->biSizeImage     = 0;
-	bmi->biXPelsPerMeter = size.pixel_aspect.num;
-	bmi->biYPelsPerMeter = size.pixel_aspect.den;
-	bmi->biClrUsed       = 0;
-	bmi->biClrImportant  = 0;
-      }
-
-      /* Set aspect ratio for ffmpeg mpeg2 / CoreAVC H.264 decoder
-       * (not for FFmpeg H.264 or libmpeg2 mpeg2 decoders)
-       */
-
-      if (size.pixel_aspect.num &&
-	  (!this->h264 || this->coreavc_h264_decoder)) {
-	cbuf->decoder_flags |= BUF_FLAG_HEADER;
-	cbuf->decoder_flags |= BUF_FLAG_ASPECT;
-	/* pixel ratio -> frame ratio */
-	if (size.pixel_aspect.num > size.height) {
-	  cbuf->decoder_info[1] = size.pixel_aspect.num / size.height;
-	  cbuf->decoder_info[2] = size.pixel_aspect.den / size.width;
-	} else {
-	  cbuf->decoder_info[1] = size.pixel_aspect.num * size.width;
-	  cbuf->decoder_info[2] = size.pixel_aspect.den * size.height;
-	}
-      }
-
-      LOGDBG("post_frame_end: video width %d, height %d, pixel aspect %d:%d", 
-	     size.width, size.height, size.pixel_aspect.num, size.pixel_aspect.den);
-
-      this->bih_posted = 1;
-    }
-  }
-
-  this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
-}
-
-/*
  * update_frames()
  *
  * Update frame type counters.
@@ -4488,142 +3977,6 @@ static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int 
   }
   return type;
 }
-
-/*
- * detect_h264()
- *
- * Detect video codec (MPEG2 or H.264)
- */
-#ifdef TEST_H264
-static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
-{
-  int i = 8;
-  i += data[i] + 1;   /* possible additional header bytes */
-
-  /* H.264 detection */
-  if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1) {
-    if (data[i + 3] == NAL_AUD) {
-      LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
-      return 1;
-    }
-    if (data[i + 3] == 0) {
-      LOGDBG("H.264 scanner: Possible MPEG2 start code PICTURE (0x00)");
-      return 0;
-    }
-    if (data[i + 3] >= 0x80) {
-      LOGDBG("H.264 scanner: Possible MPEG2 start code (0x%02x)", data[i + 3]);
-      return 0;
-    }
-    LOGMSG("H.264 scanner: Unregonized header 00 00 01 %02x", data[i + 3]);
-  }
-
-  return this->h264;
-}
-#endif /* TEST_H264 */
-
-#ifdef TEST_H264
-/*
- * post_frame_h264()
- *
- * H.264 video stream demuxing
- *  - mpeg_block demuxer does not regonize H.264 video
- */
-buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  int64_t  pts = pes_get_pts (buf->content, buf->size);
-  uint8_t *payload = buf->content;
-  int      header_len = 9 + payload[8];
-
-  /* skip PES header */
-  payload += header_len;
-
-  /* Detect video frame boundaries */
-
-  /* Access Unit Delimiter */
-  if (IS_NAL_AUD(payload)) {
-
-    if (this->I_frames < 4)
-      update_frames (this, buf->content, buf->size);
-
-    post_frame_end (this, buf);
-  }
-#if 0
-  else if (payload[0] == 0 && payload[1] == 0 && payload[2] == 1 && payload[3] >= 0x80) {
-    LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", payload[3]);
-    /* Should do something ... ? */
-  }
-#endif
-
-  /* Handle PTS and DTS */
-
-  buf->decoder_info[0] = 0;
-  if (pts >= INT64_C(0)) {
-#if 0
-    if (! PES_HAS_DTS(buf->content)) {
-      buf->decoder_info[0] = pts;
-    } else {
-      int64_t dts = pes_get_dts (buf->content, buf->size);
-      buf->decoder_info[0] = (pts - dts);
-      buf->decoder_flags |= BUF_FLAG_FRAMERATE;
-      LOGMSG("H.264: dts %"PRId64"  DIFF %d [stream video step %d]", 
-	     dts, (int)(pts-dts), 
-	     _x_stream_info_get(this->stream, XINE_STREAM_INFO_FRAME_DURATION));
-    }
-#endif
-    if (this->send_pts) {
-      LOGMSG("H.264: post pts %"PRId64, pts);
-      vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
-      this->send_pts = 0;
-    } else if (this->last_delivered_vid_pts > 0 && 
-	       abs(pts - this->last_delivered_vid_pts) > 270000 /* 3 sec */) {
-      LOGMSG("H.264: post pts %"PRId64" diff %d", pts, (int)(pts-this->last_delivered_vid_pts));
-      vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
-    }
-#if 0
-    /* xine ffmpeg decoder does not handle pts <-> dts difference very well if P/B frames have pts */
-    if (abs(pts - this->last_delivered_vid_pts) < 90000 && pts < this->last_delivered_vid_pts) {
-      LOGDBG("H.264:    -> pts %"PRId64"  <- 0", pts);
-      /*buf->pts = 0;*/
-    } else if (PES_HAS_DTS(buf->content)) {
-      LOGDBG("H.264:    -> pts %"PRId64"  <- 0 (DTS)", pts);
-      /*buf->pts = 0;*/
-    } else {
-      LOGDBG("H.264:    -> pts %"PRId64, pts);
-      buf->pts = pts;
-    }
-#else
-    buf->pts = pts;
-#endif
-    this->last_delivered_vid_pts = pts;
-  }
-
-  if (PES_HAS_DTS(buf->content)) {
-    int64_t dts = pes_get_dts (buf->content, buf->size);
-    buf->decoder_info[0] = pts - dts;
-  }
-
-  /* bypass demuxer ... */
-
-  buf->type     = BUF_VIDEO_H264;
-  buf->content += header_len;
-  buf->size    -= header_len;
-
-  /* Check for end of still image.
-     VDR ensures that H.264 still images end with an end of sequence NAL unit */
-  if (buf->size > 4) {
-    uint8_t *end = buf->content + buf->size;
-    if (IS_NAL_END_SEQ(end-4)) {
-      LOGMSG("post_frame_h264: Still frame ? (frame ends with end of sequence NAL unit)");
-      buf->decoder_flags |= BUF_FLAG_FRAME_END;
-    }
-  }
-
-  this->stream->video_fifo->put (this->stream->video_fifo, buf);
-
-  return NULL;
-}
-#endif /* TEST_H264 */
-
 
 /*
  * Preprocess buffer before passing it to demux
@@ -4676,8 +4029,7 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   }
 
   /* Handle discard */
-  if(this->discard_index > this->curpos && this->guard_index < this->curpos) {
-    this->last_delivered_vid_pts = INT64_C(-1);
+  if (this->discard_index > this->curpos && this->guard_index < this->curpos) {
     pthread_mutex_unlock(&this->lock);
     buf->free_buffer(buf);
     return NULL;
@@ -4690,213 +4042,14 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   }
 
   /* Send current PTS ? */
-  if(this->stream_start) {
-    this->last_delivered_vid_pts = INT64_C(-1);
-    this->send_pts     = 1;
+  if (this->stream_start) {
     this->stream_start = 0;
-    this->bih_posted   = 0;
-    this->h264         = -1;
     pthread_mutex_lock (&this->stream->first_frame_lock);
     this->stream->first_frame_flag = 2;
     pthread_mutex_unlock (&this->stream->first_frame_lock);
-
-    ts_data_dispose(this);
   }
 
   pthread_mutex_unlock(&this->lock);
-  return buf;
-}
-
-/*
- * demux_ts()
- *
- * MPEG TS processing
- */
-
-static void demux_ts_proc_video(vdr_input_plugin_t *this, buf_element_t *vbuf)
-{
-  /* PTS */
-  if (vbuf->pts > INT64_C(0)) {
-    /* stream start */
-    if (this->send_pts) {
-      LOGMSG("TS: post VIDEO pts %"PRId64, vbuf->pts);
-      vdr_x_demux_control_newpts (this->stream, vbuf->pts, BUF_FLAG_SEEK);
-      this->send_pts = 0;
-#ifdef TEST_SCR_PAUSE
-      scr_tuning_set_paused(this);
-#endif
-    }
-    /* seek */
-    else if (this->last_delivered_vid_pts > 0 &&
-             abs(vbuf->pts - this->last_delivered_vid_pts) > 270000 /* 3 sec */) {
-      LOGMSG("TS: post pts %"PRId64" diff %d", vbuf->pts, (int)(vbuf->pts - this->last_delivered_vid_pts));
-      vdr_x_demux_control_newpts (this->stream, vbuf->pts, BUF_FLAG_SEEK);
-    }
-
-    this->last_delivered_vid_pts = vbuf->pts;
-
-  } else {
-    vbuf->pts = INT64_C(0);
-  }
-
-  this->stream->video_fifo->put(this->stream->video_fifo, vbuf);
-}
-
-static void demux_ts_proc_audio(vdr_input_plugin_t *this, buf_element_t *abuf, int stream_index)
-{
-  /* Send current PTS ? */
-  if (this->send_pts && abuf->pts > 0) {
-    LOGMSG("TS: post AUDIO pts %"PRId64, abuf->pts);
-    vdr_x_demux_control_newpts(this->stream, abuf->pts, BUF_FLAG_SEEK);
-    this->send_pts = 0;
-#ifdef TEST_SCR_PAUSE
-    scr_tuning_set_paused(this);
-#endif
-  }
-
-  /* track audio stream changes */
-#ifdef BUF_CONTROL_RESET_TRACK_MAP
-  if (this->prev_audio_stream_id != stream_index) {
-    this->prev_audio_stream_id = stream_index;
-    put_control_buf(this->stream->audio_fifo,
-                    this->stream->audio_fifo,
-                    BUF_CONTROL_RESET_TRACK_MAP);
-  }
-#endif
-
-  /* PTS wrap workaround */
-  if(abuf->pts > 0x40400000 &&
-     this->last_delivered_vid_pts < 0x40000000 &&
-     this->last_delivered_vid_pts > 0) {
-    LOGMSG("TS: VIDEO pts wrap before AUDIO, ignoring audio pts %" PRId64, abuf->pts);
-    abuf->pts = 0;
-  }
-
-  this->stream->audio_fifo->put(this->stream->audio_fifo, abuf);
-}
-
-static void demux_ts(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  if (!this->ts_data)
-    this->ts_data = calloc(1, sizeof(ts_data_t));
-
-  ts_data_t *ts_data = this->ts_data;
-
-  while (buf->size >= TS_SIZE) {
-
-    unsigned int ts_pid = ts_PID(buf->content);
-
-    /* parse PAT */
-    if (ts_pid == 0) {
-      pat_data_t pat;
-
-      ts_data_flush(this);
-
-      if (ts_parse_pat(&pat, buf->content)) {
-        ts_data->pmt_pid        = pat.pmt_pid[0];
-        ts_data->program_number = pat.program_number[0];
-        LOGMSG("demux_ts: got PAT, PMT pid = %d, program = %d", ts_data->pmt_pid, ts_data->program_number);
-      }
-    }
-
-    /* parse PMT */
-    else if (ts_pid == ts_data->pmt_pid) {
-
-      ts_data_flush(this);
-
-      if (ts_parse_pmt(&ts_data->pmt, ts_data->program_number, buf->content)) {
-
-        /* PMT changed, reset ts->es converters */
-        LOGMSG("demux_ts: PMT changed");
-        ts_data_ts2es_init(ts_data, this->stream->video_fifo, this->stream->audio_fifo);
-
-        this->h264 = (ts_data->pmt.video_type == ISO_14496_PART10_VIDEO) ? 1 : 0;
-
-        /* Inform UI of channels changes */
-        xine_event_t event;
-        event.type = XINE_EVENT_UI_CHANNELS_CHANGED;
-        event.data_length = 0;
-        xine_event_send(this->stream, &event);
-      }
-    }
-
-    /* demux video */
-    else if (ts_pid == ts_data->pmt.video_pid) {
-
-      if (ts_data->video) {
-        buf_element_t *vbuf = ts2es_put(ts_data->video, buf->content);
-        if (vbuf)
-          demux_ts_proc_video(this, vbuf);
-      }
-    }
-
-    /* demux audio and subtitles */
-    else {
-      int i, done = 0;
-      for (i=0; i < ts_data->pmt.audio_tracks_count; i++)
-        if (ts_pid == ts_data->pmt.audio_tracks[i].pid) {
-          if (ts_data->audio[i]) {
-            buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content);
-            if (abuf)
-              demux_ts_proc_audio(this, abuf, i);
-          }
-          done = 1;
-          break;
-        }
-#if 0
-      if (!done)
-      for (i=0; i < ts_data->pmt.spu_tracks_count; i++)
-        if (ts_pid == ts_data->pmt.spu_tracks[i].pid) {
-          if (ts_data->spu[i]) {
-            buf_element_t *sbuf = ts2es_put(ts_data->spu[i], buf->content);
-            if (sbuf)
-              this->stream->video_fifo->put(this->stream->video_fifo, sbuf);
-          }
-          done = 1;
-          break;
-        }
-
-      if (!done)
-        LOGMSG("Got unknown TS packet, pid = %d", ts_pid);
-#endif
-    }
-
-    buf->content += TS_SIZE;
-    buf->size    -= TS_SIZE;
-  }
-
-  buf->free_buffer(buf);
-}
-
-/*
- * Demux some buffers not supported by mpeg_block demuxer:
- *  - MPEG TS
- *  - H.264 video
- */
-static buf_element_t *demux_buf(vdr_input_plugin_t *this, buf_element_t *buf)
-{
-  if (buf->type != BUF_DEMUX_BLOCK)
-    return buf;
-
-  if (DATA_IS_TS(buf->content)) {
-    demux_ts(this, buf);
-    return NULL;
-  }
-
-#ifdef TEST_H264
-  /* H.264 */
-  if (IS_VIDEO_PACKET(buf->content)) {
-    if (this->h264) {
-      if (this->h264 < 0)
-	this->h264 = detect_h264(this, buf->content, buf->size);
-
-      if (this->h264 > 0)
-	buf = post_frame_h264(this, buf);
-    }
-    return buf;
-  }
-#endif
-
   return buf;
 }
 
@@ -4913,23 +4066,13 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
   cache_iframe(this, buf);
 #endif
 
-  if (buf->type != BUF_DEMUX_BLOCK)
+  if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
     return;
 
-  /* Send current PTS ? */
-  if(this->send_pts) {
-    int64_t pts = pes_get_pts(buf->content, buf->size);
-    if(pts > 0) {
 #ifdef TEST_SCR_PAUSE
       if(need_pause)
 	scr_tuning_set_paused(this);
 #endif
-      vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
-      this->send_pts = 0;
-    } else if(pts == 0) {
-      /* Still image? do nothing, leave send_pts ON */
-    }
-  }
 
   /* generated still images start with empty video PES, PTS = 0.
      Reset metronom pts so images will be displayed */
@@ -4942,31 +4085,10 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
     }
   }
 
-#ifndef FFMPEG_DEC
-
   /* Count video frames for SCR tuning algorithm */
   if(this->live_mode && this->I_frames < 4)
     if(IS_VIDEO_PACKET(buf->content) && buf->size > 32)
       update_frames(this, buf->content, buf->size);
-
-#else /* FFMPEG_DEC */
-
-  /* Count video frames for SCR tuning algorithm */
-  if(this->ffmpeg_mpeg2_decoder || (this->live_mode && this->I_frames < 4))
-    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
-      uint8_t type = update_frames(this, buf->content, buf->size);
-      if(type && this->ffmpeg_mpeg2_decoder) {
-	/* signal FRAME_END to decoder */
-	post_frame_end(this, buf);
-	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
-	 * (B-frame pts's are smaller than in previous P-frame) 
-	 * Anyway, without this block of code B frames with pts are dropped. */
-	if(type == B_FRAME && PES_HAS_PTS(buf->content))
-	  pes_strip_pts(buf->content, buf->size);
-      }
-    }
-
-#endif
 }
 
 static void handle_disconnect(vdr_input_plugin_t *this)
@@ -4998,7 +4120,7 @@ static int adjust_scr_speed(vdr_input_plugin_t *this)
       reset_scr_tuning(this, this->speed_before_pause);
   } else {
 #ifdef TEST_SCR_PAUSE
-    if(this->stream_start || this->send_pts) {
+    if(this->stream_start) {
       reset_scr_tuning(this, this->speed_before_pause);
       need_pause = 1;
     } else {
@@ -5081,14 +4203,6 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     if (! (buf = preprocess_buf(this, buf)))
       continue;
-
-    /* control buffers go always to demuxer */
-    if ((buf->type & BUF_MAJOR_MASK) ==  BUF_CONTROL_BASE) {
-      ts_data_flush(this);
-      return buf;
-    }
-
-    buf = demux_buf(this, buf);
 
   } while (!buf);
 
@@ -6001,7 +5115,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
 
   this->stream_start = 1;
   this->max_buffers  = 10;
-  this->last_delivered_vid_pts = INT64_C(-1);
   this->autoplay_size = -1;
 
   local_mode         = ( (!strncasecmp(mrl, MRL_ID "://", MRL_ID_LEN+3)) && 
@@ -6060,8 +5173,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
   pthread_mutex_init (&this->fd_control_lock, NULL);
   pthread_cond_init  (&this->engine_flushed, NULL);
-
-  detect_video_decoders(this);
 
   LOGDBG("vdr_class_get_instance done.");
   return &this->input_plugin;
