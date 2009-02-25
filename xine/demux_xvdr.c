@@ -36,6 +36,9 @@
 #include "../tools/pes.h"
 #include "../tools/ts.h"
 
+#include "ts2es.h"
+#include "demux_xvdr_tsdata.h"
+
 /*
  * features
  */
@@ -78,27 +81,26 @@ typedef struct demux_xvdr_s {
 
   input_plugin_t       *input;
 
-  int                   status;
-
-  char                  mrl[256];
+  ts_data_t            *ts_data;        /* MPEG-TS stuff */
 
   int64_t               last_pts[2];
-  int                   send_newpts;
-  int                   buf_flag_seek;
-  uint32_t              packet_len;
-  int64_t               pts;
-  int64_t               dts;
-  uint32_t              stream_id;
-
   int64_t               last_vpts;
-
+  int                   status;
   uint32_t              video_type;
   uint32_t              audio_type;
   uint32_t              subtitle_type;
 
+  /* current buf_element */
+  int64_t               pts;
+  int64_t               dts;
+  uint32_t              packet_len;
+  uint8_t               stream_id;
+
+  uint8_t               send_newpts          : 1;
+  uint8_t               buf_flag_seek        : 1;
   uint8_t               ffmpeg_mpeg2_decoder : 1;
   uint8_t               coreavc_h264_decoder : 1;
-  uint8_t               bih_posted : 1;
+  uint8_t               bih_posted           : 1;
 } demux_xvdr_t ;
 
 typedef struct {
