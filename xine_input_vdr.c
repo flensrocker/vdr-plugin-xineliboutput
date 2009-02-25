@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.234 2009-02-25 14:27:57 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.235 2009-02-25 14:34:24 phintuka Exp $
  *
  */
 
@@ -3252,9 +3252,13 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       LOGDBG("XINE_EVENT (input) %d --> %s", 
 	     event->type, vdr_keymap[i].name);
 
-      if(this->funcs.input_control) {
+      if(this->funcs.post_vdr_event) {
 	/* remote mode: -> input_plugin -> connection -> VDR */
-	this->funcs.input_control(&this->iface, NULL, vdr_keymap[i].name, 0, 0);
+        char *msg=NULL;
+        if (asprintf(&msg, "KEY %s\r\n", vdr_keymap[i].name) >= 0) {
+          this->funcs.post_vdr_event(&this->iface, msg);
+          free(msg);
+        }
       }
       if(this->funcs.xine_input_event) {
 	/* local mode: -> VDR */
@@ -3977,24 +3981,20 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
  *
  * It is safe to cancel thread while this function is being executed.
  */
-static int vdr_plugin_keypress(vdr_input_plugin_if_t *this_if,
-			       const char *map, const char *key,
-			       int repeat, int release)
+static int post_vdr_event(vdr_input_plugin_if_t *this_if, const char *msg)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
+  int result = -1;
 
   mutex_lock_cancellable(&this->lock);
 
-  if(key && this->fd_control >= 0) {
-    if(map)
-      printf_control(this, "KEY %s %s %s %s\r\n", map, key, 
-		      repeat?"Repeat":"", release?"Release":"");
-    else
-      printf_control(this, "KEY %s\r\n", key);
-  }
+  if (msg && this->fd_control >= 0)
+    result = write_control(this, msg);
+  else
+    LOGMSG("post_vdr_event: error ! \"%s\" not delivered.", msg ?: "<null>");
 
   mutex_unlock_cancellable(&this->lock);
-  return 0;
+  return result;
 }
 
 
@@ -5218,7 +5218,7 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
     this->funcs.push_input_osd    = vdr_plugin_exec_osd_command;
     /*this->funcs.xine_input_event= NULL; -- frontend sets this */
   } else {
-    this->funcs.input_control     = vdr_plugin_keypress;
+    this->funcs.post_vdr_event    = post_vdr_event;
   }
   
   /* buffer */

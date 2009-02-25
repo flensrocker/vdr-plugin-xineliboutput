@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.95 2009-02-10 16:07:52 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.96 2009-02-25 14:34:24 phintuka Exp $
  *
  */
 
@@ -552,7 +552,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(this->xine)
     this->fe.xine_exit(this_gen);
-  
+
   this->stream          = NULL;
   this->video_port      = NULL;
   this->audio_port      = NULL;
@@ -1269,9 +1269,25 @@ static int fe_send_input_event(frontend_t *this_gen, const char *map,
 
   /* remote mode: --> input plugin --> vdr */
   if (find_input_plugin(this)) {
-    if (this->input_plugin->f.input_control) {
-      this->input_plugin->f.input_control(this->input_plugin, map, key, repeat, release);
-      return FE_OK;
+    if (this->input_plugin->f.post_vdr_event) {
+      char *msg = NULL;
+      if (map) {
+        if (asprintf(&msg, "KEY %s %s %s %s\r\n", map, key,
+                     repeat?"Repeat":"", release?"Release":"") < 0)
+          msg = NULL;
+      } else {
+        if (asprintf(&msg, "KEY %s\r\n", key) < 0)
+          msg = NULL;
+      }
+
+      if (msg) {
+        int r = this->input_plugin->f.post_vdr_event(this->input_plugin, msg);
+        free(msg);
+        if (r > 0)
+          return FE_OK;
+      }
+      LOGMSG("fe_send_input_event: message KEY %s lost", key);
+      return FE_ERROR;
     }
   }
 
@@ -1406,7 +1422,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
       posts->pip_stream = NULL;
     }
     return NULL;
-    
+
   } else if(!strncmp(cmd, "POST ", 5)) {
     char *name = strdup(cmd+5), *args = name, *pt;
 
