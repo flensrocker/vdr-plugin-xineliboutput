@@ -196,6 +196,26 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
 }
 
 /*
+ * post_sequence_end()
+ *
+ * Add MPEG2 or H.264 sequence end code to fifo buffer
+ */
+static void post_sequence_end(fifo_buffer_t *fifo, uint32_t video_type)
+{
+  buf_element_t *buf = fifo->buffer_pool_try_alloc(fifo);
+  if (buf) {
+    buf->type = video_type;
+    buf->size = 4;
+    buf->decoder_flags = BUF_FLAG_FRAME_END;
+    buf->content[0] = 0x00;
+    buf->content[1] = 0x00;
+    buf->content[2] = 0x01;
+    buf->content[3] = (video_type == BUF_VIDEO_H264) ? NAL_END_SEQ : 0xB7;
+    fifo->put(fifo, buf);
+  }
+}
+
+/*
  * post_frame_end()
  *
  * Signal end of video frame to decoder.
@@ -298,6 +318,56 @@ static void track_audio_stream_change(demux_xvdr_t *this, buf_element_t *buf)
 #endif
 }
 
+static void demux_xvdr_fwd_buf(demux_xvdr_t *this, buf_element_t *buf)
+{
+  /* demuxed video --> video_fifo */
+  if ((buf->type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE) {
+    this->video_type = buf->type;
+    check_newpts (this, buf, PTS_VIDEO);
+    this->video_fifo->put (this->video_fifo, buf);
+    return;
+  }
+
+  /* demuxed audio --> audio_fifo */
+  if ((buf->type & BUF_MAJOR_MASK) == BUF_AUDIO_BASE) {
+    if (this->audio_fifo) {
+      check_newpts (this, buf, PTS_AUDIO);
+      track_audio_stream_change (this, buf);
+      this->audio_fifo->put (this->audio_fifo, buf);
+    } else {
+      buf->free_buffer (buf);
+    }
+    return;
+  }
+
+  /* decoder flush --> video_fifo */
+  if (buf->type == BUF_CONTROL_FLUSH_DECODER) {
+    /* append sequence end code */
+    post_sequence_end (this->video_fifo, this->video_type);
+    this->video_fifo->put (this->video_fifo, buf);
+    return;
+  }
+
+  /* control buffer --> both fifos */
+  if ((buf->type & BUF_MAJOR_MASK) == BUF_CONTROL_BASE) {
+    if (this->audio_fifo) {
+      /* duplicate goes to audio fifo */
+      buf_element_t *cbuf = this->audio_fifo->buffer_pool_alloc (this->audio_fifo);
+      cbuf->type = buf->type;
+      cbuf->decoder_flags = buf->decoder_flags;
+      memcpy (cbuf->decoder_info,     buf->decoder_info,     sizeof(cbuf->decoder_info));
+      memcpy (cbuf->decoder_info_ptr, buf->decoder_info_ptr, sizeof(cbuf->decoder_info_ptr));
+
+      this->audio_fifo->put (this->audio_fifo, cbuf);
+    }
+    this->video_fifo->put (this->video_fifo, buf);
+    return;
+  }
+
+  LOGMSG("Unhandled buffer type %08x", buf->type);
+  buf->free_buffer (buf);
+}
+
 static void demux_xvdr_parse_pack (demux_xvdr_t *this)
 {
   buf_element_t *buf = NULL;
@@ -314,46 +384,8 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   /* If this is not a block for the demuxer, pass it
    * straight through. */
   if (buf->type != BUF_DEMUX_BLOCK) {
-
-    if ((buf->type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE) {
-      check_newpts (this, buf, PTS_VIDEO);
-      this->video_fifo->put (this->video_fifo, buf);
-      return;
-    }
-
-    if ((buf->type & BUF_MAJOR_MASK) == BUF_AUDIO_BASE) {
-      if (this->audio_fifo) {
-        check_newpts (this, buf, PTS_AUDIO);
-        track_audio_stream_change (this, buf);
-        this->audio_fifo->put (this->audio_fifo, buf);
-      } else {
-        buf->free_buffer (buf);
-      }
-      return;
-    }
-
-    if (buf->type == BUF_CONTROL_FLUSH_DECODER) {
-      /* decoder flush only to video fifo */
-      this->stream->video_fifo->put(this->stream->video_fifo, buf);
-      return;
-    }
-
-    if ((buf->type & BUF_MAJOR_MASK) != BUF_CONTROL_BASE)
-      LOGMSG("buffer type %08x != BUF_DEMUX_BLOCK", buf->type);
-
-    /* duplicate goes to audio fifo */
-    if (this->audio_fifo) {
-      buf_element_t *cbuf = this->audio_fifo->buffer_pool_alloc (this->audio_fifo);
-
-      cbuf->type = buf->type;
-      cbuf->decoder_flags = buf->decoder_flags;
-      memcpy( cbuf->decoder_info, buf->decoder_info, sizeof(cbuf->decoder_info) );
-      memcpy( cbuf->decoder_info_ptr, buf->decoder_info_ptr, sizeof(cbuf->decoder_info_ptr) );
-
-      this->audio_fifo->put (this->audio_fifo, cbuf);
-    }
-    this->video_fifo->put (this->video_fifo, buf);
-
+    ts_data_flush (this->ts_data);
+    demux_xvdr_fwd_buf (this, buf);
     return;
   }
 
