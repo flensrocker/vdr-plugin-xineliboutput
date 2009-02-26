@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.235 2009-02-25 14:34:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.236 2009-02-26 10:09:43 phintuka Exp $
  *
  */
 
@@ -1033,16 +1033,6 @@ static buf_element_t *buffer_pool_timed_alloc(fifo_buffer_t *fifo, int timeoutMs
 }
 #endif
 
-#if 0
-static buf_element_t *fifo_buffer_timed_get(fifo_buffer_t *fifo, int timeoutMs)
-{
-  struct timespec    abstime;
-  create_timeout_time(&abstime, timeoutMs);
-  
-  return NULL;
-}
-#endif
-
 static buf_element_t *fifo_buffer_try_get(fifo_buffer_t *fifo)
 {
   int i;
@@ -1072,12 +1062,36 @@ static buf_element_t *fifo_buffer_try_get(fifo_buffer_t *fifo)
   return buf;
 }
 
+static buf_element_t *fifo_buffer_timed_get(fifo_buffer_t *fifo, int timeout)
+{
+  buf_element_t *buf = fifo_buffer_try_get (fifo);
+
+  if (!buf) {
+    struct timespec abstime;
+    int result = 0;
+    create_timeout_time (&abstime, timeout);
+
+    mutex_lock_cancellable (&fifo->mutex);
+    while (fifo->first == NULL && !result)
+      result = pthread_cond_timedwait (&fifo->not_empty, &fifo->mutex, &abstime);
+    mutex_unlock_cancellable (&fifo->mutex);
+    buf = fifo_buffer_try_get (fifo);
+  }
+
+  return buf;
+}
+
 static void signal_buffer_pool_not_empty(vdr_input_plugin_t *this)
 {
-  if(this->buffer_pool) {
+  if (this->buffer_pool) {
     pthread_mutex_lock(&this->buffer_pool->buffer_pool_mutex);
     pthread_cond_broadcast(&this->buffer_pool->buffer_pool_cond_not_empty);
     pthread_mutex_unlock(&this->buffer_pool->buffer_pool_mutex);
+  }
+  if (this->hd_buffer) {
+    pthread_mutex_lock(&this->hd_buffer->buffer_pool_mutex);
+    pthread_cond_broadcast(&this->hd_buffer->buffer_pool_cond_not_empty);
+    pthread_mutex_unlock(&this->hd_buffer->buffer_pool_mutex);
   }
 }
 
@@ -1199,6 +1213,25 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
     buf->free_buffer = buffer_pool_free;
   }
 
+  return buf;
+}
+
+static buf_element_t *get_buf_element_timed(vdr_input_plugin_t *this, int size, int timeout)
+{
+  buf_element_t *buf = get_buf_element (this, size, 0);
+  if (!buf) {
+    int             result = 0;
+    fifo_buffer_t  *fifo   = this->hd_stream ? this->hd_buffer : this->buffer_pool;
+    struct timespec abstime;
+    create_timeout_time (&abstime, timeout);
+
+    do {
+      mutex_lock_cancellable (&fifo->buffer_pool_mutex);
+      result = pthread_cond_timedwait (&fifo->buffer_pool_cond_not_empty, &fifo->buffer_pool_mutex, &abstime);
+      mutex_unlock_cancellable (&fifo->buffer_pool_mutex);
+      buf = get_buf_element (this, size, 0);
+    } while (!buf && !result);
+  }
   return buf;
 }
 
@@ -4229,24 +4262,16 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     need_pause = adjust_scr_speed(this);
 
     /* get next buffer */
-    buf = fifo_buffer_try_get(this->block_buffer);
+    buf = fifo_buffer_timed_get(this->block_buffer, 100);
     if (!buf) {
-      struct timespec abstime;
-      create_timeout_time(&abstime, 500);
-      pthread_mutex_lock(&this->block_buffer->mutex);
-      if (this->block_buffer->fifo_size <= 0)
-	pthread_cond_timedwait (&this->block_buffer->not_empty,
-				&this->block_buffer->mutex, &abstime);
-      pthread_mutex_unlock(&this->block_buffer->mutex);
-#if 1
       if (!this->is_paused &&
           !this->still_mode &&
           !this->is_trickspeed &&
           !this->slave_stream &&
           this->stream->video_fifo->fifo_size <= 0) {
-	this->read_timeouts++;
 
-	if (this->read_timeouts > 16) {
+        this->read_timeouts++;
+	if (this->read_timeouts > 80) {
 	  LOGMSG("No data in 8 seconds, queuing no signal image");
 	  queue_nosignal(this);
 	  this->read_timeouts = 0;
@@ -4254,7 +4279,6 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       } else {
 	this->read_timeouts = 0;
       }
-#endif
       errno = EAGAIN;
       return NULL;
     }
