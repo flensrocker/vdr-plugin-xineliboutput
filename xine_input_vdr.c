@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.236 2009-02-26 10:09:43 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.237 2009-03-01 10:51:37 phintuka Exp $
  *
  */
 
@@ -4007,27 +4007,22 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
 }
 
 /*
- * vdr_plugin_keypress()
+ * post_vdr_event()
  *
  * - Called by frontend and vdr_event_cb()
- * - forward xine-lib/frontend-generated input events to VDR
+ * - forward xine-lib/frontend-generated events to VDR
  *
  * It is safe to cancel thread while this function is being executed.
  */
 static int post_vdr_event(vdr_input_plugin_if_t *this_if, const char *msg)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
-  int result = -1;
-
-  mutex_lock_cancellable(&this->lock);
 
   if (msg && this->fd_control >= 0)
-    result = write_control(this, msg);
-  else
-    LOGMSG("post_vdr_event: error ! \"%s\" not delivered.", msg ?: "<null>");
+    return write_control(this, msg);
 
-  mutex_unlock_cancellable(&this->lock);
-  return result;
+  LOGMSG("post_vdr_event: error ! \"%s\" not delivered.", msg ?: "<null>");
+  return -1;
 }
 
 
