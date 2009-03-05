@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.238 2009-03-05 16:54:23 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.239 2009-03-05 19:44:13 phintuka Exp $
  *
  */
 
@@ -2292,25 +2292,47 @@ LOGMSG("  pip stream created");
 
 static int handle_control_osdcmd(vdr_input_plugin_t *this)
 {
-  osd_command_t osdcmd;
+  osd_command_t osdcmd = {0};
   int err = CONTROL_OK;
 
-  if(!this->control_running)
+  if (!this->control_running)
     return CONTROL_DISCONNECTED;
 
-  if(read_control(this, (unsigned char*)&osdcmd, sizeof(osd_command_t))
-     != sizeof(osd_command_t)) {
+  /* read struct size first */
+  size_t   todo, expect = sizeof(osd_command_t);
+  uint8_t *pt = (uint8_t*)&osdcmd;
+  if (read_control(this, pt, sizeof(osdcmd.size)) != sizeof(osdcmd.size)) {
+    LOGMSG("control: error reading OSDCMD data length");
+    return CONTROL_DISCONNECTED;
+  }
+  pt     += sizeof(osdcmd.size);
+  expect -= sizeof(osdcmd.size);
+  todo    = osdcmd.size - sizeof(osdcmd.size);
+
+  /* read data */
+  size_t bytes = MIN(todo, expect);
+  if (read_control(this, pt, bytes) != bytes) {
     LOGMSG("control: error reading OSDCMD data");
     return CONTROL_DISCONNECTED;
   }
 
+  if (expect < todo) {
+    /* server uses larger struct, discard rest of data */
+    uint8_t dummy[todo-expect];
+    LOGMSG("osd_command_t size %d, expected %d", (int)osdcmd.size, (int)expect);
+    if (read_control(this, dummy, todo-expect) != todo-expect) {
+      LOGMSG("control: error reading OSDCMD data (unknown part)");
+      return CONTROL_DISCONNECTED;
+    }
+  }
+
   ntoh_osdcmd(osdcmd);
 
-  if(osdcmd.palette && osdcmd.colors>0) {
+  /* read palette */
+  if (osdcmd.palette && osdcmd.colors>0) {
     int bytes = sizeof(xine_clut_t)*(osdcmd.colors);
     osdcmd.palette = malloc(bytes);
-    if(read_control(this, (unsigned char *)osdcmd.palette, bytes)
-       != bytes) {
+    if (read_control(this, (unsigned char *)osdcmd.palette, bytes) != bytes) {
       LOGMSG("control: error reading OSDCMD palette");
       err = CONTROL_DISCONNECTED;
     }
@@ -2318,7 +2340,8 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
     osdcmd.palette = NULL;
   }
 
-  if(err == CONTROL_OK && osdcmd.data && osdcmd.datalen>0) {
+  /* read (RLE) data */
+  if (err == CONTROL_OK && osdcmd.data && osdcmd.datalen>0) {
     osdcmd.data = (xine_rle_elem_t*)malloc(osdcmd.datalen);
     if(read_control(this, (unsigned char *)osdcmd.data, osdcmd.datalen)
        != osdcmd.datalen) {
@@ -2334,7 +2357,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
     osdcmd.data = NULL;
   }
 
-  if(err == CONTROL_OK)
+  if (err == CONTROL_OK)
     err = vdr_plugin_exec_osd_command(&this->iface, &osdcmd);
 
   free(osdcmd.data);
