@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.237 2009-03-01 10:51:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.238 2009-03-05 16:54:23 phintuka Exp $
  *
  */
 
@@ -1177,13 +1177,16 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   buf_element_t *buf = NULL;
 
   /* HD buffer */
-  if(this->hd_stream && size <= HD_BUF_ELEM_SIZE)
+  if (this->hd_stream && size <= HD_BUF_ELEM_SIZE) {
     buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
+    if (!force && !buf)
+      return NULL;
+  }
 
   /* limit max. buffered data */
   if(!force && !buf) {
     int buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
-    if(this->buffer_pool->buffer_pool_num_free < buffer_limit) 
+    if (this->buffer_pool->buffer_pool_num_free < buffer_limit)
       return NULL;
   }
 
@@ -3739,6 +3742,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	data_stream_parse_control(this, (char*)pkt_data);
 	continue;
       }
+
     } else {
       /* Check for PES header */
       if(!DATA_IS_TS(pkt_data) && (pkt_data[0] || pkt_data[1] || pkt_data[2] != 1)) {
@@ -3748,7 +3752,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     }
 
     /* Check if header is valid */
-    if(pkt->seq > UDP_SEQ_MASK) {
+    if (pkt->seq > UDP_SEQ_MASK) {
       LOGMSG("received invalid UDP packet (sequence number too big)");
       continue;
     }
@@ -3759,7 +3763,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     current_seq = pkt->seq & UDP_SEQ_MASK;
     /* first received frame initializes sequence counter */
-    if(udp->received_frames == -1) { 
+    if (udp->received_frames == -1) { 
       udp->next_seq = current_seq;
       udp->received_frames = 0;
     }
@@ -3820,7 +3824,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 	this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
       else
 	udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
-      
+
       udp->queue[udp->next_seq] = NULL;
       udp->queued --;
       INCSEQ(udp->next_seq);
@@ -3840,13 +3844,13 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
 	while(!udp->queue[current_seq] && --max_req > 0) 
 	  INCSEQ(current_seq);
-	
+
 	printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n", 
 		       udp->next_seq, PREVSEQ(current_seq), 
 		       udp->queue_input_pos);
 	udp->resend_requested = 
 	  (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
-	
+
 	LOGUDP("%d-%d missing, requested re-send for %d frames",
 	       udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
       }
@@ -4019,7 +4023,7 @@ static int post_vdr_event(vdr_input_plugin_if_t *this_if, const char *msg)
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
 
   if (msg && this->fd_control >= 0)
-    return write_control(this, msg);
+    return write_control (this, msg);
 
   LOGMSG("post_vdr_event: error ! \"%s\" not delivered.", msg ?: "<null>");
   return -1;
