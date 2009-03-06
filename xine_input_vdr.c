@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.239 2009-03-05 19:44:13 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.240 2009-03-06 12:07:18 phintuka Exp $
  *
  */
 
@@ -3482,37 +3482,38 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
-  int cnt = 0, todo = 0, n, result, retries = 0;
+  int cnt = 0, todo = 0, retries = 0;
+  int n, result;
 
  retry:
-  while(XIO_READY == (result = io_select_rd(this->fd_data))) {
+  while (XIO_READY == (result = io_select_rd(this->fd_data))) {
 
-    if(!this->control_running)
+    if (!this->control_running)
       break;
 
     /* Allocate buffer */
-    if(!read_buffer) {
+    if (!read_buffer) {
 
       /* can't cancel if read_buffer != NULL (disposing fifos would freeze) */
       pthread_testcancel();
 
       read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
-      if(!read_buffer) {
-	VDR_ENTRY_LOCK(XIO_ERROR);
-	vdr_plugin_poll(this, 100);
-	VDR_ENTRY_UNLOCK();
+      if (!read_buffer) {
+        VDR_ENTRY_LOCK(XIO_ERROR);
+        vdr_plugin_poll(this, 100);
+        VDR_ENTRY_UNLOCK();
 
-	if(!this->control_running)
-	  break;
+        if (!this->control_running)
+          break;
 
-	read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
-	if(!read_buffer) {
-	  /* do not drop any data here ; dropping is done only at server side. */
-	  if(!this->is_paused)
-	    LOGDBG("TCP: fifo buffer full");
-	  xine_usec_sleep(3*1000);
-	  continue; /*  must call select to check fd for errors / closing */
-	}
+        read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
+        if (!read_buffer) {
+          /* do not drop any data here ; dropping is done only at server side. */
+          if (!this->is_paused)
+            LOGDBG("TCP: fifo buffer full");
+          xine_usec_sleep(3*1000);
+          continue; /*  must call select to check fd for errors / closing */
+        }
       }
 
       todo = sizeof(stream_tcp_header_t);
@@ -3522,50 +3523,50 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     /* Read data */
     errno = 0;
     n = read(this->fd_data, &read_buffer->mem[cnt], todo-cnt);
-    if(n <= 0) {
-      if(!n || (errno != EINTR && errno != EAGAIN)) {
-	if(n<0 && this->fd_data>=0)
-	  LOGERR("TCP read error (data stream %d : %d)", this->fd_data, n);
-	if(n==0)
-	  LOGMSG("Data stream disconnected");
-	result = XIO_ERROR;
-	break;
+    if (n <= 0) {
+      if (!n || (errno != EINTR && errno != EAGAIN)) {
+        if (n < 0 && this->fd_data >= 0)
+          LOGERR("TCP read error (data stream %d : %d)", this->fd_data, n);
+        if (n == 0)
+          LOGMSG("Data stream disconnected");
+        result = XIO_ERROR;
+        break;
       }
       continue;
     }
 
     cnt += n;
 
-    if(cnt == sizeof(stream_tcp_header_t)) {
+    if (cnt == sizeof(stream_tcp_header_t)) {
       /* Header complete */
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
       hdr->len = ntohl(hdr->len);
       hdr->pos = ntohull(hdr->pos);
 
       todo = cnt + hdr->len;
-      if(todo+cnt >= read_buffer->max_size) {
-	LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)", 
-	       read_buffer->max_size, todo + cnt);
-	todo = read_buffer->max_size - cnt - 1;
+      if (todo + cnt >= read_buffer->max_size) {
+        LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)",
+               read_buffer->max_size, todo + cnt);
+        todo = read_buffer->max_size - cnt - 1;
       }
     }
 
-    if(cnt >= todo) {
+    if (cnt >= todo) {
       /* Buffer complete */
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
-      if(hdr->pos == (uint64_t)(-1ULL) /*0xffffffff ffffffff*/) {
-	/* control data */
-	uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
-	if(pkt_data[0]) { /* -> can't be pes frame */
-	  data_stream_parse_control(this, (char*)pkt_data);
+      if (hdr->pos == (uint64_t)(-1ULL) /*0xffffffff ffffffff*/) {
+        /* control data */
+        uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
+        if (pkt_data[0]) { /* -> can't be pes frame */
+          data_stream_parse_control(this, (char*)pkt_data);
 
-	  /* read next block */
-	  todo = sizeof(stream_tcp_header_t);
-	  cnt = 0;
-	  continue;
-	}
+          /* read next block */
+          todo = sizeof(stream_tcp_header_t);
+          cnt = 0;
+          continue;
+        }
       }
- 
+
       /* frame ready */
       read_buffer->size = cnt;
       read_buffer->type = BUF_NETWORK_BLOCK;
@@ -3574,15 +3575,15 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
     }
   }
 
-  if(read_buffer) {
-    if(cnt && this->control_running && result == XIO_TIMEOUT && (++retries < 10)) {
+  if (read_buffer) {
+    if (cnt && this->control_running && result == XIO_TIMEOUT && (++retries < 10)) {
       LOGMSG("TCP: Warning: long delay (>500ms) !");
       goto retry;
     }
 
     read_buffer->free_buffer(read_buffer);
     read_buffer = NULL;
-    if(cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
+    if (cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
       LOGMSG("TCP: Delay too long, disconnecting");
       this->control_running = 0;
       return XIO_ERROR;
@@ -3603,98 +3604,98 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
   int result = XIO_ERROR, n, current_seq, timeouts = 0;
   buf_element_t *read_buffer = NULL;
 
-  while(this->control_running && this->fd_data >= 0) {
+  while (this->control_running && this->fd_data >= 0) {
 
     result = _x_io_select(this->stream, this->fd_data,
 			  XIO_READ_READY, 20);
 
-    if(result != XIO_READY) {
-      if(result == XIO_TIMEOUT) {
-	if(timeouts++ > 25)
-	  return XIO_TIMEOUT;
-	continue;
+    if (result != XIO_READY) {
+      if (result == XIO_TIMEOUT) {
+        if (timeouts++ > 25)
+          return XIO_TIMEOUT;
+        continue;
       }
       return result;
     }
     timeouts = 0;
 
-    if(!this->control_running)
+    if (!this->control_running)
       break;
 
-    /* 
-     * allocate buffer and read incoming UDP packet from socket 
+    /*
+     * allocate buffer and read incoming UDP packet from socket
      */
 
-    if(!read_buffer) {
-      
+    if (!read_buffer) {
+
       pthread_testcancel();
 
       read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
-      if(!read_buffer) {
-	/* if queue is full, skip (video) frame. 
-	   Waiting longer for free buffers just makes things worse ... */
-	if(!this->is_paused) {
-	  LOGDBG("UDP Fifo buffer full !");
-	  if(this->scr && !udp->scr_jump_done) {
-	    this->scr->jump (this->scr, 40*90);
-	    LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d)", this->live_mode, this->scr_tuning);
-	    udp->scr_jump_done = 50;
-	    xine_usec_sleep(5*1000);
-	  }
-	}
+      if (!read_buffer) {
+        /* if queue is full, skip (video) frame.
+           Waiting longer for free buffers just makes things worse ... */
+        if (!this->is_paused) {
+          LOGDBG("UDP Fifo buffer full !");
+          if (this->scr && !udp->scr_jump_done) {
+            this->scr->jump (this->scr, 40*90);
+            LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d)", this->live_mode, this->scr_tuning);
+            udp->scr_jump_done = 50;
+            xine_usec_sleep(5*1000);
+          }
+        }
 
-	VDR_ENTRY_LOCK(XIO_ERROR);
-	vdr_plugin_poll(this, 100);
-	VDR_ENTRY_UNLOCK();
+        VDR_ENTRY_LOCK(XIO_ERROR);
+        vdr_plugin_poll(this, 100);
+        VDR_ENTRY_UNLOCK();
 
-	if(!this->control_running)
-	  break;
+        if (!this->control_running)
+          break;
 
-	read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
-	if(!read_buffer) {
-	  if(!this->is_paused)
-	    LOGMSG("Fifo buffer still full after poll !");
-	  xine_usec_sleep(5*1000);
-	  return result;
-	}
+        read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
+        if (!read_buffer) {
+          if (!this->is_paused)
+            LOGMSG("Fifo buffer still full after poll !");
+          xine_usec_sleep(5*1000);
+          return result;
+        }
       }
 
-      if(udp->scr_jump_done)
-	udp->scr_jump_done --;
+      if (udp->scr_jump_done)
+        udp->scr_jump_done --;
     }
 
     /* Receive frame from socket and check for errors */
-    n = recvfrom(this->fd_data, read_buffer->mem, 
+    n = recvfrom(this->fd_data, read_buffer->mem,
 		 read_buffer->max_size, MSG_TRUNC,
 		 &server_address, &address_len);
-    if(n <= 0) {
-      if(n<0 && this->control_running && errno != EINTR)
-	LOGERR("read_net_udp recv() error");
-      if(!n || errno != EINTR)
-	result = XIO_ERROR;
+    if (n <= 0) {
+      if (n < 0 && this->control_running && errno != EINTR)
+        LOGERR("read_net_udp recv() error");
+      if (!n || errno != EINTR)
+        result = XIO_ERROR;
       break;
     }
 
     /* check source address */
-    if((server_address.sin_addr.s_addr != 
-	udp->server_address.sin_addr.s_addr) ||
+    if ((server_address.sin_addr.s_addr !=
+         udp->server_address.sin_addr.s_addr) ||
        server_address.sin_port != udp->server_address.sin_port) {
 #ifdef LOG_UDP
       uint32_t tmp_ip = ntohl(server_address.sin_addr.s_addr);
       LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d",
-	     ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff), 
+             ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff),
 	     ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
-	     server_address.sin_port);
+             server_address.sin_port);
 #endif
       continue;
     }
 
     /* Check if frame size is valid */
-    if(n < sizeof(stream_udp_header_t)) {
+    if (n < sizeof(stream_udp_header_t)) {
       LOGMSG("received invalid UDP packet (too short)");
       continue;
     }
-    if(n > read_buffer->max_size) {
+    if (n > read_buffer->max_size) {
       LOGMSG("received too large UDP packet ; part of data was discarded");
       n = read_buffer->max_size;
     }
@@ -3704,29 +3705,29 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     pkt = (stream_udp_header_t*)read_buffer->mem;
     pkt_data = read_buffer->mem + sizeof(stream_udp_header_t);
-    
-    if(this->rtp) {
-      if(n < sizeof(stream_rtp_header_impl_t)) {
-	LOGMSG("received invalid RTP packet (too short)");
-	continue;
+
+    if (this->rtp) {
+      if (n < sizeof(stream_rtp_header_impl_t)) {
+        LOGMSG("received invalid RTP packet (too short)");
+        continue;
       }
 
       /* check if RTP header is valid. If not, assume UDP without RTP. */
       rtp_pkt = (stream_rtp_header_impl_t*)read_buffer->mem;
-      if(rtp_pkt->rtp_hdr.raw[0] == (RTP_VERSION_BYTE | RTP_HDREXT_BIT) && 
-	 ( rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_PES ||
-           rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_TS ) &&
-	 rtp_pkt->hdr_ext.hdr.size == htons(RTP_HEADER_EXT_X_SIZE) &&
-	 rtp_pkt->hdr_ext.hdr.type == htons(RTP_HEADER_EXT_X_TYPE)) {
+      if (rtp_pkt->rtp_hdr.raw[0] == (RTP_VERSION_BYTE | RTP_HDREXT_BIT) &&
+          ( rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_PES ||
+            rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_TS ) &&
+          rtp_pkt->hdr_ext.hdr.size == htons(RTP_HEADER_EXT_X_SIZE) &&
+          rtp_pkt->hdr_ext.hdr.type == htons(RTP_HEADER_EXT_X_TYPE)) {
 
-	/* strip RTP header but leave UDP header (carried inside RTP header extension) */
-	pkt = (stream_udp_header_t*)(read_buffer->mem + 
-				     sizeof(stream_rtp_header_impl_t) - 
-				     sizeof(stream_udp_header_t));
-	pkt_data = read_buffer->mem + sizeof(stream_rtp_header_impl_t);
-	
-	read_buffer->content += sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
-	read_buffer->size -= sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
+        /* strip RTP header but leave UDP header (carried inside RTP header extension) */
+        pkt = (stream_udp_header_t*)(read_buffer->mem +
+                                     sizeof(stream_rtp_header_impl_t) -
+                                     sizeof(stream_udp_header_t));
+        pkt_data = read_buffer->mem + sizeof(stream_rtp_header_impl_t);
+
+        read_buffer->content += sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
+        read_buffer->size    -= sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
       }
     }
 
@@ -3734,43 +3735,43 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     pkt->pos = ntohull(pkt->pos);
 
     /* Check for control messages */
-    if(/*pkt->seq == (uint16_t)(-1) &&*/ /*0xffff*/
-       pkt->pos == (uint64_t)(-1ULL) && /*0xffffffff ffffffff*/
-       pkt_data[0]) { /* -> can't be PES frame */
+    if (/*pkt->seq == (uint16_t)(-1) &&*/ /*0xffff*/
+        pkt->pos == (uint64_t)(-1ULL) && /*0xffffffff ffffffff*/
+        pkt_data[0]) { /* -> can't be PES frame */
       pkt_data[64] = 0;
-      if(!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
-	/* Re-send failed */ 
-	int seq1 = 0, seq2 = 0;
-	uint64_t rpos = 0ULL;
-	sscanf(((char*)pkt_data)+12, "%d-%d %" PRIu64, 
-	       &seq1, &seq2, &rpos);
-	read_buffer->size = sizeof(stream_udp_header_t);
-	read_buffer->type = BUF_NETWORK_BLOCK;
-	pkt->pos = rpos;
-	LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
-	if(seq1 == udp->next_seq) {
+      if (!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
+        /* Re-send failed */
+        int seq1 = 0, seq2 = 0;
+        uint64_t rpos = 0ULL;
+        sscanf(((char*)pkt_data)+12, "%d-%d %" PRIu64,
+               &seq1, &seq2, &rpos);
+        read_buffer->size = sizeof(stream_udp_header_t);
+        read_buffer->type = BUF_NETWORK_BLOCK;
+        pkt->pos = rpos;
+        LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
+        if (seq1 == udp->next_seq) {
 	  /* this is the one we are expecting ... */
-	  int n = ADDSEQ(seq2 + 1, -seq1);
-	  udp->missed_frames += n;
-	  seq2 &= UDP_SEQ_MASK;
-	  pkt->seq = seq2;
-	  udp->next_seq = seq2;
-	  LOGUDP("  accepted: now currseq %d", udp->next_seq);
-	  /* -> drop frame thru as empty ; it will trigger queue to continue */
-	} else {
-	  LOGUDP("  rejected: not expected seq ???");
-	  continue;
-	}
+          int n = ADDSEQ(seq2 + 1, -seq1);
+          udp->missed_frames += n;
+          seq2 &= UDP_SEQ_MASK;
+          pkt->seq = seq2;
+          udp->next_seq = seq2;
+          LOGUDP("  accepted: now currseq %d", udp->next_seq);
+          /* -> drop frame thru as empty ; it will trigger queue to continue */
+        } else {
+          LOGUDP("  rejected: not expected seq ???");
+          continue;
+        }
       } else {
-	data_stream_parse_control(this, (char*)pkt_data);
-	continue;
+        data_stream_parse_control(this, (char*)pkt_data);
+        continue;
       }
 
     } else {
       /* Check for PES header */
-      if(!DATA_IS_TS(pkt_data) && (pkt_data[0] || pkt_data[1] || pkt_data[2] != 1)) {
-	LOGMSG("received invalid UDP packet (TS sync byte or PES header missing)");
-	continue;
+      if (!DATA_IS_TS(pkt_data) && (pkt_data[0] || pkt_data[1] || pkt_data[2] != 1)) {
+        LOGMSG("received invalid UDP packet (TS sync byte or PES header missing)");
+        continue;
       }
     }
 
@@ -3781,23 +3782,23 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     }
 
     /*
-     * handle re-ordering and retransmissios 
+     * handle re-ordering and retransmissios
      */
 
     current_seq = pkt->seq & UDP_SEQ_MASK;
     /* first received frame initializes sequence counter */
-    if (udp->received_frames == -1) { 
+    if (udp->received_frames == -1) {
       udp->next_seq = current_seq;
       udp->received_frames = 0;
     }
 
-    /* check if received sequence number is inside allowed window 
+    /* check if received sequence number is inside allowed window
        (half of whole range) */
-    if(ADDSEQ(current_seq, -udp->next_seq) > ((UDP_SEQ_MASK+1) >> 1)/*0x80*/) {
+    if (ADDSEQ(current_seq, -udp->next_seq) > ((UDP_SEQ_MASK+1) >> 1)/*0x80*/) {
       struct sockaddr_in sin;
-      LOGUDP("Received SeqNo out of window (%d ; [%d..%d])", 
-	     current_seq, udp->next_seq, 
-	     (udp->next_seq+((UDP_SEQ_MASK+1) >> 1)/*0x80*/) & UDP_SEQ_MASK);
+      LOGUDP("Received SeqNo out of window (%d ; [%d..%d])",
+             current_seq, udp->next_seq,
+             (udp->next_seq+((UDP_SEQ_MASK+1) >> 1)/*0x80*/) & UDP_SEQ_MASK);
       /* reset link */
       LOGDBG("UDP: resetting link");
       memcpy(&sin, &udp->server_address, sizeof(sin));
@@ -3808,16 +3809,16 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     }
 
     /* Add received frame to incoming queue */
-    if(udp->queue[current_seq]) {
+    if (udp->queue[current_seq]) {
       /* Duplicate packet or lot of dropped packets */
       LOGUDP("Got duplicate or window exceeded ? (queue slot %d in use) !",
-	     current_seq);
+             current_seq);
       udp->queue[current_seq]->free_buffer(udp->queue[current_seq]);
       udp->queue[current_seq] = NULL;
-      if(!udp->queued) 
-	LOGERR("UDP queue corrupt !!!");
+      if (!udp->queued)
+        LOGERR("UDP queue corrupt !!!");
       else
-	udp->queued--;
+        udp->queued--;
     }
     udp->queue[current_seq] = read_buffer;
     read_buffer = NULL;
@@ -3825,75 +3826,74 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     /* stay inside receiving window:
        If window exceeded, skip missing frames */
-    if(udp->queued > ((UDP_SEQ_MASK+1)>>2)) {
+    if (udp->queued > ((UDP_SEQ_MASK+1)>>2)) {
 #ifdef LOG_UDP
       int start = udp->next_seq;
 #endif
-      while(!udp->queue[udp->next_seq]) {
-	INCSEQ(udp->next_seq);
-	udp->missed_frames++;
+      while (!udp->queue[udp->next_seq]) {
+        INCSEQ(udp->next_seq);
+        udp->missed_frames++;
       }
       udp->resend_requested = 0;
-      LOGUDP("Re-ordering window exceeded, skipped missed frames %d-%d", 
-	     start, udp->next_seq-1);
+      LOGUDP("Re-ordering window exceeded, skipped missed frames %d-%d",
+             start, udp->next_seq-1);
     }
 
     /* flush continous part of queue to demuxer queue */
-    while(udp->queued > 0 && udp->queue[udp->next_seq]) {
+    while (udp->queued > 0 && udp->queue[udp->next_seq]) {
       pkt = (stream_udp_header_t*)udp->queue[udp->next_seq]->content;
-      udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - 
-	                     sizeof(stream_udp_header_t);
-      if(udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
-	this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
+      udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - sizeof(stream_udp_header_t);
+      if (udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
+        this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
       else
-	udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
+        udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
 
       udp->queue[udp->next_seq] = NULL;
       udp->queued --;
       INCSEQ(udp->next_seq);
-      if(udp->resend_requested)
+      if (udp->resend_requested)
 	udp->resend_requested --;
     }
 
     /* no new resend requests until previous has been completed or failed */
-    if(udp->resend_requested) 
+    if (udp->resend_requested)
       continue;
 
     /* If frames are missing, request re-send */
-    if(NEXTSEQ(current_seq) != udp->next_seq  &&  udp->queued) {
+    if (NEXTSEQ(current_seq) != udp->next_seq  &&  udp->queued) {
 
-      if(!udp->resend_requested) {
-	int max_req = 20;
+      if (!udp->resend_requested) {
+        int max_req = 20;
 
-	while(!udp->queue[current_seq] && --max_req > 0) 
-	  INCSEQ(current_seq);
+        while (!udp->queue[current_seq] && --max_req > 0)
+          INCSEQ(current_seq);
 
-	printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n", 
-		       udp->next_seq, PREVSEQ(current_seq), 
-		       udp->queue_input_pos);
-	udp->resend_requested = 
-	  (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
+        printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n",
+                       udp->next_seq, PREVSEQ(current_seq),
+                       udp->queue_input_pos);
+        udp->resend_requested =
+          (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
 
-	LOGUDP("%d-%d missing, requested re-send for %d frames",
-	       udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
+        LOGUDP("%d-%d missing, requested re-send for %d frames",
+               udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
       }
     }
 
 #ifdef LOG_UDP
     /* Link quality statistics */
     udp->received_frames++;
-    if(udp->received_frames >= 1000) {
-      if(udp->missed_frames)
-	LOGUDP("packet loss %d.%d%% (%4d/%4d)",
-	       udp->missed_frames*100/udp->received_frames, 
-	       (udp->missed_frames*1000/udp->received_frames)%10, 
-	       udp->missed_frames, udp->received_frames);
+    if (udp->received_frames >= 1000) {
+      if (udp->missed_frames)
+        LOGUDP("packet loss %d.%d%% (%4d/%4d)",
+               udp->missed_frames*100/udp->received_frames,
+               (udp->missed_frames*1000/udp->received_frames)%10,
+               udp->missed_frames, udp->received_frames);
       udp->missed_frames = udp->received_frames = 0;
     }
 #endif
   }
-  
-  if(read_buffer)
+
+  if (read_buffer)
     read_buffer->free_buffer(read_buffer);
 
   return result;
