@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.240 2009-03-06 12:07:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.241 2009-03-06 12:51:17 phintuka Exp $
  *
  */
 
@@ -1013,25 +1013,6 @@ static void buffer_pool_free (buf_element_t *element)
 
   pthread_mutex_unlock (&this->buffer_pool_mutex);
 }
-
-#if 0
-static buf_element_t *buffer_pool_timed_alloc(fifo_buffer_t *fifo, int timeoutMs, int buffer_limit)
-{
-  struct timespec    abstime;
-  create_timeout_time(&abstime, timeoutMs);
-
-  pthread_mutex_lock(&fifo->buffer_pool_mutex);
-
-  while(fifo->buffer_pool_num_free <= buffer_limit) {
-    if(pthread_cond_timedwait (&fifo->buffer_pool_cond_not_empty, &fifo->buffer_pool_mutex, &abstime) == ETIMEDOUT)
-      break;
-  }
-
-  pthread_mutex_unlock(&fifo->buffer_pool_mutex);
-
-  return fifo->buffer_pool_try_alloc(fifo);
-}
-#endif
 
 static buf_element_t *fifo_buffer_try_get(fifo_buffer_t *fifo)
 {
@@ -3462,20 +3443,25 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
 
       this->block_buffer->clear(this->block_buffer);
 
-      pthread_mutex_lock(&this->lock);
+      mutex_lock_cancellable(&this->lock);
       while(this->control_running &&
 	    this->discard_index < index) {
 	LOGDBG("data_stream_parse_control: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
 	       this->discard_index, index);
 	pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
-      } 
-      pthread_mutex_unlock(&this->lock);
+      }
+      mutex_unlock_cancellable(&this->lock);
       LOGDBG("data_stream_parse_control: streams synced at %"PRIu64"/%"PRIu64,
 	     index, this->discard_index);
     }
     return;
+
+  } else if(!strncasecmp(cmd, "BLANK", 5)) {
+    put_control_buf(this->block_buffer, this->buffer_pool, CONTROL_BUF_BLANK);
+    return;
   }
 
+  LOGMSG("Unexpected data_stream_parse_control(%s)", cmd);
   vdr_plugin_parse_control(&this->iface, cmd);
 }
 
@@ -3497,23 +3483,13 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       /* can't cancel if read_buffer != NULL (disposing fifos would freeze) */
       pthread_testcancel();
 
-      read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
+      read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_tcp_header_t), 100);
       if (!read_buffer) {
-        VDR_ENTRY_LOCK(XIO_ERROR);
-        vdr_plugin_poll(this, 100);
-        VDR_ENTRY_UNLOCK();
-
-        if (!this->control_running)
-          break;
-
-        read_buffer = get_buf_element(this, 2048+sizeof(stream_tcp_header_t), 0);
-        if (!read_buffer) {
-          /* do not drop any data here ; dropping is done only at server side. */
-          if (!this->is_paused)
-            LOGDBG("TCP: fifo buffer full");
-          xine_usec_sleep(3*1000);
-          continue; /*  must call select to check fd for errors / closing */
-        }
+        /* do not drop any data here ; dropping is done only at server side. */
+        if (!this->is_paused)
+          LOGDBG("TCP: fifo buffer full");
+        xine_usec_sleep(3*1000);
+        continue; /*  must call select to check fd for errors / closing */
       }
 
       todo = sizeof(stream_tcp_header_t);
@@ -3644,17 +3620,13 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
           }
         }
 
-        VDR_ENTRY_LOCK(XIO_ERROR);
-        vdr_plugin_poll(this, 100);
-        VDR_ENTRY_UNLOCK();
-
         if (!this->control_running)
           break;
 
-        read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
+        read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_rtp_header_impl_t), 100);
         if (!read_buffer) {
           if (!this->is_paused)
-            LOGMSG("Fifo buffer still full after poll !");
+            LOGMSG("Fifo buffer still full !");
           xine_usec_sleep(5*1000);
           return result;
         }
@@ -3666,8 +3638,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     /* Receive frame from socket and check for errors */
     n = recvfrom(this->fd_data, read_buffer->mem,
-		 read_buffer->max_size, MSG_TRUNC,
-		 &server_address, &address_len);
+                 read_buffer->max_size, MSG_TRUNC,
+                 &server_address, &address_len);
     if (n <= 0) {
       if (n < 0 && this->control_running && errno != EINTR)
         LOGERR("read_net_udp recv() error");
@@ -3684,7 +3656,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       uint32_t tmp_ip = ntohl(server_address.sin_addr.s_addr);
       LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d",
              ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff),
-	     ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
+             ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
              server_address.sin_port);
 #endif
       continue;
