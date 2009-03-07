@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.242 2009-03-07 11:27:13 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.243 2009-03-07 11:31:56 phintuka Exp $
  *
  */
 
@@ -3438,21 +3438,24 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
   if(!strncasecmp(cmd, "DISCARD ", 8)) {
     uint64_t index;
     if(1 == sscanf(cmd+8, "%" PRIu64, &index)) {
-      struct timespec abstime;
-      create_timeout_time(&abstime, 100);
 
       this->block_buffer->clear(this->block_buffer);
 
       mutex_lock_cancellable(&this->lock);
+
       while(this->control_running &&
-	    this->discard_index < index) {
-	LOGDBG("data_stream_parse_control: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
-	       this->discard_index, index);
-	pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
+            this->discard_index < index) {
+        struct timespec abstime;
+        create_timeout_time(&abstime, 100);
+        LOGDBG("data_stream_parse_control: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
+               this->discard_index, index);
+        pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
       }
+
       mutex_unlock_cancellable(&this->lock);
+
       LOGDBG("data_stream_parse_control: streams synced at %"PRIu64"/%"PRIu64,
-	     index, this->discard_index);
+             index, this->discard_index);
     }
     return;
 
