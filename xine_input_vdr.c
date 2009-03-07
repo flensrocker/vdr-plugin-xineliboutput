@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.243 2009-03-07 11:31:56 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.244 2009-03-07 11:36:59 phintuka Exp $
  *
  */
 
@@ -3282,27 +3282,23 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
   vdr_input_plugin_t *this = (vdr_input_plugin_t *)user_data;
   int i;
 
-  for(i=0; i < sizeof(vdr_keymap)/sizeof(vdr_keymap[0]); i++) {
-    if(event->type == vdr_keymap[i].event) {
-      if(event->data && event->data_length == 4 && 
-	 !strncmp(event->data, "VDR", 4)) {
-	/*LOGMSG("Input event created by self, ignoring");*/
-	return;
+  for (i = 0; i < sizeof(vdr_keymap) / sizeof(vdr_keymap[0]); i++) {
+    if (event->type == vdr_keymap[i].event) {
+      if (event->data && event->data_length == 4 &&
+          !strncmp(event->data, "VDR", 4)) {
+        /*LOGMSG("Input event created by self, ignoring");*/
+        return;
       }
       LOGDBG("XINE_EVENT (input) %d --> %s", 
-	     event->type, vdr_keymap[i].name);
+             event->type, vdr_keymap[i].name);
 
-      if(this->funcs.post_vdr_event) {
-	/* remote mode: -> input_plugin -> connection -> VDR */
-        char *msg=NULL;
-        if (asprintf(&msg, "KEY %s\r\n", vdr_keymap[i].name) >= 0) {
-          this->funcs.post_vdr_event(&this->iface, msg);
-          free(msg);
-        }
+      if (this->fd_control >= 0) {
+        /* remote mode: -> input_plugin -> connection -> VDR */
+        printf_control(this, "KEY %s\r\n", vdr_keymap[i].name);
       }
-      if(this->funcs.xine_input_event) {
-	/* local mode: -> VDR */
-	this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
+      if (this->funcs.xine_input_event) {
+        /* local mode: -> VDR */
+        this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
       }
       return;
     }
