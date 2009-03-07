@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.241 2009-03-06 12:51:17 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.242 2009-03-07 11:27:13 phintuka Exp $
  *
  */
 
@@ -3468,7 +3468,7 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
-  int cnt = 0, todo = 0, retries = 0;
+  int todo = 0, retries = 0;
   int n, result;
 
  retry:
@@ -3492,13 +3492,14 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
         continue; /*  must call select to check fd for errors / closing */
       }
 
+      /* read the header first */
       todo = sizeof(stream_tcp_header_t);
-      cnt = 0;
+      read_buffer->size = 0;
     }
 
     /* Read data */
     errno = 0;
-    n = read(this->fd_data, &read_buffer->mem[cnt], todo-cnt);
+    n = read(this->fd_data, read_buffer->mem + read_buffer->size, todo - read_buffer->size);
     if (n <= 0) {
       if (!n || (errno != EINTR && errno != EAGAIN)) {
         if (n < 0 && this->fd_data >= 0)
@@ -3511,40 +3512,40 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       continue;
     }
 
-    cnt += n;
+    read_buffer->size += n;
 
-    if (cnt == sizeof(stream_tcp_header_t)) {
-      /* Header complete */
+    /* Header complete ? */
+    if (read_buffer->size == sizeof(stream_tcp_header_t)) {
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
       hdr->len = ntohl(hdr->len);
       hdr->pos = ntohull(hdr->pos);
 
-      todo = cnt + hdr->len;
-      if (todo + cnt >= read_buffer->max_size) {
+      todo = read_buffer->size + hdr->len;
+      if (todo + read_buffer->size >= read_buffer->max_size) {
         LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)",
-               read_buffer->max_size, todo + cnt);
-        todo = read_buffer->max_size - cnt - 1;
+               read_buffer->max_size, todo + read_buffer->size);
+        read_buffer->free_buffer(read_buffer);
+        return XIO_ERROR;
       }
     }
 
-    if (cnt >= todo) {
-      /* Buffer complete */
+    /* Buffer complete ? */
+    if (read_buffer->size >= todo) {
       stream_tcp_header_t *hdr = ((stream_tcp_header_t *)read_buffer->content);
       if (hdr->pos == (uint64_t)(-1ULL) /*0xffffffff ffffffff*/) {
         /* control data */
         uint8_t *pkt_data = read_buffer->content + sizeof(stream_tcp_header_t);
-        if (pkt_data[0]) { /* -> can't be pes frame */
+        if (!DATA_IS_TS(pkt_data) && pkt_data[0]) { /* -> can't be pes or ts frame */
           data_stream_parse_control(this, (char*)pkt_data);
 
           /* read next block */
           todo = sizeof(stream_tcp_header_t);
-          cnt = 0;
+          read_buffer->size = 0;
           continue;
         }
       }
 
       /* frame ready */
-      read_buffer->size = cnt;
       read_buffer->type = BUF_NETWORK_BLOCK;
       this->block_buffer->put(this->block_buffer, read_buffer);
       read_buffer = NULL;
@@ -3552,14 +3553,14 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
   }
 
   if (read_buffer) {
-    if (cnt && this->control_running && result == XIO_TIMEOUT && (++retries < 10)) {
+    if (read_buffer->size && this->control_running && result == XIO_TIMEOUT && (++retries < 10)) {
       LOGMSG("TCP: Warning: long delay (>500ms) !");
       goto retry;
     }
 
     read_buffer->free_buffer(read_buffer);
     read_buffer = NULL;
-    if (cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
+    if (read_buffer->size && this->fd_data >= 0 && result == XIO_TIMEOUT) {
       LOGMSG("TCP: Delay too long, disconnecting");
       this->control_running = 0;
       return XIO_ERROR;
@@ -3582,16 +3583,17 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
   while (this->control_running && this->fd_data >= 0) {
 
-    result = _x_io_select(this->stream, this->fd_data,
-			  XIO_READ_READY, 20);
+    result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 20);
 
     if (result != XIO_READY) {
       if (result == XIO_TIMEOUT) {
-        if (timeouts++ > 25)
-          return XIO_TIMEOUT;
+        if (timeouts++ > 25) {
+          result = XIO_TIMEOUT;
+          break;
+        }
         continue;
       }
-      return result;
+      break;
     }
     timeouts = 0;
 
