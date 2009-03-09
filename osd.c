@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.30 2008-12-19 15:17:13 phintuka Exp $
+ * $Id: osd.c,v 1.31 2009-03-09 10:09:22 phintuka Exp $
  *
  */
 
@@ -249,6 +249,8 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
 
     prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
 
+    if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
+      osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
     osdcmd.num_rle = rle_compress(&osdcmd.data, Data, W, H);
     osdcmd.datalen = 4 * osdcmd.num_rle;
 
