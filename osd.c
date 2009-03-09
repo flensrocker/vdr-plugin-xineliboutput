@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.31 2009-03-09 10:09:22 phintuka Exp $
+ * $Id: osd.c,v 1.32 2009-03-09 10:12:44 phintuka Exp $
  *
  */
 
@@ -102,6 +102,12 @@ class cXinelibOsd : public cOsd, public cListObject
     void CmdClose(int Wnd);
     void CmdFlush(void);
 
+    /* map single OSD window indexes to unique xine-side window handles */
+    static uint64_t  m_HandlesBitmap;
+    int             *m_WindowHandles;
+    int  AllocWindowHandles(int NumWindows);
+    void FreeWindowHandles(void);
+
   protected:
     static cMutex             m_Lock;
     static cList<cXinelibOsd> m_OsdStack;
@@ -129,7 +135,48 @@ class cXinelibOsd : public cOsd, public cListObject
 
 cList<cXinelibOsd> cXinelibOsd::m_OsdStack;
 cMutex             cXinelibOsd::m_Lock;
+uint64_t           cXinelibOsd::m_HandlesBitmap;
 
+int cXinelibOsd::AllocWindowHandles(int NumWindows)
+{
+  uint64_t bit = 1;
+  int index = 0, wnd = 0;
+
+  FreeWindowHandles();
+  m_WindowHandles = new int[NumWindows+1];
+
+  for (index = 0; index < MAX_OSD_OBJECT; index++) {
+    if (! (m_HandlesBitmap & bit)) {
+      m_WindowHandles[wnd++] = index;
+      m_HandlesBitmap |= bit;
+    }
+    if (wnd >= NumWindows)
+      break;
+    bit <<= 1;
+  }
+  m_WindowHandles[NumWindows] = -1;
+
+  if (wnd < NumWindows) {
+    LOGMSG("cXinelibOsd::AllocOsdHandles(): Too many open OSD windows !");
+    while(wnd < NumWindows) m_WindowHandles[wnd++] = -1;
+    return 0;
+  }
+
+  return NumWindows;
+}
+
+void cXinelibOsd::FreeWindowHandles(void)
+{
+  if (m_WindowHandles) {
+    int wnd = 0;
+    while (m_WindowHandles[wnd] >= 0) {
+      m_HandlesBitmap &= ~( ((uint64_t)1) << m_WindowHandles[wnd]);
+      wnd++;
+    }
+    delete [] m_WindowHandles;
+    m_WindowHandles = NULL;
+  }
+}
 
 void cXinelibOsd::CmdSize(int Width, int Height)
 {
@@ -154,7 +201,7 @@ void cXinelibOsd::CmdMove(int Wnd, int NewX, int NewY)
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Move;
-    osdcmd.wnd = Wnd;
+    osdcmd.wnd = m_WindowHandles[Wnd];
     osdcmd.x   = NewX;
     osdcmd.y   = NewY;
 
@@ -171,7 +218,7 @@ void cXinelibOsd::CmdPalette(int Wnd, int Colors, unsigned int *Palette)
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd     = OSD_SetPalette;
-    osdcmd.wnd     = Wnd;
+    osdcmd.wnd     = m_WindowHandles[Wnd];
     osdcmd.palette = clut;
     osdcmd.colors  = Colors;
 
@@ -189,7 +236,7 @@ void cXinelibOsd::CmdClose(int Wnd)
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Close;
-    osdcmd.wnd = Wnd;
+    osdcmd.wnd = m_WindowHandles[Wnd];
 
     if (m_Refresh)
       osdcmd.flags |= OSDFLAG_REFRESH;
@@ -213,10 +260,10 @@ void cXinelibOsd::CmdFlush(void)
   }
 }
 
-void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0, 
-			 int W, int H, unsigned char *Data,
-			 int Colors, unsigned int *Palette, 
-			 osd_rect_t *DirtyArea)
+void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
+                         int W, int H, unsigned char *Data,
+                         int Colors, unsigned int *Palette,
+                         osd_rect_t *DirtyArea)
 {
   TRACEF("cXinelibOsd::CmdRle");
 
@@ -226,7 +273,7 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd   = OSD_Set_RLE;
-    osdcmd.wnd   = Wnd;
+    osdcmd.wnd   = m_WindowHandles[Wnd];
     osdcmd.layer = saturate(m_Layer, 0, 0xffff);
     osdcmd.x   = X0;
     osdcmd.y   = Y0;
@@ -269,6 +316,8 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
   m_Refresh = false;
   m_IsVisible = true;
   m_Layer = Level;
+
+  m_WindowHandles = NULL;
 }
 
 cXinelibOsd::~cXinelibOsd()
@@ -278,6 +327,7 @@ cXinelibOsd::~cXinelibOsd()
   cMutexLock ml(&m_Lock);
 
   CloseWindows();
+  FreeWindowHandles();
 
   m_OsdStack.Del(this,false);
 
@@ -297,7 +347,7 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
   eOsdError Result = cOsd::SetAreas(Areas, NumAreas);
 
   if(Left() + Width() > 720 || Top() + Height() > 576) {
-    LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d", 
+    LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d",
            2*Left() + Width(), 2*Top() + Height(),
            Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
     CmdSize(Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
@@ -316,11 +366,18 @@ eOsdError cXinelibOsd::CanHandleAreas(const tArea *Areas, int NumAreas)
   if (Result == oeOk) {
     if (NumAreas > MAX_OSD_OBJECT)
       return oeTooManyAreas;
+
     for (int i = 0; i < NumAreas; i++) {
-      if (Areas[i].bpp != 1 && Areas[i].bpp != 2 && 
+      if (Areas[i].bpp != 1 && Areas[i].bpp != 2 &&
 	  Areas[i].bpp != 4 && Areas[i].bpp != 8)
         return oeBppNotSupported;
     }
+
+    if (!AllocWindowHandles(NumAreas)) {
+      FreeWindowHandles();
+      return oeTooManyAreas;
+    }
+
   }
   return Result;
 }
@@ -333,7 +390,7 @@ void cXinelibOsd::Flush(void)
 
   cBitmap *Bitmap;
 
-  if(!m_IsVisible) 
+  if(!m_IsVisible)
     return;
 
   int SendDone = 0;
@@ -470,7 +527,7 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top, Level);
 
   // sorted insert
-  cXinelibOsd *it = cXinelibOsd::m_OsdStack.First(); 
+  cXinelibOsd *it = cXinelibOsd::m_OsdStack.First();
   while(it) {
     if(it->m_Layer >= Level) {
       cXinelibOsd::m_OsdStack.Ins(m_OsdInstance, it);
