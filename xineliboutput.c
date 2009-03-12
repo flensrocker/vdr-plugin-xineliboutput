@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.37 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: xineliboutput.c,v 1.38 2009-03-12 17:29:13 rofafor Exp $
  *
  */
 
@@ -282,6 +282,8 @@ const char **cPluginXinelibOutput::SVDRPHelpPages(void)
     "    Play music file.",
     "PIMG <file>\n"
     "    Play/show image file.",
+    "QMSC <file>\n"
+    "    Queue music file to playlist.",
     NULL
     };
   return HelpPages;
@@ -327,6 +329,16 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
       LOGMSG("SVDRP(%s, %s)", Command, Option);
       cControl::Launch(new cXinelibImagesControl(list, 0, 1));
       return cString("Showing image file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "QMSC") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cXinelibPlayerControl::Queue(Option);
+      return cString("Queueing music file");
     } else {
       ReplyCode = 550; // Requested action not taken
     }
