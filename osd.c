@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.32 2009-03-09 10:12:44 phintuka Exp $
+ * $Id: osd.c,v 1.33 2009-03-15 19:02:10 phintuka Exp $
  *
  */
 
@@ -112,9 +112,11 @@ class cXinelibOsd : public cOsd, public cListObject
     static cMutex             m_Lock;
     static cList<cXinelibOsd> m_OsdStack;
 
-    bool   m_IsVisible;
-    bool   m_Refresh;
-    uint   m_Layer;
+    bool     m_IsVisible;
+    bool     m_Refresh;
+    uint     m_Layer;
+    uint16_t m_ExtentWidth;
+    uint16_t m_ExtentHeight;
 
     virtual eOsdError CanHandleAreas(const tArea *Areas, int NumAreas);
     virtual eOsdError SetAreas(const tArea *Areas, int NumAreas);
@@ -185,11 +187,14 @@ void cXinelibOsd::CmdSize(int Width, int Height)
   if (m_Device) {
     osd_command_t osdcmd = {0};
 
-    osdcmd.cmd = OSD_Size;
-    osdcmd.w   = Width;
-    osdcmd.h   = Height;
+    for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
+      osdcmd.cmd = OSD_Size;
+      osdcmd.wnd = m_WindowHandles[Wnd];
+      osdcmd.w   = Width;
+      osdcmd.h   = Height;
 
-    m_Device->OsdCmd((void*)&osdcmd);
+      m_Device->OsdCmd((void*)&osdcmd);
+    }
   }
 }
 
@@ -312,10 +317,12 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
 {
   TRACEF("cXinelibOsd::cXinelibOsd");
 
-  m_Device = Device;
-  m_Refresh = false;
-  m_IsVisible = true;
-  m_Layer = Level;
+  m_Device       = Device;
+  m_Refresh      = false;
+  m_IsVisible    = true;
+  m_Layer        = Level;
+  m_ExtentWidth  = 720;
+  m_ExtentHeight = 576;
 
   m_WindowHandles = NULL;
 }
@@ -347,13 +354,16 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
   eOsdError Result = cOsd::SetAreas(Areas, NumAreas);
 
   if(Left() + Width() > 720 || Top() + Height() > 576) {
+    m_ExtentWidth  = Setup.OSDWidth  + 2 * Setup.OSDLeft;
+    m_ExtentHeight = Setup.OSDHeight + 2 * Setup.OSDTop;
     LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d",
            2*Left() + Width(), 2*Top() + Height(),
-           Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
-    CmdSize(Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
+           m_ExtentWidth, m_ExtentHeight);
   } else {
-    CmdSize(720, 576);
+    m_ExtentWidth  = 720;
+    m_ExtentHeight = 576;
   }
+  CmdSize(m_ExtentWidth, m_ExtentHeight);
 
   return Result;
 }
@@ -439,6 +449,7 @@ void cXinelibOsd::Refresh(void)
 
   m_Refresh = true;
   CloseWindows();
+  CmdSize(m_ExtentWidth, m_ExtentHeight);
   Flush();
   m_Refresh = false;
 }
