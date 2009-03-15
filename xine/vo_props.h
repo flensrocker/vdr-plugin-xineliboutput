@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_props.h,v 1.2 2008-12-06 15:17:33 phintuka Exp $
+ * $Id: vo_props.h,v 1.3 2009-03-15 17:49:33 phintuka Exp $
  *
  */
 
@@ -25,5 +25,12 @@
 /* VDR OSD , hili_rgb_clut */
 #define VDR_OSD_MAGIC       -9999
 
+typedef struct {
+  /* extent of reference coordinate system */
+  uint16_t extent_width;
+  uint16_t extent_height;
+  /* overlay layer */
+  uint32_t layer;
+} vdr_osd_extradata_t;
 
 #endif /* XINELIBOUTPUT_VO_PROPS_H_ */
