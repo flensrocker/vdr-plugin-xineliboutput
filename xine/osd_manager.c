@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.7 2008-12-19 16:25:11 phintuka Exp $
+ * $Id: osd_manager.c,v 1.8 2009-03-15 19:36:48 phintuka Exp $
  *
  */
 
@@ -37,8 +37,8 @@ typedef struct {
   int           handle;     /* xine-lib overlay handle */
   osd_command_t cmd;        /* Full OSD data: last OSD_Set_RLE event */
 
-  uint16_t      osd_width;  /* output size this OSD was designed for */
-  uint16_t      osd_height;
+  uint16_t      extent_width;  /* output size this OSD was designed for */
+  uint16_t      extent_height;
 
   int64_t       last_changed_vpts;
 } osd_data_t;
@@ -50,8 +50,6 @@ typedef struct osd_manager_impl_s {
   uint8_t          ticket_acquired;
   xine_stream_t   *stream;
 
-  uint16_t         vdr_osd_width;
-  uint16_t         vdr_osd_height;
   uint16_t         video_width;
   uint16_t         video_height;
   uint8_t          vo_scaling;
@@ -176,12 +174,12 @@ static void osdcmd_scale(osd_manager_impl_t *this, osd_command_t *cmd,
   LOGOSD("Size out of margins, rescaling rle image");
 
   /* new position and size */
-  int new_x = cmd->x * this->video_width  / this->vdr_osd_width;
-  int new_y = cmd->y * this->video_height / this->vdr_osd_height;
+  int new_x = cmd->x * this->video_width  / osd->extent_width;
+  int new_y = cmd->y * this->video_height / osd->extent_height;
   int x2 = cmd->x + cmd->w + 1;
   int y2 = cmd->y + cmd->h + 1;
-  x2  = ((x2+1) * this->video_width  - 1) / this->vdr_osd_width  ;
-  y2  = ((y2+1) * this->video_height - 1) / this->vdr_osd_height ;
+  x2  = ((x2+1) * this->video_width  - 1) / osd->extent_width;
+  y2  = ((y2+1) * this->video_height - 1) / osd->extent_height;
   int new_w = x2 - new_x - 1;
   int new_h = y2 - new_y - 1;
 
@@ -242,8 +240,9 @@ static int64_t osd_exec_vpts(osd_manager_impl_t *this, osd_command_t *cmd)
  */
 static int exec_osd_size(osd_manager_impl_t *this, osd_command_t *cmd)
 {
-  this->vdr_osd_width  = cmd->w;
-  this->vdr_osd_height = cmd->h;
+  osd_data_t *osd = &this->osd[cmd->wnd];
+  osd->extent_width  = cmd->w;
+  osd->extent_height = cmd->h;
 
   acquire_ticket(this);
 
@@ -312,8 +311,10 @@ static int exec_osd_close(osd_manager_impl_t *this, osd_command_t *cmd)
     ovl_manager->flush_events(ovl_manager);
   }
 
-  osd->handle = -1;
   clear_osdcmd(&osd->cmd);
+  osd->handle        = -1;
+  osd->extent_width  = 720;
+  osd->extent_height = 576;
   osd->last_changed_vpts = 0;
 
   return CONTROL_OK;
@@ -340,8 +341,13 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   this->stream->video_out->enable_ovl(this->stream->video_out, 1);
 
   /* get / allocate OSD handle */
-  if (handle < 0)
-    handle = osd->handle = ovl_manager->get_handle(ovl_manager,0);
+  if (handle < 0) {
+    handle = ovl_manager->get_handle(ovl_manager,0);
+    osd->handle            = handle;
+    osd->extent_width      = osd->extent_width  ?: 720;
+    osd->extent_height     = osd->extent_height ?: 576;
+    osd->last_changed_vpts = 0;
+  }
 
   /* fill SHOW event */
   ov_event.event_type         = OVERLAY_EVENT_SHOW;
@@ -387,10 +393,10 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 
   /* scale OSD ? */
   if (!this->vo_scaling && !use_unscaled) {
-    int w_diff = (this->video_width  < ((this->vdr_osd_width *242) >> 8) /*  95% */) ? -1 :
-                 (this->video_width  > ((this->vdr_osd_width *280) >> 8) /* 110% */) ?  1 : 0;
-    int h_diff = (this->video_height < ((this->vdr_osd_height*242) >> 8) /*  95% */) ? -1 :
-                 (this->video_height > ((this->vdr_osd_height*280) >> 8) /* 110% */) ?  1 : 0;
+    int w_diff = (this->video_width  < ((osd->extent_width *242) >> 8) /*  95% */) ? -1 :
+                 (this->video_width  > ((osd->extent_width *280) >> 8) /* 110% */) ?  1 : 0;
+    int h_diff = (this->video_height < ((osd->extent_height*242) >> 8) /*  95% */) ? -1 :
+                 (this->video_height > ((osd->extent_height*280) >> 8) /* 110% */) ?  1 : 0;
 
     if (w_diff || h_diff) {
 
@@ -413,7 +419,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
     int win_height = video_out->get_property(video_out, VO_PROP_WINDOW_HEIGHT);
 
     if (win_width >= 360 && win_height >= 288) {
-      if (win_width != this->vdr_osd_width || win_height != this->vdr_osd_height) {
+      if (win_width != osd->extent_width || win_height != osd->extent_height) {
         osdcmd_scale(this, cmd, osd, win_width, win_height);
         rle_scaled = 1;
       }
@@ -429,10 +435,10 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 
   /* if no scaling was required, we may still need to re-center OSD */
   if (!this->vo_scaling && !rle_scaled) {
-    if (this->video_width != this->vdr_osd_width)
-      ov_overlay.x += (this->video_width - this->vdr_osd_width)/2;
-    if (this->video_height != this->vdr_osd_height)
-      ov_overlay.y += (this->video_height - this->vdr_osd_height)/2;
+    if (this->video_width != osd->extent_width)
+      ov_overlay.x += (this->video_width - osd->extent_width)/2;
+    if (this->video_height != osd->extent_height)
+      ov_overlay.y += (this->video_height - osd->extent_height)/2;
   }
 
   /* store rle for later scaling (done if video size changes) */
@@ -693,8 +699,8 @@ osd_manager_t *init_osd_manager(void)
 
   pthread_mutex_init(&this->lock, NULL);
 
-  this->video_width  = this->vdr_osd_width  = 720;
-  this->video_height = this->vdr_osd_height = 576;
+  this->video_width  = 720;
+  this->video_height = 576;
 
   for (i = 0; i < MAX_OSD_OBJECT; i++)
     this->osd[i].handle = -1;
