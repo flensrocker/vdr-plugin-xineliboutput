@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.33 2009-03-15 19:02:10 phintuka Exp $
+ * $Id: osd.c,v 1.34 2009-03-16 09:30:37 phintuka Exp $
  *
  */
 
@@ -336,7 +336,7 @@ cXinelibOsd::~cXinelibOsd()
   CloseWindows();
   FreeWindowHandles();
 
-  m_OsdStack.Del(this,false);
+  m_OsdStack.Del(this, false);
 
   if(m_OsdStack.First())
     m_OsdStack.First()->Show();
@@ -549,17 +549,29 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
   if(!it)
     cXinelibOsd::m_OsdStack.Add(m_OsdInstance);
 
-  LOGOSD("New OSD: index %d, layer %d [now %d OSDs]", m_OsdInstance->Index(), Level, cXinelibOsd::m_OsdStack.Count());
-  if(xc.osd_mixer == OSD_MIXER_NONE)
-    LOGOSD(" OSD mixer off");
+  LOGOSD("New OSD: index %d, layer %d [now %d OSDs]",
+         m_OsdInstance->Index(), Level, cXinelibOsd::m_OsdStack.Count());
 
-  // hide all but top-most OSD  
-  it = cXinelibOsd::m_OsdStack.Last();
-  while(cXinelibOsd::m_OsdStack.Prev(it)) {
-    LOGOSD(" -> hide OSD %d", it->Index());
-    it->Hide();
-    it = cXinelibOsd::m_OsdStack.Prev(it);
+  if(xc.osd_mixer == OSD_MIXER_NONE) {
+    // hide all but top-most OSD
+    LOGOSD(" OSD mixer off");
+    it = cXinelibOsd::m_OsdStack.Last();
+    while(cXinelibOsd::m_OsdStack.Prev(it)) {
+      LOGOSD(" -> hide OSD %d", it->Index());
+      it->Hide();
+      it = cXinelibOsd::m_OsdStack.Prev(it);
+    }
+
+  } else /*if(xc.osd_mixer > OSD_MIXER_NONE)*/ {
+    LOGOSD("OSD mixer on (%d)", xc.osd_mixer);
+    it = cXinelibOsd::m_OsdStack.Last();
+    while (cXinelibOsd::m_OsdStack.Prev(it)) {
+      LOGOSD(" -> show OSD %d", it->Index());
+      it->Show();
+      it = cXinelibOsd::m_OsdStack.Prev(it);
+    }
   }
+
   it->Show();
 
   return m_OsdInstance;
