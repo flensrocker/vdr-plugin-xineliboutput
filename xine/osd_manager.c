@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.9 2009-03-15 19:43:28 phintuka Exp $
+ * $Id: osd_manager.c,v 1.10 2009-03-16 09:38:23 phintuka Exp $
  *
  */
 
@@ -294,10 +294,16 @@ static int exec_osd_close(osd_manager_impl_t *this, osd_command_t *cmd)
   osd_data_t              *osd         = &this->osd[cmd->wnd];
   int                      handle      = osd->handle;
 
+  if (cmd->flags & OSDFLAG_REFRESH) {
+    LOGDBG("Ignoring OSD_Close(OSDFLAG_REFRESH)");
+    return CONTROL_OK;
+  }
+
   if (handle < 0) {
     LOGMSG("OSD_Close(%d): non-existing OSD !", cmd->wnd);
     return CONTROL_PARAM_ERROR;
   }
+
   if (!ovl_manager)
     return CONTROL_PARAM_ERROR;
 
