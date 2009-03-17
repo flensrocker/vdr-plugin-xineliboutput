@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.2 2008-12-18 20:03:13 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.3 2009-03-17 12:28:17 phintuka Exp $
  *
  */
 
@@ -165,10 +165,9 @@ typedef struct {
 
   /* configuration */
   uint8_t  enable;
-  uint16_t osd_width;     /* the size of original full-screen OSD */
-  uint16_t osd_height;
-
   uint8_t  unscaled_supported;
+  uint8_t  custom_extent_supported;
+  uint8_t  argb_supported;
 
   /* current output */
   uint16_t output_width;
@@ -206,6 +205,10 @@ static void osdscaler_overlay_begin (vo_driver_t *self, vo_frame_t *frame, int c
     osd_data_clear(this->active_osds);
     this->active_osds = NULL;
     this->unscaled_supported = (vo_def_get_capabilities(self) & VO_CAP_UNSCALED_OVERLAY);
+    /* VO_CAP_OSDSCALING == VO_CAP_CUSTOM_EXTENT_OVERLAY */
+    this->custom_extent_supported = (vo_def_get_capabilities(self) & VO_CAP_OSDSCALING);
+    /* VO_CAP_ARGB == VO_CAP_ARGB_LAYER_OVERLAY */
+    this->argb_supported = (vo_def_get_capabilities(self) & VO_CAP_ARGB);
   }
 
   /* redirect */
@@ -226,6 +229,19 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
     return 0;
   }
 
+  /* VDR input plugin stores some control data in hili clut area */
+  vdr_osd_extradata_t *data = (vdr_osd_extradata_t *)overlay->hili_color;
+  int extent_width  = data->extent_width;
+  int extent_height = data->extent_height;
+
+  if (!data->scaling)
+    return 0;
+
+  if (this->custom_extent_supported) {
+    /* let the "real" video driver do scaling */
+    return 0;
+  }
+
   /* detect output size */
   if (overlay->unscaled && this->unscaled_supported) {
     this->output_width  = vo_def_get_property((vo_driver_t*)this, VO_PROP_WINDOW_WIDTH);
@@ -241,19 +257,19 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
   }
 
   /* check if scaling should be done */
-  if (ABS(this->output_width  - this->osd_width)  > this->osd_width /20 ||
-      ABS(this->output_height - this->osd_height) > this->osd_height/20 ) {
+  if (ABS(this->output_width  - extent_width)  > extent_width /20 ||
+      ABS(this->output_height - extent_height) > extent_height/20 ) {
     LOGOSD("scaling required");
-    this->factor_x = 0x10000 * this->output_width  / this->osd_width;
-    this->factor_y = 0x10000 * this->output_height / this->osd_height;
+    this->factor_x = 0x10000 * this->output_width  / extent_width;
+    this->factor_y = 0x10000 * this->output_height / extent_height;
     return 1;
   }
 
   /* if no scaling was required, we may still need to re-center OSD */
-  if(this->output_width != this->osd_width)
-    this->x_move = (this->output_width - this->osd_width)/2;
-  if(this->output_height != this->osd_height)
-    this->y_move = (this->output_height - this->osd_height)/2;
+  if(this->output_width != extent_width)
+    this->x_move = (this->output_width - extent_width)/2;
+  if(this->output_height != extent_height)
+    this->y_move = (this->output_height - extent_height)/2;
 
   return 0;
 }
@@ -294,6 +310,7 @@ static vo_overlay_t *scale_overlay(osdscaler_hook_t *this, vo_frame_t *frame, vo
 
   return overlay;
 }
+
 
 /*
  * interface
@@ -348,8 +365,6 @@ static int osdscaler_get_property(vo_driver_t *self, int prop)
 
   switch (prop) {
     case VO_PROP_OSD_SCALING: return this->enable;
-    case VO_PROP_OSD_WIDTH:   return this->osd_width;
-    case VO_PROP_OSD_HEIGHT:  return this->osd_height;
     default:;
   }
 
@@ -370,20 +385,6 @@ static int osdscaler_set_property(vo_driver_t *self, int prop, int val)
         this->enable = val?1:0;
       }
       return this->enable;
-
-    case VO_PROP_OSD_WIDTH:
-      if (this->osd_width != val) {
-        LOGOSD("osdscaler_set_property: width  %d->%d", this->osd_width, val);
-        this->osd_width  = val & 0xfff;
-      }
-      return this->osd_width;
-
-    case VO_PROP_OSD_HEIGHT:
-      if (this->osd_height != val) {
-        LOGOSD("osdscaler_set_property: height %d->%d", this->osd_height, val);
-        this->osd_height = val & 0xfff;
-      }
-      return this->osd_height;
   }
 
   return vo_def_set_property(self, prop, val);
@@ -424,8 +425,6 @@ vo_driver_t *osdscaler_init(void)
 
   /* initialize data */
   this->enable     = 0;
-  this->osd_width  = 720;
-  this->osd_height = 576;
 
   return &this->h.vo;
 }
