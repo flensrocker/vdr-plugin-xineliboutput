@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.6 2008-02-04 23:54:06 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.7 2009-03-17 20:10:39 phintuka Exp $
  *
  */
 
@@ -288,10 +288,11 @@ int cTcpWriter::Put(const uchar *Header, int HeaderCount,
 //
 
 #include "pes.h"
+#include "ts.h"
 
 cRawWriter::cRawWriter(int fd, int Size) :
      cBackgroundWriterI(fd, Size, 6)
-{ 
+{
   LOGDBG("cRawWriter initialized (buffer %d kb)", Size/1024);
   Start();
 }
@@ -333,7 +334,11 @@ void cRawWriter::Action(void)
 	if(GetPos == NextHeaderPos) {
 	  if(Count < 6)
 	    LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
+#if VDRVERSNUM >= 10701
+	  int packlen = DATA_IS_TS(Data) ? TS_SIZE : pes_packet_len(Data, Count);
+#else
 	  int packlen = pes_packet_len(Data, Count);
+#endif
 	  if(Count < packlen)
 	    ;//LOGMSG("Count = %d < %d", Count, 
 	     //   header->len + sizeof(stream_tcp_header_t));
