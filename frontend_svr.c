@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.66 2009-02-10 12:50:50 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.67 2009-03-17 20:04:09 phintuka Exp $
  *
  */
 
@@ -356,7 +356,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
 #endif
 
     for(i = 0; i < MAXCLIENTS; i++) {
-      if(fd_control[i].open()) {
+      if(fd_control[i].open() && m_bConfigOk[i]) {
 	int r = write_osd_command(fd_control[i], &cmdnet);
 	if(r < 0) {
 	  LOGMSG("Send OSD command failed, closing connection");
