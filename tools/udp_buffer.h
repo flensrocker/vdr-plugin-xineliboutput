@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_buffer.h,v 1.4 2009-02-10 15:15:04 phintuka Exp $
+ * $Id: udp_buffer.h,v 1.5 2009-03-18 21:04:47 phintuka Exp $
  *
  */
 
@@ -12,6 +12,8 @@
 #define __UDP_BUFFER_H
 
 #include <stdint.h>
+
+#include <vdr/config.h>  // VDRVERSNUM
 
 #include "../xine_input_vdr_net.h" // frame headers
 #include "ts.h"

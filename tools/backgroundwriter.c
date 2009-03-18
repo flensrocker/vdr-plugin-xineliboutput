@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.7 2009-03-17 20:10:39 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.8 2009-03-18 21:05:26 phintuka Exp $
  *
  */
 
@@ -17,6 +17,7 @@
 #include <netinet/tcp.h> // CORK, NODELAY
 
 #include <vdr/tools.h>
+#include <vdr/config.h>  // VDRVERSNUM
 
 #include "../logdefs.h"
 #include "../xine_input_vdr_net.h" // stream_tcp_header_t
