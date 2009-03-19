@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.67 2009-03-17 20:04:09 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.68 2009-03-19 08:36:55 phintuka Exp $
  *
  */
 
@@ -1282,6 +1282,15 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     // primary device output (PES)
     //
     if(!strcmp(m_State[cli]->Uri(), "/")) {
+
+      if(!xc.remote_use_http) {
+        LOGMSG("HTTP transport disabled in configuration");
+        fd_control[cli].write_cmd(HTTP_REPLY_404);
+        LOGDBG("HTTP Reply: HTTP/1.1 404 Not Found");
+        CloseConnection(cli);
+        return;
+      }
+
       LOGMSG("HTTP streaming primary device feed");
       fd_control[cli].write_cmd(HTTP_REPLY_200_PRIMARY);
 #if 0
@@ -1331,6 +1340,14 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     //
     else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
 
+      if(!xc.remote_http_files) {
+        LOGMSG("HTTP transport for media files disabled in configuration");
+        fd_control[cli].write_cmd(HTTP_REPLY_404);
+        LOGDBG("HTTP Reply: HTTP/1.1 404 Not Found");
+        CloseConnection(cli);
+        return;
+      }
+
       if( *m_FileName && m_bPlayingFile) {
 	char *pos = strstr(m_FileName, "#subtitle:");
 	if(pos) *pos = 0;
@@ -1364,6 +1381,8 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 
 #define RTSP_200_OK "RTSP/1.0 200 OK\r\n" \
                     "CSeq: %d\r\n"
+#define RTSP_401    "RTSP/1.0 401 Unauthorized\r\n" \
+                    "CSeq: %d\r\n" RTSP_FIN
 #define RTSP_415    "RTSP/1.0 415 Unsupported media type\r\n" \
                     "CSeq: %d\r\n" RTSP_FIN
 #define RTSP_461    "RTSP/1.0 461 Unsupported transport\r\n" \
@@ -1415,6 +1434,14 @@ void cXinelibServer::Handle_Control_RTSP(int cli, const char *arg)
     cHeader *cseq = m_State[cli]->Header("CSeq");
     int CSeq = cseq ? cseq->IntValue() : -1;
     LOGMSG("RTSP Request complete (cseq %d)", CSeq);
+
+    if(!xc.remote_use_rtsp) {
+      LOGMSG("RTSP transport disabled in configuration");
+      fd_control[cli].write_cmd(RTSP_401);
+      LOGDBG("HTTP Reply: HTTP/1.1 404 Not Found");
+      CloseConnection(cli);
+      return;
+    }
 
     //
     // OPTIONS rtsp://127.0.0.1:37890 RTSP/1.0
