@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.73 2009-02-16 16:18:24 phintuka Exp $
+ * $Id: device.c,v 1.74 2009-03-19 08:40:45 phintuka Exp $
  *
  */
 
@@ -1134,6 +1134,8 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
         m_PatPmtParser.ParsePat(Data + PayloadOffset, Length - PayloadOffset);
 #endif
         LOGMSG("Got PAT: PMT pid = %d", m_PatPmtParser.PmtPid());
+        if (m_server)
+          m_Server->SetHeader(Data, Length, true);
         PlayAny(Data, Length);
       } else if (Pid == m_PatPmtParser.PmtPid()) {
 #if VDRVERSNUM >= 10704
@@ -1143,6 +1145,8 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
 #endif
         m_h264 = (m_PatPmtParser.Vtype() == 0x1b); /* ISO_14496_PART10_VIDEO */
         LOGMSG("Got PMT packet, h264 = %d", m_h264?1:0);
+        if (m_server)
+          m_Server->SetHeader(Data, Length);
         PlayAny(Data, Length);
         TsBufferFlush();
       }
