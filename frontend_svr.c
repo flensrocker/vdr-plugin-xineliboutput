@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.68 2009-03-19 08:36:55 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.69 2009-03-19 08:39:12 phintuka Exp $
  *
  */
 
@@ -129,6 +129,10 @@ cXinelibServer::cXinelibServer(int listen_port) :
     m_PipesDir = cString::sprintf("/tmp/xineliboutput/pipes.%d", getpid());
 
   m_Token = 1;
+
+  m_Header       = NULL;
+  m_HeaderLength = 0;
+  m_HeaderSize   = 0;
 }
 
 cXinelibServer::~cXinelibServer() 
@@ -146,6 +150,8 @@ cXinelibServer::~cXinelibServer()
   delete m_StcFuture;
   delete m_Futures;
   delete m_Scheduler;
+
+  free(m_Header);
 }
 
 void cXinelibServer::Stop(void)
@@ -436,6 +442,29 @@ int64_t cXinelibServer::GetSTC(void)
   //         delay.Elapsed()*90000/2, delay.Elapsed()/2);
 
   return m_StcFuture->Value() /*+ (delay.Elapsed()*90000/2*/;
+}
+
+void cXinelibServer::SetHeader(uint8_t *Data, int Length, bool Reset)
+{
+  LOCK_THREAD; // Lock control thread out
+
+  if (Reset)
+    m_HeaderLength = 0;
+
+  if (m_HeaderSize < m_HeaderLength + Length) {
+    if (!m_Header) {
+      m_HeaderSize = Length;
+      m_Header     = (uint8_t*)malloc(m_HeaderSize);
+    } else {
+      m_HeaderSize = m_HeaderLength + Length;
+      m_Header     = (uint8_t*)realloc(m_Header, m_HeaderSize);
+    }
+  }
+
+  if (m_Header) {
+    memcpy(m_Header + m_HeaderLength, Data, Length);
+    m_HeaderLength += Length;
+  }
 }
 
 int cXinelibServer::Play_PES(const uchar *data, int len)
@@ -1045,7 +1074,10 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
   if(m_Writer[cli])
     delete m_Writer[cli];
   m_Writer[cli] = new cTcpWriter(fd_data[cli]); 
-    
+
+  if (m_Header)
+    m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
+
   /* not anymore control connection, so dec primary device reference counter */
   cXinelibDevice::Instance().ForcePrimaryDevice(false); 
 }
@@ -1305,7 +1337,10 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
 	    "\xb9\xe0\xe8" "\xb8\xc0\x20" "\xbd\xe0\x3a" "\xbf\xe0\x02", 24);
 #endif
       m_Writer[cli] = new cRawWriter(fd_control[cli].handle(), KILOBYTE(1024));
-      
+
+      if (m_Header)
+        m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
+
       DELETENULL(m_State[cli]);
       return;
     }
