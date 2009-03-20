@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.22 2009-03-19 08:39:12 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.23 2009-03-20 07:20:53 phintuka Exp $
  *
  */
 
@@ -133,11 +133,11 @@ protected:
     bool HasClients(void);
 
     // Cache current PAT/PMT for new clients
-    uint8_t *m_Header;
+    uchar   *m_Header;
     size_t   m_HeaderLength; // bytes used
     size_t   m_HeaderSize;   // bytes allocated
   public:
-    void SetHeader(uint8_t *Data, int Length, bool Reset = false);
+    void SetHeader(const uchar *Data, int Length, bool Reset = false);
 };
 
 #endif // __XINELIB_FRONTEND_SVR_H

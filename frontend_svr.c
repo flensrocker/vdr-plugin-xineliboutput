@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.69 2009-03-19 08:39:12 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.70 2009-03-20 07:20:53 phintuka Exp $
  *
  */
 
@@ -444,7 +444,7 @@ int64_t cXinelibServer::GetSTC(void)
   return m_StcFuture->Value() /*+ (delay.Elapsed()*90000/2*/;
 }
 
-void cXinelibServer::SetHeader(uint8_t *Data, int Length, bool Reset)
+void cXinelibServer::SetHeader(const uchar *Data, int Length, bool Reset)
 {
   LOCK_THREAD; // Lock control thread out
 
@@ -454,10 +454,10 @@ void cXinelibServer::SetHeader(uint8_t *Data, int Length, bool Reset)
   if (m_HeaderSize < m_HeaderLength + Length) {
     if (!m_Header) {
       m_HeaderSize = Length;
-      m_Header     = (uint8_t*)malloc(m_HeaderSize);
+      m_Header     = (uchar*)malloc(m_HeaderSize);
     } else {
       m_HeaderSize = m_HeaderLength + Length;
-      m_Header     = (uint8_t*)realloc(m_Header, m_HeaderSize);
+      m_Header     = (uchar*)realloc(m_Header, m_HeaderSize);
     }
   }
 
