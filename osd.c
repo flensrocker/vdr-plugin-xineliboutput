@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.34 2009-03-16 09:30:37 phintuka Exp $
+ * $Id: osd.c,v 1.35 2009-03-24 08:53:21 phintuka Exp $
  *
  */
 
@@ -349,10 +349,22 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
 
   LOGOSD("cXinelibOsd::SetAreas");
 
+  // Close all existing windows
   CloseWindows();
+  FreeWindowHandles();
 
   eOsdError Result = cOsd::SetAreas(Areas, NumAreas);
 
+  if (Result != oeOk)
+    return Result;
+
+  // Allocate xine OSD window handles
+  if (!AllocWindowHandles(NumAreas)) {
+    FreeWindowHandles();
+    return oeTooManyAreas;
+  }
+
+  // Detect full OSD area size
   if(Left() + Width() > 720 || Top() + Height() > 576) {
     m_ExtentWidth  = Setup.OSDWidth  + 2 * Setup.OSDLeft;
     m_ExtentHeight = Setup.OSDHeight + 2 * Setup.OSDTop;
@@ -373,23 +385,34 @@ eOsdError cXinelibOsd::CanHandleAreas(const tArea *Areas, int NumAreas)
   TRACEF("cXinelibOsd::CanHandleAreas");
 
   eOsdError Result = cOsd::CanHandleAreas(Areas, NumAreas);
-  if (Result == oeOk) {
-    if (NumAreas > MAX_OSD_OBJECT)
-      return oeTooManyAreas;
 
-    for (int i = 0; i < NumAreas; i++) {
-      if (Areas[i].bpp != 1 && Areas[i].bpp != 2 &&
-	  Areas[i].bpp != 4 && Areas[i].bpp != 8)
-        return oeBppNotSupported;
+  if (Result != oeOk)
+    return Result;
+
+  if (NumAreas > MAX_OSD_OBJECT)
+    return oeTooManyAreas;
+
+  for (int i = 0; i < NumAreas; i++) {
+    if (Areas[i].bpp < 1 || Areas[i].bpp > 8) {
+      LOGMSG("cXinelibOsd::CanHandleAreas(): invalid bpp (%d)", Areas[i].bpp);
+      return oeBppNotSupported;
     }
-
-    if (!AllocWindowHandles(NumAreas)) {
-      FreeWindowHandles();
-      return oeTooManyAreas;
-    }
-
   }
-  return Result;
+
+  // enough free xine OSD windows ?
+  uint64_t bit     = 1;
+  int      windows = NumAreas;
+  for (int index = 0; index < MAX_OSD_OBJECT && windows > 0; index++) {
+    if (! (m_HandlesBitmap & bit))
+      windows--;
+    bit <<= 1;
+  }
+  if (windows > 0) {
+    LOGMSG("cXinelibOsd::CanHandleAreas(): not enough free window handles !");
+    return oeTooManyAreas;
+  }
+
+  return oeOk;
 }
 
 void cXinelibOsd::Flush(void)
@@ -472,6 +495,8 @@ void cXinelibOsd::CloseWindows(void)
     cBitmap *Bitmap;
     for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
       LOGOSD("Close OSD %d.%d", Index(), i);
+      if (m_WindowHandles[i] < 0)
+        LOGMSG("Close unallocated OSD %d.%d  @%d", Index(), i, m_WindowHandles[i]);
       CmdClose(i);
     }
   }
