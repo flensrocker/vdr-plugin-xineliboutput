@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.71 2009-03-24 19:07:31 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.72 2009-03-24 19:20:54 phintuka Exp $
  *
  */
 
@@ -940,11 +940,6 @@ uchar *cXinelibServer::GrabImage(int &Size, bool Jpeg,
 // (Client) Control message handling
 //
 
-#define CREATE_NEW_WRITER \
-  if(m_Writer[cli]) \
-    delete m_Writer[cli]; \
-  m_Writer[cli] = new cTcpWriter(fd); 
-
 void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
 {
   LOGDBG("Trying PIPE connection ...");
@@ -1003,7 +998,9 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   RemoveFileOrDir(m_PipesDir, false);
   fd_control[cli].write_cmd("PIPE OK\r\n");
 
-  CREATE_NEW_WRITER;
+  if (m_Writer[cli])
+    delete m_Writer[cli];
+  m_Writer[cli] = new cTcpWriter(fd);
 
   if (m_Header)
     m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
@@ -1074,9 +1071,9 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
 
   cli = clientId;
 
-  if(m_Writer[cli])
+  if (m_Writer[cli])
     delete m_Writer[cli];
-  m_Writer[cli] = new cTcpWriter(fd_data[cli]); 
+  m_Writer[cli] = new cTcpWriter(fd_data[cli]);
 
   if (m_Header)
     m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
@@ -1090,6 +1087,13 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
   LOGDBG("Trying RTP connection ...");
 
   CloseDataConnection(cli);
+
+#if VDRVERSNUM > 10700
+  // UDP/RTP not MPEG-TS compatible yet
+  fd_control[cli].write_cmd("RTP: RTP transport not implemented for vdr-1.7.x.\r\n");
+  LOGMSG("RTP transport not implemented for vdr-1.7.x");
+  return;
+#endif
 
   if(!xc.remote_usertp) {
     fd_control[cli].write_cmd("RTP: RTP transport disabled in configuration.\r\n");
@@ -1111,6 +1115,13 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   LOGDBG("Trying UDP connection ...");
 
   CloseDataConnection(cli);
+
+#if VDRVERSNUM > 10700
+  // UDP/RTP not MPEG-TS compatible yet
+  fd_control[cli].write_cmd("UDP: UDP transport not implemented vor vdr-1.7.x.\r\n");
+  LOGMSG("UDP transport not implemented for vdr-1.7.x");
+  return;
+#endif
 
   if(!xc.remote_useudp) {
     fd_control[cli].write_cmd("UDP: UDP transport disabled in configuration.\r\n");
