@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.10 2009-02-10 15:15:03 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.11 2009-03-24 19:35:22 phintuka Exp $
  *
  */
 
@@ -116,12 +116,12 @@ typedef struct stream_rtp_header_ext_x {
     union {
 
       struct {
-	uint8_t             padding0[2]; /* must be padded to full DWORDs */
+	uint16_t            padding0; /* must be padded to full DWORDs */
 	stream_udp_header_t udphdr;
       } PACKED;
 
       struct {
-	uint8_t  padding1[2];  /* must be padded to full DWORDs */
+	uint16_t padding1;  /* must be padded to full DWORDs */
 
 	uint64_t pos;
 	uint16_t seq;
