@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.70 2009-03-20 07:20:53 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.71 2009-03-24 19:07:31 phintuka Exp $
  *
  */
 
@@ -1004,6 +1004,9 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   fd_control[cli].write_cmd("PIPE OK\r\n");
 
   CREATE_NEW_WRITER;
+
+  if (m_Header)
+    m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
 
   fd_data[cli] = fd;
 }
