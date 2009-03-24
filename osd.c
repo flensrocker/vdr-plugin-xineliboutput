@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.35 2009-03-24 08:53:21 phintuka Exp $
+ * $Id: osd.c,v 1.36 2009-03-24 09:01:31 phintuka Exp $
  *
  */
 
@@ -67,7 +67,7 @@ static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palett
     if(!top) {
       if(xc.osd_mixer & OSD_MIXER_ALPHA)
 	for(c=0; c<colors; c++)
-	  clut[c].alpha = (clut[c].alpha >> 1) | 0x80;
+	  clut[c].alpha >>= 1; /* fade */
       if(xc.osd_mixer & OSD_MIXER_GRAY)
 	for(c=0; c<colors; c++) {
 	  if(rgb)
