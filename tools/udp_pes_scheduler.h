@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.13 2008-04-28 20:53:07 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.14 2009-03-24 19:00:27 phintuka Exp $
  *
  */
 
@@ -32,7 +32,7 @@ class cUdpScheduler : public cThread
 
     // fd should be binded & connected to IP:PORT (local+remote) pair !
     bool AddHandle(int fd);     /* UDP unicast */
-    void RemoveHandle(int fd);  /* UDP unicast */ 
+    void RemoveHandle(int fd);  /* UDP unicast */
     bool AddRtp(void);          /* UDP/RTP multicast */
     void RemoveRtp(void);       /* UDP/RTP multicast */
     bool AddHandle(cxSocket& s) { return AddHandle(s.handle()); }
@@ -87,11 +87,11 @@ class cUdpScheduler : public cThread
     uint32_t  m_Frames;
     uint32_t  m_Octets;
 
-    // Scheduling 
+    // Scheduling
 
     bool m_TrickSpeed;
     bool m_Master;     /* if true, we are master metronom for playback */
-  
+
     int  calc_elapsed_vtime(int64_t pts, bool Audio);
     void Schedule(const uchar *Data, int Length);
 
