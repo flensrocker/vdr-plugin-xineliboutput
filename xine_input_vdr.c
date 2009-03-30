@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.246 2009-03-17 20:03:30 rofafor Exp $
+ * $Id: xine_input_vdr.c,v 1.247 2009-03-30 12:20:38 phintuka Exp $
  *
  */
 
@@ -2863,6 +2863,12 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
     int ch_auto = strstr(cmd+10, "auto") ? 1 : 0;
+    int is_dvd  = 0;
+
+    if (this->slave_stream && this->slave_stream->input_plugin) {
+      const char *mrl = this->slave_stream->input_plugin->get_mrl(this->slave_stream->input_plugin);
+      is_dvd = !strncmp(mrl, "dvd:/", 5);
+    }
 
     if(strstr(cmd+10, "NEXT"))
       ch = ch < max_ch ? ch+1 : -2;
@@ -2884,7 +2890,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       old_ch = stream->spu_channel_auto;
 
     if (ch != old_ch) {
-      if (ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
+      if (is_dvd && ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
 	LOGDBG("Automatic SPU channel %d->%d ignored", old_ch, ch);
       } else {
 	LOGDBG("Forced SPU channel %d->%d", old_ch, ch);
