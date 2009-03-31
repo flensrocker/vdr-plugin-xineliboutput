@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.5 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: ts.c,v 1.6 2009-03-31 11:33:05 phintuka Exp $
  *
  */
 
@@ -12,7 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../logdefs.h"
+#ifndef LOG_MODULENAME
+#  define LOG_MODULENAME "[mpeg-ts  ] "
+#  define SysLogLevel    iSysLogLevel
+#  include "../logdefs.h"
+#endif
 
 #include "mpeg.h"
 #include "ts.h"

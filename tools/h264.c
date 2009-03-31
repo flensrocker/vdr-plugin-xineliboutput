@@ -4,14 +4,18 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.6 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: h264.c,v 1.7 2009-03-31 11:33:05 phintuka Exp $
  *
  */
 
 #include <stdint.h>
 #include <string.h>
 
-#include "../logdefs.h"
+#ifndef LOG_MODULENAME
+#  define LOG_MODULENAME "[h264     ] "
+#  define SysLogLevel    iSysLogLevel
+#  include "../logdefs.h"
+#endif
 
 #define NOCACHE 1
 #include "bitstream.h"
