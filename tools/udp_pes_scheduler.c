@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.37 2009-02-10 12:46:10 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.38 2009-03-31 10:34:32 phintuka Exp $
  *
  */
 
@@ -891,7 +891,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 	   ((stream_udp_header_t *)udp_ctrl)->seq);
 
     int Seq0 = Seq1;
-    for(; Seq1 <= Seq2; Seq1++) {
+    for(; Seq1 < Seq2; Seq1++) {
       stream_rtp_header_impl_t *frame = m_BackLog->Get(Seq1+1);
       if(frame && (ntohull(frame->hdr_ext.pos) - Pos < 100000))
 	break;
