@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.247 2009-03-30 12:20:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.248 2009-03-31 10:38:18 phintuka Exp $
  *
  */
 
@@ -343,7 +343,7 @@ struct udp_data_s {
   /* SCR adjust */
   uint8_t  scr_jump_done;
 
-  int resend_requested : 1;
+  int resend_requested;
 };
 
 /* UDP sequence number handling */
@@ -3832,7 +3832,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       udp->queued --;
       INCSEQ(udp->next_seq);
       if (udp->resend_requested)
-	udp->resend_requested --;
+        udp->resend_requested --;
     }
 
     /* no new resend requests until previous has been completed or failed */
