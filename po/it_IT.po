@@ -159,16 +159,16 @@ msgid "none"
 msgstr "nessuno"
 
 msgid "nonref"
-msgstr ""
+msgstr "nonref"
 
 msgid "bidir"
-msgstr ""
+msgstr "nonref"
 
 msgid "nonkey"
-msgstr ""
+msgstr "nonref"
 
 msgid "all"
-msgstr ""
+msgstr "tutti"
 
 msgid "Frontend initialization failed"
 msgstr "Inizializzazione frontend fallita"
@@ -463,10 +463,10 @@ msgid "Brightness"
 msgstr "Luminosità"
 
 msgid "Sharpness"
-msgstr ""
+msgstr "Nitidezza"
 
 msgid "Noise Reduction"
-msgstr ""
+msgstr "Riduzione rumore"
 
 msgid "Smooth fast forward"
 msgstr "Avanzamento veloce leggero"
@@ -502,7 +502,7 @@ msgid "External subtitle size"
 msgstr "Dimensione sottotitoli esterni"
 
 msgid "DVB subtitle decoder"
-msgstr ""
+msgstr "Decoder sottotitoli DVB"
 
 msgid "Decoder"
 msgstr "Decoder"
@@ -562,7 +562,7 @@ msgid "  Remote keyboard"
 msgstr "  Tastiera remota"
 
 msgid "  Max number of clients"
-msgstr ""
+msgstr "  Numero massimo di client"
 
 msgid "  PIPE transport"
 msgstr "  Protocollo PIPE"
@@ -631,7 +631,7 @@ msgid "Cache metainfo"
 msgstr "Cache metainfo"
 
 msgid "Arrow keys control DVD playback"
-msgstr ""
+msgstr "Controllo riprod. DVD con tasti freccia"
 
 msgid "Grayscale"
 msgstr "Scala di grigi"
