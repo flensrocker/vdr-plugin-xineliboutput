@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.75 2009-03-19 19:42:41 phintuka Exp $
+ * $Id: device.c,v 1.76 2009-04-20 19:21:38 phintuka Exp $
  *
  */
 
@@ -1123,6 +1123,8 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
  */
 int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
 {
+  if (Length > TS_SIZE) Length = TS_SIZE;
+
   if (Length == TS_SIZE && TsHasPayload(Data)) {
     int PayloadOffset = TsPayloadOffset(Data);
     if (PayloadOffset < Length) {
