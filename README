@@ -154,20 +154,20 @@ Using remote frontends
   with "vdr-??fe --help".
 
   Frontend should find server automatically (from local subnet) 
-  and negoate best available transport. If frontend does not
+  and negotiate best available transport. If frontend does not
   find server (or specific transport should be used), mrl must
   be given on command line.
 
   Examples:
 
     Search for VDR (xineliboutput) server, connect to it and
-    negoatite best available transport. Use best available audio 
+    negotiate best available transport. Use best available audio 
     and video driver.
       vdr-fbfe
     or
       vdr-sxfe
 
-    Connect to 192.168.1.3 default port and negoate best available transport
+    Connect to 192.168.1.3 default port and negotiate best available transport
        vdr-fbfe xvdr://192.168.1.3
 
     Connect to 192.168.2.100, port 12550 and use TCP transport
@@ -179,8 +179,8 @@ Using remote frontends
         vdr-fbfe --udp
 
   Available transports for video/audio 
-      pipe  Use local pipe; server and front-end must be running in 
-            same machine
+      pipe  Use local pipe; server and front-end must be running on 
+            same machine.
       rtp   Use RTP/UDP multicast for data and TCP for control. 
             Multiple frontends can receive same stream.
       udp   Use UDP unicast for data and TCP for control.
@@ -206,7 +206,7 @@ Using remote frontends
         --video xvmc:127.0.0.1:1.0
 
     With framebuffer frontend (vdr-fbfe):
-        --video [fb | DirectFB | sdl | vidixfb | dxr3 | aadxr3 | none [:fb_device]]
+        vdr-fbfe --video [fb | DirectFB | sdl | vidixfb | dxr3 | aadxr3 | none [:fb_device]]
       Examples:
         --video DirectFB
         --video fb:/dev/fb/1
