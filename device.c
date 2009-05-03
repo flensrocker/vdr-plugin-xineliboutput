@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.77 2009-05-03 20:25:59 phintuka Exp $
+ * $Id: device.c,v 1.78 2009-05-03 20:37:48 phintuka Exp $
  *
  */
 
@@ -1504,6 +1504,14 @@ eVideoSystem cXinelibDevice::GetVideoSystem(void)
   return cDevice::GetVideoSystem();
 }
 
+#if VDRVERSNUM >= 10707
+void cXinelibDevice::GetVideoSize(int &Width, int &Height, eVideoAspect &Aspect)
+{
+  Width  = 720;
+  Height = 576;
+  Aspect = va4_3;
+}
+#endif
 
 //
 // SPU decoder
