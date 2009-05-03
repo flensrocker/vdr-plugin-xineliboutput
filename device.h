@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.45 2009-05-03 20:25:01 phintuka Exp $
+ * $Id: device.h,v 1.46 2009-05-03 20:33:08 phintuka Exp $
  *
  */
 
@@ -120,6 +120,7 @@ class cXinelibDevice : public cDevice
 
   protected:
     virtual void SetAudioTrackDevice(eTrackType Type);
+  public:
     virtual void SetSubtitleTrackDevice(eTrackType Type);
 
   // Audio facilities
