@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.68 2009-03-23 08:38:57 phintuka Exp $
+ * $Id: setup_menu.c,v 1.69 2009-05-03 20:34:58 phintuka Exp $
  *
  */
 
@@ -15,11 +15,11 @@
 #include <vdr/remote.h>
 #include <vdr/i18n.h>
 
-#include "setup_menu.h"
+#include "config.h"
 #include "device.h"
 #include "menuitems.h"
-#include "config.h"
 #include "osd.h"       // cXinelibOsdProvider::RefreshOsd()
+#include "setup_menu.h"
 
 
 namespace XinelibOutputSetupMenu {

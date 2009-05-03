@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.36 2009-03-24 09:01:31 phintuka Exp $
+ * $Id: osd.c,v 1.37 2009-05-03 20:35:36 phintuka Exp $
  *
  */
 
@@ -13,8 +13,8 @@
 #include <vdr/thread.h>
 
 #include "logdefs.h"
-#include "device.h"
 #include "config.h"
+#include "device.h"
 #include "xine_osd_command.h"
 #include "tools/rle.h"
 
