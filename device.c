@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.76 2009-04-20 19:21:38 phintuka Exp $
+ * $Id: device.c,v 1.77 2009-05-03 20:25:59 phintuka Exp $
  *
  */
 
@@ -672,18 +672,6 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
 #define trs_NoAudio    0x08  // no audio in trick speed mode
 #define trs_PTS_check  0x80  // detect in PlayVideo if PTS must be recalculated
 
-bool cXinelibDevice::HasIBPTrickSpeed(void)
-{
-  TRACEF("cXinelibDevice::HasIBPTrickSpeed");
-
-  return xc.ibp_trickspeed;
-}
-
-bool cXinelibDevice::UseIBPTrickSpeed(void) 
-{ 
-  return xc.ibp_trickspeed; 
-}
-
 void cXinelibDevice::TrickSpeed(int Speed) 
 {
   TRACEF("cXinelibDevice::TrickSpeed");
@@ -990,7 +978,7 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
 	  m_TrickSpeedMode = trs_I_frames | trs_PTS_recalc | trs_NoAudio;	  
 	} else {
 	  LOGTRICKSPEED("    Detected fast forward mode");
-          if(UseIBPTrickSpeed())
+          if(xc.ibp_trickspeed)
             m_TrickSpeedMode = trs_IPB_frames;
           else
             m_TrickSpeedMode = trs_I_frames;
