@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.44 2009-05-03 20:22:38 phintuka Exp $
+ * $Id: device.h,v 1.45 2009-05-03 20:25:01 phintuka Exp $
  *
  */
 
@@ -112,6 +112,9 @@ class cXinelibDevice : public cDevice
     virtual void SetVideoDisplayFormat(eVideoDisplayFormat VideoDisplayFormat);
     virtual void SetVideoFormat(bool VideoFormat16_9);
     virtual eVideoSystem GetVideoSystem(void);
+#if VDRVERSNUM >= 10707
+    virtual void GetVideoSize(int &Width, int &Height, eVideoAspect &Aspect);
+#endif
 
   // Track facilities
 
