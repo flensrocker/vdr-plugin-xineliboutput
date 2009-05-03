@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.37 2009-02-21 11:55:37 phintuka Exp $
+ * $Id: frontend_local.c,v 1.38 2009-05-03 20:10:35 phintuka Exp $
  *
  */
 
@@ -132,8 +132,8 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
 	Lock();
 	m_StreamPos += done;
 	Unlock();
-	return done;
       }
+      return done;
     }
   }
 
