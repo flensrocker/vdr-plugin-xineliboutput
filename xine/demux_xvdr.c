@@ -1115,8 +1115,6 @@ static demux_plugin_t *demux_xvdr_open_plugin (demux_class_t *class_gen,
   demux_xvdr_t   *this;
   const char     *mrl = input->get_mrl(input);
 
-  LOGMSG("demux open");
-
   if (strncmp(mrl, MRL_ID ":/",       MRL_ID_LEN + 2 ) &&
       strncmp(mrl, MRL_ID "+pipe://", MRL_ID_LEN + 8) &&
       strncmp(mrl, MRL_ID "+tcp://",  MRL_ID_LEN + 7) &&
