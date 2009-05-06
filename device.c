@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.78 2009-05-03 20:37:48 phintuka Exp $
+ * $Id: device.c,v 1.79 2009-05-06 15:08:45 phintuka Exp $
  *
  */
 
@@ -1143,7 +1143,6 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
     }
   } else if (!Data) {
     TsBufferFlush();
-    m_PatPmtParser.Reset();
   }
 
   return cDevice::PlayTs(Data, Length, VideoOnly);
