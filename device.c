@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.79 2009-05-06 15:08:45 phintuka Exp $
+ * $Id: device.c,v 1.80 2009-05-06 15:16:31 phintuka Exp $
  *
  */
 
@@ -1033,25 +1033,6 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     return length;
 #endif
 
-#if VDRVERSNUM >= 10701
-  if (!buf) {
-    /* flush cache */
-    buf = m_TsBuf;
-    length = m_TsBufSize;
-    m_TsBufSize = 0;
-  }
-  else if (DATA_IS_TS(buf) && length == TS_SIZE) {
-    memcpy(m_TsBuf + m_TsBufSize, buf, length);
-    m_TsBufSize += length;
-    if (m_TsBufSize < 2048-TS_SIZE+1)
-      return TS_SIZE;
-    buf = m_TsBuf;
-    length = m_TsBufSize;
-    m_TsBufSize = 0;
-  } else if (m_TsBufSize) {
-    LOGMSG("PlayAny: TS cache error !");
-  }
-#endif
   if (!buf || length <= 0)
     return length;
 
@@ -1126,7 +1107,7 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
         LOGMSG("Got PAT: PMT pid = %d", m_PatPmtParser.PmtPid());
         if (m_server)
           m_server->SetHeader(Data, Length, true);
-        PlayAny(Data, Length);
+        PlayTsAny(Data, Length);
       } else if (Pid == m_PatPmtParser.PmtPid()) {
 #if VDRVERSNUM >= 10704
         m_PatPmtParser.ParsePmt(Data, Length);
@@ -1137,7 +1118,7 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
         LOGMSG("Got PMT packet, h264 = %d", m_h264?1:0);
         if (m_server)
           m_server->SetHeader(Data, Length);
-        PlayAny(Data, Length);
+        PlayTsAny(Data, Length);
         TsBufferFlush();
       }
     }
@@ -1148,25 +1129,60 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
   return cDevice::PlayTs(Data, Length, VideoOnly);
 }
 
+int cXinelibDevice::TsBufferFlush(void)
+{
+  if (m_TsBufSize) {
+    int n;
+    if ((n = PlayAny(m_TsBuf, m_TsBufSize)) == m_TsBufSize) {
+      m_TsBufSize = 0;
+      return n;
+    }
+    if (n)
+      LOGMSG("cXinelibDevice::TsBufferFlush: error: cache not flushed (%d %d)", n, m_TsBufSize);
+    errno = EAGAIN;
+  }
+  return 0;
+}
+
+int cXinelibDevice::PlayTsAny(const uchar *buf, int length)
+{
+  if (!DATA_IS_TS(buf))
+    LOGMSG("PlayTsAny(): TS SYNC byte missing !");
+  if (length != TS_SIZE)
+    LOGMSG("PlayTsAny(): length == %d !", length);
+
+  // cache full ? try to flush it
+  if (m_TsBufSize >= 2048)
+    if (!TsBufferFlush())
+      return 0;
+
+  // add packet to cache
+  memcpy(m_TsBuf + m_TsBufSize, buf, length);
+  m_TsBufSize += length;
+
+  // time to flush ?
+  if (m_TsBufSize >= 2048-TS_SIZE-1)
+    TsBufferFlush();
+
+  return length;
+}
+
 int cXinelibDevice::PlayTsSubtitle(const uchar *Data, int Length)
 {
   if (!xc.dvb_subtitles)
     return cDevice::PlayTsSubtitle(Data, Length);
 
-  int r = PlayAny(Data, Length);
-  return r > 0 ? TS_SIZE : r;
+  return PlayTsAny(Data, Length);
 }
 
 int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
 {
-  int r = PlayAny(Data, Length);
-  return r > 0 ? TS_SIZE : r;
+  return PlayTsAny(Data, Length);
 }
 
 int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
-  int r = PlayAny(Data, Length);
-  return r > 0 ? TS_SIZE : r;
+  return PlayTsAny(Data, Length);
 }
 #endif // VDRVERSNUM >= 10701
 

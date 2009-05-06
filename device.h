@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.46 2009-05-03 20:33:08 phintuka Exp $
+ * $Id: device.h,v 1.47 2009-05-06 15:16:31 phintuka Exp $
  *
  */
 
@@ -245,8 +245,10 @@ class cXinelibDevice : public cDevice
     /* join multiple TS packets to xineliboutput transport packet */
     uint8_t       m_TsBuf[4096];
     uint          m_TsBufSize;
-    void          TsBufferFlush(void) { if (m_TsBufSize) PlayAny(NULL, 0); };
+    int           TsBufferFlush(void);
     void          TsBufferClear(void) { m_TsBufSize = 0; };
+
+    int           PlayTsAny(const uchar *Data, int Length);
 
     virtual int PlayTsVideo(const uchar *Data, int Length);
     virtual int PlayTsAudio(const uchar *Data, int Length);
