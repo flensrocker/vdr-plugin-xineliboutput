@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_hook.c,v 1.4 2009-01-17 00:48:30 rofafor Exp $
+ * $Id: vo_hook.c,v 1.5 2009-05-09 16:05:06 phintuka Exp $
  *
  */
 
@@ -150,7 +150,7 @@ int wire_video_driver(xine_video_port_t *video_port, vo_driver_t *hook)
     return 0;
   }
 
-  LOGMSG("wire_video_driver: vo_driver == vos_driver");
+  /*LOGMSG("wire_video_driver: vo_driver == vos_driver");*/
 
   /* wire */
 
