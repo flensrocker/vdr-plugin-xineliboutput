@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.248 2009-03-31 10:38:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.249 2009-05-22 10:46:54 phintuka Exp $
  *
  */
 
@@ -284,6 +284,7 @@ typedef struct vdr_input_plugin_s {
   pthread_t           control_thread;
   pthread_t           data_thread;
   pthread_mutex_t     fd_control_lock;
+  buf_element_t      *read_buffer;
   int                 threads_initialized;
   volatile int        control_running;
   volatile int        fd_data;
@@ -539,14 +540,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   if( num_used < 1 && 
       scr_tuning != SCR_TUNING_PAUSED && 
       !this->no_video && !this->still_mode && !this->is_trickspeed) {
-/* 
-   #warning TODO:
-   - First I-frame can be delivered as soon as it is decoded 
-   -> illusion of faster channel switches
-   - Clock must still be paused, but stream can be in PLAYING state
-   (if clock is not paused we will got a lot of discarded frames 
-   as those are decoded too late according to running SCR)
-*/
 #if 0
     this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 0);
     num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
@@ -3473,8 +3466,9 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 {
   buf_element_t *read_buffer = NULL;
-  int todo = 0, retries = 0;
-  int n, result;
+  int            todo = 0, retries = 0;
+  int            warnings    = 0;
+  int            result, n;
 
  retry:
   while (XIO_READY == (result = io_select_rd(this->fd_data))) {
@@ -3491,15 +3485,16 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_tcp_header_t), 100);
       if (!read_buffer) {
         /* do not drop any data here ; dropping is done only at server side. */
-        if (!this->is_paused)
+        if (!this->is_paused && !warnings)
           LOGDBG("TCP: fifo buffer full");
-        xine_usec_sleep(3*1000);
-        continue; /*  must call select to check fd for errors / closing */
+        warnings++;
+        continue; /* must call select to check fd for errors / closing */
       }
 
       /* read the header first */
       todo = sizeof(stream_tcp_header_t);
       read_buffer->size = 0;
+      warnings = 0;
     }
 
     /* Read data */
@@ -3530,7 +3525,8 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
         LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)",
                read_buffer->max_size, todo + read_buffer->size);
         read_buffer->free_buffer(read_buffer);
-        return XIO_ERROR;
+        result = XIO_ERROR;
+        break;
       }
     }
 
@@ -3552,7 +3548,7 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 
       /* frame ready */
       read_buffer->type = BUF_NETWORK_BLOCK;
-      this->block_buffer->put(this->block_buffer, read_buffer);
+      this->block_buffer->put (this->block_buffer, read_buffer);
       read_buffer = NULL;
     }
   }
@@ -3659,7 +3655,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     /* check source address */
     if ((server_address.sin_addr.s_addr !=
          udp->server_address.sin_addr.s_addr) ||
-       server_address.sin_port != udp->server_address.sin_port) {
+        server_address.sin_port != udp->server_address.sin_port) {
 #ifdef LOG_UDP
       uint32_t tmp_ip = ntohl(server_address.sin_addr.s_addr);
       LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d",
@@ -3730,7 +3726,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
         pkt->pos = rpos;
         LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
         if (seq1 == udp->next_seq) {
-	  /* this is the one we are expecting ... */
+          /* this is the one we are expecting ... */
           int n = ADDSEQ(seq2 + 1, -seq1);
           udp->missed_frames += n;
           seq2 &= UDP_SEQ_MASK;
@@ -3972,8 +3968,8 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
 #ifdef TEST_PIP
   /* some (older?) VDR recordings have video PID != 0xE0 ... */
 
-  /* slave */
-  if(((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) 
+  /* slave (PES) */
+  if(!buf[0] && ((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) 
     return write_slave_stream(this, data, len);
 #endif
 
@@ -3989,6 +3985,7 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
       LOGMSG("vdr_plugin_write: buffer overflow ! (%d bytes)", len);
     VDR_ENTRY_UNLOCK();
     xine_usec_sleep(5*1000);
+    errno = EAGAIN;
     return 0; /* EAGAIN */
   }
   overflows = 0;
@@ -4014,10 +4011,10 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
 }
 
 /*
- * post_vdr_event()
+ * vdr_plugin_keypress()
  *
- * - Called by frontend and vdr_event_cb()
- * - forward xine-lib/frontend-generated events to VDR
+ * - Called by frontend
+ * - forward (input) events to VDR
  *
  * It is safe to cancel thread while this function is being executed.
  */
@@ -4469,6 +4466,8 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* need to get all buffer elements back before disposing own buffers ... */
   LOGDBG("Disposing fifos");
+  if(this->read_buffer)
+    this->read_buffer->free_buffer(this->read_buffer);
   if(this->stream && this->stream->audio_fifo)
     this->stream->audio_fifo->clear(this->stream->audio_fifo);
   if(this->stream && this->stream->video_fifo)
