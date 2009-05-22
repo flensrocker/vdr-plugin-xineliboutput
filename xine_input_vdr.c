@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.249 2009-05-22 10:46:54 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.250 2009-05-22 20:54:16 phintuka Exp $
  *
  */
 
@@ -2486,7 +2486,7 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
   put_control_buf(buffer, pool, BUF_CONTROL_FLUSH_DECODER);
   put_control_buf(buffer, pool, BUF_CONTROL_NOP);
 
-  if (result <= 0) 
+  if (result <= 0)
     return 0;
 
   create_timeout_time(&abstime, timeout_ms);
@@ -3463,26 +3463,34 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
   vdr_plugin_parse_control(&this->iface, cmd);
 }
 
-static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
+/*
+ * vdr_plugin_read_block_tcp()
+ *
+ * - Read single transport block from socket / pipe.
+ *
+ * Returns NULL if read failed or data is not available.
+ * (sets errno to EAGAIN or ENOTCONN)
+ *
+ */
+static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
 {
-  buf_element_t *read_buffer = NULL;
-  int            todo = 0, retries = 0;
+  buf_element_t *read_buffer = this->read_buffer;
+  int            todo        = sizeof(stream_tcp_header_t);
   int            warnings    = 0;
   int            result, n;
 
- retry:
+  if (read_buffer && read_buffer->size >= sizeof(stream_tcp_header_t))
+    todo = read_buffer->size + ((stream_tcp_header_t *)read_buffer->content)->len;
+
   while (XIO_READY == (result = io_select_rd(this->fd_data))) {
 
     if (!this->control_running)
       break;
+    pthread_testcancel();
 
     /* Allocate buffer */
     if (!read_buffer) {
-
-      /* can't cancel if read_buffer != NULL (disposing fifos would freeze) */
-      pthread_testcancel();
-
-      read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_tcp_header_t), 100);
+      this->read_buffer = read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_tcp_header_t), 100);
       if (!read_buffer) {
         /* do not drop any data here ; dropping is done only at server side. */
         if (!this->is_paused && !warnings)
@@ -3506,7 +3514,6 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
           LOGERR("TCP read error (data stream %d : %d)", this->fd_data, n);
         if (n == 0)
           LOGMSG("Data stream disconnected");
-        result = XIO_ERROR;
         break;
       }
       continue;
@@ -3524,8 +3531,6 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
       if (todo + read_buffer->size >= read_buffer->max_size) {
         LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)",
                read_buffer->max_size, todo + read_buffer->size);
-        read_buffer->free_buffer(read_buffer);
-        result = XIO_ERROR;
         break;
       }
     }
@@ -3548,28 +3553,28 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
 
       /* frame ready */
       read_buffer->type = BUF_NETWORK_BLOCK;
-      this->block_buffer->put (this->block_buffer, read_buffer);
-      read_buffer = NULL;
+      this->read_buffer = NULL;
+      return read_buffer;
     }
   }
 
-  if (read_buffer) {
-    int cnt = read_buffer->size;
-    if (cnt && this->control_running && result == XIO_TIMEOUT && (++retries < 10)) {
-      LOGMSG("TCP: Warning: long delay (>500ms) !");
-      goto retry;
-    }
+  if (result == XIO_TIMEOUT)
+    errno = EAGAIN;
+  else
+    errno = ENOTCONN;
+  return NULL;
+}
 
-    read_buffer->free_buffer(read_buffer);
-    read_buffer = NULL;
-    if (cnt && this->fd_data >= 0 && result == XIO_TIMEOUT) {
-      LOGMSG("TCP: Delay too long, disconnecting");
-      this->control_running = 0;
-      return XIO_ERROR;
-    }
+static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
+{
+  buf_element_t *buf = vdr_plugin_read_block_tcp(this);
+  if (buf) {
+    this->block_buffer->put(this->block_buffer, buf);
+    return XIO_READY;
   }
-
-  return result;
+  if (errno == EAGAIN)
+    return XIO_TIMEOUT;
+  return XIO_ERROR;
 }
 
 static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
@@ -4193,6 +4198,9 @@ static void handle_disconnect(vdr_input_plugin_t *this)
   this->live_mode = 0;
   reset_scr_tuning(this, XINE_FINE_SPEED_NORMAL);
   this->stream->emergency_brake = 1;
+
+  this->control_running = 0;
+  errno = ENOTCONN;
 }
 
 static int adjust_scr_speed(vdr_input_plugin_t *this)
@@ -4242,7 +4250,6 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
         !this->control_running) {
       /* disconnected ? */
       handle_disconnect(this);
-      errno = ENOTCONN;
       return NULL;
     }
 
@@ -4262,6 +4269,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
     /* get next buffer */
     buf = fifo_buffer_timed_get(this->block_buffer, 100);
+
     if (!buf) {
       if (!this->is_paused &&
           !this->still_mode &&
@@ -4390,7 +4398,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     pthread_join (this->control_thread, &p);
     LOGDBG("Cancel data thread ...");
     /*pthread_cancel(this->data_thread);*/
-    pthread_join (this->data_thread, &p);   
+    pthread_join (this->data_thread, &p);
     LOGDBG("Threads joined");
   }
 
