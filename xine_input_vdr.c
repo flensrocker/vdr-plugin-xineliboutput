@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.251 2009-05-25 11:13:49 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.252 2009-05-25 11:33:16 phintuka Exp $
  *
  */
 
@@ -4563,6 +4563,19 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   this->scr_tuning = SCR_TUNING_OFF;
   this->curpos = 0;
+
+  /* buffer */
+  this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
+  
+  /* OSD */
+  this->osd_manager = init_osd_manager();
+
+  /* sync */
+  pthread_mutex_init (&this->lock, NULL);
+  pthread_mutex_init (&this->vdr_entry_lock, NULL);
+  pthread_mutex_init (&this->fd_control_lock, NULL);
+  pthread_cond_init  (&this->engine_flushed, NULL);
+
   return 1;
 }
 
@@ -5274,18 +5287,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
     this->funcs.post_vdr_event    = post_vdr_event;
   }
   
-  /* buffer */
-  this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
-  
-  /* OSD */
-  this->osd_manager = init_osd_manager();
-
-  /* sync */
-  pthread_mutex_init (&this->lock, NULL);
-  pthread_mutex_init (&this->vdr_entry_lock, NULL);
-  pthread_mutex_init (&this->fd_control_lock, NULL);
-  pthread_cond_init  (&this->engine_flushed, NULL);
-
   LOGDBG("vdr_class_get_instance done.");
   return &this->input_plugin;
 }
