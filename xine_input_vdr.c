@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.250 2009-05-22 20:54:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.251 2009-05-25 11:13:49 phintuka Exp $
  *
  */
 
@@ -303,6 +303,7 @@ typedef struct vdr_input_plugin_s {
   uint64_t            discard_index; /* index of next byte to feed to demux; 
 					all data before this offset will 
 					be discarded */
+  uint64_t            discard_index_ds;
   int                 discard_frame;
   uint64_t            guard_index;   /* data before this offset will not be discarded */
   int                 guard_frame;
@@ -1609,6 +1610,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 
   /* suspend demuxer */
   this->stream->demux_action_pending = 1;
+  pthread_cond_broadcast(&this->engine_flushed);
   if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
     LOGERR("pthread_mutex_unlock failed !");
   suspend_demuxer(this);
@@ -3420,6 +3422,36 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
 /**************************** Data Stream *********************************/
 
+static void wait_stream_sync(vdr_input_plugin_t *this)
+{
+  int counter = 10;
+
+  mutex_lock_cancellable(&this->lock);
+
+  while(this->control_running &&
+        this->discard_index < this->discard_index_ds &&
+        /*!this->stream->demux_action_pending &&*/
+        --counter > 0) {
+    struct timespec abstime;
+    create_timeout_time(&abstime, 100);
+    LOGDBG("wait_stream_sync: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
+           this->discard_index, this->discard_index_ds);
+    pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
+  }
+
+  mutex_unlock_cancellable(&this->lock);
+
+  if (this->discard_index == this->discard_index_ds) {
+    LOGDBG("wait_stream_sync: streams synced at %"PRIu64"/%"PRIu64,
+           this->discard_index_ds, this->discard_index);
+  } else {
+    if (this->stream->demux_action_pending)
+      LOGMSG("wait_stream_sync: demux_action_pending set");
+    if (counter <= 0)
+      LOGMSG("wait_stream_sync: Timed out ! diff %"PRIu64, this->discard_index - this->discard_index_ds);
+  }
+}
+
 static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
 {
   char *tmp;
@@ -3434,23 +3466,11 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
     uint64_t index;
     if(1 == sscanf(cmd+8, "%" PRIu64, &index)) {
 
+      this->discard_index_ds = index;
+
       this->block_buffer->clear(this->block_buffer);
 
-      mutex_lock_cancellable(&this->lock);
-
-      while(this->control_running &&
-            this->discard_index < index) {
-        struct timespec abstime;
-        create_timeout_time(&abstime, 100);
-        LOGDBG("data_stream_parse_control: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
-               this->discard_index, index);
-        pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
-      }
-
-      mutex_unlock_cancellable(&this->lock);
-
-      LOGDBG("data_stream_parse_control: streams synced at %"PRIu64"/%"PRIu64,
-             index, this->discard_index);
+      wait_stream_sync(this);
     }
     return;
 
