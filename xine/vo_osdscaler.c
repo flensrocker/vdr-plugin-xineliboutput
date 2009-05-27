@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.3 2009-03-17 12:28:17 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.4 2009-05-27 08:37:06 phintuka Exp $
  *
  */
 
@@ -237,10 +237,18 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
   if (!data->scaling)
     return 0;
 
+#if 0
   if (this->custom_extent_supported) {
     /* let the "real" video driver do scaling */
     return 0;
   }
+#else
+# ifdef VO_CAP_CUSTOM_EXTENT_OVERLAY
+  /* disable VDPAU HW scaler */
+  overlay->extent_width   = 0;
+  overlay->extent_height  = 0;
+# endif
+#endif
 
   /* detect output size */
   if (overlay->unscaled && this->unscaled_supported) {
