@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.80 2009-05-06 15:16:31 phintuka Exp $
+ * $Id: device.c,v 1.81 2009-05-27 08:20:58 phintuka Exp $
  *
  */
 
@@ -910,6 +910,9 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
 
 int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length) 
 {
+#if VDRVERSNUM >= 10705
+  return 0;
+#endif
   if(abs(m_TrickSpeed) > 1 && (m_TrickSpeedMode & trs_I_frames)) {
     uint8_t PictureType = pes_get_picture_type(buf, length);
 #ifdef LOG_TRICKSPEED
