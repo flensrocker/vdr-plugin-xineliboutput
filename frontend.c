@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.68 2009-02-16 16:27:20 phintuka Exp $
+ * $Id: frontend.c,v 1.69 2009-05-29 14:31:46 phintuka Exp $
  *
  */
 
@@ -600,9 +600,9 @@ bool cXinelibThread::LogoDisplay(void)
 
   if(Setup.FileName()) {
     cString SetupPath = Setup.FileName();
-    char *end = strrchr(SetupPath, '/');
+    const char *end = strrchr(SetupPath, '/');
     if(end) {
-      *end = 0;
+      SetupPath.Truncate(end - (const char *)SetupPath);
       fd = open(Path=cString::sprintf("%s/plugins/xineliboutput/logo.mpv", *SetupPath), O_RDONLY);
     }
   }
