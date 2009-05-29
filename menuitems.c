@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.13 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: menuitems.c,v 1.14 2009-05-29 15:05:19 phintuka Exp $
  *
  */
 
@@ -165,7 +165,7 @@ cFileListItem::cFileListItem(const char *name, bool IsDir,
 void cFileListItem::Set(void)
 {
   cString txt;
-  char *pt;
+  const char *pt;
   if(m_ShowFlags) {
     if(m_IsDir) {
       if(m_IsDvd)
@@ -175,7 +175,7 @@ void cFileListItem::Set(void)
     } else {
       txt = cString::sprintf("%c\t%c\t%s", m_HasResume ? ' ' : '*', *m_SubFile ? 'S' : m_IsDvd ? 'D' : ' ', *m_Name);
       if(NULL != (pt = strrchr(txt,'.')))
-	*pt = 0;
+	txt.Truncate(pt - txt);
     }
   } else {
     if(m_IsDir) {
@@ -183,7 +183,7 @@ void cFileListItem::Set(void)
     } else {
       txt = m_Name;
       if(NULL != (pt = strrchr(txt,'.')))
-	*pt = 0;
+	txt.Truncate(pt - txt);
     }
   }
   SetText(txt);
