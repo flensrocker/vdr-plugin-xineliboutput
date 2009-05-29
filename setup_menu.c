@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.69 2009-05-03 20:34:58 phintuka Exp $
+ * $Id: setup_menu.c,v 1.70 2009-05-29 15:09:10 phintuka Exp $
  *
  */
 
@@ -469,7 +469,7 @@ struct tvtime_s {
     judder_correction = strstr(str, "judder_correction=0") ? 0 : 1;
     use_progressive_frame_flag = strstr(str, "use_progressive_frame_flag=0") ? 0 : 1;
     method=1;
-    char *m = strstr(str, "method=");
+    const char *m = strstr(str, "method=");
     if(m) {
       char *tmp = strdup(m + 7);
       if(strchr(tmp, ','))
