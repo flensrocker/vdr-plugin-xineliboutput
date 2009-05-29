@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.79 2009-04-17 12:35:08 phintuka Exp $
+ * $Id: config.c,v 1.80 2009-05-29 14:57:00 phintuka Exp $
  *
  */
 
@@ -708,7 +708,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
 
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
-  char *pt;
+  const char *pt;
   if(*m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
      *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ') {
     LOGDBG("Skipping configuration entry %s=%s (overridden in command line)", Name, Value);
