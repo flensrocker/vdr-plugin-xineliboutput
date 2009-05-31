@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.61 2009-01-08 11:58:33 rofafor Exp $
+ * $Id: menu.c,v 1.62 2009-05-31 14:59:35 phintuka Exp $
  *
  */
 
@@ -94,7 +94,7 @@ static char *ParentDir(const char *dir)
 
 static char *LastDir(const char *dir)
 {
-  char *pt = strrchr(dir, '/');
+  const char *pt = strrchr(dir, '/');
   if(pt && pt[0] && pt[1])
     return strdup(pt+1);
   return NULL;
