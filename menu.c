@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.62 2009-05-31 14:59:35 phintuka Exp $
+ * $Id: menu.c,v 1.63 2009-05-31 21:43:04 phintuka Exp $
  *
  */
 
@@ -363,19 +363,8 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
 	    if(m_Mode == ShowImages || m_Mode == ShowMusic)
 	      Add(new cFileListItem(e->d_name, true));
-	    else {
-	      // check if DVD
-              bool dvd = false;
-	      buffer = cString::sprintf("%s/%s/VIDEO_TS/VIDEO_TS.IFO", DirName, e->d_name);
-              if (stat(buffer, &st) == 0)
-                dvd = true;
-	      else {
-		buffer = cString::sprintf("%s/%s/video_ts/video_ts.ifo", DirName, e->d_name);
-		if (stat(buffer, &st) == 0)
-		  dvd = true;
-	      }
-	      Add(new cFileListItem(e->d_name, true, false, false, dvd));
-	    }
+	    else
+	      Add(new cFileListItem(e->d_name, true, false, false, xc.IsDvdFolder(buffer)));
 
           // regular files
           } else if(e->d_name[0] != '.') {
