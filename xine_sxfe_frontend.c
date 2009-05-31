@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.111 2009-05-31 16:51:26 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.112 2009-05-31 19:25:03 phintuka Exp $
  *
  */
 
@@ -1219,6 +1219,7 @@ static int sxfe_display_open(frontend_t *this_gen,
 
   /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
+  XMoveWindow(this->display, this->window[0], this->x.xpos, this->x.ypos);
 
   /* determine display aspect ratio */
   this->x.display_ratio = detect_display_ratio(this->display, this->screen);
