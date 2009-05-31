@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.18 2009-02-21 11:55:37 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.19 2009-05-31 16:51:25 phintuka Exp $
  *
  */
 
@@ -61,14 +61,18 @@ struct frontend_config_s {
 
 struct frontend_s {
   /* Display */
-  int (*fe_display_open)(frontend_t*, int winwidth, int winheight,
+  int (*fe_display_open)(frontend_t*,
+                         int xpos, int ypos,
+                         int winwidth, int winheight,
                          int fullscreen, int hud, int modeswitch, const char *modeline,
                          int aspect, fe_keypress_f keypresshandler,
                          int no_x_kbd, int gui_hotkeys,
                          const char *video_port,
                          int scale_video, int field_order,
                          const char *aspect_controller, int window_id);
-  int  (*fe_display_config)(frontend_t *, int width, int height,
+  int  (*fe_display_config)(frontend_t *,
+                            int xpos, int ypos,
+                            int width, int height,
                             int fullscreen,
                             int modeswitch, const char *modeline,
                             int aspect, int scale_video, int field_order);

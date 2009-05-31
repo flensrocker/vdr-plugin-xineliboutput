@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.74 2009-02-21 11:55:37 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.75 2009-05-31 16:51:26 phintuka Exp $
  *
  */
 
@@ -702,7 +702,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize display */
-  if (!fe->fe_display_open(fe, width, height, fullscreen, hud, 0,
+  if (!fe->fe_display_open(fe, 0, 0, width, height, fullscreen, hud, 0,
                            "", aspect, NULL, noxkbd, gui_hotkeys,
                            video_port, scale_video, 0,
                            aspect_controller, window_id)) {

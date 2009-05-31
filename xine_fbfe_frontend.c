@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.44 2009-02-21 11:55:37 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.45 2009-05-31 16:51:26 phintuka Exp $
  *
  */
 
@@ -116,7 +116,9 @@ static void update_DFBARGS(const char *fb_dev)
 /*
  * fbfe_display_open
  */
-static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
+static int fbfe_display_open(frontend_t *this_gen,
+                             int xpos, int ypos,
+                             int width, int height, int fullscreen, int hud,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
                              const char *video_port, int scale_video, int field_order,
@@ -138,8 +140,8 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
   LOGDBG("fbfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
 	 width, height, fullscreen, video_port);
 
-  this->x.xpos          = 0;
-  this->x.ypos          = 0;
+  this->x.xpos          = xpos;
+  this->x.ypos          = ypos;
   this->x.width         = width;
   this->x.height        = height;
   this->x.aspect        = aspect;
@@ -189,17 +191,21 @@ static int fbfe_display_open(frontend_t *this_gen, int width, int height, int fu
  *
  * configure windows
  */
-static int fbfe_display_config(frontend_t *this_gen, int width, int height, int fullscreen, 
-			       int modeswitch, const char *modeline, int aspect, 
-			       int scale_video, int field_order) 
+static int fbfe_display_config(frontend_t *this_gen,
+                               int xpos, int ypos,
+                               int width, int height, int fullscreen,
+                               int modeswitch, const char *modeline,
+                               int aspect, int scale_video, int field_order)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
   if(!this)
     return 0;
 
-  this->x.width       = width;
-  this->x.height      = height;
+  this->x.xpos        = xpos   >= 0 ? xpos   : this->x.xpos;
+  this->x.ypos        = ypos   >= 0 ? ypos   : this->x.ypos;
+  this->x.width       = width  >= 0 ? width  : this->x.width;
+  this->x.height      = height >= 0 ? height : this->x.height;
   this->x.aspect      = aspect;
   this->x.scale_video = scale_video;
   this->x.field_order = field_order;

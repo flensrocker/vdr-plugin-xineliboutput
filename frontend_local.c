@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.39 2009-05-03 20:11:39 phintuka Exp $
+ * $Id: frontend_local.c,v 1.40 2009-05-31 16:51:26 phintuka Exp $
  *
  */
 
@@ -201,8 +201,9 @@ void cXinelibLocal::ConfigureWindow(int fullscreen, int width, int height,
 {
   LOCK_FE;
   if(fe)
-    fe->fe_display_config(fe, width, height, fullscreen, modeswitch, modeline, 
-			  aspect, scale_video, field_order);
+    fe->fe_display_config(fe, -1, -1, width, height,
+                          fullscreen, modeswitch, modeline,
+                          aspect, scale_video, field_order);
 }
 
 void cXinelibLocal::ConfigureDecoder(int pes_buffers)
@@ -344,7 +345,7 @@ void cXinelibLocal::Action(void)
       SetStopSignal();
     } else {
       LOGDBG("cXinelibLocal::Action - fe created");
-      if(!curr_fe->fe_display_open(curr_fe, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
+      if(!curr_fe->fe_display_open(curr_fe, 0, 0, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
                                    xc.modeswitch, xc.modeline, xc.display_aspect,
                                    keypress_handler, 0/*no_x_kbd*/, 0/*gui_hotkeys*/,
                                    xc.video_port,

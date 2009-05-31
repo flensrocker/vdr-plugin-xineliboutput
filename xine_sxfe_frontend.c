@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.110 2009-02-21 11:55:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.111 2009-05-31 16:51:26 phintuka Exp $
  *
  */
 
@@ -1098,7 +1098,9 @@ static void create_windows(sxfe_t *this)
  *
  * connect to X server, create windows
  */
-static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
+static int sxfe_display_open(frontend_t *this_gen,
+                             int xpos, int ypos,
+                             int width, int height, int fullscreen, int hud,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
                              const char *video_port, int scale_video, int field_order,
@@ -1128,8 +1130,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 #endif
   }
 
-  this->x.xpos        = 0;
-  this->x.ypos        = 0;
+  this->x.xpos        = xpos;
+  this->x.ypos        = ypos;
   this->x.width       = width;
   this->x.height      = height;
   this->x.aspect      = aspect;
@@ -1265,6 +1267,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
  * configure windows
  */
 static int sxfe_display_config(frontend_t *this_gen,
+                               int xpos, int ypos,
                                int width, int height, int fullscreen,
                                int modeswitch, const char *modeline,
                                int aspect, int scale_video,
@@ -1358,7 +1361,7 @@ static void sxfe_toggle_fullscreen(fe_t *this_gen)
     this->x.ypos = this->origypos;
   }
 
-  this->fe.fe_display_config((frontend_t*)this, this->origwidth, this->origheight,
+  this->fe.fe_display_config((frontend_t*)this, -1, -1, this->origwidth, this->origheight,
                              this->fullscreen ? 0 : 1,
                              0/*this->vmode_switch*/, NULL/*this->modeline*/,
                              this->x.aspect, this->x.scale_video, this->x.field_order);
