@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.80 2009-05-29 14:57:00 phintuka Exp $
+ * $Id: config.c,v 1.81 2009-05-31 15:07:10 phintuka Exp $
  *
  */
 
@@ -394,6 +394,12 @@ bool config_t::IsImageFile(const char *fname)
 {
   const char *ext = get_extension(fname);
   return ext && (ext_is_image(ext) || ext_is_playlist(ext));
+}
+
+bool config_t::IsDvdImage(const char *fname)
+{
+  const char *ext = get_extension(fname);
+  return (ext && !strcasecmp(ext, ".iso")) ? true : false;
 }
 
 cString config_t::AutocropOptions(void)
