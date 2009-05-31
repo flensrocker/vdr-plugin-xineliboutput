@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.75 2009-05-31 16:51:26 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.76 2009-05-31 18:53:32 phintuka Exp $
  *
  */
 
@@ -389,6 +389,7 @@ static const char help_str[] =
 #endif
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
+    "   --geometry=WxH[+X+Y]          Set output window geometry (X style)\n"
     "   --noscaling                   Disable all video scaling\n"
     "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
     "                                 examples:\n"
@@ -416,7 +417,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fDw:h:nP:L:C:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -426,6 +427,7 @@ static const struct option long_options[] = {
   { "wid",        required_argument, NULL, 'W' },
   { "aspect",     required_argument, NULL, 'a' },
   { "fullscreen", no_argument,       NULL, 'f' },
+  { "geometry",   required_argument, NULL, 'g' },
   { "hud",        no_argument,       NULL, 'D' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
@@ -456,7 +458,7 @@ int main(int argc, char *argv[])
 {
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
-  int fullscreen = 0, hud = 0, width = 720, height = 576;
+  int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   char *video_port = NULL;
@@ -548,6 +550,9 @@ int main(int argc, char *argv[])
               break;
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
+              break;
+    case 'g': sscanf (optarg, "%dx%d+%d+%d", &width, &height, &xpos, &ypos);
+              PRINTF("Geometry: %dx%d+%d+%d\n", width, height, xpos, ypos);
               break;
     case 'h': height = atoi(optarg);
               PRINTF("Height: %d\n", height);
@@ -702,7 +707,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize display */
-  if (!fe->fe_display_open(fe, 0, 0, width, height, fullscreen, hud, 0,
+  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, 0,
                            "", aspect, NULL, noxkbd, gui_hotkeys,
                            video_port, scale_video, 0,
                            aspect_controller, window_id)) {
