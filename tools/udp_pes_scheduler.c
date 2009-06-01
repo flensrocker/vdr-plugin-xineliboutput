@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.38 2009-03-31 10:34:32 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.39 2009-06-01 14:33:11 phintuka Exp $
  *
  */
 
@@ -830,9 +830,10 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
   if(fd < 0) /* no re-send for RTP */
     return;
 
-  char udp_ctrl[64] = {0};
-  ((stream_udp_header_t *)udp_ctrl)->seq = (uint16_t)(-1);
-  ((stream_udp_header_t *)udp_ctrl)->pos = (uint64_t)(-1);
+  struct {
+    stream_udp_header_t hdr;
+    char                mem[64-sizeof(stream_udp_header_t)];
+  } udp_ctrl = {{(uint64_t)INT64_C(-1), (uint16_t)-1}, {0}};
 
   // Handle buffer wrap
   if(Seq1 > Seq2)
@@ -844,10 +845,10 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     LOGDBG("cUdpScheduler::ReSend: requested range too large (%d-%d)",
 	   Seq1, Seq2);
 
-    sprintf((udp_ctrl+sizeof(stream_udp_header_t)),
+    sprintf((char*)udp_ctrl.hdr.payload,
 	    "UDP MISSING %d-%d %" PRIu64,
 	    Seq1, (Seq2 & UDP_BUFFER_MASK), Pos);
-    send(fd, udp_ctrl, sizeof(udp_ctrl), 0);
+    send(fd, &udp_ctrl, sizeof(udp_ctrl), 0);
     return;
   }
 
@@ -886,9 +887,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     // buffer has been lost - send packet missing info
 
     LOGRESEND("cUdpScheduler::ReSend: missing %d-%d @%d (hdr 0x%llx 0x%x)",
-	   Seq1, Seq1, Pos,
-	   ((stream_udp_header_t *)udp_ctrl)->pos,
-	   ((stream_udp_header_t *)udp_ctrl)->seq);
+              Seq1, Seq1, Pos, udp_ctrl.hdr.pos, udp_ctrl.hdr.seq);
 
     int Seq0 = Seq1;
     for(; Seq1 < Seq2; Seq1++) {
@@ -897,10 +896,10 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 	break;
     }
 
-    sprintf((udp_ctrl+sizeof(stream_udp_header_t)),
+    sprintf((char*)udp_ctrl.hdr.payload,
 	    "UDP MISSING %d-%d %" PRIu64,
 	    Seq0, (Seq1 & UDP_BUFFER_MASK), Pos);
 
-    send(fd, udp_ctrl, sizeof(udp_ctrl), 0);
+    send(fd, &udp_ctrl, sizeof(udp_ctrl), 0);
   }
 }
