@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.67 2009-02-12 10:56:56 phintuka Exp $
+ * $Id: media_player.c,v 1.68 2009-06-02 08:59:45 phintuka Exp $
  *
  */
 
@@ -228,9 +228,10 @@ void cXinelibPlayer::Activate(bool On)
     // (those may contain #subtitle, #volnorm etc. directives)
     cString mrl;
     if(*m_SubFile)
-      mrl = cString::sprintf("%s%s#subtitle:%s",
+      mrl = cString::sprintf("%s%s#subtitle:%s%s",
 			     m_File[0] == '/' ? "file:" : "",
 			     *cPlaylist::EscapeMrl(m_File), 
+			     m_SubFile[0] == '/' ? "file:" : "",
 			     *cPlaylist::EscapeMrl(m_SubFile));
     else if((*m_File)[0] == '/')
       mrl = cString::sprintf("%s%s",
