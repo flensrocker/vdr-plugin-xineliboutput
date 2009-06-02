@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.22 2009-06-01 16:21:23 phintuka Exp $
+ * $Id: playlist.c,v 1.23 2009-06-02 08:36:16 phintuka Exp $
  *
  */
 
@@ -38,6 +38,12 @@
 
 #define MAX_PLAYLIST_FILES 1024
 
+static void strip_extension(cString& fname)
+{
+  const char *ext = strrchr(fname, '.');
+  if (ext)
+    fname.Truncate(ext - fname);
+}
 
 //
 // cPlaylistItem
@@ -45,7 +51,7 @@
 
 cPlaylistItem::cPlaylistItem(const char *filename)
 {
-  char *pt;
+  const char *pt;
 
   Filename = filename;
   Position = -1;
@@ -54,9 +60,8 @@ cPlaylistItem::cPlaylistItem(const char *filename)
     Title = pt + 1;
   else
     Title = filename;
-  
-  if(NULL != (pt = strrchr(Title, '.')))
-    *pt = 0;
+
+  strip_extension(Title);
 }
 
 cPlaylistItem::cPlaylistItem(const char *filename, 
@@ -64,8 +69,6 @@ cPlaylistItem::cPlaylistItem(const char *filename,
 			     const char *title, 
 			     int position)
 {
-  char *pt;
-
   if(path[strlen(path)-1] != '/')
     Filename = cString::sprintf("%s/%s", path, filename);
   else
@@ -73,8 +76,8 @@ cPlaylistItem::cPlaylistItem(const char *filename,
   Position = position;
   Title = title ?: filename;
 
-  if(!title && (pt = strrchr(Title, '.')))
-    *pt = 0;
+  if (!title)
+    strip_extension(Title);
 }
 
 int cPlaylistItem::Compare(const cListObject &ListObject) const 
@@ -533,7 +536,7 @@ bool cPlaylist::ReadCache(void)
       int len = strlen(m_Folder);
       cPlaylistItem *it = NULL;
       cReadLine r;
-      char *pt;
+      const char *pt;
       while(NULL != (pt = r.Read(f))) {
 	if(!strncmp(pt, "File", 4)) {
 	  it = NULL;
@@ -764,28 +767,25 @@ int cPlaylist::ReadPlaylist(const char *file)
   
   if(f) {
     LOGDBG("cPlaylist: parsing %s", file);
-    char *pt = strrchr(file, '.');
-    if(!strcasecmp(pt, ".pls"))
+    const char *ext = strrchr(file, '.');
+    if(!strcasecmp(ext, ".pls"))
       parser = new cPlsReader(*this);
-    else if(!strcasecmp(pt, ".asx"))
+    else if(!strcasecmp(ext, ".asx"))
       parser = new cAsxReader(*this);
-    else /*if(!strcasecmp(pt, ".m3u"))*/
+    else /*if(!strcasecmp(ext, ".m3u"))*/
       parser = new cM3uReader(*this); /* parses plain lists (.ram, ...) too ...*/
 
-    cString Base(file);
-    if(NULL != (pt=strrchr(Base,'/')))
-      pt[1]=0;
+    /* get folder */
+    cString Folder = file;
+    const char *folder = strrchr(Folder, '/');
+    if (folder)
+      Folder.Truncate(folder - Folder + 1);
 
     int n = 0;
     cReadLine r;
+    char *pt;
     while(NULL != (pt = r.Read(f)) && n < MAX_PLAYLIST_FILES) {
       if(NULL != (pt = parser->Parse(pt))) {
-
-	if(depth && n==0) {
-	  // TODO
-	  //  - add "separator" item
-	  // Add(new cPlaylistItem(NULL, Base, "---");
-	}
 
 	if(xc.IsPlaylistFile(pt)) {
 	  parser->ResetCache();
@@ -799,7 +799,7 @@ int cPlaylist::ReadPlaylist(const char *file)
 		strchr(pt,'/') - pt < 8))
 	      n += ReadPlaylist(pt);
 	    else
-	      n += ReadPlaylist(cString::sprintf("%s%s", *Base, pt));
+	      n += ReadPlaylist(cString::sprintf("%s%s", *Folder, pt));
 	    depth--;
 	  }
 
@@ -813,7 +813,7 @@ int cPlaylist::ReadPlaylist(const char *file)
 	      Last()->Title = parser->Title();
 	  } else {
 	    // relative path
-	    Add(new cPlaylistItem(pt, Base, parser->Title()));
+	    Add(new cPlaylistItem(pt, Folder, parser->Title()));
 	  }
 	  Last()->Position = parser->Position();
 	  parser->ResetCache();
@@ -839,9 +839,9 @@ int cPlaylist::ReadPlaylist(const char *file)
 static cString LastDir(cString& path)
 {
   cString tmp = path;
-  char *pt = strrchr(tmp, '/');
+  const char *pt = strrchr(tmp, '/');
   if(pt && pt > *tmp) {
-    *pt = 0;
+    tmp.Truncate(pt - tmp);
     pt = strrchr(tmp, '/');
     if(pt)
       return cString(pt+1);
@@ -856,9 +856,10 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
 
   // extract playlist root folder
   if(!*m_Folder) {
+    const char *pt;
     m_Folder = PlaylistFile;
-    if(strrchr(m_Folder, '/'))
-      *(strrchr(m_Folder, '/') + 1) = 0;
+    if (NULL != (pt=strrchr(m_Folder, '/')))
+      m_Folder.Truncate(pt - m_Folder + 1);
   }
 
   if(xc.IsPlaylistFile(PlaylistFile)) {
@@ -867,15 +868,14 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
     m_Origin = ePlaylist;
 
     cString dir = LastDir(m_Folder);
-    char *name = strrchr(PlaylistFile, '/');
+    const char *name = strrchr(PlaylistFile, '/');
     name = name ? name+1 : NULL;
     if(*dir && name)
       m_Name = cString::sprintf("%s - %s", *dir, name);
     else
       m_Name = name ?: "";
 
-    if(strrchr(m_Name, '.'))
-      *(strrchr(m_Name, '.')) = 0;
+    strip_extension(m_Name);
 
   } else if(PlaylistFile[                     0] == '/'  &&
             PlaylistFile[strlen(PlaylistFile)-1] == '/') {
@@ -886,7 +886,7 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
 
     if(!*m_Name) {
       m_Name = PlaylistFile;
-      *(strrchr(m_Name, '/')) = 0;
+      m_Name.Truncate( strrchr(m_Name, '/') - m_Name);
       if(strrchr(m_Name, '/')) {
 	cString dir = LastDir(m_Name);
 	if(*dir)
@@ -922,7 +922,7 @@ cString cPlaylist::EscapeMrl(const char *mrl)
   static const uint8_t hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
   const uint8_t *fn = (const uint8_t*)mrl;
   int size = strlen(mrl) + 16;
-  uint8_t *buf = (uint8_t*)malloc(size);
+  char *buf = (char *)malloc(size);
   int i = 0, found = 0;
   LOGDBG("cPlaylist::EscapeMrl('%s')", fn);
 
@@ -932,7 +932,7 @@ cString cPlaylist::EscapeMrl(const char *mrl)
 
   while (*fn) {
     if(size-7 < i)
-      buf = (uint8_t *)realloc(buf, (size=size+16));
+      buf = (char *)realloc(buf, (size=size+16));
     switch (*fn) {
     case 1 ... ' ':
     case 127 ... 255:
@@ -975,7 +975,7 @@ cString cPlaylist::EscapeMrl(const char *mrl)
 
   buf[i] = 0;
   LOGDBG("    --> '%s'", buf);
-  return cString((const char*)buf, true);
+  return cString(buf, true);
 }
 
 cString cPlaylist::GetEntry(cPlaylistItem *i, bool isPlaylist, bool isCurrent)
