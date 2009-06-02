@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.85 2009-03-17 12:15:22 phintuka Exp $
+# $Id: Makefile,v 1.86 2009-06-02 08:49:32 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -220,10 +220,9 @@ endif
 
 # xine plugins
 OBJS_XINEINPUTVDR = xine_input_vdr.o xine/demux_xvdr.o \
-                    xine/adjustable_scr.o xine/osd_manager.o \
                     xine/ts2es.o xine/demux_xvdr_tsdata.o \
-                    tools/rle.o \
-                    tools/ts.o tools/pes.o tools/mpeg.o tools/h264.o
+                    xine/adjustable_scr.o xine/xvdr_metronom.o xine/osd_manager.o \
+                    tools/rle.o tools/ts.o tools/pes.o tools/mpeg.o tools/h264.o
 
 OBJS_XINE = $(OBJS_XINEINPUTVDR) xine_post_autocrop.o xine_post_swscale.o xine_post_audiochannel.o
 
