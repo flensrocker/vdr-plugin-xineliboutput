@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.11 2009-03-17 12:19:19 phintuka Exp $
+ * $Id: osd_manager.c,v 1.12 2009-06-02 14:15:40 phintuka Exp $
  *
  */
 
@@ -437,11 +437,15 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   /* tag this overlay */
   ov_overlay.hili_rgb_clut = VDR_OSD_MAGIC;
 
-  vdr_osd_extradata_t *extra_data = (vdr_osd_extradata_t *)ov_overlay.hili_color;
-  extra_data->extent_width  = osd->extent_width;
-  extra_data->extent_height = osd->extent_height;
-  extra_data->layer         = cmd->layer;
-  extra_data->scaling       = cmd->scaling;
+  /* fill extra data */
+  const vdr_osd_extradata_t extra_data = {
+    extent_width:  osd->extent_width,
+    extent_height: osd->extent_height,
+    layer:         cmd->layer,
+    scaling:       cmd->scaling
+  };
+  memcpy(ov_overlay.hili_color, &extra_data, sizeof(extra_data));
+
 #ifdef VO_CAP_CUSTOM_EXTENT_OVERLAY
   if (cmd->scaling) {
     ov_overlay.extent_width   = osd->extent_width;
