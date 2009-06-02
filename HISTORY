@@ -3,6 +3,13 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Fixed compilation with gcc-4.4.0 (invalid casts)
+- Added --geometry option to vdr-sxfe
+- Updated logo (Thanks to Stefan Wagner)
+- Implemented demuxer with mpeg-ts support
+- Initial support for vdr-1.7.7
+- Support for multilayer OSD
+- Improved OSD scaling (OSD reacts now immediately to frame size changes)
 - Fixed setting focus in vdr-sxfe fullscreen mode
 - Added Gnome screensaver support to vdr-sxfe (Thanks to Alex Stansfield)
 - Changed the default grab quality to match VDR's documentation.
