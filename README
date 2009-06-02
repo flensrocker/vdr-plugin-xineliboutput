@@ -274,22 +274,22 @@ HUD OSD
 Using with xine-ui (xine, fbxine, gxine, ...)
 
   Examples:
-    xine "xvdr://127.0.0.1#nocache;demux:mpeg_block"
-    xine "xvdr+tcp://127.0.0.1:37890#nocache;demux:mpeg_block"
-    xine "xvdr+udp://127.0.0.1:37890#nocache;demux:mpeg_block"
+    xine "xvdr://127.0.0.1#nocache"
+    xine "xvdr+tcp://127.0.0.1:37890#nocache"
+    xine "xvdr+udp://127.0.0.1:37890#nocache"
 
-  "#nocache;demux:mpeg_block" should always be appended to end of mrl.
+  "#nocache" should always be appended to end of mrl.
 
   Remote mode must be enabled in VDR plugin.
 
-  Some configuration options are not available when using 
+  Some configuration options are not available when using
   third-party frontends.
 
 
 Using with other media players (mplayer, vlc, ...)
 
-  Primary device video and audio (without OSD or subtitles) 
-  can be streamed from plugin control port to almost any media 
+  Primary device video and audio (without OSD or subtitles)
+  can be streamed from plugin control port to almost any media
   player using http or rtsp.
 
   Session Announcement Protocol (SAP) compatible players 
