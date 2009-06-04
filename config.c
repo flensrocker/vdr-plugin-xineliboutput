@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.63.2.2 2008-09-26 19:15:48 phintuka Exp $
+ * $Id: config.c,v 1.63.2.3 2009-06-04 12:01:41 phintuka Exp $
  *
  */
 
@@ -253,7 +253,7 @@ static char *strcatrealloc(char *dest, const char *src)
 bool config_t::IsPlaylistFile(const char *fname)
 {
   if(fname) {
-    char *pos = strrchr(fname,'.');
+    const char *pos = strrchr(fname,'.');
     if(pos) {
       pos++;
       if(!strcasecmp(pos, "pls") || 
@@ -269,7 +269,7 @@ bool config_t::IsPlaylistFile(const char *fname)
 bool config_t::IsAudioFile(const char *fname)
 {
   if(fname) {
-    char *pos = strrchr(fname,'.');
+    const char *pos = strrchr(fname,'.');
     if(pos) {
       pos++;
       if(!strcasecmp(pos, "mpa") ||
@@ -298,7 +298,7 @@ bool config_t::IsAudioFile(const char *fname)
 bool config_t::IsVideoFile(const char *fname)
 {
   if(fname) {
-    char *pos = strrchr(fname,'.');
+    const char *pos = strrchr(fname,'.');
     if(pos) {
       pos++;
       if(!strcasecmp(pos, "avi") ||
@@ -334,7 +334,7 @@ bool config_t::IsVideoFile(const char *fname)
 bool config_t::IsImageFile(const char *fname)
 {
   if(fname) {
-    char *pos = strrchr(fname,'.');
+    const char *pos = strrchr(fname,'.');
     if(pos) {
       pos++;
       if(!strcasecmp(pos, "jpg") ||
@@ -660,7 +660,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
 
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
-  char *pt;
+  const char *pt;
   if(*m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
      *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ') {
     LOGDBG("Skipping configuration entry %s=%s (overridden in command line)", Name, Value);
