@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.17.2.2 2009-02-12 11:20:24 phintuka Exp $
+ * $Id: playlist.c,v 1.17.2.3 2009-06-04 21:00:40 phintuka Exp $
  *
  */
 
@@ -172,11 +172,11 @@ class cID3Scanner : public cThread
         while(md_list) {
           if ((key=EXTRACTOR_getKeywordTypeAsString(md_list->keywordType))) {
             if (!strcasecmp(key,"title"))
-             Item->Title =  strdup(md_list->keyword);
+             Item->Title =  md_list->keyword;
             else if (!strcasecmp(key,"artist"))
-             Item->Artist =  strdup(md_list->keyword);
+             Item->Artist = md_list->keyword;
             else if (!strcasecmp(key,"album"))
-             Item->Album =  strdup(md_list->keyword);
+             Item->Album =  md_list->keyword;
             else if (!strcasecmp(key,"track number"))
              Item->Tracknumber = cString::sprintf("%s%s", strlen(md_list->keyword) == 1 ? "0" : "", md_list->keyword);
             md_list=md_list->next; 
@@ -836,7 +836,7 @@ int cPlaylist::ReadPlaylist(const char *file)
 
 static cString LastDir(cString& path)
 {
-  cString tmp = strdup(path);
+  cString tmp = path;
   char *pt = strrchr(tmp, '/');
   if(pt && pt > *tmp) {
     *pt = 0;
