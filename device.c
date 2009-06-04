@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.81 2009-05-27 08:20:58 phintuka Exp $
+ * $Id: device.c,v 1.82 2009-06-04 09:49:25 phintuka Exp $
  *
  */
 
@@ -579,6 +579,10 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
 {
   TRACEF("cXinelibDevice::SetTvMode");
   TRACK_TIME(250);
+
+#if VDRVERSNUM >= 10701
+  m_PatPmtParser.Reset();
+#endif
 
   m_RadioStream = false;
   if (Channel && !Channel->Vpid() && (Channel->Apid(0) || Channel->Apid(1)))
