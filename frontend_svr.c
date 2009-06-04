@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.56.2.4 2009-02-12 11:14:15 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.56.2.5 2009-06-04 13:16:37 phintuka Exp $
  *
  */
 
@@ -1332,11 +1332,12 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
 
       if( *m_FileName && m_bPlayingFile) {
-	char *pos = strstr(m_FileName, "#subtitle:");
-	if(pos) *pos = 0;
-	bool Allow = ( !strcmp_escaped(m_FileName, m_State[cli]->Uri() + 9)
+        cString file = m_FileName;
+	const char *pos = strstr(m_FileName, "#subtitle:");
+	if(pos)
+          file.Truncate(pos - m_FileName);
+	bool Allow = ( !strcmp_escaped(file, m_State[cli]->Uri() + 9)
 		       || (pos && !strcmp_escaped(pos + 10, m_State[cli]->Uri() + 9)));
-	if(pos) *pos = '#';
 	if(Allow) {
 	  LOGMSG("HTTP streaming media file");
 
