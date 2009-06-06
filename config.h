@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.46.2.1 2008-09-26 13:03:27 phintuka Exp $
+ * $Id: config.h,v 1.46.2.2 2009-06-06 13:18:11 phintuka Exp $
  *
  */
 
@@ -358,6 +358,7 @@ class config_t {
     bool IsAudioFile(const char *);
     bool IsVideoFile(const char *);
     bool IsPlaylistFile(const char *);
+    bool IsDvdImage(const char *);
 
     cString AutocropOptions(void);
     cString SwScaleOptions(void);
