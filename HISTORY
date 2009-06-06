@@ -1,6 +1,8 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
+- Fixed compilation with gcc-4.4.0
+- Fixed memory leaks
 - Fixed setting focus in vdr-sxfe fullscreen mode
 
 2009-02-12: Version 1.0.4  (branch-1_0_x)
