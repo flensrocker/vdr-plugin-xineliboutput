@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.2 2008-11-17 17:01:41 phintuka Exp $
+# $Id: Makefile,v 1.38.2.3 2009-06-07 22:14:04 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -319,7 +319,7 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
          tools/cxsocket.o tools/udp_pes_scheduler.o \
          tools/backgroundwriter.o tools/playlist.o tools/http.o \
          tools/vdrdiscovery.o tools/time_pts.o tools.o \
-         tools/metainfo_menu.o
+         tools/metainfo_menu.o logdefs.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
   OBJS = 
@@ -327,16 +327,16 @@ else
 endif
 
 ifeq ($(XINELIBOUTPUT_X11), 1)
-  OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o
-  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o
+  OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o logdefs.o
+  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o logdefs.o
 else
   OBJS_SXFE_SO = 
   OBJS_SXFE = 
 endif
 
 ifeq ($(XINELIBOUTPUT_FB), 1)
-  OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o
-  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o
+  OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o logdefs.o
+  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o logdefs.o
 else
   OBJS_FBFE_SO = 
   OBJS_FBFE = 
@@ -385,6 +385,8 @@ xine_input_http.o: xine_input_http.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_http.c
 xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
+logdefs.o: logdefs.c logdefs.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) logdefs.c -o $@
 tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
 tools/vdrdiscovery_standalone.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
