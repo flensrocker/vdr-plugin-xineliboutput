@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.17 2009-06-07 22:09:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.18 2009-06-07 23:58:20 phintuka Exp $
  *
  */
 
@@ -4569,7 +4569,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       /* check if RTP header is valid. If not, assume UDP without RTP. */
       rtp_pkt = (stream_rtp_header_impl_t*)read_buffer->mem;
       if(rtp_pkt->rtp_hdr.raw[0] == (RTP_VERSION_BYTE | RTP_HDREXT_BIT) && 
-	 rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE &&
+	 ( rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_PES ||
+           rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_TS ) &&
 	 rtp_pkt->hdr_ext.hdr.size == htons(RTP_HEADER_EXT_X_SIZE) &&
 	 rtp_pkt->hdr_ext.hdr.type == htons(RTP_HEADER_EXT_X_TYPE)) {
 
