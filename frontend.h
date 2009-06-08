@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.24 2008-11-18 14:59:54 phintuka Exp $
+ * $Id: frontend.h,v 1.24.2.1 2009-06-08 12:03:35 phintuka Exp $
  *
  */
 
@@ -84,6 +84,7 @@ class cXinelibThread : public cThread, public cListObject
     virtual void    OsdCmd(void *cmd) = 0;
     virtual int64_t GetSTC(void) { return -1; }
     virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE",On?1:0); };
+    virtual void    SetHeader(const uchar *data, int length, bool reset = false) {};
 
     // Stream type conversions
     int     Play_Mpeg1_PES(const uchar *data, int len);
@@ -97,7 +98,8 @@ class cXinelibThread : public cThread, public cListObject
 
     // Playback files
     virtual bool PlayFile(const char *FileName, int Position, 
-			  bool LoopPlay = false, ePlayMode PlayMode = pmAudioVideo);
+			  bool LoopPlay = false, ePlayMode PlayMode = pmAudioVideo,
+			  int TimeoutMs = -1);
     virtual int  PlayFileCtrl(const char *Cmd, int TimeoutMs=-1) { return Xine_Control(Cmd); }
     virtual bool EndOfStreamReached(void);
 
@@ -123,7 +125,7 @@ class cXinelibThread : public cThread, public cListObject
 					int speaker_type);
     virtual int ConfigurePostprocessing(const char *name, bool on, const char *args);
     virtual int ConfigureVideo(int hue, int saturation, 
-			       int brightness, int contrast,
+			       int brightness, int sharpness, int noise_reduction, int contrast,
 			       int overscan, int vo_aspect_ratio);
     // Local frontend:
     virtual void ConfigureWindow(int fullscreen, int width, int height, 
