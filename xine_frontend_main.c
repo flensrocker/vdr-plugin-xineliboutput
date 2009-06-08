@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.9 2009-06-08 09:11:09 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.10 2009-06-08 11:50:39 phintuka Exp $
  *
  */
 
@@ -324,7 +324,10 @@ static const char help_str[] =
     "   --verbose                     Verbose debug output\n"
     "   --silent                      Silent mode (report only errors)\n"
     "   --syslog                      Write all output to system log\n"
-    "   --nokbd                       Disable keyboard input\n"
+    "   --nokbd                       Disable console keyboard input\n"
+#ifndef IS_FBFE
+    "   --noxkbd                      Disable X11 keyboard input\n"
+#endif
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\n"
@@ -336,7 +339,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vslkbSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vsxlkbSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -359,6 +362,7 @@ static const struct option long_options[] = {
   { "silent",  no_argument,  NULL, 's' },
   { "syslog",  no_argument,  NULL, 'l' },
   { "nokbd",   no_argument,  NULL, 'k' },
+  { "noxkbd",  no_argument,  NULL, 'x' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
 
@@ -377,7 +381,7 @@ int main(int argc, char *argv[])
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
-  int daemon_mode = 0, nokbd = 0, slave_mode = 0;
+  int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   char *video_port = NULL;
 #ifndef IS_FBFE
   int window_id = -1;
@@ -436,6 +440,8 @@ int main(int argc, char *argv[])
               break;
     case 'd': video_port = strdup(optarg);
               break;
+    case 'x': noxkbd = 1;
+              break;
 #endif
     case 'a': if(!strncmp(optarg, "auto", 4))
                 aspect = 0;
@@ -484,9 +490,9 @@ int main(int argc, char *argv[])
     case 'C': config_file = strdup(optarg);
               PRINTF("Config file: %s\n", config_file);
               break;
-    case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
-              if(strstr((char*)lirc_dev, ",repeatemu")) {
-		*strstr((char*)lirc_dev, ",repeatemu") = 0;
+    case 'L': lirc_dev = strdup(optarg ? : "/dev/lircd");
+              if(strstr(lirc_dev, ",repeatemu")) {
+		*strstr(lirc_dev, ",repeatemu") = 0;
 		repeat_emu = 1;
               }
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
@@ -626,7 +632,7 @@ int main(int argc, char *argv[])
 
   /* Initialize display */
   if(!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, 0,
-			  "", aspect, NULL, video_port, scale_video, 0)) {
+			  "", aspect, NULL, noxkbd, video_port, scale_video, 0)) {
     fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);
     return -4;
