@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.31.2.1 2009-06-06 13:25:21 phintuka Exp $
+ * $Id: frontend_local.c,v 1.31.2.2 2009-06-08 09:20:57 phintuka Exp $
  *
  */
 
@@ -22,6 +22,7 @@
 #if VDRVERSNUM >= 10501 || (defined(PATCH_SHUTDOWN_REWRITE) && PATCH_SHUTDOWN_REWRITE >= 100)
 #include <vdr/shutdown.h>
 #endif
+#include <vdr/plugin.h>
 
 #include "logdefs.h"
 #include "config.h"
@@ -74,17 +75,23 @@ extern "C" {
 //----------------------------- cXinelibLocal --------------------------------
 
 cXinelibLocal::cXinelibLocal(const char *frontend_name) :
-  cXinelibThread("Local decoder/display (cXinelibThread)"), m_feLock(true) 
+  cXinelibThread("Local decoder/display (cXinelibThread)"), m_feLock(true)
 {
   fe = NULL;
   h_fe_lib = NULL;
   m_bReconfigRequest = true;
+
+  if (!xc.config_file &&
+      0 < asprintf(&xc.config_file,
+                   "%s/xineliboutput/config",
+                   cPlugin::ConfigDirectory()))
+    LOGMSG("cXinelibLocal: Using xine-lib configuration file %s", xc.config_file);
 }
 
-cXinelibLocal::~cXinelibLocal() 
+cXinelibLocal::~cXinelibLocal()
 {
   TRACEF("cXinelibLocal::~cXinelibLocal");
-  
+
   m_bReady = false;
 
   Stop();
@@ -125,11 +132,11 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
     LOCK_FE;
     if(fe && !m_bStopThread) {
       int done = fe->xine_queue_pes_packet(fe, (char*)data, len);
-      if(done>0) {
+      if (done >= 0) {
 	Lock();
 	m_StreamPos += done;
 	Unlock();
-	return done;
+        return done;
       }
     }
   }
@@ -342,7 +349,7 @@ void cXinelibLocal::Action(void)
       SetStopSignal();
     } else {
       LOGDBG("cXinelibLocal::Action - fe created");
-      if(!curr_fe->fe_display_open(curr_fe, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
+      if(!curr_fe->fe_display_open(curr_fe, -1, -1, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
 				   xc.modeswitch, xc.modeline, 
 				   xc.display_aspect, keypress_handler, 
 				   xc.video_port, 
@@ -363,13 +370,13 @@ void cXinelibLocal::Action(void)
       // init and start xine engine
       LOCK_FE_WR;
       LOGDBG("cXinelibLocal::Action - xine_init");
-      
+
       fe = curr_fe;
       if(m_bReconfigRequest) {
 	if(!fe->xine_init(fe, xc.audio_driver, xc.audio_port,
 			  xc.video_driver,
 			  xc.pes_buffers,
-			  xc.post_plugins)) {
+			  xc.post_plugins, xc.config_file)) {
 	  LOGMSG("cXinelibLocal: Error initializing frontend");
 	  break;
 	}
