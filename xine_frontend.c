@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.4 2009-06-07 17:03:59 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.5 2009-06-08 10:11:34 phintuka Exp $
  *
  */
 
@@ -461,7 +461,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 			const char *audio_port,
 			const char *video_driver, 
 			int pes_buffers,
-			const char *static_post_plugins)
+			const char *static_post_plugins,
+			const char *config_file)
 {
   fe_t *this = (fe_t*)this_gen;
   post_plugins_t *posts = NULL;
@@ -494,10 +495,12 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   /*xine_register_log_cb(this->xine, xine_log_cb, this);*/
 
-  /* TODO: use different config file ? (vdr conf.dir/xine/config_vdr ?) */
-  snprintf(this->configfile, sizeof(this->configfile),
-	   "%s%s", xine_get_homedir(), 
-	  "/.xine/config_xineliboutput");
+  if (config_file)
+    strncpy(this->configfile, config_file, sizeof(this->configfile));
+  else
+    snprintf(this->configfile, sizeof(this->configfile),
+             "%s%s", xine_get_homedir(),
+             "/.xine/config_xineliboutput");
   this->configfile[sizeof(this->configfile)-1] = 0;
   xine_config_load (this->xine, this->configfile);
 
@@ -1524,9 +1527,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   LOGDBG("fe_grab: grabbing %s %d %dx%d", 
 	 jpeg ? "JPEG" : "PNM", quality, width, height);
 
-  if (quality < 0)
-    quality = 0;
-  else if(quality > 100)
+  if ((quality < 0) || (quality > 100))
     quality = 100;
 
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
