@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.8 2009-06-07 19:16:42 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.9 2009-06-08 09:11:09 phintuka Exp $
  *
  */
 
@@ -312,6 +312,7 @@ static const char help_str[] =
 #endif
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
+    "   --geometry=WxH[+X+Y]          Set output window geometry (X style)\n"
     "   --noscaling                   Disable all video scaling\n"
     "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
     "                                 examples:\n"
@@ -319,6 +320,7 @@ static const char help_str[] =
     "                                 --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
     "   --lirc[=devicename]           Use lirc input device\n"
     "                                 Optional lirc socket name can be given\n"
+    "   --config=file                 Use config file (default: ~/.xine/config_xineliboutput).\n"
     "   --verbose                     Verbose debug output\n"
     "   --silent                      Silent mode (report only errors)\n"
     "   --syslog                      Write all output to system log\n"
@@ -334,7 +336,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HL:A:V:d:a:fDw:h:P:vslkbtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vslkbSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -344,12 +346,14 @@ static const struct option long_options[] = {
   { "wid",        required_argument, NULL, 'W' },
   { "aspect",     required_argument, NULL, 'a' },
   { "fullscreen", no_argument,       NULL, 'f' },
+  { "geometry",   required_argument, NULL, 'g' },
   { "hud",        no_argument,       NULL, 'D' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
   { "noscaling",  no_argument,       NULL, 'n' },
   { "post",       required_argument, NULL, 'P' },
   { "lirc",       optional_argument, NULL, 'L' },
+  { "config",     required_argument, NULL, 'C' },
 
   { "verbose", no_argument,  NULL, 'v' },
   { "silent",  no_argument,  NULL, 's' },
@@ -357,21 +361,21 @@ static const struct option long_options[] = {
   { "nokbd",   no_argument,  NULL, 'k' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
-  
+
   { "reconnect", no_argument,  NULL, 'R' },
   { "tcp",       no_argument,  NULL, 't' },
   { "udp",       no_argument,  NULL, 'u' },
   { "rtp",       no_argument,  NULL, 'r' },
   { NULL }
 };
- 
+
 #define PRINTF(x...) do { if(SysLogLevel>1) printf(x); } while(0)
 
 int main(int argc, char *argv[])
 {
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
-  int fullscreen = 0, hud = 0, width = 720, height = 576;
+  int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, slave_mode = 0;
   char *video_port = NULL;
@@ -387,6 +391,7 @@ int main(int argc, char *argv[])
   char *aspect_controller = NULL;
   int repeat_emu = 0;
   char *exec_name = argv[0];
+  char *config_file = NULL;
 
   LogToSysLog = 0;
 
@@ -462,6 +467,9 @@ int main(int argc, char *argv[])
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
 	      break;
+    case 'g': sscanf (optarg, "%dx%d+%d+%d", &width, &height, &xpos, &ypos);
+              PRINTF("Geometry: %dx%d+%d+%d\n", width, height, xpos, ypos);
+              break;
     case 'h': height = atoi(optarg);
               PRINTF("Height: %d\n", height);
 	      break;
@@ -473,6 +481,9 @@ int main(int argc, char *argv[])
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
 	      PRINTF("Post plugins: %s\n", static_post_plugins);
 	      break;
+    case 'C': config_file = strdup(optarg);
+              PRINTF("Config file: %s\n", config_file);
+              break;
     case 'L': lirc_dev = optarg ? : strdup("/dev/lircd");
               if(strstr((char*)lirc_dev, ",repeatemu")) {
 		*strstr((char*)lirc_dev, ",repeatemu") = 0;
@@ -614,7 +625,7 @@ int main(int argc, char *argv[])
   ((fe_t*)fe)->aspect_controller = aspect_controller;
 
   /* Initialize display */
-  if(!fe->fe_display_open(fe, width, height, fullscreen, hud, 0, 
+  if(!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, 0,
 			  "", aspect, NULL, video_port, scale_video, 0)) {
     fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);
@@ -622,7 +633,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize xine */
-  if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins)) {
+  if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins, config_file)) {
     fprintf(stderr, "Error initializing xine\n");
     fe->fe_free(fe);
     list_plugins(NULL, verbose_xine_log);
