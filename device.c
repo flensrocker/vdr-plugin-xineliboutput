@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.6 2009-06-08 13:34:10 phintuka Exp $
+ * $Id: device.c,v 1.57.2.7 2009-06-08 13:35:48 phintuka Exp $
  *
  */
 
@@ -323,6 +323,8 @@ void cXinelibDevice::StopDevice(void)
 void cXinelibDevice::MakePrimaryDevice(bool On) 
 {
   TRACEF("cXinelibDevice::MakePrimaryDevice");
+
+  cDevice::MakePrimaryDevice(On);
 
   if(On)
     new cXinelibOsdProvider(this);
