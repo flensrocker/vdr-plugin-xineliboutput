@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57.2.2 2009-06-06 13:21:27 phintuka Exp $
+ * $Id: menu.c,v 1.57.2.3 2009-06-08 16:26:28 phintuka Exp $
  *
  */
 
@@ -361,19 +361,8 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 
 	    if(m_Mode == ShowImages || m_Mode == ShowMusic)
 	      Add(new cFileListItem(e->d_name, true));
-	    else {
-	      // check if DVD
-              bool dvd = false;
-	      buffer = cString::sprintf("%s/%s/VIDEO_TS/VIDEO_TS.IFO", DirName, e->d_name);
-              if (stat(buffer, &st) == 0)
-                dvd = true;
-	      else {
-		buffer = cString::sprintf("%s/%s/video_ts/video_ts.ifo", DirName, e->d_name);
-		if (stat(buffer, &st) == 0)
-		  dvd = true;
-	      }
-	      Add(new cFileListItem(e->d_name, true, false, false, dvd));
-	    }
+	    else
+	      Add(new cFileListItem(e->d_name, true, false, false, xc.IsDvdFolder(buffer)));
 
           // regular files
           } else if(e->d_name[0] != '.') {
@@ -679,8 +668,9 @@ cMenuXinelib::~cMenuXinelib()
 						       xc.audio_surround, xc.speaker_type);
 
   if(xc.overscan != overscan)
-    cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-					      xc.contrast, xc.overscan, xc.vo_aspect_ratio);
+    cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+					      xc.noise_reduction, xc.contrast, xc.overscan,
+					      xc.vo_aspect_ratio);
 
   if(xc.headphone != headphone)
     cXinelibDevice::Instance().ConfigurePostprocessing("headphone", 
@@ -765,8 +755,9 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 							 compression, xc.audio_equalizer, 
 							 xc.audio_surround, xc.speaker_type);
     else if(item == ctrl_overscan)
-      cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-                                                xc.contrast, overscan, xc.vo_aspect_ratio);
+      cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                                                xc.noise_reduction, xc.contrast, overscan,
+                                                xc.vo_aspect_ratio);
   }
   if(Key==kLeft || Key==kRight) {
     if(item == ctrl_headphone)
@@ -895,8 +886,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* auto, square, 4:3, anamorphic or DVB */
       if(!OnlyInfo) {
         xc.vo_aspect_ratio = (xc.vo_aspect_ratio < VO_ASPECT_count-1) ? xc.vo_aspect_ratio + 1 : 0;
-        cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness,
-                                              xc.contrast, xc.overscan, xc.vo_aspect_ratio);
+        cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                                              xc.noise_reduction, xc.contrast, xc.overscan,
+                                              xc.vo_aspect_ratio);
       }
       Message = cString::sprintf("%s %s %s", tr("Video aspect ratio"),
 				 OnlyInfo ? ":" : "->",
