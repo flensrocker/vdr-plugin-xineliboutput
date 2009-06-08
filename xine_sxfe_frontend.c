@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.11 2009-02-18 21:18:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.12 2009-06-08 12:00:25 phintuka Exp $
  *
  */
 
@@ -72,6 +72,10 @@
 
 #include "xine_frontend.h"
 #include "xine/post.h"
+
+#ifdef HAVE_DBUS_GLIB_1
+#  include "tools/gnome_screensaver.h"
+#endif
 
 #ifndef WIN_LAYER_NORMAL
   #define WIN_LAYER_NORMAL 4
@@ -178,6 +182,7 @@ typedef struct sxfe_s {
   uint8_t   stay_above;
   uint8_t   no_border;
   uint8_t   check_move;
+  uint8_t   no_x_kbd;
 
   /* strings */
   char    configfile[256];
@@ -833,10 +838,12 @@ static void set_icon(sxfe_t *this)
  * connect to X server, create windows
  */
 
-static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fullscreen, int hud,
-			     int modeswitch, const char *modeline, int aspect,
-			     fe_keypress_f keyfunc, const char *video_port,
-			     int scale_video, int field_order) 
+static int sxfe_display_open(frontend_t *this_gen,
+                             int xpos, int ypos,
+                             int width, int height, int fullscreen, int hud,
+                             int modeswitch, const char *modeline, int aspect,
+                             fe_keypress_f keyfunc, int no_x_kbd, const char *video_port,
+                             int scale_video, int field_order)
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
 
@@ -866,8 +873,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 #endif
   }
 
-  this->xpos            = 0;
-  this->ypos            = 0;
+  this->xpos            = xpos;
+  this->ypos            = ypos;
   this->origxpos        = 0;
   this->origypos        = 0;
   this->width           = width;
@@ -883,6 +890,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->field_order     = field_order ? 1 : 0;
   this->scale_video     = scale_video;
   this->overscan        = 0;
+  this->no_x_kbd        = no_x_kbd ? 1 : 0;
   this->fullscreen_state_forced = 0;
   strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));
 
@@ -1019,7 +1027,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
   /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
-  
+  XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
+
   /* determine display aspect ratio */
   res_h = (DisplayWidth  (this->display, this->screen)*1000
 	   / DisplayWidthMM (this->display, this->screen));
@@ -1061,6 +1070,10 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
       LOGMSG("sxfe_display_open: DPMS unavailable");
     }
   }
+#endif
+#ifdef HAVE_DBUS_GLIB_1
+  /* Disable GNOME screensaver */
+  gnome_screensaver_control(0);
 #endif
 
   this->xine_visual_type     = XINE_VISUAL_TYPE_X11;
@@ -1428,10 +1441,12 @@ static int sxfe_run(frontend_t *this_gen)
 	  if(ks == XK_Escape) {
 	    terminate_key_pressed = 1;
 	    keep_going = 0;
-	  } else if(this->input || find_input(this))
-	    process_xine_keypress(this->input, "XKeySym",ksname, 0, 0);
+	  } else if(this->input || find_input(this)) {
+            if (!this->no_x_kbd)
+              process_xine_keypress(this->input, "XKeySym",ksname, 0, 0);
+          }
 #else
-	  if(this->keypress) 
+	  if(this->keypress && !this->no_x_kbd)
 	    this->keypress("XKeySym",ksname);
 #endif
 	}
@@ -1470,7 +1485,11 @@ static void sxfe_display_close(frontend_t *this_gen)
     
     if(this->xine)
       this->fe.xine_exit(this_gen);
-    
+
+#ifdef HAVE_DBUS_GLIB_1
+    /* Restore GNOE screensaver */
+    gnome_screensaver_control(1);
+#endif
 #ifdef HAVE_XDPMS
     if(this->dpms_state == TRUE)
       DPMSEnable(this->display);
