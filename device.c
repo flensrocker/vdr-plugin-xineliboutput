@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.8 2009-06-08 13:37:18 phintuka Exp $
+ * $Id: device.c,v 1.57.2.9 2009-06-08 13:40:31 phintuka Exp $
  *
  */
 
@@ -1258,7 +1258,7 @@ int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id)
 }
 
 #if VDRVERSNUM < 10510
-int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id) 
+int cXinelibDevice::PlaySubtitle(const uchar *buf, int length) 
 {
   TRACEF("cXinelibDevice::PlaySpu");
 
@@ -1267,20 +1267,32 @@ int cXinelibDevice::PlaySpu(const uchar *buf, int length, uchar Id)
 
   if(((unsigned char *)buf)[3] == PRIVATE_STREAM1) {
 
+    int PayloadOffset = buf[8] + 9;
+    uchar SubStreamId = buf[PayloadOffset];
+    //uchar SubStreamType = SubStreamId & 0xF0;
+    uchar SubStreamIndex = SubStreamId & 0x1F;
+
     if(!m_spuPresent) {
       TRACE("cXinelibDevice::PlaySpu first DVD SPU frame");
       Skins.QueueMessage(mtInfo,"DVD Subtitles");
       m_spuPresent = true;
       
-      ForEach(m_clients, &cXinelibThread::SpuStreamChanged, (int)Id);
+      ForEach(m_clients, &cXinelibThread::SpuStreamChanged, (int)SubStreamIndex);
     }
 
     // Strip all but selected SPU track
-    if(Id != m_CurrentDvdSpuTrack)
+    if(SubStreamIndex != m_CurrentDvdSpuTrack)
       return length;
   }
 
   return PlayAny(buf, length);
+}
+#else
+int cXinelibDevice::PlaySubtitle(const uchar *Data, int Length)
+{
+  if(!xc.dvb_subtitles)
+    return cDevice::PlaySubtitle(Data, Length);
+  return PlayAny(Data, Length);
 }
 #endif
 
@@ -1512,7 +1524,7 @@ int cXinelibDevice::PlayPesPacket(const uchar *Data, int Length,
         case 0x20: // SPU
         case 0x30: // SPU
 	  SetAvailableDvdSpuTrack(SubStreamIndex);
-	  return PlaySpu(Data, Length, SubStreamIndex);
+	  return PlaySubtitle(Data, Length);
 	  break;
         default:
 	  ;
