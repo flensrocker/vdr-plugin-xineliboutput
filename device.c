@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.5 2009-06-07 12:05:04 phintuka Exp $
+ * $Id: device.c,v 1.57.2.6 2009-06-08 13:34:10 phintuka Exp $
  *
  */
 
@@ -1623,7 +1623,8 @@ void cXinelibDevice::EnsureDvdSpuTrack(void)
       strcmp(m_DvdSpuTrack[0].language, "menu"))) {
 
     if(xc.spu_autoshow) {
-      int pref, len, track;
+      int pref, track;
+      size_t len;
       for(pref = 0; pref < 4; pref++)
 	for(track = 0; track < 64; track++)
 	  if(m_DvdSpuTrack[track].id != 0xffff)    
