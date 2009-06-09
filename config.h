@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.46.2.3 2009-06-07 23:40:38 phintuka Exp $
+ * $Id: config.h,v 1.46.2.4 2009-06-09 13:06:23 phintuka Exp $
  *
  */
 
@@ -386,7 +386,7 @@ class config_t {
 
     // Advanced settings
     int live_mode_sync;   /* Sync SCR to transponder clock in live mode */
-    int scr_tunning;      /* Fine-tune xine egine SCR (to sync video to graphics output) */
+    int scr_tuning;       /* Fine-tune xine egine SCR (to sync video to graphics output) */
     int scr_hz;           /* Current SCR speed (Hz), default is 90000 */
 
     int decoder_mpeg2;    /* DECODER_MPEG2_... */

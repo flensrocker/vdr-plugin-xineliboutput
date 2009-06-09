@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.63.2.5 2009-06-07 23:40:38 phintuka Exp $
+ * $Id: config.c,v 1.63.2.6 2009-06-09 13:06:23 phintuka Exp $
  *
  */
 
@@ -619,7 +619,7 @@ config_t::config_t() {
   vo_aspect_ratio = 0;
 
   live_mode_sync = 1;      // Sync SCR to transponder clock in live mode
-  scr_tunning    = 0;      // Fine-tune xine egine SCR (to sync video to graphics output)
+  scr_tuning     = 0;      // Fine-tune xine egine SCR (to sync video to graphics output)
   scr_hz         = 90000;  // Current SCR speed (Hz), default is 90000
 
   decoder_mpeg2  = DECODER_MPEG2_auto;
@@ -898,7 +898,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
 
   else if (!strcasecmp(Name, "Advanced.LiveModeSync")) live_mode_sync = atoi(Value);
-  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tunning = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tuning = atoi(Value);
   else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     scr_hz = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
