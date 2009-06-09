@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.3 2009-06-07 22:14:04 phintuka Exp $
+# $Id: Makefile,v 1.38.2.4 2009-06-09 11:52:00 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -269,7 +269,7 @@ ifeq ($(HAVE_XINERAMA), 1)
     DEFINES += -DHAVE_XINERAMA=1
 endif
 ifeq ($(HAVE_EXTRACTOR_H), 1)
-    DEFINES  += -DHAVE_EXTRACTOR_H=1
+    DEFINES  += -DHAVE_LIBEXTRACTOR=1
     INCLUDES += $(shell pkg-config libextractor --cflags-only-I)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-l)
