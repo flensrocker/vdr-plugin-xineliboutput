@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.4 2009-06-09 11:52:00 phintuka Exp $
+# $Id: Makefile,v 1.38.2.5 2009-06-09 12:46:18 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -24,6 +24,7 @@ XINELIBOUTPUT_X11 = 0
 HAVE_XRENDER      = 0
 HAVE_XDPMS        = 0
 HAVE_XINERAMA     = 0
+HAVE_DBUS_GLIB_1  = 0
 HAVE_EXTRACTOR_H  = 0
 APPLE_DARWIN      = 0
 XINELIBOUTPUT_XINEPLUGIN = 0
@@ -59,6 +60,11 @@ ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
         else
             $(warning Xinerama extension not detected. )
         endif
+        ifeq ($(shell (pkg-config --exists dbus-glib-1 >/dev/null 2>&1 && echo "1") || echo "0"), 1)
+            HAVE_DBUS_GLIB_1 = 1
+        else
+            $(warning dbus-glib-1 not detected. Disabling gnome-screensaver support. )
+        endif
     else
         $(warning ********************************************************)
         $(warning X11 not detected ! X11 frontends will not be compiled.  )
@@ -84,6 +90,7 @@ USE_ICONV = 1
 #HAVE_XRENDER             = 1
 #HAVE_XDPMS               = 1
 #HAVE_XINERAMA            = 1
+#HAVE_DBUS_GLIB_1         = 1
 #HAVE_EXTRACTOR_H         = 1
 #XINELIBOUTPUT_FB         = 1
 #XINELIBOUTPUT_XINEPLUGIN = 1
@@ -105,19 +112,19 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | cut -d'"' 
 ###
 
 CXX      ?= g++
-CC       ?= gcc 
-OPTFLAGS ?= 
+CC       ?= gcc
+OPTFLAGS ?=
 
 ifeq ($(APPLE_DARWIN), 1)
     CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
     LDFLAGS_SO ?= -fvisibility=hidden
 else
-    CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g 
+    CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
-    LDFLAGS_SO ?= -shared -fvisibility=hidden 
+    LDFLAGS_SO ?= -shared -fvisibility=hidden
 endif
-LIBS_VDR ?= 
+LIBS_VDR ?=
 
 ###
 ### The directory environment:
@@ -274,6 +281,11 @@ ifeq ($(HAVE_EXTRACTOR_H), 1)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-L)
     LIBS_VDR += $(shell pkg-config libextractor --libs-only-l)
 endif
+ifeq ($(HAVE_DBUS_GLIB_1), 1)
+    DEFINES       += -DHAVE_DBUS_GLIB_1=1
+    LIBS_X11      += $(shell pkg-config --libs dbus-glib-1 2>/dev/null)
+    INCLUDES_DBUS += $(shell pkg-config --cflags dbus-glib-1 2>/dev/null)
+endif
 
 # check for yaegp patch
 #YAEPG = $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "1")
@@ -283,7 +295,7 @@ endif
 #DEFINES += $(shell grep -q 'vidWin' \$(VDRINCDIR)/vdr/osd.h && echo "-DYAEGP_PATCH")
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
-    CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags) 
+    CFLAGS += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --cflags) || xine-config --cflags)
 endif
 
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
@@ -322,24 +334,28 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
          tools/metainfo_menu.o logdefs.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
-  OBJS = 
-  OBJS_MPG = 
+  OBJS =
+  OBJS_MPG =
 endif
 
 ifeq ($(XINELIBOUTPUT_X11), 1)
   OBJS_SXFE_SO = xine_sxfe_frontend.o xine/post.o logdefs.o
-  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o logdefs.o
+  OBJS_SXFE = xine_sxfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o
+  ifeq ($(HAVE_DBUS_GLIB_1), 1)
+    OBJS_SXFE_SO += tools/gnome_screensaver.o
+    OBJS_SXFE    += tools/gnome_screensaver.o
+  endif
 else
-  OBJS_SXFE_SO = 
-  OBJS_SXFE = 
+  OBJS_SXFE_SO =
+  OBJS_SXFE =
 endif
 
 ifeq ($(XINELIBOUTPUT_FB), 1)
   OBJS_FBFE_SO = xine_fbfe_frontend.o xine/post.o logdefs.o
-  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery_standalone.o logdefs.o
+  OBJS_FBFE = xine_fbfe_frontend_standalone.o xine/post.o tools/vdrdiscovery.o logdefs.o
 else
-  OBJS_FBFE_SO = 
-  OBJS_FBFE = 
+  OBJS_FBFE_SO =
+  OBJS_FBFE =
 endif
 
 
@@ -385,12 +401,12 @@ xine_input_http.o: xine_input_http.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_input_http.c
 xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
+tools/gnome_screensaver.o: tools/gnome_screensaver.c tools/gnome_screensaver.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(INCLUDES_DBUS) $(OPTFLAGS) tools/gnome_screensaver.c -o $@
 logdefs.o: logdefs.c logdefs.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) logdefs.c -o $@
 tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
-tools/vdrdiscovery_standalone.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
-	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) tools/vdrdiscovery.c -o $@
 xine_post_autocrop.o: xine_post_autocrop.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_post_autocrop.c
 xine_post_swscale.o: xine_post_swscale.c
@@ -402,7 +418,7 @@ xine_post_headphone.o: xine_post_headphone.c
 
 xine_sxfe_frontend.o: xine_sxfe_frontend.c xine_frontend.c xine_frontend.h \
 		xine_input_vdr.h xine_osd_command.h xine/post.h logdefs.h \
-		xineliboutput.c
+		xineliboutput.c tools/gnome_screensaver.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine_sxfe_frontend.c
 xine_fbfe_frontend.o: xine_fbfe_frontend.c xine_frontend.c xine_frontend.h \
 		xine_input_vdr.h xine_osd_command.h xine/post.h logdefs.h \
@@ -411,7 +427,7 @@ xine_fbfe_frontend.o: xine_fbfe_frontend.c xine_frontend.c xine_frontend.h \
 xine_sxfe_frontend_standalone.o: xine_sxfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
 		xine/post.h logdefs.h xine_frontend_main.c xine_frontend_lirc.c \
-		xineliboutput.c tools/vdrdiscovery.h
+		xineliboutput.c tools/vdrdiscovery.h tools/gnome_screensaver.h
 	$(CC) $(CFLAGS) -c $(DEFINES) -DFE_STANDALONE $(INCLUDES) $(OPTFLAGS) xine_sxfe_frontend.c -o $@
 xine_fbfe_frontend_standalone.o: xine_fbfe_frontend.c xine_frontend.c \
 		xine_frontend.h xine_input_vdr.h xine_osd_command.h \
