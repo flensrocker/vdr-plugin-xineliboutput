@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.34.2.2 2008-12-10 22:56:15 phintuka Exp $
+ * $Id: device.h,v 1.34.2.3 2009-06-09 12:01:03 phintuka Exp $
  *
  */
 
@@ -220,8 +220,8 @@ class cXinelibDevice : public cDevice
 				 int speaker_type);
     void ConfigurePostprocessing(const char *name, bool on=true, 
 				 const char *args=NULL);
-    void ConfigureVideo(int hue, int saturation, int brightness, int contrast,
-			int overscan, int vo_aspect_ratio);
+    void ConfigureVideo(int hue, int saturation, int brightness, int sharpness,
+			int noise_reduction, int contrast, int overscan, int vo_aspect_ratio);
     // local mode:
     void ConfigureWindow(int fullscreen, int width, int height, 
 			 int modeswitch, const char *modeline, 
@@ -238,7 +238,8 @@ class cXinelibDevice : public cDevice
 
   public:
     bool PlayFile(const char *Filename, int Position=0, 
-		  bool LoopPlay=false, ePlayMode PlayMode=pmAudioVideo);
+		  bool LoopPlay=false, ePlayMode PlayMode=pmAudioVideo,
+		  int TimeoutMs = -1);
     int  PlayFileCtrl(const char *Cmd, int TimeoutMs = -1);
     bool EndOfStreamReached(void);
 
@@ -267,10 +268,9 @@ class cXinelibDevice : public cDevice
 
     virtual int  PlayVideo(const uchar *Data, int Length);
     virtual int  PlayAudio(const uchar *Data, int Length, uchar Id);
+    virtual int  PlaySubtitle(const uchar *Data, int Length);
 
 #if VDRVERSNUM < 10510
-    virtual int  PlaySpu(const uchar *Data, int Length, uchar Id);
-
     // conflicts with vdr-1.5.10+ DVB subtitle handling
     // override cDevice to get DVD SPUs
     virtual int PlayPesPacket(const uchar *Data, int Length,
