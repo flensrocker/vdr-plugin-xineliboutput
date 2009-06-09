@@ -39,6 +39,7 @@ Requirements
     (Required for HUD OSD to blend high-quality OSD using graphics hardware)
   - libextractor 0.5.20 or later (http://libextractor.sourceforge.net).
     (used for media file metadata extraction in media player)
+  - libjpeg for grabbing in JPEG format
 
 WARNING
 
@@ -144,20 +145,20 @@ Using remote frontends
   with "vdr-??fe --help".
 
   Frontend should find server automatically (from local subnet) 
-  and negoate best available transport. If frontend does not
+  and negotiate best available transport. If frontend does not
   find server (or specific transport should be used), mrl must
   be given on command line.
 
   Examples:
 
     Search for VDR (xineliboutput) server, connect to it and
-    negoatite best available transport. Use best available audio 
+    negotiate best available transport. Use best available audio 
     and video driver.
       vdr-fbfe
     or
       vdr-sxfe
 
-    Connect to 192.168.1.3 default port and negoate best available transport
+    Connect to 192.168.1.3 default port and negotiate best available transport
        vdr-fbfe xvdr://192.168.1.3
 
     Connect to 192.168.2.100, port 12550 and use TCP transport
@@ -169,8 +170,8 @@ Using remote frontends
         vdr-fbfe --udp
 
   Available transports for video/audio 
-      pipe  Use local pipe; server and front-end must be running in 
-            same machine
+      pipe  Use local pipe; server and front-end must be running on 
+            same machine.
       rtp   Use RTP/UDP multicast for data and TCP for control. 
             Multiple frontends can receive same stream.
       udp   Use UDP unicast for data and TCP for control.
@@ -189,14 +190,14 @@ Using remote frontends
 
   Video driver (and display / device):
     With X11 frontend (vdr-sxfe):
-        vdr-sxfe --video [xshm | xv | xvmc | xxmc | vidix |
+        vdr-sxfe --video [xshm | xv | xvmc | xxmc | vidix | vdpau |
                           XDirectFB | opengl | sdl | none [:display]]
       Examples:
         --video xv
         --video xvmc:127.0.0.1:1.0
 
     With framebuffer frontend (vdr-fbfe):
-        --video [fb | DirectFB | sdl | vidixfb | dxr3 | aadxr3 | none [:fb_device]]
+        vdr-fbfe --video [fb | DirectFB | sdl | vidixfb | dxr3 | aadxr3 | none [:fb_device]]
       Examples:
         --video DirectFB
         --video fb:/dev/fb/1
@@ -213,6 +214,16 @@ Using remote frontends
       vdr -P"xineliboutput --post=tvtime:method=Linear,cheap_mode=1,pulldown=0,use_progressive_frame_flag=1"
     Disable deinterlacing:
       vdr-sxfe --post tvtime:enable=0
+
+
+VDPAU
+
+  All video scaling, cropping, and postprocessing options must be disabled
+  if the VDPAU output device is used.
+  De-interlacing can be enabled with command-line option --post tvtime:
+  Examples:
+    vdr-sxfe --video vdpau --post tvtime:method=use_vo_driver
+    vdr -P"xineliboutput --video=vdpau --post=tvtime:method=use_vo_driver"
 
 
 HUD OSD
@@ -248,7 +259,7 @@ HUD OSD
 
     - For true HD-resolution OSD VDR needs to be patched.
 
-  HUD OSD was contributed by Antti Sepp‰l‰ and Rolf Ahrenberg.
+  HUD OSD was contributed by Antti Sepp√§l√§ and Rolf Ahrenberg.
 
 
 Using with xine-ui (xine, fbxine, gxine, ...)
