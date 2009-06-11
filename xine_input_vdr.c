@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.20 2009-06-11 09:47:50 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.21 2009-06-11 15:18:24 phintuka Exp $
  *
  */
 
@@ -255,9 +255,10 @@ typedef struct vdr_input_plugin_s {
   pthread_cond_t      engine_flushed;
 
   /* Playback */
+  uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
   int8_t              h264;                 /* -1: unknown, 0: no, 1: yes */
   int8_t              ffmpeg_video_decoder; /* -1: unknown, 0: no, 1: yes */
-  uint8_t             padding_cnt; /* number of padding frames passed to demux */ 
+  uint8_t             padding_cnt;          /* number of padding frames passed to demux */
   uint8_t             no_video : 1;
   uint8_t             live_mode : 1;
   uint8_t             still_mode : 1;
@@ -265,10 +266,9 @@ typedef struct vdr_input_plugin_s {
   uint8_t             send_pts : 1;
   uint8_t             loop_play : 1;
   uint8_t             dvd_menu : 1;
-  uint8_t             hd_stream : 1;   /* true if current stream is HD */
+  uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
-
-  uint16_t            prev_audio_stream_id; /* ((PES PID) << 8) | (SUBSTREAM ID) */
+  uint8_t             bih_posted : 1;
 
   /* SCR */
   pvrscr_t           *scr;
@@ -4984,24 +4984,64 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
 #endif
 }
 
-static void post_frame_end(vdr_input_plugin_t *this, int type)
+/*
+ * post_frame_end()
+ *
+ * Signal end of video frame to decoder.
+ *
+ * This function is used with:
+ *  - FFmpeg mpeg2 decoder
+ *  - FFmpeg and CoreAVC H.264 decoders
+ *  - NOT with libmpeg2 mpeg decoder
+ */
+static void post_frame_end(vdr_input_plugin_t *this, buf_element_t *vid_buf)
 {
-  /* signal FRAME_END to video decoder */ 
   buf_element_t *cbuf = get_buf_element (this, 0, 1);
+
   if (!cbuf) {
-    LOGMSG("get_buf_element() for BUF_FLAG_FRAME_END failed - retrying");
+    LOGMSG("post_frame_end(): get_buf_element() failed, retrying");
     xine_usec_sleep (10*1000);
-    cbuf = get_buf_element (this, 0, 1);
+
+    if (!(cbuf = get_buf_element (this, sizeof(xine_bmiheader), 1))) {
+      LOGERR("post_frame_end(): get_buf_element() failed !");
+    return;
   }
-  if (cbuf) {
-    cbuf->type = type;
-    cbuf->decoder_flags = BUF_FLAG_FRAME_END;
-    this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
-  } else if (type == BUF_VIDEO_H264) {
-    /* Should not be here ... 
-       Failing to send BUF_FLAG_FRAME_END 's freezes the decoder */
-    LOGERR("get_buf_element() for H.264 BUF_FLAG_FRAME_END failed - aborting");
   }
+
+  cbuf->type = this->h264 > 0 ? BUF_VIDEO_H264 : BUF_VIDEO_MPEG;
+  cbuf->decoder_flags = BUF_FLAG_FRAME_END;
+
+  if(!this->bih_posted) {
+    video_size_t size = {0};
+    if (pes_get_video_size(vid_buf->content, vid_buf->size, &size, this->h264 > 0)) {
+      xine_bmiheader *bmi = (xine_bmiheader*) cbuf->content;
+      memset(bmi, 0, sizeof(xine_bmiheader));
+
+      cbuf->decoder_flags |= BUF_FLAG_HEADER;
+      bmi->biSize = sizeof(xine_bmiheader);
+      bmi->biWidth = size.width;
+      bmi->biHeight = size.height;
+
+      if (!this->h264 && size.pixel_aspect.num) {
+	cbuf->decoder_flags |= BUF_FLAG_ASPECT;
+	/* pixel ratio -> frame ratio */
+	if(size.pixel_aspect.num > size.height) {
+	  cbuf->decoder_info[1] = size.pixel_aspect.num / size.height;
+	  cbuf->decoder_info[2] = size.pixel_aspect.den / size.width;
+	} else {
+	  cbuf->decoder_info[1] = size.pixel_aspect.num * size.width;
+	  cbuf->decoder_info[2] = size.pixel_aspect.den * size.height;
+	}
+      }
+
+      LOGDBG("post_frame_end: video width %d, height %d, pixel aspect %d:%d",
+             size.width, size.height, size.pixel_aspect.num, size.pixel_aspect.den);
+
+      this->bih_posted = 1;
+    }
+  }
+
+  this->stream->video_fifo->put (this->stream->video_fifo, cbuf);
 }
 
 static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int len)
@@ -5028,7 +5068,7 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 
   /* H.264 detection */
   if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1) {
-    if (data[i + 3] == 0x09) {
+    if (data[i + 3] == NAL_AUD) {
       LOGMSG("H.264 scanner: Possible H.264 NAL AUD");
       return 1;
     }
@@ -5057,26 +5097,21 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 {
   int64_t pts = pes_get_pts (buf->content, buf->size);
   uint8_t *data = buf->content;
-  int i = 8;
+  int i = 9 + data[8];
+
+  /* skip PES header */
+  data += i;
 
   /* Detect video frame boundaries */
 
-  i += data[i] + 1;   /* possible additional header bytes */
+  /* Access Unit Delimiter */
+  if (IS_NAL_AUD(data)) {
 
-  if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 ) {
+    if (this->I_frames < 4)
+      update_frames (this, buf->content, buf->size);
 
-    /* Access Unit Delimiter */
-    if (data[i + 3] == 0x09)
-      post_frame_end (this, BUF_VIDEO_H264);
-
-    if (data[i + 3] >= 0x80) {
-      LOGMSG("H.264: Possible MPEG2 start code (0x%02x)", data[i + 3]);
-      /* Should do something ... ? */
+      post_frame_end (this, buf);
     }
-
-    if(this->live_mode && this->I_frames < 4)
-      update_frames(this, buf->content, buf->size);
-  }
 
   /* Handle PTS and DTS */
 
@@ -5121,11 +5156,26 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
     this->last_delivered_vid_pts = pts;
   }
 
+  if (PES_HAS_DTS(buf->content)) {
+    int64_t dts = pes_get_dts (buf->content, buf->size);
+    buf->decoder_info[0] = pts - dts;
+  }
+
   /* bypass demuxer ... */
 
   buf->type = BUF_VIDEO_H264;
   buf->content += i;
   buf->size -= i;
+
+  /* Check for end of still image.
+     VDR ensures that H.264 still images end with an end of sequence NAL unit */
+  if (buf->size > 4) {
+    uint8_t *end = buf->content + buf->size;
+    if (IS_NAL_END_SEQ(end-4)) {
+      LOGMSG("post_frame_h264: Still frame ? (frame ends with end of sequence NAL unit)");
+      buf->decoder_flags |= BUF_FLAG_FRAME_END;
+    }
+  }
 
   this->stream->video_fifo->put (this->stream->video_fifo, buf);
 
@@ -5286,6 +5336,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       this->last_delivered_vid_pts = INT64_C(-1);
       this->send_pts = 1;
       this->stream_start = 0;
+      this->bih_posted = 0;
       this->h264 = -1;
       pthread_mutex_lock (&this->stream->first_frame_lock);
       this->stream->first_frame_flag = 2;
@@ -5372,7 +5423,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       uint8_t type = update_frames(this, buf->content, buf->size);
       if(type && this->ffmpeg_video_decoder) {
 	/* signal FRAME_END to decoder */
-	post_frame_end(this, BUF_VIDEO_MPEG);
+	post_frame_end(this, buf);
 	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
 	 * (B-frame pts's are smaller than in previous P-frame) 
 	 * Anyway, without this block of code B frames with pts are dropped. */
