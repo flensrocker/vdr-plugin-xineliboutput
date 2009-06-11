@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.19 2009-06-09 19:58:20 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.20 2009-06-11 09:47:50 phintuka Exp $
  *
  */
 
@@ -58,6 +58,7 @@
 #include "xine_input_vdr.h"
 #include "xine_input_vdr_net.h"
 #include "xine_osd_command.h"
+#include "tools/pes.h"
 
 /***************************** DEFINES *********************************/
 
@@ -207,6 +208,12 @@ static void SetupLogLevel(void)
 #ifdef DEBUG_LOCKING
 # include "tools/debug_mutex.h"
 #endif
+
+/************************************************************************/
+
+#include "tools/pes.c"
+#include "tools/mpeg.c"
+#include "tools/h264.c"
 
 /******************************* DATA ***********************************/
 
@@ -924,34 +931,6 @@ static char *unescape_filename(const char *fn)
   return result;
 }
 
-static int64_t pts_from_pes(const uint8_t *buf, int size)
-{
-  int64_t pts = INT64_C(-1);
-  if(size > 13 && (buf[7] & 0x80)) { /* pts avail */
-    pts  = ((int64_t)( buf[ 9] & 0x0E)) << 29;
-    pts |=  (int64_t)( buf[10]         << 22 );
-    pts |=  (int64_t)((buf[11] & 0xFE) << 14 );
-    pts |=  (int64_t)( buf[12]         <<  7 );
-    pts |=  (int64_t)((buf[13] & 0xFE) >>  1 );
-  }
-  return pts;
-}
-
-#if 0
-static int64_t dts_from_pes(const uint8_t *buf, int size)
-{
-  int64_t dts = INT64_C(-1);
-  if(size > 18 && (buf[7] & 0x40)) { /* dts avail */
-    dts  = ((int64_t)( buf[14] & 0x0E)) << 29 ;
-    dts |=  (int64_t)( buf[15]         << 22 );
-    dts |=  (int64_t)((buf[16] & 0xFE) << 14 );
-    dts |=  (int64_t)( buf[17]         <<  7 );
-    dts |=  (int64_t)((buf[18] & 0xFE) >>  1 );
-  }
-  return dts;
-}
-#endif
-
 static void pes_strip_pts(uint8_t *buf, int size)
 {
   if(size > 13 && buf[7] & 0x80) { /* pts avail */
@@ -1463,7 +1442,6 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   pthread_mutex_init (&this->buffer_pool_mutex, NULL);
   pthread_cond_init (&this->buffer_pool_cond_not_empty, NULL);
 
-  this->buffer_pool_num_free  = 0;
   this->buffer_pool_capacity  = num_buffers;
   this->buffer_pool_buf_size  = buf_size;
   this->buffer_pool_alloc     = ref->buffer_pool_alloc;
@@ -1484,12 +1462,6 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
 
     buffer_pool_free (buf);
   }
-  this->alloc_cb[0]              = NULL;
-  this->get_cb[0]                = NULL;
-  this->put_cb[0]                = NULL;
-  this->alloc_cb_data[0]         = NULL;
-  this->get_cb_data[0]           = NULL;
-  this->put_cb_data[0]           = NULL;
 
   LOGDBG("fifo_buffer_new done.");
   return this;
@@ -1563,7 +1535,7 @@ static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
 
 static buf_element_t *make_padding_frame(vdr_input_plugin_t *this)
 {
-  static const uint8_t padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
+  static const uint8_t padding[] = {0x00,0x00,0x01,PADDING_STREAM,0x00,0x02,0xff,0xff};
   buf_element_t *buf;
 
   buf = get_buf_element(this, 8, 1);
@@ -2763,12 +2735,6 @@ static void dvd_set_speed(const char *device, int speed)
   struct stat st;
   int fd;
 
-  memset(&sghdr, 0, sizeof(sghdr));
-  memset(buffer, 0, sizeof(buffer));
-  memset(sense, 0, sizeof(sense));
-  memset(cmd, 0, sizeof(cmd));
-  memset(&st, 0, sizeof(st));
-
   /* remember previous device so we can restore default speed */
   static int dvd_speed = 0;
   static const char *dvd_dev = NULL;
@@ -2785,6 +2751,11 @@ static void dvd_set_speed(const char *device, int speed)
     LOGMSG("set_dvd_speed: error opening DVD device %s for read/write", device);
     return;
   }
+
+  memset(&sghdr, 0, sizeof(sghdr));
+  memset(buffer, 0, sizeof(buffer));
+  memset(sense, 0, sizeof(sense));
+  memset(cmd, 0, sizeof(cmd));
 
   if(speed < 0) {
     /* restore default value */
@@ -3543,13 +3514,14 @@ static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
     }
     for(i=0; i<sizeof(eventmap)/sizeof(eventmap[0]); i++)
       if(!strcmp(cmd+6, eventmap[i].name)) {
-	xine_event_t ev;
-	ev.type = eventmap[i].type;
-	ev.stream = this->slave_stream ?: this->stream;
-	/* tag event to prevent circular input events 
-	   (vdr -> here -> event_listener -> vdr -> ...) */
-	ev.data = "VDR"; 
-	ev.data_length = 4;
+        xine_event_t ev = {
+          .type = eventmap[i].type,
+          .stream = this->slave_stream ? this->slave_stream : this->stream,
+          /* tag event to prevent circular input events
+             (vdr -> here -> event_listener -> vdr -> ...) */
+          .data = "VDR",
+          .data_length = 4,
+        };
 	xine_event_send(ev.stream, &ev);
 	break;
       }
@@ -4264,9 +4236,10 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 #if 0
 	  if(!this->loop_play) {
 	    /* forward to vdr-fe (listening only VDR stream events) */
-	    xine_event_t event;
-	    event.data_length = 0;
-	    event.type        = XINE_EVENT_UI_PLAYBACK_FINISHED;
+	    xine_event_t event = {
+	      .type        = XINE_EVENT_UI_PLAYBACK_FINISHED,
+	      .data_length = 0,
+	    };
 	    xine_event_send (this->stream, &event);
 	  } else {
 # if 0
@@ -4911,7 +4884,7 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
       audio_changed = 1;
     }
   }
-  else if(buf->content[3] == 0xbd) {
+  else if(buf->content[3] == PRIVATE_STREAM1) {
     /* PS1 */
     int PayloadOffset  = buf->content[8] + 9;
     int SubStreamId    = buf->content[PayloadOffset];
@@ -4923,16 +4896,16 @@ static void track_audio_stream_change(vdr_input_plugin_t *this, buf_element_t *b
 	/*LOGMSG("SPU %d", SubStreamId);*/
         break;
       case 0x80: /* AC3 & DTS */
-	if(this->prev_audio_stream_id != ((0xbd<<8) | SubStreamId)) {
+	if(this->prev_audio_stream_id != ((PRIVATE_STREAM1<<8) | SubStreamId)) {
 	  LOGDBG("Audio changed -> AC3 %d (BD:%02X)", SubStreamIndex, SubStreamId);
-	  this->prev_audio_stream_id = ((0xbd<<8) | SubStreamId);
+	  this->prev_audio_stream_id = ((PRIVATE_STREAM1<<8) | SubStreamId);
 	  audio_changed = 1;
 	}
 	break;
       case 0xA0: /* LPCM */
-	if(this->prev_audio_stream_id != ((0xbd<<8) | SubStreamId)) {
+	if(this->prev_audio_stream_id != ((PRIVATE_STREAM1<<8) | SubStreamId)) {
 	  LOGDBG("Audio changed -> LPCM %d (BD:%02X)", SubStreamIndex, SubStreamId);
-	  this->prev_audio_stream_id = ((0xbd<<8) | SubStreamId);
+	  this->prev_audio_stream_id = ((PRIVATE_STREAM1<<8) | SubStreamId);
 	  audio_changed = 1;
 	}
 	break;
@@ -4995,12 +4968,11 @@ static void pts_wrap_workaround(vdr_input_plugin_t *this, buf_element_t *buf)
 {
 #if 1
   /* PTS wrap workaround for mpeg_block demuxer */
-  int64_t pts = pts_from_pes(buf->content, buf->size);
+  int64_t pts = pes_get_pts(buf->content, buf->size);
   if(pts >= 0) {
-    int video = ((buf->content[3] & 0xf0) == 0xe0);
-    if(video)
+    if (IS_VIDEO_PACKET(buf->content))
       this->last_delivered_vid_pts = pts;
-    if(!video) {
+    else {
       if(pts > 0x40400000 && 
 	 this->last_delivered_vid_pts < 0x40000000 && 
 	 this->last_delivered_vid_pts > 0) {
@@ -5032,50 +5004,21 @@ static void post_frame_end(vdr_input_plugin_t *this, int type)
   }
 }
 
-static int update_frames(vdr_input_plugin_t *this, uint8_t *data, int len)
+static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int len)
 {
-  int i = 8;
+  uint8_t type = pes_get_picture_type(data, len);
 
   if (!this->I_frames)
     this->P_frames = this->B_frames = 0;
-  i += data[i] + 1;   /* possible additional header bytes */
-  for (; i < len-5; i++) {
-    if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 0) {
-      uint8_t type = ((data[i + 5] >> 3) & 0x07);
-      switch (type) {
-        case 1: this->I_frames++; LOGSCR("I"); break;
-        case 2: this->P_frames++; LOGSCR("P"); break;
-        case 3: this->B_frames++; LOGSCR("B"); break;
-        default: return 0;
-      }
-      return type;
-    }
+  
+  switch (type) {
+    case I_FRAME: this->I_frames++; LOGSCR("I"); break;
+    case P_FRAME: this->P_frames++; LOGSCR("P"); break;
+    case B_FRAME: this->B_frames++; LOGSCR("B"); break;
+    default: break;
   }
-  return 0;
+  return type;
 }
-
-#ifdef TEST_H264
-static int update_frames_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
-{
-  int i = 8;
-  if (!this->I_frames)
-    this->P_frames = this->B_frames = 0;
-  i += data[i] + 1;   /* possible additional header bytes */
-  for (; i < len-5; i++) {
-    if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && data[i + 3] == 9) {
-      uint8_t type = (data[i + 4] >> 5);
-      switch (type) {
-        case 0: case 3: case 5: this->I_frames++; LOGSCR("I %d", type); break;
-        case 1: case 4: case 6: this->P_frames++; LOGSCR("P %d", type); break;
-        case 2: case 7:         this->B_frames++; LOGSCR("B %d", type); break;
-        default: return 0;
-      }
-      return type;
-    }
-  }
-  return 0;
-}
-#endif
 
 #ifdef TEST_H264
 static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
@@ -5112,7 +5055,7 @@ static int detect_h264(vdr_input_plugin_t *this, uint8_t *data, int len)
 #ifdef TEST_H264
 buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 {
-  int64_t pts = pts_from_pes (buf->content, buf->size);
+  int64_t pts = pes_get_pts (buf->content, buf->size);
   uint8_t *data = buf->content;
   int i = 8;
 
@@ -5132,8 +5075,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
     }
 
     if(this->live_mode && this->I_frames < 4)
-      /*if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32)*/
-        update_frames_h264(this, buf->content, buf->size);
+      update_frames(this, buf->content, buf->size);
   }
 
   /* Handle PTS and DTS */
@@ -5141,16 +5083,16 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
   buf->decoder_info[0] = 0;
   if (pts >= INT64_C(0)) {
 #if 0
-    int64_t dts = dts_from_pes (buf->content, buf->size);
-    if (dts < INT64_C(0)) {
+    if (! PES_HAS_DTS(buf->content)) {
       buf->decoder_info[0] = pts;
     } else {
+      int64_t dts = pes_get_dts (buf->content, buf->size);
       buf->decoder_info[0] = (pts - dts);
       buf->decoder_flags |= BUF_FLAG_FRAMERATE;
+      LOGMSG("H.264: dts %"PRId64"  DIFF %d [stream video step %d]",
+             dts, (int)(pts-dts),
+             _x_stream_info_get(this->stream, XINE_STREAM_INFO_FRAME_DURATION));
     }
-    LOGMSG("H.264: dts %"PRId64"  DIFF %d [stream video step %d]", 
-	   dts, (int)(pts-dts), 
-	   _x_stream_info_get(this->stream, XINE_STREAM_INFO_FRAME_DURATION));
 #endif
     if (this->send_pts) {
       LOGMSG("H.264: post pts %"PRId64, pts);
@@ -5166,8 +5108,8 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
     if (abs(pts - this->last_delivered_vid_pts) < 90000 && pts < this->last_delivered_vid_pts) {
       LOGDBG("H.264:    -> pts %"PRId64"  <- 0", pts);
       /*buf->pts = 0;*/
-    } else if (dts>0) {
-      LOGDBG("H.264:    -> pts %"PRId64"  <- 0 (DTS %"PRId64")", pts, dts);
+    } else if (PES_HAS_DTS(buf->content)) {
+      LOGDBG("H.264:    -> pts %"PRId64"  <- 0 (DTS)", pts);
       /*buf->pts = 0;*/
     } else {
       LOGDBG("H.264:    -> pts %"PRId64, pts);
@@ -5334,7 +5276,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     }
 
     /* ignore UDP/RTP "idle" padding */
-    if(buf->content[3] == 0xbe) {
+    if(buf->content[3] == PADDING_STREAM) {
       pthread_mutex_unlock(&this->lock);
       return buf;
     }
@@ -5378,7 +5320,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   /* Send current PTS ? */
   if(this->send_pts) {
-    int64_t pts = pts_from_pes(buf->content, buf->size);
+    int64_t pts = pes_get_pts(buf->content, buf->size);
     if(pts > 0) {
 #ifdef TEST_SCR_PAUSE
       if(need_pause)
@@ -5412,7 +5354,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   if(this->still_mode && buf->size == 14) {
     /* generated still images start with empty video PES, PTS = 0.
        Reset metronom pts so images will be displayed */
-    int64_t pts = pts_from_pes(buf->content, buf->size);
+    int64_t pts = pes_get_pts(buf->content, buf->size);
     if(pts==0) {
       vdr_x_demux_control_newpts(this->stream, pts, BUF_FLAG_SEEK);
       /* delay frame 10ms (9000 ticks) */
@@ -5422,19 +5364,19 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
 #ifndef FFMPEG_DEC
   if(this->live_mode && this->I_frames < 4)
-    if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32)
+    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32)
       update_frames(this, buf->content, buf->size);
 #else /* FFMPEG_DEC */
   if(this->ffmpeg_video_decoder || (this->live_mode && this->I_frames < 4))
-    if((buf->content[3] & 0xf0) == 0xe0 && buf->size > 32) {
-      int type = update_frames(this, buf->content, buf->size);
+    if(IS_VIDEO_PACKET(buf->content) && buf->size > 32) {
+      uint8_t type = update_frames(this, buf->content, buf->size);
       if(type && this->ffmpeg_video_decoder) {
 	/* signal FRAME_END to decoder */
 	post_frame_end(this, BUF_VIDEO_MPEG);
 	/* for some reason ffmpeg mpeg2 decoder does not understand pts'es in B frames ? 
 	 * (B-frame pts's are smaller than in previous P-frame) 
 	 * Anyway, without this block of code B frames with pts are dropped. */
-	if(type == 3 && pts_from_pes(buf->content, buf->size) > INT64_C(0))
+	if(type == B_FRAME && PES_HAS_PTS(buf->content))
 	  pes_strip_pts(buf->content, buf->size);
       }
     }
@@ -5624,11 +5566,11 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   /* OSD */
   for(i=0; i<MAX_OSD_OBJECT; i++) {
     if(this->osdhandle[i] != -1) {
-      osd_command_t cmd;
+      osd_command_t cmd = {
+	.cmd = OSD_Close,
+	.wnd = i,
+      };
       LOGDBG("Closing osd %d", i);
-      memset(&cmd,0,sizeof(cmd));
-      cmd.cmd = OSD_Close;
-      cmd.wnd = i;
       exec_osd_command(this, &cmd);
     }
   }
@@ -5678,8 +5620,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     this->block_buffer->dispose(this->block_buffer);
   if(this->hd_buffer)
     this->hd_buffer->dispose(this->hd_buffer);
-
-  memset(this, 0, sizeof(this));
 
   free (this);
   LOGDBG("dispose done.");
