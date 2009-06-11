@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.25 2008-09-21 13:51:07 phintuka Exp $
+ * $Id: osd.c,v 1.25.2.1 2009-06-11 11:37:48 phintuka Exp $
  *
  */
 
@@ -13,8 +13,8 @@
 #include <vdr/thread.h>
 
 #include "logdefs.h"
-#include "device.h"
 #include "config.h"
+#include "device.h"
 #include "xine_osd_command.h"
 
 #include "osd.h"
@@ -66,7 +66,7 @@ static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palett
     if(!top) {
       if(xc.osd_mixer & OSD_MIXER_ALPHA)
 	for(c=0; c<colors; c++)
-	  clut[c].alpha = (clut[c].alpha >> 1) | 0x80;
+	  clut[c].alpha >>= 1; /* fade */
       if(xc.osd_mixer & OSD_MIXER_GRAY)
 	for(c=0; c<colors; c++) {
 	  if(rgb)
@@ -136,7 +136,10 @@ class cXinelibOsd : public cOsd, public cListObject
 		int W, int H, unsigned char *Data,
 		int Colors, unsigned int *Palette, 
 		osd_rect_t *DirtyArea);
+    void CmdPalette(int Wnd, int Colors, unsigned int *Palette);
+    void CmdMove(int Wnd, int Width, int Height);
     void CmdClose(int Wnd);
+    void CmdFlush(void);
 
   protected:
     static cMutex             m_Lock;
@@ -171,13 +174,47 @@ void cXinelibOsd::CmdSize(int Width, int Height)
 {
   TRACEF("cXinelibOsd::CmdSize");
 
-  if(m_Device) {
-    osd_command_t osdcmd;
-    memset(&osdcmd,0,sizeof(osdcmd));
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Size;
-    osdcmd.w = Width;
-    osdcmd.h = Height;
+    osdcmd.w   = Width;
+    osdcmd.h   = Height;
+
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+void cXinelibOsd::CmdMove(int Wnd, int NewX, int NewY)
+{
+  TRACEF("cXinelibOsd::CmdMove");
+
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd = OSD_Move;
+    osdcmd.wnd = Wnd;
+    osdcmd.x   = NewX;
+    osdcmd.y   = NewY;
+
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+void cXinelibOsd::CmdPalette(int Wnd, int Colors, unsigned int *Palette)
+{
+  TRACEF("cXinelibOsd::CmdPalette");
+
+  if (m_Device) {
+    xine_clut_t   clut[Colors];
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd     = OSD_SetPalette;
+    osdcmd.wnd     = Wnd;
+    osdcmd.palette = clut;
+    osdcmd.colors  = Colors;
+
+    prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
 
     m_Device->OsdCmd((void*)&osdcmd);
   }
@@ -187,16 +224,30 @@ void cXinelibOsd::CmdClose(int Wnd)
 {
   TRACEF("cXinelibOsd::CmdClose");
 
-  if(m_Device) {
-    osd_command_t osdcmd;
-    memset(&osdcmd,0,sizeof(osdcmd));
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Close;
     osdcmd.wnd = Wnd;
 
-    if(m_Refresh)
+    if (m_Refresh)
       osdcmd.flags |= OSDFLAG_REFRESH;
-    
+    if (Prev() == NULL)
+      osdcmd.flags |= OSDFLAG_TOP_LAYER;
+
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
+void cXinelibOsd::CmdFlush(void)
+{
+  TRACEF("cXinelibOsd::CmdFlush");
+
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd = OSD_Flush;
+
     m_Device->OsdCmd((void*)&osdcmd);
   }
 }
@@ -208,40 +259,43 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
 {
   TRACEF("cXinelibOsd::CmdRle");
 
-  if(m_Device) {
+  if (m_Device) {
 
-    osd_command_t osdcmd;
-    xine_clut_t clut[Colors];
+    xine_clut_t   clut[Colors];
+    osd_command_t osdcmd = {0};
 
-    memset(&osdcmd, 0, sizeof(osdcmd));
-    osdcmd.cmd = OSD_Set_RLE;
-    osdcmd.wnd = Wnd;
-    osdcmd.x = X0;
-    osdcmd.y = Y0;
-    osdcmd.w = W;
-    osdcmd.h = H;
-    if(DirtyArea)
+    osdcmd.cmd   = OSD_Set_RLE;
+    osdcmd.wnd   = Wnd;
+    osdcmd.layer = saturate(m_Layer, 0, 0xffff);
+    osdcmd.x   = X0;
+    osdcmd.y   = Y0;
+    osdcmd.w   = W;
+    osdcmd.h   = H;
+    osdcmd.colors  = Colors;
+    osdcmd.palette = clut;
+    osdcmd.scaling = xc.osd_scaling;
+
+    if (DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
-    if(m_Refresh)
+    if (m_Refresh)
       osdcmd.flags |= OSDFLAG_REFRESH;
-    if(xc.osd_blending == OSD_BLENDING_HARDWARE)
+    if (xc.osd_blending == OSD_BLENDING_HARDWARE)
       osdcmd.flags |= OSDFLAG_UNSCALED;
-    if(xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
+    if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
       osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
+    if (Prev() == NULL)
+      osdcmd.flags |= OSDFLAG_TOP_LAYER;
 
     prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
-    osdcmd.colors = Colors;
-    osdcmd.palette = clut;
 
+    if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
+      osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
     osdcmd.num_rle = rle_compress(&osdcmd.data, Data, W, H);
     osdcmd.datalen = 4 * osdcmd.num_rle;
 
-    osdcmd.scaling = xc.osd_scaling;
-    
     m_Device->OsdCmd((void*)&osdcmd);
 
-    if(osdcmd.data)
-      free(osdcmd.data);
+    free(osdcmd.data);
   }
 }
 
@@ -396,6 +450,9 @@ void cXinelibOsd::CloseWindows(void)
       CmdClose(i);
     }
   }
+
+  if (!m_Refresh)
+    CmdFlush();
 }
 
 void cXinelibOsd::Hide(void)
