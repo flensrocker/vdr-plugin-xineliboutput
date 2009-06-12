@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.5 2009-06-09 12:46:18 phintuka Exp $
+# $Id: Makefile,v 1.38.2.6 2009-06-12 09:09:22 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -331,7 +331,7 @@ ifeq ($(XINELIBOUTPUT_VDRPLUGIN), 1)
          tools/cxsocket.o tools/udp_pes_scheduler.o \
          tools/backgroundwriter.o tools/playlist.o tools/http.o \
          tools/vdrdiscovery.o tools/time_pts.o tools.o \
-         tools/metainfo_menu.o logdefs.o
+         tools/metainfo_menu.o logdefs.o tools/rle.o
   OBJS_MPG  = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 else
   OBJS =
@@ -403,6 +403,8 @@ xine/post.o: xine/post.c xine/post.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) xine/post.c -o $@
 tools/gnome_screensaver.o: tools/gnome_screensaver.c tools/gnome_screensaver.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(INCLUDES_DBUS) $(OPTFLAGS) tools/gnome_screensaver.c -o $@
+tools/rle.o: tools/rle.c tools/rle.h
+	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) tools/rle.c -o $@
 logdefs.o: logdefs.c logdefs.h
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(OPTFLAGS) logdefs.c -o $@
 tools/vdrdiscovery.o: tools/vdrdiscovery.c tools/vdrdiscovery.h
