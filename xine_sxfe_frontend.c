@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.12 2009-06-08 12:00:25 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.13 2009-06-16 21:29:36 phintuka Exp $
  *
  */
 
@@ -232,12 +232,25 @@ static void fe_dest_size_cb (void *data,
 					    video_width, video_height);
 }
 
+static void set_fs_size_hint(sxfe_t *this)
+{
+  XSizeHints hint;
+  hint.flags  = USSize | USPosition | PPosition | PSize;
+  hint.x      = this->xinerama_x;
+  hint.y      = this->xinerama_y;
+  hint.width  = this->width;
+  hint.height = this->height;
+  XSetNormalHints(this->display, this->window[1], &hint);
+}
+
 static void set_fullscreen_props(sxfe_t *this)
 {
   XEvent ev;
 
   if(this->window_id > 0)
     return;
+
+  set_fs_size_hint(this);
 
   if(this->atom_state == None) {
     this->atom_win_layer        = XInternAtom(this->display, "_WIN_LAYER", False);
@@ -848,7 +861,6 @@ static int sxfe_display_open(frontend_t *this_gen,
   sxfe_t    *this = (sxfe_t*)this_gen;
 
   MWMHints   mwmhints;
-  XSizeHints hint;
   double     res_h, res_v, aspect_diff;
 
   if(this->display)
@@ -964,13 +976,6 @@ static int sxfe_display_open(frontend_t *this_gen,
 					  0, 0, (DisplayWidth(this->display, this->screen)),
 					  (DisplayHeight(this->display, this->screen)), 0, 0, 0);
   }
-
-  hint.flags  = USSize | USPosition | PPosition | PSize;
-  hint.x      = 0;
-  hint.y      = 0;
-  hint.width  = DisplayWidth(this->display, this->screen);
-  hint.height = DisplayHeight(this->display, this->screen);
-  XSetNormalHints(this->display, this->window[1], &hint);
 
   if(this->window_id <= 0) {
     /* full-screen window */
@@ -1528,8 +1533,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
 
 static frontend_t *sxfe_get_frontend(void)
 {
-  sxfe_t *this = malloc(sizeof(sxfe_t));
-  memset(this, 0, sizeof(sxfe_t));
+  sxfe_t *this = calloc(1, sizeof(sxfe_t));
 
   this->window_id = -1;
   
