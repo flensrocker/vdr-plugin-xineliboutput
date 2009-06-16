@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.6 2009-06-12 09:09:22 phintuka Exp $
+# $Id: Makefile,v 1.38.2.7 2009-06-16 21:55:33 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -253,6 +253,9 @@ LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 ifeq ($(HAVE_XRENDER), 1)
 # need -lm for ceil/floor in HUD OSD
     LIBS_X11  += -lXrender -lm
+endif
+ifeq ($(HAVE_XINERAMA), 1)
+    LIBS_X11  += -lXinerama
 endif
 
 ifeq ($(APPLE_DARWIN), 1)
