@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.14 2009-06-16 21:47:30 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.15 2009-06-16 21:58:13 phintuka Exp $
  *
  */
 
@@ -44,6 +44,9 @@
 #endif
 #ifdef HAVE_XV_FIELD_ORDER
 #  include <X11/extensions/Xvlib.h>
+#endif
+#ifdef HAVE_XINERAMA
+#  include <X11/extensions/Xinerama.h>
 #endif
 
 #ifdef boolean
@@ -133,6 +136,8 @@ typedef struct sxfe_s {
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
+  int xinerama_screen;
+  int xinerama_x, xinerama_y;
 
   /* Atoms */
   Atom     atom_wm_delete_window;
@@ -457,6 +462,49 @@ static void set_cursor(Display *dpy, Window win, const int enable)
     XDefineCursor(dpy, win, None);
     XDefineCursor(dpy, win, no_ptr);
   }
+}
+
+static void update_xinerama_info(sxfe_t *this)
+{
+  int screen = this->xinerama_screen;
+  this->xinerama_x = this->xinerama_y = 0;
+#ifdef HAVE_XINERAMA
+  if(screen >= -1 && XineramaIsActive(this->display)) {
+    XineramaScreenInfo *screens;
+    int num_screens;
+
+    screens = XineramaQueryScreens(this->display, &num_screens);
+    if(screen >= num_screens)
+      screen = num_screens - 1;
+    if(screen == -1) {
+      const int x = this->origxpos + this->origwidth / 2;
+      const int y = this->origypos + this->origheight / 2;
+      for(screen = num_screens - 1; screen > 0; screen--) {
+	const int x0 = screens[screen].x_org;
+	const int y0 = screens[screen].y_org;
+	const int x1 = x0 + screens[screen].width;
+	const int y1 = y0  + screens[screen].height;
+	if(x0 <= x && x <= x1 && y0 <= y && y <= y1)
+	  break;
+      }
+    }
+    if (screen < 0)
+      screen = 0;
+    this->xinerama_x = screens[screen].x_org;
+    this->xinerama_y = screens[screen].y_org;
+    this->width      = screens[screen].width;
+    this->height     = screens[screen].height;
+
+    XFree(screens);
+  }
+#endif
+}
+
+static void update_screen_size(sxfe_t *this)
+{
+  this->width = DisplayWidth(this->display, this->screen);
+  this->height = DisplayHeight(this->display, this->screen);
+  update_xinerama_info(this);
 }
 
 #ifdef HAVE_XRENDER
@@ -905,6 +953,7 @@ static int sxfe_display_open(frontend_t *this_gen,
   this->no_x_kbd        = no_x_kbd ? 1 : 0;
   this->fullscreen_state_forced = 0;
   strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));
+  this->xinerama_screen = -1;
 
   /*
    * init x11 stuff
@@ -956,10 +1005,8 @@ static int sxfe_display_open(frontend_t *this_gen,
     this->completion_event = -1;
   }
 
-  if(fullscreen) {
-    this->width = DisplayWidth(this->display, this->screen);
-    this->height = DisplayHeight(this->display, this->screen);
-  }
+  if(fullscreen)
+    update_screen_size(this);
   
   if(this->window_id > 0) {
     LOGMSG("sxfe_diaplay_open(): Using X11 window %d for output", this->window_id);
@@ -973,8 +1020,9 @@ static int sxfe_display_open(frontend_t *this_gen,
 					   this->width, this->height,
 					   1, 0, 0);
     this->window[1] = XCreateSimpleWindow(this->display, XDefaultRootWindow(this->display),
-					  0, 0, (DisplayWidth(this->display, this->screen)),
-					  (DisplayHeight(this->display, this->screen)), 0, 0, 0);
+					  this->xinerama_x, this->xinerama_y, 
+					  this->width, this->height,
+					  0, 0, 0);
   }
 
   if(this->window_id <= 0) {
@@ -1130,10 +1178,8 @@ static int sxfe_display_config(frontend_t *this_gen,
 			      (void*) this->window[0]);
   }
 
-  if(fullscreen) {
-    this->width = DisplayWidth(this->display, this->screen);
-    this->height = DisplayHeight(this->display, this->screen);
-  }
+  if(fullscreen)
+    update_screen_size(this);
   
   if(fullscreen != this->fullscreen) {
     Window    tmp_win;
@@ -1154,6 +1200,8 @@ static int sxfe_display_config(frontend_t *this_gen,
       set_above(this, this->stay_above);
     } else {
       set_fullscreen_props(this);
+      XResizeWindow(this->display, this->window[1], this->width, this->height);
+      XMoveWindow(this->display, this->window[1], this->xinerama_x, this->xinerama_y);
     }
     XSync(this->display, False);
     XTranslateCoordinates(this->display, this->window[this->fullscreen ? 1 : 0],
