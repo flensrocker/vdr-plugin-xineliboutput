@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.5 2009-06-08 10:11:34 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.6 2009-06-16 21:19:38 phintuka Exp $
  *
  */
 
@@ -250,16 +250,18 @@ static void fe_frame_output_cb (void *data,
 			   ((double)video_width)/((double)video_height)));
   if(this->video_width  != video_width ||
      this->video_height != video_height) {
-    xine_event_t event;
-    xine_format_change_data_t framedata;
-    event.type = XINE_EVENT_FRAME_FORMAT_CHANGE;
-    event.stream = this->stream;
-    event.data = &framedata;
-    event.data_length = sizeof(framedata);
-    framedata.width  = video_width;
-    framedata.height = video_height;
-    framedata.aspect = 0; /* TODO */
-    framedata.pan_scan = 0;
+    xine_format_change_data_t framedata = {
+      .width  = video_width,
+      .height = video_height,
+      .aspect = 0, /* TODO */
+      .pan_scan = 0,
+    };
+    const xine_event_t event = {
+      .type = XINE_EVENT_FRAME_FORMAT_CHANGE,
+      .stream = this->stream,
+      .data = &framedata,
+      .data_length = sizeof(framedata),
+    };
     xine_event_send(this->stream, &event);
     this->video_width = video_width;
     this->video_height = video_height;
@@ -658,8 +660,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   this->pes_buffers = pes_buffers;
 
-  posts = this->postplugins = malloc(sizeof(post_plugins_t));
-  memset(posts, 0, sizeof(post_plugins_t));
+  posts = this->postplugins = calloc(1, sizeof(post_plugins_t));
   posts->xine = this->xine;
   posts->audio_port = this->audio_port;
   posts->video_port = this->video_port;
@@ -1228,40 +1229,23 @@ static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len
   if(!this->input && !find_input(this))
     return 0/*-1*/;
 
-#if 0
-  if(len<6) {
-    LOGMSG("xine_queue_pes_packet: len == %d, too short!", len);
-    abort();
-  }
-  /* must contain single pes packet and nothing else */
-  if(data[0] || data[1] || (data[2] != 1)) {
-    static int counter=0;
-    counter++;
-    LOGMSG("xine_queue_pes_packet: packet not starting with 00 00 01 \n"
-	   "    packet #%d, size=%d : %02x %02x %02x %02x %02x %02x\n",
-	   counter, len,
-	   data[0], data[1], data[2], data[3], data[4], data[5]);
-    abort();
-  }
-#endif
-
   input_vdr = (vdr_input_plugin_t *)this->input;
   return input_vdr->f.push_input_write(this->input, data, len);
 }
 
 #else /* #ifndef FE_STANDALONE */
 
-static void process_xine_keypress(input_plugin_t *input, 
+static void process_xine_keypress(fe_t *this, 
 				  const char *map, const char *key,
 				  int repeat, int release)
 {
   /* from UI --> input plugin --> vdr */
   LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
-  if(input) {
-    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)input;
+  if(this->input || find_input(this)) {
+    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
     if(input_vdr->f.input_control) {
-      input_vdr->f.input_control(input, map, key, repeat, release);
+      input_vdr->f.input_control(this->input, map, key, repeat, release);
     } else {
       LOGMSG("Keypress --- NO HANDLER SET");
     }
@@ -1303,7 +1287,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 
   } else if(!strncmp(cmd, "SLAVE 0x", 8)) {
     unsigned long pt;
-    if(1 == sscanf(cmd, "SLAVE 0x%lx", &pt)) {
+    if(1 == sscanf(cmd+8, "%lx", &pt)) {
       xine_stream_t *slave_stream = (xine_stream_t*)pt;
       if(this->slave_stream != slave_stream) {
 
@@ -1343,7 +1327,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
   } else if(!strncmp(cmd, "SUBSTREAM ", 10)) {
     unsigned int pid;
     int x, y, w, h;
-    if(5 == sscanf(cmd, "SUBSTREAM 0x%x %d %d %d %d", &pid, &x, &y, &w, &h)) {
+    if(5 == sscanf(cmd+10, "0x%x %d %d %d %d", &pid, &x, &y, &w, &h)) {
       char mrl[256];
       if(!posts->pip_stream)
 	posts->pip_stream = xine_stream_new(this->xine, 
