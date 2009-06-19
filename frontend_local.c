@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.31.2.3 2009-06-08 11:40:36 phintuka Exp $
+ * $Id: frontend_local.c,v 1.31.2.4 2009-06-19 12:46:30 phintuka Exp $
  *
  */
 
@@ -19,9 +19,7 @@
 
 #include <vdr/config.h>
 #include <vdr/tools.h>
-#if VDRVERSNUM >= 10501 || (defined(PATCH_SHUTDOWN_REWRITE) && PATCH_SHUTDOWN_REWRITE >= 100)
 #include <vdr/shutdown.h>
-#endif
 #include <vdr/plugin.h>
 
 #include "logdefs.h"
@@ -206,8 +204,9 @@ void cXinelibLocal::ConfigureWindow(int fullscreen, int width, int height,
 {
   LOCK_FE;
   if(fe)
-    fe->fe_display_config(fe, width, height, fullscreen, modeswitch, modeline, 
-			  aspect, scale_video, field_order);
+    fe->fe_display_config(fe, -1, -1, width, height,
+                          fullscreen, modeswitch, modeline,
+                          aspect, scale_video, field_order);
 }
 
 void cXinelibLocal::ConfigureDecoder(int pes_buffers)
@@ -349,12 +348,13 @@ void cXinelibLocal::Action(void)
       SetStopSignal();
     } else {
       LOGDBG("cXinelibLocal::Action - fe created");
-      if(!curr_fe->fe_display_open(curr_fe, -1, -1, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
-                                   xc.modeswitch, xc.modeline,
-                                   xc.display_aspect, keypress_handler, 0/*no_x_kbd*/,
+      if(!curr_fe->fe_display_open(curr_fe, 0, 0, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
+                                   xc.modeswitch, xc.modeline, xc.display_aspect,
+                                   keypress_handler, 0/*no_x_kbd*/, 0/*gui_hotkeys*/,
                                    xc.video_port,
                                    xc.scale_video,
-                                   xc.field_order)) {
+                                   xc.field_order,
+                                   NULL, -1)) {
 	LOGMSG("cXinelibLocal: Error initializing display");
 	SetStopSignal();
       } else {
