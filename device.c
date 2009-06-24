@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.83 2009-06-24 20:43:45 phintuka Exp $
+ * $Id: device.c,v 1.84 2009-06-24 20:45:40 phintuka Exp $
  *
  */
 
@@ -1144,7 +1144,7 @@ int cXinelibDevice::TsBufferFlush(void)
 {
   if (m_TsBufSize) {
     int n;
-    if ((n = PlayAny(m_TsBuf, m_TsBufSize)) == m_TsBufSize) {
+    if ((n = PlayAny(m_TsBuf, m_TsBufSize)) == (int)m_TsBufSize) {
       m_TsBufSize = 0;
       return n;
     }
@@ -1193,7 +1193,6 @@ int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
 
 int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
-#warning PlayVideo: get_size, trickspeed stuff, ... !!!
   return PlayTsAny(Data, Length);
 }
 #endif // VDRVERSNUM >= 10701
