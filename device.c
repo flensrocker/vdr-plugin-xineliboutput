@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.82 2009-06-04 09:49:25 phintuka Exp $
+ * $Id: device.c,v 1.83 2009-06-24 20:43:45 phintuka Exp $
  *
  */
 
@@ -214,6 +214,8 @@ cXinelibDevice::cXinelibDevice()
   m_Cleared = true;
   m_h264 = false;
 
+  m_VideoSize = (video_size_t*)calloc(1, sizeof(video_size_t));
+
   TsBufferClear();
 }
 
@@ -224,6 +226,8 @@ cXinelibDevice::~cXinelibDevice()
   StopDevice();
 
   m_pInstance = NULL;
+
+  free (m_VideoSize);
 }
 
 bool cXinelibDevice::StartDevice()
@@ -1189,6 +1193,7 @@ int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
 
 int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
+#warning PlayVideo: get_size, trickspeed stuff, ... !!!
   return PlayTsAny(Data, Length);
 }
 #endif // VDRVERSNUM >= 10701
@@ -1228,12 +1233,10 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
       m_h264 = true;
     }
 
-    video_size_t Size;
-    if (pes_get_video_size(buf, length, &Size, m_h264 ? 1:0)) {
+    if (pes_get_video_size(buf, length, m_VideoSize, m_h264 ? 1:0)) {
       m_StreamStart = false;
-      /*if (m_h264)*/ LOGMSG("Detected video size %dx%d", Size.width, Size.height);
-      //LOGDBG("Detected video size %dx%d", Width, Height);
-      ForEach(m_clients, &cXinelibThread::SetHDMode, (Size.width > 800));
+      LOGDBG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);
+      ForEach(m_clients, &cXinelibThread::SetHDMode, (m_VideoSize->width > 800));
     }
   }
 
@@ -1526,14 +1529,25 @@ eVideoSystem cXinelibDevice::GetVideoSystem(void)
   return cDevice::GetVideoSystem();
 }
 
-#if VDRVERSNUM >= 10707
-void cXinelibDevice::GetVideoSize(int &Width, int &Height, eVideoAspect &Aspect)
+#if VDRVERSNUM >= 10708
+void cXinelibDevice::GetVideoSize(int &Width, int &Height, double &VideoAspect)
+{
+  Width  = m_VideoSize->width;
+  Height = m_VideoSize->height;
+  VideoAspect = 1.0;
+  if (m_VideoSize->pixel_aspect.den) {
+    VideoAspect = (double)m_VideoSize->pixel_aspect.num / (double)m_VideoSize->pixel_aspect.den;
+    VideoAspect *= (double)Width / (double)Height;
+  }
+}
+#endif
+
+void cXinelibDevice::GetOsdSize(int &Width, int &Height, double &PixelAspect)
 {
   Width  = 720;
   Height = 576;
-  Aspect = va4_3;
+  PixelAspect = 16.0 / 9.0 / (double)Width * (double)Height;
 }
-#endif
 
 //
 // SPU decoder

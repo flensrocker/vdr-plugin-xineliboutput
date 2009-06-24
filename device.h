@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.47 2009-05-06 15:16:31 phintuka Exp $
+ * $Id: device.h,v 1.48 2009-06-24 20:43:45 phintuka Exp $
  *
  */
 
@@ -19,6 +19,8 @@ class cXinelibStatusMonitor;
 class cXinelibThread;
 class cChannel;
 class cFunctor;
+
+struct video_size_s;
 
 typedef enum {
   miTitle        = 0,
@@ -112,9 +114,12 @@ class cXinelibDevice : public cDevice
     virtual void SetVideoDisplayFormat(eVideoDisplayFormat VideoDisplayFormat);
     virtual void SetVideoFormat(bool VideoFormat16_9);
     virtual eVideoSystem GetVideoSystem(void);
-#if VDRVERSNUM >= 10707
-    virtual void GetVideoSize(int &Width, int &Height, eVideoAspect &Aspect);
+
+    struct video_size_s *m_VideoSize;
+#if VDRVERSNUM >= 10708
+    virtual void GetVideoSize(int &Width, int &Height, double &VideoAspect);
 #endif
+    virtual void GetOsdSize(int &Width, int &Height, double &PixelAspect);
 
   // Track facilities
 
