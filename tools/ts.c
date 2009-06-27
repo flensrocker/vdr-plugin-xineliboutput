@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.6 2009-03-31 11:33:05 phintuka Exp $
+ * $Id: ts.c,v 1.7 2009-06-27 17:41:40 phintuka Exp $
  *
  */
 
@@ -331,7 +331,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
       case ISO_13818_VIDEO:
       case ISO_14496_PART2_VIDEO:
       case ISO_14496_PART10_VIDEO:
-        LOGPMT("parse_pmt: PMT video pid 0x%.4x type %2.2x", pid, stream[0]);
+        LOGPMT("parse_pmt: video pid 0x%.4x type %2.2x", pid, stream[0]);
         if (pmt->video_pid == INVALID_PID) {
           pmt->video_pid  = pid;
           pmt->video_type = (ts_stream_type)stream[0];
@@ -351,7 +351,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
             }
           }
           if (!found) {
-            LOGPMT("parse_pmt: PMT audio pid 0x%.4x type %2.2x", pid, stream[0]);
+            LOGPMT("parse_pmt: audio pid 0x%.4x type %2.2x", pid, stream[0]);
             pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
             pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
             /* ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
@@ -376,7 +376,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
               }
             }
             if (!found) {
-              LOGPMT("parse_pmt: PMT AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
+              LOGPMT("parse_pmt: AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
               pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
               pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
               /* demux_ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
@@ -402,7 +402,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
               pmt->spu_tracks[no].aux_page_id = (stream[pos + 6] << 8) | stream[pos + 7];
               pmt->spu_tracks[no].pid = pid;
 
-              LOGPMT("parse_pmt: DVBSUB: pid 0x%.4x: %s  page %d %d type %2.2x", pid,
+              LOGPMT("parse_pmt: DVBSUB pid 0x%.4x: %s  page %d %d type %2.2x", pid,
                      pmt->spu_tracks[no].lang, pmt->spu_tracks[no].comp_page_id,
                      pmt->spu_tracks[no].aux_page_id, stream[0]);
             }
@@ -440,7 +440,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
             }
           }
         } else {
-          LOGPMT("parse_pmt: PMT unknown stream_type: 0x%.2x pid: 0x%.4x", stream[0], pid);
+          LOGPMT("parse_pmt: unknown stream_type: 0x%.2x pid: 0x%.4x", stream[0], pid);
         }
         break;
     }
@@ -456,9 +456,9 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
   if (pmt->pcr_pid != pid) {
 
     if (pmt->pcr_pid == INVALID_PID)
-      LOGPMT("parse_pmt: PMT pcr pid 0x%.4x", pid);
+      LOGPMT("parse_pmt: pcr pid 0x%.4x", pid);
     else
-      LOGPMT("parse_pmt: PMT pcr pid changed 0x%.4x", pid);
+      LOGPMT("parse_pmt: pcr pid changed 0x%.4x", pid);
 
     pmt->pcr_pid = pid;
   }
