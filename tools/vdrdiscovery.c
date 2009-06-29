@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.8 2008-11-14 22:19:45 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.9 2009-06-29 21:23:33 phintuka Exp $
  *
  */
 
@@ -26,7 +26,7 @@
 #include "vdrdiscovery.h"
 
 /*
- *
+ * constants
  */
 
 #ifndef DISCOVERY_PORT
@@ -48,29 +48,31 @@
 static inline int discovery_init(int port)
 {
   int fd_discovery = -1;
+  int iBroadcast = 1, iReuse = 1;
   struct sockaddr_in sin;
 
   if ((fd_discovery = socket(PF_INET, SOCK_DGRAM, 0/*IPPROTO_TCP*/)) < 0) {
-    LOGERR("socket() failed (UDP discovery)");
-  } else {
-    int iBroadcast = 1, iReuse = 1;
-    if(setsockopt(fd_discovery, SOL_SOCKET, SO_BROADCAST, &iBroadcast, sizeof(int)) < 0)
-      LOGERR("setsockopt(SO_BROADCAST) failed");
-    if(setsockopt(fd_discovery, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int)) < 0)
-      LOGERR("setsockopt(SO_REUSEADDR) failed");
-    sin.sin_family = AF_INET;
-    sin.sin_port   = htons(port);
-    sin.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-
-    if (bind(fd_discovery, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-      LOGERR("bind() failed (UDP discovery)");
-    } else {  
-      return fd_discovery;
-    }
+    LOGERR("discovery_init: socket() failed");
+    return -1;
   }
-  
-  close(fd_discovery);
-  return -1;
+
+  if (setsockopt(fd_discovery, SOL_SOCKET, SO_BROADCAST, &iBroadcast, sizeof(int)) < 0)
+    LOGERR("discovery_init: setsockopt(SO_BROADCAST) failed");
+
+  if (setsockopt(fd_discovery, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(int)) < 0)
+    LOGERR("discovery_init: setsockopt(SO_REUSEADDR) failed");
+
+  sin.sin_family = AF_INET;
+  sin.sin_port   = htons(port);
+  sin.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+
+  if (bind(fd_discovery, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+    LOGERR("discovery_init: bind() failed");
+    close(fd_discovery);
+    return -1;
+  }
+
+  return fd_discovery;
 }
 
 int udp_discovery_init(void)
