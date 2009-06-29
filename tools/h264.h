@@ -4,19 +4,19 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.h,v 1.8 2009-02-14 20:39:20 phintuka Exp $
+ * $Id: h264.h,v 1.9 2009-06-29 15:49:43 phintuka Exp $
  *
  */
 
 #ifndef _XINELIBOUTPUT_H264_H_
 #define _XINELIBOUTPUT_H264_H_
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "mpeg.h"
+
 
 #define NAL_SPS     0x07 /* Sequence Parameter Set */
 #define NAL_AUD     0x09 /* Access Unit Delimiter */
@@ -41,6 +41,9 @@ typedef struct {
   /* ... */
 } h264_sps_data_t;
 
+struct video_size_s;
+
+
 /*
  * input: start of NAL SPS (without 00 00 01 07)
  */
@@ -54,7 +57,7 @@ int  h264_get_picture_type(const uint8_t *buf, int len);
 /*
  * input: start of H.264 video data (not PES)
  */
-int  h264_get_video_size(const uint8_t *buf, int len, video_size_t *size);
+int  h264_get_video_size(const uint8_t *buf, int len, struct video_size_s *size);
 
 
 #ifdef __cplusplus
