@@ -4,9 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.7 2009-06-27 17:41:40 phintuka Exp $
+ * $Id: ts.c,v 1.8 2009-06-29 15:47:00 phintuka Exp $
  *
  */
+
+/*#define LOG_PCR*/
+/*#define LOG_PMT*/
 
 #include <inttypes.h>
 #include <stdlib.h>
@@ -22,8 +25,16 @@
 #include "ts.h"
 #include "pes.h"
 
-#ifndef LOGPMT
+#ifdef LOG_PMT
 #  define LOGPMT LOGMSG
+#else
+#  define LOGPMT(x...)
+#endif
+
+#ifdef LOG_PCR
+#  define LOGPCR LOGMSG
+#else
+#  define LOGPCR(x...)
 #endif
 
 
