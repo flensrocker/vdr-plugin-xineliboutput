@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.8 2009-06-29 15:47:00 phintuka Exp $
+ * $Id: ts.c,v 1.9 2009-06-29 15:47:44 phintuka Exp $
  *
  */
 
@@ -477,6 +477,40 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
   return 1;
 }
 
+/*
+ * ts_get_pcr()
+ */
+int64_t ts_get_pcr(const uint8_t *pkt)
+{
+  if (!ts_ADAPT_FIELD_EXISTS(pkt)) {
+    return INT64_C(-1);
+  }
+
+  if (ts_HAS_ERROR(pkt)) {
+    LOGMSG("ts_get_pcr: transport error");
+    return INT64_C(-1);
+  }
+
+  /* pcr flag ? */
+  if (! (pkt[5] & 0x10))
+    return INT64_C(-1);
+
+  int64_t pcr;
+  uint    epcr;
+
+  pcr  = ((int64_t) pkt[6]) << 25;
+  pcr += (int64_t) (pkt[7]  << 17);
+  pcr += (int64_t) (pkt[8]  << 9);
+  pcr += (int64_t) (pkt[9]  << 1);
+  pcr += (int64_t) ((pkt[10] & 0x80) >> 7);
+
+  epcr = ((pkt[10] & 0x1) << 8) | pkt[11];
+
+  LOGPCR("ts_get_pcr: PCR: %"PRId64", EPCR: %u", pcr, epcr);
+  return pcr;
+}
+
+
 
 /*
  * ts_state_t
@@ -486,7 +520,7 @@ struct ts_state_s {
 
   uint8_t  pusi_seen;
 
-  uint8_t  inside_pes; /* Scanning ES (PES start code seen and skippped) */
+  uint8_t  inside_pes; /* Scanning ES (PES start code seen and skipped) */
 
   uint32_t buf_len;    /* bytes queued */
   uint32_t buf_size;   /* buffer size */
