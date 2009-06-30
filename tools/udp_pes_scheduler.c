@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.39 2009-06-01 14:33:11 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.40 2009-06-30 13:05:57 phintuka Exp $
  *
  */
 
@@ -109,8 +109,6 @@ cUdpScheduler::cUdpScheduler()
 
   // Thread
 
-  m_Running = 1;
-
   Start();
 }
 
@@ -118,7 +116,7 @@ cUdpScheduler::~cUdpScheduler()
 {
   m_Lock.Lock();
 
-  m_Running = 0;
+  Cancel(-1);
   m_Cond.Broadcast();
   m_Lock.Unlock();
 
@@ -332,7 +330,7 @@ int cUdpScheduler::Poll(int TimeoutMs, bool Master)
       WaitEnd += (uint64_t)TimeoutMs;
 
     while(cTimeMs::Now() < WaitEnd &&
-	  m_Running &&
+          Running() &&
 	  m_QueuePending >= limit)	
       m_Cond.TimedWait(m_Lock, 5);
   }
@@ -353,7 +351,7 @@ bool cUdpScheduler::Flush(int TimeoutMs)
       WaitEnd += (uint64_t)TimeoutMs;
 
     while(cTimeMs::Now() < WaitEnd &&
-	  m_Running &&
+          Running() &&
 	  m_QueuePending > 0)
       m_Cond.TimedWait(m_Lock, 5);
   }
@@ -693,7 +691,7 @@ void cUdpScheduler::Action(void)
 
   m_Lock.Lock();
 
-  while(m_Running) {
+  while (Running()) {
 	
     if(m_Handles[0] < 0) {
       m_Cond.TimedWait(m_Lock, 5000); 
@@ -718,7 +716,7 @@ void cUdpScheduler::Action(void)
 	  m_BackLog->MakeFrame(0, padding, 8);
 	m_QueuePending++;
       }
-      continue; // to check m_Running
+      continue; // to check Running()
     }
 
     // Take next frame from queue

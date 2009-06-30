@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.14 2009-03-24 19:00:27 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.15 2009-06-30 13:05:57 phintuka Exp $
  *
  */
 
@@ -95,7 +95,6 @@ class cUdpScheduler : public cThread
     int  calc_elapsed_vtime(int64_t pts, bool Audio);
     void Schedule(const uchar *Data, int Length);
 
-    bool m_Running;
     virtual void Action(void);
 
     void Send_RTCP(void);
