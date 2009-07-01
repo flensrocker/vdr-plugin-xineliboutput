@@ -4,9 +4,13 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.43 2009-07-01 09:18:12 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.44 2009-07-01 09:24:13 phintuka Exp $
  *
  */
+
+//#define LOG_UDP_RATE
+//#define LOG_RESEND
+//#define LOG_SCR
 
 #define __STDC_FORMAT_MACROS
 #define __STDC_CONSTANT_MACROS 
@@ -57,6 +61,9 @@ const uint    MAX_QUEUE_SIZE      = 64;       // ~ 65 ms with typical DVB stream
 const uint    MAX_LIVE_QUEUE_SIZE = (64+60);  // ~ 100 ms with typical DVB stream
 const uint    HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
 
+const uint    MAX_BURST_BYTES     = 32768;    // 32 kb
+const uint    MAX_BURST_FRAMES    = 15;       // 15 UDP packets
+
 const uint    RTCP_MIN_INTERVAL   = 45000;    // 500 ms (pts units)
 
 // initial burst length after seek (500ms = ~13 video frames)
@@ -86,6 +93,9 @@ cUdpScheduler::cUdpScheduler()
   m_CurrentAudioVtime = 0;
   m_CurrentVideoVtime = 0;
   m_MasterClock.Set(INT64_C(0));
+
+  m_BurstBytes  = 0;
+  m_BurstFrames = 0;
 
   m_Master = false;
   m_TrickSpeed = false;
@@ -141,6 +151,8 @@ cUdpScheduler::~cUdpScheduler()
 void cUdpScheduler::Scheduler_Sleep(int ms)
 {
   m_CondWait.Wait(ms);
+  m_BurstBytes = 0;
+  m_BurstFrames = 0;
 }
 
 bool cUdpScheduler::AddRtp(void) 
@@ -714,6 +726,7 @@ void cUdpScheduler::Action(void)
 
     // Wait until we have outgoing data in queue
     if(m_QueuePending <= 0) {
+      m_BurstFrames = m_BurstBytes = 0;
       m_Cond.TimedWait(m_Lock, 100); 
       if(m_QueuePending <= 0) {
 	// Still nothing...
@@ -750,32 +763,26 @@ void cUdpScheduler::Action(void)
     if(m_Master)
       Schedule(frame->payload, PayloadSize);
 
-    // Need some bandwidth limit for ex. sequence of still frames when 
-    // moving cutting marks very fast (no audio or PTS available) 
-#if 1
-    // hard limit for used bandwidth:
-    // - ~1 frames/ms & 8kb/ms -> 8mb/s -> ~ 80 Mbit/s ( / client)
-    // - max burst 15 frames or 30kb
-    static int cnt = 0, bytes = 0;
-    static uint64_t dbg_timer = cTimeMs::Now();
-    static int dbg_bytes = 0;
-    cnt++; 
-    bytes += PayloadSize;
-    if(cnt>=15 && bytes >= 30000) {
+    // Need some bandwidth limit for ex. sequence of still frames when
+    // moving cutting marks very fast (no audio or PTS available).
+    // Hard limit for used bandwidth:
+    //   - ~1 frames/ms & 8kb/ms -> 8mb/s -> ~ 80 Mbit/s ( / client)
+    //   - max burst 15 frames or 32 kb
+    m_BurstFrames ++;
+    m_BurstBytes += PayloadSize;
+    if (m_BurstFrames >= MAX_BURST_FRAMES && m_BurstBytes >= MAX_BURST_BYTES) {
       Scheduler_Sleep(4);
+#ifdef LOG_UDP_RATE
+      static uint64_t dbg_timer = cTimeMs::Now();
+      static int      dbg_bytes = 0;
       dbg_bytes += bytes;
-      cnt = 0; 
-      bytes = 0;
-      if(dbg_timer+60000 <= cTimeMs::Now()) {
-# if 0
-	LOGDBG("UDP rate: %4d Kbps (queue %d)", dbg_bytes/(60*1024/8),
-	       m_QueuePending);
-# endif
+      if (dbg_timer + 60000 <= cTimeMs::Now()) {
+	LOGDBG("UDP rate: %4d Kbps (queue %d)", dbg_bytes/(60*1024/8), m_QueuePending);
 	dbg_bytes = 0;
 	dbg_timer = cTimeMs::Now();
       }
-    }
 #endif
+    }
 
     /* tag frame with ssrc and timestamp */
     frame->rtp_hdr.ts   = htonl((uint32_t)(m_RtpScr.Now() & 0xffffffff));
