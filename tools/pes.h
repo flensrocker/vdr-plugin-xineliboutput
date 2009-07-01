@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.11 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: pes.h,v 1.12 2009-07-01 09:31:17 phintuka Exp $
  *
  */
 
@@ -23,6 +23,8 @@ extern "C" {
 #define PES_CHUNK_SIZE 2048
 
 #define MAX_SCR ((int64_t)0x1ffffffffLL)
+
+#define NO_PTS  (INT64_C(-1))
 
 /* PES PIDs */
 #define PRIVATE_STREAM1   0xBD

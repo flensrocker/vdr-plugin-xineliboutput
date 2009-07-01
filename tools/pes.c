@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.9 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: pes.c,v 1.10 2009-07-01 09:31:17 phintuka Exp $
  *
  */
 
@@ -25,9 +25,9 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
   if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
 
     if ((buf[6] & 0xC0) != 0x80)
-      return INT64_C(-1);
+      return NO_PTS;
     if ((buf[6] & 0x30) != 0)
-      return INT64_C(-1);
+      return NO_PTS;
 
     if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
       int64_t pts;
@@ -39,7 +39,7 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
       return pts;
     }
   }
-  return INT64_C(-1);
+  return NO_PTS;
 }
 
 int64_t pes_get_dts(const uint8_t *buf, int len)
@@ -47,9 +47,9 @@ int64_t pes_get_dts(const uint8_t *buf, int len)
   if (IS_VIDEO_PACKET(buf) || IS_AUDIO_PACKET(buf)) {
 
     if ((buf[6] & 0xC0) != 0x80)
-      return INT64_C(-1);
+      return NO_PTS;
     if ((buf[6] & 0x30) != 0)
-      return INT64_C(-1);
+      return NO_PTS;
 
     if (len > 18 && (buf[7] & 0x40)) { /* dts avail */
       int64_t dts;
@@ -61,7 +61,7 @@ int64_t pes_get_dts(const uint8_t *buf, int len)
       return dts;
     }
   }
-  return INT64_C(-1);
+  return NO_PTS;
 }
 
 void pes_change_pts(uint8_t *buf, int len, int64_t new_pts)
