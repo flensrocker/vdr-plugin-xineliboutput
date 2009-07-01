@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.40 2009-06-30 13:05:57 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.41 2009-07-01 08:44:33 phintuka Exp $
  *
  */
 
@@ -49,18 +49,22 @@
 #  define LOGSCR(x...)
 #endif
 
+/*
+ * constants
+ */
 
-const int MAX_QUEUE_SIZE      = 64;       // ~ 65 ms with typical DVB stream
-const int MAX_LIVE_QUEUE_SIZE = (64+60);  // ~ 100 ms with typical DVB stream
-const int HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
+const int     MAX_QUEUE_SIZE      = 64;       // ~ 65 ms with typical DVB stream
+const int     MAX_LIVE_QUEUE_SIZE = (64+60);  // ~ 100 ms with typical DVB stream
+const int     HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
+
+const int     RTCP_MIN_INTERVAL   = 45000;    // max. twice in second
 
 // initial burst length after seek (500ms = ~13 video frames)
-const int64_t INITIAL_BURST_TIME  = (int64_t)(45000); // pts units (90kHz)
+const int64_t INITIAL_BURST_TIME  = INT64_C(45000);  // pts units (90kHz)
 
 // assume seek when when pts difference between two frames exceeds this (2,5 seconds)
-const int64_t JUMP_LIMIT_TIME = (int64_t)(5*90000/2);   // pts units (90kHz)
+const int64_t JUMP_LIMIT_TIME     = INT64_C(225000); // pts units (90kHz)
 
-const int RTCP_MIN_INTERVAL = 45000; // max. twice in second
 
 
 typedef enum {
@@ -76,9 +80,9 @@ cUdpScheduler::cUdpScheduler()
 
   // Scheduler data
 
-  current_audio_vtime = 0;
-  current_video_vtime = 0;
-  MasterClock.Set(INT64_C(0));
+  m_CurrentAudioVtime = 0;
+  m_CurrentVideoVtime = 0;
+  m_MasterClock.Set(INT64_C(0));
 
   m_Master = false;
   m_TrickSpeed = false;
@@ -92,7 +96,7 @@ cUdpScheduler::cUdpScheduler()
   m_LastRtcpTime = 0;
   m_Frames = 0;
   m_Octets = 0;
-  RtpScr.Set((int64_t)random());
+  m_RtpScr.Set((int64_t)random());
 
   m_fd_sap = -1;
 
@@ -329,9 +333,9 @@ int cUdpScheduler::Poll(int TimeoutMs, bool Master)
     if(TimeoutMs >= 0)
       WaitEnd += (uint64_t)TimeoutMs;
 
-    while(cTimeMs::Now() < WaitEnd &&
-          Running() &&
-	  m_QueuePending >= limit)	
+    while (cTimeMs::Now() < WaitEnd &&
+           Running() &&
+           m_QueuePending >= limit)
       m_Cond.TimedWait(m_Lock, 5);
   }
 
@@ -350,9 +354,9 @@ bool cUdpScheduler::Flush(int TimeoutMs)
     if(TimeoutMs >= 0)
       WaitEnd += (uint64_t)TimeoutMs;
 
-    while(cTimeMs::Now() < WaitEnd &&
-          Running() &&
-	  m_QueuePending > 0)
+    while (cTimeMs::Now() < WaitEnd &&
+           Running() &&
+           m_QueuePending > 0)
       m_Cond.TimedWait(m_Lock, 5);
   }
   return m_QueuePending == 0;
@@ -373,9 +377,9 @@ void cUdpScheduler::Pause(bool On)
   cMutexLock ml(&m_Lock);
 
   if(On)
-    MasterClock.Pause();
+    m_MasterClock.Pause();
   else
-    MasterClock.Resume();
+    m_MasterClock.Resume();
 
   m_TrickSpeed = false;
 }
@@ -393,7 +397,7 @@ void cUdpScheduler::TrickSpeed(const int Multiplier)
     LOGMSG("UDP clock --> 1/%d", Multiplier);
 #endif
 
-  MasterClock.TrickSpeed(Multiplier);
+  m_MasterClock.TrickSpeed(Multiplier);
 
   m_TrickSpeed = (Multiplier==-1 || Multiplier==1) ? false : true;
 }
@@ -402,8 +406,8 @@ void cUdpScheduler::SetScrSpeed(const int Speed)
 {
   cMutexLock ml(&m_Lock);
 
-  MasterClock.SetScrSpeed(Speed);
-  RtpScr.SetScrSpeed(Speed);
+  m_MasterClock.SetScrSpeed(Speed);
+  m_RtpScr.SetScrSpeed(Speed);
 }
 
 bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length) 
@@ -425,49 +429,49 @@ bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length)
   return true;
 }
 
-int cUdpScheduler::calc_elapsed_vtime(int64_t pts, bool Audio) 
+int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio) 
 {
   int64_t diff = 0;
 
   if(!Audio) {
-    diff = pts - current_video_vtime;
+    diff = pts - m_CurrentVideoVtime;
     if(diff > JUMP_LIMIT_TIME || (-diff) > JUMP_LIMIT_TIME) { // 1 s (must be > GOP)
       // RESET
 #ifdef LOG_SCR
       LOGDBG("cUdpScheduler RESET (Video jump %lld->%lld)",
-	     current_video_vtime, pts);
+	     m_CurrentVideoVtime, pts);
 #endif
-      current_video_vtime = pts;
+      m_CurrentVideoVtime = pts;
 
       // Use video pts for sync only in audioless trickspeeds
       // (audio has smaller, constant and increasing intervals)
       if(m_TrickSpeed)
-	MasterClock.Set(current_video_vtime + INITIAL_BURST_TIME);
+	m_MasterClock.Set(m_CurrentVideoVtime + INITIAL_BURST_TIME);
 
       return -1;
     }
     if(diff < 0)  /* ignore small negative differences (B/P frames are sent out-of-order) */
       diff = 0;
     else
-      current_video_vtime = pts;
+      m_CurrentVideoVtime = pts;
     
   } else if(Audio) {
-    diff = pts - current_audio_vtime;
+    diff = pts - m_CurrentAudioVtime;
     if(diff < 0) diff = -diff;
     if(diff > JUMP_LIMIT_TIME) { // 1 sec
       // RESET
 #ifdef LOG_SCR
       LOGDBG("cUdpScheduler RESET (Audio jump %lld->%lld)",
-	     current_audio_vtime, pts);
+	     m_CurrentAudioVtime, pts);
 #endif
-      current_audio_vtime = pts;
+      m_CurrentAudioVtime = pts;
 
       // Use audio pts for sync (audio has constant and increasing intervals)
-      MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
+      m_MasterClock.Set(m_CurrentAudioVtime + INITIAL_BURST_TIME);
       
       return -1;
     }
-    current_audio_vtime = pts;
+    m_CurrentAudioVtime = pts;
   }
  
   return (int) diff;
@@ -478,7 +482,7 @@ void cUdpScheduler::Send_RTCP(void)
   if(!m_fd_rtcp.open())
     return;
 
-  uint64_t scr = RtpScr.Now();
+  uint64_t scr = m_RtpScr.Now();
 
   if(scr > (m_LastRtcpTime + RTCP_MIN_INTERVAL)) {
     uint8_t frame[2048], *content = frame;
@@ -600,10 +604,10 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 {
   bool Audio = IS_AUDIO_PACKET(Data), Video = IS_VIDEO_PACKET(Data);
   int64_t pts = PES_HAS_PTS(Data) ? pes_get_pts(Data, Length) : INT64_C(-1);
-  int elapsed = pts>0 ? calc_elapsed_vtime(pts, Audio) : 0;
+  int elapsed = pts>0 ? CalcElapsedVtime(pts, Audio) : 0;
 
   if(elapsed > 0) {
-    int64_t now = MasterClock.Now();
+    int64_t now = m_MasterClock.Now();
     LOGSCR("PTS: %lld  (%s) elapsed %d ms (PID %02x)", 
 	   pts, Video?"Video":Audio?"Audio":"?", elapsed/90, Data[3]);
 
@@ -611,22 +615,22 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
     // Detect discontinuity
     //
     if(Audio) {
-      if(now > current_audio_vtime && (now - current_audio_vtime)>JUMP_LIMIT_TIME) {
+      if(now > m_CurrentAudioVtime && (now - m_CurrentAudioVtime)>JUMP_LIMIT_TIME) {
 	LOGSCR("cUdpScheduler MasterClock init (was in past)");
-	MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
-      } else if(now < current_audio_vtime && (current_audio_vtime-now)>JUMP_LIMIT_TIME) {
+	m_MasterClock.Set(m_CurrentAudioVtime + INITIAL_BURST_TIME);
+      } else if(now < m_CurrentAudioVtime && (m_CurrentAudioVtime-now)>JUMP_LIMIT_TIME) {
 	LOGSCR("cUdpScheduler MasterClock init (was in future)");
-	MasterClock.Set(current_audio_vtime + INITIAL_BURST_TIME);
+	m_MasterClock.Set(m_CurrentAudioVtime + INITIAL_BURST_TIME);
       }
     }
 
     else if(Video && m_TrickSpeed) {
-      if(now > current_video_vtime && (now - current_video_vtime)>JUMP_LIMIT_TIME) {
+      if(now > m_CurrentVideoVtime && (now - m_CurrentVideoVtime)>JUMP_LIMIT_TIME) {
 	LOGSCR("cUdpScheduler MasterClock init (was in past) - VIDEO");
-	MasterClock.Set(current_video_vtime + INITIAL_BURST_TIME);
-      } else if(now < current_video_vtime && (current_video_vtime-now)>JUMP_LIMIT_TIME) {
+	m_MasterClock.Set(m_CurrentVideoVtime + INITIAL_BURST_TIME);
+      } else if(now < m_CurrentVideoVtime && (m_CurrentVideoVtime-now)>JUMP_LIMIT_TIME) {
 	LOGSCR("cUdpScheduler MasterClock init (was in future) - VIDEO");
-	MasterClock.Set(current_video_vtime + INITIAL_BURST_TIME);
+	m_MasterClock.Set(m_CurrentVideoVtime + INITIAL_BURST_TIME);
       }
     }
 
@@ -635,15 +639,15 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
     //
     int delay_ms = 0;
     if(m_TrickSpeed ) {
-      if(current_video_vtime > now) {
-	delay_ms = (int)(current_video_vtime - now)/90;
+      if(m_CurrentVideoVtime > now) {
+	delay_ms = (int)(m_CurrentVideoVtime - now)/90;
 	LOGSCR("cUdpScheduler sleeping %d ms "
 	       "(time reference: %s, beat interval %d ms)",
 	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed/90);
       }
     } else {
-      if(current_audio_vtime > now) {
-	delay_ms = (int)(current_audio_vtime - now)/90;
+      if(m_CurrentAudioVtime > now) {
+	delay_ms = (int)(m_CurrentAudioVtime - now)/90;
 	LOGSCR("cUdpScheduler sleeping %d ms "
 	       "(time reference: %s, beat interval %d ms)",
 	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed/90);
@@ -653,9 +657,9 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
       if(delay_ms > 20)
 	delay_ms = 20;
       LOGSCR("  -> cUdpScheduler sleeping %d ms ", delay_ms);
-      CondWait.Wait(delay_ms);
-      now = MasterClock.Now();
-      delay_ms = (int)(current_video_vtime - now)/90;
+      m_CondWait.Wait(delay_ms);
+      now = m_MasterClock.Now();
+      delay_ms = (int)(m_CurrentVideoVtime - now)/90;
     }
   }
 }
@@ -692,7 +696,7 @@ void cUdpScheduler::Action(void)
   m_Lock.Lock();
 
   while (Running()) {
-	
+
     if(m_Handles[0] < 0) {
       m_Cond.TimedWait(m_Lock, 5000); 
       continue;
@@ -748,7 +752,7 @@ void cUdpScheduler::Action(void)
     cnt++; 
     bytes += PayloadSize;
     if(cnt>=15 && bytes >= 30000) {
-      CondWait.Wait(4);
+      m_CondWait.Wait(4);
       dbg_bytes += bytes;
       cnt = 0; 
       bytes = 0;
@@ -764,7 +768,7 @@ void cUdpScheduler::Action(void)
 #endif
 
     /* tag frame with ssrc and timestamp */
-    frame->rtp_hdr.ts   = htonl((uint32_t)(RtpScr.Now() & 0xffffffff));
+    frame->rtp_hdr.ts   = htonl((uint32_t)(m_RtpScr.Now() & 0xffffffff));
     frame->rtp_hdr.ssrc = htonl(m_ssrc);
 
     /* deliver to all active sockets */
@@ -782,13 +786,13 @@ void cUdpScheduler::Action(void)
 	if(size >= (m_wmem[i] - 2*RtpPacketLen)) {
 	  LOGMSG("cUdpScheduler: kernel transmit queue > ~%dkb (max %dkb) ! (master=%d)", 
 		 (m_wmem[i] - 2*RtpPacketLen)/1024, m_wmem[i]/1024, m_Master);
-	  CondWait.Wait(2);
+	  m_CondWait.Wait(2);
 	}
       }	else {
 	if(m_QueuePending > (MAX_QUEUE_SIZE-5))
 	  LOGDBG("cUdpScheduler: kernel transmit queue > ~30kb ! (master=%d ; Queue=%d)", 
 		 m_Master, m_QueuePending);
-	CondWait.Wait(2);
+	m_CondWait.Wait(2);
       }
 
       if(m_Handles[i] == m_fd_rtp.handle()) {
@@ -858,7 +862,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     if(!ioctl(fd, TIOCOUTQ, &size))
       if(size > ((0x10000)/2 - 2048)) { // assume 64k kernel buffer
 	LOGDBG("cUdpScheduler::ReSend: kernel transmit queue > ~30kb !");
-	cCondWait::SleepMs(2);
+	m_CondWait.Wait(2);
       }
     
     stream_rtp_header_impl_t *frame = m_BackLog->Get(Seq1);

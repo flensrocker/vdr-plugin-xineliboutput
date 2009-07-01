@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.15 2009-06-30 13:05:57 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.16 2009-07-01 08:44:33 phintuka Exp $
  *
  */
 
@@ -52,13 +52,13 @@ class cUdpScheduler : public cThread
 
   protected:
 
-    // Data for payload handling & buffering
-
     // Signalling
+
     cCondVar  m_Cond;
     cMutex    m_Lock;
 
     // Clients
+
     int       m_Handles[MAX_UDP_HANDLES];
     int       m_wmem[MAX_UDP_HANDLES];  /* kernel buffer size */
 
@@ -66,42 +66,50 @@ class cUdpScheduler : public cThread
     cxSocket  m_fd_rtcp;
 
     // Queue
-    int m_QueueNextSeq;      /* next outgoing */
-    int m_QueuePending;      /* outgoing queue size */
-    cUdpBackLog *m_BackLog;  /* queue for incoming data (not yet send) and retransmissions */
-    cMutex m_BackLogDeleteMutex;
+
+    int          m_QueueNextSeq;  /* next outgoing */
+    int          m_QueuePending;  /* outgoing queue size */
+    cUdpBackLog *m_BackLog;       /* queue for incoming data (not yet send) and retransmissions */
+    cMutex       m_BackLogDeleteMutex;
 
     // Data for scheduling algorithm
-    cTimePts  MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
-    cCondWait CondWait;
 
-    int64_t  current_audio_vtime;
-    int64_t  current_video_vtime;
+    cTimePts     m_MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
+    cCondWait    m_CondWait;
 
-    // RTP
-    uint32_t  m_ssrc;   /* RTP synchronization source id */
-    cTimePts  RtpScr;   /* 90 kHz monotonic time source for RTP timestamps */
-
-    // RTCP
-    uint64_t  m_LastRtcpTime;
-    uint32_t  m_Frames;
-    uint32_t  m_Octets;
+    int64_t      m_CurrentAudioVtime;
+    int64_t      m_CurrentVideoVtime;
 
     // Scheduling
 
-    bool m_TrickSpeed;
-    bool m_Master;     /* if true, we are master metronom for playback */
+    bool         m_TrickSpeed;
+    bool         m_Master;     /* if true, we are master metronom for playback */
 
-    int  calc_elapsed_vtime(int64_t pts, bool Audio);
-    void Schedule(const uchar *Data, int Length);
+    int          CalcElapsedVtime(int64_t pts, bool Audio);
+    void         Schedule(const uchar *Data, int Length);
+
+    // RTP
+
+    uint32_t     m_ssrc;   /* RTP synchronization source id */
+    cTimePts     m_RtpScr; /* 90 kHz monotonic time source for RTP timestamps */
+
+    // RTCP
+
+    uint64_t     m_LastRtcpTime;
+    uint32_t     m_Frames;
+    uint32_t     m_Octets;
+
+    void         Send_RTCP(void);
+
+    // SAP
+
+    int          m_fd_sap;
+
+    void         Send_SAP(bool Announce = true);
+
+    // Thread
 
     virtual void Action(void);
-
-    void Send_RTCP(void);
-
-    int  m_fd_sap;
-
-    void Send_SAP(bool Announce = true);
 };
 
 #endif
