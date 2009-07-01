@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.16 2009-07-01 08:44:33 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.17 2009-07-01 09:05:34 phintuka Exp $
  *
  */
 
@@ -60,15 +60,15 @@ class cUdpScheduler : public cThread
     // Clients
 
     int       m_Handles[MAX_UDP_HANDLES];
-    int       m_wmem[MAX_UDP_HANDLES];  /* kernel buffer size */
+    uint      m_wmem[MAX_UDP_HANDLES];  /* kernel buffer size */
 
     cxSocket  m_fd_rtp;
     cxSocket  m_fd_rtcp;
 
     // Queue
 
-    int          m_QueueNextSeq;  /* next outgoing */
-    int          m_QueuePending;  /* outgoing queue size */
+    uint         m_QueueNextSeq;  /* next outgoing */
+    uint         m_QueuePending;  /* outgoing queue size */
     cUdpBackLog *m_BackLog;       /* queue for incoming data (not yet send) and retransmissions */
     cMutex       m_BackLogDeleteMutex;
 

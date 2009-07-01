@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.41 2009-07-01 08:44:33 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.42 2009-07-01 09:05:34 phintuka Exp $
  *
  */
 
@@ -53,11 +53,11 @@
  * constants
  */
 
-const int     MAX_QUEUE_SIZE      = 64;       // ~ 65 ms with typical DVB stream
-const int     MAX_LIVE_QUEUE_SIZE = (64+60);  // ~ 100 ms with typical DVB stream
-const int     HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
+const uint    MAX_QUEUE_SIZE      = 64;       // ~ 65 ms with typical DVB stream
+const uint    MAX_LIVE_QUEUE_SIZE = (64+60);  // ~ 100 ms with typical DVB stream
+const uint    HARD_LIMIT          = (4*1024); // ~ 40 Mbit/s === 4 Mb/s
 
-const int     RTCP_MIN_INTERVAL   = 45000;    // max. twice in second
+const uint    RTCP_MIN_INTERVAL   = 45000;    // 500 ms (pts units)
 
 // initial burst length after seek (500ms = ~13 video frames)
 const int64_t INITIAL_BURST_TIME  = INT64_C(45000);  // pts units (90kHz)
@@ -65,6 +65,8 @@ const int64_t INITIAL_BURST_TIME  = INT64_C(45000);  // pts units (90kHz)
 // assume seek when when pts difference between two frames exceeds this (2,5 seconds)
 const int64_t JUMP_LIMIT_TIME     = INT64_C(225000); // pts units (90kHz)
 
+const uint    SCHEDULER_MIN_DELAY_MS = 3;
+const uint    SCHEDULER_MAX_DELAY_MS = 20;
 
 
 typedef enum {
@@ -74,6 +76,7 @@ typedef enum {
   eScrFromVideo
 } ScrSource_t;
 
+static inline int pts_to_ms(int64_t pts) { return int(pts)/90; }
 
 cUdpScheduler::cUdpScheduler()
 {
@@ -327,7 +330,7 @@ int cUdpScheduler::Poll(int TimeoutMs, bool Master)
     return DEFAULT_POLL_SIZE;
   }
   
-  int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
+  uint limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
   if(m_QueuePending >= limit) {
     uint64_t WaitEnd = cTimeMs::Now();
     if(TimeoutMs >= 0)
@@ -339,7 +342,7 @@ int cUdpScheduler::Poll(int TimeoutMs, bool Master)
       m_Cond.TimedWait(m_Lock, 5);
   }
 
-  return max(limit - m_QueuePending, 0);
+  return limit < m_QueuePending ? limit - m_QueuePending : 0;
 }
 
 bool cUdpScheduler::Flush(int TimeoutMs)
@@ -417,7 +420,7 @@ bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length)
   if(m_Handles[0] < 0) 
     return true;
 
-  int limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
+  uint limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
   if(m_QueuePending >= limit)
     return false;
 
@@ -429,7 +432,7 @@ bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length)
   return true;
 }
 
-int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio) 
+int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio)
 {
   int64_t diff = 0;
 
@@ -609,7 +612,7 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
   if(elapsed > 0) {
     int64_t now = m_MasterClock.Now();
     LOGSCR("PTS: %lld  (%s) elapsed %d ms (PID %02x)", 
-	   pts, Video?"Video":Audio?"Audio":"?", elapsed/90, Data[3]);
+	   pts, Video?"Video":Audio?"Audio":"?", pts_to_ms(elapsed), Data[3]);
 
     //
     // Detect discontinuity
@@ -637,29 +640,30 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
     //
     // Delay
     //
-    int delay_ms = 0;
+    uint delay_ms = 0;
     if(m_TrickSpeed ) {
       if(m_CurrentVideoVtime > now) {
-	delay_ms = (int)(m_CurrentVideoVtime - now)/90;
+	delay_ms = pts_to_ms(m_CurrentVideoVtime - now);
 	LOGSCR("cUdpScheduler sleeping %d ms "
 	       "(time reference: %s, beat interval %d ms)",
-	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed/90);
+	       delay_ms, (Audio?"Audio PTS":"Video PTS"), pts_to_ms(elapsed));
       }
     } else {
       if(m_CurrentAudioVtime > now) {
-	delay_ms = (int)(m_CurrentAudioVtime - now)/90;
+	delay_ms = pts_to_ms(m_CurrentAudioVtime - now);
 	LOGSCR("cUdpScheduler sleeping %d ms "
 	       "(time reference: %s, beat interval %d ms)",
-	       delay_ms, (Audio?"Audio PTS":"Video PTS"), elapsed/90);
+	       delay_ms, (Audio?"Audio PTS":"Video PTS"), pts_to_ms(elapsed));
       }
     }
-    while(delay_ms > 3) {
-      if(delay_ms > 20)
-	delay_ms = 20;
+
+    while (delay_ms > SCHEDULER_MIN_DELAY_MS) {
+      if (delay_ms > SCHEDULER_MAX_DELAY_MS)
+	delay_ms = SCHEDULER_MAX_DELAY_MS;
       LOGSCR("  -> cUdpScheduler sleeping %d ms ", delay_ms);
       m_CondWait.Wait(delay_ms);
       now = m_MasterClock.Now();
-      delay_ms = (int)(m_CurrentVideoVtime - now)/90;
+      delay_ms = pts_to_ms(m_CurrentVideoVtime - now);
     }
   }
 }
@@ -781,7 +785,7 @@ void cUdpScheduler::Action(void)
       // - kernel silently drops frames it cant send
       // -> poll() + send() just causes frames to be dropped
       //
-      int size = 0;
+      uint size = 0;
       if(!ioctl(m_Handles[i], TIOCOUTQ, &size)) {
 	if(size >= (m_wmem[i] - 2*RtpPacketLen)) {
 	  LOGMSG("cUdpScheduler: kernel transmit queue > ~%dkb (max %dkb) ! (master=%d)", 
