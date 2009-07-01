@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.h,v 1.12 2009-07-01 09:31:17 phintuka Exp $
+ * $Id: pes.h,v 1.13 2009-07-01 09:56:26 phintuka Exp $
  *
  */
 
@@ -64,6 +64,8 @@ extern "C" {
  * timestamps
  */
 
+static inline int     pts_to_ms(int64_t pts) { return (int)(pts/INT64_C(90)); }
+static inline int64_t ms_to_pts(int ms)      { return ((int64_t)(ms)) * INT64_C(90); }
 
 int64_t pes_get_pts(const uint8_t *buf, int len);
 int64_t pes_get_dts(const uint8_t *buf, int len);
