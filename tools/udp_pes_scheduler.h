@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.17 2009-07-01 09:05:34 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.18 2009-07-01 09:18:12 phintuka Exp $
  *
  */
 
@@ -72,21 +72,20 @@ class cUdpScheduler : public cThread
     cUdpBackLog *m_BackLog;       /* queue for incoming data (not yet send) and retransmissions */
     cMutex       m_BackLogDeleteMutex;
 
-    // Data for scheduling algorithm
+    // Scheduling
 
     cTimePts     m_MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
-    cCondWait    m_CondWait;
+    bool         m_TrickSpeed;    /* current (replay) speed */
+    bool         m_Master;        /* if true, we are master metronom for playback */
 
     int64_t      m_CurrentAudioVtime;
     int64_t      m_CurrentVideoVtime;
 
-    // Scheduling
-
-    bool         m_TrickSpeed;
-    bool         m_Master;     /* if true, we are master metronom for playback */
+    cCondWait    m_CondWait;
 
     int          CalcElapsedVtime(int64_t pts, bool Audio);
     void         Schedule(const uchar *Data, int Length);
+    void         Scheduler_Sleep(int ms);
 
     // RTP
 

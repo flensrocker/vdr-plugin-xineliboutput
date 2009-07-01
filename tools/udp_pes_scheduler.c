@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.42 2009-07-01 09:05:34 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.43 2009-07-01 09:18:12 phintuka Exp $
  *
  */
 
@@ -125,6 +125,7 @@ cUdpScheduler::~cUdpScheduler()
 
   Cancel(-1);
   m_Cond.Broadcast();
+  m_CondWait.Signal();
   m_Lock.Unlock();
 
   Cancel(3);
@@ -135,6 +136,11 @@ cUdpScheduler::~cUdpScheduler()
   CLOSESOCKET(m_fd_sap);
 
   delete m_BackLog;
+}
+
+void cUdpScheduler::Scheduler_Sleep(int ms)
+{
+  m_CondWait.Wait(ms);
 }
 
 bool cUdpScheduler::AddRtp(void) 
@@ -661,7 +667,7 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
       if (delay_ms > SCHEDULER_MAX_DELAY_MS)
 	delay_ms = SCHEDULER_MAX_DELAY_MS;
       LOGSCR("  -> cUdpScheduler sleeping %d ms ", delay_ms);
-      m_CondWait.Wait(delay_ms);
+      Scheduler_Sleep(delay_ms);
       now = m_MasterClock.Now();
       delay_ms = pts_to_ms(m_CurrentVideoVtime - now);
     }
@@ -756,7 +762,7 @@ void cUdpScheduler::Action(void)
     cnt++; 
     bytes += PayloadSize;
     if(cnt>=15 && bytes >= 30000) {
-      m_CondWait.Wait(4);
+      Scheduler_Sleep(4);
       dbg_bytes += bytes;
       cnt = 0; 
       bytes = 0;
@@ -790,13 +796,13 @@ void cUdpScheduler::Action(void)
 	if(size >= (m_wmem[i] - 2*RtpPacketLen)) {
 	  LOGMSG("cUdpScheduler: kernel transmit queue > ~%dkb (max %dkb) ! (master=%d)", 
 		 (m_wmem[i] - 2*RtpPacketLen)/1024, m_wmem[i]/1024, m_Master);
-	  m_CondWait.Wait(2);
+	  Scheduler_Sleep(2);
 	}
       }	else {
 	if(m_QueuePending > (MAX_QUEUE_SIZE-5))
 	  LOGDBG("cUdpScheduler: kernel transmit queue > ~30kb ! (master=%d ; Queue=%d)", 
 		 m_Master, m_QueuePending);
-	m_CondWait.Wait(2);
+	Scheduler_Sleep(2);
       }
 
       if(m_Handles[i] == m_fd_rtp.handle()) {
@@ -866,7 +872,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     if(!ioctl(fd, TIOCOUTQ, &size))
       if(size > ((0x10000)/2 - 2048)) { // assume 64k kernel buffer
 	LOGDBG("cUdpScheduler::ReSend: kernel transmit queue > ~30kb !");
-	m_CondWait.Wait(2);
+	Scheduler_Sleep(2);
       }
     
     stream_rtp_header_impl_t *frame = m_BackLog->Get(Seq1);
