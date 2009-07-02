@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.73 2009-06-01 14:15:59 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.74 2009-07-02 18:27:19 phintuka Exp $
  *
  */
 
@@ -1108,6 +1108,12 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 
   m_bMulticast[cli] = true;
   m_iMulticastMask |= (1<<cli);
+
+  // Send padding packet before header (PAT/PMT).
+  // Client uses first received UDP/RTP packet to test connection.
+  m_Scheduler->QueuePadding();
+  if (m_Header)
+    m_Scheduler->Queue(0, m_Header, m_HeaderLength);
 }
 
 void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
@@ -1140,6 +1146,12 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   m_bUdp[cli] = true;
   fd_data[cli] = fd;
   m_Scheduler->AddHandle(fd);
+
+  // Send padding packet before header (PAT/PMT).
+  // Client uses first received UDP/RTP packet to test connection.
+  m_Scheduler->QueuePadding();
+  if (m_Header)
+    m_Scheduler->Queue(0, m_Header, m_HeaderLength);
 }
 
 void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
