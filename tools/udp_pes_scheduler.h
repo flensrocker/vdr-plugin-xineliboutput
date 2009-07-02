@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.19 2009-07-01 09:24:13 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.20 2009-07-02 10:38:29 phintuka Exp $
  *
  */
 
@@ -41,6 +41,7 @@ class cUdpScheduler : public cThread
     bool Clients(void) { return m_Handles[0] >= 0; }
     int  Poll(int TimeoutMs, bool Master);
     bool Queue(uint64_t StreamPos, const uchar *Data, int Length);
+    void QueuePadding(void);
     void ReSend(int fd, uint64_t Pos, int Seq1, int Seq2);
 
     void Clear(void);
@@ -89,6 +90,7 @@ class cUdpScheduler : public cThread
     int          CalcElapsedVtime(int64_t pts, bool Audio);
     void         Schedule(const uchar *Data, int Length);
     void         Scheduler_Sleep(int ms);
+    void         QueuePaddingInternal(void);
 
     // RTP
 

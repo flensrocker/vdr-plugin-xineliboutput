@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.45 2009-07-02 04:37:50 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.46 2009-07-02 10:38:29 phintuka Exp $
  *
  */
 
@@ -83,7 +83,6 @@ typedef enum {
   eScrFromVideo
 } ScrSource_t;
 
-static inline int pts_to_ms(int64_t pts) { return int(pts)/90; }
 
 cUdpScheduler::cUdpScheduler()
 {
@@ -450,6 +449,37 @@ bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length)
   return true;
 }
 
+void cUdpScheduler::QueuePadding(void)
+{
+  cMutexLock ml(&m_Lock);
+
+  if (m_Handles[0] < 0)
+    return;
+
+  if (m_QueuePending > 2)
+    return;
+
+  QueuePaddingInternal();
+
+  m_Cond.Broadcast();
+}
+
+void cUdpScheduler::QueuePaddingInternal(void)
+{
+  static unsigned const char Padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
+
+  int PrevSeq = (m_QueueNextSeq + UDP_BUFFER_SIZE - 1) & UDP_BUFFER_MASK;
+  stream_rtp_header_impl_t *Frame = m_BackLog->Get(PrevSeq);
+  if (Frame) {
+    int      PrevLen = m_BackLog->PayloadSize(PrevSeq);
+    uint64_t Pos     = ntohll(Frame->hdr_ext.pos) + PrevLen - 8;
+    m_BackLog->MakeFrame(Pos, Padding, 8);
+  } else
+    m_BackLog->MakeFrame(0, Padding, 8);
+
+  m_QueuePending++;
+}
+
 int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio)
 {
   int64_t diff = 0;
@@ -732,16 +762,7 @@ void cUdpScheduler::Action(void)
 	// Still nothing...
 	// Send padding frame once in 100ms so clients can detect 
 	// possible missing frames and server shutdown
-	static unsigned char padding[] = {0x00,0x00,0x01,0xBE,0x00,0x02,0xff,0xff};
-	int prevseq = (m_QueueNextSeq + UDP_BUFFER_SIZE - 1) & UDP_BUFFER_MASK;
-	stream_rtp_header_impl_t *frame = m_BackLog->Get(prevseq);
-	if(frame) {
-	  int prevlen = m_BackLog->PayloadSize(prevseq);
-	  uint64_t pos = ntohll(frame->hdr_ext.pos) + prevlen - 8;
-	  m_BackLog->MakeFrame(pos, padding, 8);
-	} else
-	  m_BackLog->MakeFrame(0, padding, 8);
-	m_QueuePending++;
+        QueuePaddingInternal();
       }
       continue; // to check Running()
     }
