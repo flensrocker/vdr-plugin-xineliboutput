@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.10 2009-07-01 09:31:17 phintuka Exp $
+ * $Id: ts.c,v 1.11 2009-07-03 05:37:05 phintuka Exp $
  *
  */
 
@@ -480,20 +480,20 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
 /*
  * ts_get_pcr()
  */
-int64_t ts_get_pcr(const uint8_t *pkt)
+static int ts_get_pcr_1(const uint8_t *pkt, int64_t *ppcr)
 {
   if (!ts_ADAPT_FIELD_EXISTS(pkt)) {
-    return NO_PTS;
+    return 0;
   }
 
   if (ts_HAS_ERROR(pkt)) {
     LOGMSG("ts_get_pcr: transport error");
-    return NO_PTS;
+    return 0;
   }
 
   /* pcr flag ? */
   if (! (pkt[5] & 0x10))
-    return NO_PTS;
+    return 0;
 
   int64_t pcr;
   uint    epcr;
@@ -507,9 +507,28 @@ int64_t ts_get_pcr(const uint8_t *pkt)
   epcr = ((pkt[10] & 0x1) << 8) | pkt[11];
 
   LOGPCR("ts_get_pcr: PCR: %"PRId64", EPCR: %u", pcr, epcr);
+  *ppcr = pcr;
+  return 1;
+}
+
+int64_t ts_get_pcr(const uint8_t *pkt)
+{
+  int64_t pcr = NO_PTS;
+  ts_get_pcr_1(pkt, &pcr);
   return pcr;
 }
 
+int ts_get_pcr_n(const uint8_t *pkt, int npkt, int64_t *pcr)
+{
+  pkt += TS_SIZE * npkt;
+  while (npkt > 0) {
+    npkt--;
+    pkt -= TS_SIZE;
+    if (ts_get_pcr_1(pkt, pcr))
+      return 1;
+  }
+  return 0;
+}
 
 
 /*
