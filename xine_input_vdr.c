@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.252 2009-05-25 11:33:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.253 2009-07-05 11:20:06 phintuka Exp $
  *
  */
 
@@ -1146,6 +1146,28 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   return this;
 }
 #endif
+
+static void flush_all_fifos (vdr_input_plugin_t *this, int full)
+{
+  if (this->read_buffer) {
+    this->read_buffer->free_buffer(this->read_buffer);
+    this->read_buffer = NULL;
+  }
+
+  if (full) {
+    if (this->stream && this->stream->audio_fifo)
+      this->stream->audio_fifo->clear(this->stream->audio_fifo);
+    if (this->stream && this->stream->video_fifo)
+      this->stream->video_fifo->clear(this->stream->video_fifo);
+  }
+
+  if (this->iframe_buffer)
+    this->iframe_buffer->clear(this->iframe_buffer);
+  if (this->block_buffer)
+    this->block_buffer->clear(this->block_buffer);
+  if (this->hd_buffer)
+    this->hd_buffer->clear(this->hd_buffer);
+}
 
 static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int force)
 {
@@ -4210,10 +4232,9 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
 static void handle_disconnect(vdr_input_plugin_t *this)
 {
   LOGMSG("read_block: no data source, returning NULL");
-  if(this->block_buffer)
-    this->block_buffer->clear(this->block_buffer);
-  if(this->hd_buffer)
-    this->hd_buffer->clear(this->hd_buffer);
+
+  flush_all_fifos (this, 0);
+
   set_playback_speed(this, 1);
   this->live_mode = 0;
   reset_scr_tuning(this, XINE_FINE_SPEED_NORMAL);
@@ -4491,28 +4512,16 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     free_udp_data(this->udp_data);
 
   /* fifos */
+  LOGDBG("Disposing fifos");
 
   /* need to get all buffer elements back before disposing own buffers ... */
-  LOGDBG("Disposing fifos");
-  if(this->read_buffer)
-    this->read_buffer->free_buffer(this->read_buffer);
-  if(this->stream && this->stream->audio_fifo)
-    this->stream->audio_fifo->clear(this->stream->audio_fifo);
-  if(this->stream && this->stream->video_fifo)
-    this->stream->video_fifo->clear(this->stream->video_fifo);
+  flush_all_fifos (this, 1);
 
-  if(this->iframe_buffer)
-    this->iframe_buffer->clear(this->iframe_buffer);
-  if(this->block_buffer)
-    this->block_buffer->clear(this->block_buffer);
-  if(this->hd_buffer)
-    this->hd_buffer->clear(this->hd_buffer);
-
-  if(this->iframe_buffer)
+  if (this->iframe_buffer)
     this->iframe_buffer->dispose(this->iframe_buffer);
-  if(this->block_buffer)
+  if (this->block_buffer)
     this->block_buffer->dispose(this->block_buffer);
-  if(this->hd_buffer)
+  if (this->hd_buffer)
     this->hd_buffer->dispose(this->hd_buffer);
 
   free (this);
