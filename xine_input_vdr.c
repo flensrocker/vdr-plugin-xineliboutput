@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.255 2009-07-05 11:24:14 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.256 2009-07-05 11:26:56 phintuka Exp $
  *
  */
 
@@ -4283,6 +4283,14 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   int                 need_pause = 0;
 
   TRACE("vdr_plugin_read_block");
+
+  if (this->slave_stream) {
+    xine_usec_sleep(50*1000);
+    if (this->slave_stream) {
+      errno = EAGAIN;
+      return NULL;
+    }
+  }
 
   do {
 
