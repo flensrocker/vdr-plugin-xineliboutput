@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.253 2009-07-05 11:20:06 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.254 2009-07-05 11:21:00 phintuka Exp $
  *
  */
 
@@ -2608,7 +2608,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   LOGCMD("vdr_plugin_parse_control: %s", cmd); 
 
-  if( *((uint32_t*)cmd) == *((uint32_t*)str_poll) ||
+  if( !memcmp(cmd, str_poll, 4) ||
       !strncasecmp(cmd, "POLL ", 5)) {
     tmp32 = atoi(cmd+5);
     if(tmp32 >= 0 && tmp32 < 1000) {
