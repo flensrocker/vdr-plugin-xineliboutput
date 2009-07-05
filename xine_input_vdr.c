@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.254 2009-07-05 11:21:00 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.255 2009-07-05 11:24:14 phintuka Exp $
  *
  */
 
@@ -4492,8 +4492,10 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   }
 
   /* OSD */
-  this->osd_manager->dispose(this->osd_manager, this->stream);
-  this->osd_manager = NULL;
+  if (this->osd_manager) {
+    this->osd_manager->dispose(this->osd_manager, this->stream);
+    this->osd_manager = NULL;
+  }
 
   /* restore video properties */
   if(this->video_properties_saved)
