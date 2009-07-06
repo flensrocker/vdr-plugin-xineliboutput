@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.256 2009-07-05 11:26:56 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.257 2009-07-06 10:30:22 phintuka Exp $
  *
  */
 
@@ -3656,8 +3656,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     if (!read_buffer) {
 
       pthread_testcancel();
+      read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_rtp_header_impl_t), 100);
 
-      read_buffer = get_buf_element(this, 2048+sizeof(stream_rtp_header_impl_t), 0);
       if (!read_buffer) {
         /* if queue is full, skip (video) frame.
            Waiting longer for free buffers just makes things worse ... */
@@ -3667,20 +3667,9 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
             this->scr->jump (this->scr, 40*90);
             LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d)", this->live_mode, this->scr_tuning);
             udp->scr_jump_done = 50;
-            xine_usec_sleep(5*1000);
           }
         }
-
-        if (!this->control_running)
-          break;
-
-        read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_rtp_header_impl_t), 100);
-        if (!read_buffer) {
-          if (!this->is_paused)
-            LOGMSG("Fifo buffer still full !");
-          xine_usec_sleep(5*1000);
-          return result;
-        }
+        return XIO_READY;
       }
 
       if (udp->scr_jump_done)
