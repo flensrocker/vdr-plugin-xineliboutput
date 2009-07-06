@@ -376,7 +376,9 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   buf = this->input->read_block (this->input, this->video_fifo, 8128);
 
   if (!buf) {
-    if (errno != EAGAIN)
+    if (errno == EINTR)
+      LOGMSG("input->read_block() was interrupted");
+    else if (errno != EAGAIN)
       this->status = DEMUX_FINISHED;
     return;
   }
