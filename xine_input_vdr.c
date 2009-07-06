@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.257 2009-07-06 10:30:22 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.258 2009-07-06 11:03:55 phintuka Exp $
  *
  */
 
@@ -3444,20 +3444,40 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
 /**************************** Data Stream *********************************/
 
-static void wait_stream_sync(vdr_input_plugin_t *this)
+/*
+ * wait_stream_sync()
+ *
+ * Wait until data and control streams have reached the same sync point.
+ *  - wait_stream_sync() is called only from data thread.
+ *  - data stream handling is suspended until control stream has
+ *    reached the same sync point (and xine engine has been flushed).
+ *
+ * Function is interrupred when
+ *  - control thread has been terminated
+ *  - demux_action_pending signal is set
+ *
+ * return value:
+ *   1:  Both streams have reached the same sync point
+ *   0:  timeout      (errno = EAGAIN)   or
+ *       interrupted  (errno = EINTR)    or
+ *       disconnected (errno = ENOTCONN)
+ */
+static int wait_stream_sync(vdr_input_plugin_t *this)
 {
-  int counter = 10;
+  int counter = 100;
 
   mutex_lock_cancellable(&this->lock);
+
+  if (this->discard_index < this->discard_index_ds)
+    LOGDBG("wait_stream_sync: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
+           this->discard_index, this->discard_index_ds);
 
   while(this->control_running &&
         this->discard_index < this->discard_index_ds &&
         /*!this->stream->demux_action_pending &&*/
         --counter > 0) {
     struct timespec abstime;
-    create_timeout_time(&abstime, 100);
-    LOGDBG("wait_stream_sync: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
-           this->discard_index, this->discard_index_ds);
+    create_timeout_time(&abstime, 10);
     pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
   }
 
@@ -3466,12 +3486,22 @@ static void wait_stream_sync(vdr_input_plugin_t *this)
   if (this->discard_index == this->discard_index_ds) {
     LOGDBG("wait_stream_sync: streams synced at %"PRIu64"/%"PRIu64,
            this->discard_index_ds, this->discard_index);
-  } else {
-    if (this->stream->demux_action_pending)
-      LOGMSG("wait_stream_sync: demux_action_pending set");
-    if (counter <= 0)
-      LOGMSG("wait_stream_sync: Timed out ! diff %"PRIu64, this->discard_index - this->discard_index_ds);
+    return 0;
   }
+
+  if (!this->control_running) {
+    errno = ENOTCONN;
+  }
+  else if (this->stream->demux_action_pending) {
+    LOGMSG("wait_stream_sync: demux_action_pending set");
+    errno = EINTR;
+  }
+  else if (counter <= 0) {
+    LOGMSG("wait_stream_sync: Timed out ! diff %"PRIu64, this->discard_index - this->discard_index_ds);
+    errno = EAGAIN;
+  }
+
+  return 1;
 }
 
 static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
