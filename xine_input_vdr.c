@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.259 2009-07-10 11:39:33 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.260 2009-07-10 12:37:19 phintuka Exp $
  *
  */
 
@@ -3769,14 +3769,114 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
   return read_buffer;
 }
 
+static buf_element_t *udp_parse_header(buf_element_t *read_buffer, int rtp)
+{
+  if (rtp) {
+
+    /* check if RTP header is valid. If not, assume UDP without RTP. */
+    stream_rtp_header_impl_t *rtp_pkt = (stream_rtp_header_impl_t*)read_buffer->content;
+    if (rtp_pkt->rtp_hdr.raw[0] == (RTP_VERSION_BYTE | RTP_HDREXT_BIT) &&
+        ( rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_PES ||
+          rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_TS ) &&
+        rtp_pkt->hdr_ext.hdr.size == htons(RTP_HEADER_EXT_X_SIZE) &&
+        rtp_pkt->hdr_ext.hdr.type == htons(RTP_HEADER_EXT_X_TYPE)) {
+
+      /* strip RTP header but leave UDP header (carried inside RTP header extension) */
+      read_buffer->content += sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
+      read_buffer->size    -= sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
+    }
+  }
+
+  stream_udp_header_t *pkt = (stream_udp_header_t*)read_buffer->content;
+
+  pkt->seq = ntohs(pkt->seq);
+  pkt->pos = ntohull(pkt->pos);
+
+  return read_buffer;
+}
+
+static buf_element_t *udp_check_packet(buf_element_t *read_buffer)
+{
+  stream_udp_header_t *pkt      = (stream_udp_header_t*)read_buffer->content;
+  uint8_t             *pkt_data = read_buffer->content + sizeof(stream_udp_header_t);
+
+  /* Check for MPEG-TS sync byte or PES header */
+  if (read_buffer->size > sizeof(stream_udp_header_t) &&
+      !DATA_IS_TS(pkt_data) &&
+      (pkt_data[0] || pkt_data[1] || pkt_data[2] != 1)) {
+    LOGMSG("received invalid UDP packet (TS sync byte or PES header missing)");
+    read_buffer->free_buffer(read_buffer);
+    return NULL;
+  }
+
+  /* Check if header is valid */
+  if (pkt->seq > UDP_SEQ_MASK) {
+    LOGMSG("received invalid UDP packet (sequence number too big)");
+    read_buffer->free_buffer(read_buffer);
+    return NULL;
+  }
+
+  return read_buffer;
+}
+
+static buf_element_t *udp_parse_control(vdr_input_plugin_t *this, buf_element_t *read_buffer)
+{
+  stream_udp_header_t *pkt      = (stream_udp_header_t*)read_buffer->content;
+  uint8_t             *pkt_data = read_buffer->content + sizeof(stream_udp_header_t);
+
+  /* Check for control messages */
+  if (/*pkt->seq == (uint16_t)(-1) &&*/ /*0xffff*/
+      pkt->pos == (uint64_t)(-1ULL) && /*0xffffffff ffffffff*/
+      pkt_data[0]) { /* -> can't be PES frame */
+    pkt_data[64] = 0;
+
+    if (!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
+      /* Re-send failed */
+      int         seq1 = 0;
+      int         seq2 = 0;
+      uint64_t    rpos = UINT64_C(0);
+      udp_data_t *udp  = this->udp_data;
+
+      sscanf(((char*)pkt_data)+12, "%d-%d %" PRIu64,
+             &seq1, &seq2, &rpos);
+      read_buffer->size = sizeof(stream_udp_header_t);
+      read_buffer->type = BUF_NETWORK_BLOCK;
+      pkt->pos = rpos;
+      LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
+
+      if (seq1 == udp->next_seq) {
+        /* this is the one we are expecting ... */
+        int n = ADDSEQ(seq2 + 1, -seq1);
+        udp->missed_frames += n;
+        seq2 &= UDP_SEQ_MASK;
+        pkt->seq = seq2;
+        udp->next_seq = seq2;
+        LOGUDP("  accepted: now currseq %d", udp->next_seq);
+        /* -> drop frame thru as empty ; it will trigger queue to continue */
+
+      } else {
+        LOGUDP("  UDP packet rejected: not expected seq ???");
+
+        read_buffer->free_buffer(read_buffer);
+        return NULL;
+      }
+
+    } else {
+      data_stream_parse_control(this, (char*)pkt_data);
+
+      read_buffer->free_buffer(read_buffer);
+      return NULL;
+    }
+  }
+
+  return read_buffer;
+}
+
 static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 {
   struct sockaddr_in server_address;
   socklen_t address_len = sizeof(server_address);
   udp_data_t *udp = this->udp_data;
-  stream_udp_header_t *pkt;
-  stream_rtp_header_impl_t *rtp_pkt;
-  uint8_t *pkt_data;
   int result = XIO_ERROR, n, current_seq, timeouts = 0;
   buf_element_t *read_buffer = NULL;
 
@@ -3865,87 +3965,20 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     read_buffer->size = n;
     read_buffer->type = BUF_NETWORK_BLOCK;
 
-    pkt = (stream_udp_header_t*)read_buffer->mem;
-    pkt_data = read_buffer->mem + sizeof(stream_udp_header_t);
+    if (! (read_buffer = udp_parse_header(read_buffer, this->rtp)))
+      return XIO_TIMEOUT;
 
-    if (this->rtp) {
-      if (n < sizeof(stream_rtp_header_impl_t)) {
-        LOGMSG("received invalid RTP packet (too short)");
-        continue;
-      }
+    if (! (read_buffer = udp_parse_control(this, read_buffer)))
+      return XIO_TIMEOUT;
 
-      /* check if RTP header is valid. If not, assume UDP without RTP. */
-      rtp_pkt = (stream_rtp_header_impl_t*)read_buffer->mem;
-      if (rtp_pkt->rtp_hdr.raw[0] == (RTP_VERSION_BYTE | RTP_HDREXT_BIT) &&
-          ( rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_PES ||
-            rtp_pkt->rtp_hdr.raw[1] == RTP_PAYLOAD_TYPE_TS ) &&
-          rtp_pkt->hdr_ext.hdr.size == htons(RTP_HEADER_EXT_X_SIZE) &&
-          rtp_pkt->hdr_ext.hdr.type == htons(RTP_HEADER_EXT_X_TYPE)) {
-
-        /* strip RTP header but leave UDP header (carried inside RTP header extension) */
-        pkt = (stream_udp_header_t*)(read_buffer->mem +
-                                     sizeof(stream_rtp_header_impl_t) -
-                                     sizeof(stream_udp_header_t));
-        pkt_data = read_buffer->mem + sizeof(stream_rtp_header_impl_t);
-
-        read_buffer->content += sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
-        read_buffer->size    -= sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t);
-      }
-    }
-
-    pkt->seq = ntohs(pkt->seq);
-    pkt->pos = ntohull(pkt->pos);
-
-    /* Check for control messages */
-    if (/*pkt->seq == (uint16_t)(-1) &&*/ /*0xffff*/
-        pkt->pos == (uint64_t)(-1ULL) && /*0xffffffff ffffffff*/
-        pkt_data[0]) { /* -> can't be PES frame */
-      pkt_data[64] = 0;
-      if (!strncmp((char*)pkt_data, "UDP MISSING", 11)) {
-        /* Re-send failed */
-        int seq1 = 0, seq2 = 0;
-        uint64_t rpos = 0ULL;
-        sscanf(((char*)pkt_data)+12, "%d-%d %" PRIu64,
-               &seq1, &seq2, &rpos);
-        read_buffer->size = sizeof(stream_udp_header_t);
-        read_buffer->type = BUF_NETWORK_BLOCK;
-        pkt->pos = rpos;
-        LOGUDP("Got UDP MISSING %d-%d (currseq=%d)", seq1, seq2, udp->next_seq);
-        if (seq1 == udp->next_seq) {
-          /* this is the one we are expecting ... */
-          int n = ADDSEQ(seq2 + 1, -seq1);
-          udp->missed_frames += n;
-          seq2 &= UDP_SEQ_MASK;
-          pkt->seq = seq2;
-          udp->next_seq = seq2;
-          LOGUDP("  accepted: now currseq %d", udp->next_seq);
-          /* -> drop frame thru as empty ; it will trigger queue to continue */
-        } else {
-          LOGUDP("  rejected: not expected seq ???");
-          continue;
-        }
-      } else {
-        data_stream_parse_control(this, (char*)pkt_data);
-        continue;
-      }
-
-    } else {
-      /* Check for PES header */
-      if (!DATA_IS_TS(pkt_data) && (pkt_data[0] || pkt_data[1] || pkt_data[2] != 1)) {
-        LOGMSG("received invalid UDP packet (TS sync byte or PES header missing)");
-        continue;
-      }
-    }
-
-    /* Check if header is valid */
-    if (pkt->seq > UDP_SEQ_MASK) {
-      LOGMSG("received invalid UDP packet (sequence number too big)");
-      continue;
-    }
+    if (! (read_buffer = udp_check_packet(read_buffer)))
+      return XIO_TIMEOUT;
 
     /*
      * handle re-ordering and retransmissios
      */
+
+    stream_udp_header_t *pkt = (stream_udp_header_t*)read_buffer->content;
 
     current_seq = pkt->seq & UDP_SEQ_MASK;
     /* first received frame initializes sequence counter */
