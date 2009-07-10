@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.258 2009-07-06 11:03:55 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.259 2009-07-10 11:39:33 phintuka Exp $
  *
  */
 
@@ -3647,6 +3647,126 @@ static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
   if (errno == EAGAIN)
     return XIO_TIMEOUT;
   return XIO_ERROR;
+}
+
+/*
+ * read_socket_udp()
+ *
+ * - Read single transport block from datagram socket
+ *
+ * Returns NULL if read failed or data is not available.
+ * (sets errno to EAGAIN, EINTR or ENOTCONN)
+ *
+ */
+static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
+{
+  /*
+   * poll for incoming data
+   */
+
+  int result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 100);
+
+  if (!this->control_running) {
+    errno = ENOTCONN;
+    return NULL;
+  }
+  if (result != XIO_READY) {
+    errno = (result == XIO_TIMEOUT) ? EAGAIN : ENOTCONN;
+    return NULL;
+  }
+
+  pthread_testcancel();
+
+  /*
+   * allocate buffer
+   */
+
+  udp_data_t    *udp         = this->udp_data;
+  buf_element_t *read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_rtp_header_impl_t), 100);
+
+  if (!read_buffer) {
+    /* if queue is full, skip (video) frame.
+       Waiting longer for free buffers just makes things worse ... */
+    if (!this->is_paused) {
+      LOGDBG("UDP Fifo buffer full !");
+      if (this->scr && !udp->scr_jump_done) {
+        this->scr->jump (this->scr, 40*90);
+        LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d)", this->live_mode, this->scr_tuning);
+        udp->scr_jump_done = 50;
+      }
+    }
+    errno = EAGAIN;
+    return NULL;
+  }
+
+  if (udp->scr_jump_done)
+    udp->scr_jump_done --;
+
+  /*
+   * Receive frame from socket and check for errors
+   */
+
+  struct sockaddr_in server_address;
+  socklen_t          address_len = sizeof(server_address);
+
+  int n = recvfrom(this->fd_data, read_buffer->mem,
+                   read_buffer->max_size, MSG_TRUNC,
+                   &server_address, &address_len);
+  if (n <= 0) {
+    if (!n || (errno != EINTR && errno != EAGAIN)) {
+      LOGERR("read_socket_udp(): recvfrom() failed");
+      errno = ENOTCONN;
+    }
+    read_buffer->free_buffer(read_buffer);
+    /* errno == EAGAIN || errno == EINTR || errno == ENOTCONN */
+    return NULL;
+  }
+
+  /*
+   * check source address
+   */
+
+  if ((server_address.sin_addr.s_addr !=
+       udp->server_address.sin_addr.s_addr) ||
+      server_address.sin_port != udp->server_address.sin_port) {
+#ifdef LOG_UDP
+    uint32_t tmp_ip = ntohl(server_address.sin_addr.s_addr);
+    LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d",
+           ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff),
+           ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
+           server_address.sin_port);
+#endif
+    read_buffer->free_buffer(read_buffer);
+    errno = EAGAIN;
+    return NULL;
+  }
+
+  /*
+   * Check if frame size is valid
+   */
+
+  if (n < sizeof(stream_udp_header_t)) {
+    LOGMSG("received invalid UDP packet (too short)");
+    read_buffer->free_buffer(read_buffer);
+    errno = EAGAIN;
+    return NULL;
+  }
+
+  if (n > read_buffer->max_size) {
+    LOGMSG("received too large UDP packet (%d bytes, buffer is %d bytes)", n, read_buffer->max_size);
+    read_buffer->free_buffer(read_buffer);
+    errno = EAGAIN;
+    return NULL;
+  }
+
+  /*
+   *
+   */
+
+  read_buffer->size = n;
+  read_buffer->type = BUF_NETWORK_BLOCK;
+
+  return read_buffer;
 }
 
 static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
