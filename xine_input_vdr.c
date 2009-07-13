@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.262 2009-07-13 11:03:51 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.263 2009-07-13 11:11:06 phintuka Exp $
  *
  */
 
@@ -3957,96 +3957,19 @@ static void udp_process_resend(vdr_input_plugin_t *this, int current_seq)
 
 static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 {
-  struct sockaddr_in server_address;
-  socklen_t address_len = sizeof(server_address);
   udp_data_t *udp = this->udp_data;
-  int result = XIO_ERROR, n, current_seq, timeouts = 0;
-  buf_element_t *read_buffer = NULL;
+  int current_seq;
 
   while (this->control_running && this->fd_data >= 0) {
 
-    result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 20);
-
-    if (result != XIO_READY) {
-      if (result == XIO_TIMEOUT) {
-        if (timeouts++ > 25) {
-          result = XIO_TIMEOUT;
-          break;
-        }
-        continue;
-      }
-      break;
-    }
-    timeouts = 0;
-
-    if (!this->control_running)
-      break;
-
-    /*
-     * allocate buffer and read incoming UDP packet from socket
-     */
+    buf_element_t *read_buffer = read_socket_udp(this);
 
     if (!read_buffer) {
-
-      pthread_testcancel();
-      read_buffer = get_buf_element_timed(this, 2048+sizeof(stream_rtp_header_impl_t), 100);
-
-      if (!read_buffer) {
-        /* if queue is full, skip (video) frame.
-           Waiting longer for free buffers just makes things worse ... */
-        if (!this->is_paused) {
-          LOGDBG("UDP Fifo buffer full !");
-          if (this->scr && !udp->scr_jump_done) {
-            this->scr->jump (this->scr, 40*90);
-            LOGMSG("SCR jump: +40 ms (live=%d, tuning=%d)", this->live_mode, this->scr_tuning);
-            udp->scr_jump_done = 50;
-          }
-        }
-        return XIO_READY;
-      }
-
-      if (udp->scr_jump_done)
-        udp->scr_jump_done --;
-    }
-
-    /* Receive frame from socket and check for errors */
-    n = recvfrom(this->fd_data, read_buffer->mem,
-                 read_buffer->max_size, MSG_TRUNC,
-                 &server_address, &address_len);
-    if (n <= 0) {
-      if (n < 0 && this->control_running && errno != EINTR)
-        LOGERR("read_net_udp recv() error");
-      if (!n || errno != EINTR)
-        result = XIO_ERROR;
-      break;
-    }
-
-    /* check source address */
-    if ((server_address.sin_addr.s_addr !=
-         udp->server_address.sin_addr.s_addr) ||
-        server_address.sin_port != udp->server_address.sin_port) {
-#ifdef LOG_UDP
-      uint32_t tmp_ip = ntohl(server_address.sin_addr.s_addr);
-      LOGUDP("Received data from unknown sender: %d.%d.%d.%d:%d",
-             ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff),
-             ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
-             server_address.sin_port);
-#endif
+      if (errno == EAGAIN)   return XIO_TIMEOUT;
+      if (errno == ENOTCONN) return XIO_ERROR;
+      if (errno == EINTR)    return XIO_TIMEOUT;
       continue;
     }
-
-    /* Check if frame size is valid */
-    if (n < sizeof(stream_udp_header_t)) {
-      LOGMSG("received invalid UDP packet (too short)");
-      continue;
-    }
-    if (n > read_buffer->max_size) {
-      LOGMSG("received too large UDP packet ; part of data was discarded");
-      n = read_buffer->max_size;
-    }
-
-    read_buffer->size = n;
-    read_buffer->type = BUF_NETWORK_BLOCK;
 
     if (! (read_buffer = udp_parse_header(read_buffer, this->rtp)))
       return XIO_TIMEOUT;
@@ -4083,6 +4006,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       free_udp_data(udp);
       udp = this->udp_data = init_udp_data();
       memcpy(&udp->server_address, &sin, sizeof(sin));
+      read_buffer->free_buffer(read_buffer);
       continue;
     }
 
@@ -4121,12 +4045,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 #endif
   }
 
-  if (read_buffer)
-    read_buffer->free_buffer(read_buffer);
-
-  return result;
+  return XIO_ERROR;
 }
-
 
 static void *vdr_data_thread(void *this_gen)
 {
