@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.260 2009-07-10 12:37:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.261 2009-07-13 11:00:58 phintuka Exp $
  *
  */
 
@@ -3872,6 +3872,76 @@ static buf_element_t *udp_parse_control(vdr_input_plugin_t *this, buf_element_t 
   return read_buffer;
 }
 
+static void udp_process_queue(vdr_input_plugin_t *this)
+{
+  udp_data_t *udp = this->udp_data;
+
+  /*
+   * Stay inside receiving window:
+   * if window exceeded, skip missing frames
+   */
+
+  if (udp->queued > ((UDP_SEQ_MASK+1)>>2)) {
+#ifdef LOG_UDP
+    int start = udp->next_seq;
+#endif
+    while (!udp->queue[udp->next_seq]) {
+      INCSEQ(udp->next_seq);
+      udp->missed_frames++;
+    }
+    udp->resend_requested = 0;
+    LOGUDP("Re-ordering window exceeded, skipped missed frames %d-%d",
+           start, udp->next_seq-1);
+  }
+
+  /*
+   * flush continous part of queue to demuxer queue
+   */
+
+  while (udp->queued > 0 && udp->queue[udp->next_seq]) {
+    stream_udp_header_t *pkt = (stream_udp_header_t*)udp->queue[udp->next_seq]->content;
+    udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - sizeof(stream_udp_header_t);
+    if (udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
+      this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
+    else
+      udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
+
+    udp->queue[udp->next_seq] = NULL;
+    udp->queued --;
+    INCSEQ(udp->next_seq);
+    if (udp->resend_requested)
+      udp->resend_requested --;
+  }
+}
+
+static void udp_process_resend(vdr_input_plugin_t *this, int current_seq)
+{
+  udp_data_t *udp = this->udp_data;
+
+  /* no new resend requests until previous has been completed or failed */
+  if (udp->resend_requested)
+    return;
+
+  /* If frames are missing, request re-send */
+  if (NEXTSEQ(current_seq) != udp->next_seq  &&  udp->queued) {
+
+    int max_req = 20;
+
+    while (!udp->queue[current_seq] && --max_req > 0)
+      INCSEQ(current_seq);
+
+    printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n",
+                   udp->next_seq, PREVSEQ(current_seq),
+                   udp->queue_input_pos);
+
+    udp->resend_requested =
+      (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
+
+    LOGUDP("%d-%d missing, requested re-send for %d frames",
+           udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
+  }
+}
+
 static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 {
   struct sockaddr_in server_address;
@@ -4015,64 +4085,14 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       else
         udp->queued--;
     }
+
     udp->queue[current_seq] = read_buffer;
     read_buffer = NULL;
     udp->queued ++;
 
-    /* stay inside receiving window:
-       If window exceeded, skip missing frames */
-    if (udp->queued > ((UDP_SEQ_MASK+1)>>2)) {
-#ifdef LOG_UDP
-      int start = udp->next_seq;
-#endif
-      while (!udp->queue[udp->next_seq]) {
-        INCSEQ(udp->next_seq);
-        udp->missed_frames++;
-      }
-      udp->resend_requested = 0;
-      LOGUDP("Re-ordering window exceeded, skipped missed frames %d-%d",
-             start, udp->next_seq-1);
-    }
+    udp_process_queue(this);
 
-    /* flush continous part of queue to demuxer queue */
-    while (udp->queued > 0 && udp->queue[udp->next_seq]) {
-      pkt = (stream_udp_header_t*)udp->queue[udp->next_seq]->content;
-      udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - sizeof(stream_udp_header_t);
-      if (udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
-        this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
-      else
-        udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
-
-      udp->queue[udp->next_seq] = NULL;
-      udp->queued --;
-      INCSEQ(udp->next_seq);
-      if (udp->resend_requested)
-        udp->resend_requested --;
-    }
-
-    /* no new resend requests until previous has been completed or failed */
-    if (udp->resend_requested)
-      continue;
-
-    /* If frames are missing, request re-send */
-    if (NEXTSEQ(current_seq) != udp->next_seq  &&  udp->queued) {
-
-      if (!udp->resend_requested) {
-        int max_req = 20;
-
-        while (!udp->queue[current_seq] && --max_req > 0)
-          INCSEQ(current_seq);
-
-        printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n",
-                       udp->next_seq, PREVSEQ(current_seq),
-                       udp->queue_input_pos);
-        udp->resend_requested =
-          (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
-
-        LOGUDP("%d-%d missing, requested re-send for %d frames",
-               udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
-      }
-    }
+    udp_process_resend(this, current_seq);
 
 #ifdef LOG_UDP
     /* Link quality statistics */
