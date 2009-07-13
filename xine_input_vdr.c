@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.261 2009-07-13 11:00:58 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.262 2009-07-13 11:03:51 phintuka Exp $
  *
  */
 
@@ -3667,11 +3667,16 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
   int result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 100);
 
   if (!this->control_running) {
+    LOGMSG("read_socket_udp(): aborting (!this->control_running)");
     errno = ENOTCONN;
     return NULL;
   }
   if (result != XIO_READY) {
-    errno = (result == XIO_TIMEOUT) ? EAGAIN : ENOTCONN;
+    if (result == XIO_ERROR)
+      LOGERR("read_socket_udp(): select() failed");
+
+    errno = (result == XIO_TIMEOUT) ? EAGAIN :
+            (result == XIO_ABORTED) ? EINTR  : ENOTCONN;
     return NULL;
   }
 
@@ -3745,7 +3750,15 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
    * Check if frame size is valid
    */
 
-  if (n < sizeof(stream_udp_header_t)) {
+  if (this->rtp) {
+    if (n < sizeof(stream_rtp_header_impl_t)) {
+      LOGMSG("received invalid RTP packet (too short)");
+      read_buffer->free_buffer(read_buffer);
+      errno = EAGAIN;
+      return NULL;
+    }
+  }
+  else if (n < sizeof(stream_udp_header_t)) {
     LOGMSG("received invalid UDP packet (too short)");
     read_buffer->free_buffer(read_buffer);
     errno = EAGAIN;
