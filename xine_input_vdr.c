@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.264 2009-07-15 16:45:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.265 2009-07-15 16:46:56 phintuka Exp $
  *
  */
 
@@ -1152,6 +1152,15 @@ static void flush_all_fifos (vdr_input_plugin_t *this, int full)
   if (this->read_buffer) {
     this->read_buffer->free_buffer(this->read_buffer);
     this->read_buffer = NULL;
+  }
+
+  if (this->udp_data) {
+    int i;
+    for (i = 0; i <= UDP_SEQ_MASK; i++)
+      if (this->udp_data->queue[i]) {
+        this->udp_data->queue[i]->free_buffer(this->udp_data->queue[i]);
+        this->udp_data->queue[i] = NULL;
+      }
   }
 
   if (full) {
