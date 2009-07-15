@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.265 2009-07-15 16:46:56 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.266 2009-07-15 17:00:10 phintuka Exp $
  *
  */
 
@@ -3550,7 +3550,7 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
  * - Read single transport block from socket / pipe.
  *
  * Returns NULL if read failed or data is not available.
- * (sets errno to EAGAIN or ENOTCONN)
+ * (sets errno to EAGAIN, EINTR or ENOTCONN)
  *
  */
 static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
@@ -3565,9 +3565,11 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
 
   while (XIO_READY == (result = io_select_rd(this->fd_data))) {
 
-    if (!this->control_running)
-      break;
     pthread_testcancel();
+    if (!this->control_running || this->fd_data < 0) {
+      errno = ENOTCONN;
+      return NULL;
+    }
 
     /* Allocate buffer */
     if (!read_buffer) {
@@ -3595,9 +3597,10 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
           LOGERR("TCP read error (data stream %d : %d)", this->fd_data, n);
         if (n == 0)
           LOGMSG("Data stream disconnected");
-        break;
+        errno = ENOTCONN;
       }
-      continue;
+      /* errno == EINTR || errno == EAGAIN */
+      return NULL;
     }
 
     read_buffer->size += n;
@@ -3612,7 +3615,8 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
       if (todo + read_buffer->size >= read_buffer->max_size) {
         LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)",
                read_buffer->max_size, todo + read_buffer->size);
-        break;
+        errno = ENOTCONN;
+        return NULL;
       }
     }
 
@@ -3625,10 +3629,10 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
         if (!DATA_IS_TS(pkt_data) && pkt_data[0]) { /* -> can't be pes or ts frame */
           data_stream_parse_control(this, (char*)pkt_data);
 
-          /* read next block */
-          todo = sizeof(stream_tcp_header_t);
           read_buffer->size = 0;
-          continue;
+
+          errno = EAGAIN;
+          return NULL;
         }
       }
 
@@ -3639,10 +3643,9 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
     }
   }
 
-  if (result == XIO_TIMEOUT)
-    errno = EAGAIN;
-  else
-    errno = ENOTCONN;
+  errno = (result == XIO_TIMEOUT) ? EAGAIN :
+          (result == XIO_ABORTED) ? EINTR  :
+                                    ENOTCONN;
   return NULL;
 }
 
@@ -3676,7 +3679,6 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
   int result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 100);
 
   if (!this->control_running) {
-    LOGMSG("read_socket_udp(): aborting (!this->control_running)");
     errno = ENOTCONN;
     return NULL;
   }
@@ -3685,7 +3687,8 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
       LOGERR("read_socket_udp(): select() failed");
 
     errno = (result == XIO_TIMEOUT) ? EAGAIN :
-            (result == XIO_ABORTED) ? EINTR  : ENOTCONN;
+            (result == XIO_ABORTED) ? EINTR  :
+                                      ENOTCONN;
     return NULL;
   }
 
