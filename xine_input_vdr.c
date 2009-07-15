@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.266 2009-07-15 17:00:10 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.267 2009-07-15 17:02:38 phintuka Exp $
  *
  */
 
@@ -3887,6 +3887,10 @@ static buf_element_t *udp_parse_control(vdr_input_plugin_t *this, buf_element_t 
       }
 
     } else {
+      /* flush all from queue to fifo
+       * process control message ONLY after all data has been demuxed ???
+       */
+
       data_stream_parse_control(this, (char*)pkt_data);
 
       read_buffer->free_buffer(read_buffer);
@@ -3934,8 +3938,17 @@ static void udp_process_queue(vdr_input_plugin_t *this)
     udp->queue[udp->next_seq] = NULL;
     udp->queued --;
     INCSEQ(udp->next_seq);
+
     if (udp->resend_requested)
       udp->resend_requested --;
+
+    /* flush all packets when idle padding found */
+    if (is_padding && udp->queued > 0)
+      while (!udp->queue[udp->next_seq]) {
+        INCSEQ(udp->next_seq);
+        udp->missed_frames++;
+      }
+
   }
 }
 
@@ -3970,7 +3983,6 @@ static void udp_process_resend(vdr_input_plugin_t *this, int current_seq)
 static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 {
   udp_data_t *udp = this->udp_data;
-  int current_seq;
 
   while (this->control_running && this->fd_data >= 0) {
 
@@ -3983,22 +3995,20 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       continue;
     }
 
-    if (! (read_buffer = udp_parse_header(read_buffer, this->rtp)))
-      return XIO_TIMEOUT;
-
-    if (! (read_buffer = udp_parse_control(this, read_buffer)))
-      return XIO_TIMEOUT;
-
-    if (! (read_buffer = udp_check_packet(read_buffer)))
-      return XIO_TIMEOUT;
+    if (! (read_buffer = udp_parse_header(read_buffer, this->rtp)) ||
+        ! (read_buffer = udp_parse_control(this, read_buffer))     ||
+        ! (read_buffer = udp_check_packet(read_buffer))) {
+      errno = EAGAIN;
+      continue;
+    }
 
     /*
      * handle re-ordering and retransmissios
      */
 
-    stream_udp_header_t *pkt = (stream_udp_header_t*)read_buffer->content;
+    stream_udp_header_t *pkt         = (stream_udp_header_t*)read_buffer->content;
+    int                  current_seq = pkt->seq & UDP_SEQ_MASK;
 
-    current_seq = pkt->seq & UDP_SEQ_MASK;
     /* first received frame initializes sequence counter */
     if (udp->received_frames == -1) {
       udp->next_seq = current_seq;
@@ -4007,6 +4017,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 
     /* check if received sequence number is inside allowed window
        (half of whole range) */
+
     if (ADDSEQ(current_seq, -udp->next_seq) > ((UDP_SEQ_MASK+1) >> 1)/*0x80*/) {
       struct sockaddr_in sin;
       LOGUDP("Received SeqNo out of window (%d ; [%d..%d])",
@@ -4040,6 +4051,7 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     udp->queued ++;
 
     udp_process_queue(this);
+continue;
 
     udp_process_resend(this, current_seq);
 
@@ -4057,8 +4069,23 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 #endif
   }
 
+  LOGMSG("vdr_plugin_read_net_udp(): loop exited !");
   return XIO_ERROR;
 }
+
+#if 0
+static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
+{
+  buf_element_t *buf = vdr_plugin_read_block_udp(this);
+  if (buf) {
+    this->block_buffer->put(this->block_buffer, buf);
+    return XIO_READY;
+  }
+  if (errno == EAGAIN)
+    return XIO_TIMEOUT;
+  return XIO_ERROR;
+}
+#endif
 
 static void *vdr_data_thread(void *this_gen)
 {
