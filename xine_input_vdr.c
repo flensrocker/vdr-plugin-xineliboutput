@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.267 2009-07-15 17:02:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.268 2009-07-15 17:05:40 phintuka Exp $
  *
  */
 
@@ -3887,10 +3887,6 @@ static buf_element_t *udp_parse_control(vdr_input_plugin_t *this, buf_element_t 
       }
 
     } else {
-      /* flush all from queue to fifo
-       * process control message ONLY after all data has been demuxed ???
-       */
-
       data_stream_parse_control(this, (char*)pkt_data);
 
       read_buffer->free_buffer(read_buffer);
@@ -3938,17 +3934,8 @@ static void udp_process_queue(vdr_input_plugin_t *this)
     udp->queue[udp->next_seq] = NULL;
     udp->queued --;
     INCSEQ(udp->next_seq);
-
     if (udp->resend_requested)
       udp->resend_requested --;
-
-    /* flush all packets when idle padding found */
-    if (is_padding && udp->queued > 0)
-      while (!udp->queue[udp->next_seq]) {
-        INCSEQ(udp->next_seq);
-        udp->missed_frames++;
-      }
-
   }
 }
 
@@ -4051,7 +4038,6 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     udp->queued ++;
 
     udp_process_queue(this);
-continue;
 
     udp_process_resend(this, current_seq);
 
@@ -4069,23 +4055,8 @@ continue;
 #endif
   }
 
-  LOGMSG("vdr_plugin_read_net_udp(): loop exited !");
   return XIO_ERROR;
 }
-
-#if 0
-static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
-{
-  buf_element_t *buf = vdr_plugin_read_block_udp(this);
-  if (buf) {
-    this->block_buffer->put(this->block_buffer, buf);
-    return XIO_READY;
-  }
-  if (errno == EAGAIN)
-    return XIO_TIMEOUT;
-  return XIO_ERROR;
-}
-#endif
 
 static void *vdr_data_thread(void *this_gen)
 {
