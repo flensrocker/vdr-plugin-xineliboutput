@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.269 2009-07-16 13:59:12 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.270 2009-07-16 14:04:18 phintuka Exp $
  *
  */
 
@@ -337,6 +337,9 @@ struct udp_data_s {
   uint64_t       queue_input_pos;  /* stream position of next incoming byte */
   uint16_t       queued;   /* count of frames in queue */
   uint16_t       next_seq; /* expected sequence number of next incoming packet */
+
+  uint16_t current_seq;  /* sequence number of last received packet */
+  uint8_t  is_padding;   /* true, if last received packet was padding packet */
 
   /* missing frames ratio statistics */
   int16_t  missed_frames;
@@ -3939,7 +3942,7 @@ static void udp_process_queue(vdr_input_plugin_t *this)
   }
 }
 
-static void udp_process_resend(vdr_input_plugin_t *this, int current_seq)
+static void udp_process_resend(vdr_input_plugin_t *this)
 {
   udp_data_t *udp = this->udp_data;
 
@@ -3948,22 +3951,22 @@ static void udp_process_resend(vdr_input_plugin_t *this, int current_seq)
     return;
 
   /* If frames are missing, request re-send */
-  if (NEXTSEQ(current_seq) != udp->next_seq  &&  udp->queued) {
+  if (NEXTSEQ(udp->current_seq) != udp->next_seq  &&  udp->queued) {
 
     int max_req = 20;
 
-    while (!udp->queue[current_seq] && --max_req > 0)
-      INCSEQ(current_seq);
+    while (!udp->queue[udp->current_seq] && --max_req > 0)
+      INCSEQ(udp->current_seq);
 
     printf_control(this, "UDP RESEND %d-%d %" PRIu64 "\r\n",
-                   udp->next_seq, PREVSEQ(current_seq),
+                   udp->next_seq, PREVSEQ(udp->current_seq),
                    udp->queue_input_pos);
 
     udp->resend_requested =
-      (current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
+      (udp->current_seq + (UDP_SEQ_MASK+1) - udp->next_seq) & UDP_SEQ_MASK;
 
     LOGUDP("%d-%d missing, requested re-send for %d frames",
-           udp->next_seq, PREVSEQ(current_seq), udp->resend_requested);
+           udp->next_seq, PREVSEQ(udp->current_seq), udp->resend_requested);
   }
 }
 
@@ -3993,22 +3996,25 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
      * handle re-ordering and retransmissios
      */
 
-    stream_udp_header_t *pkt         = (stream_udp_header_t*)read_buffer->content;
-    int                  current_seq = pkt->seq & UDP_SEQ_MASK;
+    stream_udp_header_t *pkt      = (stream_udp_header_t*)read_buffer->content;
+    uint8_t             *pkt_data = read_buffer->content + sizeof(stream_udp_header_t);
+
+    udp->current_seq = pkt->seq & UDP_SEQ_MASK;
+    udp->is_padding  = DATA_IS_PES(pkt_data) && IS_PADDING_PACKET(pkt_data);
 
     /* first received frame initializes sequence counter */
     if (udp->received_frames == -1) {
-      udp->next_seq = current_seq;
+      udp->next_seq        = udp->current_seq;
       udp->received_frames = 0;
     }
 
     /* check if received sequence number is inside allowed window
        (half of whole range) */
 
-    if (ADDSEQ(current_seq, -udp->next_seq) > ((UDP_SEQ_MASK+1) >> 1)/*0x80*/) {
+    if (ADDSEQ(udp->current_seq, -udp->next_seq) > ((UDP_SEQ_MASK+1) >> 1)/*0x80*/) {
       struct sockaddr_in sin;
       LOGUDP("Received SeqNo out of window (%d ; [%d..%d])",
-             current_seq, udp->next_seq,
+             udp->current_seq, udp->next_seq,
              (udp->next_seq+((UDP_SEQ_MASK+1) >> 1)/*0x80*/) & UDP_SEQ_MASK);
       /* reset link */
       LOGDBG("UDP: resetting link");
@@ -4021,25 +4027,25 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     }
 
     /* Add received frame to incoming queue */
-    if (udp->queue[current_seq]) {
+    if (udp->queue[udp->current_seq]) {
       /* Duplicate packet or lot of dropped packets */
       LOGUDP("Got duplicate or window exceeded ? (queue slot %d in use) !",
-             current_seq);
-      udp->queue[current_seq]->free_buffer(udp->queue[current_seq]);
-      udp->queue[current_seq] = NULL;
+             udp->current_seq);
+      udp->queue[udp->current_seq]->free_buffer(udp->queue[udp->current_seq]);
+      udp->queue[udp->current_seq] = NULL;
       if (!udp->queued)
         LOGERR("UDP queue corrupt !!!");
       else
         udp->queued--;
     }
 
-    udp->queue[current_seq] = read_buffer;
+    udp->queue[udp->current_seq] = read_buffer;
     read_buffer = NULL;
     udp->queued ++;
 
     udp_process_queue(this);
 
-    udp_process_resend(this, current_seq);
+    udp_process_resend(this);
 
 #ifdef LOG_UDP
     /* Link quality statistics */
