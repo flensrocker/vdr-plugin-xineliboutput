@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.270 2009-07-16 14:04:18 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.271 2009-07-17 12:44:59 phintuka Exp $
  *
  */
 
@@ -3564,7 +3564,7 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
   int            result, n;
 
   if (read_buffer && read_buffer->size >= sizeof(stream_tcp_header_t))
-    todo = read_buffer->size + ((stream_tcp_header_t *)read_buffer->content)->len;
+    todo += ((stream_tcp_header_t *)read_buffer->content)->len;
 
   while (XIO_READY == (result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 100))) {
 
@@ -3593,7 +3593,7 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
 
     /* Read data */
     errno = 0;
-    n = read(this->fd_data, read_buffer->mem + read_buffer->size, todo - read_buffer->size);
+    n = read(this->fd_data, read_buffer->content + read_buffer->size, todo - read_buffer->size);
     if (n <= 0) {
       if (!n || (errno != EINTR && errno != EAGAIN)) {
         if (n < 0 && this->fd_data >= 0)
@@ -3602,7 +3602,7 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
           LOGMSG("Data stream disconnected");
         errno = ENOTCONN;
       }
-      /* errno == EINTR || errno == EAGAIN */
+      /* errno == EINTR || errno == EAGAIN || errno == ENOTCONN */
       return NULL;
     }
 
@@ -3614,7 +3614,8 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
       hdr->len = ntohl(hdr->len);
       hdr->pos = ntohull(hdr->pos);
 
-      todo = read_buffer->size + hdr->len;
+      todo += hdr->len;
+
       if (todo + read_buffer->size >= read_buffer->max_size) {
         LOGMSG("TCP: Buffer too small (%d ; incoming frame %d bytes)",
                read_buffer->max_size, todo + read_buffer->size);
@@ -3632,8 +3633,8 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
         if (!DATA_IS_TS(pkt_data) && pkt_data[0]) { /* -> can't be pes or ts frame */
           data_stream_parse_control(this, (char*)pkt_data);
 
-          read_buffer->size = 0;
-
+          read_buffer->free_buffer(read_buffer);
+          this->read_buffer = NULL;
           errno = EAGAIN;
           return NULL;
         }
