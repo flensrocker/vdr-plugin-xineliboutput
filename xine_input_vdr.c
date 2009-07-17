@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.272 2009-07-17 13:00:42 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.273 2009-07-17 22:48:29 phintuka Exp $
  *
  */
 
@@ -3901,9 +3901,12 @@ static buf_element_t *udp_parse_control(vdr_input_plugin_t *this, buf_element_t 
   return read_buffer;
 }
 
-static void udp_process_queue(vdr_input_plugin_t *this)
+static buf_element_t *udp_process_queue(vdr_input_plugin_t *this)
 {
   udp_data_t *udp = this->udp_data;
+
+  if (udp->queued <= 0)
+    return NULL;
 
   /*
    * Stay inside receiving window:
@@ -3938,10 +3941,11 @@ static void udp_process_queue(vdr_input_plugin_t *this)
    */
 
   while (udp->queued > 0 && udp->queue[udp->next_seq]) {
+    buf_element_t       *buf = NULL;
     stream_udp_header_t *pkt = (stream_udp_header_t*)udp->queue[udp->next_seq]->content;
     udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - sizeof(stream_udp_header_t);
     if (udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
-      this->block_buffer->put(this->block_buffer, udp->queue[udp->next_seq]);
+      buf = udp->queue[udp->next_seq];
     else
       udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
 
@@ -3958,7 +3962,13 @@ static void udp_process_queue(vdr_input_plugin_t *this)
         INCSEQ(udp->next_seq);
         udp->missed_frames++;
       }
+
+    if (buf)
+      return buf;
   }
+
+  errno = EAGAIN;
+  return NULL;
 }
 
 static void udp_process_resend(vdr_input_plugin_t *this)
@@ -3989,26 +3999,36 @@ static void udp_process_resend(vdr_input_plugin_t *this)
   }
 }
 
-static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
+/*
+ * vdr_plugin_read_block_udp()
+ *
+ * - Get next UDP transport block from (socket)/queue.
+ *
+ * Returns NULL if read failed or data is not available.
+ * (sets errno to EAGAIN, EINTR or ENOTCONN)
+ *
+ */
+static buf_element_t *vdr_plugin_read_block_udp(vdr_input_plugin_t *this)
 {
   udp_data_t *udp = this->udp_data;
 
   while (this->control_running && this->fd_data >= 0) {
 
-    buf_element_t *read_buffer = read_socket_udp(this);
+    buf_element_t *read_buffer;
 
-    if (!read_buffer) {
-      if (errno == EAGAIN)   return XIO_TIMEOUT;
-      if (errno == ENOTCONN) return XIO_ERROR;
-      if (errno == EINTR)    return XIO_TIMEOUT;
-      continue;
-    }
+    /* return next packet from reordering queue (if any) */
+    if (NULL != (read_buffer = udp_process_queue(this)))
+      return read_buffer;
+
+    /* poll + read socket */
+    if ( ! (read_buffer = read_socket_udp(this)))
+      return NULL;
 
     if (! (read_buffer = udp_parse_header(read_buffer, this->rtp)) ||
         ! (read_buffer = udp_parse_control(this, read_buffer))     ||
         ! (read_buffer = udp_check_packet(read_buffer))) {
       errno = EAGAIN;
-      continue;
+      return NULL;
     }
 
     /*
@@ -4042,7 +4062,8 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
       udp = this->udp_data = init_udp_data();
       memcpy(&udp->server_address, &sin, sizeof(sin));
       read_buffer->free_buffer(read_buffer);
-      continue;
+      errno = EAGAIN;
+      return NULL;
     }
 
     /* Add received frame to incoming queue */
@@ -4062,7 +4083,9 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
     read_buffer = NULL;
     udp->queued ++;
 
-    udp_process_queue(this);
+    /* return next packet from queue (if any) */
+    if (NULL != (read_buffer = udp_process_queue(this)))
+      return read_buffer;
 
     udp_process_resend(this);
 
@@ -4080,6 +4103,19 @@ static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
 #endif
   }
 
+  errno = ENOTCONN;
+  return NULL;
+}
+
+static int vdr_plugin_read_net_udp(vdr_input_plugin_t *this)
+{
+  buf_element_t *buf = vdr_plugin_read_block_udp(this);
+  if (buf) {
+    this->block_buffer->put(this->block_buffer, buf);
+    return XIO_READY;
+  }
+  if (errno == EAGAIN || errno == EINTR)
+    return XIO_TIMEOUT;
   return XIO_ERROR;
 }
 
