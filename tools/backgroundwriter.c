@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.14 2009-07-21 11:11:34 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.15 2009-07-21 13:43:53 phintuka Exp $
  *
  */
 
@@ -151,10 +151,17 @@ void cTcpWriter::Action(void)
   uint64_t NextHeaderPos = 0;
   uint64_t GetPos        = 0;
   cPoller  Poller (m_fd, true);
+  bool     CorkReq = false;
 
   while(m_Active) {
 
     if(Poller.Poll(100)) {
+
+      if (CorkReq && m_RingBuffer.Available() <= 0) {
+        // Force TCP packet to avoid delaying control messages
+        Cork();
+        CorkReq = false;
+      }
 
       uint64_t StartPos;
       int      Count = 0;
@@ -197,6 +204,11 @@ void cTcpWriter::Action(void)
           else
             Count = ntohl(header->len) + sizeof(stream_tcp_header_t);
           NextHeaderPos = GetPos + ntohl(header->len) + sizeof(stream_tcp_header_t);
+
+          uint8_t *pkt = TCP_PAYLOAD(Data);
+          if (!DATA_IS_PES(pkt) && !DATA_IS_TS(pkt))
+            CorkReq = true;
+
         } else {
           Count = min(Count, (int)(NextHeaderPos-GetPos));
         }
