@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.12 2009-07-21 10:45:13 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.13 2009-07-21 11:06:35 phintuka Exp $
  *
  */
 
@@ -21,6 +21,8 @@
 
 #include "../logdefs.h"
 #include "../xine_input_vdr_net.h" // stream_tcp_header_t
+#include "ts.h"
+#include "pes.h"
 
 #include "backgroundwriter.h"
 
@@ -146,28 +148,30 @@ cTcpWriter::cTcpWriter(int fd, int Size) :
 
 void cTcpWriter::Action(void)
 {
-  uint64_t NextHeaderPos = 0ULL;
-  uint64_t GetPos = 0ULL;
-  cPoller Poller(m_fd, true);
+  uint64_t NextHeaderPos = 0;
+  uint64_t GetPos        = 0;
+  cPoller  Poller (m_fd, true);
 
   while(m_Active) {
 
     if(Poller.Poll(100)) {
 
-      int Count = 0, n;
-      uchar *Data = m_RingBuffer.Get(Count);
+      uint64_t StartPos;
+      int      Count = 0;
+      int      n;
+      uchar   *Data = m_RingBuffer.Get(Count);
 
       if(Data && Count > 0) {
 
         Lock(); // uint64_t m_DiscardStart can not be read atomically (IA32)
+        StartPos = m_DiscardEnd;
+        Unlock();
 
-        if(m_DiscardEnd > GetPos) {
-
+        // Discard data ?
+        if(StartPos > GetPos) {
           if(NextHeaderPos == GetPos) {
             // we're at frame boundary
-            Count = min(Count, (int)(m_DiscardEnd - GetPos));
-
-            Unlock();
+            Count = min(Count, (int)(StartPos - GetPos));
 
             m_RingBuffer.Del(Count);
             GetPos += Count;
@@ -177,8 +181,7 @@ void cTcpWriter::Action(void)
           }
         }
 
-        Unlock();
-
+        // Next frame ?
         if(GetPos == NextHeaderPos) {
           if(Count < (int)sizeof(stream_tcp_header_t))
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
@@ -272,9 +275,6 @@ int cTcpWriter::Put(const uchar *Header, int HeaderCount,
 // cRawWriter
 //
 
-#include "pes.h"
-#include "ts.h"
-
 cRawWriter::cRawWriter(int fd, int Size) :
      cBackgroundWriterI(fd, Size, 6)
 {
@@ -292,19 +292,21 @@ void cRawWriter::Action(void)
 
     if(Poller.Poll(100)) {
 
-      int Count = 0, n;
-      uchar *Data = m_RingBuffer.Get(Count);
+      uint64_t StartPos;
+      int      Count = 0;
+      int      n;
+      uchar   *Data = m_RingBuffer.Get(Count);
 
       if(Data && Count > 0) {
 
         Lock(); // uint64_t m_DiscardStart can not be read atomically (IA32)
+        StartPos = m_DiscardEnd;
+        Unlock();
 
-        if(m_DiscardEnd > GetPos) {
-
+        if(StartPos > GetPos) {
           if(NextHeaderPos == GetPos) {
             // we're at frame boundary
-            Count = min(Count, (int)(m_DiscardEnd - GetPos));
-            Unlock();
+            Count = min(Count, (int)(StartPos - GetPos));
 
             m_RingBuffer.Del(Count);
             GetPos += Count;
@@ -312,8 +314,6 @@ void cRawWriter::Action(void)
             continue;
           }
         }
-
-        Unlock();
 
         if(GetPos == NextHeaderPos) {
           if(Count < 6)
