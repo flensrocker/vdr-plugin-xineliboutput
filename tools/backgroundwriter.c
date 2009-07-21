@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.11 2009-07-21 10:37:50 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.12 2009-07-21 10:45:13 phintuka Exp $
  *
  */
 
@@ -89,6 +89,26 @@ void cBackgroundWriterI::Clear(void)
   m_DiscardEnd = m_PutPos;
 }
 
+void cBackgroundWriterI::Cork(void)
+{
+  if (m_IsSocket) {
+#if defined(TCP_CORK)
+    int i = 1;
+    if(setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &i, sizeof(int))) {
+      LOGERR("cBackgroundWriter: setsockopt(TCP_NODELAY) failed");
+      errno = 0;
+    }
+#elif defined(TCP_NOPUSH)
+    int On = 1, Off = 0;
+    if(setsockopt(m_fd, IPPROTO_TCP, TCP_NOPUSH, &Off, sizeof(int)) ||
+       setsockopt(m_fd, IPPROTO_TCP, TCP_NOPUSH, &On, sizeof(int))) {
+      LOGERR("cBackgroundWriter: setsockopt(TCP_NOPUSH) failed");
+      errno = 0;
+    }
+#endif
+  }
+}
+
 bool cBackgroundWriterI::Flush(int TimeoutMs)
 {
   uint64_t WaitEnd = cTimeMs::Now();
@@ -106,20 +126,7 @@ bool cBackgroundWriterI::Flush(int TimeoutMs)
   int Available = m_RingBuffer.Available();
   if(m_IsSocket && Available <= 0) {
     // flush corked data too
-#if defined(TCP_CORK)
-    int i = 1;
-    if(setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &i, sizeof(int))) {
-      LOGERR("cBackgroundWriter: setsockopt(TCP_NODELAY) failed");
-      errno = 0;
-    }
-#elif defined(TCP_NOPUSH)
-    int On = 1, Off = 0;
-    if(setsockopt(m_fd, IPPROTO_TCP, TCP_NOPUSH, &Off, sizeof(int)) ||
-       setsockopt(m_fd, IPPROTO_TCP, TCP_NOPUSH, &On, sizeof(int))) {
-      LOGERR("cBackgroundWriter: setsockopt(TCP_NOPUSH) failed");
-      errno = 0;
-    }
-#endif
+    Cork();
   }
 
   return Available <= 0;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.h,v 1.4 2007-01-07 05:36:30 phintuka Exp $
+ * $Id: backgroundwriter.h,v 1.5 2009-07-21 10:45:13 phintuka Exp $
  *
  */
 
@@ -37,6 +37,7 @@ class cBackgroundWriterI : public cThread
 
   protected:
     virtual void Action(void) = 0;
+    void Cork(void);
 
   public:
     cBackgroundWriterI(int fd, int Size = KILOBYTE(512), int Margin = 0);
