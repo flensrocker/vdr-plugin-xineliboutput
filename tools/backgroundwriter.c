@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.8 2009-03-18 21:05:26 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.9 2009-07-21 09:48:35 phintuka Exp $
  *
  */
 
@@ -105,7 +105,8 @@ bool cBackgroundWriterI::Flush(int TimeoutMs)
       cCondWait::SleepMs(3);
   }
 
-  if(m_IsSocket && m_RingBuffer.Available() <= 0) {
+  int Available = m_RingBuffer.Available();
+  if(m_IsSocket && Available <= 0) {
     // flush corked data too
 #if defined(TCP_CORK)
     int i = 1;
@@ -122,8 +123,8 @@ bool cBackgroundWriterI::Flush(int TimeoutMs)
     }
 #endif
   }
-  
-  return m_RingBuffer.Available() <= 0;
+
+  return Available <= 0;
 }
 
 
