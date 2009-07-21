@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.10 2009-07-21 10:31:43 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.11 2009-07-21 10:37:50 phintuka Exp $
  *
  */
 
@@ -24,8 +24,6 @@
 
 #include "backgroundwriter.h"
 
-//#define DISABLE_DISCARD
-//#define LOG_DISCARDS
 
 #define MAX_OVERFLOWS_BEFORE_DISCONNECT 1000 // ~ 1 second
 
@@ -154,47 +152,26 @@ void cTcpWriter::Action(void)
 
       if(Data && Count > 0) {
 
-#ifndef DISABLE_DISCARD
         Lock(); // uint64_t m_DiscardStart can not be read atomically (IA32)
+
         if(m_DiscardEnd > GetPos) {
 
-# ifdef LOG_DISCARDS
-          LOGMSG("TCP: queue: discard request: queue %d bytes, "
-                 "next point %d bytes forward (Count=%d)",
-                 m_RingBuffer.Available(),
-                 NextHeaderPos - GetPos,
-                 Count);
-# endif
           if(NextHeaderPos == GetPos) {
             // we're at frame boundary
-# ifdef LOG_DISCARDS
-            uint8_t *pkt = TCP_PAYLOAD(Data);
-            if(pkt[0] || pkt[1] || pkt[2] != 1 || hdr->len > 2100) {
-              LOGMSG("  -> %x %x %x %x", pkt[0], pkt[1], pkt[2], pkt[3]);
-            }
-# endif
             Count = min(Count, (int)(m_DiscardEnd - GetPos));
-# ifdef LOG_DISCARDS
-            LOGMSG("Flushing %d bytes", Count);
-#endif
+
             Unlock();
 
             m_RingBuffer.Del(Count);
             GetPos += Count;
             NextHeaderPos = GetPos;
-# ifdef LOG_DISCARDS
-            LOGMSG("Queue now %d bytes", m_RingBuffer.Available());
-            pkt = TCP_PAYLOAD(Data);
-            if(pkt[0] || pkt[1] || pkt[2] != 1 || hdr->len > 2100) {
-              LOGMSG("  -> %x %x %x %x", pkt[0], pkt[1], pkt[2], pkt[3]);
-# endif
+
             continue;
           }
         }
-        Unlock();
-#endif
 
-#ifndef DISABLE_DISCARD
+        Unlock();
+
         if(GetPos == NextHeaderPos) {
           if(Count < (int)sizeof(stream_tcp_header_t))
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
@@ -209,7 +186,6 @@ void cTcpWriter::Action(void)
         } else {
           Count = min(Count, (int)(NextHeaderPos-GetPos));
         }
-#endif
 
         errno = 0;
         n = write(m_fd, Data, Count);
@@ -314,8 +290,8 @@ void cRawWriter::Action(void)
 
       if(Data && Count > 0) {
 
-#ifndef DISABLE_DISCARD
         Lock(); // uint64_t m_DiscardStart can not be read atomically (IA32)
+
         if(m_DiscardEnd > GetPos) {
 
           if(NextHeaderPos == GetPos) {
@@ -329,18 +305,15 @@ void cRawWriter::Action(void)
             continue;
           }
         }
-        Unlock();
-#endif
 
-#ifndef DISABLE_DISCARD
+        Unlock();
+
         if(GetPos == NextHeaderPos) {
           if(Count < 6)
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
-#if VDRVERSNUM >= 10701
+
           int packlen = DATA_IS_TS(Data) ? TS_SIZE : pes_packet_len(Data, Count);
-#else
-          int packlen = pes_packet_len(Data, Count);
-#endif
+
           if(Count < packlen)
             ;//LOGMSG("Count = %d < %d", Count,
              //   header->len + sizeof(stream_tcp_header_t));
@@ -350,7 +323,6 @@ void cRawWriter::Action(void)
         } else {
           Count = min(Count, (int)(NextHeaderPos-GetPos));
         }
-#endif
 
         errno = 0;
         n = write(m_fd, Data, Count);
