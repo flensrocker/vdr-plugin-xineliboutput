@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.13 2009-07-21 11:06:35 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.14 2009-07-21 11:11:34 phintuka Exp $
  *
  */
 
@@ -171,13 +171,17 @@ void cTcpWriter::Action(void)
         if(StartPos > GetPos) {
           if(NextHeaderPos == GetPos) {
             // we're at frame boundary
-            Count = min(Count, (int)(StartPos - GetPos));
+            // drop only data packets, not control messages
+            uint8_t *pkt = TCP_PAYLOAD(Data);
+            if (DATA_IS_PES(pkt) || DATA_IS_TS(pkt)) {
+              Count = min(Count, (int)(StartPos - GetPos));
 
-            m_RingBuffer.Del(Count);
-            GetPos += Count;
-            NextHeaderPos = GetPos;
+              m_RingBuffer.Del(Count);
+              GetPos += Count;
+              NextHeaderPos = GetPos;
 
-            continue;
+              continue;
+            }
           }
         }
 
@@ -303,6 +307,7 @@ void cRawWriter::Action(void)
         StartPos = m_DiscardEnd;
         Unlock();
 
+        // Discard data ?
         if(StartPos > GetPos) {
           if(NextHeaderPos == GetPos) {
             // we're at frame boundary
@@ -315,6 +320,7 @@ void cRawWriter::Action(void)
           }
         }
 
+        // Next frame ?
         if(GetPos == NextHeaderPos) {
           if(Count < 6)
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
