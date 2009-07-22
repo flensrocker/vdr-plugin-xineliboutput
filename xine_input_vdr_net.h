@@ -1,10 +1,10 @@
 /*
- * xine_input_vdr_net.h:  
+ * xine_input_vdr_net.h:
  *
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.11 2009-03-24 19:35:22 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.12 2009-07-22 11:29:28 phintuka Exp $
  *
  */
 
@@ -70,7 +70,7 @@ extern "C" {
 
 
 /*
- * TCP / PIPE 
+ * TCP / PIPE
  */
 
 typedef struct stream_tcp_header {
@@ -81,16 +81,18 @@ typedef struct stream_tcp_header {
 
 } PACKED stream_tcp_header_t;
 
+#define TCP_PAYLOAD(pkt) ((uint8_t*)(pkt)+sizeof(stream_tcp_header_t))
+
 
 /*
- * UDP 
+ * UDP
  */
 
 typedef struct stream_udp_header {
   uint64_t pos; /* stream position of first byte */
                 /* -1ULL and first bytes of frame != 00 00 01 */
                 /* --> embedded control stream data */
-  uint16_t seq; /* packet sequence number 
+  uint16_t seq; /* packet sequence number
 		   (for re-ordering and detecting missing packets) */
 
   uint8_t  payload[0];
@@ -98,6 +100,8 @@ typedef struct stream_udp_header {
 } PACKED stream_udp_header_t;
 
 #define UDP_SEQ_MASK 0xff
+
+#define UDP_PAYLOAD(pkt) ((uint8_t*)(pkt)+sizeof(stream_udp_header_t))
 
 
 /*
@@ -157,8 +161,11 @@ typedef struct stream_rtp_header_impl {
 #define RTP_PAYLOAD_TYPE_TS_M   (RTP_PAYLOAD_TYPE_TS |RTP_MARKER_BIT)
 
 #define RTP_HEADER_EXT_X_SIZE  3      /* dwords, not counting stream_rtp_header_ext_t */
-#define RTP_HEADER_EXT_X_TYPE  0x54d3 
- 
+#define RTP_HEADER_EXT_X_TYPE  0x54d3
+
+#define RTP_PAYLOAD(pkt)     ((uint8_t*)(pkt)+sizeof(stream_rtp_header_impl_t))
+/* access UDP header inside RTP header extension */
+#define RTP_UDP_PAYLOAD(pkt) (RTP_PAYLOAD(pkt)-sizeof(stream_udp_header_t))
 
 #if defined __cplusplus
 }
