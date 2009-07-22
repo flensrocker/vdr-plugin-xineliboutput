@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.273 2009-07-17 22:48:29 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.274 2009-07-22 06:39:15 phintuka Exp $
  *
  */
 
@@ -4339,28 +4339,15 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
     return NULL;
   }
 
-  /* control buffers go always to demuxer */
-  if ((buf->type & BUF_MAJOR_MASK) == BUF_CONTROL_BASE)
+  /* demuxed video, control messages, ... go directly to demuxer */
+  if (buf->type != BUF_NETWORK_BLOCK &&
+      buf->type != BUF_DEMUX_BLOCK)
     return buf;
 
   pthread_mutex_lock(&this->lock);
 
   /* Update stream position and remove network headers */
   strip_network_headers(this, buf);
-
-  /* Update stream position */
-  if ((buf->type & BUF_MAJOR_MASK) == BUF_DEMUX_BLOCK) {
-    this->curpos += buf->size;
-    this->curframe ++;
-  } else {
-    if ((buf->type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE) {
-      /* demuxed video */
-      pthread_mutex_unlock(&this->lock);
-      this->stream->video_fifo->put(this->stream->video_fifo, buf);
-      return NULL;
-    }
-    LOGMSG("!!! curpos not updated for unregonized buffer type 0x%x !!!", buf->type);
-  }
 
   /* Handle discard */
   if (this->discard_index > this->curpos && this->guard_index < this->curpos) {
@@ -4369,13 +4356,17 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
     return NULL;
   }
 
+  /* Update stream position */
+  this->curpos += buf->size;
+  this->curframe ++;
+
   /* ignore UDP/RTP "idle" padding */
   if (!DATA_IS_TS(buf->content) && IS_PADDING_PACKET(buf->content)) {
     pthread_mutex_unlock(&this->lock);
     return buf;
   }
 
-  /* Send current PTS ? */
+  /* First packet ? */
   if (this->stream_start) {
     this->stream_start = 0;
     pthread_mutex_lock (&this->stream->first_frame_lock);
@@ -4536,8 +4527,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     }
     this->read_timeouts = 0;
 
-    if (! (buf = preprocess_buf(this, buf)))
-      continue;
+    buf = preprocess_buf(this, buf);
 
   } while (!buf);
 
