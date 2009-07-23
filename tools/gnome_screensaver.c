@@ -57,8 +57,8 @@ void gnome_screensaver_control(int enable)
   /* Get a connection to the session bus */
   error = NULL;
   connection = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
-  if (connection == NULL) {
-    LOGERR(MSG_OpenBusConnectionError, error->message);
+  if (!connection) {
+    LOGERR(MSG_OpenBusConnectionError, error ? error->message : "<null>");
     g_error_free(error);
     return;
   }
@@ -66,14 +66,19 @@ void gnome_screensaver_control(int enable)
   /* Create a proxy object */
   proxy = dbus_g_proxy_new_for_name(connection,
                                     GS_SERVICE, GS_PATH, GS_INTERFACE);
+  if (!proxy) {
+    LOGDBG("Failed to get a proxy for gnome-screensaver");
+    return;
+  }
 
   /* Enable the screensaver */
   if (enable) {
     /* First call the GNOME screensaver 2.15 API method */
     error = NULL;
     ret =
-        dbus_g_proxy_call(proxy, "UnInhibit", &error, G_TYPE_UINT,
-                          cookie, G_TYPE_INVALID, G_TYPE_INVALID);
+        dbus_g_proxy_call(proxy, "UnInhibit", &error,
+                          G_TYPE_UINT, cookie,
+                          G_TYPE_INVALID, G_TYPE_INVALID);
 
     /* If this fails, try the GNOME screensaver 2.14 API */
     if (!ret && error->domain == DBUS_GERROR
@@ -91,10 +96,12 @@ void gnome_screensaver_control(int enable)
     /* First call the GNOME screensaver 2.15 API method */
     error = NULL;
     ret =
-        dbus_g_proxy_call(proxy, "Inhibit", &error, G_TYPE_STRING,
-                          GS_APPLICATION_NAME, G_TYPE_STRING,
-                          GS_REASON_FOR_INHIBIT, G_TYPE_INVALID,
-                          G_TYPE_UINT, cookie, G_TYPE_INVALID);
+        dbus_g_proxy_call(proxy, "Inhibit", &error,
+                          G_TYPE_STRING, GS_APPLICATION_NAME,
+                          G_TYPE_STRING, GS_REASON_FOR_INHIBIT,
+                          G_TYPE_INVALID,
+                          G_TYPE_UINT, cookie,
+                          G_TYPE_INVALID);
 
     /* If this fails, try the GNOME screensaver 2.14 API */
     if (!ret && error->domain == DBUS_GERROR
