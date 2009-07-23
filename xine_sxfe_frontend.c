@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.112 2009-05-31 19:25:03 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.113 2009-07-23 12:54:28 phintuka Exp $
  *
  */
 
@@ -1405,7 +1405,7 @@ static void sxfe_interrupt(frontend_t *this_gen)
  */
 static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 {
-  if(kev->keycode) {
+  if(kev->keycode && kev->type == KeyPress) {
     KeySym         ks;
     char           buffer[20];
     XComposeStatus status;
