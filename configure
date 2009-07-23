@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.18 2009-02-17 13:01:16 phintuka Exp $
+# * $Id: configure,v 1.19 2009-07-23 12:56:57 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -360,7 +360,7 @@ if enabled libxine; then
     test_library X11  xrandr       "X11/extensions/Xrandr.h"   "-lXrandr"    "XRRGetScreenInfo(0,0)"
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
     test_library X11  xinerama     "X11/extensions/Xinerama.h" "-lXinerama"  "XineramaQueryScreens(0,0)"
-    test_library X11  vdpau        "vdpau/vdpau_x11.h"         "-lvdpau"     "vdp_device_create_x11(0,0,0,0)"
+    test_library none vdpau       "vdpau/vdpau_x11.h"         "-lvdpau"     "vdp_device_create_x11(0,0,0,0)"
     test_library X11  dbus-glib-1  \
       "dbus/dbus-glib.h" \
       "-ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0" \
