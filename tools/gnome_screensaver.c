@@ -100,7 +100,7 @@ void gnome_screensaver_control(int enable)
                           G_TYPE_STRING, GS_APPLICATION_NAME,
                           G_TYPE_STRING, GS_REASON_FOR_INHIBIT,
                           G_TYPE_INVALID,
-                          G_TYPE_UINT, cookie,
+                          G_TYPE_UINT, &cookie,
                           G_TYPE_INVALID);
 
     /* If this fails, try the GNOME screensaver 2.14 API */
