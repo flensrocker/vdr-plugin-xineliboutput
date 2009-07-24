@@ -1028,6 +1028,10 @@ static void demux_xvdr_dispose (demux_plugin_t *this_gen)
 {
   demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
+  LOGDBG("demux_xvdr_dispose()");
+
+  ts_data_dispose(&this->ts_data);
+
   free (this);
 }
 
