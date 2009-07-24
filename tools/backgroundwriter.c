@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.17 2009-07-24 18:02:51 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.18 2009-07-24 18:11:20 phintuka Exp $
  *
  */
 
@@ -181,11 +181,23 @@ void cTcpWriter::Action(void)
             if (DATA_IS_PES(pkt) || DATA_IS_TS(pkt)) {
               Count = min(Count, (int)(StartPos - GetPos));
 
+              // size of next (complete) packet.
+              // drop only one packet at time.
+              stream_tcp_header_t *header = (stream_tcp_header_t*)Data;
+              int pkt_len = ntohl(header->len) + sizeof(stream_tcp_header_t);
+              if (Count >= pkt_len) {
+                // drop only complete packets.
+                // some packets are not dropped (packets overlapping end of ringbuffer)
+                Count = pkt_len;
+
               m_RingBuffer.Del(Count);
               GetPos += Count;
               NextHeaderPos = GetPos;
 
+                CorkReq = true; // force sending last frame
+
               continue;
+              }
             }
           }
         }
