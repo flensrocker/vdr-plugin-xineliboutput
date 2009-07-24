@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.16 2009-07-24 05:24:22 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.17 2009-07-24 18:02:51 phintuka Exp $
  *
  */
 
@@ -195,14 +195,16 @@ void cTcpWriter::Action(void)
           if(Count < (int)sizeof(stream_tcp_header_t))
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
 
+          // limit single write to size of next (complete) packet.
+          // (we need to track packet boundaries)
           stream_tcp_header_t *header = (stream_tcp_header_t*)Data;
-          if(Count < (int)(ntohl(header->len) + sizeof(stream_tcp_header_t)))
-            ;//LOGMSG("Count = %d < %d", Count,
-             //   header->len + sizeof(stream_tcp_header_t));
-          else
-            Count = ntohl(header->len) + sizeof(stream_tcp_header_t);
-          NextHeaderPos = GetPos + ntohl(header->len) + sizeof(stream_tcp_header_t);
+          int pkt_len = ntohl(header->len) + sizeof(stream_tcp_header_t);
+          if (Count > pkt_len)
+            Count = pkt_len;
+          // next packet start position in stream
+          NextHeaderPos = GetPos + pkt_len;
 
+          // check for control message
           uint8_t *pkt = TCP_PAYLOAD(Data);
           if (!DATA_IS_PES(pkt) && !DATA_IS_TS(pkt))
             CorkReq = true;
