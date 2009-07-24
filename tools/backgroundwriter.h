@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.h,v 1.5 2009-07-21 10:45:13 phintuka Exp $
+ * $Id: backgroundwriter.h,v 1.6 2009-07-24 05:24:22 phintuka Exp $
  *
  */
 
@@ -25,7 +25,6 @@ class cBackgroundWriterI : public cThread
   protected:
     cRingBufferLinear m_RingBuffer;
 
-    volatile bool m_Active;
     int      m_fd;
     bool     m_IsSocket;
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.15 2009-07-21 13:43:53 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.16 2009-07-24 05:24:22 phintuka Exp $
  *
  */
 
@@ -39,7 +39,6 @@ cBackgroundWriterI::cBackgroundWriterI(int fd, int Size, int Margin)
 {
   m_fd = fd;
   m_RingBuffer.SetTimeouts(0, 100);
-  m_Active = true;
 
   m_PutPos = 0;
   m_DiscardStart = 0;
@@ -74,7 +73,6 @@ cBackgroundWriterI::cBackgroundWriterI(int fd, int Size, int Margin)
 
 cBackgroundWriterI::~cBackgroundWriterI()
 {
-  m_Active = false;
   Cancel(3);
 }
 
@@ -120,7 +118,7 @@ bool cBackgroundWriterI::Flush(int TimeoutMs)
     WaitEnd += (uint64_t)TimeoutMs;
 
     while(cTimeMs::Now() < WaitEnd &&
-          m_Active &&
+          Running() &&
           m_RingBuffer.Available() > 0)
       cCondWait::SleepMs(3);
   }
@@ -153,7 +151,7 @@ void cTcpWriter::Action(void)
   cPoller  Poller (m_fd, true);
   bool     CorkReq = false;
 
-  while(m_Active) {
+  while (Running()) {
 
     if(Poller.Poll(100)) {
 
@@ -240,7 +238,6 @@ void cTcpWriter::Action(void)
   }
 
   m_RingBuffer.Clear();
-  m_Active = false;
 }
 
 int cTcpWriter::Put(uint64_t StreamPos,
@@ -255,7 +252,7 @@ int cTcpWriter::Put(uint64_t StreamPos,
 int cTcpWriter::Put(const uchar *Header, int HeaderCount,
                     const uchar *Data, int DataCount)
 {
-  if(m_Active) {
+  if (Running()) {
 
     // Serialize Put access to keep Data and Header together
     LOCK_THREAD;
@@ -265,7 +262,7 @@ int cTcpWriter::Put(const uchar *Header, int HeaderCount,
       if(m_BufferOverflows++ > MAX_OVERFLOWS_BEFORE_DISCONNECT) {
         LOGMSG("cXinelibServer: Too many TCP buffer overflows, dropping client");
         m_RingBuffer.Clear();
-        m_Active = false;
+        Cancel(-1);
         return 0;
       }
       return -HeaderCount-DataCount;
@@ -280,7 +277,7 @@ int cTcpWriter::Put(const uchar *Header, int HeaderCount,
 
     LOGMSG("cXinelibServer: TCP buffer internal error ?!?");
     m_RingBuffer.Clear();
-    m_Active = false;
+    Cancel(-1);
   }
 
   return 0;
@@ -304,7 +301,7 @@ void cRawWriter::Action(void)
   uint64_t GetPos = 0ULL;
   cPoller Poller(m_fd, true);
 
-  while(m_Active) {
+  while (Running()) {
 
     if(Poller.Poll(100)) {
 
@@ -376,13 +373,12 @@ void cRawWriter::Action(void)
   }
 
   m_RingBuffer.Clear();
-  m_Active = false;
 }
 
 int cRawWriter::Put(uint64_t StreamPos,
                     const uchar *Data, int DataCount)
 {
-  if(m_Active) {
+  if (Running()) {
 
     // Serialize Put access to keep Data and Header together
     LOCK_THREAD;
@@ -391,7 +387,7 @@ int cRawWriter::Put(uint64_t StreamPos,
       if(m_BufferOverflows++ > MAX_OVERFLOWS_BEFORE_DISCONNECT) {
         LOGMSG("cXinelibServer: Too many TCP buffer overflows, dropping client");
         m_RingBuffer.Clear();
-        m_Active = false;
+        Cancel(-1);
         return 0;
       }
       return -DataCount;
@@ -405,7 +401,7 @@ int cRawWriter::Put(uint64_t StreamPos,
 
     LOGMSG("cXinelibServer: TCP buffer internal error ?!?");
     m_RingBuffer.Clear();
-    m_Active = false;
+    Cancel(-1);
   }
 
   return 0;
