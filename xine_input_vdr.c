@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.274 2009-07-22 06:39:15 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.275 2009-07-30 10:37:37 phintuka Exp $
  *
  */
 
@@ -1152,6 +1152,8 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
 
 static void flush_all_fifos (vdr_input_plugin_t *this, int full)
 {
+  LOGDBG("flush_all_fifos(%s)", full ? "full" : "");
+
   if (this->read_buffer) {
     this->read_buffer->free_buffer(this->read_buffer);
     this->read_buffer = NULL;
@@ -2719,6 +2721,15 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   } else if(!strncasecmp(cmd, "HDMODE ", 7)) {
     if(1 == sscanf(cmd+7, "%d", &tmp32)) {
       pthread_mutex_lock(&this->lock);
+      if (tmp32 && !this->hd_stream) {
+        cfg_entry_t *e = this->class->xine->config->lookup_entry(this->class->xine->config,
+                                                                 "engine.buffers.video_num_frames");
+        if (e && e->num_value < 32) {
+          LOGMSG("WARNING: xine-engine setting \"engine.buffers.video_num_frames\":%d is "
+                 "too small for some HD channels", e->num_value);
+        }
+
+      }
       if(tmp32) {
 	if(!this->hd_buffer)
 	  this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
@@ -3399,7 +3410,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
     case XINE_EVENT_UI_PLAYBACK_FINISHED:
       if(event->stream == this->stream) {
-	LOGMSG("XINE_EVENT_UI_PLAYBACK_FINISHED");
+	LOGDBG("XINE_EVENT_UI_PLAYBACK_FINISHED");
 	this->control_running = 0;
 #if 1
 	if(iSysLogLevel > 2) {
@@ -3526,6 +3537,10 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
   if(NULL != (tmp=strchr(cmd, '\n')))
     *tmp = '\0';
 
+  /* very verbose logging ? */
+  if (iSysLogLevel > 3)
+    LOGDBG("<control> <data> %s", cmd);
+
   if(!strncasecmp(cmd, "DISCARD ", 8)) {
     uint64_t index;
     if(1 == sscanf(cmd+8, "%" PRIu64, &index)) {
@@ -3635,6 +3650,7 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
 
           read_buffer->free_buffer(read_buffer);
           this->read_buffer = NULL;
+
           errno = EAGAIN;
           return NULL;
         }
@@ -3851,7 +3867,7 @@ static buf_element_t *udp_check_packet(buf_element_t *read_buffer)
 static buf_element_t *udp_parse_control(vdr_input_plugin_t *this, buf_element_t *read_buffer)
 {
   stream_udp_header_t *pkt      = (stream_udp_header_t*)read_buffer->content;
-  uint8_t             *pkt_data = read_buffer->content + sizeof(stream_udp_header_t);
+  uint8_t             *pkt_data = UDP_PAYLOAD(read_buffer->content);
 
   /* Check for control messages */
   if (/*pkt->seq == (uint16_t)(-1) &&*/ /*0xffff*/
@@ -4036,7 +4052,7 @@ static buf_element_t *vdr_plugin_read_block_udp(vdr_input_plugin_t *this)
      */
 
     stream_udp_header_t *pkt      = (stream_udp_header_t*)read_buffer->content;
-    uint8_t             *pkt_data = read_buffer->content + sizeof(stream_udp_header_t);
+    uint8_t             *pkt_data = UDP_PAYLOAD(read_buffer->content);
 
     udp->current_seq = pkt->seq & UDP_SEQ_MASK;
     udp->is_padding  = DATA_IS_PES(pkt_data) && IS_PADDING_PACKET(pkt_data);
