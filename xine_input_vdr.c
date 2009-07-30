@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.275 2009-07-30 10:37:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.276 2009-07-30 10:48:34 phintuka Exp $
  *
  */
 
@@ -78,6 +78,7 @@
 /*#define LOG_CMD*/
 /*#define LOG_SCR*/
 /*#define LOG_TRACE*/
+/*#define LOG_GRAPH*/
 
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 #define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
@@ -211,6 +212,48 @@ static void SetupLogLevel(void)
 /*#define DEBUG_LOCKING*/
 #ifdef DEBUG_LOCKING
 # include "tools/debug_mutex.h"
+#endif
+
+#ifndef MIN
+# define MIN(a,b) ((a)<(b)?(a):(b))
+#endif
+#ifndef MAX
+# define MAX(a,b) ((a)>(b)?(a):(b))
+#endif
+
+#ifdef LOG_GRAPH
+static void log_graph(int val, int symb)
+{
+  static char headr[] = "|<- 0                                                                                       100% ->|";
+  static char meter[sizeof(headr)];
+
+  if (!symb || symb == 1) {
+    time_t t;
+    struct tm *tm;
+
+    time(&t);
+    tm = localtime(&t);
+    printf("%02d:%02d:%02d %s", tm->tm_hour, tm->tm_min, tm->tm_sec, symb ? meter : headr);
+    memset(meter, ' ', sizeof(headr) - 1);
+    return;
+  }
+
+  val = MIN(val, (int)sizeof(headr) - 2);
+  val = MAX(val, 0);
+#if 0
+  if (symb == ':') {
+    meter[val] = meter[val] == '%' ? '#' : symb;
+  } else if (symb == '*') {
+    meter[val] = meter[val] == '%' ? '1' :
+      meter[val] == ':' ? '2' :
+      meter[val] == '#' ? '3' : symb;
+  } else {
+    meter[val] = symb;
+  }
+#else
+  meter[val] = symb;
+#endif
+}
 #endif
 
 /******************************* DATA ***********************************/
@@ -657,13 +700,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 }
 
 /******************************* TOOLS ***********************************/
-
-#ifndef MIN
-# define MIN(a,b) ((a)<(b)?(a):(b))
-#endif
-#ifndef MAX
-# define MAX(a,b) ((a)>(b)?(a):(b))
-#endif
 
 static char *strn0cpy(char *dest, const char *src, int n) 
 {
