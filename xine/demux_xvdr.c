@@ -149,6 +149,14 @@ static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_
 
 static void pts_wrap_workaround(demux_xvdr_t *this, buf_element_t *buf, int video)
 {
+#ifdef LOG_PES_AV_DIFF
+  static int64_t vpts = 0, apts = 0;
+  if (video) vpts = buf->pts;
+  else apts = buf->pts;
+  if (vpts > 0 && apts > 0)
+    LOGMSG("pts diff [%d] %d", video, (int)(vpts - apts));
+#endif
+
   /* PTS wrap workaround */
   if (buf->pts >= 0) {
     if (video)
@@ -376,10 +384,15 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
   buf = this->input->read_block (this->input, this->video_fifo, 8128);
 
   if (!buf) {
-    if (errno == EINTR)
-      LOGMSG("input->read_block() was interrupted");
-    else if (errno != EAGAIN)
+    if (errno == EINTR) {
+      /* very verbose logging ? */
+      if (iSysLogLevel >= SYSLOGLEVEL_VERBOSE)
+        LOGDBG("input->read_block() was interrupted");
+    } else if (errno != EAGAIN) {
+      LOGDBG("DEMUX_FINISHED (input returns NULL with error)");
       this->status = DEMUX_FINISHED;
+      ts_data_dispose(&this->ts_data);
+    }
     return;
   }
 
@@ -462,7 +475,8 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
       if (ts_parse_pat(&pat, buf->content)) {
         ts_data->pmt_pid        = pat.pmt_pid[0];
         ts_data->program_number = pat.program_number[0];
-        LOGMSG("Got PAT, PMT pid = %d, program = %d", ts_data->pmt_pid, ts_data->program_number);
+        if (iSysLogLevel >= SYSLOGLEVEL_VERBOSE)
+          LOGDBG("Got PAT, PMT pid = %d, program = %d", ts_data->pmt_pid, ts_data->program_number);
       }
     }
 
@@ -490,7 +504,6 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
 
     /* demux video */
     else if (ts_pid == ts_data->pmt.video_pid) {
-
       if (ts_data->video) {
         buf_element_t *vbuf = ts2es_put(ts_data->video, buf->content);
         if (vbuf) {
