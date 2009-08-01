@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.85 2009-07-25 20:40:45 phintuka Exp $
+ * $Id: device.c,v 1.86 2009-08-01 19:50:36 phintuka Exp $
  *
  */
 
@@ -211,7 +211,6 @@ cXinelibDevice::cXinelibDevice()
   m_RadioStream = false;
   m_AudioCount  = 0;
   m_FreeBufs = 0;
-  m_Cleared = true;
   m_h264 = false;
 
   m_VideoSize = (video_size_t*)calloc(1, sizeof(video_size_t));
@@ -787,18 +786,12 @@ void cXinelibDevice::Clear(void)
 
   TsBufferClear();
 
-  if(m_Cleared && m_StreamStart && m_TrickSpeed == -1) {
-    //LOGMSG("************ Double Clear ***************");
-  } else {
-    //LOGMSG("************ FIRST  Clear ***************");
-    m_Cleared = true;
-    m_StreamStart = true;
-    m_h264 = false;
-    m_FreeBufs = 0;
-    TrickSpeed(-1);
-    ForEach(m_clients, &cXinelibThread::Clear);
-    ForEach(m_clients, &cXinelibThread::SetStillMode, false);
-  }
+  m_StreamStart = true;
+  m_h264 = false;
+  m_FreeBufs = 0;
+  TrickSpeed(-1);
+  ForEach(m_clients, &cXinelibThread::Clear);
+  ForEach(m_clients, &cXinelibThread::SetStillMode, false);
 }
 
 void cXinelibDevice::Play(void) 
@@ -1080,7 +1073,6 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     if (DATA_IS_PES(buf))
       pes_change_pts((uchar*)buf, length, INT64_C(0));
   }
-  m_Cleared = false;
   m_FreeBufs --;
 
   if(m_local) {

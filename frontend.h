@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.28 2009-03-20 18:26:23 phintuka Exp $
+ * $Id: frontend.h,v 1.29 2009-08-01 19:50:36 phintuka Exp $
  *
  */
 
@@ -147,6 +147,7 @@ class cXinelibThread : public cThread, public cListObject
     int  m_Volume;
     cString  m_FileName;
     uint64_t m_StreamPos;
+    uint64_t m_LastClearPos;
     uint32_t m_Frames;
 
     cStatus *m_StatusMonitor;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.69 2009-05-29 14:31:46 phintuka Exp $
+ * $Id: frontend.c,v 1.70 2009-08-01 19:50:36 phintuka Exp $
  *
  */
 
@@ -223,6 +223,7 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_bNoVideo = true;
   m_bLiveMode = true; /* can't be replaying when there is no output device */
   m_StreamPos = 0;
+  m_LastClearPos = 0;
   m_Frames = 0;
   m_bEndOfStreamReached = false;
   m_bPlayingFile = false;
@@ -376,14 +377,21 @@ void cXinelibThread::Clear(void)
 {
   TRACEF("cXinelibThread::Clear");
 
-  Lock();
-  int64_t  tmp1 = m_StreamPos;
-  uint32_t tmp2 = m_Frames;
-  Unlock();
-
   char buf[128];
-  snprintf(buf, sizeof(buf), "DISCARD %" PRId64 " %d", tmp1, tmp2);
-  /* Send to control stream and data stream. If message is sent only to 
+
+  {
+    LOCK_THREAD;
+
+    if (m_StreamPos == m_LastClearPos) {
+      //LOGDBG("cXinelibThread::Clear(): double Clear() ignored");
+      return;
+    }
+    m_LastClearPos = m_StreamPos;
+
+    snprintf(buf, sizeof(buf), "DISCARD %" PRId64 " %d", m_StreamPos, m_Frames);
+  }
+
+  /* Send to control stream and data stream. If message is sent only to
    * control stream, and it is delayed, engine flush will be skipped.
    */
   Xine_Control(buf);
@@ -571,12 +579,6 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
 bool cXinelibThread::QueueBlankDisplay(void)
 {
   TRACEF("cXinelibThread::BlankDisplay");
-#if 0
-  extern const unsigned char v_mpg_black[];     // black_720x576.c
-  extern const int v_mpg_black_length;
-
-  Play_Mpeg2_ES(v_mpg_black, v_mpg_black_length, VIDEO_STREAM);
-#endif
   Xine_Control_Sync("BLANK");
   return true;
 }
