@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.277 2009-07-30 11:38:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.278 2009-08-01 20:23:29 phintuka Exp $
  *
  */
 
@@ -124,6 +124,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.278 2009-08-01 20:23:29 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -176,20 +177,16 @@ static void SetupLogLevel(void)
   }
 }
 
-#define LOG_UDP
-
 #ifdef LOG_SCR
 #  define LOGSCR(x...) LOGMSG("SCR: " x)
 #else
 #  define LOGSCR(x...)
 #endif
-#
 #ifdef LOG_OSD
 #  define LOGOSD(x...) LOGMSG("OSD: " x)
 #else
 #  define LOGOSD(x...)
 #endif
-#
 #ifdef LOG_UDP
 #  define LOGUDP(x...) LOGMSG("UDP:" x)
 #else
@@ -469,7 +466,7 @@ static void mutex_cleanup(void *arg)
 
 /******************************* SCR ***********************************/
 /*
- * SCR fine tuning 
+ * SCR fine tuning
  *
  * fine tuning is used to change playback speed in live mode
  * to keep in sync with mpeg source
@@ -494,6 +491,36 @@ static inline const char *scr_tuning_str(int value)
   }
   return "ERROR";
 }
+#endif
+
+#ifdef LOG_SCR
+static void log_buffer_fill(vdr_input_plugin_t *this)
+{
+  /*
+   * Trace current buffer and tuning status
+   */
+  static int cnt = 0;
+
+  if ( ! ((cnt++) % 2500) ||
+       (this->scr_tuning == SCR_TUNING_PAUSED && !(cnt%10)) ||
+       (this->no_video                        && !(cnt%50))) {
+    LOGSCR("Buffer %2d%% (%3d/%3d) %s",
+           100 * num_used / (num_used + num_free),
+           num_used, num_used + num_free,
+           scr_tuning_str(this->scr_tuning));
+  }
+
+  if (this->scr_tuning == SCR_TUNING_PAUSED) {
+    if (_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE) {
+      LOGMSG("ERROR: SCR PAUSED ; speed=%d bool=%d",
+	     _x_get_fine_speed(this->stream),
+	     (int)_x_get_fine_speed(this->stream) == XINE_SPEED_PAUSE);
+      _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
+    }
+  }
+}
+#else
+#  define log_buffer_fill(this)
 #endif
 
 static void scr_tuning_set_paused(vdr_input_plugin_t *this)
@@ -545,39 +572,13 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   int scr_tuning = this->scr_tuning;
   /*int num_vbufs = 0;*/
 
-  if(this->hd_stream && this->hd_buffer) {
+  if (this->hd_stream && this->hd_buffer)
     num_free += this->hd_buffer->num_free(this->hd_buffer);
-  }
-
-  if(this->stream->audio_fifo)
+  if (this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
   num_free -= (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
 
-#ifdef LOG_SCR
-  /*
-   * Trace current buffer and tuning status
-   */
-  {
-    static int fcnt=0;
-    if(!((fcnt++)%2500) || 
-       (this->scr_tuning==SCR_TUNING_PAUSED && !(fcnt%10)) ||
-       (this->no_video        && !(fcnt%50))) {
-      LOGSCR("Buffer %2d%% (%3d/%3d) %s", 
-	     100*num_used/(num_used+num_free), 
-	     num_used, num_used+num_free, 
-	     scr_tuning_str(this->scr_tuning));
-    }
-  }
-
-  if(this->scr_tuning==SCR_TUNING_PAUSED) {
-    if(_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE) { 
-      LOGMSG("ERROR: SCR PAUSED ; speed=%d bool=%d", 
-	     _x_get_fine_speed(this->stream), 
-	     (int)_x_get_fine_speed(this->stream) == XINE_SPEED_PAUSE);
-      _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
-    }
-  }
-#endif
+  log_buffer_fill(this);
 
   /*
    * SCR -> PAUSE
@@ -2679,9 +2680,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   if(NULL != (pt = strstr(cmd, "\r\n")))
     *((char*)pt) = 0; /* auts */
 
-  /* very verbose logging ? */
-  if (iSysLogLevel>3) 
-    LOGDBG("<control> %s",cmd);
+  LOGVERBOSE("<control> %s",cmd);
 
   if(!strncasecmp(cmd, "OSDCMD", 6)) {
     err = handle_control_osdcmd(this);
@@ -3448,7 +3447,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	LOGDBG("XINE_EVENT_UI_PLAYBACK_FINISHED");
 	this->control_running = 0;
 #if 1
-	if(iSysLogLevel > 2) {
+	if(iSysLogLevel >= SYSLOGLEVEL_DEBUG) {
 	  /* dump whole xine log as we should not be here ... */
 	  xine_t *xine = this->class->xine;
 	  int i, j;
@@ -3527,8 +3526,8 @@ static int wait_stream_sync(vdr_input_plugin_t *this)
   mutex_lock_cancellable(&this->lock);
 
   if (this->discard_index < this->discard_index_ds)
-    LOGDBG("wait_stream_sync: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
-           this->discard_index, this->discard_index_ds);
+    LOGVERBOSE("wait_stream_sync: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
+               this->discard_index, this->discard_index_ds);
 
   while(this->control_running &&
         this->discard_index < this->discard_index_ds &&
@@ -3542,8 +3541,8 @@ static int wait_stream_sync(vdr_input_plugin_t *this)
   mutex_unlock_cancellable(&this->lock);
 
   if (this->discard_index == this->discard_index_ds) {
-    LOGDBG("wait_stream_sync: streams synced at %"PRIu64"/%"PRIu64,
-           this->discard_index_ds, this->discard_index);
+    LOGVERBOSE("wait_stream_sync: streams synced at %"PRIu64"/%"PRIu64,
+               this->discard_index_ds, this->discard_index);
     return 0;
   }
 
@@ -3551,11 +3550,12 @@ static int wait_stream_sync(vdr_input_plugin_t *this)
     errno = ENOTCONN;
   }
   else if (this->stream->demux_action_pending) {
-    LOGMSG("wait_stream_sync: demux_action_pending set");
+    LOGVERBOSE("wait_stream_sync: demux_action_pending set");
     errno = EINTR;
   }
   else if (counter <= 0) {
-    LOGMSG("wait_stream_sync: Timed out ! diff %"PRIu64, this->discard_index - this->discard_index_ds);
+    LOGMSG("wait_stream_sync: Timed out ! diff %"PRId64,
+           (int64_t)(this->discard_index - this->discard_index_ds));
     errno = EAGAIN;
   }
 
@@ -3572,9 +3572,7 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
   if(NULL != (tmp=strchr(cmd, '\n')))
     *tmp = '\0';
 
-  /* very verbose logging ? */
-  if (iSysLogLevel > 3)
-    LOGDBG("<control> <data> %s", cmd);
+  LOGVERBOSE("<control> <data> %s", cmd);
 
   if(!strncasecmp(cmd, "DISCARD ", 8)) {
     uint64_t index;
@@ -4811,6 +4809,8 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
   pthread_mutex_init (&this->vdr_entry_lock, NULL);
   pthread_mutex_init (&this->fd_control_lock, NULL);
   pthread_cond_init  (&this->engine_flushed, NULL);
+
+  LOGMSG("xine_input_xvdr: revision %s", module_revision);
 
   return 1;
 }
