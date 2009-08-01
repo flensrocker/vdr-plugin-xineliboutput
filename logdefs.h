@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.13 2008-11-20 11:46:31 rofafor Exp $
+ * $Id: logdefs.h,v 1.14 2009-08-01 19:46:49 phintuka Exp $
  *
  */
 
@@ -66,18 +66,33 @@
 
 #include <errno.h>
 
-#define LOG_ERRNO  x_syslog(LOG_ERR, LOG_MODULENAME, "   (ERROR (%s,%d): %s)", \
-                   __FILE__, __LINE__, strerror(errno))
+#define LOG_ERRNO                                                     \
+        x_syslog(LOG_ERR, LOG_MODULENAME, "   (ERROR (%s,%d): %s)",   \
+                 __FILE__, __LINE__, strerror(errno))
 
-#define LOGERR(x...) do { \
-                       if(SysLogLevel > 0) { \
-			 x_syslog(LOG_ERR, LOG_MODULENAME, x);	\
-                          if(errno) \
-                            LOG_ERRNO; \
-                       } \
-                     } while(0)
-#define LOGMSG(x...) do{ if(SysLogLevel > 1) x_syslog(LOG_INFO,  LOG_MODULENAME, x); } while(0)
-#define LOGDBG(x...) do{ if(SysLogLevel > 2) x_syslog(LOG_DEBUG, LOG_MODULENAME, x); } while(0)
+#define LOGERR(x...)                                \
+        do {                                        \
+          if (SysLogLevel >= SYSLOGLEVEL_ERRORS) {  \
+            x_syslog(LOG_ERR, LOG_MODULENAME, x);   \
+            if (errno)                              \
+              LOG_ERRNO;                            \
+          }                                         \
+        } while(0)
+#define LOGMSG(x...)                                \
+        do {                                        \
+          if (SysLogLevel >= SYSLOGLEVEL_INFO)      \
+            x_syslog(LOG_INFO, LOG_MODULENAME, x);  \
+        } while(0)
+#define LOGDBG(x...)                                \
+        do {                                        \
+          if (SysLogLevel >= SYSLOGLEVEL_DEBUG)     \
+            x_syslog(LOG_DEBUG, LOG_MODULENAME, x); \
+        } while(0)
+#define LOGVERBOSE(x...)                            \
+        do {                                        \
+          if (SysLogLevel >= SYSLOGLEVEL_VERBOSE)   \
+            x_syslog(LOG_DEBUG, LOG_MODULENAME, x); \
+        } while(0)
 
 #define TRACELINE LOGDBG("at %s:%d %s", __FILE__, __LINE__, __FUNCTION__)
 
