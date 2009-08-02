@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.82 2009-05-31 15:30:07 phintuka Exp $
+ * $Id: config.c,v 1.83 2009-08-02 11:44:10 phintuka Exp $
  *
  */
 
@@ -423,6 +423,37 @@ bool config_t::IsDvdFolder(const char *fname)
     return true;
 
   buf = cString::sprintf("%s/VIDEO_TS.IFO", *folder);
+  if (stat(buf, &st) == 0)
+    return true;
+
+  return false;
+}
+
+bool config_t::IsBluRayFolder(const char *fname)
+{
+  struct stat st;
+  cString buf, folder;
+
+  buf = cString::sprintf("%s/BDMV/", fname);
+  if (stat(buf, &st) == 0) {
+    folder = buf;
+  } else {
+    buf = cString::sprintf("%s/bdmv/", fname);
+    if (stat(buf, &st) == 0)
+      folder = buf;
+    else
+      return false;
+  }
+
+  buf = cString::sprintf("%s/MovieObject.bdmv", *folder);
+  if (stat(buf, &st) == 0)
+    return true;
+
+  buf = cString::sprintf("%s/movieobject.bdmv", *folder);
+  if (stat(buf, &st) == 0)
+    return true;
+
+  buf = cString::sprintf("%s/MOVIEOBJECT.BDMV", *folder);
   if (stat(buf, &st) == 0)
     return true;
 
