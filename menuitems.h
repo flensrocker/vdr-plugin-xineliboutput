@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.8 2009-08-02 11:38:24 phintuka Exp $
+ * $Id: menuitems.h,v 1.9 2009-08-03 12:11:35 phintuka Exp $
  *
  */
 
@@ -97,6 +97,7 @@ class cFileListItem : public cOsdItem
     bool IsDir(void)       { return m_IsDir; }
     bool IsDvd(void)       { return m_IsDvd; }
     bool IsBluRay(void)    { return m_IsBluRay; }
+    bool HasResume(void)   { return m_HasResume; }
 
     virtual bool operator< (const cListObject &ListObject);
     virtual int Compare(const cListObject &ListObject) const;
