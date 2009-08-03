@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.67 2009-08-03 12:23:38 phintuka Exp $
+ * $Id: menu.c,v 1.68 2009-08-03 12:40:09 phintuka Exp $
  *
  */
 
@@ -62,6 +62,7 @@ class cMenuBrowseFiles : public cOsdMenu
     bool          m_OnlyQueue;
     char         *m_CurrentDir;
     char         *m_ConfigLastDir;
+    const char   *help[4];
 
     virtual bool ScanDir(const char *DirName);
     virtual eOSState Open(bool ForceOpen = false, bool Queue = false, bool Rewind = false);
@@ -196,16 +197,32 @@ void cMenuBrowseFiles::StoreConfig(void)
 
 void cMenuBrowseFiles::SetHelpButtons(void)
 {
-  bool isDir = !GetCurrent() || GetCurrent()->IsDir();
-  bool isDvd = GetCurrent() && GetCurrent()->IsDvd();
-  bool hasResume = GetCurrent() && GetCurrent()->HasResume();
+  bool isDir  = !GetCurrent() || GetCurrent()->IsDir();
+  bool isFile = !isDir;
 
-  SetHelp((isDir && isDvd) ? trVDR("Button$Open") : !m_OnlyQueue ? trVDR("Button$Play"): NULL,
-	  (m_Mode == ShowMusic) ? tr("Button$Queue") :
-	                          (m_Mode == ShowFiles && hasResume) ? trVDR("Button$Rewind") :
-                                                                       NULL,
-	  (isDir && !isDvd) ? NULL : trVDR("Button$Delete"),
-	  isDir ? NULL : trVDR("Button$Info"));
+  if (isDir && !strcmp("..", GetCurrent()->Name())) {
+    help[0] = help[1] = help[2] = help[3] = NULL;
+  } else if (m_Mode == ShowMusic) {
+    help[0] = isDir  ? trVDR("Button$Play")   : NULL;
+    help[1] =          tr   ("Button$Queue");
+    help[2] = isFile ? trVDR("Button$Delete") : NULL;
+    help[3] = isFile ? trVDR("Button$Info")   : NULL;
+  } else if (m_Mode == ShowImages) {
+    help[0] = isDir  ? trVDR("Button$Play")   : NULL;
+    help[1] =                                   NULL;
+    help[2] = isFile ? trVDR("Button$Delete") : NULL;
+    help[3] = isFile ? trVDR("Button$Info")   : NULL;
+  } else {
+    bool isDvd     = GetCurrent() && (GetCurrent()->IsDvd() || GetCurrent()->IsBluRay());
+    bool hasResume = GetCurrent() && GetCurrent()->HasResume();
+
+    help[0] = isDir && isDvd  ? trVDR("Button$Open")   : NULL;
+    help[1] = hasResume       ? trVDR("Button$Rewind") : NULL;
+    help[2] = isFile || isDvd ? trVDR("Button$Delete") : NULL;
+    help[3] = isFile          ? trVDR("Button$Info")   : NULL;
+  }
+
+  SetHelp(help[0], help[1], help[2], help[3]);
   Display();
 }
 
@@ -288,6 +305,8 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 	// TODO: show all images
       }
     }
+
+    /* go to directory */
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
     if(asprintf(&buffer, "%s/%s", m_CurrentDir, d) >= 0) {
@@ -298,7 +317,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
     }
     Set();
     return osContinue;
-    
+
   /* regular file */
   } else {
     cString f = cString::sprintf("%s%s/%s", 
@@ -437,23 +456,31 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
   eOSState state = cOsdMenu::ProcessKey(Key);
 
   if (state == osUnknown) {
-     switch (Key) {
-       case kPlay:
-       case kOk:     return Open(false, m_OnlyQueue);
-       case kRed:    return Open(true);
-       case kGreen:  return Open(true,
-                                 m_Mode==ShowMusic ? m_OnlyQueue=true : false,
-                                 m_Mode == ShowFiles);
-       case kYellow: return Delete();
-       case kBlue:   return Info();
-       default: break;
-       }
-     }
+    switch (Key) {
+      case kPlay:
+      case kOk:     return Open(false, m_OnlyQueue);
+      case kRed:    if (help[0])
+                      return Open(true);
+                    break;
+      case kGreen:  if (help[1])
+                      return Open(true,
+                                  m_Mode == ShowMusic ? m_OnlyQueue=true : false,
+                                  m_Mode != ShowMusic);
+                    break;
+      case kYellow: if (help[2])
+                      return Delete();
+                    break;
+      case kBlue:   if (help[3])
+                      return Info();
+                    break;
+      default: break;
+    }
+  }
 
   if (state == osUnknown)
     state = osContinue;
 
-  if(!HasSubMenu())
+  if (!HasSubMenu())
     SetHelpButtons();
 
   return state;
