@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.66 2009-08-03 12:08:40 phintuka Exp $
+ * $Id: menu.c,v 1.67 2009-08-03 12:23:38 phintuka Exp $
  *
  */
 
@@ -64,7 +64,7 @@ class cMenuBrowseFiles : public cOsdMenu
     char         *m_ConfigLastDir;
 
     virtual bool ScanDir(const char *DirName);
-    virtual eOSState Open(bool ForceOpen = false, bool Queue = false);
+    virtual eOSState Open(bool ForceOpen = false, bool Queue = false, bool Rewind = false);
     virtual eOSState Delete(void);
     virtual eOSState Info(void);
     virtual void Set(void);
@@ -198,9 +198,12 @@ void cMenuBrowseFiles::SetHelpButtons(void)
 {
   bool isDir = !GetCurrent() || GetCurrent()->IsDir();
   bool isDvd = GetCurrent() && GetCurrent()->IsDvd();
+  bool hasResume = GetCurrent() && GetCurrent()->HasResume();
+
   SetHelp((isDir && isDvd) ? trVDR("Button$Open") : !m_OnlyQueue ? trVDR("Button$Play"): NULL,
-	  (m_Mode == ShowMusic) ? tr("Button$Queue") : 
-	           strlen(m_CurrentDir)>1 ? "[..]" : NULL,
+	  (m_Mode == ShowMusic) ? tr("Button$Queue") :
+	                          (m_Mode == ShowFiles && hasResume) ? trVDR("Button$Rewind") :
+                                                                       NULL,
 	  (isDir && !isDvd) ? NULL : trVDR("Button$Delete"),
 	  isDir ? NULL : trVDR("Button$Info"));
   Display();
@@ -230,7 +233,7 @@ eOSState cMenuBrowseFiles::Delete(void)
   return osContinue;
 }
 
-eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue)
+eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 {
   if(!GetCurrent()) {
     return osContinue;
@@ -315,10 +318,13 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue)
 	cControl::Shutdown();
       if(Queue)
 	cXinelibPlayerControl::Queue(f);
-      if(!cXinelibPlayerControl::IsOpen())
+      if(!cXinelibPlayerControl::IsOpen()) {
+        if (Rewind)
+          unlink(cString::sprintf("%s.resume", *f));
 	cControl::Launch(GetCurrent()->IsDvd()
 			 ? new cXinelibDvdPlayerControl(f)
 			 : new cXinelibPlayerControl(m_Mode, f, GetCurrent()->SubFile()));
+      }
       if(Queue)
 	return osContinue;
     } else {
@@ -436,7 +442,8 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
        case kOk:     return Open(false, m_OnlyQueue);
        case kRed:    return Open(true);
        case kGreen:  return Open(true,
-                                 m_Mode==ShowMusic ? m_OnlyQueue=true : false);
+                                 m_Mode==ShowMusic ? m_OnlyQueue=true : false,
+                                 m_Mode == ShowFiles);
        case kYellow: return Delete();
        case kBlue:   return Info();
        default: break;
