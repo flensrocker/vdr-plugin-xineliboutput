@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.64 2009-06-01 14:04:42 phintuka Exp $
+ * $Id: menu.c,v 1.65 2009-08-03 12:00:52 phintuka Exp $
  *
  */
 
@@ -254,8 +254,18 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
       cControl::Launch(new cXinelibDvdPlayerControl(f));
       return osEnd;
     }
-    if(ForceOpen && GetCurrent()->IsDir() && !GetCurrent()->IsDvd()) {
-      /* play all files */ 
+    if(!ForceOpen && GetCurrent()->IsBluRay()) {
+#if 0
+      /* play bd */
+      cString f = cString::sprintf("bd:%s/%s", m_CurrentDir, GetCurrent()->Name());
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibBdPlayerControl(f));
+      return osEnd;
+#endif
+    }
+    if(ForceOpen && GetCurrent()->IsDir() &&
+       !GetCurrent()->IsDvd() && !GetCurrent()->IsBluRay()) {
+      /* play all files */
       if(m_Mode != ShowImages) {
 
 	if(m_OnlyQueue && !Queue)
@@ -364,7 +374,8 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
 	    if(m_Mode == ShowImages || m_Mode == ShowMusic)
 	      Add(new cFileListItem(e->d_name, true));
 	    else
-	      Add(new cFileListItem(e->d_name, true, false, false, xc.IsDvdFolder(buffer)));
+	      Add(new cFileListItem(e->d_name, true, false, false,
+                                    xc.IsDvdFolder(buffer), xc.IsBluRayFolder(buffer)));
 
           // regular files
           } else if(e->d_name[0] != '.') {
