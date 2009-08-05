@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.46 2009-07-02 10:38:29 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.47 2009-08-05 11:50:25 phintuka Exp $
  *
  */
 
@@ -31,14 +31,16 @@
 #include "../config.h"             // configuration data
 #include "../xine_input_vdr_net.h" // frame headers and constants
 
+#include "ts.h"
 #include "pes.h"
 #include "udp_buffer.h"
-#include "udp_pes_scheduler.h"
 #include "time_pts.h"
 #include "cxsocket.h"
 #include "sap.h"  // SAP  - Session Announcement Protocol
 #include "sdp.h"  // SDP  - Session Description Protocol
 #include "rtcp.h" // RTCP
+
+#include "udp_pes_scheduler.h"
 
 
 #ifdef LOG_RESEND
