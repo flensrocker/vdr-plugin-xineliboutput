@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.75 2009-08-05 10:46:15 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.76 2009-08-05 10:49:44 phintuka Exp $
  *
  */
 
@@ -394,7 +394,7 @@ void cXinelibServer::SetHeader(const uchar *Data, int Length, bool Reset)
     }
   }
 
-  if (m_Header) {
+  if (m_Header && Data) {
     memcpy(m_Header + m_HeaderLength, Data, Length);
     m_HeaderLength += Length;
   }
