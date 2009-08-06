@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.77 2009-08-06 11:22:26 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.78 2009-08-06 11:23:31 phintuka Exp $
  *
  */
 
@@ -1023,13 +1023,6 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
 
   CloseDataConnection(cli);
 
-#if VDRVERSNUM > 10700
-  // UDP/RTP not MPEG-TS compatible yet
-  fd_control[cli].write_cmd("RTP: RTP transport not implemented for vdr-1.7.x.\r\n");
-  LOGMSG("RTP transport not implemented for vdr-1.7.x");
-  return;
-#endif
-
   if(!xc.remote_usertp) {
     fd_control[cli].write_cmd("RTP: RTP transport disabled in configuration.\r\n");
     LOGMSG("RTP transports disabled");
@@ -1056,13 +1049,6 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   LOGDBG("Trying UDP connection ...");
 
   CloseDataConnection(cli);
-
-#if VDRVERSNUM > 10700
-  // UDP/RTP not MPEG-TS compatible yet
-  fd_control[cli].write_cmd("UDP: UDP transport not implemented vor vdr-1.7.x.\r\n");
-  LOGMSG("UDP transport not implemented for vdr-1.7.x");
-  return;
-#endif
 
   if(!xc.remote_useudp) {
     fd_control[cli].write_cmd("UDP: UDP transport disabled in configuration.\r\n");
