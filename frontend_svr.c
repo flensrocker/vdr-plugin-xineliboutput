@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.76 2009-08-05 10:49:44 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.77 2009-08-06 11:22:26 phintuka Exp $
  *
  */
 
@@ -174,6 +174,8 @@ void cXinelibServer::Clear(void)
   TRACEF("cXinelibServer::Clear");
 
   LOCK_THREAD;
+
+  SetHeader(NULL, 0, true);
 
   for(int i = 0; i < MAXCLIENTS; i++)
     if(fd_control[i].open() && m_Writer[i])
