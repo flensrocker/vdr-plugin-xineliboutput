@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.62 2009-08-02 11:44:10 phintuka Exp $
+ * $Id: config.h,v 1.63 2009-08-07 12:18:07 phintuka Exp $
  *
  */
 
@@ -158,6 +158,14 @@
 #define OSD_SCALING_BILINEAR    2
 #define OSD_SCALING_count       3
 
+// OSD size
+#define OSD_SIZE_auto           0  // frontend display resolution
+#define OSD_SIZE_720x576        1
+#define OSD_SIZE_1280x720       2
+#define OSD_SIZE_1920x1080      3
+#define OSD_SIZE_custom         4
+#define OSD_SIZE_count          5
+
 // Video decoder
 #define DECODER_MPEG2_auto       0 /* use value from frontend config_xineliboutput */
 #define DECODER_MPEG2_LIBMPEG2   1
@@ -225,6 +233,7 @@ class config_t {
     static const char * const s_osdBlendingMethods     [OSD_BLENDING_count  + 1];
     static const char * const s_osdMixers              [OSD_MIXER_count     + 1];
     static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
+    static const char * const s_osdSizes               [OSD_SIZE_count      + 1];
     static const char * const s_decoders_MPEG2         [DECODER_MPEG2_count + 1];
     static const char * const s_decoders_H264          [DECODER_H264_count  + 1];
     static const char * const s_ff_skip_loop_filters   [FF_H264_SKIP_LOOPFILTER_count + 1];
@@ -283,6 +292,9 @@ class config_t {
     // OSD settings 
     eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
     int  hide_main_menu;
+    int  osd_size;
+    int  osd_width;
+    int  osd_height;
     int  osd_mixer;                // show multiple OSD layers
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
     int  hud_osd;                  // head up display OSD

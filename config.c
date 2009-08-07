@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.83 2009-08-02 11:44:10 phintuka Exp $
+ * $Id: config.c,v 1.84 2009-08-07 12:18:06 phintuka Exp $
  *
  */
 
@@ -233,6 +233,15 @@ const char * const config_t::s_osdScalings[] = {
   trNOOP("no"),
   trNOOP("nearest"),              // item [1]
   trNOOP("bilinear"),             // item [2]
+  NULL
+};
+
+const char * const config_t::s_osdSizes[] = {
+  trNOOP("automatic"),
+  "720x576",
+  "1280x720",
+  "1920x1080",
+  trNOOP("custom"),
   NULL
 };
 
@@ -566,6 +575,9 @@ config_t::config_t() {
   display_aspect       = 0;     /* auto */
 
   hide_main_menu       = 0;
+  osd_size             = OSD_SIZE_auto;
+  osd_width            = 720;
+  osd_height           = 576;
   osd_mixer            = OSD_MIXER_FULL;
   osd_scaling          = OSD_SCALING_NEAREST;
   hud_osd              = 0;
@@ -805,6 +817,9 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Audio.SoftwareVolumeControl")) sw_volume_control = atoi(Value);
 
   else if (!strcasecmp(Name, "OSD.HideMainMenu"))   hide_main_menu = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Size"))           osd_size = strstra(Value, s_osdSizes, 0);
+  else if (!strcasecmp(Name, "OSD.Width"))          osd_width = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Height"))         osd_height = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Blending"))       osd_blending = atoi(Value);
