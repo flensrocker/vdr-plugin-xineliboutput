@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.70 2009-05-29 15:09:10 phintuka Exp $
+ * $Id: setup_menu.c,v 1.71 2009-08-07 12:29:31 phintuka Exp $
  *
  */
 
@@ -886,6 +886,8 @@ class cMenuSetupOSD : public cMenuSetupPage
     int orig_alpha_correction;
     int orig_alpha_correction_abs;
 
+    cOsdItem *ctrl_size;
+    cOsdItem *ctrl_width;
     cOsdItem *ctrl_scaling;
     cOsdItem *ctrl_alpha;
     cOsdItem *ctrl_alpha_abs;
@@ -895,7 +897,7 @@ class cMenuSetupOSD : public cMenuSetupPage
   protected:
     virtual void Store(void);
     void Set(void);
-  
+
   public:
     cMenuSetupOSD(void);
     ~cMenuSetupOSD();
@@ -920,11 +922,13 @@ cMenuSetupOSD::~cMenuSetupOSD()
 }
 
 void cMenuSetupOSD::Set(void)
-{ 
+{
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
   int current = Current();
   Clear();
 
+  ctrl_size = NULL;
+  ctrl_width = NULL;
   ctrl_scaling = NULL;
   ctrl_blending = NULL;
   ctrl_lowres = NULL;
@@ -932,8 +936,19 @@ void cMenuSetupOSD::Set(void)
   ctrl_alpha_abs = NULL;
 
   Add(NewTitle(tr("On-Screen Display")));
-  Add(new cMenuEditBoolItem(tr("Hide main menu"), 
+  Add(new cMenuEditBoolItem(tr("Hide main menu"),
 			    &newconfig.hide_main_menu));
+
+  Add(ctrl_size =
+      new cMenuEditStraI18nItem(tr("Resolution"), &newconfig.osd_size,
+	                        OSD_SIZE_count, xc.s_osdSizes));
+  if (newconfig.osd_size == OSD_SIZE_custom) {
+    Add(ctrl_width =
+        new cMenuEditTypedIntItem(tr("  Width"), "px",
+                                  &newconfig.osd_width, 480, 2048));
+    Add(new cMenuEditTypedIntItem(tr("  Height"), "px",
+                                  &newconfig.osd_height, 576, 1200));
+  }
 
   Add(ctrl_blending =
       new cMenuEditBoolItem(tr("Blending method"),
@@ -994,6 +1009,11 @@ eOSState cMenuSetupOSD::ProcessKey(eKeys Key)
   else if(item == ctrl_alpha_abs)
     xc.alpha_correction_abs = newconfig.alpha_correction_abs;
 
+  if (newconfig.osd_size == OSD_SIZE_custom && !ctrl_width)
+    Set();
+  if (newconfig.osd_size != OSD_SIZE_custom && ctrl_width)
+    Set();
+
   if(newconfig.osd_blending==OSD_BLENDING_SOFTWARE && !ctrl_lowres)
     Set();
   if(newconfig.osd_blending!=OSD_BLENDING_SOFTWARE && ctrl_lowres)
@@ -1013,6 +1033,9 @@ void cMenuSetupOSD::Store(void)
   orig_alpha_correction = xc.alpha_correction;
   orig_alpha_correction_abs = xc.alpha_correction_abs;
 
+  SetupStore("OSD.Size",            xc.s_osdSizes[xc.osd_size]);
+  SetupStore("OSD.Width",           xc.osd_width);
+  SetupStore("OSD.Height",          xc.osd_height);
   SetupStore("OSD.Scaling",         xc.osd_scaling);
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);

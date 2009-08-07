@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-01-07 15:46+0200\n"
+"POT-Creation-Date: 2009-08-07 15:14+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -478,6 +478,9 @@ msgstr "Obrazovkové menu"
 
 msgid "Hide main menu"
 msgstr "Nezobrazovat v hlavním menu"
+
+msgid "Resolution"
+msgstr ""
 
 msgid "Blending method"
 msgstr ""

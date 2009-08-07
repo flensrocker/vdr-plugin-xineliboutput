@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-01-07 15:46+0200\n"
+"POT-Creation-Date: 2009-08-07 15:14+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -478,6 +478,9 @@ msgstr "Kuvaruutunäyttö"
 
 msgid "Hide main menu"
 msgstr "Piilota valinta päävalikossa"
+
+msgid "Resolution"
+msgstr "Tarkkuus"
 
 msgid "Blending method"
 msgstr "Piirtotapa"

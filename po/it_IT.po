@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-01-07 15:46+0200\n"
+"POT-Creation-Date: 2009-08-07 15:14+0300\n"
 "PO-Revision-Date: 2009-02-08 20:09+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -480,6 +480,9 @@ msgstr "Messaggi in sovrimpressione (OSD)"
 msgid "Hide main menu"
 msgstr "Nascondi voce menu princ."
 
+msgid "Resolution"
+msgstr ""
+
 msgid "Blending method"
 msgstr "Metodo di sfocatura"
 
@@ -650,4 +653,3 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
-
