@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.1 2009-02-23 22:16:08 phintuka Exp $
+ * $Id: ts2es.c,v 1.2 2009-08-07 12:06:55 phintuka Exp $
  *
  */
 
@@ -29,7 +29,8 @@ struct ts2es_s {
 
   buf_element_t *buf;
   int            pes_start;
-  int64_t pts;
+  int            first_pusi_seen;
+  int64_t        pts;
 };
 
 
@@ -138,6 +139,7 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
 
   /* handle new payload unit */
   if (pusi) {
+    this->first_pusi_seen = 1;
     this->pes_start = 1;
     if (this->buf) {
 
@@ -151,6 +153,10 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
 
   /* need new buffer ? */
   if (!this->buf) {
+    /* discard data until first payload start indicator */
+    if (!this->first_pusi_seen)
+      return NULL;
+
     this->buf = this->fifo->buffer_pool_alloc(this->fifo);
     this->buf->type = this->xine_buf_type;
     this->buf->decoder_info[0] = 1;
