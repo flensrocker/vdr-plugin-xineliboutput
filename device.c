@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.86 2009-08-01 19:50:36 phintuka Exp $
+ * $Id: device.c,v 1.87 2009-08-07 12:33:51 phintuka Exp $
  *
  */
 
@@ -1541,8 +1541,26 @@ void cXinelibDevice::GetVideoSize(int &Width, int &Height, double &VideoAspect)
 
 void cXinelibDevice::GetOsdSize(int &Width, int &Height, double &PixelAspect)
 {
-  Width  = 720;
-  Height = 576;
+  switch (xc.osd_size) {
+    case OSD_SIZE_720x576:
+      Width  = 720;
+      Height = 576;
+      break;
+    case OSD_SIZE_1280x720:
+      Width  = 1280;
+      Height = 720;
+      break;
+    case OSD_SIZE_1920x1080:
+      Width  = 1920;
+      Height = 1080;
+      break;
+    case OSD_SIZE_auto:
+    case OSD_SIZE_custom:
+    default:
+      Width  = xc.osd_width;
+      Height = xc.osd_height;
+      break;
+  }
   PixelAspect = 16.0 / 9.0 / (double)Width * (double)Height;
 }
 
