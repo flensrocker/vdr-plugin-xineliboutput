@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
 "POT-Creation-Date: 2009-08-07 15:14+0300\n"
-"PO-Revision-Date: 2009-02-08 20:09+0100\n"
+"PO-Revision-Date: 2009-08-10 00:40+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
@@ -21,13 +21,13 @@ msgid "custom"
 msgstr "personalizza"
 
 msgid "tiny"
-msgstr "molto piccolo"
+msgstr "molto piccola"
 
 msgid "small"
-msgstr "piccolo"
+msgstr "piccola"
 
 msgid "medium"
-msgstr "medio"
+msgstr "media"
 
 msgid "large"
 msgstr "grande"
@@ -36,7 +36,7 @@ msgid "huge"
 msgstr "enorme"
 
 msgid "automatic"
-msgstr "automatica"
+msgstr "automatico"
 
 msgid "default"
 msgstr "predefinita"
@@ -478,16 +478,16 @@ msgid "On-Screen Display"
 msgstr "Messaggi in sovrimpressione (OSD)"
 
 msgid "Hide main menu"
-msgstr "Nascondi voce menu princ."
+msgstr "Nascondi voce menu principale"
 
 msgid "Resolution"
-msgstr ""
+msgstr "Risoluzione"
 
 msgid "Blending method"
 msgstr "Metodo di sfocatura"
 
 msgid "  Use hardware for low-res video"
-msgstr "Utilizza hardware per video bassa risoluzione"
+msgstr "  Usa hardware video bassa risoluz."
 
 msgid "Scaling method"
 msgstr "Metodo ridimensione"
@@ -598,7 +598,7 @@ msgid "  Server announce broadcasts"
 msgstr "  Annuncio trasmissioni dal server"
 
 msgid "  HTTP transport for media files"
-msgstr "  Protocollo HTTP per file multimediali"
+msgstr "  Protocollo HTTP file multimediali"
 
 msgid "Additional network services"
 msgstr "Ulteriori servizi di rete"
@@ -607,13 +607,13 @@ msgid "HTTP server"
 msgstr "Server HTTP"
 
 msgid "HTTP clients can control VDR"
-msgstr "I client HTTP possono controllare VDR"
+msgstr "Controllo VDR da client HTTP"
 
 msgid "RTSP server"
 msgstr "Server RTSP"
 
 msgid "RTSP clients can control VDR"
-msgstr "I client RTSP possono controllare VDR"
+msgstr "Controllo VDR da client RTSP"
 
 msgid "Playlist settings"
 msgstr "Impostazioni lista esec."
@@ -634,7 +634,7 @@ msgid "Cache metainfo"
 msgstr "Cache metainfo"
 
 msgid "Arrow keys control DVD playback"
-msgstr "Controllo riprod. DVD con tasti freccia"
+msgstr "Riproduzione DVD con tasti freccia"
 
 msgid "Grayscale"
 msgstr "Scala di grigi"
@@ -653,3 +653,4 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+
