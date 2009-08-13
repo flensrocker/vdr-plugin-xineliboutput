@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.11 2009-06-16 21:59:45 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.12 2009-08-13 12:32:23 phintuka Exp $
  *
  */
 
@@ -54,6 +54,9 @@ static void list_plugins(xine_t *xine, int verbose)
     list_plugins_type (xine, "Available SPU decoder plugins:  ", xine_list_spu_plugins);
   }
 }
+
+volatile int   last_signal = 0;
+int            gui_hotkeys = 0;
 
 /* static data */
 pthread_t kbd_thread;
@@ -383,9 +386,7 @@ int main(int argc, char *argv[])
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   char *video_port = NULL;
-#ifndef IS_FBFE
   int window_id = -1;
-#endif
   int xmajor, xminor, xsub;
   int err, c;
   frontend_t *fe = NULL;
@@ -625,14 +626,12 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Error initializing frontend\n");
     return -3;
   }
-#ifndef IS_FBFE
-  ((fe_t*)fe)->window_id = window_id;
-#endif
-  ((fe_t*)fe)->aspect_controller = aspect_controller;
 
   /* Initialize display */
-  if(!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, 0,
-			  "", aspect, NULL, noxkbd, video_port, scale_video, 0)) {
+  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, 0,
+                           "", aspect, NULL, noxkbd, gui_hotkeys,
+                           video_port, scale_video, 0,
+                           aspect_controller, window_id)) {
     fprintf(stderr, "Error opening display\n");
     fe->fe_free(fe);
     return -4;
