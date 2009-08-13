@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.7 2009-06-16 21:55:33 phintuka Exp $
+# $Id: Makefile,v 1.38.2.8 2009-08-13 11:12:36 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -79,6 +79,13 @@ endif
 # check for Apple Darwin
 ifeq ($(shell gcc -dumpmachine | grep -q 'apple-darwin' && echo "1" || echo "0"), 1)
     APPLE_DARWIN = 1
+endif
+
+# check for libexractor
+ifeq ($(shell pkg-config libextractor && echo "1"), 1)
+    HAVE_EXTRACTOR_H = 1
+else
+    $(warning libextractor not found.)
 endif
 
 #
@@ -171,11 +178,6 @@ else
         APIVERSION = $(VDRVERSION)
     endif
     XINELIBOUTPUT_VDRPLUGIN = 1
-    ifeq ($(shell pkg-config libextractor && echo "1"), 1)
-        HAVE_EXTRACTOR_H = 1
-    else
-        $(warning libextractor not found.)
-    endif
 endif
 
 
