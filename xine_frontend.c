@@ -4,9 +4,18 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.7 2009-08-14 06:17:42 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.8 2009-08-14 12:56:27 phintuka Exp $
  *
  */
+
+#include <inttypes.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#define XINE_ENGINE_INTERNAL
+#include <xine.h>
+#include <xine/xine_internal.h>
 
 #ifndef XINE_VERSION_CODE
 #  define XINE_VERSION_CODE (XINE_MAJOR_VERSION*10000 + \
@@ -19,9 +28,10 @@
 
 #include "xine/post.h"
 
-#ifdef FE_STANDALONE
-static int verbose_xine_log = 0;
-#endif
+#undef  MIN
+#define MIN(a,b) ( (a) < (b) ? (a) : (b))
+#undef  MAX
+#define MAX(a,b) ( (a) > (b) ? (a) : (b))
 
 /* from vdr_input_plugin: */
 typedef struct {
@@ -113,27 +123,27 @@ void list_xine_plugins(frontend_t *fe, int verbose)
  * detect input plugin 
  */
 
-static int find_input(fe_t *this)
+static int find_input_plugin(fe_t *this)
 {
-  if(!this->input) {
+  if(!this->input_plugin) {
     if(!this->stream || !this->stream->input_plugin ||
        !this->stream->input_plugin->input_class || this->playback_finished) {
-      LOGMSG("find_input: stream not initialized or playback finished !");
+      LOGMSG("find_input_plugin: stream not initialized or playback finished !");
       usleep(100*1000);
       return 0;
     }
 #if XINE_VERSION_CODE < 10190
     if(strcmp(this->stream->input_plugin->input_class->get_identifier(
 	      this->stream->input_plugin->input_class),
-              "xvdr")) {
+              MRL_ID)) {
 #else
     if(strcmp(this->stream->input_plugin->input_class->identifier,
-              "xvdr")) {
+              MRL_ID)) {
 #endif
-      LOGMSG("find_input: current xine input plugin is not xvdr !");
+      LOGMSG("find_input_plugin: current xine input plugin is not " MRL_ID " !");
       return 0;
     }
-    this->input = this->stream->input_plugin;
+    this->input_plugin = this->stream->input_plugin;
   }
   return 1;
 }
@@ -340,7 +350,7 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
   switch (event->type) {
     /* in local mode: vdr stream / slave stream ; in remote mode: vdr stream only */
     case XINE_EVENT_UI_PLAYBACK_FINISHED:
-      LOGMSG("xine_event_cb: XINE_EVENT_UI_PLAYBACK_FINISHED");
+      LOGDBG("XINE_EVENT_UI_PLAYBACK_FINISHED");
       if(this) {
 	if(event->stream == this->stream)
 	  this->playback_finished = 1;
@@ -517,6 +527,13 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   if(!this)
     return 0;
 
+  /* check xine-lib version */
+  if(!xine_check_version(1, 1, 0)) {
+    LOGERR("xine-lib is too old, require at least xine library version 1.1.0\n");
+    return FE_ERROR;
+  }
+
+
   /*
    * init xine engine
    */
@@ -527,18 +544,15 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   this->stream          = NULL;
   this->video_port      = NULL;
   this->audio_port      = NULL;
-  this->input           = NULL;
+  this->input_plugin    = NULL;
 
   /* create a new xine and load config file */
   this->xine = xine_new();
   if(!this->xine)
     return 0;
 
-#ifdef FE_STANDALONE
-  this->xine->verbosity = verbose_xine_log;
-#else
+  /* Set xine engine logging verbosity */
   this->xine->verbosity = (SysLogLevel>2);
-#endif
 
   /*xine_register_log_cb(this->xine, xine_log_cb, this);*/
 
@@ -575,41 +589,9 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   x_upd_num("engine.buffers.video_num_buffers", pes_buffers);
 
 #ifdef IS_FBFE
-  if(this->fb_dev) {
+  if(this->video_port_name) {
     if(video_driver && !strcmp(video_driver, "fb"))
-      x_upd_str("video.device.fb_device", this->fb_dev);
-    else if(video_driver && !strcmp(video_driver, "DirectFB")) { 
-      /* DirectFBInit (NULL, NULL); */
-      /* DirectFBSetOption ("fbdev", video_port); */
-      char *orig = getenv("DFBARGS"), *head = NULL, *tail = NULL, *tmp = NULL;
-      if(orig) {
-	orig = strdup(orig);
-	if(NULL != (head = strstr(orig,"fbdev="))) {
-	  tail = strchr(head, ',');
-	  if(head == orig)
-	    head = NULL;
-	  else
-	    *head = 0;
-	  if (asprintf(&tmp, "%sfbdev=%s%s",
-                       head ? orig : "", this->fb_dev, tail ? tail : "") < 0)
-            tmp = NULL;
-	} else {
-	  if (asprintf(&tmp, "fbdev=%s%s%s", this->fb_dev, orig?",":"", orig?orig:""))
-            tmp = NULL;
-	}
-	LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
-	       tmp, getenv("DFBARGS"));
-	free(orig);
-      } else {
-	if (asprintf(&tmp, "fbdev=%s", this->fb_dev) < 0)
-          tmp = NULL;
-	LOGMSG("setting environment variable DFBARGS to %s", tmp);
-      }
-      if (tmp)
-        setenv("DFBARGS", tmp, 1);
-      free(tmp);
-      /*free(orig);*/
-    }
+      x_upd_str("video.device.fb_device", this->video_port_name);
   }
 #endif
 
@@ -640,7 +622,6 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
     LOGMSG("fe_xine_init: xine_open_video_driver(\"%s\") failed",
 	   video_driver?video_driver:"(NULL)"); 
     xine_exit(this->xine);
-    this->xine = NULL;
     return 0;
   }
 
@@ -681,15 +662,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(!this->stream) {
     LOGMSG("fe_xine_init: xine_stream_new failed"); 
-
-    if(this->audio_port)
-      xine_close_audio_driver(this->xine, this->audio_port);
-    this->audio_port = NULL;
-    xine_close_video_driver(this->xine, this->video_port);
-    this->video_port = NULL;
     xine_exit(this->xine);
-    this->xine = NULL;
-
     return 0;
   }
 
@@ -714,13 +687,10 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   /* multithreaded decoding / post processing */
 
   if(guess_cpu_count() > 1) {
-    int xmajor, xminor, xsub;
-    xine_get_version(&xmajor, &xminor, &xsub);
-    if(xmajor*10000 + xminor*100 + xsub < 10109)
-      LOGMSG("Multithreaded video decoding is not supported in xine-lib %d.%d.%d",
-	     xmajor, xminor, xsub);
+    if(!xine_check_version(1,1,9))
+      LOGMSG("FFmpeg multithreaded video decoding is not supported in xine-lib < 1.1.9");
     else
-      LOGMSG("Enabling multithreaded video decoding");
+      LOGMSG("Enabling FFmpeg multithreaded video decoding");
 
     /* try to enable anyway, maybe someone is using patched 1.1.8 ... */
     x_upd_num("video.processing.ffmpeg_thread_count", guess_cpu_count());
@@ -769,11 +739,11 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   if(!this)
     return 0;
 
-  this->input = NULL;
+  this->input_plugin      = NULL;
   this->playback_finished = 1;
 
-  if (asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : "xvdr://") < 0)
-    url = strdup("xvdr://");
+  if (asprintf(&url, "%s#nocache", mrl ? : MRL_ID "://") < 0)
+    return 0;
 
   result = xine_open(this->stream, url);
 
@@ -1006,7 +976,7 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
     if(!posts->post_pip_elements ||
        !posts->post_vis_elements[0] ||
        !posts->post_vis_elements[0]->enable)
-      LOGMSG("enabling picture-in-picture (\"%s\") post plugin", initstr);
+      LOGMSG("enabling picture-in-picture (\"%s:%s\") post plugin", name, args);
   }
 
   if(args) {
@@ -1108,19 +1078,19 @@ static int fe_xine_play(frontend_t *this_gen)
 
   fe_post_rewire(this);
 
-  this->input = NULL;
+  this->input_plugin = NULL;
   this->playback_finished = xine_play(this->stream, 0, 0) ? 0 : 1;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
+  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
   input_vdr->f.xine_input_event = this->keypress;
   input_vdr->f.fe_control = fe_control;
   input_vdr->f.fe_handle  = this_gen;
 
   if(this->playback_finished)
-    LOGMSG("Error playing xvdr:// !");
+    LOGMSG("Error playing " MRL_ID ":// !");
 
   return !this->playback_finished;
 }
@@ -1132,7 +1102,7 @@ static int fe_xine_stop(frontend_t *this_gen)
   if(!this)
     return 0;
 
-  this->input = NULL;
+  this->input_plugin = NULL;
   this->playback_finished = 1;
 
   xine_stop(this->stream);
@@ -1151,9 +1121,9 @@ static void fe_xine_close(frontend_t *this_gen)
 
   if (this && this->xine) {
 #ifndef FE_STANDALONE
-    if(this->input) {
+    if(this->input_plugin) {
       vdr_input_plugin_t *input_vdr;
-      input_vdr = (vdr_input_plugin_t *)this->input;
+      input_vdr = (vdr_input_plugin_t *)this->input_plugin;
       input_vdr->f.xine_input_event = NULL;
     }
 #endif
@@ -1174,7 +1144,7 @@ static void fe_xine_exit(frontend_t *this_gen)
 
   if (this && this->xine) {
 
-    if(this->input || !this->playback_finished)
+    if(this->input_plugin || !this->playback_finished)
       fe_xine_close(this_gen);
     fe_post_unload(this);
 
@@ -1228,42 +1198,47 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 {
   fe_t *this = (fe_t*)this_gen;
 
-  if(!this || this->playback_finished)
-    return 1;
-  
-  if(slave_stream) {
-    if(!this->slave_stream || this->slave_playback_finished)
-      return 1;
+  if (!this)
+    return FE_XINE_ERROR;
+  if (this->playback_finished)
+    return FE_XINE_ERROR;
+
+  if (slave_stream) {
+    if (!this->slave_stream || this->slave_playback_finished)
+      return FE_XINE_EXIT;
   }
-  
-  return 0;
+
+  return FE_XINE_RUNNING;
 }
 
 /************************** hooks to input plugin ****************************/
 
 #ifndef FE_STANDALONE
+/*
+ * data/control from VDR
+ */
 
 static int xine_control(frontend_t *this_gen, const char *cmd)
 {
   fe_t *this = (fe_t*)this_gen;
   vdr_input_plugin_t *input_vdr;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  return input_vdr->f.push_input_control(this->input, cmd);
+  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
+  return input_vdr->f.push_input_control(this->input_plugin, cmd);
 }
 
 static int xine_osd_command(frontend_t *this_gen, struct osd_command_s *cmd) {
   fe_t *this = (fe_t*)this_gen;
   vdr_input_plugin_t *input_vdr;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  return input_vdr->f.push_input_osd(this->input, cmd);
+  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
+  return input_vdr->f.push_input_osd(this->input_plugin, cmd);
 }
 
 static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len)
@@ -1271,14 +1246,18 @@ static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len
   fe_t *this = (fe_t*)this_gen;
   vdr_input_plugin_t *input_vdr;
 
-  if(!this->input && !find_input(this))
+  if(!find_input_plugin(this))
     return 0/*-1*/;
 
-  input_vdr = (vdr_input_plugin_t *)this->input;
-  return input_vdr->f.push_input_write(this->input, data, len);
+  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
+  return input_vdr->f.push_input_write(this->input_plugin, data, len);
 }
 
 #else /* #ifndef FE_STANDALONE */
+
+/*
+ * control from frontend to xine/vdr
+ */
 
 static void process_xine_keypress(fe_t *this, 
 				  const char *map, const char *key,
@@ -1287,10 +1266,10 @@ static void process_xine_keypress(fe_t *this,
   /* from UI --> input plugin --> vdr */
   LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
-  if(this->input || find_input(this)) {
-    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
+  if(this->input_plugin || find_input_plugin(this)) {
+    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input_plugin;
     if(input_vdr->f.input_control) {
-      input_vdr->f.input_control(this->input, map, key, repeat, release);
+      input_vdr->f.input_control(this->input_plugin, map, key, repeat, release);
     } else {
       LOGMSG("Keypress --- NO HANDLER SET");
     }
@@ -1380,7 +1359,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 					    this->video_port);
       LOGMSG("  PIP %d: %dx%d @ (%d,%d)", pid & 0x0f, w, h, x, y);
       LOGMSG("create pip stream done");
-      sprintf(mrl, "xvdr+slave://0x%lx#nocache;demux:mpeg_block",
+      sprintf(mrl, MRL_ID "+slave://0x%lx#nocache;demux:mpeg_block",
 	      (unsigned long int)this);
       if(!xine_open(posts->pip_stream, mrl) ||
 	 !xine_play(posts->pip_stream, 0, 0)) {
@@ -1464,11 +1443,6 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
       /* trigger forced redraw to make changes effective */
       xine_set_param(this->stream, XINE_PARAM_VO_ZOOM_X, 100);      
     }
-  } else if(!strncmp(cmd, "VO_ASPECT ", 10)) {
-    int vo_aspect_ratio;
-    if(1 == sscanf(cmd+10, "%d", &vo_aspect_ratio)) {
-      xine_set_param(this->stream, XINE_PARAM_VO_ASPECT_RATIO, vo_aspect_ratio);
-    }
   }
   
 
@@ -1481,7 +1455,6 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
  *     source: vdr-1.3.42, tools.c
  *     modified to accept YUV data
  *
- *  TODO: remote version: send to ctrl stream
  *        - move to xine_input_vdr ?
  */
 
@@ -1550,7 +1523,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   /* #warning TODO: convert to RGB PPM */
 #endif
 
-  if(!this->input && !find_input(this))
+  if(!this->input_plugin && !find_input_plugin(this))
     return 0;
 
   LOGDBG("fe_grab: grabbing %s %d %dx%d", 
@@ -1687,6 +1660,32 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   return (char*) jcd.mem;
 }
 
+/*
+ * init_fe()
+ *
+ * initialize function pointers
+ */
+void init_fe(fe_t *fe)
+{
+  fe->fe.xine_init        = fe_xine_init;
+  fe->fe.xine_open        = fe_xine_open;
+  fe->fe.xine_play        = fe_xine_play;
+  fe->fe.xine_stop        = fe_xine_stop;
+  fe->fe.xine_close       = fe_xine_close;
+  fe->fe.xine_exit        = fe_xine_exit;
+
+  fe->fe.fe_free          = fe_free;
+
+  fe->fe.xine_is_finished = fe_is_finished;
+
+#ifndef FE_STANDALONE
+  fe->fe.xine_osd_command      = xine_osd_command;
+  fe->fe.xine_control          = xine_control;
+  fe->fe.xine_queue_pes_packet = xine_queue_pes_packet;
+#endif
+
+  fe->fe.grab             = fe_grab;
+}
 
 #ifdef FE_STANDALONE
 
@@ -1695,4 +1694,3 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 #include "xine_frontend_main.c"
 
 #endif /* #ifdef FE_STANDALONE */
-
