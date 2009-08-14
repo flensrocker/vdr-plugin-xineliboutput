@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.6 2009-06-16 21:19:38 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.7 2009-08-14 06:17:42 phintuka Exp $
  *
  */
 
@@ -62,6 +62,51 @@ static int guess_cpu_count(void)
     LOGDBG("Detected single CPU. Multithreaded decoding and post processing disabled.");
 
   return cores;
+}
+
+/*
+ * list available plugins
+ */
+
+static void list_plugins_type(xine_t *xine, const char *msg, typeof (xine_list_audio_output_plugins) list_func)
+{
+  static xine_t *tmp_xine = NULL;
+  if(!xine) {
+    if(!tmp_xine)
+      xine_init(tmp_xine = xine_new());
+    xine = tmp_xine;
+  }
+  const char *const *list = list_func(xine);
+
+  printf("%s", msg);
+  while(list && *list)
+    printf(" %s", *list++);
+  printf("\n");
+}
+
+void list_xine_plugins(frontend_t *fe, int verbose)
+{
+  fe_t *this = (fe_t *)fe;
+
+  xine_t *tmp_xine = NULL;
+  xine_t *xine = this ? this->xine : NULL;
+
+  if (!xine)
+    xine_init(xine = tmp_xine = xine_new());
+
+  list_plugins_type (xine, "Available video drivers:", xine_list_video_output_plugins);
+  list_plugins_type (xine, "Available audio drivers:", xine_list_audio_output_plugins); 
+  if (verbose) {
+    list_plugins_type (xine, "Available post plugins: ", xine_list_post_plugins); 
+    list_plugins_type (xine, "Available input plugins:", xine_list_input_plugins);
+    list_plugins_type (xine, "Available demux plugins:", xine_list_demuxer_plugins);
+    list_plugins_type (xine, "Available audio decoder plugins:", xine_list_audio_decoder_plugins);
+    list_plugins_type (xine, "Available video decoder plugins:", xine_list_video_decoder_plugins);
+    list_plugins_type (xine, "Available SPU decoder plugins:  ", xine_list_spu_plugins);
+  }
+
+  if (tmp_xine)
+    xine_exit(tmp_xine);
 }
 
 /*
