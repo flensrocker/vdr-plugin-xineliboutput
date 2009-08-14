@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.14 2009-08-14 10:19:46 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.15 2009-08-14 11:02:52 phintuka Exp $
  *
  */
 
@@ -509,7 +509,7 @@ int main(int argc, char *argv[])
   while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
     switch (c) {
     default:
-    case 'H': printf("\nUsage: %s [options] [xvdr[+udp|+tcp|+rtp]:[//host[:port]]] \n"
+    case 'H': printf("\nUsage: %s [options] [" MRL_ID "[+udp|+tcp|+rtp]:[//host[:port]]] \n"
                      "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
               list_xine_plugins(NULL, SysLogLevel>2);
@@ -646,20 +646,20 @@ int main(int argc, char *argv[])
 
 #if 1
   /* backward compability */
-  if (mrl && ( !strncmp(mrl, "xvdr:tcp:", 9) ||
-               !strncmp(mrl, "xvdr:udp:", 9) ||
-               !strncmp(mrl, "xvdr:rtp:", 9) ||
-               !strncmp(mrl, "xvdr:pipe:", 10)))
+  if (mrl && ( !strncmp(mrl, MRL_ID ":tcp:",  MRL_ID_LEN+5) ||
+               !strncmp(mrl, MRL_ID ":udp:",  MRL_ID_LEN+5) ||
+               !strncmp(mrl, MRL_ID ":rtp:",  MRL_ID_LEN+5) ||
+               !strncmp(mrl, MRL_ID ":pipe:", MRL_ID_LEN+6)))
     mrl[4] = '+';
 #endif
 
   /* If server address not given, try to find server automatically */
   if (!mrl ||
-      !strcmp(mrl, "xvdr:") ||
-      !strcmp(mrl, "xvdr+tcp:") ||
-      !strcmp(mrl, "xvdr+udp:") ||
-      !strcmp(mrl, "xvdr+rtp:") ||
-      !strcmp(mrl, "xvdr+pipe:")) {
+      !strcmp(mrl, MRL_ID ":") ||
+      !strcmp(mrl, MRL_ID "+tcp:") ||
+      !strcmp(mrl, MRL_ID "+udp:") ||
+      !strcmp(mrl, MRL_ID "+rtp:") ||
+      !strcmp(mrl, MRL_ID "+pipe:")) {
     char address[1024] = "";
     int port = -1;
     PRINTF("VDR server not given, searching ...\n");
@@ -672,23 +672,23 @@ int main(int argc, char *argv[])
           return -1;
         free(tmp);
       } else
-        if (asprintf(&mrl, "xvdr://%s:%d", address, port) < 0)
+        if (asprintf(&mrl, MRL_ID "://%s:%d", address, port) < 0)
           return -1;
     } else {
       PRINTF("---------------------------------------------------------------\n"
              "WARNING: MRL not given and server not found from local network.\n"
              "         Trying to connect to default port on local host.\n"
              "---------------------------------------------------------------\n");
-      mrl = strdup("xvdr://127.0.0.1");
+      mrl = strdup(MRL_ID "://127.0.0.1");
     }
   }
 
   if (mrl &&
-      strncmp(mrl, "xvdr:", 5) &&
-      strncmp(mrl, "xvdr+", 5)) {
+      strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) &&
+      strncmp(mrl, MRL_ID "+", MRL_ID_LEN+1)) {
     char *mrl2 = mrl;
-    PRINTF("WARNING: MRL does not start with \'xvdr:\' (%s)", mrl);
-    if (asprintf(&mrl, "xvdr://%s", mrl) < 0)
+    PRINTF("WARNING: MRL does not start with \'" MRL_ID ":\' (%s)", mrl);
+    if (asprintf(&mrl, MRL_ID "://%s", mrl) < 0)
       return -1;
     free(mrl2);
   }
@@ -696,11 +696,11 @@ int main(int argc, char *argv[])
   {
     char *tmp = NULL, *mrl2 = mrl;
     if (frtp && !strstr(mrl, "rtp:"))
-      tmp = strdup("xvdr+rtp:");
+      tmp = strdup(MRL_ID "+rtp:");
     else if (fudp && !strstr(mrl, "udp:"))
-      tmp = strdup("xvdr+udp:");
+      tmp = strdup(MRL_ID "+udp:");
     else if (ftcp && !strstr(mrl, "tcp:"))
-      tmp = strdup("xvdr+tcp:");
+      tmp = strdup(MRL_ID "+tcp:");
     if (tmp) {
       mrl = strcatrealloc(tmp, strchr(mrl, '/'));
       free(mrl2);
