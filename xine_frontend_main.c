@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.15 2009-08-14 11:02:52 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.16 2009-08-14 11:07:06 phintuka Exp $
  *
  */
 
@@ -34,11 +34,7 @@
 int SysLogLevel __attribute__((visibility("default"))) = SYSLOGLEVEL_INFO; /* errors and info, no debug */
 
 volatile int   last_signal = 0;
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-int            gui_hotkeys = 1;
-#else
 int            gui_hotkeys = 0;
-#endif
 
 /*
  * stdin (keyboard/slave mode) reading
@@ -424,6 +420,7 @@ static const char help_str[] =
 #ifndef IS_FBFE
     "   --noxkbd                      Disable X11 keyboard input\n"
 #endif
+    "   --hotkeys                     Enable frontend GUI hotkeys\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\n"
@@ -435,7 +432,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vsxlkbSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -459,6 +456,7 @@ static const struct option long_options[] = {
   { "syslog",  no_argument,  NULL, 'l' },
   { "nokbd",   no_argument,  NULL, 'k' },
   { "noxkbd",  no_argument,  NULL, 'x' },
+  { "hotkeys", no_argument,  NULL, 'o' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
 
@@ -609,6 +607,14 @@ int main(int argc, char *argv[])
     case 'k': nokbd = 1;
               PRINTF("Keyboard input disabled\n");
               break;
+    case 'o': gui_hotkeys = 1;
+              PRINTF("GUI hotkeys enabled\n"
+                     "  mapping keyboard f,F     -> fullscreen toggle\n"
+                     "          keyboard d,D     -> deinterlace toggle\n"
+                     "          LIRC Deinterlace -> deinterlace toggle\n"
+                     "          LIRC Fullscreen  -> fullscreen toggle\n"
+                     "          LIRC Quit        -> exit\n");
+              break;
     case 'b': nokbd = daemon_mode = 1;
               PRINTF("Keyboard input disabled\n");
               break;
@@ -636,13 +642,6 @@ int main(int argc, char *argv[])
   }
 
   PRINTF("\n");
-
-  /* check xine-lib version */
-  if (!xine_check_version(1, 1, 0)) {
-    fprintf(stderr,"ERROR: xine-lib is too old, require at least "
-            "xine library version 1.1.0\n");
-    return -1;
-  }
 
 #if 1
   /* backward compability */
