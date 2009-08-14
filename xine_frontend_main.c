@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.12 2009-08-13 12:32:23 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.13 2009-08-14 06:18:02 phintuka Exp $
  *
  */
 
@@ -23,37 +23,6 @@
 
 /* next symbol is dynamically linked from input plugin */
 int SysLogLevel __attribute__((visibility("default"))) = 2; /* errors and info, no debug */
-
-
-static void list_plugins_type(xine_t *xine, const char *msg, typeof (xine_list_audio_output_plugins) list_func)
-{
-  static xine_t *tmp_xine = NULL;
-  if(!xine) {
-    if(!tmp_xine)
-      xine_init(tmp_xine = xine_new());
-    xine = tmp_xine;
-  }
-  const char *const *list = list_func(xine);
-
-  printf("%s", msg);
-  while(list && *list)
-    printf(" %s", *list++);
-  printf("\n");
-}
-
-static void list_plugins(xine_t *xine, int verbose)
-{
-  list_plugins_type (xine, "Available video drivers:", xine_list_video_output_plugins);
-  list_plugins_type (xine, "Available audio drivers:", xine_list_audio_output_plugins); 
-  if(verbose) {
-    list_plugins_type (xine, "Available post plugins: ", xine_list_post_plugins); 
-    list_plugins_type (xine, "Available input plugins:", xine_list_input_plugins);
-    list_plugins_type (xine, "Available demux plugins:", xine_list_demuxer_plugins);
-    list_plugins_type (xine, "Available audio decoder plugins:", xine_list_audio_decoder_plugins);
-    list_plugins_type (xine, "Available video decoder plugins:", xine_list_video_decoder_plugins);
-    list_plugins_type (xine, "Available SPU decoder plugins:  ", xine_list_spu_plugins);
-  }
-}
 
 volatile int   last_signal = 0;
 int            gui_hotkeys = 0;
@@ -417,7 +386,7 @@ int main(int argc, char *argv[])
     case 'H': printf("\nUsage: %s [options] [xvdr[+udp|+tcp|+rtp]:[//host[:port]]] \n"
 		     "\nAvailable options:\n", exec_name);
               printf("%s", help_str);
-	      list_plugins(NULL, verbose_xine_log);
+	      list_xine_plugins(NULL, verbose_xine_log);
 	      exit(0);
     case 'A': adrv = strdup(optarg);
               adev = strchr(adrv, ':');
@@ -641,11 +610,11 @@ int main(int argc, char *argv[])
   if(!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins, config_file)) {
     fprintf(stderr, "Error initializing xine\n");
     fe->fe_free(fe);
-    list_plugins(NULL, verbose_xine_log);
+    list_xine_plugins(NULL, verbose_xine_log);
     return -5;
   }
   if(SysLogLevel>2)
-    list_plugins(((fe_t*)fe)->xine, verbose_xine_log);
+    list_xine_plugins(((fe_t*)fe)->xine, verbose_xine_log);
 
   /* signal handlers */
 
