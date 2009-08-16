@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.76 2009-05-31 18:53:32 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.77 2009-08-16 09:53:47 rofafor Exp $
  *
  */
 
@@ -390,6 +390,7 @@ static const char help_str[] =
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
     "   --geometry=WxH[+X+Y]          Set output window geometry (X style)\n"
+    "   --buffers=x                   Number of PES buffers\n"
     "   --noscaling                   Disable all video scaling\n"
     "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
     "                                 examples:\n"
@@ -417,7 +418,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -431,6 +432,7 @@ static const struct option long_options[] = {
   { "hud",        no_argument,       NULL, 'D' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
+  { "buffers",    required_argument, NULL, 'B' },
   { "noscaling",  no_argument,       NULL, 'n' },
   { "post",       required_argument, NULL, 'P' },
   { "lirc",       optional_argument, NULL, 'L' },
@@ -459,6 +461,7 @@ int main(int argc, char *argv[])
   char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
+  int pes_buffers = 250;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   char *video_port = NULL;
@@ -556,6 +559,9 @@ int main(int argc, char *argv[])
               break;
     case 'h': height = atoi(optarg);
               PRINTF("Height: %d\n", height);
+              break;
+    case 'B': pes_buffers = atoi(optarg);
+              PRINTF("Buffers: %d\n", pes_buffers);
               break;
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
@@ -717,7 +723,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize xine */
-  if (!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins, config_file)) {
+  if (!fe->xine_init(fe, adrv, adev, gdrv, pes_buffers, static_post_plugins, config_file)) {
     fprintf(stderr, "Error initializing xine\n");
     list_xine_plugins(fe, SysLogLevel>2);
     fe->fe_free(fe);
