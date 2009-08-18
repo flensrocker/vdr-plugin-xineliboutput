@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.71 2009-08-18 12:43:37 phintuka Exp $
+ * $Id: frontend.c,v 1.72 2009-08-18 12:53:42 phintuka Exp $
  *
  */
 
@@ -247,12 +247,6 @@ bool cXinelibThread::IsReady(void)
 {
   LOCK_THREAD;
   return m_bReady;
-}
-
-bool cXinelibThread::IsFinished(void)
-{
-  LOCK_THREAD;
-  return m_bIsFinished;
 }
 
 //

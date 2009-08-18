@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.30 2009-08-18 12:43:37 phintuka Exp $
+ * $Id: frontend.h,v 1.31 2009-08-18 12:53:42 phintuka Exp $
  *
  */
 
@@ -34,7 +34,6 @@ class cXinelibThread : public cThread, public cListObject
 
   public:
     bool IsReady(void);
-    bool IsFinished(void);
 
   //
   // Playback control
@@ -130,7 +129,6 @@ class cXinelibThread : public cThread, public cListObject
 
   protected:
     bool m_bReady;
-    bool m_bIsFinished;
     bool m_bNoVideo;
     bool m_bLiveMode;
     bool m_bEndOfStreamReached;
