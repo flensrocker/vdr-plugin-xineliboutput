@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.23 2009-03-20 07:20:53 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.24 2009-08-18 12:30:34 phintuka Exp $
  *
  */
 
@@ -33,9 +33,6 @@ class cXinelibServer : public cXinelibThread
   public:
     cXinelibServer(int listen_port);
     virtual ~cXinelibServer();
-
-    // Thread control
-    virtual void    Stop(void);
 
   protected:
     virtual void    Action(void);

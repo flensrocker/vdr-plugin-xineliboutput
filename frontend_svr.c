@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.78 2009-08-06 11:23:31 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.79 2009-08-18 12:30:34 phintuka Exp $
  *
  */
 
@@ -137,6 +137,8 @@ cXinelibServer::~cXinelibServer()
 {
   int i;
 
+  Cancel(-1);
+
   CLOSESOCKET(fd_listen);
   CLOSESOCKET(fd_discovery);
 
@@ -145,28 +147,13 @@ cXinelibServer::~cXinelibServer()
   for(i=0; i<MAXCLIENTS; i++)
     CloseConnection(i);
 
+  Cancel(3);
+
   delete m_StcFuture;
   delete m_Futures;
   delete m_Scheduler;
 
   free(m_Header);
-}
-
-void cXinelibServer::Stop(void)
-{
-  int i;
-
-  TRACEF("cXinelibServer::Stop");
-
-  SetStopSignal();
-
-  CLOSESOCKET(fd_listen);
-  CLOSESOCKET(fd_discovery);
-
-  for(i=0; i<MAXCLIENTS; i++)
-    CloseConnection(i);
-
-  cXinelibThread::Stop();
 }
 
 void cXinelibServer::Clear(void)
@@ -1760,7 +1747,7 @@ void cXinelibServer::Action(void)
   m_bReady=true;
 
   if(fd_listen>=0)
-    while (!GetStopSignal() && fds>=0) {
+    while (Running() && fds>=0) {
 
       fds = 0;
       if(fd_listen>=0) {
@@ -1788,7 +1775,7 @@ void cXinelibServer::Action(void)
 
       if(err < 0) {
         LOGERR("cXinelibServer: poll failed");
-        if(!GetStopSignal())
+        if(Running())
           cCondWait::SleepMs(100);
 
       } else if(err == 0) {
