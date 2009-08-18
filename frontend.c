@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.70 2009-08-01 19:50:36 phintuka Exp $
+ * $Id: frontend.c,v 1.71 2009-08-18 12:43:37 phintuka Exp $
  *
  */
 
@@ -188,7 +188,7 @@ void cXinelibThread::InfoHandler(const char *info)
       map = end+1;
     }
   }
-   
+
   else if(!strncmp(info, "DVDBUTTONS ", 11)) {
     map += 11;
     while(*map == ' ') map++;
@@ -217,7 +217,6 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   TRACEF("cXinelibThread::cXinelibThread");
 
   m_Volume = 255;
-  m_bStopThread = false;
   m_bReady = false;
   m_bIsFinished = false;
   m_bNoVideo = true;
@@ -230,53 +229,19 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_StatusMonitor = NULL;
 }
 
-cXinelibThread::~cXinelibThread() 
+cXinelibThread::~cXinelibThread()
 {
   TRACEF("cXinelibThread::~cXinelibThread");
 
-  m_bStopThread = true;
-  if(Active())
-    Cancel();
-  if(m_StatusMonitor)
-    delete m_StatusMonitor;
+  Cancel(3);
+
+  if (m_StatusMonitor)
+    DELETENULL(m_StatusMonitor);
 }
 
 //
 // Thread control
 //
-
-void cXinelibThread::Start(void) 
-{
-  TRACEF("cXinelibThread::Start");
-
-  cThread::Start(); 
-}
-
-void cXinelibThread::Stop(void)  
-{ 
-  TRACEF("cXinelibThread::Stop");
-
-  SetStopSignal(); 
-
-  //if(Active()) 
-  Cancel(5); 
-}
-
-void cXinelibThread::SetStopSignal(void) 
-{
-  TRACEF("cXinelibThread::SetStopSignal");
-
-  LOCK_THREAD;
-  m_bStopThread = true;
-}
-
-bool cXinelibThread::GetStopSignal(void) 
-{
-  TRACEF("cXinelibThread::GetStopSignal");
-
-  LOCK_THREAD;
-  return m_bStopThread;
-}
 
 bool cXinelibThread::IsReady(void)
 {
@@ -772,7 +737,7 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     }
   }
 
-  return (!GetStopSignal()) && (result==0);
+  return Running() && !result;
 }
 
 

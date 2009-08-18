@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.29 2009-08-01 19:50:36 phintuka Exp $
+ * $Id: frontend.h,v 1.30 2009-08-18 12:43:37 phintuka Exp $
  *
  */
 
@@ -33,16 +33,8 @@ class cXinelibThread : public cThread, public cListObject
   //
 
   public:
-    virtual void Start(void);
-    virtual void Stop(void);
     bool IsReady(void);
     bool IsFinished(void);
-
-  protected:
-    void SetStopSignal(void);
-    bool GetStopSignal(void);
-
-    virtual void Action(void) = 0;
 
   //
   // Playback control
@@ -137,7 +129,6 @@ class cXinelibThread : public cThread, public cListObject
   //
 
   protected:
-    bool m_bStopThread;
     bool m_bReady;
     bool m_bIsFinished;
     bool m_bNoVideo;
