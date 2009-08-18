@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.279 2009-08-02 11:21:22 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.280 2009-08-18 10:22:35 phintuka Exp $
  *
  */
 
@@ -124,7 +124,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.279 2009-08-02 11:21:22 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.280 2009-08-18 10:22:35 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -343,8 +343,6 @@ typedef struct vdr_input_plugin_s {
   fifo_buffer_t      *block_buffer;  /* blocks to be demuxed */
   fifo_buffer_t      *buffer_pool;   /* stream's video fifo */
   fifo_buffer_t      *hd_buffer;     /* more buffer for HD streams */
-  fifo_buffer_t      *iframe_buffer; /* buffer for cached I-frame */
-  int                 saving_iframe;
   uint64_t            discard_index; /* index of next byte to feed to demux; 
 					all data before this offset will 
 					be discarded */
@@ -1096,7 +1094,7 @@ static void buffer_pool_free (buf_element_t *element)
     LOGERR("xine-lib:buffer: There has been a fatal error: TOO MANY FREE's");
     _x_abort();
   }
-  
+
   if(this->buffer_pool_num_free > 20)
     pthread_cond_signal (&this->buffer_pool_cond_not_empty);
 
@@ -1267,8 +1265,6 @@ static void flush_all_fifos (vdr_input_plugin_t *this, int full)
       this->stream->video_fifo->clear(this->stream->video_fifo);
   }
 
-  if (this->iframe_buffer)
-    this->iframe_buffer->clear(this->iframe_buffer);
   if (this->block_buffer)
     this->block_buffer->clear(this->block_buffer);
   if (this->hd_buffer)
@@ -1429,12 +1425,13 @@ static void queue_nosignal(vdr_input_plugin_t *this)
 #undef extern
   char          *data = NULL, *tmp = NULL;
   int            datalen = 0, pos = 0;
-  buf_element_t *buf = NULL;
+  buf_element_t *buf  = NULL;
+  fifo_buffer_t *fifo = this->stream->video_fifo;
   char *path, *home;
 
-  if(this->stream->video_fifo->num_free(this->stream->video_fifo) < 10) {
-    LOGMSG("queue_nosignal: not enough free buffers (%d) !", 
-	   this->stream->video_fifo->num_free(this->stream->video_fifo));
+  if (fifo->num_free(fifo) < 10) {
+    LOGMSG("queue_nosignal: not enough free buffers (%d) !",
+	   fifo->num_free(fifo));
     return;
   }
 
@@ -1469,7 +1466,7 @@ static void queue_nosignal(vdr_input_plugin_t *this)
   _x_demux_control_start(this->stream);
 
   while(pos < datalen) {
-    buf = this->stream->video_fifo->buffer_pool_try_alloc(this->stream->video_fifo);
+    buf = fifo->buffer_pool_try_alloc(fifo);
     if(buf) {
       buf->content = buf->mem;
       buf->size = MIN(datalen - pos, buf->max_size);
@@ -1478,15 +1475,15 @@ static void queue_nosignal(vdr_input_plugin_t *this)
       pos += buf->size;
       if(pos >= datalen)
         buf->decoder_flags |= BUF_FLAG_FRAME_END;
-      this->stream->video_fifo->put(this->stream->video_fifo, buf);
+      fifo->put(fifo, buf);
     } else {
       LOGMSG("Error: queue_nosignal: no buffers !");
       break;
     }
   }
 
-  put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_FLUSH_DECODER);
-  put_control_buf(this->stream->video_fifo, this->stream->video_fifo, BUF_CONTROL_NOP);
+  put_control_buf(fifo, fifo, BUF_CONTROL_FLUSH_DECODER);
+  put_control_buf(fifo, fifo, BUF_CONTROL_NOP);
 
   free(tmp);
 }
@@ -2907,11 +2904,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     pthread_mutex_unlock(&this->lock);
 
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
-    this->still_mode = 0;
-    _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
-    err = (1 == sscanf(cmd+5, "%d", &tmp32)) ?
-           set_live_mode(this, tmp32) : -2 ;
-    
+    err = (1 == sscanf(cmd+5, "%d", &tmp32)) ? set_live_mode(this, tmp32)
+                                             : CONTROL_PARAM_ERROR;
+
   } else if(!strncasecmp(cmd, "MASTER ", 7)) {
     if(1 == sscanf(cmd+7, "%d", &tmp32))
       this->fixed_scr = tmp32 ? 1 : 0;
@@ -4359,11 +4354,6 @@ static off_t vdr_plugin_read (input_plugin_t *this_gen, void *buf_gen, off_t len
   return 0;
 }
 
-/*#define CACHE_FIRST_IFRAME*/
-#ifdef CACHE_FIRST_IFRAME
-#  include "cache_iframe.c"
-#endif
-
 /*
  * update_frames()
  *
@@ -4463,10 +4453,6 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
  */
 static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int need_pause)
 {
-#ifdef CACHE_FIRST_IFRAME
-  cache_iframe(this, buf);
-#endif
-
   if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
     return;
 
@@ -4570,11 +4556,6 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       errno = EINTR;
       return NULL;
     }
-
-#ifdef CACHE_FIRST_IFRAME
-    if (NULL != (buf = get_cached_iframe(this)))
-      return buf;
-#endif
 
     /* adjust SCR speed */
     need_pause = adjust_scr_speed(this);
@@ -4800,8 +4781,6 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   /* need to get all buffer elements back before disposing own buffers ... */
   flush_all_fifos (this, 1);
 
-  if (this->iframe_buffer)
-    this->iframe_buffer->dispose(this->iframe_buffer);
   if (this->block_buffer)
     this->block_buffer->dispose(this->block_buffer);
   if (this->hd_buffer)
@@ -4868,7 +4847,7 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
   pthread_mutex_init (&this->fd_control_lock, NULL);
   pthread_cond_init  (&this->engine_flushed, NULL);
 
-  LOGMSG("xine_input_xvdr: revision %s", module_revision);
+  LOGDBG("xine_input_xvdr: revision %s", module_revision);
 
   return 1;
 }
