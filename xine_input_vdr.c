@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.280 2009-08-18 10:22:35 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.281 2009-08-18 10:24:03 phintuka Exp $
  *
  */
 
@@ -124,7 +124,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.280 2009-08-18 10:22:35 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.281 2009-08-18 10:24:03 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1277,7 +1277,8 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
   /* HD buffer */
   if (this->hd_stream && size <= HD_BUF_ELEM_SIZE) {
-    buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
+    if (this->hd_buffer->buffer_pool_num_free > 2)
+      buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
     if (!force && !buf)
       return NULL;
   }
