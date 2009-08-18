@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.6 2008-11-18 15:06:12 phintuka Exp $
+ * $Id: frontend_local.h,v 1.7 2009-08-18 12:36:56 phintuka Exp $
  *
  */
 
@@ -19,19 +19,15 @@ extern "C" {
   typedef struct frontend_s frontend_t;
 }
 
-class cXinelibLocal : public cXinelibThread 
+class cXinelibLocal : public cXinelibThread
 {
 
   public:
     cXinelibLocal(const char *frontend_name);
     virtual ~cXinelibLocal();
 
-    // Thread control
-    virtual void Stop(void);
-
   protected:
     virtual void Action(void);
-
 
   public:
 
@@ -44,12 +40,12 @@ class cXinelibLocal : public cXinelibThread
     virtual bool EndOfStreamReached(void);
 
     // Image grabbing
-    virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality, 
+    virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality,
 			     int SizeX, int SizeY);
 
     // Configuration
-    virtual void ConfigureWindow(int fullscreen, int width, int height, 
-				 int modeswitch, const char *modeline, 
+    virtual void ConfigureWindow(int fullscreen, int width, int height,
+				 int modeswitch, const char *modeline,
 				 int aspect, int scale_video, int field_order);
     virtual void ConfigureDecoder(int pes_buffers);
 
@@ -60,11 +56,11 @@ class cXinelibLocal : public cXinelibThread
 
   protected:
 
-    // Frontend access    
+    // Frontend access
     frontend_t *load_frontend(const char *fe_name);
 
     // Data
-    void       *h_fe_lib;  
+    void       *h_fe_lib;
     frontend_t *fe;
     cRwLock     m_feLock;
     bool        m_bReconfigRequest;
