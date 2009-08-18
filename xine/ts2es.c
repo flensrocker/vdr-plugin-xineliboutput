@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.2 2009-08-07 12:06:55 phintuka Exp $
+ * $Id: ts2es.c,v 1.3 2009-08-18 10:04:32 phintuka Exp $
  *
  */
 
@@ -122,11 +122,11 @@ static void ts2es_parse_pes(ts2es_t *this)
   }
 }
 
-buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
+buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
 {
-  int bytes = ts_PAYLOAD_SIZE(data);
-  int pusi  = ts_PAYLOAD_START(data);
   buf_element_t *result = NULL;
+  int            bytes  = ts_PAYLOAD_SIZE(data);
+  int            pusi   = ts_PAYLOAD_START(data);
 
   if (ts_HAS_ERROR(data)) {
     LOGDBG("ts2es: transport error");
@@ -157,7 +157,11 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data)
     if (!this->first_pusi_seen)
       return NULL;
 
-    this->buf = this->fifo->buffer_pool_alloc(this->fifo);
+    if (src_fifo && src_fifo != this->fifo)
+      this->buf = src_fifo->buffer_pool_try_alloc(src_fifo);
+    if (!this->buf)
+      this->buf = this->fifo->buffer_pool_alloc(this->fifo);
+
     this->buf->type = this->xine_buf_type;
     this->buf->decoder_info[0] = 1;
   }
