@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.48 2009-08-05 11:56:57 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.49 2009-08-18 19:11:10 phintuka Exp $
  *
  */
 
@@ -85,6 +85,7 @@ typedef enum {
   eScrFromVideo
 } ScrSource_t;
 
+static inline int64_t abs64(int64_t val) { return val<0 ? -val : val; }
 
 cUdpScheduler::cUdpScheduler()
 {
@@ -488,45 +489,35 @@ int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio)
 
   if(!Audio) {
     diff = pts - m_CurrentVideoVtime;
-    if(diff > JUMP_LIMIT_TIME || (-diff) > JUMP_LIMIT_TIME) { // 1 s (must be > GOP)
+    if (diff > JUMP_LIMIT_TIME || (-diff) > JUMP_LIMIT_TIME) { // 1 s (must be > GOP)
       // RESET
-#ifdef LOG_SCR
-      LOGDBG("cUdpScheduler RESET (Video jump %lld->%lld)",
-	     m_CurrentVideoVtime, pts);
-#endif
+      LOGSCR("cUdpScheduler SCR RESET (Video jump %lld->%lld)", m_CurrentVideoVtime, pts);
       m_CurrentVideoVtime = pts;
 
       // Use video pts for sync only in audioless trickspeeds
       // (audio has smaller, constant and increasing intervals)
-      if(m_TrickSpeed)
+      if (m_TrickSpeed)
 	m_MasterClock.Set(m_CurrentVideoVtime + INITIAL_BURST_TIME);
 
       return -1;
     }
-    if(diff < 0)  /* ignore small negative differences (B/P frames are sent out-of-order) */
+    if (diff < 0)  /* ignore small negative differences (B/P frames are sent out-of-order) */
       diff = 0;
     else
       m_CurrentVideoVtime = pts;
     
   } else if(Audio) {
-    diff = pts - m_CurrentAudioVtime;
-    if(diff < 0) diff = -diff;
-    if(diff > JUMP_LIMIT_TIME) { // 1 sec
+    diff = abs64(pts - m_CurrentAudioVtime);
+    if (diff > JUMP_LIMIT_TIME) { // 1 sec
       // RESET
-#ifdef LOG_SCR
-      LOGDBG("cUdpScheduler RESET (Audio jump %lld->%lld)",
-	     m_CurrentAudioVtime, pts);
-#endif
+      LOGSCR("cUdpScheduler SCR RESET (Audio jump %lld->%lld)", m_CurrentAudioVtime, pts);
       m_CurrentAudioVtime = pts;
-
-      // Use audio pts for sync (audio has constant and increasing intervals)
       m_MasterClock.Set(m_CurrentAudioVtime + INITIAL_BURST_TIME);
-      
       return -1;
     }
     m_CurrentAudioVtime = pts;
   }
- 
+
   return (int) diff;
 }
 
@@ -652,7 +643,7 @@ void cUdpScheduler::Send_SAP(bool Announce)
   if(!Announce)
     CLOSESOCKET(m_fd_sap);
 }
-  
+
 void cUdpScheduler::Schedule(const uchar *Data, int Length)
 {
   bool Audio = IS_AUDIO_PACKET(Data), Video = IS_VIDEO_PACKET(Data);
@@ -712,6 +703,7 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 	delay_ms = SCHEDULER_MAX_DELAY_MS;
       LOGSCR("  -> cUdpScheduler sleeping %d ms ", delay_ms);
       Scheduler_Sleep(delay_ms);
+
       now = m_MasterClock.Now();
       delay_ms = pts_to_ms(m_CurrentVideoVtime - now);
     }
@@ -840,9 +832,7 @@ void cUdpScheduler::Action(void)
 	  LOGERR("cUdpScheduler: UDP/RTP send() failed !");
       } else {
 	/* UDP: send without rtp header */
-	if(send(m_Handles[i], 
-		((uint8_t*)frame) + sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t), 
-		UdpPacketLen, 0) <= 0)
+	if (send(m_Handles[i], RTP_UDP_PAYLOAD(frame), UdpPacketLen, 0) <= 0)
 	  LOGERR("cUdpScheduler: UDP send() failed !");
       }
     }
@@ -884,9 +874,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
   cMutexLock ml(&m_Lock); // keeps also scheduler thread suspended ...
 
   if(Seq2-Seq1 > 64) {
-    LOGDBG("cUdpScheduler::ReSend: requested range too large (%d-%d)",
-	   Seq1, Seq2);
-
+    LOGDBG("cUdpScheduler::ReSend: requested range too large (%d-%d)", Seq1, Seq2);
     snprintf(udp_ctrl.payload, sizeof(udp_ctrl.payload),
              "UDP MISSING %d-%d %" PRIu64,
              Seq1, (Seq2 & UDP_BUFFER_MASK), Pos);
@@ -896,7 +884,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 
   // re-send whole range
   for(; Seq1 <= Seq2; Seq1++) {
-      
+
     // Wait if kernel queue is full
     int size = 0;
     if(!ioctl(fd, TIOCOUTQ, &size))
@@ -904,16 +892,16 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 	LOGDBG("cUdpScheduler::ReSend: kernel transmit queue > ~30kb !");
 	Scheduler_Sleep(2);
       }
-    
+
     stream_rtp_header_impl_t *frame = m_BackLog->Get(Seq1);
-      
+
     if(frame) {
       if(ntohull(frame->hdr_ext.pos) - Pos < 100000) {
-	send(fd, 
-	     ((uint8_t*)frame) + sizeof(stream_rtp_header_impl_t) - sizeof(stream_udp_header_t), 
-	     m_BackLog->PayloadSize(Seq1) + sizeof(stream_udp_header_t), 
+	send(fd,
+	     RTP_UDP_PAYLOAD(frame),
+	     m_BackLog->PayloadSize(Seq1) + sizeof(stream_udp_header_t),
 	     0);
-	LOGRESEND("cUdpScheduler::ReSend: %d (%d bytes) @%lld sent", 
+	LOGRESEND("cUdpScheduler::ReSend: %d (%d bytes) @%lld sent",
 		  Seq1, m_BackLog->PayloadSize(Seq1), Pos);
 	Pos = ntohull(frame->hdr_ext.pos) + m_BackLog->PayloadSize(Seq1);
 	continue;
