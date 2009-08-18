@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.78 2009-08-18 08:56:35 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.79 2009-08-18 12:22:11 phintuka Exp $
  *
  */
 
@@ -407,6 +407,7 @@ static const char help_str[] =
     "   --noxkbd                      Disable X11 keyboard input\n"
 #endif
     "   --hotkeys                     Enable frontend GUI hotkeys\n"
+    "   --terminal=dev                Controlling tty"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\n"
@@ -418,7 +419,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -437,6 +438,7 @@ static const struct option long_options[] = {
   { "post",       required_argument, NULL, 'P' },
   { "lirc",       optional_argument, NULL, 'L' },
   { "config",     required_argument, NULL, 'C' },
+  { "terminal",   required_argument, NULL, 'T' },
 
   { "verbose", no_argument,  NULL, 'v' },
   { "silent",  no_argument,  NULL, 's' },
@@ -473,6 +475,7 @@ int main(int argc, char *argv[])
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
   char *aspect_controller = NULL;
+  const char *tty = NULL;
   const char *exec_name = argv[0];
   const char *config_file = NULL;
 
@@ -564,6 +567,13 @@ int main(int argc, char *argv[])
     case 'B': pes_buffers = atoi(optarg);
               PRINTF("Buffers: %d\n", pes_buffers);
               break;
+    case 'T': tty = optarg;
+              if (access(tty, R_OK | W_OK) < 0) {
+                PRINTF("Can't access terminal: %s\n", tty);
+                return -2;
+              }
+              PRINTF("Terminal: %s", tty);
+              break;
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
               break;
@@ -633,6 +643,13 @@ int main(int argc, char *argv[])
   }
 
   PRINTF("\n");
+
+  if (tty) {
+    /* claim new controlling terminal */
+    stdin  = freopen(tty, "r", stdin);
+    stdout = freopen(tty, "w", stdout);
+    stderr = freopen(tty, "w", stderr);
+  }
 
 #if 1
   /* backward compability */
