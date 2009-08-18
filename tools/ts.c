@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.11 2009-07-03 05:37:05 phintuka Exp $
+ * $Id: ts.c,v 1.12 2009-08-18 10:28:45 phintuka Exp $
  *
  */
 
@@ -146,7 +146,7 @@ int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
     pat->program_number[program_count] = program_number;
     pat->pmt_pid[program_count] = pmt_pid;
 
-    LOGDBG("PAT acquired count=%d programNumber=0x%04x pmtPid=0x%04x",
+    LOGPMT("PAT acquired count=%d programNumber=0x%04x pmtPid=0x%04x",
            program_count,
            pat->program_number[program_count],
            pat->pmt_pid[program_count]);
