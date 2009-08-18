@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.79 2009-08-18 12:22:11 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.80 2009-08-18 12:23:09 phintuka Exp $
  *
  */
 
@@ -460,7 +460,6 @@ static const struct option long_options[] = {
 
 int main(int argc, char *argv[])
 {
-  char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int pes_buffers = 250;
@@ -471,6 +470,10 @@ int main(int argc, char *argv[])
   int xmajor, xminor, xsub;
   int c;
   int xine_finished = FE_XINE_ERROR;
+  char *mrl = NULL;
+  char *video_driver = NULL;
+  char *audio_driver = NULL;
+  char *audio_device = NULL;
   char *video_port = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
@@ -503,22 +506,21 @@ int main(int argc, char *argv[])
               printf("%s", help_str);
               list_xine_plugins(NULL, SysLogLevel>2);
               exit(0);
-    case 'A': adrv = strdup(optarg);
-              adev = strchr(adrv, ':');
-              if (adev)
-                *(adev++) = 0;
-              PRINTF("Audio driver: %s\n",adrv);
-              if (adev)
-                PRINTF("Audio device: %s\n",adev);
+    case 'A': audio_driver = strdup(optarg);
+              audio_device = strchr(audio_driver, ':');
+              if (audio_device)
+                *(audio_device++) = 0;
+              PRINTF("Audio driver: %s\n", audio_driver);
+              if (audio_device)
+                PRINTF("Audio device: %s\n", audio_device);
               break;
-    case 'V': gdrv = strdup(optarg);
-              if (strchr(gdrv, ':')) {
-                video_port = strchr(gdrv, ':');
-                *video_port = 0;
-                video_port++;
-                PRINTF("Video port: %s\n",video_port);
-              }
-              PRINTF("Video driver: %s\n",gdrv);
+    case 'V': video_driver = strdup(optarg);
+              video_port   = strchr(video_driver, ':');
+              if (video_port)
+                *(video_port++) = 0;
+              PRINTF("Video driver: %s\n", video_driver);
+              if (video_port)
+                PRINTF("Video port: %s\n", video_port);
               break;
 #ifndef IS_FBFE
     case 'W': window_id = atoi(optarg);
@@ -741,7 +743,8 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize xine */
-  if (!fe->xine_init(fe, adrv, adev, gdrv, pes_buffers, static_post_plugins, config_file)) {
+  if (!fe->xine_init(fe, audio_driver, audio_device, video_driver,
+                     pes_buffers, static_post_plugins, config_file)) {
     fprintf(stderr, "Error initializing xine\n");
     list_xine_plugins(fe, SysLogLevel>2);
     fe->fe_free(fe);
@@ -833,9 +836,8 @@ int main(int argc, char *argv[])
 
   free(static_post_plugins);
   free(mrl);
-  free(adrv);
-  free(gdrv);
-  free(video_port);
+  free(audio_driver);
+  free(video_driver);
   free(aspect_controller);
   free(lirc_dev);
 
