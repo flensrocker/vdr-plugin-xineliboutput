@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.88 2009-08-18 12:26:11 phintuka Exp $
+ * $Id: device.c,v 1.89 2009-08-18 12:50:31 phintuka Exp $
  *
  */
 
@@ -241,13 +241,13 @@ bool cXinelibDevice::StartDevice()
   // if(dynamic_cast<cXinelibLocal*>(it))
   if(m_local) {
     int timer = 0;
-    while(!m_local->IsReady()) {
+    while (!m_local->IsReady()) {
       cCondWait::SleepMs(100);
-      if(m_local->IsFinished()) {
+      if (!m_local->Active()) {
         LOGMSG("cXinelibDevice::Start(): Local frontend init failed");
         return false;
       }
-      if(++timer >= LOCAL_INIT_TIMEOUT*10) {
+      if (++timer >= LOCAL_INIT_TIMEOUT*10) {
         LOGMSG("cXinelibDevice::Start(): Local frontend init timeout");
         return false;
       }
@@ -260,7 +260,7 @@ bool cXinelibDevice::StartDevice()
     int timer = 0;
     while(!m_server->IsReady()) {
       cCondWait::SleepMs(100);
-      if(m_server->IsFinished()) {
+      if (!m_server->Active()) {
         LOGMSG("cXinelibDevice::Start(): Server init failed");
         return false;
       }
@@ -489,10 +489,10 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
     m_clients.Add(m_local = tmp);
 
     cCondWait::SleepMs(25);
-    while(!m_local->IsReady() && !m_local->IsFinished())
+    while (!m_local->IsReady() && m_local->Active())
       cCondWait::SleepMs(25);
 
-    if(m_local->IsFinished()) {
+    if (!m_local->Active()) {
       m_local = NULL;
       m_clients.Del(tmp, true);
       Skins.QueueMessage(mtError, tr("Frontend initialization failed"), 10);
@@ -517,10 +517,10 @@ void cXinelibDevice::Listen(bool activate, int port)
       m_clients.Add(m_server = tmp);
 
       cCondWait::SleepMs(10);
-      while(!m_server->IsReady() && !m_server->IsFinished())
+      while (!m_server->IsReady() && m_server->Active())
 	cCondWait::SleepMs(10);
 
-      if(m_server->IsFinished()) {
+      if (!m_server->Active()) {
 	Skins.QueueMessage(mtError, tr("Server initialization failed"), 10);
 	m_server = NULL;
 	m_clients.Del(tmp, true);
