@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.20 2009-07-02 10:38:29 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.21 2009-08-18 19:28:03 phintuka Exp $
  *
  */
 
@@ -75,19 +75,29 @@ class cUdpScheduler : public cThread
 
     // Scheduling
 
+    typedef enum {
+      eScrDetect,
+      eScrFromAudio,
+      /*eScrFromPS1,*/
+      eScrFromVideo,
+      eScrFromPcr
+    } ScrSource_t;
+
     cTimePts     m_MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
     bool         m_TrickSpeed;    /* current (replay) speed */
     bool         m_Master;        /* if true, we are master metronom for playback */
 
+    ScrSource_t  m_ScrSource;
     int64_t      m_CurrentAudioVtime;
     int64_t      m_CurrentVideoVtime;
+    int64_t      m_CurrentPcr;
 
     uint         m_BurstBytes;   /* number of bytes sent without sleeps */
     uint         m_BurstFrames;  /* number of frames sent without sleeps */
 
     cCondWait    m_CondWait;
 
-    int          CalcElapsedVtime(int64_t pts, bool Audio);
+    int          CalcElapsedVtime(int64_t pts, ScrSource_t ScrSource);
     void         Schedule(const uchar *Data, int Length);
     void         Scheduler_Sleep(int ms);
     void         QueuePaddingInternal(void);

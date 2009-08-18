@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.49 2009-08-18 19:11:10 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.50 2009-08-18 19:28:03 phintuka Exp $
  *
  */
 
@@ -77,14 +77,6 @@ const int64_t JUMP_LIMIT_TIME     = INT64_C(225000); // pts units (90kHz)
 const uint    SCHEDULER_MIN_DELAY_MS = 3;
 const uint    SCHEDULER_MAX_DELAY_MS = 20;
 
-
-typedef enum {
-  eScrDetect,
-  eScrFromAudio,
-  eScrFromPS1,
-  eScrFromVideo
-} ScrSource_t;
-
 static inline int64_t abs64(int64_t val) { return val<0 ? -val : val; }
 
 cUdpScheduler::cUdpScheduler()
@@ -92,8 +84,11 @@ cUdpScheduler::cUdpScheduler()
 
   // Scheduler data
 
+  m_ScrSource         = eScrDetect;
   m_CurrentAudioVtime = 0;
   m_CurrentVideoVtime = 0;
+  m_CurrentPcr        = 0;
+
   m_MasterClock.Set(INT64_C(0));
 
   m_BurstBytes  = 0;
@@ -393,6 +388,8 @@ void cUdpScheduler::Clear(void)
 
   m_QueuePending = 0;
   m_Cond.Broadcast();
+
+  m_ScrSource = eScrDetect;
 }
 
 void cUdpScheduler::Pause(bool On)
@@ -483,11 +480,13 @@ void cUdpScheduler::QueuePaddingInternal(void)
   m_QueuePending++;
 }
 
-int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio)
+int cUdpScheduler::CalcElapsedVtime(int64_t pts, ScrSource_t ScrSource)
 {
   int64_t diff = 0;
 
-  if(!Audio) {
+  switch (ScrSource) {
+
+  case eScrFromVideo:
     diff = pts - m_CurrentVideoVtime;
     if (diff > JUMP_LIMIT_TIME || (-diff) > JUMP_LIMIT_TIME) { // 1 s (must be > GOP)
       // RESET
@@ -505,8 +504,9 @@ int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio)
       diff = 0;
     else
       m_CurrentVideoVtime = pts;
-    
-  } else if(Audio) {
+    break;
+
+  case eScrFromAudio:
     diff = abs64(pts - m_CurrentAudioVtime);
     if (diff > JUMP_LIMIT_TIME) { // 1 sec
       // RESET
@@ -516,6 +516,21 @@ int cUdpScheduler::CalcElapsedVtime(int64_t pts, bool Audio)
       return -1;
     }
     m_CurrentAudioVtime = pts;
+    break;
+
+  case eScrFromPcr:
+    diff = pts - m_CurrentPcr;
+    if (diff > JUMP_LIMIT_TIME || diff < 0) { // 1 sec
+      // RESET
+      LOGSCR("cUdpScheduler RESET (PCR jump %lld->%lld)", m_CurrentPcr, pts);
+      m_CurrentPcr = pts;
+      m_MasterClock.Set(m_CurrentPcr + INITIAL_BURST_TIME);
+      return -1;
+    }
+    m_CurrentPcr = pts;
+    break;
+
+  default: break;
   }
 
   return (int) diff;
@@ -648,7 +663,7 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 {
   bool Audio = IS_AUDIO_PACKET(Data), Video = IS_VIDEO_PACKET(Data);
   int64_t pts = PES_HAS_PTS(Data) ? pes_get_pts(Data, Length) : INT64_C(-1);
-  int elapsed = pts>0 ? CalcElapsedVtime(pts, Audio) : 0;
+  int elapsed = pts>0 ? CalcElapsedVtime(pts, Audio ? eScrFromAudio : eScrFromVideo) : 0;
 
   if(elapsed > 0) {
     int64_t now = m_MasterClock.Now();
