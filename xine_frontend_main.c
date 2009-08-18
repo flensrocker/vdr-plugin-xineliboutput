@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.77 2009-08-16 09:53:47 rofafor Exp $
+ * $Id: xine_frontend_main.c,v 1.78 2009-08-18 08:56:35 phintuka Exp $
  *
  */
 
@@ -464,19 +464,20 @@ int main(int argc, char *argv[])
   int pes_buffers = 250;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
-  char *video_port = NULL;
+  int repeat_emu = 0;
   int window_id = -1;
   int xmajor, xminor, xsub;
   int c;
   int xine_finished = FE_XINE_ERROR;
-  frontend_t *fe = NULL;
-  extern const fe_creator_f fe_creator;
+  char *video_port = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
   char *aspect_controller = NULL;
-  int repeat_emu = 0;
-  char *exec_name = argv[0];
-  char *config_file = NULL;
+  const char *exec_name = argv[0];
+  const char *config_file = NULL;
+
+  extern const fe_creator_f fe_creator;
+  frontend_t *fe = NULL;
 
   LogToSysLog = 0;
 
@@ -571,12 +572,12 @@ int main(int argc, char *argv[])
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
               PRINTF("Post plugins: %s\n", static_post_plugins);
               break;
-    case 'C': config_file = strdup(optarg);
+    case 'C': config_file = optarg;
               PRINTF("Config file: %s\n", config_file);
               break;
     case 'L': lirc_dev = strdup(optarg ? : "/dev/lircd");
-              if (strstr((char*)lirc_dev, ",repeatemu")) {
-                 *strstr((char*)lirc_dev, ",repeatemu") = 0;
+              if (strstr(lirc_dev, ",repeatemu")) {
+                *strstr(lirc_dev, ",repeatemu") = 0;
                 repeat_emu = 1;
               }
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
@@ -813,7 +814,6 @@ int main(int argc, char *argv[])
 
   fe->fe_free(fe);
 
-  free(config_file);
   free(static_post_plugins);
   free(mrl);
   free(adrv);
