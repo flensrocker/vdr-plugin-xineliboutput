@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.79 2009-08-18 12:30:34 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.80 2009-08-18 12:52:18 phintuka Exp $
  *
  */
 
@@ -1847,6 +1847,5 @@ void cXinelibServer::Action(void)
     } /* while running */
 
   m_bReady = false;
-  m_bIsFinished = true;
   Unlock();
 }

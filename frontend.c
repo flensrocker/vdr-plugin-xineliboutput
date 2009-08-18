@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.72 2009-08-18 12:53:42 phintuka Exp $
+ * $Id: frontend.c,v 1.73 2009-08-18 12:54:48 phintuka Exp $
  *
  */
 
@@ -218,7 +218,6 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
 
   m_Volume = 255;
   m_bReady = false;
-  m_bIsFinished = false;
   m_bNoVideo = true;
   m_bLiveMode = true; /* can't be replaying when there is no output device */
   m_StreamPos = 0;

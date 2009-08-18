@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.42 2009-08-18 12:36:56 phintuka Exp $
+ * $Id: frontend_local.c,v 1.43 2009-08-18 12:51:42 phintuka Exp $
  *
  */
 
@@ -457,7 +457,6 @@ void cXinelibLocal::Action(void)
     curr_fe->fe_free(curr_fe);
   }
 
-  m_bIsFinished = true;
   LOGMSG("cXinelibLocal::Action: thread finished");
 }
 
