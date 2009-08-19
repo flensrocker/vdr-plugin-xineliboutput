@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.84 2009-08-07 12:18:06 phintuka Exp $
+ * $Id: config.c,v 1.85 2009-08-19 13:12:10 phintuka Exp $
  *
  */
 
@@ -578,6 +578,8 @@ config_t::config_t() {
   osd_size             = OSD_SIZE_auto;
   osd_width            = 720;
   osd_height           = 576;
+  osd_width_auto       = 0;
+  osd_height_auto      = 0;
   osd_mixer            = OSD_MIXER_FULL;
   osd_scaling          = OSD_SCALING_NEAREST;
   hud_osd              = 0;
