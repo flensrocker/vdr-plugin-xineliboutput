@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.98 2009-08-19 16:36:20 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.99 2009-08-19 16:37:21 phintuka Exp $
  *
  */
 
@@ -1098,6 +1098,10 @@ static int fe_xine_play(frontend_t *this_gen)
 
   if(this->playback_finished)
     LOGMSG("Error playing " MRL_ID ":// !");
+
+  char str[128];
+  snprintf(str, sizeof(str), "INFO WINDOW %dx%d", this->width, this->height);
+  this->fe.send_event(&this->fe, str);
 
   return !this->playback_finished;
 }
