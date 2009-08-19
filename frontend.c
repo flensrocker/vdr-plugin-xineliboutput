@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.73 2009-08-18 12:54:48 phintuka Exp $
+ * $Id: frontend.c,v 1.74 2009-08-19 17:03:49 phintuka Exp $
  *
  */
 
@@ -207,6 +207,16 @@ void cXinelibThread::InfoHandler(const char *info)
     cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
     if (*map == '0')  // DVD Menu, set spu track to 0
       cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttSubtitleFirst);
+  }
+
+  else if (!strncmp(info, "WINDOW ", 7)) {
+    int w, h;
+    map += 7;
+    while(*map == ' ') map++;
+    if (2 == sscanf(map, "%dx%d", &w, &h)) {
+      xc.osd_width_auto  = w;
+      xc.osd_height_auto = h;
+    }
   }
 
   free(pmap);
