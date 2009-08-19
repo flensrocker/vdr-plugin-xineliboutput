@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.113 2009-07-23 12:54:28 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.114 2009-08-19 16:58:58 phintuka Exp $
  *
  */
 
@@ -1450,6 +1450,12 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
   if(this->hud)
     hud_osd_resize(this, cev->window, cev->width, cev->height);
 #endif
+
+  if (this->x.width != cev->width || this->x.height != cev->height) {
+    char str[128];
+    snprintf(str, sizeof(str), "INFO WINDOW %dx%d", this->x.width, this->x.height);
+    this->x.fe.send_event((frontend_t*)this, str);
+  }
 
   /* update video window size */
   this->x.width  = cev->width;
