@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.50 2009-08-18 19:28:03 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.51 2009-08-19 12:18:15 phintuka Exp $
  *
  */
 
@@ -659,68 +659,76 @@ void cUdpScheduler::Send_SAP(bool Announce)
     CLOSESOCKET(m_fd_sap);
 }
 
+#ifdef LOG_SCR
+static const char ScrSourceName[][6] = {"???", "VIDEO", "PS1", "AUDIO", "PCR"};
+#endif
+
 void cUdpScheduler::Schedule(const uchar *Data, int Length)
 {
-  bool Audio = IS_AUDIO_PACKET(Data), Video = IS_VIDEO_PACKET(Data);
-  int64_t pts = PES_HAS_PTS(Data) ? pes_get_pts(Data, Length) : INT64_C(-1);
-  int elapsed = pts>0 ? CalcElapsedVtime(pts, Audio ? eScrFromAudio : eScrFromVideo) : 0;
+  int64_t     pts       = NO_PTS;
+  int         elapsed   = 0;
+  ScrSource_t ScrSource = eScrDetect;
+
+  // Get timestamp from data
+
+  if (DATA_IS_TS(Data)) {
+    if (ts_get_pcr_n(Data, Length/TS_SIZE, &pts)) {
+      LOGSCR("UDP PCR: %"PRId64, pts);
+      ScrSource = eScrFromPcr;
+      elapsed   = CalcElapsedVtime(pts, eScrFromPcr);
+    }
+  } else /* if (DATA_IS_PES(Data)) */ {
+    if (PES_HAS_PTS(Data)) {
+      ScrSource = IS_VIDEO_PACKET(Data) ? eScrFromVideo : IS_AUDIO_PACKET(Data) ? eScrFromAudio : eScrDetect;
+      pts       = pes_get_pts(Data, Length);
+      elapsed   = CalcElapsedVtime(pts, ScrSource);
+    }
+  }
+
+  if (m_ScrSource < ScrSource)
+    m_ScrSource = ScrSource;
 
   if(elapsed > 0) {
-    int64_t now = m_MasterClock.Now();
-    LOGSCR("PTS: %lld  (%s) elapsed %d ms (PID %02x)", 
-	   pts, Video?"Video":Audio?"Audio":"?", pts_to_ms(elapsed), Data[3]);
+
+    int64_t now      = m_MasterClock.Now();
+    int64_t SendTime = ScrSource==eScrFromVideo ? m_CurrentVideoVtime :
+                       ScrSource==eScrFromAudio ? m_CurrentAudioVtime :
+                       ScrSource==eScrFromPcr   ? m_CurrentPcr        : now;
+
+    LOGSCR("PTS: %lld  (%s) elapsed %d ms (PID %02x)", pts, ScrSourceStr[ScrSource],
+           pts_to_ms(elapsed), DATA_IS_TS(Data) ? TS_PID(Data) : Data[3]);
 
     //
-    // Detect discontinuity
+    // Detect discontinuity (against SCR)
     //
-    if(Audio) {
-      if(now > m_CurrentAudioVtime && (now - m_CurrentAudioVtime)>JUMP_LIMIT_TIME) {
-	LOGSCR("cUdpScheduler MasterClock init (was in past)");
-	m_MasterClock.Set(m_CurrentAudioVtime + INITIAL_BURST_TIME);
-      } else if(now < m_CurrentAudioVtime && (m_CurrentAudioVtime-now)>JUMP_LIMIT_TIME) {
-	LOGSCR("cUdpScheduler MasterClock init (was in future)");
-	m_MasterClock.Set(m_CurrentAudioVtime + INITIAL_BURST_TIME);
-      }
-    }
-
-    else if(Video && m_TrickSpeed) {
-      if(now > m_CurrentVideoVtime && (now - m_CurrentVideoVtime)>JUMP_LIMIT_TIME) {
-	LOGSCR("cUdpScheduler MasterClock init (was in past) - VIDEO");
-	m_MasterClock.Set(m_CurrentVideoVtime + INITIAL_BURST_TIME);
-      } else if(now < m_CurrentVideoVtime && (m_CurrentVideoVtime-now)>JUMP_LIMIT_TIME) {
-	LOGSCR("cUdpScheduler MasterClock init (was in future) - VIDEO");
-	m_MasterClock.Set(m_CurrentVideoVtime + INITIAL_BURST_TIME);
-      }
+    if (now > SendTime && (now - SendTime) > JUMP_LIMIT_TIME) {
+      LOGSCR("cUdpScheduler MasterClock init (was in past) %s", ScrSourceStr[ScrSource]);
+      now = SendTime + INITIAL_BURST_TIME;
+      m_MasterClock.Set(now);
+    } else if (now < SendTime && (SendTime - now) > JUMP_LIMIT_TIME) {
+      LOGSCR("cUdpScheduler MasterClock init (was in future) %s", ScrSourceStr[ScrSource]);
+      now = SendTime + INITIAL_BURST_TIME;
+      m_MasterClock.Set(now);
     }
 
     //
     // Delay
     //
-    uint delay_ms = 0;
-    if(m_TrickSpeed ) {
-      if(m_CurrentVideoVtime > now) {
-	delay_ms = pts_to_ms(m_CurrentVideoVtime - now);
-	LOGSCR("cUdpScheduler sleeping %d ms "
-	       "(time reference: %s, beat interval %d ms)",
-	       delay_ms, (Audio?"Audio PTS":"Video PTS"), pts_to_ms(elapsed));
-      }
-    } else {
-      if(m_CurrentAudioVtime > now) {
-	delay_ms = pts_to_ms(m_CurrentAudioVtime - now);
-	LOGSCR("cUdpScheduler sleeping %d ms "
-	       "(time reference: %s, beat interval %d ms)",
-	       delay_ms, (Audio?"Audio PTS":"Video PTS"), pts_to_ms(elapsed));
-      }
-    }
+    while (SendTime > now) {
 
-    while (delay_ms > SCHEDULER_MIN_DELAY_MS) {
+      uint delay_ms = pts_to_ms(SendTime - now);
+      if (delay_ms < SCHEDULER_MIN_DELAY_MS)
+        break;
+
+      LOGSCR("cUdpScheduler sleeping %d ms (time ref: %s, beat interval %d ms)",
+             delay_ms, ScrSourceStr[ScrSource], pts_to_ms(elapsed));
+
       if (delay_ms > SCHEDULER_MAX_DELAY_MS)
-	delay_ms = SCHEDULER_MAX_DELAY_MS;
-      LOGSCR("  -> cUdpScheduler sleeping %d ms ", delay_ms);
+        delay_ms = SCHEDULER_MAX_DELAY_MS;
+
       Scheduler_Sleep(delay_ms);
 
       now = m_MasterClock.Now();
-      delay_ms = pts_to_ms(m_CurrentVideoVtime - now);
     }
   }
 }
