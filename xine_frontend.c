@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.97 2009-03-17 12:16:23 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.98 2009-08-19 16:36:20 phintuka Exp $
  *
  */
 
@@ -369,7 +369,7 @@ static void xine_event_cb (void *user_data, const xine_event_t *event)
   switch (event->type) {
     /* in local mode: vdr stream / slave stream ; in remote mode: vdr stream only */
     case XINE_EVENT_UI_PLAYBACK_FINISHED:
-      LOGMSG("xine_event_cb: XINE_EVENT_UI_PLAYBACK_FINISHED");
+      LOGDBG("XINE_EVENT_UI_PLAYBACK_FINISHED");
       if(this) {
 	if(event->stream == this->stream)
 	  this->playback_finished = 1;
@@ -1277,6 +1277,7 @@ static int fe_send_input_event(frontend_t *this_gen, const char *map,
   /* remote mode: --> input plugin --> vdr */
   if (find_input_plugin(this)) {
     if (this->input_plugin->f.post_vdr_event) {
+
       char *msg = NULL;
       if (map) {
         if (asprintf(&msg, "KEY %s %s %s %s\r\n", map, key,
@@ -1325,7 +1326,28 @@ static int fe_send_event(frontend_t *this_gen, const char *data)
     xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, atoi(data+12) ? 1 : 0);
 
   } else {
-    return fe_send_input_event(this_gen, NULL, data, 0, 0);
+
+    LOGDBG("Event: %s", data);
+
+    /* local mode: --> vdr callback */
+    if (this->keypress) {
+      this->keypress(data, NULL);
+      return FE_OK;
+    }
+
+    /* remote mode: --> input plugin --> vdr */
+    if (find_input_plugin(this)) {
+      if (this->input_plugin->f.post_vdr_event) {
+        char *msg = NULL;
+        if (asprintf(&msg, "%s\r\n", data) < 1)
+          msg = NULL;
+        if (msg) {
+          int r = this->input_plugin->f.post_vdr_event(this->input_plugin, msg);
+          return (r > 0) ? FE_OK : FE_ERROR;
+        }
+        return FE_ERROR;
+      }
+    }
   }
 
   return FE_OK;
