@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.h,v 1.21 2009-08-18 19:28:03 phintuka Exp $
+ * $Id: udp_pes_scheduler.h,v 1.22 2009-08-19 11:32:21 phintuka Exp $
  *
  */
 
@@ -76,11 +76,12 @@ class cUdpScheduler : public cThread
     // Scheduling
 
     typedef enum {
-      eScrDetect,
-      eScrFromAudio,
-      /*eScrFromPS1,*/
-      eScrFromVideo,
-      eScrFromPcr
+      /* from worst to best */
+      eScrDetect     = 0,
+      eScrFromVideo  = 1,
+      eScrFromPS1    = 2,
+      eScrFromAudio  = 3,
+      eScrFromPcr    = 4,
     } ScrSource_t;
 
     cTimePts     m_MasterClock;   /* Current MPEG PTS (synchronized to current stream) */
