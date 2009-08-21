@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.21 2008-11-19 18:55:20 rofafor Exp $
+ * $Id: xine_frontend_lirc.c,v 1.21.2.1 2009-08-21 11:23:45 phintuka Exp $
  *
  */
 /*
@@ -32,7 +32,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define LOG_MODULENAME "[lirc]      "
 #include "logdefs.h"
 
 #include "xine_frontend.h"
@@ -45,7 +44,7 @@
 #define RECONNECTDELAY 3000 /* ms */
 
 #define LIRC_KEY_BUF      30
-#define LIRC_BUFFER_SIZE 128 
+#define LIRC_BUFFER_SIZE 128
 #define MIN_LIRCD_CMD_LEN  5
 
 /* static data */
