@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.16 2009-08-14 11:07:06 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.17 2009-08-21 11:50:41 phintuka Exp $
  *
  */
 
@@ -22,6 +22,8 @@
 #include <signal.h>
 
 #include <xine.h>  /* xine_get_version */
+
+#include "logdefs.h"
 
 #include "xine_input_vdr_mrl.h"
 #include "xine_frontend.h"
@@ -43,7 +45,6 @@ int            gui_hotkeys = 0;
 /* static data */
 pthread_t      kbd_thread;
 struct termios tm, saved_tm;
-volatile int   terminate_key_pressed = 0;
 
 /* include LIRC forwarding code */
 #include "xine_frontend_lirc.c"
@@ -148,10 +149,6 @@ static uint64_t read_key_seq(void)
   return k;
 }
 
-#ifndef IS_FBFE
-static void sxfe_toggle_fullscreen(sxfe_t *this);
-#endif
-
 /*
  * kbd_receiver_thread()
  *
@@ -172,8 +169,6 @@ static void *kbd_receiver_thread(void *fe_gen)
   uint64_t code = 0;
   char str[64];
   int status;
-
-  terminate_key_pressed = 0;
 
   status = system("setterm -cursor off");
   status = system("setterm -blank off");
@@ -200,27 +195,24 @@ static void *kbd_receiver_thread(void *fe_gen)
     if (code == READ_KEY_SEQ_ERROR)
       break;
     if (code == 27) {
-      terminate_key_pressed = 1;
+      fe->send_event(fe, "QUIT");
       break;
     }
 
     if (gui_hotkeys) {
       if (code == 'f' || code == 'F') {
-#ifndef IS_FBFE
-        sxfe_toggle_fullscreen((sxfe_t*)fe);
+        fe->send_event(fe, "TOGGLE_FULLSCREEN");
         continue;
-#endif
       } else if (code == 'd' || code == 'D') {
-        xine_set_param(((fe_t*)fe)->stream, XINE_PARAM_VO_DEINTERLACE, 
-                       xine_get_param(((fe_t*)fe)->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+        fe->send_event(fe, "TOGGLE_DEINTERLACE");
         continue;
       }
     }
 
     snprintf(str, sizeof(str), "%016" PRIX64, code);
-    process_xine_keypress((fe_t*)fe, "KBD", str, 0, 0);
+    fe->send_input_event(fe, "KBD", str, 0, 0);
 
-  } while(!terminate_key_pressed && code != READ_KEY_SEQ_ERROR);
+  } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
 
   alarm(0);
 
@@ -251,7 +243,6 @@ static void *slave_receiver_thread(void *fe_gen)
   frontend_t *fe = (frontend_t*)fe_gen;
   char str[128], *pt;
 
-  terminate_key_pressed = 0;
   tcgetattr(STDIN_FILENO, &saved_tm);
 
   pthread_cleanup_push(slave_receiver_thread_cleanup, NULL);
@@ -271,34 +262,29 @@ static void *slave_receiver_thread(void *fe_gen)
       *pt = 0;
 
     if (!strncasecmp(str, "QUIT", 4)) {
+      fe->send_event(fe, "QUIT");
       break;
     }
-#ifndef IS_FBFE
     if (!strncasecmp(str, "FULLSCREEN", 10)) {
-      sxfe_toggle_fullscreen((sxfe_t*)fe);
+      fe->send_event(fe, "TOGGLE_FULLSCREEN");
       continue;
     }
-#endif
-
     if (!strncasecmp(str, "DEINTERLACE ", 12)) {
-      int val = atoi(str+12);
-      xine_set_param(((fe_t*)fe)->stream, XINE_PARAM_VO_DEINTERLACE, val ? 1 : 0);
+      fe->send_event(fe, str);
       continue;
     }
     if (!strncasecmp(str, "HITK ", 5)) {
-      process_xine_keypress((fe_t*)fe, NULL, str+5, 0, 0);
+      fe->send_input_event(fe, NULL, str+5, 0, 0);
       continue;
     }
 
     LOGMSG("Unknown slave mode command: %s", str);
 
-  } while(!terminate_key_pressed);
+  } while (fe->xine_is_finished(fe, 0) != FE_XINE_EXIT);
 
   LOGDBG("Slave mode receiver terminating");
 
   pthread_cleanup_pop(1);
-
-  terminate_key_pressed = 1;
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -347,7 +333,6 @@ static void SignalHandler(int signum)
     case SIGPIPE:
       break;
     default:
-      terminate_key_pressed = 1;
       if (last_signal) {
         LOGMSG("SignalHandler: exit(-1)");
         exit(-1);
@@ -405,6 +390,7 @@ static const char help_str[] =
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
     "   --geometry=WxH[+X+Y]          Set output window geometry (X style)\n"
+    "   --buffers=x                   Number of PES buffers\n"
     "   --noscaling                   Disable all video scaling\n"
     "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
     "                                 examples:\n"
@@ -421,6 +407,7 @@ static const char help_str[] =
     "   --noxkbd                      Disable X11 keyboard input\n"
 #endif
     "   --hotkeys                     Enable frontend GUI hotkeys\n"
+    "   --terminal=dev                Controlling tty"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\n"
@@ -432,7 +419,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:nP:L:C:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -446,10 +433,12 @@ static const struct option long_options[] = {
   { "hud",        no_argument,       NULL, 'D' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
+  { "buffers",    required_argument, NULL, 'B' },
   { "noscaling",  no_argument,       NULL, 'n' },
   { "post",       required_argument, NULL, 'P' },
   { "lirc",       optional_argument, NULL, 'L' },
   { "config",     required_argument, NULL, 'C' },
+  { "terminal",   required_argument, NULL, 'T' },
 
   { "verbose", no_argument,  NULL, 'v' },
   { "silent",  no_argument,  NULL, 's' },
@@ -471,9 +460,9 @@ static const struct option long_options[] = {
 
 int main(int argc, char *argv[])
 {
-  char *mrl = NULL, *gdrv = NULL, *adrv = NULL, *adev = NULL;
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
+  int pes_buffers = 250;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   int repeat_emu = 0;
@@ -481,12 +470,17 @@ int main(int argc, char *argv[])
   int xmajor, xminor, xsub;
   int c;
   int xine_finished = FE_XINE_ERROR;
+  char *mrl = NULL;
+  char *video_driver = NULL;
+  char *audio_driver = NULL;
+  char *audio_device = NULL;
   char *video_port = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
   char *aspect_controller = NULL;
+  const char *tty = NULL;
   const char *exec_name = argv[0];
-  char *config_file = NULL;
+  const char *config_file = NULL;
 
   extern const fe_creator_f fe_creator;
   frontend_t *fe = NULL;
@@ -512,22 +506,21 @@ int main(int argc, char *argv[])
               printf("%s", help_str);
               list_xine_plugins(NULL, SysLogLevel>2);
               exit(0);
-    case 'A': adrv = strdup(optarg);
-              adev = strchr(adrv, ':');
-              if (adev)
-                *(adev++) = 0;
-              PRINTF("Audio driver: %s\n",adrv);
-              if (adev)
-                PRINTF("Audio device: %s\n",adev);
+    case 'A': audio_driver = strdup(optarg);
+              audio_device = strchr(audio_driver, ':');
+              if (audio_device)
+                *(audio_device++) = 0;
+              PRINTF("Audio driver: %s\n", audio_driver);
+              if (audio_device)
+                PRINTF("Audio device: %s\n", audio_device);
               break;
-    case 'V': gdrv = strdup(optarg);
-              if (strchr(gdrv, ':')) {
-                video_port = strchr(gdrv, ':');
-                *video_port = 0;
-                video_port++;
-                PRINTF("Video port: %s\n",video_port);
-              }
-              PRINTF("Video driver: %s\n",gdrv);
+    case 'V': video_driver = strdup(optarg);
+              video_port   = strchr(video_driver, ':');
+              if (video_port)
+                *(video_port++) = 0;
+              PRINTF("Video driver: %s\n", video_driver);
+              if (video_port)
+                PRINTF("Video port: %s\n", video_port);
               break;
 #ifndef IS_FBFE
     case 'W': window_id = atoi(optarg);
@@ -573,6 +566,16 @@ int main(int argc, char *argv[])
     case 'h': height = atoi(optarg);
               PRINTF("Height: %d\n", height);
               break;
+    case 'B': pes_buffers = atoi(optarg);
+              PRINTF("Buffers: %d\n", pes_buffers);
+              break;
+    case 'T': tty = optarg;
+              if (access(tty, R_OK | W_OK) < 0) {
+                PRINTF("Can't access terminal: %s\n", tty);
+                return -2;
+              }
+              PRINTF("Terminal: %s", tty);
+              break;
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
               break;
@@ -581,7 +584,7 @@ int main(int argc, char *argv[])
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
               PRINTF("Post plugins: %s\n", static_post_plugins);
               break;
-    case 'C': config_file = strdup(optarg);
+    case 'C': config_file = optarg;
               PRINTF("Config file: %s\n", config_file);
               break;
     case 'L': lirc_dev = strdup(optarg ? : "/dev/lircd");
@@ -642,6 +645,13 @@ int main(int argc, char *argv[])
   }
 
   PRINTF("\n");
+
+  if (tty) {
+    /* claim new controlling terminal */
+    stdin  = freopen(tty, "r", stdin);
+    stdout = freopen(tty, "w", stdout);
+    stderr = freopen(tty, "w", stderr);
+  }
 
 #if 1
   /* backward compability */
@@ -733,7 +743,8 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize xine */
-  if (!fe->xine_init(fe, adrv, adev, gdrv, 250, static_post_plugins, config_file)) {
+  if (!fe->xine_init(fe, audio_driver, audio_device, video_driver,
+                     pes_buffers, static_post_plugins, config_file)) {
     fprintf(stderr, "Error initializing xine\n");
     list_xine_plugins(fe, SysLogLevel>2);
     fe->fe_free(fe);
@@ -799,7 +810,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
     fflush(stderr);
 
-    while (!last_signal && fe->fe_run(fe) && !fe->xine_is_finished(fe,0) && !terminate_key_pressed)
+    while (!last_signal && fe->fe_run(fe))
       ;
     xine_finished = fe->xine_is_finished(fe,0);
 
@@ -810,11 +821,13 @@ int main(int argc, char *argv[])
     if (last_signal == SIGHUP)
       last_signal = 0;
 
-  } while (!last_signal && !terminate_key_pressed && reconnect);
+  } while (!last_signal && xine_finished != FE_XINE_EXIT && reconnect);
 
   /* Clean up */
 
   PRINTF("Terminating...\n");
+
+  fe->send_event(fe, "QUIT");
 
   /* stop input threads */
   lirc_stop();
@@ -823,14 +836,12 @@ int main(int argc, char *argv[])
 
   fe->fe_free(fe);
 
-  free(config_file);
   free(static_post_plugins);
   free(mrl);
-  free(adrv);
-  free(gdrv);
-  free(video_port);
+  free(audio_driver);
+  free(video_driver);
   free(aspect_controller);
   free(lirc_dev);
 
-  return terminate_key_pressed ? 0 : 1;
+  return xine_finished==FE_XINE_EXIT ? 0 : 1;
 }
