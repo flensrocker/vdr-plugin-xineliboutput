@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.281 2009-08-18 10:24:03 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.282 2009-08-24 13:15:34 phintuka Exp $
  *
  */
 
@@ -81,7 +81,7 @@
 /*#define LOG_GRAPH*/
 
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
-#define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
+#define HD_BUF_NUM_BUFS         (2500)  /* 2k payload * 2500 = 5MB */
 #define HD_BUF_ELEM_SIZE        (2048+64)
 
 #define RADIO_MAX_BUFFERS  10
@@ -124,7 +124,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.281 2009-08-18 10:24:03 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.282 2009-08-24 13:15:34 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -266,6 +266,7 @@ typedef struct vdr_input_class_s {
   char           *mrls[ 2 ];
   int             fast_osd_scaling;
   double          scr_tuning_step;
+  int             num_buffers_hd;
 } vdr_input_class_t;
 
 /* input plugin */
@@ -2820,7 +2821,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       }
       if(tmp32) {
 	if(!this->hd_buffer)
-	  this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
+	  this->hd_buffer = fifo_buffer_new(this->stream, this->class->num_buffers_hd, HD_BUF_ELEM_SIZE);
 	this->hd_stream = 1;
       } else {
 	this->hd_stream = 0;
@@ -4850,6 +4851,9 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   LOGDBG("xine_input_xvdr: revision %s", module_revision);
 
+  if (this->class->num_buffers_hd != HD_BUF_NUM_BUFS)
+    LOGMSG("Using non-default \"media." MRL_ID ".num_buffers_hd:%d\"", this->class->num_buffers_hd);
+
   return 1;
 }
 
@@ -5649,6 +5653,12 @@ static void *input_xvdr_init_class (xine_t *xine, void *data)
 					       _("SCR tuning step width unit %1000000."),
 					       10, vdr_class_scr_tuning_step_cb, 
 					       (void *)this) / 1000000.0;
+
+  this->num_buffers_hd = config->register_num(config,
+                                              "media." MRL_ID ".num_buffers_hd", HD_BUF_NUM_BUFS,
+                                              _("number of buffers for HD content"),
+                                              _("number of buffers for HD content"),
+                                              10, NULL, NULL);
 
   this->input_class.get_instance       = vdr_class_get_instance;
 #if INPUT_PLUGIN_IFACE_VERSION < 18
