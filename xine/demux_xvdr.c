@@ -1053,6 +1053,13 @@ static int demux_xvdr_get_status (demux_plugin_t *this_gen)
 {
   demux_xvdr_t *this = (demux_xvdr_t *) this_gen;
 
+  if (this->status != DEMUX_OK) {
+    if (this->ts_data) {
+      LOGMSG("demux_xvdr_get_status(): status != DEMUX_OK. -> freeing ts_data");
+      ts_data_dispose(&this->ts_data);
+    }
+  }
+
   return this->status;
 }
 
