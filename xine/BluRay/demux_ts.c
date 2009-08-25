@@ -151,6 +151,13 @@
 #include <xine/xineutils.h>
 #include <xine/demux.h>
 
+//#define TS_PMT_LOG
+//#define TS_PAT_LOG
+
+#ifndef BUF_SPU_HDMV
+#  define BUF_SPU_HDMV            0x04180000
+#endif
+
 /*
   #define TS_LOG
   #define TS_PMT_LOG
@@ -2316,11 +2323,11 @@ static const char *get_description (demux_class_t *this_gen) {
 }
  
 static const char *get_identifier (demux_class_t *this_gen) {
-  return "MPEG_TS";
+  return "MPEG_TS_HDMV";
 }
 
 static const char *get_extensions (demux_class_t *this_gen) {
-  return "ts m2t trp";
+  return "m2ts mts";
 }
 
 static const char *get_mimetypes (demux_class_t *this_gen) {
@@ -2357,12 +2364,12 @@ static void *init_class (xine_t *xine, void *data) {
  * exported plugin catalog entry
  */
 static const demuxer_info_t demux_info_ts = {
-  10                       /* priority */
+  5                       /* priority */
 };
 
 const plugin_info_t xine_plugin_info[] EXPORTED = {
   /* type, API, "name", version, special_info, init_function */  
-  { PLUGIN_DEMUX, 26, "mpeg-ts", XINE_VERSION_CODE, &demux_info_ts, init_class },
+  { PLUGIN_DEMUX, 26, "mpeg-ts-hdmv", XINE_VERSION_CODE, &demux_info_ts, init_class },
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 
