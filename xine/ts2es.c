@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.3 2009-08-18 10:04:32 phintuka Exp $
+ * $Id: ts2es.c,v 1.4 2009-08-25 10:00:48 phintuka Exp $
  *
  */
 
@@ -30,6 +30,7 @@ struct ts2es_s {
   buf_element_t *buf;
   int            pes_start;
   int            first_pusi_seen;
+  int            video;
   int64_t        pts;
 };
 
@@ -181,7 +182,9 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
   }
 
   /* split large packets */
-  if (this->buf->size > 2048) {
+  if ((this->video && this->buf->size >= 2048+64-TS_SIZE) ||
+      this->buf->size >= this->buf->max_size-TS_SIZE) {
+
     this->buf->pts = this->pts;
 
     result = this->buf;
@@ -266,6 +269,9 @@ ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type, uint st
 
   /* substream ID (audio/SPU) */
   data->xine_buf_type |= stream_index;
+
+  if ((data->xine_buf_type & BUF_MAJOR_MASK) == BUF_VIDEO_BASE)
+    data->video = 1;
 
   return data;
 }
