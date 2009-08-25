@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.282 2009-08-24 13:15:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.283 2009-08-25 09:43:58 phintuka Exp $
  *
  */
 
@@ -124,7 +124,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.282 2009-08-24 13:15:34 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.283 2009-08-25 09:43:58 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2513,32 +2513,32 @@ static const struct {
 static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 {
   struct timespec abstime;
-  int result = 0;
+  fifo_buffer_t  *fifo          = this->buffer_pool;
+  int             reserved_bufs = fifo->buffer_pool_capacity - this->max_buffers;
+  int             result        = 0;
 
   /* Caller must have locked this->vdr_entry_lock ! */
 
-  if(this->slave_stream) {
+  if (this->slave_stream) {
     LOGMSG("vdr_plugin_poll: called while playing slave stream !");
     return 1;
   }
 
-  TRACE("vdr_plugin_poll (%d ms), buffer_pool: blocks=%d, bytes=%d", 
-	timeout_ms, this->buffer_pool->size(this->buffer_pool), 
-	this->buffer_pool->data_size(this->buffer_pool));
+  TRACE("vdr_plugin_poll (%d ms), fifo: blocks=%d, bytes=%d",
+	timeout_ms, fifo->size(fifo), fifo->data_size(fifo));
 
-  pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
-  result = this->buffer_pool->buffer_pool_num_free - 
-           (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
-  pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
+  pthread_mutex_lock (&fifo->buffer_pool_mutex);
+  result = fifo->buffer_pool_num_free - reserved_bufs;
+  pthread_mutex_unlock (&fifo->buffer_pool_mutex);
 
-  if(timeout_ms > 0 && result <= 0) {
-    if(timeout_ms > 250) {
+  if (timeout_ms > 0 && result <= 0) {
+    if (timeout_ms > 250) {
       LOGMSG("vdr_plugin_poll: timeout too large (%d ms), forced to 250ms", timeout_ms);
       timeout_ms = 250;
     }
     create_timeout_time(&abstime, timeout_ms);
     pthread_mutex_lock(&this->lock);
-    if(this->scr_tuning == SCR_TUNING_PAUSED) {
+    if (this->scr_tuning == SCR_TUNING_PAUSED) {
       LOGSCR("scr tuning reset by POLL");
       reset_scr_tuning(this,this->speed_before_pause);
     }
@@ -2548,26 +2548,24 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 
     VDR_ENTRY_UNLOCK();
 
-    pthread_mutex_lock (&this->buffer_pool->buffer_pool_mutex);
-    while(result <= 5) {
-      if(pthread_cond_timedwait (&this->buffer_pool->buffer_pool_cond_not_empty,
-				 &this->buffer_pool->buffer_pool_mutex, 
-				 &abstime) == ETIMEDOUT)
-	break;      
-      result = this->buffer_pool->buffer_pool_num_free - 
-	       (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
+    pthread_mutex_lock (&fifo->buffer_pool_mutex);
+    while (result <= 5) {
+      if (pthread_cond_timedwait (&fifo->buffer_pool_cond_not_empty,
+                                  &fifo->buffer_pool_mutex,
+                                  &abstime) == ETIMEDOUT)
+	break;
+      result = fifo->buffer_pool_num_free - reserved_bufs;
     }
-    pthread_mutex_unlock (&this->buffer_pool->buffer_pool_mutex);
+    pthread_mutex_unlock (&fifo->buffer_pool_mutex);
     VDR_ENTRY_LOCK(0);
   }
 
-  TRACE("vdr_plugin_poll returns, %d free (%d used, %d bytes)\n", result, 
-	this->buffer_pool->size(this->buffer_pool), 
-	this->buffer_pool->data_size(this->buffer_pool));
+  TRACE("vdr_plugin_poll returns, %d free (%d used, %d bytes)\n",
+        result, fifo->size(fifo), fifo->data_size(fifo));
 
- /* handle priority problem in paused mode when 
+ /* handle priority problem in paused mode when
     data source has higher priority than control source */
-  if(result <= 0) {
+  if (result <= 0) {
     result = 0;
     xine_usec_sleep(3*1000);
   }
