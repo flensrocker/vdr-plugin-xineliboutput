@@ -460,7 +460,8 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
   if (!this->ts_data)
     this->ts_data = calloc(1, sizeof(ts_data_t));
 
-  ts_data_t *ts_data = this->ts_data;
+  ts_data_t     *ts_data  = this->ts_data;
+  fifo_buffer_t *src_fifo = buf->source;
 
   while (buf->size >= TS_SIZE) {
 
@@ -505,7 +506,6 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
     /* demux video */
     else if (ts_pid == ts_data->pmt.video_pid) {
       if (ts_data->video) {
-        fifo_buffer_t *src_fifo = buf->source;
         buf_element_t *vbuf     = ts2es_put(ts_data->video, buf->content, src_fifo);
         if (vbuf) {
           this->pts = vbuf->pts;
@@ -522,7 +522,7 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
       for (i=0; i < ts_data->pmt.audio_tracks_count; i++)
         if (ts_pid == ts_data->pmt.audio_tracks[i].pid) {
           if (ts_data->audio[i]) {
-            buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content, NULL);
+            buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content, src_fifo);
             if (abuf) {
               this->pts = abuf->pts;
               check_newpts( this, abuf, PTS_AUDIO );

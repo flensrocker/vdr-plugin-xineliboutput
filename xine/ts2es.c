@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.4 2009-08-25 10:00:48 phintuka Exp $
+ * $Id: ts2es.c,v 1.5 2009-08-25 10:09:20 phintuka Exp $
  *
  */
 
@@ -158,10 +158,16 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
     if (!this->first_pusi_seen)
       return NULL;
 
-    if (src_fifo && src_fifo != this->fifo)
-      this->buf = src_fifo->buffer_pool_try_alloc(src_fifo);
-    if (!this->buf)
+    if (src_fifo && src_fifo != this->fifo) {
+      if (!this->video)
+        this->buf = this->fifo->buffer_pool_try_alloc(this->fifo);
+      if (!this->buf)
+        this->buf = src_fifo->buffer_pool_try_alloc(src_fifo);
+      if (!this->buf)
+        this->buf = this->fifo->buffer_pool_alloc(this->fifo);
+    } else {
       this->buf = this->fifo->buffer_pool_alloc(this->fifo);
+    }
 
     this->buf->type = this->xine_buf_type;
     this->buf->decoder_info[0] = 1;
