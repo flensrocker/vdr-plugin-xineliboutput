@@ -154,6 +154,10 @@
 //#define TS_PMT_LOG
 //#define TS_PAT_LOG
 
+#ifndef EXPORTED
+#  define EXPORTED __attribute__((visibility("default")))
+#endif
+
 #ifndef BUF_SPU_HDMV
 #  define BUF_SPU_HDMV            0x04180000
 #endif
