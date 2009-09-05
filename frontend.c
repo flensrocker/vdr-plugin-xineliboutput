@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.74 2009-08-19 17:03:49 phintuka Exp $
+ * $Id: frontend.c,v 1.75 2009-09-05 09:48:21 phintuka Exp $
  *
  */
 
@@ -128,8 +128,8 @@ void cXinelibThread::InfoHandler(const char *info)
 	char *lang = map;
 	while(*map && *map != ' ') map++;
 	if(*map == ' ') { *map = 0; map++; };
-	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang));
-	if (Current) 
+	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang) ?: *cString::sprintf("%03d", id+1));
+	if (Current)
 	  CurrentTrack = id;
       }
     }
@@ -157,8 +157,8 @@ void cXinelibThread::InfoHandler(const char *info)
       char *lang = map;
       while(*map && *map != ' ') map++;
       if(*map == ' ') { *map = 0; map++; };
-      cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, iso639_2_to_iso639_1(lang));
-      if(Current) 
+      cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, iso639_2_to_iso639_1(lang) ?: cString::sprintf("%03d", id+1));
+      if(Current)
 	cXinelibDevice::Instance().SetCurrentAudioTrack((eTrackType)(ttDolby+id));
     }
   }
