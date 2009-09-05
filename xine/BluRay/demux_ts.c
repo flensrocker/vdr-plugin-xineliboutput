@@ -236,6 +236,7 @@
       ISO_14496_PART10_VIDEO = 0x1b,    /* ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264) */
       STREAM_VIDEO_MPEG      = 0x80,
       STREAM_AUDIO_AC3       = 0x81,
+      STREAM_AUDIO_PRIMARY_DTS_HDMV = 0x86,
       STREAM_SPU_BITMAP_HDMV = 0x90,
     } streamType;
 
@@ -800,6 +801,12 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       m->content   = p;
       m->size = packet_len;
       m->type |= BUF_AUDIO_A52;
+      return 1;
+
+    } else if (m->descriptor_tag == STREAM_AUDIO_PRIMARY_DTS_HDMV) {
+      m->content = p;
+      m->size = packet_len;
+      m->type |= BUF_AUDIO_DTS;
       return 1;
 
     } else if (m->descriptor_tag == ISO_13818_PES_PRIVATE
