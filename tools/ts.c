@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.13 2009-09-09 11:58:16 phintuka Exp $
+ * $Id: ts.c,v 1.14 2009-09-09 11:58:40 phintuka Exp $
  *
  */
 
@@ -384,7 +384,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
             if (find_audio_track(pmt, pid) < 0) {
               LOGPMT("parse_pmt: AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
               pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
-              pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
+              pmt->audio_tracks[pmt->audio_tracks_count].type = STREAM_AUDIO_AC3;
               /* demux_ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
               /*                        stream + 5, stream_info_length); */
               pmt->audio_tracks_count++;
