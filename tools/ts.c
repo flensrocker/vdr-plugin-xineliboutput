@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.12 2009-08-18 10:28:45 phintuka Exp $
+ * $Id: ts.c,v 1.13 2009-09-09 11:58:16 phintuka Exp $
  *
  */
 
@@ -183,6 +183,16 @@ static void ts_get_reg_desc(uint32_t *dest, const uint8_t *data, int length)
   *dest = 0;
 }
 
+static int find_audio_track(pmt_data_t *pmt, uint pid)
+{
+  int i;
+  for (i = 0; i < pmt->audio_tracks_count; i++) {
+    if (pmt->audio_tracks[i].pid == pid)
+      return i;
+  }
+  return -1;
+}
+
 /*
  * ts_parse_pmt()
  *
@@ -354,14 +364,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
       case ISO_13818_PART7_AUDIO:
       case ISO_14496_PART3_AUDIO:
         if (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS) {
-          int i, found = 0;
-          for (i = 0; i < pmt->audio_tracks_count; i++) {
-            if (pmt->audio_tracks[i].pid == pid) {
-              found = 1;
-              break;
-            }
-          }
-          if (!found) {
+          if (find_audio_track(pmt, pid) < 0) {
             LOGPMT("parse_pmt: audio pid 0x%.4x type %2.2x", pid, stream[0]);
             pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
             pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
@@ -375,18 +378,10 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
       case ISO_13818_PRIVATE:
       case ISO_13818_TYPE_C:
         break;
-
       case ISO_13818_PES_PRIVATE:
         for (i = 5; i < coded_length; i += stream[i+1] + 2) {
-          if ((stream[i] == 0x6a) && (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
-            int i, found = 0;
-            for (i = 0; i < pmt->audio_tracks_count; i++) {
-              if (pmt->audio_tracks[i].pid == pid) {
-                found = 1;
-                break;
-              }
-            }
-            if (!found) {
+          if ((stream[i] == STREAM_DESCR_AC3) && (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
+            if (find_audio_track(pmt, pid) < 0) {
               LOGPMT("parse_pmt: AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
               pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
               pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)stream[0];
@@ -397,7 +392,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
             }
           }
           /* DVBSUB */
-          else if (stream[i] == 0x59) {
+          else if (stream[i] == STREAM_DESCR_DVBSUB) {
             uint pos;
             for (pos = i + 2;
                  pos + 8 <= i + 2 + stream[i + 1]
@@ -430,14 +425,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
          * to see if it holds "AC-3" (0x41432d33) and if is does, we tag this as an audio stream.
          */
         if ((pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS) && (stream[0] >= 0x80) ) {
-          int i, found = 0;
-          for (i = 0; i < pmt->audio_tracks_count; i++) {
-            if (pmt->audio_tracks[i].pid == pid) {
-              found = 1;
-              break;
-            }
-          }
-          if (!found) {
+          if (find_audio_track(pmt, pid) < 0) {
             uint32_t format_identifier = 0;
             ts_get_reg_desc(&format_identifier, stream + 5, stream_info_length);
             /* If no format identifier, assume A52 */
