@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.11 2009-07-03 05:37:05 phintuka Exp $
+ * $Id: ts.h,v 1.12 2009-09-09 11:51:21 phintuka Exp $
  *
  */
 
@@ -52,6 +52,9 @@ extern "C" {
 
 #define DATA_IS_TS(data)        ((data)[0] == TS_SYNC_BYTE)
 
+/*
+ * stream types (PMT)
+ */
 
 typedef enum {
   ISO_11172_VIDEO        = 0x01,  /* ISO/IEC 11172 Video */
@@ -76,6 +79,9 @@ typedef enum {
   STREAM_DVBSUB          = 0x100
 } ts_stream_type;
 
+/* stream info descriptors */
+#define STREAM_DESCR_AC3    0x6a
+#define STREAM_DESCR_DVBSUB 0x59
 
 /*
  * PAT
