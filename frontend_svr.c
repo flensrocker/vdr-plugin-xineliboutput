@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.80 2009-08-18 12:52:18 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.81 2009-09-09 12:38:12 phintuka Exp $
  *
  */
 
@@ -1674,7 +1674,11 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   if (fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK) == -1) {
     LOGERR("Error setting control socket to nonblocking mode");
     CLOSESOCKET(fd);
+    return;
   }
+
+  int alive = 1;
+  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &alive, sizeof(alive));
 
   CloseDataConnection(cli);
 
