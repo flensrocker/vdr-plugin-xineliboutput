@@ -238,6 +238,9 @@
       STREAM_AUDIO_AC3       = 0x81,
       STREAM_AUDIO_PRIMARY_DTS_HDMV = 0x86,
       STREAM_SPU_BITMAP_HDMV = 0x90,
+
+      STREAM_VIDEO_VC1       = 0xea,    /* VC-1 */
+      STREAM_VIDEO_SMTPE_VC1 = 0xeb,    /* SMTPE VC-1 */
     } streamType;
 
 #define WRAP_THRESHOLD       270000
@@ -773,6 +776,13 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
 
   p += header_len + 9;
   packet_len -= header_len + 3;
+
+  if (m->descriptor_tag == STREAM_VIDEO_VC1) {
+    m->content   = p;
+    m->size      = packet_len;
+    m->type      = BUF_VIDEO_VC1;
+    return 1;
+  }
 
   if (m->descriptor_tag == STREAM_SPU_BITMAP_HDMV) {
     long payload_len = ((buf[4] << 8) | buf[5]) - header_len - 3;
@@ -1350,6 +1360,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
     case ISO_13818_VIDEO:
     case ISO_14496_PART2_VIDEO:
     case ISO_14496_PART10_VIDEO:
+    case STREAM_VIDEO_VC1:
       if (this->videoPid == INVALID_PID) {
 #ifdef TS_PMT_LOG
         printf ("demux_ts: PMT video pid 0x%.4x type %2.2x\n", pid, stream[0]);
