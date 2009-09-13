@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.c,v 1.11.2.2 2009-06-04 13:12:33 phintuka Exp $
+ * $Id: menuitems.c,v 1.11.2.3 2009-09-13 13:11:03 phintuka Exp $
  *
  */
 
@@ -141,6 +141,7 @@ cFileListItem::cFileListItem(const char *name, bool isDir)
   m_Name = name;
   m_IsDir = isDir;
   m_IsDvd = false;
+  m_IsBluRay  = false;
   m_HasResume = false;
   m_SubFile   = NULL;
   m_ShowFlags = false;
@@ -150,11 +151,12 @@ cFileListItem::cFileListItem(const char *name, bool isDir)
 
 cFileListItem::cFileListItem(const char *name, bool IsDir, 
 			     bool HasResume, const char *subfile,
-			     bool IsDvd)
+			     bool IsDvd, bool IsBluRay)
 {
   m_Name = name;
   m_IsDir = IsDir;
   m_IsDvd = IsDvd;
+  m_IsBluRay  = IsBluRay;
   m_HasResume = HasResume;
   m_SubFile   = subfile;
   m_ShowFlags = true;
@@ -170,10 +172,12 @@ void cFileListItem::Set(void)
     if(m_IsDir) {
       if(m_IsDvd)
 	txt = cString::sprintf("\tD\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
+      else if (m_IsBluRay)
+	txt = cString::sprintf("\tB\t[%s] ", *m_Name);
       else
 	txt = cString::sprintf("\t\t[%s] ", *m_Name); // text2skin requires space at end of string to display item correctly ...
     } else {
-      txt = cString::sprintf("%c\t%c\t%s", m_HasResume ? ' ' : '*', *m_SubFile ? 'S' : m_IsDvd ? 'D' : ' ', *m_Name);
+      txt = cString::sprintf("%c\t%c\t%s", m_HasResume ? ' ' : '*', *m_SubFile ? 'S' : m_IsDvd ? 'D' : m_IsBluRay ? 'B' : ' ', *m_Name);
       if(NULL != (pt = strrchr(txt,'.')))
 	txt.Truncate(pt - txt);
     }
