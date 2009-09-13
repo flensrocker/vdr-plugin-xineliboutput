@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.63.2.6 2009-06-09 13:06:23 phintuka Exp $
+ * $Id: config.c,v 1.63.2.7 2009-09-13 13:21:32 phintuka Exp $
  *
  */
 
@@ -234,6 +234,15 @@ const char * const config_t::s_osdScalings[] = {
   NULL
 };
 
+const char * const config_t::s_osdSizes[] = {
+  trNOOP("automatic"),
+  "720x576",
+  "1280x720",
+  "1920x1080",
+  trNOOP("custom"),
+  NULL
+};
+
 const char * const config_t::s_decoders_MPEG2[] = {
   trNOOP("automatic"),
   "libmpeg2",
@@ -427,6 +436,37 @@ bool config_t::IsDvdFolder(const char *fname)
   return false;
 }
 
+bool config_t::IsBluRayFolder(const char *fname)
+{
+  struct stat st;
+  cString buf, folder;
+
+  buf = cString::sprintf("%s/BDMV/", fname);
+  if (stat(buf, &st) == 0) {
+    folder = buf;
+  } else {
+    buf = cString::sprintf("%s/bdmv/", fname);
+    if (stat(buf, &st) == 0)
+      folder = buf;
+    else
+      return false;
+  }
+
+  buf = cString::sprintf("%s/MovieObject.bdmv", *folder);
+  if (stat(buf, &st) == 0)
+    return true;
+
+  buf = cString::sprintf("%s/movieobject.bdmv", *folder);
+  if (stat(buf, &st) == 0)
+    return true;
+
+  buf = cString::sprintf("%s/MOVIEOBJECT.BDMV", *folder);
+  if (stat(buf, &st) == 0)
+    return true;
+
+  return false;
+}
+
 cString config_t::AutocropOptions(void)
 {
   if (!autocrop)
@@ -533,6 +573,11 @@ config_t::config_t() {
   display_aspect       = 0;     /* auto */
 
   hide_main_menu       = 0;
+  osd_size             = OSD_SIZE_auto;
+  osd_width            = 720;
+  osd_height           = 576;
+  osd_width_auto       = 0;
+  osd_height_auto      = 0;
   osd_mixer            = OSD_MIXER_FULL;
   osd_scaling          = OSD_SCALING_NEAREST;
   hud_osd              = 0;
@@ -784,6 +829,9 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Audio.SoftwareVolumeControl")) sw_volume_control = atoi(Value);
 
   else if (!strcasecmp(Name, "OSD.HideMainMenu"))   hide_main_menu = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Size"))           osd_size = strstra(Value, s_osdSizes, 0);
+  else if (!strcasecmp(Name, "OSD.Width"))          osd_width = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Height"))         osd_height = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Blending"))       osd_blending = atoi(Value);
