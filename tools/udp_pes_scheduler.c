@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.50 2009-08-18 19:28:03 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.50.2.1 2009-09-13 12:43:02 phintuka Exp $
  *
  */
 
@@ -727,26 +727,6 @@ void cUdpScheduler::Schedule(const uchar *Data, int Length)
 
 void cUdpScheduler::Action(void)
 {
-#if 0
-  {
-    // Request real-time scheduling
-    sched_param temp;
-    temp.sched_priority = 2;
-
-    if (!pthread_setschedparam(pthread_self(), SCHED_RR, &temp)) {
-      LOGMSG("cUdpScheduler priority set successful SCHED_RR %d [%d,%d]",
-	     temp.sched_priority,
-	     sched_get_priority_min(SCHED_RR),
-	     sched_get_priority_max(SCHED_RR));
-    } else {
-      LOGMSG("cUdpScheduer: Can't set priority to SCHED_RR %d [%d,%d]",
-	     temp.sched_priority,
-	     sched_get_priority_min(SCHED_RR),
-	     sched_get_priority_max(SCHED_RR));
-    }
-  }
-#endif
-
   /* UDP Scheduler needs high priority */
   const int priority = -5;
   SetPriority(priority);
