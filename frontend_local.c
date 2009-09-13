@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.31.2.4 2009-06-19 12:46:30 phintuka Exp $
+ * $Id: frontend_local.c,v 1.31.2.5 2009-09-13 18:48:11 phintuka Exp $
  *
  */
 
@@ -92,21 +92,7 @@ cXinelibLocal::~cXinelibLocal()
 
   m_bReady = false;
 
-  Stop();
-  if(fe) {
-    fe->fe_free(fe);
-    fe = NULL;
-  }
-  if(h_fe_lib) {
-    dlclose(h_fe_lib);
-  }
-}
-
-void cXinelibLocal::Stop(void)
-{
-  TRACEF("cXinelibLocal::Stop");
-
-  SetStopSignal();
+  Cancel(-1);
 
   {
     LOCK_FE;
@@ -115,7 +101,15 @@ void cXinelibLocal::Stop(void)
       fe->fe_interrupt(fe);
   }
 
-  cXinelibThread::Stop();
+  Cancel(3);
+
+  if (fe) {
+    fe->fe_free(fe);
+    fe = NULL;
+  }
+  if (h_fe_lib) {
+    dlclose(h_fe_lib);
+  }
 }
 
 //
@@ -128,7 +122,7 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
 
   {
     LOCK_FE;
-    if(fe && !m_bStopThread) {
+    if (fe && Running()) {
       int done = fe->xine_queue_pes_packet(fe, (char*)data, len);
       if (done >= 0) {
 	Lock();
@@ -222,7 +216,7 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers)
     fe->fe_interrupt(fe);    
   }
 
-  while(!m_bReady && !GetStopSignal())
+  while (!m_bReady && Running())
     cCondWait::SleepMs(100);
 
   cCondWait::SleepMs(100);
@@ -235,7 +229,7 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers)
 int cXinelibLocal::Xine_Control(const char *cmd)
 {
   TRACEF("cXinelibLocal::Xine_Control");
-  if(cmd && *cmd && !GetStopSignal()) {
+  if (cmd && *cmd && Running()) {
     char buf[4096];
     if(snprintf(buf, sizeof(buf), "%s\r\n", cmd) >= (int)sizeof(buf)) {
       buf[sizeof(buf)-1] = 0;
@@ -345,7 +339,7 @@ void cXinelibLocal::Action(void)
     curr_fe = load_frontend(xc.local_frontend);
     if(!curr_fe) {
       LOGMSG("cXinelibLocal: Error initializing frontend");
-      SetStopSignal();
+      Cancel(-1);
     } else {
       LOGDBG("cXinelibLocal::Action - fe created");
       if(!curr_fe->fe_display_open(curr_fe, 0, 0, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
@@ -356,7 +350,7 @@ void cXinelibLocal::Action(void)
                                    xc.field_order,
                                    NULL, -1)) {
 	LOGMSG("cXinelibLocal: Error initializing display");
-	SetStopSignal();
+        Cancel(-1);
       } else {
 	LOGDBG("cXinelibLocal::Action - fe->fe_display_open ok");
       }
@@ -364,7 +358,7 @@ void cXinelibLocal::Action(void)
   }
 
   // main loop
-  while (!GetStopSignal()) {
+  while (Running()) {
 
     {
       // init and start xine engine
@@ -426,9 +420,9 @@ void cXinelibLocal::Action(void)
     LOGDBG("cXinelibLocal:Action - Starting event loop");   
     {
       LOCK_FE;
-      while(!GetStopSignal() && m_bReady && 
-	    (/*m_bLoopPlay ||*/ !fe->xine_is_finished(fe, 0)) && 
-	    fe->fe_run(fe)) 
+      while (Running() && m_bReady &&
+             (/*m_bLoopPlay ||*/ !fe->xine_is_finished(fe, 0)) &&
+             fe->fe_run(fe))
 	/*cCondWait::SleepMs(50)*/ ;
     }
 
@@ -467,7 +461,6 @@ void cXinelibLocal::Action(void)
     curr_fe->fe_free(curr_fe);
   }
 
-  m_bIsFinished = true;
   LOGMSG("cXinelibLocal::Action: thread finished");
 }
 
