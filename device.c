@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.10 2009-06-08 16:13:03 phintuka Exp $
+ * $Id: device.c,v 1.57.2.11 2009-09-14 13:09:23 phintuka Exp $
  *
  */
 
@@ -34,6 +34,7 @@
 #include "tools/listiter.h"
 #include "tools/mpeg.h"
 #include "tools/pes.h"
+#include "tools/ts.h"
 #include "tools/functor.h"
 
 #include "frontend_local.h"
@@ -217,8 +218,9 @@ cXinelibDevice::cXinelibDevice()
   m_RadioStream = false;
   m_AudioCount  = 0;
   m_FreeBufs = 0;
-  m_Cleared = true;
   m_h264 = false;
+
+  m_VideoSize = (video_size_t*)calloc(1, sizeof(video_size_t));
 }
 
 cXinelibDevice::~cXinelibDevice() 
@@ -228,6 +230,8 @@ cXinelibDevice::~cXinelibDevice()
   StopDevice();
 
   m_pInstance = NULL;
+
+  free (m_VideoSize);
 }
 
 bool cXinelibDevice::StartDevice()
@@ -242,13 +246,13 @@ bool cXinelibDevice::StartDevice()
   // if(dynamic_cast<cXinelibLocal*>(it))
   if(m_local) {
     int timer = 0;
-    while(!m_local->IsReady()) {
+    while (!m_local->IsReady()) {
       cCondWait::SleepMs(100);
-      if(m_local->IsFinished()) {
+      if (!m_local->Active()) {
         LOGMSG("cXinelibDevice::Start(): Local frontend init failed");
         return false;
       }
-      if(++timer >= LOCAL_INIT_TIMEOUT*10) {
+      if (++timer >= LOCAL_INIT_TIMEOUT*10) {
         LOGMSG("cXinelibDevice::Start(): Local frontend init timeout");
         return false;
       }
@@ -261,7 +265,7 @@ bool cXinelibDevice::StartDevice()
     int timer = 0;
     while(!m_server->IsReady()) {
       cCondWait::SleepMs(100);
-      if(m_server->IsFinished()) {
+      if (!m_server->Active()) {
         LOGMSG("cXinelibDevice::Start(): Server init failed");
         return false;
       }
@@ -304,15 +308,11 @@ void cXinelibDevice::StopDevice(void)
   if(local)  m_clients.Del(local,  false);
   if(server) m_clients.Del(server, false);
 
-  if(server) {
-    server->Stop();
+  if(server)
     delete server;
-  }
-  if(local) {
-    local->Stop();
+  if(local)
     delete local;
-  }
- 
+
   m_clients.Clear();
 }
 
@@ -479,8 +479,6 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
     m_clients.Del(tmp, false);
     m_local = NULL;
     cCondWait::SleepMs(5);
-    tmp->Stop();
-    cCondWait::SleepMs(5);
     delete tmp;
     if(xc.force_primary_device)
       ForcePrimaryDevice(false);
@@ -496,10 +494,10 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
     m_clients.Add(m_local = tmp);
 
     cCondWait::SleepMs(25);
-    while(!m_local->IsReady() && !m_local->IsFinished())
+    while (!m_local->IsReady() && m_local->Active())
       cCondWait::SleepMs(25);
 
-    if(m_local->IsFinished()) {
+    if (!m_local->Active()) {
       m_local = NULL;
       m_clients.Del(tmp, true);
       Skins.QueueMessage(mtError, tr("Frontend initialization failed"), 10);
@@ -524,10 +522,10 @@ void cXinelibDevice::Listen(bool activate, int port)
       m_clients.Add(m_server = tmp);
 
       cCondWait::SleepMs(10);
-      while(!m_server->IsReady() && !m_server->IsFinished())
+      while (!m_server->IsReady() && m_server->Active())
 	cCondWait::SleepMs(10);
 
-      if(m_server->IsFinished()) {
+      if (!m_server->Active()) {
 	Skins.QueueMessage(mtError, tr("Server initialization failed"), 10);
 	m_server = NULL;
 	m_clients.Del(tmp, true);
@@ -541,8 +539,6 @@ void cXinelibDevice::Listen(bool activate, int port)
     cXinelibThread *tmp = m_server;
     m_clients.Del(tmp, false);
     m_server = NULL;
-    cCondWait::SleepMs(5);
-    tmp->Stop();
     cCondWait::SleepMs(5);
     delete tmp;
   }
@@ -807,18 +803,12 @@ void cXinelibDevice::Clear(void)
   TRACEF("cXinelibDevice::Clear");
   TRACK_TIME(100);
 
-  if(m_Cleared && m_StreamStart && m_TrickSpeed == -1) {
-    //LOGMSG("************ Double Clear ***************");
-  } else {
-    //LOGMSG("************ FIRST  Clear ***************");
-    m_Cleared = true;
-    m_StreamStart = true;
-    m_h264 = false;
-    m_FreeBufs = 0;
-    TrickSpeed(-1);
-    ForEach(m_clients, &cXinelibThread::Clear);
-    ForEach(m_clients, &cXinelibThread::SetStillMode, false);
-  }
+  m_StreamStart = true;
+  m_h264 = false;
+  m_FreeBufs = 0;
+  TrickSpeed(-1);
+  ForEach(m_clients, &cXinelibThread::Clear);
+  ForEach(m_clients, &cXinelibThread::SetStillMode, false);
 }
 
 void cXinelibDevice::Play(void) 
@@ -1058,6 +1048,9 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     return length;
 #endif
 
+  if (!buf || length <= 0)
+    return length;
+
   //
   // Need to be sure Poll has been called for every frame:
   //  - cDevice can feed multiple frames after each poll from player/transfer.
@@ -1075,19 +1068,22 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
     }
   }
 
-  int isMpeg1 = pes_is_mpeg1(buf);
-  int len = pes_packet_len(buf, length);
-  if(len>0 && len != length) 
-    LOGMSG("cXinelibDevice::PlayAny: invalid data !");
+  bool isMpeg1 = false;
+  if (DATA_IS_PES(buf)) {
+    isMpeg1 = pes_is_mpeg1(buf);
+    int len = pes_packet_len(buf, length);
+    if (len>0 && len != length)
+      LOGMSG("cXinelibDevice::PlayAny: invalid data !");
+  }
 
   if(m_TrickSpeed > 0) {
     if(PlayTrickSpeed(buf, length) < 0)
       return 0; /* wait if data is coming in too fast */
   } else if(m_SkipAudio) {
     /* needed for still images when moving cutting marks */
-    pes_change_pts((uchar*)buf, length, INT64_C(0));
+    if (DATA_IS_PES(buf))
+      pes_change_pts((uchar*)buf, length, INT64_C(0));
   }
-  m_Cleared = false;
   m_FreeBufs --;
 
   if(m_local) {
@@ -1112,14 +1108,18 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
   if(m_PlayMode == pmAudioOnlyBlack)
     return length;
 
+  if (!DATA_IS_PES(buf)) {
+    LOGMSG("PlayVideo: data is not PES !");
+    return length;
+  }
+
   if(m_RadioStream) {
     m_RadioStream = false;
     m_AudioCount  = 0;
     ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
   }
-  
-  if(m_StreamStart) {
 
+  if(m_StreamStart) {
 #ifdef START_IFRAME
     // Start with I-frame if stream has video
     // wait for first I-frame
@@ -1135,12 +1135,10 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
       m_h264 = true;
     }
 
-    video_size_t Size;
-    if (pes_get_video_size(buf, length, &Size, m_h264 ? 1:0)) {
+    if (pes_get_video_size(buf, length, m_VideoSize, m_h264 ? 1:0)) {
       m_StreamStart = false;
-      /*if (m_h264)*/ LOGMSG("Detected video size %dx%d", Size.width, Size.height);
-      //LOGDBG("Detected video size %dx%d", Width, Height);
-      ForEach(m_clients, &cXinelibThread::SetHDMode, (Size.width > 800));
+      LOGDBG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);
+      ForEach(m_clients, &cXinelibThread::SetHDMode, (m_VideoSize->width > 800));
     }
   }
 
@@ -1176,16 +1174,13 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
     skipped = 0;
   }
 
-  bool isPes   = (!Data[0] && !Data[1] && Data[2] == 0x01 && 
-		  (Data[3] & 0xF0) == 0xE0);
+  bool isPes   = DATA_IS_PES(Data) && ((Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
+  bool isH264  = isPes && pes_is_frame_h264(Data, Length);
   int i;
 
   if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly))
     return;
-
-  TRACE("cXinelibDevice::StillPicture: isPes = "<<isPes
-	<<", isMpeg1 = "<<isMpeg1);
 
   ForEach(m_clients, &cXinelibThread::Clear);
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
@@ -1208,10 +1203,12 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	      &mand<bool>, true);
     }
 
-  // creates empty video PES with pseudo-pts
-  ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
-	  Data, 0, VIDEO_STREAM,
-	  &mand<bool>, true);
+  if(!isH264) {
+    // creates empty video PES with pseudo-pts
+    ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
+	    Data, 0, VIDEO_STREAM,
+	    &mand<bool>, true);
+  }
 
   ForEach(m_clients, &cXinelibThread::Flush, 60, 
 	  &mand<bool>, true);
@@ -1334,7 +1331,7 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
 
     m_FreeBufs = max(result, 0);
   }
-  
+
   return m_FreeBufs > 0 /*|| Poller.Poll(0)*/;
 }
 
@@ -1454,6 +1451,35 @@ eVideoSystem cXinelibDevice::GetVideoSystem(void)
   return cDevice::GetVideoSystem();
 }
 
+void cXinelibDevice::GetOsdSize(int &Width, int &Height, double &PixelAspect)
+{
+  switch (xc.osd_size) {
+    case OSD_SIZE_720x576:
+      Width  = 720;
+      Height = 576;
+      break;
+    case OSD_SIZE_1280x720:
+      Width  = 1280;
+      Height = 720;
+      break;
+    case OSD_SIZE_1920x1080:
+      Width  = 1920;
+      Height = 1080;
+      break;
+    case OSD_SIZE_auto:
+      if (xc.osd_width_auto > 0 && xc.osd_height_auto > 0) {
+        Width  = xc.osd_width_auto;
+        Height = xc.osd_height_auto;
+        break;
+      }
+    case OSD_SIZE_custom:
+    default:
+      Width  = xc.osd_width;
+      Height = xc.osd_height;
+      break;
+  }
+  PixelAspect = 16.0 / 9.0 / (double)Width * (double)Height;
+}
 
 //
 // SPU decoder
