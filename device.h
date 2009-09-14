@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.34.2.3 2009-06-09 12:01:03 phintuka Exp $
+ * $Id: device.h,v 1.34.2.4 2009-09-14 10:51:55 phintuka Exp $
  *
  */
 
@@ -20,14 +20,16 @@ class cXinelibThread;
 class cChannel;
 class cFunctor;
 
+struct video_size_s;
+
 typedef enum {
-  miTitle  = 0,
+  miTitle        = 0,
   miTracknumber  = 1,
-  miArtist = 2,
-  miAlbum  = 3,
-  miDvdTitleNo = 4,
-  miDvdButtons = 5,
-  mi_Count = 6
+  miArtist       = 2,
+  miAlbum        = 3,
+  miDvdTitleNo   = 4,
+  miDvdButtons   = 5,
+  mi_Count       = 6
 } eMetainfoType;
 
 # define ttXSubtitleNone  (-2)
@@ -35,7 +37,7 @@ typedef enum {
 
 #define MAX_METAINFO_LEN 63
 
-class cXinelibDevice : public cDevice 
+class cXinelibDevice : public cDevice
 {
 
   // Singleton
@@ -51,23 +53,20 @@ class cXinelibDevice : public cDevice
 
     virtual ~cXinelibDevice();
 
-
   // device start/stop (from cPlugin)
 
   public:
     bool StartDevice(void);
     void StopDevice(void);
 
-
   // function calls waiting to be executed in VDR main thread context
 
   private:
-    cList<cFunctor> m_MainThreadFunctors; 
+    cList<cFunctor> m_MainThreadFunctors;
     cMutex m_MainThreadLock;
 
   public:
     void MainThreadHook(void);
-
 
   // Primary device switching
 
@@ -81,8 +80,8 @@ class cXinelibDevice : public cDevice
     virtual void MakePrimaryDevice(bool On);
     void ForcePrimaryDevice(bool On);
 
-
   // Device capabilities
+
   private:
     bool      m_VDR_TrickSpeedIBP;
 
@@ -123,20 +122,13 @@ class cXinelibDevice : public cDevice
     virtual void SetVideoFormat(bool VideoFormat16_9);
     virtual eVideoSystem GetVideoSystem(void);
 
+    struct video_size_s *m_VideoSize;
+    virtual void GetOsdSize(int &Width, int &Height, double &PixelAspect);
+
   // Track facilities
 
   protected:
     virtual void SetAudioTrackDevice(eTrackType Type);
-
-  private:
-#if VDRVERSNUM < 10515
-    // (DVD) SPU tracks
-    tTrackId m_DvdSpuTrack[64];
-    int      m_CurrentDvdSpuTrack;
-    bool     m_ForcedDvdSpuTrack;
-#endif
-    char     m_MetaInfo[mi_Count][MAX_METAINFO_LEN+1];
-
   public:
 #if VDRVERSNUM < 10515
     void ClrAvailableDvdSpuTracks(bool NotifyFrontend = true);
@@ -153,9 +145,6 @@ class cXinelibDevice : public cDevice
     virtual void SetSubtitleTrackDevice(eTrackType Type);
 #endif
 
-    const char *GetMetaInfo(eMetainfoType Type);
-    void        SetMetaInfo(eMetainfoType Type, const char *Value);
-
   // Audio facilities
 
   private:
@@ -167,13 +156,11 @@ class cXinelibDevice : public cDevice
     virtual void SetVolumeDevice(int Volume);
     virtual void SetDigitalAudioDevice(bool On);
 
-
   // Image grabbing
 
   public:
-    virtual uchar *GrabImage(int &Size, bool Jpeg = true, 
-			     int Quality = -1, int SizeX = -1, int SizeY = -1);
-
+    virtual uchar *GrabImage(int &Size, bool Jpeg = true,
+                             int Quality = -1, int SizeX = -1, int SizeY = -1);
 
   // SPU decoder
 
@@ -184,7 +171,6 @@ class cXinelibDevice : public cDevice
 
   public:
     virtual cSpuDecoder *GetSpuDecoder(void);
-
 
   // Messages from StatusMonitor:
 
@@ -197,12 +183,10 @@ class cXinelibDevice : public cDevice
     void SetReplayMode(void);
     void StopOutput(void);
 
-
   // Osd Commands (from cXinelibOsd)
 
   public:
     void OsdCmd(void *cmd);
-
 
   // Configuration
 
@@ -212,24 +196,23 @@ class cXinelibDevice : public cDevice
     cXinelibThread        *m_local;
 
   public:
-    void ConfigurePostprocessing(const char *deinterlace_method, 
-				 int audio_delay,
-				 int audio_compression, 
-				 const int *audio_equalizer,
-				 int audio_surround, 
-				 int speaker_type);
-    void ConfigurePostprocessing(const char *name, bool on=true, 
-				 const char *args=NULL);
+    void ConfigurePostprocessing(const char *deinterlace_method,
+                                 int audio_delay,
+                                 int audio_compression,
+                                 const int *audio_equalizer,
+                                 int audio_surround,
+                                 int speaker_type);
+    void ConfigurePostprocessing(const char *name, bool on = true,
+                                 const char *args = NULL);
     void ConfigureVideo(int hue, int saturation, int brightness, int sharpness,
-			int noise_reduction, int contrast, int overscan, int vo_aspect_ratio);
+                        int noise_reduction, int contrast, int overscan, int vo_aspect_ratio);
     // local mode:
-    void ConfigureWindow(int fullscreen, int width, int height, 
-			 int modeswitch, const char *modeline, 
-			 int aspect, int scale_video, int field_order);
+    void ConfigureWindow(int fullscreen, int width, int height,
+                         int modeswitch, const char *modeline,
+                         int aspect, int scale_video, int field_order);
     void ConfigureDecoder(int pes_buffers);
     // remote mode:
     void Listen(bool activate, int port);
-
 
   // File playback
 
@@ -237,12 +220,26 @@ class cXinelibDevice : public cDevice
     ePlayMode m_PlayingFile;
 
   public:
-    bool PlayFile(const char *Filename, int Position=0, 
-		  bool LoopPlay=false, ePlayMode PlayMode=pmAudioVideo,
-		  int TimeoutMs = -1);
+    bool PlayFile(const char *Filename, int Position = 0,
+                  bool LoopPlay = false, ePlayMode PlayMode = pmAudioVideo,
+                  int TimeoutMs = -1);
     int  PlayFileCtrl(const char *Cmd, int TimeoutMs = -1);
     bool EndOfStreamReached(void);
 
+  // Metainfo cache
+
+  private:
+#if VDRVERSNUM < 10515
+    // (DVD) SPU tracks
+    tTrackId m_DvdSpuTrack[64];
+    int      m_CurrentDvdSpuTrack;
+    bool     m_ForcedDvdSpuTrack;
+#endif
+    char     m_MetaInfo[mi_Count][MAX_METAINFO_LEN+1];
+
+  public:
+    const char *GetMetaInfo(eMetainfoType Type);
+    void        SetMetaInfo(eMetainfoType Type, const char *Value);
 
   // Stream data
 
@@ -254,7 +251,6 @@ class cXinelibDevice : public cDevice
     bool m_SkipAudio;
     bool m_StreamStart;
     int  m_FreeBufs;
-    bool m_Cleared;
     bool m_h264;
 
     int PlayAny(const uchar *Data, int Length);
