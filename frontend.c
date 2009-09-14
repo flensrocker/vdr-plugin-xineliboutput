@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.59.2.5 2009-06-09 13:06:23 phintuka Exp $
+ * $Id: frontend.c,v 1.59.2.6 2009-09-14 10:10:20 phintuka Exp $
  *
  */
 
@@ -35,6 +35,8 @@
 #include "device.h"
 
 #include "tools/pes.h"
+#include "tools/mpeg.h"
+#include "tools/h264.h"
 #include "tools/general_remote.h"
 #include "tools/iso639.h"
 
@@ -132,8 +134,8 @@ void cXinelibThread::InfoHandler(const char *info)
 #if VDRVERSNUM < 10515 && !defined(VDRSPUPATCH)
 	cXinelibDevice::Instance().SetAvailableDvdSpuTrack(id, iso639_2_to_iso639_1(lang), Current);
 #else
-	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang));
-	if (Current) 
+	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_2_to_iso639_1(lang) ?: *cString::sprintf("%03d", id+1));
+	if (Current)
 	  CurrentTrack = id;
 #endif
       }
@@ -166,8 +168,8 @@ void cXinelibThread::InfoHandler(const char *info)
       char *lang = map;
       while(*map && *map != ' ') map++;
       if(*map == ' ') { *map = 0; map++; };
-      cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, iso639_2_to_iso639_1(lang));
-      if(Current) 
+      cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, iso639_2_to_iso639_1(lang) ?: *cString::sprintf("%03d", id+1));
+      if(Current)
 	cXinelibDevice::Instance().SetCurrentAudioTrack((eTrackType)(ttDolby+id));
     }
   }
@@ -197,7 +199,7 @@ void cXinelibThread::InfoHandler(const char *info)
       map = end+1;
     }
   }
-   
+
   else if(!strncmp(info, "DVDBUTTONS ", 11)) {
     map += 11;
     while(*map == ' ') map++;
@@ -211,7 +213,6 @@ void cXinelibThread::InfoHandler(const char *info)
   }
 
   else if(!strncmp(info, "DVDTITLE ", 9)) {
-    LOGMSG("DVDTITLE %s", info);
     map += 9;
     while(*map == ' ') map++;
     cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
@@ -224,6 +225,16 @@ void cXinelibThread::InfoHandler(const char *info)
 #endif
   }
 
+  else if (!strncmp(info, "WINDOW ", 7)) {
+    int w, h;
+    map += 7;
+    while(*map == ' ') map++;
+    if (2 == sscanf(map, "%dx%d", &w, &h)) {
+      xc.osd_width_auto  = w;
+      xc.osd_height_auto = h;
+    }
+  }
+
   free(pmap);
 }
 
@@ -232,76 +243,35 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   TRACEF("cXinelibThread::cXinelibThread");
 
   m_Volume = 255;
-  m_bStopThread = false;
   m_bReady = false;
-  m_bIsFinished = false;
   m_bNoVideo = true;
   m_bLiveMode = true; /* can't be replaying when there is no output device */
   m_StreamPos = 0;
+  m_LastClearPos = 0;
   m_Frames = 0;
   m_bEndOfStreamReached = false;
   m_bPlayingFile = false;
   m_StatusMonitor = NULL;
 }
 
-cXinelibThread::~cXinelibThread() 
+cXinelibThread::~cXinelibThread()
 {
   TRACEF("cXinelibThread::~cXinelibThread");
 
-  m_bStopThread = true;
-  if(Active())
-    Cancel();
-  if(m_StatusMonitor)
-    delete m_StatusMonitor;
+  Cancel(3);
+
+  if (m_StatusMonitor)
+    DELETENULL(m_StatusMonitor);
 }
 
 //
 // Thread control
 //
 
-void cXinelibThread::Start(void) 
-{
-  TRACEF("cXinelibThread::Start");
-
-  cThread::Start(); 
-}
-
-void cXinelibThread::Stop(void)  
-{ 
-  TRACEF("cXinelibThread::Stop");
-
-  SetStopSignal(); 
-
-  //if(Active()) 
-  Cancel(5); 
-}
-
-void cXinelibThread::SetStopSignal(void) 
-{
-  TRACEF("cXinelibThread::SetStopSignal");
-
-  LOCK_THREAD;
-  m_bStopThread = true;
-}
-
-bool cXinelibThread::GetStopSignal(void) 
-{
-  TRACEF("cXinelibThread::GetStopSignal");
-
-  LOCK_THREAD;
-  return m_bStopThread;
-}
-
 bool cXinelibThread::IsReady(void)
 {
   LOCK_THREAD;
   return m_bReady;
-}
-
-bool cXinelibThread::IsFinished(void)
-{
-  LOCK_THREAD;
-  return m_bIsFinished;
 }
 
 //
@@ -399,14 +369,21 @@ void cXinelibThread::Clear(void)
 {
   TRACEF("cXinelibThread::Clear");
 
-  Lock();
-  int64_t  tmp1 = m_StreamPos;
-  uint32_t tmp2 = m_Frames;
-  Unlock();
-
   char buf[128];
-  snprintf(buf, sizeof(buf), "DISCARD %" PRId64 " %d", tmp1, tmp2);
-  /* Send to control stream and data stream. If message is sent only to 
+
+  {
+    LOCK_THREAD;
+
+    if (m_StreamPos == m_LastClearPos) {
+      //LOGDBG("cXinelibThread::Clear(): double Clear() ignored");
+      return;
+    }
+    m_LastClearPos = m_StreamPos;
+
+    snprintf(buf, sizeof(buf), "DISCARD %" PRId64 " %d", m_StreamPos, m_Frames);
+  }
+
+  /* Send to control stream and data stream. If message is sent only to
    * control stream, and it is delayed, engine flush will be skipped.
    */
   Xine_Control(buf);
@@ -547,7 +524,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
   uchar *frame = new uchar[PES_CHUNK_SIZE+32];
   cPoller p;
-
+  bool h264 = IS_NAL_AUD(data);
 
   hdr_pts[3] = (uchar)streamID;
   Poll(p, 100);
@@ -578,6 +555,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   // append sequence end code to video 
   if((streamID & 0xF0) == 0xE0) { 
     seq_end[3] = (uchar)streamID;
+    seq_end[12] = h264 ? NAL_END_SEQ : 0xB7;
     Poll(p, 100);
     Play_PES(seq_end, sizeof(seq_end));
   }
@@ -593,12 +571,6 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
 bool cXinelibThread::QueueBlankDisplay(void)
 {
   TRACEF("cXinelibThread::BlankDisplay");
-#if 0
-  extern const unsigned char v_mpg_black[];     // black_720x576.c
-  extern const int v_mpg_black_length;
-
-  Play_Mpeg2_ES(v_mpg_black, v_mpg_black_length, VIDEO_STREAM);
-#endif
   Xine_Control_Sync("BLANK");
   return true;
 }
@@ -796,7 +768,7 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 #endif
   }
 
-  return (!GetStopSignal()) && (result==0);
+  return Running() && !result;
 }
 
 
