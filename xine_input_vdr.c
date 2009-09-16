@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.15 2009-02-12 12:41:02 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.13 2008-10-21 09:51:05 phintuka Exp $
  *
  */
 
@@ -938,7 +938,6 @@ static int64_t pts_from_pes(const uint8_t *buf, int size)
   return pts;
 }
 
-#if 0
 static int64_t dts_from_pes(const uint8_t *buf, int size)
 {
   int64_t dts = INT64_C(-1);
@@ -951,7 +950,6 @@ static int64_t dts_from_pes(const uint8_t *buf, int size)
   }
   return dts;
 }
-#endif
 
 static void pes_strip_pts(uint8_t *buf, int size)
 {
@@ -1223,9 +1221,7 @@ static void queue_nosignal(vdr_input_plugin_t *this)
     return;
   }
 
-  if (asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir()) < 0)
-    return;
-
+  asprintf(&home,"%s/.xine/nosignal.mpg", xine_get_homedir());
   int fd = open(path=home, O_RDONLY);
   if(fd<0) fd = open(path="/etc/vdr/plugins/xineliboutput/nosignal.mpg", O_RDONLY);
   if(fd<0) fd = open(path="/etc/vdr/plugins/xine/noSignal.mpg", O_RDONLY);
@@ -2717,10 +2713,9 @@ static void send_meta_info(vdr_input_plugin_t *this)
     char *album        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
     char *tracknumber  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TRACK_NUMBER);
 
-    if (asprintf(&meta,
-                 "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
-                 title?:"", artist?:"", album?:"", tracknumber?:"") < 0)
-      return;
+    asprintf(&meta,
+             "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
+             title?:"", artist?:"", album?:"", tracknumber?:"");
 
     if(this->fd_control < 0)
       this->funcs.xine_input_event(meta, NULL);
@@ -4017,7 +4012,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
       this->funcs.xine_input_event(tracks, NULL);
     else
       write_control(this, tracks);
-    LOGDBG("%s", tracks);
+    LOGDBG(tracks);
   }
 #endif
 
@@ -4758,7 +4753,7 @@ static void *vdr_data_thread(void *this_gen)
 
   LOGDBG("Data thread started");
 
-  if (nice(-1) < 0) ;
+  (void)nice(-1);
 
   if(this->udp || this->rtp) {
     while(this->control_running) {
@@ -5148,8 +5143,8 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
 
   buf->decoder_info[0] = 0;
   if (pts >= INT64_C(0)) {
-#if 0
     int64_t dts = dts_from_pes (buf->content, buf->size);
+#if 0
     if (dts < INT64_C(0)) {
       buf->decoder_info[0] = pts;
     } else {
@@ -5169,7 +5164,7 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
       LOGMSG("H.264: post pts %"PRId64" diff %d", pts, (int)(pts-this->last_delivered_vid_pts));
       vdr_x_demux_control_newpts (this->stream, pts, BUF_FLAG_SEEK);
     }
-#if 0
+
     /* xine ffmpeg decoder does not handle pts <-> dts difference very well if P/B frames have pts */
     if (abs(pts - this->last_delivered_vid_pts) < 90000 && pts < this->last_delivered_vid_pts) {
       LOGDBG("H.264:    -> pts %"PRId64"  <- 0", pts);
@@ -5179,11 +5174,9 @@ buf_element_t *post_frame_h264(vdr_input_plugin_t *this, buf_element_t *buf)
       /*buf->pts = 0;*/
     } else {
       LOGDBG("H.264:    -> pts %"PRId64, pts);
-      buf->pts = pts;   
+      buf->pts = pts;
     }
-#else
-    buf->pts = pts;   
-#endif
+
     this->last_delivered_vid_pts = pts;
   }
 

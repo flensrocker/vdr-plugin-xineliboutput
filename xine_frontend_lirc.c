@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.10.2.1 2009-02-12 12:45:02 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.10 2008-02-05 00:56:43 phintuka Exp $
  *
  */
 /*
@@ -20,7 +20,7 @@
  *
  * LIRC support added by Carsten Koch <Carsten.Koch@icem.de>  2000-06-16.
  *
- * $Id: xine_frontend_lirc.c,v 1.10.2.1 2009-02-12 12:45:02 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.10 2008-02-05 00:56:43 phintuka Exp $
  */
 
 
@@ -102,7 +102,7 @@ static void *lirc_receiver_thread(void *fe)
 
   LOGMSG("lirc forwarding started");
 
-  if (nice(-1) < 0) ;
+  nice(-1);
   lircd_connect();
 
   while(lirc_device_name && fd_lirc >= 0) {

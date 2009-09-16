@@ -43,9 +43,6 @@ XKeySym.Channel-   Next
 XKeySym.Volume+    KP_Add
 XKeySym.Volume-    KP_Subtract
 XKeySym.Mute       m
-XKeySym.Info       I
-XKeySym.Audio      A
-XKeySym.Subtitles  S
 XKeySym.Schedule   F6
 XKeySym.Channels   F7
 XKeySym.Timers     F8

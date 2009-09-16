@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.4 2009-02-12 10:36:00 phintuka Exp $
+ * $Id: device.c,v 1.57.2.1 2008-09-26 13:03:19 phintuka Exp $
  *
  */
 
@@ -867,16 +867,16 @@ bool cXinelibDevice::Flush(int TimeoutMs)
 // Playback of files and images
 //
 
-int cXinelibDevice::PlayFileCtrl(const char *Cmd, int TimeoutMs)
+int cXinelibDevice::PlayFileCtrl(const char *Cmd)
 {
   TRACEF("cXinelibDevice::PlayFile");
   int result = -1;
 
-  /*if(m_PlayingFile != pmNone)*/ {
+  if(m_PlayingFile != pmNone) {
     if(m_server)
-      result = m_server->PlayFileCtrl(Cmd, TimeoutMs);
+      result = m_server->PlayFileCtrl(Cmd);
     if(m_local) 
-      result = m_local->PlayFileCtrl(Cmd, TimeoutMs);
+      result = m_local->PlayFileCtrl(Cmd);
   }
   return result;
 }
@@ -1476,9 +1476,6 @@ uchar *cXinelibDevice::GrabImage(int &Size, bool Jpeg,
 				 int Quality, int SizeX, int SizeY)
 {
   TRACEF("cXinelibDevice::GrabImage");
-
-  if (Quality < 0)
-    Quality = 100;
 
   if(m_local)
     return m_local->GrabImage(Size, Jpeg, Quality, SizeX, SizeY);

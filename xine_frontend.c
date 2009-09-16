@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.3 2009-02-12 13:03:50 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.1 2008-09-26 13:12:17 phintuka Exp $
  *
  */
 
@@ -285,8 +285,7 @@ static void fe_frame_output_cb (void *data,
                   this->aspect_controller, (int)(video_aspect * 10000.0)) 
          < sizeof(cmd)) {
         LOGDBG("Aspect ratio changed, executing %s", cmd);
-        if (system(cmd) == -1)
-          LOGERR("%s failed", cmd);
+        system(cmd);
         this->video_aspect = video_aspect;
       }
     }
@@ -547,23 +546,19 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 	    head = NULL;
 	  else
 	    *head = 0;
-	  if (asprintf(&tmp, "%sfbdev=%s%s",
-                       head ? orig : "", this->fb_dev, tail ? tail : "") < 0)
-            tmp = NULL;
+	  asprintf(&tmp, "%sfbdev=%s%s",
+		   head ? orig : "", this->fb_dev, tail ? tail : "");
 	} else {
-	  if (asprintf(&tmp, "fbdev=%s%s%s", this->fb_dev, orig?",":"", orig?orig:""))
-            tmp = NULL;
+	  asprintf(&tmp, "fbdev=%s%s%s", this->fb_dev, orig?",":"", orig?orig:"");
 	}
 	LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
 	       tmp, getenv("DFBARGS"));
 	free(orig);
       } else {
-	if (asprintf(&tmp, "fbdev=%s", this->fb_dev) < 0)
-          tmp = NULL;
+	asprintf(&tmp, "fbdev=%s", this->fb_dev);
 	LOGMSG("setting environment variable DFBARGS to %s", tmp);
       }
-      if (tmp)
-        setenv("DFBARGS", tmp, 1);
+      setenv("DFBARGS", tmp, 1);
       free(tmp);
       /*free(orig);*/
     }
@@ -730,8 +725,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
   this->input = NULL;
   this->playback_finished = 1;
 
-  if (asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : "xvdr://") < 0)
-    url = strdup("xvdr://");
+  asprintf(&url, "%s#nocache;demux:mpeg_block", mrl ? : "xvdr://");
 
   result = xine_open(this->stream, url);
 
@@ -752,12 +746,11 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 #if !defined(IS_FBFE) && defined(FE_STANDALONE)
   if(!strncmp(mrl, "xvdr", 4) && strstr(mrl, "//")) {
     char *name = NULL, *end;
-    if (asprintf(&name, "VDR - %s", strstr(mrl, "//")+2) >= 0) {
-      if(NULL != (end = strstr(name, ":37890"))) *end = 0; /* hide only default port */
-      XStoreName(this->display, this->window[0], name);
-      XStoreName(this->display, this->window[1], name);
-      free(name);
-    }
+    asprintf(&name, "VDR - %s", strstr(mrl, "//")+2);
+    if(NULL != (end = strstr(name, ":37890"))) *end = 0; /* hide only default port */
+    XStoreName(this->display, this->window[0], name);
+    XStoreName(this->display, this->window[1], name);
+    free(name);
   }
 #endif
 
