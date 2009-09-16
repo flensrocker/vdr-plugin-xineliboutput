@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.30.2.5 2009-09-16 16:59:36 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.30.2.6 2009-09-16 16:59:59 phintuka Exp $
  *
  */
 
@@ -38,10 +38,13 @@
 #if VDRVERSNUM < 10400
 # error VDR versions < 1.4.0 are not supported !
 #endif
+#if VDRVERSNUM > 10700
+# error VDR versions > 1.7.0 are not supported !
+#endif
 
 //---------------------------------plugin-------------------------------------
 
-static const char *VERSION        = "1.0.4";
+static const char *VERSION        = "1.0.5";
 static const char *DESCRIPTION    = trNOOP("X11/xine-lib output plugin");
 static const char *MAINMENUENTRY  = trNOOP("Media Player");
 
