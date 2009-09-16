@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.30.2.4 2009-02-12 10:59:07 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.30.2.5 2009-09-16 16:59:36 phintuka Exp $
  *
  */
 
@@ -76,8 +76,8 @@ class cPluginXinelibOutput : public cPlugin
     virtual bool SetupParse(const char *Name, const char *Value);
 
     virtual bool Service(const char *Id, void *Data = NULL);
-    //virtual const char **SVDRPHelpPages(void);
-    //virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
+    virtual const char **SVDRPHelpPages(void);
+    virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
 };
 
 cPluginXinelibOutput::cPluginXinelibOutput(void)
@@ -111,6 +111,9 @@ const char cmdLineHelp[] =
 "  -V NAME   --video=NAME   Use video driver NAME for local frontend\n"
 "                           Supported values:\n"
 "                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc,\n"
+#ifdef HAVE_VDPAU
+                                     "vdpau, "
+#endif
 "                                     vidix, sdl, opengl, none\n"
 "                           for fbfe: auto, fb, DirectFB, vidixfb,\n"
 "                                     sdl, dxr3, aadxr3, none\n"
@@ -271,6 +274,82 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
 
   }
   return false;
+}
+
+const char **cPluginXinelibOutput::SVDRPHelpPages(void)
+{
+  static const char *HelpPages[] = {
+    "PMDA <file>\n"
+    "    Play media file.",
+    "PDVD <file>\n"
+    "    Play DVD disc.",
+    "PMSC <file>\n"
+    "    Play music file.",
+    "PIMG <file>\n"
+    "    Play/show image file.",
+    "QMSC <file>\n"
+    "    Queue music file to playlist.",
+    NULL
+    };
+  return HelpPages;
+}
+
+cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Option, int &ReplyCode)
+{
+  if(strcasecmp(Command, "PMDA") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibPlayerControl(ShowFiles, Option));
+      return cString("Playing video file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "PDVD") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibDvdPlayerControl(Option));
+      return cString("Playing DVD disc");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "PMSC") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibPlayerControl(ShowMusic, Option));
+      return cString("Playing music file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "PIMG") == 0) {
+    if(*Option) {
+      char **list = new char*[2];
+      list[0] = strdup(Option);
+      list[1] = NULL;
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cControl::Launch(new cXinelibImagesControl(list, 0, 1));
+      return cString("Showing image file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "QMSC") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      cXinelibPlayerControl::Queue(Option);
+      return cString("Queueing music file");
+    } else {
+      ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  return NULL;
 }
 
 extern "C"
