@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.c,v 1.6 2007-06-21 09:12:52 phintuka Exp $
+ * $Id: http.c,v 1.7 2009-06-02 08:37:58 phintuka Exp $
  *
  */
 
@@ -297,7 +297,7 @@ bool cHttpStreamer::Seek(void)
   }
 
   /* content type */
-  char *ext = strrchr(m_Filename, '.');
+  const char *ext = strrchr(m_Filename, '.');
   if(ext) {
     const char *mime = mimetype(ext+1);
     if(mime)

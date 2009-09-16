@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41 2008-04-10 15:01:31 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.11 2009-02-18 21:18:29 phintuka Exp $
  *
  */
 
@@ -26,6 +26,7 @@
 #include <poll.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <math.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -133,6 +134,7 @@ typedef struct sxfe_s {
   Atom     atom_wm_delete_window;
   Atom     atom_sxfe_interrupt;
   Atom     atom_wm_hints, atom_win_layer;
+  Atom     xa_NET_ACTIVE_WINDOW;
   Atom     atom_state, atom_state_add, atom_state_del;
   Atom     atom_state_above, atom_state_fullscreen, atom_state_on_top;
 
@@ -193,8 +195,6 @@ typedef struct sxfe_s {
   Xrender_Surf *surf_img;
   int osd_width;
   int osd_height;
-  int osd_pad_x;
-  int osd_pad_y;
   uint32_t* hud_img_mem;
 #endif /* HAVE_XRENDER */
 
@@ -203,8 +203,6 @@ typedef struct sxfe_s {
 
 /* Common (non-X11/FB) frontend functions */
 #include "xine_frontend.c"
-
-#include "vdrlogo_32x32.c"
 
 #define DOUBLECLICK_TIME   500  // ms
 
@@ -238,6 +236,7 @@ static void set_fullscreen_props(sxfe_t *this)
 
   if(this->atom_state == None) {
     this->atom_win_layer        = XInternAtom(this->display, "_WIN_LAYER", False);
+    this->xa_NET_ACTIVE_WINDOW  = XInternAtom(this->display, "_NET_ACTIVE_WINDOW", False);
     this->atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
     this->atom_state_add        = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
     this->atom_state_del        = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
@@ -276,6 +275,15 @@ static void set_fullscreen_props(sxfe_t *this)
   XSendEvent(this->display, DefaultRootWindow(this->display), False, 
 	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
+
+  /* _NET_ACTIVE_WINDOW */
+  XLockDisplay(this->display);
+  ev.xclient.message_type = this->xa_NET_ACTIVE_WINDOW;
+  ev.xclient.data.l[0] = 0;
+  ev.xclient.data.l[1] = 0;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XUnlockDisplay(this->display);
 }
 
 static void set_border(sxfe_t *this, int border)
@@ -305,13 +313,15 @@ static void set_above(sxfe_t *this, int stay_above)
     return;
 
   if(this->stay_above != stay_above) {
+    XLockDisplay(this->display);
 #ifdef FE_STANDALONE
     char *name, *newname = NULL;
     if(XFetchName(this->display, this->window[0], &name) && name) {
       if(strstr(name, " (top)"))
 	*strstr(name, " (top)") = 0;
       if(stay_above)
-	asprintf(&newname, "%s (top)", name);
+	if (asprintf(&newname, "%s (top)", name) < 0)
+          newname = NULL;
       XStoreName(this->display, this->window[0], newname ?: name);
       XStoreName(this->display, this->window[1], newname ?: name);
       XFree(name);
@@ -323,6 +333,7 @@ static void set_above(sxfe_t *this, int stay_above)
     XStoreName(this->display, this->window[0], stay_above ? "Local VDR (top)" : "Local VDR");
 #endif
     this->stay_above = stay_above;
+    XUnlockDisplay(this->display);
   }
 
   memset(&ev, 0, sizeof(ev));
@@ -439,10 +450,7 @@ Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w,
 	
   rs = calloc(1, sizeof (Xrender_Surf));
 	
-  if(alpha)
-    fmt = XRenderFindStandardFormat (dpy, PictStandardARGB32);
-  else
-    fmt = XRenderFindStandardFormat (dpy, PictStandardRGB24);
+  fmt = XRenderFindStandardFormat(dpy, alpha ? PictStandardARGB32 : PictStandardRGB24);
   rs->w = w;
   rs->h = h;
   rs->depth = fmt->depth;
@@ -466,22 +474,16 @@ void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
   if(!scale_y)
     scale_y = 1;
 
-  xf.matrix[0][0] = XDoubleToFixed(1 / scale_x); xf.matrix[0][1] = 0; xf.matrix[0][2] = 0;
-  xf.matrix[1][0] = 0; xf.matrix[1][1] = XDoubleToFixed(1 / scale_y); xf.matrix[1][2] = 0;
-  xf.matrix[2][0] = 0; xf.matrix[2][1] = 0; xf.matrix[2][2] = 65536;
-  if(smooth)
-    XRenderSetPictureFilter(dpy, src->pic, "bilinear", NULL, 0);
-  else
-    XRenderSetPictureFilter(dpy, src->pic, "nearest", NULL, 0);
+  xf.matrix[0][0] = XDoubleToFixed(1.0 / scale_x); xf.matrix[0][1] = 0; xf.matrix[0][2] = 0;
+  xf.matrix[1][0] = 0; xf.matrix[1][1] = XDoubleToFixed(1.0 / scale_y); xf.matrix[1][2] = 0;
+  xf.matrix[2][0] = 0; xf.matrix[2][1] = 0; xf.matrix[2][2] = XDoubleToFixed(1.0);
+  XRenderSetPictureFilter(dpy, src->pic, smooth ? "bilinear" : "nearest", NULL, 0);
   XRenderSetPictureTransform(dpy, src->pic, &xf);
-  XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic,
-                   x * scale_x + 1,
-                   y * scale_y + 1,
-                   0, 0,
-                   x * scale_x,
-                   y * scale_y,
-                   w * scale_x + 1,
-                   h * scale_y + 1);
+  x = (int)ceil((double)(x?x-1:0) * scale_x);
+  y = (int)ceil((double)(y?y-1:0) * scale_y);
+  w = (int)floor((double)(w+2) * scale_x);
+  h = (int)floor((double)(h+2) * scale_y);
+  XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic, x, y, 0, 0, x, y, w, h);
 }
 
 Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
@@ -591,8 +593,12 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD Set Size");
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
-      this->osd_pad_x = (this->osd_width != OSD_DEF_WIDTH) ? 96 : 0;
-      this->osd_pad_y = (this->osd_height != OSD_DEF_HEIGHT) ? 90 : 0;
+
+      XSetForeground(this->display, this->gc, 0x00000000);
+      XFillRectangle(this->display, this->surf_img->draw, this->gc,
+		     0, 0, this->osd_width+2, this->osd_height+2);
+      XFlush(this->display);
+
       break;
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
@@ -604,24 +610,24 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           XShmPutImage(this->display, this->hud_window, this->gc, this->hud_img,
                        cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                        cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
                        False);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                       cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                       cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
+                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
                        False);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
-                             cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
-			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
-			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
-			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
+                             cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
+			     (XDouble)this->width / (XDouble)this->osd_width,
+			     (XDouble)this->height / (XDouble)this->osd_height,
+			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       } else {
         hud_fill_img_memory(this->hud_img_mem, cmd);
@@ -630,22 +636,22 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           XPutImage(this->display, this->hud_window, this->gc, this->hud_img,
                     cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                     cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1);
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                    cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                    cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2);
+                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
-                             cmd->x + cmd->dirty_area.x1 - 1, cmd->y + cmd->dirty_area.y1 - 1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 2,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 2,
-			     (XDouble)(this->width) / (XDouble)(this->osd_width + this->osd_pad_x),
-			     (XDouble)(this->height) / (XDouble)(this->osd_height + this->osd_pad_y),
-			     (cmd->scaling & 2)); // HUD_SCALING_BILINEAR=2
+                             cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
+                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
+                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
+			     (XDouble)this->width / (XDouble)this->osd_width,
+			     (XDouble)this->height / (XDouble)this->osd_height,
+			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       }
       break;
@@ -667,6 +673,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
 		     0, 0, this->width, this->height);
+      XFillRectangle(this->display, this->surf_img->draw, this->gc,
+		     0, 0, this->osd_width+2, this->osd_height+2);
       XFlush(this->display);
       break;
 
@@ -792,6 +800,33 @@ static void hud_osd_close(frontend_t *this_gen)
 #endif /* HAVE_XRENDER */
 
 
+static void set_icon(sxfe_t *this)
+{
+# include "vdrlogo_32x32.c"
+
+  XLockDisplay(this->display);
+#if defined(__WORDSIZE) && (__WORDSIZE == 32)
+  /* Icon */
+  XChangeProperty(this->display, this->window[0],
+		  XInternAtom(this->display, "_NET_WM_ICON", False),
+		  XA_CARDINAL, 32, PropModeReplace,
+		  (unsigned char *) &vdrlogo_32x32,
+		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+#else
+  long      q[2+32*32];
+  uint32_t *p = (uint32_t*)&vdrlogo_32x32;
+  int       i;
+  for (i = 0; i < 2 + vdrlogo_32x32.width*vdrlogo_32x32.height; i++)
+    q[i] = p[i];
+  XChangeProperty(this->display, this->window[0],
+		  XInternAtom(this->display, "_NET_WM_ICON", False),
+		  XA_CARDINAL, 32, PropModeReplace,
+		  (unsigned char *) q,
+		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+#endif
+  XUnlockDisplay(this->display);
+}
+
 /*
  * sxfe_display_open
  *
@@ -826,8 +861,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
     this->hud = hud;
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
-    this->osd_pad_x  = 0;
-    this->osd_pad_y  = 0;
 #else
     LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
 #endif
@@ -960,6 +993,17 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 
 
   if(this->window_id <= 0) {
+
+    /* Window hint */
+    XClassHint *classHint = XAllocClassHint();
+    if(classHint) {
+      classHint->res_name = "VDR";
+      classHint->res_class = "VDR";
+      XSetClassHint(this->display, this->window[0], classHint);
+      XSetClassHint(this->display, this->window[1], classHint);
+      XFree(classHint);
+    }
+
     /* Window name */
 #ifdef FE_STANDALONE
     XStoreName(this->display, this->window[0], "VDR - ");
@@ -970,11 +1014,7 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
 #endif
 
     /* Icon */
-    XChangeProperty(this->display, this->window[0],
-		    XInternAtom(this->display, "_NET_WM_ICON", False),
-		    XA_CARDINAL, 32, PropModeReplace,
-		    (unsigned char *) &vdrlogo_32x32, 
-		    2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+    set_icon(this);
   }
 
   /* Map current window */
@@ -1007,8 +1047,6 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   if(this->window_id <= 0)
     set_cursor(this->display, this->window[1], 0);
 
-  XUnlockDisplay (this->display);
-
   /* No screen saver */
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
   XSetScreenSaver(this->display, 0, 0, DefaultBlanking, DefaultExposures);
@@ -1036,6 +1074,8 @@ static int sxfe_display_open(frontend_t *this_gen, int width, int height, int fu
   this->atom_sxfe_interrupt  = XInternAtom(this->display, "SXFE_INTERRUPT", False);
 
   set_fullscreen_props(this);
+
+  XUnlockDisplay (this->display);
 
 #ifdef HAVE_XRENDER
   return hud_osd_open(this_gen);
@@ -1116,10 +1156,12 @@ static int sxfe_display_config(frontend_t *this_gen,
   this->scale_video = scale_video;
 #ifdef HAVE_XV_FIELD_ORDER
   if(this->field_order != field_order) {
+    XLockDisplay (this->display);
     if(XInternAtom(this->display, "XV_SWAP_FIELDS", True) != None)
       XvSetPortAttribute (this->display, 53, 
 			  XInternAtom (this->display, "XV_SWAP_FIELDS", False), 
 			  field_order);
+    XUnlockDisplay (this->display);
   }
 #endif
   this->field_order = field_order ? 1 : 0;
@@ -1165,10 +1207,14 @@ static void sxfe_interrupt(frontend_t *this_gen)
   ev2.message_type = this->atom_sxfe_interrupt;
   ev2.format  = 32;
 
+  XLockDisplay (this->display);
+
   if(!XSendEvent(ev2.display, ev2.window, TRUE, /*KeyPressMask*/0, (XEvent *)&ev2))
     LOGERR("sxfe_interrupt: XSendEvent(ClientMessage) FAILED\n");
 
   XFlush(this->display);
+
+  XUnlockDisplay (this->display);
 }
 
 static int sxfe_run(frontend_t *this_gen) 
@@ -1194,8 +1240,10 @@ static int sxfe_run(frontend_t *this_gen)
 
   while(keep_going && XPending(this->display) > 0) {
 
-    XNextEvent (this->display, &event);   
-    
+    XLockDisplay (this->display);
+    XNextEvent (this->display, &event);
+    XUnlockDisplay (this->display);
+
     switch (event.type) {
       case Expose:
 	if (event.xexpose.count == 0)
@@ -1236,8 +1284,11 @@ static int sxfe_run(frontend_t *this_gen)
 	  LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
 		 cev->x, cev->y, this->check_move);
 	  this->check_move = 0;
-	  if(this->xpos != cev->x && this->ypos != cev->y)
+	  if(this->xpos != cev->x && this->ypos != cev->y) {
+	    XLockDisplay (this->display);
 	    XMoveWindow(this->display, this->window[0], cev->x, cev->y);
+	    XUnlockDisplay (this->display);
+	  }
 	}
 	
 	if ((cev->x == 0) && (cev->y == 0)) {
@@ -1361,7 +1412,9 @@ static int sxfe_run(frontend_t *this_gen)
 	XComposeStatus  status;
 
 	if(kevent->keycode) {
+	  XLockDisplay (this->display);
 	  XLookupString(kevent, buffer, buf_len, &ks, &status);
+	  XUnlockDisplay (this->display);
 	  ksname = XKeysymToString(ks);
 #if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
 	  if(ks == XK_f || ks == XK_F) {

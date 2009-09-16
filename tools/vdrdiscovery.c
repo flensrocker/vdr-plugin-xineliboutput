@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.5 2008-04-03 13:59:37 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.5.2.1 2009-02-12 11:24:02 phintuka Exp $
  *
  */
 
@@ -111,25 +111,28 @@ int udp_discovery_broadcast(int fd_discovery, int server_port, const char *serve
   char *msg = NULL;
   int result;
 
-  if(server_address && *server_address)
-    asprintf(&msg,
+  if(server_address && *server_address) {
+    result = asprintf(&msg,
 	     DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
 	     DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
 	     DISCOVERY_1_0_ADDR    //"Server Address: %d.%d.%d.%d \r\n"
 	     DISCOVERY_1_0_VERSION //"Server version: xineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
 	     "\r\n",
 	     server_port, server_address);
-  else
-    asprintf(&msg,
+  } else {
+    result = asprintf(&msg,
 	     DISCOVERY_1_0_HDR     //"VDR xineliboutput DISCOVERY 1.0" "\r\n"
 	     DISCOVERY_1_0_SVR     //"Server port: %d" "\r\n"
 	     DISCOVERY_1_0_VERSION //"Server version: xineliboutput-" XINELIBOUTPUT_VERSION "\r\n"
 	     "\r\n",
 	     server_port);
- 
-  result = udp_discovery_send(fd_discovery, DISCOVERY_PORT, msg);
+  }
 
-  free(msg);
+  if (result >= 0) {
+    result = udp_discovery_send(fd_discovery, DISCOVERY_PORT, msg);
+    free(msg);
+  }
+
   return result;
 }
 #else
@@ -138,16 +141,18 @@ static inline int udp_discovery_search(int fd_discovery, int port)
   char *msg = NULL;
   int result;
 
-  asprintf(&msg, 
-	  DISCOVERY_1_0_HDR  /* "VDR xineliboutput DISCOVERY 1.0" "\r\n" */
-	  DISCOVERY_1_0_CLI  /* "Client: %s:%d" "\r\n" */
-	  "\r\n",
-	  "255.255.255.255",
-	  port);
+  result = asprintf(&msg, 
+	   DISCOVERY_1_0_HDR  /* "VDR xineliboutput DISCOVERY 1.0" "\r\n" */
+	   DISCOVERY_1_0_CLI  /* "Client: %s:%d" "\r\n" */
+	   "\r\n",
+	   "255.255.255.255",
+	   port);
 
-  result = udp_discovery_send(fd_discovery, port, msg);
+  if (result >= 0) {
+    result = udp_discovery_send(fd_discovery, port, msg);
+    free(msg);
+  }
 
-  free(msg);
   return result;
 }
 #endif

@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.7 2008-03-13 23:08:18 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.7.2.1 2008-09-26 13:33:29 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -1392,8 +1392,8 @@ static void init_tables(warp_plugin_t *this)
 #define BP(x) ((uint8_t*)(x))
   /* allocate memory for scaling tables and workspace */
   free(this->pMem);
-  this->pMem = xine_xmalloc(this->input_width*3 + this->output_width*sizeof(uint32_t)*3*2 +
-			    this->output_height*sizeof(uint32_t)*4 + 2*9*128);
+  this->pMem = malloc(this->input_width*3 + this->output_width*sizeof(uint32_t)*3*2 +
+		      this->output_height*sizeof(uint32_t)*4 + 2*9*128);
 
   /* - aligned for P4 cache line */
   this->vWorkY   = (uint32_t*)ALIGN(128, this->pMem);
@@ -1492,7 +1492,7 @@ static post_plugin_t *open_plugin(post_class_t *class_gen, int inputs,
 					 xine_audio_port_t **audio_target,
 					 xine_video_port_t **video_target)
 {
-  warp_plugin_t     *this     = (warp_plugin_t *) xine_xmalloc(sizeof(warp_plugin_t));
+  warp_plugin_t     *this     = calloc(1, sizeof(warp_plugin_t));
   post_plugin_t     *this_gen = (post_plugin_t *) this;
   post_in_t         *input;
   post_out_t        *output;

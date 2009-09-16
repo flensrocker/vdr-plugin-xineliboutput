@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57 2008-05-07 13:27:15 phintuka Exp $
+ * $Id: menu.c,v 1.57.2.2 2009-06-06 13:21:27 phintuka Exp $
  *
  */
 
@@ -92,7 +92,7 @@ static char *ParentDir(const char *dir)
 
 static char *LastDir(const char *dir)
 {
-  char *pt = strrchr(dir, '/');
+  const char *pt = strrchr(dir, '/');
   if(pt && pt[0] && pt[1])
     return strdup(pt+1);
   return NULL;
@@ -275,11 +275,12 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
     }
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
-    asprintf(&buffer, "%s/%s", m_CurrentDir, d);
-    while(buffer[0] == '/' && buffer[1] == '/')
-      strcpy(buffer, buffer+1);
-    free(m_CurrentDir);
-    m_CurrentDir = buffer;
+    if (asprintf(&buffer, "%s/%s", m_CurrentDir, d) > 0) {
+      while(buffer[0] == '/' && buffer[1] == '/')
+        strcpy(buffer, buffer+1);
+      free(m_CurrentDir);
+      m_CurrentDir = buffer;
+    }
     Set();
     return osContinue;
     
@@ -317,7 +318,8 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
 	if(it==Get(Current()))
 	  index = i;
 	if(!it->IsDir())
-	  asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name());
+	  if (asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name()) < 0)
+            i--;
       }
       cControl::Shutdown();
       cControl::Launch(new cXinelibImagesControl(files, index, i));
@@ -384,36 +386,33 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
             } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
 	      Add(new cFileListItem(e->d_name, false));
 
+            // DVD image (.iso)
+	    } else if (m_Mode == ShowFiles && xc.IsDvdImage(buffer)) {
+	      Add(new cFileListItem(e->d_name, false, false, false, true));
+
 	    // video
 	    } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
-	      bool resume = false, subs = false, dvd = false;
-	      char *pos = strrchr(e->d_name, '.');
 	      cString subfile;
+	      cString resumefile;
 
-	      if(pos) {
-		// .iso image -> dvd
-		if(pos && !strcasecmp(pos, ".iso"))
-		  dvd = true;
-
-		// separate subtitles ?
-		subfile = cString::sprintf("%s/%s____", DirName, e->d_name);
-		char *p = strrchr(subfile, '.');
-		if( p ) {
-		  int i;
-		  for(i=0; xc.s_subExts[i] && !subs; i++) {
-		    strcpy(p, xc.s_subExts[i]);
-		    if (stat(subfile, &st) == 0)
-		      subs = true;
-		  }
-		}
-	      }
+              // separate subtitles ?
+              cString basename = cString::sprintf("%s/%s", DirName, e->d_name);
+              const char *p = strrchr(basename, '.');
+              if (p)
+                basename.Truncate(p - basename);
+              int i;
+              for(i=0; xc.s_subExts[i] && !*subfile; i++) {
+                cString tmp = cString::sprintf("%s%s", *basename, xc.s_subExts[i]);
+                if (stat(tmp, &st) == 0)
+                  subfile = tmp;
+              }
 
 	      // resume file ?
-	      buffer = cString::sprintf("%s/%s.resume", DirName, e->d_name);
-	      if (stat(buffer, &st) == 0)
-		resume = true;
+	      resumefile = cString::sprintf("%s/%s.resume", DirName, e->d_name);
+	      if (stat(resumefile, &st) != 0)
+		resumefile = NULL;
 
-	      Add(new cFileListItem(e->d_name, false, resume, subs?*subfile:NULL, dvd));
+	      Add(new cFileListItem(e->d_name, false, *resumefile, subfile));
 	    }
           }
         }

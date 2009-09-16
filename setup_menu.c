@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.58 2008-04-29 12:44:25 phintuka Exp $
+ * $Id: setup_menu.c,v 1.58.2.2 2009-06-04 13:13:39 phintuka Exp $
  *
  */
 
@@ -399,7 +399,7 @@ static const char * const tvtime_method[] =
 static const int tvtime_methods_count = (sizeof(tvtime_method)/sizeof(tvtime_method[0]) - 1);
 
 static const char * const tvtime_method_name[] =
-  {"Use Video-Out Driver",               // "use_vo_driver"
+  {trNOOP("Use Video-Out Driver"),       // "use_vo_driver"
    "Linear Interpolation",               // "Linear",
    "Linear Blend (mplayer)",             // "LinearBlend",
    "Greedy - Low motion (DScaler)",      // "Greedy",
@@ -418,8 +418,8 @@ static const char * const tvtime_pulldown[] =
     NULL};
 
 static const char * const tvtime_pulldown_name[] = 
-  { "None",
-    "Vector",
+  { trNOOP("none"),
+    trNOOP("vector"),
     NULL};
 
 static const char * const tvtime_framerate[] = 
@@ -429,9 +429,9 @@ static const char * const tvtime_framerate[] =
     NULL};
 
 static const char * const tvtime_framerate_name[] = 
-  { "Full",
-    "Half (top)",
-    "Half (bottom)",
+  { trNOOP("full"),
+    trNOOP("half (top)"),
+    trNOOP("half (bottom)"),
     NULL};
 
 struct tvtime_s {
@@ -456,7 +456,7 @@ struct tvtime_s {
     judder_correction = strstr(str, "judder_correction=0") ? 0 : 1;
     use_progressive_frame_flag = strstr(str, "use_progressive_frame_flag=0") ? 0 : 1;
     method=1;
-    char *m = strstr(str, "method=");
+    const char *m = strstr(str, "method=");
     if(m) {
       char *tmp = strdup(m + 7);
       if(strchr(tmp, ','))

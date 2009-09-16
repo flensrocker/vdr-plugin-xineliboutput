@@ -83,7 +83,7 @@ static int __pplugin_retrieve_parameters(post_object_t *pobj)
       post_api->get_parameters(pobj->post, pobj->param_data);
       
       if(!pnum)
-	pobj->properties_names = (char **) xine_xmalloc(sizeof(char *) * 2);
+	pobj->properties_names = (char **) calloc(2, sizeof(char *));
       else
 	pobj->properties_names = (char **) 
 	  realloc(pobj->properties_names, sizeof(char *) * (pnum + 2));
@@ -276,13 +276,12 @@ static post_element_t **pplugin_parse_and_load(fe_t *fe,
 	if(post) {
 	 
 	  if(!(*post_elements_num))
-	    post_elements = (post_element_t **) xine_xmalloc(sizeof(post_element_t *) * 2);
+	    post_elements = (post_element_t **) calloc(2, sizeof(post_element_t *));
 	  else
 	    post_elements = (post_element_t **) 
 	      realloc(post_elements, sizeof(post_element_t *) * ((*post_elements_num) + 2));
 	  
-	  post_elements[(*post_elements_num)] = (post_element_t *) 
-	    xine_xmalloc(sizeof(post_element_t));
+	  post_elements[(*post_elements_num)] = calloc(1, sizeof(post_element_t));
 	  post_elements[(*post_elements_num)]->post = post;
 	  post_elements[(*post_elements_num)]->name = strdup(plugin);
 #if 1
@@ -500,8 +499,7 @@ static post_element_t **_pplugin_join_deinterlace_and_post_elements(fe_t *fe, in
   if( *post_elements_num == 0 )
     return NULL;
 
-  post_elements = (post_element_t **) 
-    xine_xmalloc(sizeof(post_element_t *) * (*post_elements_num));
+  post_elements = calloc( (*post_elements_num), sizeof(post_element_t *));
 
   if(fe->post_pip_enable)
     for( i = 0; i < fe->post_pip_elements_num; i++ ) {
@@ -572,8 +570,7 @@ static post_element_t **_pplugin_join_visualization_and_post_elements(fe_t *fe, 
   if( *post_elements_num == 0 )
     return NULL;
 
-  post_elements = (post_element_t **) 
-    xine_xmalloc(sizeof(post_element_t *) * (*post_elements_num));
+  post_elements = calloc( (*post_elements_num), sizeof(post_element_t *));
 
   if(fe->post_audio_enable)
     for( j = 0; j < fe->post_audio_elements_num; j++ ) {

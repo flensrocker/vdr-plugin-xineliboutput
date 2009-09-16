@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38 2008-05-07 13:27:15 phintuka Exp $
+# $Id: Makefile,v 1.38.2.2 2008-11-17 17:01:41 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -244,7 +244,8 @@ INCLUDES  += -I$(VDRINCDIR)
 LIBS_XINE += $(shell (pkg-config libxine --atleast-version=1.1.90 && pkg-config libxine --libs) || xine-config --libs)
 LIBS_X11  += -L/usr/X11R6/lib -lX11 -lXv -lXext
 ifeq ($(HAVE_XRENDER), 1)
-    LIBS_X11  += -lXrender
+# need -lm for ceil/floor in HUD OSD
+    LIBS_X11  += -lXrender -lm
 endif
 
 ifeq ($(APPLE_DARWIN), 1)
@@ -509,33 +510,36 @@ endif
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
+	@mkdir -p $(DESTDIR)/$(XINEPLUGINDIR)/post
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
-	@$(INSTALL) $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@$(INSTALL) -m 0644 $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-	@$(INSTALL) -D -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@$(INSTALL) -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
-	@$(INSTALL) -D -m 0644 $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
+	@$(INSTALL) -m 0644 $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-	@$(INSTALL) -D -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@$(INSTALL) -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 endif
 ifeq ($(ENABLE_TEST_POSTPLUGINS), 1)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
-	@$(INSTALL) -D -m 0644 $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
+	@$(INSTALL) -m 0644 $(XINEPOSTHEADPHONE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTHEADPHONE)
 endif
 ifeq ($(XINELIBOUTPUT_FB), 1)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-fbfe
+	@mkdir -p $(DESTDIR)/$(BINDIR)
 	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-fbfe
-	@$(INSTALL) -D -m 0755 vdr-fbfe $(DESTDIR)/$(BINDIR)/vdr-fbfe
+	@$(INSTALL) -m 0755 vdr-fbfe $(DESTDIR)/$(BINDIR)/vdr-fbfe
 endif
 ifeq ($(XINELIBOUTPUT_X11), 1)
 	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-sxfe
+	@mkdir -p $(DESTDIR)/$(BINDIR)
 	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-sxfe
-	@$(INSTALL) -D -m 0755 vdr-sxfe $(DESTDIR)/$(BINDIR)/vdr-sxfe
+	@$(INSTALL) -m 0755 vdr-sxfe $(DESTDIR)/$(BINDIR)/vdr-sxfe
 endif
 
 dist: clean

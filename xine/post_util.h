@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: post_util.h,v 1.3 2008-02-28 06:10:54 phintuka Exp $
+ * $Id: post_util.h,v 1.3.2.1 2008-09-26 13:33:31 phintuka Exp $
  *
  */
 
@@ -53,7 +53,7 @@ static void           draw_internal(vo_frame_t *frame, vo_frame_t *new_frame);
 
 static void *init_plugin(xine_t *xine, void *data)
 {
-  post_class_t *class = (post_class_t *)malloc(sizeof(post_class_t));
+  post_class_t *class = calloc(1, sizeof(post_class_t));
   
   if (!class)
     return NULL;

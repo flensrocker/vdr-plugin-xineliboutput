@@ -6,13 +6,16 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-04-21 10:36+0300\n"
-"PO-Revision-Date: 2008-01-16 00:27+0100\n"
-"Last-Translator: Gringo <vdr-italian@tiscali.it>\n"
+"POT-Creation-Date: 2008-10-18 13:41+0300\n"
+"PO-Revision-Date: 2009-02-08 20:09+0100\n"
+"Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ISO-8859-15\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Italian\n"
+"X-Poedit-Country: ITALY\n"
+"X-Poedit-SourceCharset: utf-8\n"
 
 msgid "custom"
 msgstr "personalizza"
@@ -45,13 +48,13 @@ msgid "CenterCutOut"
 msgstr "CenterCutOut"
 
 msgid "square"
-msgstr ""
+msgstr "quadrato"
 
 msgid "anamorphic"
-msgstr ""
+msgstr "anamorfico"
 
 msgid "DVB"
-msgstr ""
+msgstr "DVB"
 
 msgid "off"
 msgstr "spento"
@@ -144,13 +147,13 @@ msgid "transparent grayscale"
 msgstr "scala di grigi trasparente"
 
 msgid "yes"
-msgstr "sÏ"
+msgstr "s√¨"
 
 msgid "nearest"
-msgstr ""
+msgstr "pi√π vicino"
 
 msgid "bilinear"
-msgstr ""
+msgstr "bilineare"
 
 msgid "Frontend initialization failed"
 msgstr "Inizializzazione frontend fallita"
@@ -186,7 +189,7 @@ msgid "Normal play"
 msgstr "Riproduzione normale"
 
 msgid "Delete image ?"
-msgstr "Cancellare immagine ?"
+msgstr "Eliminare immagine ?"
 
 msgid "Images"
 msgstr "Immagini"
@@ -195,7 +198,7 @@ msgid "Play music"
 msgstr "Riproduci musica"
 
 msgid "Add to playlist"
-msgstr "Aggiungi alla lista esecuzione"
+msgstr "Aggiungi alla lista esec."
 
 msgid "Play file"
 msgstr "Riproduci file"
@@ -252,7 +255,7 @@ msgid "Audio settings"
 msgstr "Impostazioni audio"
 
 msgid "Headphone audio mode"
-msgstr "Modalit‡ cuffie audio"
+msgstr "Modalit√† cuffie audio"
 
 msgid "Audio Compression"
 msgstr "Compressione audio"
@@ -267,10 +270,10 @@ msgid "Local Frontend"
 msgstr "Frontend locale"
 
 msgid "Aspect ratio"
-msgstr "Proporzioni"
+msgstr "Formato"
 
 msgid "Video aspect ratio"
-msgstr ""
+msgstr "Formato video"
 
 msgid "On"
 msgstr "Attivo"
@@ -282,13 +285,13 @@ msgid "Upmix stereo to 5.1"
 msgstr "Suono da Stereo a 5.1"
 
 msgid "Downmix AC3 to surround"
-msgstr "Suono da AC3 a surround"
+msgstr "Suono da AC3 a Surround"
 
 msgid "Default playlist not found"
 msgstr "Lista esec. predefinita non trovata"
 
 msgid "Default playlist is not symlink"
-msgstr "La lista esec. predefinita non Ë un link simbolico"
+msgstr "La lista esec. predefinita non √® un link simbolico"
 
 msgid "Default playlist not defined"
 msgstr "Lista esec. predefinita non definita"
@@ -328,13 +331,31 @@ msgid "  Height"
 msgstr "  Altezza"
 
 msgid "  Speed"
-msgstr "  Velocit‡"
+msgstr "  Velocit√†"
 
 msgid "fps"
 msgstr "fps"
 
 msgid "Audio Equalizer"
 msgstr "Equalizzatore audio"
+
+msgid "Use Video-Out Driver"
+msgstr "Utilizza driver uscita video"
+
+msgid "none"
+msgstr "nessuno"
+
+msgid "vector"
+msgstr "vettoriale"
+
+msgid "full"
+msgstr "intero"
+
+msgid "half (top)"
+msgstr "met√† (superiore)"
+
+msgid "half (bottom)"
+msgstr "met√† (inferiore)"
 
 msgid "Video"
 msgstr "Video"
@@ -352,13 +373,13 @@ msgid "  Detect subtitles"
 msgstr "  Rileva sottotitoli"
 
 msgid "Software scaling"
-msgstr ""
+msgstr "Ridimensionamento software"
 
 msgid "  Change aspect ratio"
-msgstr ""
+msgstr "  Cambia formato video"
 
 msgid "  Change video size"
-msgstr ""
+msgstr "  Cambia dimensione video"
 
 msgid "  Allow downscaling"
 msgstr "  Permetti ridimensionamento"
@@ -367,16 +388,16 @@ msgid "Post processing (ffmpeg)"
 msgstr "Codifica (ffmpeg)"
 
 msgid "  Quality"
-msgstr "  Qualit‡"
+msgstr "  Qualit√†"
 
 msgid "  Mode"
-msgstr "  Modalit‡"
+msgstr "  Modalit√†"
 
 msgid "  Method"
 msgstr "  Metodo"
 
 msgid "  Cheap mode"
-msgstr "  Modo economico"
+msgstr "  Modalit√† economica"
 
 msgid "  Pulldown"
 msgstr "  Pulldown"
@@ -415,7 +436,7 @@ msgid "  Amount of chroma sharpness/blur"
 msgstr "  Valore di nitidezza/blur chroma"
 
 msgid "3D Denoiser"
-msgstr "3D Denoiser"
+msgstr "Denoiser 3D"
 
 msgid "  Spatial luma strength"
 msgstr "  Resistenza luma spaziale"
@@ -427,7 +448,7 @@ msgid "  Temporal strength"
 msgstr "  Resistenza temporale"
 
 msgid "HUE"
-msgstr "Tonalit‡"
+msgstr "Tonalit√†"
 
 msgid "Saturation"
 msgstr "Saturazione"
@@ -436,28 +457,28 @@ msgid "Contrast"
 msgstr "Contrasto"
 
 msgid "Brightness"
-msgstr "Luminosit‡"
+msgstr "Luminosit√†"
 
 msgid "Smooth fast forward"
 msgstr "Avanzamento veloce leggero"
 
 msgid "Fastest trick speed"
-msgstr "Velocit‡ trucco pi˘ veloce"
+msgstr "Trucco velocit√† pi√π rapida"
 
 msgid "On-Screen Display"
-msgstr "Messaggi in sovraimpressione (OSD)"
+msgstr "Messaggi in sovrimpressione (OSD)"
 
 msgid "Hide main menu"
-msgstr "Nascondi voce nel menu principale"
+msgstr "Nascondi voce menu princ."
 
 msgid "Blending method"
-msgstr ""
+msgstr "Metodo di sfocatura"
 
 msgid "  Use hardware for low-res video"
-msgstr ""
+msgstr "Utilizza hardware per video bassa risoluzione"
 
 msgid "Scaling method"
-msgstr ""
+msgstr "Metodo ridimensione"
 
 msgid "Show all layers"
 msgstr "Mostra tutti i livelli"
@@ -577,22 +598,22 @@ msgid "RTSP clients can control VDR"
 msgstr "I client RTSP possono controllare VDR"
 
 msgid "Playlist settings"
-msgstr ""
+msgstr "Impostazioni lista esec."
 
 msgid "Show the track number"
-msgstr ""
+msgstr "Mostra il numero della traccia"
 
 msgid "Show the name of the artist"
-msgstr ""
+msgstr "Mostra il nome dell'artista"
 
 msgid "Show the name of the album"
-msgstr ""
+msgstr "Mostra il nome dell'album"
 
 msgid "Scan for metainfo"
-msgstr ""
+msgstr "Scansione metainfo"
 
 msgid "Cache metainfo"
-msgstr ""
+msgstr "Cache metainfo"
 
 msgid "Grayscale"
 msgstr "Scala di grigi"
@@ -611,3 +632,4 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.34 2008-04-14 19:58:50 phintuka Exp $
+ * $Id: device.h,v 1.34.2.2 2008-12-10 22:56:15 phintuka Exp $
  *
  */
 
@@ -26,7 +26,8 @@ typedef enum {
   miArtist = 2,
   miAlbum  = 3,
   miDvdTitleNo = 4,
-  mi_Count = 5
+  miDvdButtons = 5,
+  mi_Count = 6
 } eMetainfoType;
 
 # define ttXSubtitleNone  (-2)
@@ -238,7 +239,7 @@ class cXinelibDevice : public cDevice
   public:
     bool PlayFile(const char *Filename, int Position=0, 
 		  bool LoopPlay=false, ePlayMode PlayMode=pmAudioVideo);
-    int  PlayFileCtrl(const char *Cmd);
+    int  PlayFileCtrl(const char *Cmd, int TimeoutMs = -1);
     bool EndOfStreamReached(void);
 
 

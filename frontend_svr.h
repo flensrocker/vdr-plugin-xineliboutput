@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.18 2007-03-15 13:29:04 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.18.2.1 2008-12-10 22:56:15 phintuka Exp $
  *
  */
 
@@ -56,7 +56,7 @@ class cXinelibServer : public cXinelibThread
     virtual uchar *GrabImage(int &Size, bool Jpeg, int Quality, 
 			     int SizeX, int SizeY);
     // Playback files
-    virtual int  PlayFileCtrl(const char *Cmd);
+    virtual int  PlayFileCtrl(const char *Cmd, int TimeoutMs = -1);
     virtual bool EndOfStreamReached(void);
 
     // Configuration						  

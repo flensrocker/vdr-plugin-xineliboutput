@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40 2008-04-28 20:03:52 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.7 2009-02-12 12:53:29 phintuka Exp $
  *
  */
 
@@ -16,29 +16,6 @@
 
 #include "tools/vdrdiscovery.h"
 
-
-#if 0
-static void xine_log_cb(void *data, int section)
-{
-  fprintf(stderr, "xine: log section %d\n",section);
-}
-
-static void print_xine_log(xine_t *xine)
-{
-  int i, j;
-  int logs = xine_get_log_section_count(xine);
-  const char * const * names = xine_get_log_names(xine);
-  for(i=0; i<logs; i++) {
-    const char * const * lines = xine_get_log(xine, i);
-    if(lines[0]) {
-      printf("\nLOG: %s\n",names[i]);
-      j=-1;
-      while(lines[++j] && *lines[++j] )
-	printf("  %2d: %s", j, lines[j]);
-    }
-  }
-}
-#endif
 
 static void list_plugins_type(xine_t *xine, const char *msg, typeof (xine_list_audio_output_plugins) list_func)
 {
@@ -163,8 +140,8 @@ static void *kbd_receiver_thread(void *fe)
 
   terminate_key_pressed = 0;
 
-  system("setterm -cursor off");
-  system("setterm -blank off");
+  if (system("setterm -cursor off") == -1) ;
+  if (system("setterm -blank off")  == -1) ;
 
   /* Set stdin to deliver keypresses without buffering whole lines */
   tcgetattr(STDIN_FILENO, &saved_tm);
@@ -213,7 +190,7 @@ static void *kbd_receiver_thread(void *fe)
   alarm(0);
   LOGDBG("Keyboard thread terminated");
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  system("setterm -cursor on");
+  if (system("setterm -cursor on") == -1) ;
 
   pthread_exit(NULL);
   return NULL; /* never reached */
@@ -278,7 +255,7 @@ static void kbd_stop(void)
   pthread_join (kbd_thread, &p);
 
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
-  system("setterm -cursor on");
+  if (system("setterm -cursor on") == -1) ;
 }
 
 static void SignalHandler(int signum)
@@ -291,7 +268,7 @@ static void SignalHandler(int signum)
 
 static char *strcatrealloc(char *dest, const char *src)
 {
-  int l;
+  size_t l;
 
   if (!src || !*src) 
     return dest;
@@ -322,7 +299,9 @@ static const char help_str[] =
     "                                 Use script to control HW aspect ratio:\n"
     "                                   --aspect=auto:path_to_script\n"
     "   --fullscreen                  Fullscreen mode\n"
+#ifdef HAVE_XRENDER
     "   --hud                         Head Up Display OSD mode\n"
+#endif
     "   --width=x                     Video window width\n"
     "   --height=x                    Video window height\n"
     "   --noscaling                   Disable all video scaling\n"
@@ -338,8 +317,8 @@ static const char help_str[] =
     "   --nokbd                       Disable keyboard input\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
-    "   --slave                       Enable slave mode (read commands from stdin)\r\n"
-    "   --reconnect                   Automatically reconnect when connection has been lost"
+    "   --slave                       Enable slave mode (read commands from stdin)\n"
+    "   --reconnect                   Automatically reconnect when connection has been lost\n"
     "   --tcp                         Use TCP transport\n"
     "   --udp                         Use UDP transport\n"
     "   --rtp                         Use RTP transport\n\n"
@@ -451,7 +430,7 @@ int main(int argc, char *argv[])
 		aspect = 3;
 	      if(!strncmp(optarg, "16:10", 5))
 		aspect = 4;
-              if(aspect == 0 && optarg[5] == ':')
+              if(aspect == 0 && optarg[4] == ':')
                 aspect_controller = strdup(optarg+5);
 	      PRINTF("Aspect ratio: %s\n", 
 		     aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
@@ -464,7 +443,11 @@ int main(int argc, char *argv[])
               PRINTF("Fullscreen mode\n");
 	      break;
     case 'D': hud=1;
+#ifdef HAVE_XRENDER
               PRINTF("HUD OSD mode\n");
+#else
+              PRINTF("HUD OSD not supported\n");
+#endif
               break;
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
@@ -546,7 +529,7 @@ int main(int argc, char *argv[])
 	      !strncmp(mrl, "xvdr:udp:", 9) ||
 	      !strncmp(mrl, "xvdr:rtp:", 9) ||
 	      !strncmp(mrl, "xvdr:pipe:", 10)))
-    mrl[5] = '+';
+    mrl[4] = '+';
 #endif
 
   /* If server address not given, try to find server automatically */
@@ -564,10 +547,12 @@ int main(int argc, char *argv[])
       if(mrl) {
 	char *tmp = mrl;
 	mrl = NULL;
-	asprintf(&mrl, "%s//%s:%d", tmp, address, port);
+	if (asprintf(&mrl, "%s//%s:%d", tmp, address, port) < 0)
+          mrl = NULL;
 	free(tmp);
       } else
-	asprintf(&mrl, "xvdr://%s:%d", address, port);
+	if (asprintf(&mrl, "xvdr://%s:%d", address, port) < 0)
+          mrl = NULL;
     } else {
       PRINTF("---------------------------------------------------------------\n"
 	     "WARNING: MRL not given and server not found from local network.\n"
@@ -580,8 +565,8 @@ int main(int argc, char *argv[])
   if(mrl && strncmp(mrl, "xvdr:", 5) && strncmp(mrl, "xvdr+", 5)) {
     char *mrl2 = mrl;
     PRINTF("WARNING: MRL does not start with \'xvdr:\' (%s)", mrl);
-    asprintf(&mrl, "xvdr://%s", mrl);
-    free(mrl2);
+    if (asprintf(&mrl, "xvdr://%s", mrl) >= 0)
+      free(mrl2);
   }
 
   {
@@ -669,7 +654,7 @@ int main(int argc, char *argv[])
     }
 
     /* Connect to VDR xineliboutput server */
-    if(!fe_xine_open(fe, mrl)) {
+    if(!fe->xine_open(fe, mrl)) {
       /*print_xine_log(((fe_t *)fe)->xine);*/
       if(!firsttry) {
 	PRINTF("Error opening %s\n", mrl);

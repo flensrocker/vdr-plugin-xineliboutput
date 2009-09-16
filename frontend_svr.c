@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.56 2008-04-10 20:21:45 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.56.2.5 2009-06-04 13:16:37 phintuka Exp $
  *
  */
 
@@ -52,7 +52,7 @@
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
 #define PLAYFILE_CTRL_TIMEOUT   300   /* ms */
-#define PLAYFILE_TIMEOUT       5000   /* ms */
+#define PLAYFILE_TIMEOUT      20000   /* ms */
 
 typedef struct {
   int    Size;
@@ -715,7 +715,7 @@ bool cXinelibServer::HasClients(void)
   return false;
 }
 
-int cXinelibServer::PlayFileCtrl(const char *Cmd)
+int cXinelibServer::PlayFileCtrl(const char *Cmd, int TimeoutMs)
 {
   /* Check if there are any clients */
   if(!HasClients()) {
@@ -750,6 +750,7 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd)
 #endif
 
     int timeout = bPlayfile ? PLAYFILE_TIMEOUT : PLAYFILE_CTRL_TIMEOUT;
+    if(TimeoutMs > 0) timeout = TimeoutMs;
 
     future.Wait(timeout);
 
@@ -1108,7 +1109,7 @@ void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
   bool repeat = false, release = false;
   strn0cpy(buf, arg, sizeof(buf));
 
-  int n = strlen(buf)-1;
+  size_t n = *buf ? strlen(buf)-1 : 0;
   while(n && buf[n]==' ') buf[n--]=0; /* trailing spaces */
   if(NULL != (key=strchr(buf, ' '))) {
     while(*key == ' ')
@@ -1331,11 +1332,12 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
     else if(!strncmp(m_State[cli]->Uri(), "/PLAYFILE", 9)) {
 
       if( *m_FileName && m_bPlayingFile) {
-	char *pos = strstr(m_FileName, "#subtitle:");
-	if(pos) *pos = 0;
-	bool Allow = ( !strcmp_escaped(m_FileName, m_State[cli]->Uri() + 9)
+        cString file = m_FileName;
+	const char *pos = strstr(m_FileName, "#subtitle:");
+	if(pos)
+          file.Truncate(pos - m_FileName);
+	bool Allow = ( !strcmp_escaped(file, m_State[cli]->Uri() + 9)
 		       || (pos && !strcmp_escaped(pos + 10, m_State[cli]->Uri() + 9)));
-	if(pos) *pos = '#';
 	if(Allow) {
 	  LOGMSG("HTTP streaming media file");
 
@@ -1689,7 +1691,8 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   bool accepted = SVDRPhosts.Acceptable(sin.sin_addr.s_addr);
   if(!accepted) {
     LOGMSG("Address not allowed to connect (svdrphosts.conf).");
-    write(fd, "Access denied.\r\n", 16);
+    if (write(fd, "Access denied.\r\n", 16) != 16)
+      LOGERR("Write failed");
     CLOSESOCKET(fd);  
     return;    
   }
