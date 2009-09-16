@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.52.2.6 2008-12-10 23:00:18 phintuka Exp $
+ * $Id: media_player.c,v 1.52.2.7 2009-09-16 09:56:11 phintuka Exp $
  *
  */
 
@@ -46,6 +46,7 @@ class cXinelibPlayer : public cPlayer
     cPlaylist m_Playlist;
 
     bool m_Error;
+    bool m_UseResumeFile;
     int  m_Speed; 
 
     void UpdateNumTracks(void);
@@ -75,8 +76,7 @@ class cXinelibPlayer : public cPlayer
     bool NextFile(int step);
     bool Playing(void) { return !(m_Error || cXinelibDevice::Instance().EndOfStreamReached()); }
     bool Error(void)   { return m_Error; }
-
-    bool m_UseResume;
+    void UseResumeFile(bool Val) { m_UseResumeFile = Val; }
 
     /* Playlist access */
     cPlaylist& Playlist(void) { return m_Playlist; }
@@ -88,7 +88,7 @@ class cXinelibPlayer : public cPlayer
 cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile) 
 {
   m_ResumeFile = NULL;
-  m_UseResume = true;
+  m_UseResumeFile = true;
   m_Error = false;
   m_Speed = 1;
 
@@ -210,7 +210,7 @@ void cXinelibPlayer::UpdateNumTracks(void)
     int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE CD", 10000);
     if(count>1) {
       for(int i=0; i<count; i++)
-	m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
+        m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
       m_Playlist.Del(m_Playlist.First());
     }
   }
@@ -220,9 +220,9 @@ void cXinelibPlayer::Activate(bool On)
 {
   int pos = 0, len = 0, fd = -1;
   if(On) {
-    if(m_UseResume && !*m_ResumeFile)
+    if(m_UseResumeFile && !*m_ResumeFile)
       m_ResumeFile = cString::sprintf("%s.resume", *m_File);
-    if(m_UseResume && 0 <= (fd = open(m_ResumeFile, O_RDONLY))) {
+    if(m_UseResumeFile && 0 <= (fd = open(m_ResumeFile, O_RDONLY))) {
       if(read(fd, &pos, sizeof(int)) != sizeof(int))
 	pos = 0;
       close(fd);
@@ -232,9 +232,10 @@ void cXinelibPlayer::Activate(bool On)
     // (those may contain #subtitle, #volnorm etc. directives)
     cString mrl;
     if(*m_SubFile)
-      mrl = cString::sprintf("%s%s#subtitle:%s",
+      mrl = cString::sprintf("%s%s#subtitle:%s%s",
 			     m_File[0] == '/' ? "file:" : "",
 			     *cPlaylist::EscapeMrl(m_File), 
+			     m_SubFile[0] == '/' ? "file:" : "",
 			     *cPlaylist::EscapeMrl(m_SubFile));
     else if((*m_File)[0] == '/')
       mrl = cString::sprintf("%s%s",
@@ -243,6 +244,7 @@ void cXinelibPlayer::Activate(bool On)
     else
       mrl = cPlaylist::EscapeMrl(m_File);
 
+    // Start replay
     UpdateNumTracks();
     m_Error = !cXinelibDevice::Instance().PlayFile(mrl, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Error ? "FAIL" : "OK");
@@ -265,7 +267,7 @@ void cXinelibPlayer::Activate(bool On)
       UpdateNumTracks();
     }
   } else {
-    if(m_UseResume && *m_ResumeFile) {
+    if(m_UseResumeFile && *m_ResumeFile) {
       pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
       len = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
       if(pos>10000 && pos < (len-10000)) {
@@ -284,7 +286,7 @@ void cXinelibPlayer::Activate(bool On)
       }
       m_ResumeFile = NULL;
     }
-    cXinelibDevice::Instance().PlayFile(NULL,0);
+    cXinelibDevice::Instance().PlayFile(NULL);
     m_Error = false;
   }
 }
@@ -455,7 +457,7 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
   number = 0;
   lastTime.Set();
 
-  m_Player->m_UseResume = (Mode==ShowFiles);
+  m_Player->UseResumeFile( (Mode==ShowFiles) );
 
   MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
 }
@@ -900,21 +902,23 @@ void cXinelibDvdPlayerControl::Show(void)
 
 eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 {
+  // Check for end of stream and failed open
   if ( !m_Player->Playing() ) {
     LOGDBG("cXinelibDvdPlayerControl: EndOfStreamReached");
     Hide();
     return osEnd;
   }
-  else {
-    const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
-    if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
-      memset(m_CurrentDVDTitle, 0, 63);
-      strn0cpy(m_CurrentDVDTitle, ti, 63);
-      m_Player->Playlist().Current()->Title = m_CurrentDVDTitle;
-      MsgReplaying(m_CurrentDVDTitle, NULL);
-    }
+
+  // Update DVD title information
+  const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
+  if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
+    memset(m_CurrentDVDTitle, 0, 63);
+    strn0cpy(m_CurrentDVDTitle, ti, 63);
+    m_Player->Playlist().Current()->Title = m_CurrentDVDTitle;
+    MsgReplaying(m_CurrentDVDTitle, NULL);
   }
 
+  // Handle menu selection
   if(Menu) {
     if(Key == kRed)
       Hide();
@@ -931,10 +935,13 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     return osContinue;
   }
 
+  // Update progress bar display
   if (m_DisplayReplay) 
     Show();
 
-  bool MenuDomain = false;
+  // Handle menu navigation
+
+  bool MenuDomain = !xc.dvd_arrow_keys_control_playback;
   if(Key != kNone || m_DisplayReplay) {
     const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
     if(dt && !strcmp("0", dt)) 
@@ -961,6 +968,8 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
       default:     break;
     }
   }
+
+  // Handle normal keys
 
   if(!MenuDomain) {
     switch(Key) {
@@ -1085,8 +1094,12 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 
 class cXinelibImagePlayer : public cPlayer {
   private:
-    cString m_File;
+    cString m_Mrl;
     bool    m_Active;
+    bool    m_Error;
+    cXinelibDevice *m_Dev;
+
+    bool    Play(void);
 
   protected:
     virtual void Activate(bool On);
@@ -1096,12 +1109,15 @@ class cXinelibImagePlayer : public cPlayer {
     virtual ~cXinelibImagePlayer();
 
     bool ShowImage(const char *File);
+    bool Error(void)                 { return m_Error; } 
 };
 
 cXinelibImagePlayer::cXinelibImagePlayer(const char *File) 
 {
-  m_File = File;
+  m_Mrl    = File;
   m_Active = false;
+  m_Error  = false;
+  m_Dev    = &(cXinelibDevice::Instance());
 }
 
 cXinelibImagePlayer::~cXinelibImagePlayer()
@@ -1110,28 +1126,29 @@ cXinelibImagePlayer::~cXinelibImagePlayer()
   Detach();
 }
 
+bool cXinelibImagePlayer::Play(void)
+{
+  if ((*m_Mrl)[0] == '/')
+    m_Mrl = cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_Mrl));
+
+  return m_Dev->PlayFile(m_Mrl, 0, true);
+}
+
 void cXinelibImagePlayer::Activate(bool On)
 {
-  if(On) {
-    m_Active = true;
-    cXinelibDevice::Instance().PlayFile( ( (*m_File)[0]=='/' 
-					   ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
-					   : *m_File),
-					0, true);
-  } else {
-    m_Active = false;
-    cXinelibDevice::Instance().PlayFile(NULL, 0);
-  }
+  m_Active = On;
+  m_Error  = false;
+  if (On)
+    Play();
+  else
+    m_Dev->PlayFile(NULL);
 }
 
 bool cXinelibImagePlayer::ShowImage(const char *File)
 {
-  m_File = File;
-  if(m_Active)
-    return cXinelibDevice::Instance().PlayFile( ( (*m_File)[0] == '/' 
-						  ? *cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_File))
-						  : *m_File ),
-					       0, true);
+  m_Mrl = File;
+  if (m_Active)
+    return Play();
   return true;
 }
 
