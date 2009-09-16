@@ -4,11 +4,9 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.31.2.1 2009-06-06 13:25:21 phintuka Exp $
+ * $Id: frontend_local.c,v 1.31 2008-04-03 08:08:27 phintuka Exp $
  *
  */
-
-#define __STDC_CONSTANT_MACROS
 
 #include <stdlib.h>
 #include <string.h>
@@ -162,18 +160,17 @@ int64_t cXinelibLocal::GetSTC()
 {
   TRACEF("cXinelibLocal::GetSTC");
 
-  union {
-    char    buf[32];
-    int64_t pts;
-  } u = {"GETSTC\r\n"};
+  int64_t pts = -1;
+  char buf[32] = {0};
+  strcpy(buf, "GETSTC\r\n");
 
   LOCK_FE;
-
-  if (fe && m_bReady)
-    if (0 == fe->xine_control(fe, u.buf))
-      return u.pts;
-
-  return INT64_C(-1);
+  if(fe && m_bReady)
+    if(0 == fe->xine_control(fe, (char*)buf))
+      //if(*((int64_t *)buf) < MAX_SCR)
+      //  if(*((int64_t *)buf) >= 0LL)
+	  pts = *((int64_t *)buf);
+  return pts;
 }
 
 //

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.11 2009-02-18 21:18:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.10 2009-02-12 12:45:20 phintuka Exp $
  *
  */
 
@@ -134,7 +134,6 @@ typedef struct sxfe_s {
   Atom     atom_wm_delete_window;
   Atom     atom_sxfe_interrupt;
   Atom     atom_wm_hints, atom_win_layer;
-  Atom     xa_NET_ACTIVE_WINDOW;
   Atom     atom_state, atom_state_add, atom_state_del;
   Atom     atom_state_above, atom_state_fullscreen, atom_state_on_top;
 
@@ -236,7 +235,6 @@ static void set_fullscreen_props(sxfe_t *this)
 
   if(this->atom_state == None) {
     this->atom_win_layer        = XInternAtom(this->display, "_WIN_LAYER", False);
-    this->xa_NET_ACTIVE_WINDOW  = XInternAtom(this->display, "_NET_ACTIVE_WINDOW", False);
     this->atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
     this->atom_state_add        = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
     this->atom_state_del        = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
@@ -274,15 +272,6 @@ static void set_fullscreen_props(sxfe_t *this)
   ev.xclient.data.l[1] = this->atom_state_on_top;
   XSendEvent(this->display, DefaultRootWindow(this->display), False, 
 	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
-  XUnlockDisplay(this->display);
-
-  /* _NET_ACTIVE_WINDOW */
-  XLockDisplay(this->display);
-  ev.xclient.message_type = this->xa_NET_ACTIVE_WINDOW;
-  ev.xclient.data.l[0] = 0;
-  ev.xclient.data.l[1] = 0;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False,
-             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 }
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57.2.2 2009-06-06 13:21:27 phintuka Exp $
+ * $Id: menu.c,v 1.57.2.1 2009-02-12 11:04:03 phintuka Exp $
  *
  */
 
@@ -92,7 +92,7 @@ static char *ParentDir(const char *dir)
 
 static char *LastDir(const char *dir)
 {
-  const char *pt = strrchr(dir, '/');
+  char *pt = strrchr(dir, '/');
   if(pt && pt[0] && pt[1])
     return strdup(pt+1);
   return NULL;
@@ -386,33 +386,36 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
             } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
 	      Add(new cFileListItem(e->d_name, false));
 
-            // DVD image (.iso)
-	    } else if (m_Mode == ShowFiles && xc.IsDvdImage(buffer)) {
-	      Add(new cFileListItem(e->d_name, false, false, false, true));
-
 	    // video
 	    } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
+	      bool resume = false, subs = false, dvd = false;
+	      char *pos = strrchr(e->d_name, '.');
 	      cString subfile;
-	      cString resumefile;
 
-              // separate subtitles ?
-              cString basename = cString::sprintf("%s/%s", DirName, e->d_name);
-              const char *p = strrchr(basename, '.');
-              if (p)
-                basename.Truncate(p - basename);
-              int i;
-              for(i=0; xc.s_subExts[i] && !*subfile; i++) {
-                cString tmp = cString::sprintf("%s%s", *basename, xc.s_subExts[i]);
-                if (stat(tmp, &st) == 0)
-                  subfile = tmp;
-              }
+	      if(pos) {
+		// .iso image -> dvd
+		if(pos && !strcasecmp(pos, ".iso"))
+		  dvd = true;
+
+		// separate subtitles ?
+		subfile = cString::sprintf("%s/%s____", DirName, e->d_name);
+		char *p = strrchr(subfile, '.');
+		if( p ) {
+		  int i;
+		  for(i=0; xc.s_subExts[i] && !subs; i++) {
+		    strcpy(p, xc.s_subExts[i]);
+		    if (stat(subfile, &st) == 0)
+		      subs = true;
+		  }
+		}
+	      }
 
 	      // resume file ?
-	      resumefile = cString::sprintf("%s/%s.resume", DirName, e->d_name);
-	      if (stat(resumefile, &st) != 0)
-		resumefile = NULL;
+	      buffer = cString::sprintf("%s/%s.resume", DirName, e->d_name);
+	      if (stat(buffer, &st) == 0)
+		resume = true;
 
-	      Add(new cFileListItem(e->d_name, false, *resumefile, subfile));
+	      Add(new cFileListItem(e->d_name, false, resume, subs?*subfile:NULL, dvd));
 	    }
           }
         }
