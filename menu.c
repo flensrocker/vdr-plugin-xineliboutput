@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57.2.3 2009-06-08 16:26:28 phintuka Exp $
+ * $Id: menu.c,v 1.57.2.4 2009-09-16 10:04:35 phintuka Exp $
  *
  */
 
@@ -62,7 +62,7 @@ class cMenuBrowseFiles : public cOsdMenu
     char         *m_ConfigLastDir;
 
     virtual bool ScanDir(const char *DirName);
-    virtual eOSState Open(bool ForceOpen = false, bool Parent = false, bool Queue = false);
+    virtual eOSState Open(bool ForceOpen = false, bool Queue = false);
     virtual eOSState Delete(void);
     virtual eOSState Info(void);
     virtual void Set(void);
@@ -228,14 +228,14 @@ eOSState cMenuBrowseFiles::Delete(void)
   return osContinue;
 }
 
-eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Parent, bool Queue)
+eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue)
 {
   if(!GetCurrent()) {
     return osContinue;
   }
 
   /* parent directory */
-  if(Parent || !strcmp("..", GetCurrent()->Name())) {
+  if (!strcmp("..", GetCurrent()->Name())) {
     char *n = ParentDir(m_CurrentDir);
     free(m_CurrentDir);
     m_CurrentDir = n;
@@ -419,11 +419,11 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 
   if (state == osUnknown) {
      switch (Key) {
-       case kPlay:   
-       case kOk:     return Open(false, false, m_OnlyQueue);
+       case kPlay:
+       case kOk:     return Open(false, m_OnlyQueue);
        case kRed:    return Open(true);
-       case kGreen:  return Open(true, m_Mode != ShowMusic, 
-				 m_Mode==ShowMusic ? m_OnlyQueue=true : false);
+       case kGreen:  return Open(true,
+                                 m_Mode==ShowMusic ? m_OnlyQueue=true : false);
        case kYellow: return Delete();
        case kBlue:   return Info();
        default: break;
