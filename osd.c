@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.25.2.2 2009-06-12 09:13:10 phintuka Exp $
+ * $Id: osd.c,v 1.25.2.3 2009-09-17 17:28:39 phintuka Exp $
  *
  */
 
@@ -106,9 +106,11 @@ class cXinelibOsd : public cOsd, public cListObject
     static cMutex             m_Lock;
     static cList<cXinelibOsd> m_OsdStack;
 
-    bool   m_IsVisible;
-    bool   m_Refresh;
-    uint   m_Layer;
+    bool     m_IsVisible;
+    bool     m_Refresh;
+    uint     m_Layer;
+    uint16_t m_ExtentWidth;
+    uint16_t m_ExtentHeight;
 
     virtual eOsdError CanHandleAreas(const tArea *Areas, int NumAreas);
     virtual eOsdError SetAreas(const tArea *Areas, int NumAreas);
@@ -138,11 +140,14 @@ void cXinelibOsd::CmdSize(int Width, int Height)
   if (m_Device) {
     osd_command_t osdcmd = {0};
 
-    osdcmd.cmd = OSD_Size;
-    osdcmd.w   = Width;
-    osdcmd.h   = Height;
+    for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
+      osdcmd.cmd = OSD_Size;
+      osdcmd.wnd = Wnd;
+      osdcmd.w   = Width;
+      osdcmd.h   = Height;
 
-    m_Device->OsdCmd((void*)&osdcmd);
+      m_Device->OsdCmd((void*)&osdcmd);
+    }
   }
 }
 
@@ -213,10 +218,10 @@ void cXinelibOsd::CmdFlush(void)
   }
 }
 
-void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0, 
-			 int W, int H, unsigned char *Data,
-			 int Colors, unsigned int *Palette, 
-			 osd_rect_t *DirtyArea)
+void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
+                         int W, int H, unsigned char *Data,
+                         int Colors, unsigned int *Palette,
+                         osd_rect_t *DirtyArea)
 {
   TRACEF("cXinelibOsd::CmdRle");
 
@@ -269,10 +274,12 @@ cXinelibOsd::cXinelibOsd(cXinelibDevice *Device, int x, int y, uint Level)
 {
   TRACEF("cXinelibOsd::cXinelibOsd");
 
-  m_Device = Device;
-  m_Refresh = false;
-  m_IsVisible = true;
-  m_Layer = Level;
+  m_Device       = Device;
+  m_Refresh      = false;
+  m_IsVisible    = true;
+  m_Layer        = Level;
+  m_ExtentWidth  = 720;
+  m_ExtentHeight = 576;
 }
 
 cXinelibOsd::~cXinelibOsd()
@@ -283,7 +290,7 @@ cXinelibOsd::~cXinelibOsd()
 
   CloseWindows();
 
-  m_OsdStack.Del(this,false);
+  m_OsdStack.Del(this, false);
 
   if(m_OsdStack.First())
     m_OsdStack.First()->Show();
@@ -300,14 +307,20 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
 
   eOsdError Result = cOsd::SetAreas(Areas, NumAreas);
 
+  if (Result != oeOk)
+    return Result;
+
   if(Left() + Width() > 720 || Top() + Height() > 576) {
-    LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d", 
+    m_ExtentWidth  = Setup.OSDWidth  + 2 * Setup.OSDLeft;
+    m_ExtentHeight = Setup.OSDHeight + 2 * Setup.OSDTop;
+    LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d",
            2*Left() + Width(), 2*Top() + Height(),
-           Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
-    CmdSize(Setup.OSDWidth + (2*Setup.OSDLeft), Setup.OSDHeight + (2*Setup.OSDTop));
+           m_ExtentWidth, m_ExtentHeight);
   } else {
-    CmdSize(720, 576);
+    m_ExtentWidth  = 720;
+    m_ExtentHeight = 576;
   }
+  CmdSize(m_ExtentWidth, m_ExtentHeight);
 
   return Result;
 }
@@ -317,15 +330,20 @@ eOsdError cXinelibOsd::CanHandleAreas(const tArea *Areas, int NumAreas)
   TRACEF("cXinelibOsd::CanHandleAreas");
 
   eOsdError Result = cOsd::CanHandleAreas(Areas, NumAreas);
-  if (Result == oeOk) {
-    if (NumAreas > MAX_OSD_OBJECT)
-      return oeTooManyAreas;
-    for (int i = 0; i < NumAreas; i++) {
-      if (Areas[i].bpp != 1 && Areas[i].bpp != 2 && 
-	  Areas[i].bpp != 4 && Areas[i].bpp != 8)
-        return oeBppNotSupported;
+
+  if (Result != oeOk)
+    return Result;
+
+  if (NumAreas > MAX_OSD_OBJECT)
+    return oeTooManyAreas;
+
+  for (int i = 0; i < NumAreas; i++) {
+    if (Areas[i].bpp < 1 || Areas[i].bpp > 8) {
+      LOGMSG("cXinelibOsd::CanHandleAreas(): invalid bpp (%d)", Areas[i].bpp);
+      return oeBppNotSupported;
     }
   }
+
   return Result;
 }
 
@@ -337,7 +355,7 @@ void cXinelibOsd::Flush(void)
 
   cBitmap *Bitmap;
 
-  if(!m_IsVisible) 
+  if(!m_IsVisible)
     return;
 
   int SendDone = 0;
@@ -393,6 +411,7 @@ void cXinelibOsd::Refresh(void)
 void cXinelibOsd::Show(void)
 {
   TRACEF("cXinelibOsd::Show");
+  CmdSize(m_ExtentWidth, m_ExtentHeight);
 
   cMutexLock ml(&m_Lock);
 
@@ -479,7 +498,7 @@ cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
   cXinelibOsd *m_OsdInstance = new cXinelibOsd(m_Device, Left, Top, Level);
 
   // sorted insert
-  cXinelibOsd *it = cXinelibOsd::m_OsdStack.First(); 
+  cXinelibOsd *it = cXinelibOsd::m_OsdStack.First();
   while(it) {
     if(it->m_Layer >= Level) {
       cXinelibOsd::m_OsdStack.Ins(m_OsdInstance, it);
