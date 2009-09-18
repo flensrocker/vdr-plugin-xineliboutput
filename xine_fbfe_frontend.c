@@ -4,26 +4,15 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.20.2.2 2009-06-08 11:38:02 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.20.2.3 2009-09-18 11:31:34 phintuka Exp $
  *
  */
 
-#include <errno.h>
 #include <inttypes.h>
-#include <poll.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <time.h>
-#include <pthread.h>
-#include <sched.h>
 
 #if defined(__linux__)
 # include <linux/kd.h>
@@ -51,9 +40,9 @@
 #include <xine/plugin_catalog.h>
 
 #include "xine_input_vdr.h"
+#include "xine/post.h"
 
 #include "xine_frontend.h"
-#include "xine/post.h"
 
 
 /*
@@ -63,8 +52,21 @@
 typedef struct fbfe_t {
 
   /* function pointers */
-  frontend_t         fe;
-  void (*update_display_size)(frontend_t*);
+  frontend_t              fe;
+  void   (*update_display_size_cb)(frontend_t*);
+  void   (*toggle_fullscreen_cb)  (frontend_t*);
+
+  /* from xine_frontend.c */
+  double (*dest_pixel_aspect)   (const frontend_t *,
+                                 double video_pixel_aspect,
+                                 int video_width, int video_height);
+  void   (*frame_output_handler)(void *data,
+                                 int video_width, int video_height,
+                                 double video_pixel_aspect,
+                                 int *dest_x, int *dest_y,
+                                 int *dest_width, int *dest_height,
+                                 double *dest_pixel_aspect,
+                                 int *win_x, int *win_y);
 
   /* vdr */
   fe_keypress_f       keypress;
@@ -73,7 +75,7 @@ typedef struct fbfe_t {
   xine_t             *xine;
   xine_stream_t      *stream;
   xine_stream_t      *slave_stream;
-  input_plugin_t     *input;
+  vdr_input_plugin_if_t *input_plugin;
   xine_video_port_t  *video_port;
   xine_video_port_t  *video_port_none;
   xine_audio_port_t  *audio_port;
@@ -81,13 +83,21 @@ typedef struct fbfe_t {
   xine_event_queue_t *event_queue;
 
   post_plugins_t     *postplugins;
-  char               *fb_dev;
+  char               *video_port_name;
   char               *aspect_controller;
 
   int                 xine_visual_type;
   fb_visual_t         vis;
 
   uint16_t            pes_buffers;
+
+  /* stored original handlers */
+  int (*fe_xine_init)(frontend_t *this_gen, const char *audio_driver,
+                      const char *audio_port,
+                      const char *video_driver,
+                      int pes_buffers,
+                      const char *static_post_plugins,
+                      const char *config_file);
 
   /* display */
   int         fd_tty;
@@ -99,6 +109,7 @@ typedef struct fbfe_t {
   uint16_t    width, height;
   uint16_t    video_width, video_height;
   uint8_t     overscan;
+  uint8_t     terminate_key_pressed;
   uint8_t     playback_finished;
   uint8_t     slave_playback_finished;
   uint8_t     aspect;
@@ -112,7 +123,7 @@ typedef struct fbfe_t {
   char        configfile[256];
   char        modeline[256];
 
-} fe_t;
+} fbfe_t, fe_t;
 
 #define IS_FBFE
 
@@ -133,17 +144,64 @@ static void fbfe_update_display_size(frontend_t *this_gen)
 }
 
 /*
+ * update_DFBARGS
+ *
+ * (optionally) add fbdev option to DFBARGS environment variable
+ */
+static void update_DFBARGS(const char *fb_dev)
+{
+  const char *env_old = getenv("DFBARGS");
+  char *env_new = NULL;
+
+  if (env_old) {
+    char *env_tmp = strdup(env_old);
+    char *head    = strstr(env_tmp, "fbdev=");
+
+    if (head) {
+      char *tail = strchr(head, ',');
+      if(head == env_tmp)
+	head = NULL;
+      else
+	*head = 0;
+      if(asprintf(&env_new, "%sfbdev=%s%s",
+	       head ? env_tmp : "", fb_dev, tail ? tail : "") < 0) {
+        free(env_tmp);
+        return;
+      }
+    } else {
+      if(asprintf(&env_new, "fbdev=%s%s%s", fb_dev, env_tmp ? "," : "", env_tmp ?: "") < 0) {
+        free(env_tmp);
+        return;
+      }
+    }
+    free(env_tmp);
+
+    LOGMSG("replacing environment variable DFBARGS with %s (original was %s)", 
+	   env_new, env_old);
+
+  } else {
+    if(asprintf(&env_new, "fbdev=%s", fb_dev) < 0)
+      return;
+
+    LOGMSG("setting environment variable DFBARGS to %s", env_new);
+  }
+
+  setenv("DFBARGS", env_new, 1);
+  free(env_new);
+}
+
+/*
  * fbfe_display_open
  */
 static int fbfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
                              int width, int height, int fullscreen, int hud,
                              int modeswitch, const char *modeline, int aspect,
-                             fe_keypress_f keyfunc, int no_x_kbd,
-                             const char *video_port,
-                             int scale_video, int field_order)
+                             fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
+                             const char *video_port, int scale_video, int field_order,
+                             const char *aspect_controller, int window_id)
 {
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(!this)
     return 0;
@@ -177,12 +235,12 @@ static int fbfe_display_open(frontend_t *this_gen,
   this->vis.frame_output_cb = fe_frame_output_cb;
   this->vis.user_data = this;
 
-  this->update_display_size = fbfe_update_display_size;
+  this->update_display_size_cb = fbfe_update_display_size;
 
   if(video_port && !strncmp(video_port, "/dev/", 5))
-    this->fb_dev = strdup(video_port);
+    this->video_port_name = strdup(video_port);
   else
-    this->fb_dev = NULL;
+    this->video_port_name = NULL;
 
 #if defined(KDSETMODE) && defined(KD_GRAPHICS)
   if (isatty(STDIN_FILENO))
@@ -207,11 +265,13 @@ static int fbfe_display_open(frontend_t *this_gen,
  *
  * configure windows
  */
-static int fbfe_display_config(frontend_t *this_gen, int width, int height, int fullscreen, 
-			       int modeswitch, const char *modeline, int aspect, 
-			       int scale_video, int field_order) 
+static int fbfe_display_config(frontend_t *this_gen,
+                               int xpos, int ypos,
+                               int width, int height, int fullscreen,
+                               int modeswitch, const char *modeline,
+                               int aspect, int scale_video, int field_order)
 {
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(!this)
     return 0;
@@ -247,72 +307,76 @@ static void fbfe_interrupt(frontend_t *this_gen)
 
 static int fbfe_run(frontend_t *this_gen) 
 {
-  struct timeval tv;
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
   if(this && this->playback_finished)
     return !this->playback_finished;
 
-  tv.tv_sec = 0;
-  tv.tv_usec = 500*1000;
-  select(0, NULL, NULL, NULL, &tv); /* just sleep 500ms */
+  /* just sleep 500ms */
+  select(0, NULL, NULL, NULL, &(struct timeval){ .tv_sec = 0, .tv_usec = 500*1000 }); 
 
   return !(!this || this->playback_finished);
 }
 
 static void fbfe_display_close(frontend_t *this_gen) 
 {
-  fe_t *this = (fe_t*)this_gen;
+  fbfe_t *this = (fbfe_t*)this_gen;
 
-  if(this) {
-    if(this->fb_dev) {
-      free(this->fb_dev);
-      this->fb_dev = NULL;
-    }
-    if(this->xine)
-      this->fe.xine_exit(this_gen);
+  if (!this)
+    return;
 
-    if (this->fd_tty >= 0) {
+  if (this->xine)
+    this->fe.xine_exit(this_gen);
+
+  if (this->fd_tty >= 0) {
 #if defined(KDSETMODE) && defined(KD_TEXT)
-      if(ioctl(this->fd_tty, KDSETMODE, KD_TEXT) == -1)
-        LOGERR("fbfe_display_close: failed to set /dev/tty to text mode");
+    if(ioctl(this->fd_tty, KDSETMODE, KD_TEXT) == -1)
+      LOGERR("fbfe_display_close: failed to set /dev/tty to text mode");
 #endif
-      close(this->fd_tty);
-      this->fd_tty = -1;
-    }
+    close(this->fd_tty);
+    this->fd_tty = -1;
   }
+
+  free(this->video_port_name);
+  this->video_port_name = NULL;
+}
+
+static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver, 
+			  const char *audio_port,
+			  const char *video_driver, 
+			  int pes_buffers,
+			  const char *static_post_plugins,
+                          const char *config_file)
+{
+  fbfe_t *this = (fbfe_t*)this_gen;
+
+  if (video_driver && !strcmp(video_driver, "DirectFB"))
+    update_DFBARGS(this->video_port_name);
+
+  return this->fe_xine_init(this_gen, audio_driver, audio_port,
+                            video_driver, pes_buffers, static_post_plugins, config_file);
 }
 
 static frontend_t *fbfe_get_frontend(void)
 {
-  fe_t *this = calloc(1, sizeof(fe_t));
+  fbfe_t *this = calloc(1, sizeof(fbfe_t));
 
   this->fd_tty = -1;
+
+  init_fe((fe_t*)this);
 
   this->fe.fe_display_open   = fbfe_display_open;
   this->fe.fe_display_config = fbfe_display_config;
   this->fe.fe_display_close  = fbfe_display_close;
 
-  this->fe.xine_init  = fe_xine_init;
-  this->fe.xine_open  = fe_xine_open;
-  this->fe.xine_play  = fe_xine_play;
-  this->fe.xine_stop  = fe_xine_stop;
-  this->fe.xine_close = fe_xine_close;
-  this->fe.xine_exit  = fe_xine_exit;
-  this->fe.xine_is_finished = fe_is_finished;
-
   this->fe.fe_run       = fbfe_run;
   this->fe.fe_interrupt = fbfe_interrupt;
 
-  this->fe.fe_free      = fe_free;
+  this->update_display_size_cb = fbfe_update_display_size;
 
-  this->fe.grab                  = fe_grab;
-#ifndef FE_STANDALONE
-  this->fe.xine_osd_command      = xine_osd_command;
-  this->fe.xine_control          = xine_control;
-
-  this->fe.xine_queue_pes_packet = xine_queue_pes_packet;
-#endif /*#ifndef FE_STANDALONE */
+  /* override */
+  this->fe_xine_init  = this->fe.xine_init;
+  this->fe.xine_init  = fbfe_xine_init;
 
   return (frontend_t*)this;
 }
