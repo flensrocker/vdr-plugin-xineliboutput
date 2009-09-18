@@ -87,9 +87,9 @@ Buildtime options
 
   or changing corresponding lines in plugin's Makefile.
 
-  It is possible to compile only remote frontends with command 
+  It is possible to compile only remote frontends with command
   "make frontends". Building frontends is possible without VDR.
-  Only xine-lib (and corresponding development package or headers)
+  Only xine-lib and corresponding development package or headers
   are required.
 
 
@@ -273,14 +273,14 @@ Using with xine-ui (xine, fbxine, gxine, ...)
 
   Remote mode must be enabled in VDR plugin.
 
-  Some configuration options are not available when using 
+  Some configuration options are not available when using
   third-party frontends.
 
 
 Using with other media players (mplayer, vlc, ...)
 
-  Primary device video and audio (without OSD or subtitles) 
-  can be streamed from plugin control port to almost any media 
+  Primary device video and audio (without OSD or subtitles)
+  can be streamed from plugin control port to almost any media
   player using http or rtsp.
 
   Session Announcement Protocol (SAP) compatible players 
@@ -516,15 +516,22 @@ Shortcut key macros
   subtitle track menu for media player (identical to audio track 
   selection with VDR "Audio" key).
 
+Special frontend control keys
 
-Special LIRC keys
+  When frontend is started with --hotkeys command-line option, following
+  keyboard and LIRC keys are interpreted by vdr-sxfe/vdr-fbfe:
 
-  If plugin is compiled with macro INTERPRET_LIRC_KEYS defined, following 
-  LIRC keys are interpreted by vdr-sxfe/vdr-fbfe:
+    Keyboard (console and X11 window)
+      f, F         Toggle fullscreen state
+      d, D         Toggle deinterlacing
 
-    Fullscreen   Toggle fullscreen state
-    Deinterlace  Toggle deinterlacing
-    Quit         Close program
+    LIRC
+      Fullscreen   Toggle fullscreen state
+      Deinterlace  Toggle deinterlacing
+      Quit         Close program
+
+  [ this run-time option replaces old build-time options 
+    INTERPRET_LIRC_KEYS and XINELIBOUTPUT_FE_FULLSCREEN_TOGGLE ]
 
 
 Xine-specific settings
