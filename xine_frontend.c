@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.8 2009-08-14 12:56:27 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.9 2009-09-18 11:40:44 phintuka Exp $
  *
  */
 
@@ -12,6 +12,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+
+# ifdef boolean
+#  define HAVE_BOOLEAN
+# endif
+# include <jpeglib.h>
+# undef boolean
 
 #define XINE_ENGINE_INTERNAL
 #include <xine.h>
@@ -26,20 +32,14 @@
 #define LOG_MODULENAME "[vdr-fe]    "
 #include "logdefs.h"
 
+#include "xine_input_vdr.h"
+#include "xine_input_vdr_mrl.h"
 #include "xine/post.h"
 
 #undef  MIN
 #define MIN(a,b) ( (a) < (b) ? (a) : (b))
 #undef  MAX
 #define MAX(a,b) ( (a) > (b) ? (a) : (b))
-
-/* from vdr_input_plugin: */
-typedef struct {
-  input_plugin_t           input_plugin;
-  vdr_input_plugin_funcs_t f;
-  /* ... */
-} vdr_input_plugin_t;
-
 
 static inline char *strn0cpy(char *dest, const char *src, int n) 
 {
@@ -143,7 +143,7 @@ static int find_input_plugin(fe_t *this)
       LOGMSG("find_input_plugin: current xine input plugin is not " MRL_ID " !");
       return 0;
     }
-    this->input_plugin = this->stream->input_plugin;
+    this->input_plugin = (vdr_input_plugin_if_t*)this->stream->input_plugin;
   }
   return 1;
 }
@@ -154,9 +154,10 @@ static void *fe_control(frontend_t *this_gen, const char *cmd);
  * xine callbacks
  */
 
-static double fe_dest_pixel_aspect(const fe_t *this, double video_pixel_aspect,
+static double fe_dest_pixel_aspect(const frontend_t *this_gen, double video_pixel_aspect,
 				   int video_width, int video_height)
 {
+  const fe_t *this = (const fe_t*)this_gen;
   /*int new_cropping = 0;*/
   double result = 1.0;
 
@@ -274,8 +275,8 @@ static void fe_frame_output_cb (void *data,
   *win_x = this->xpos;
   *win_y = this->ypos;  
   
-  *dest_pixel_aspect = fe_dest_pixel_aspect(this, video_pixel_aspect,
-					    video_width, video_height);
+  *dest_pixel_aspect = this->dest_pixel_aspect((frontend_t*)this, video_pixel_aspect,
+					       video_width, video_height);
 
 #if 0
   if(this->cropping) {
@@ -312,9 +313,9 @@ static void fe_frame_output_cb (void *data,
       .pan_scan = 0,
     };
     const xine_event_t event = {
-      .type = XINE_EVENT_FRAME_FORMAT_CHANGE,
-      .stream = this->stream,
-      .data = &framedata,
+      .type        = XINE_EVENT_FRAME_FORMAT_CHANGE,
+      .stream      = this->stream,
+      .data        = &framedata,
       .data_length = sizeof(framedata),
     };
     xine_event_send(this->stream, &event);
@@ -335,8 +336,8 @@ static void fe_frame_output_cb (void *data,
                   this->aspect_controller, (int)(video_aspect * 10000.0)) 
          < sizeof(cmd)) {
         LOGDBG("Aspect ratio changed, executing %s", cmd);
-        if (system(cmd) == -1)
-          LOGERR("%s failed", cmd);
+        if(system(cmd) == -1)
+	  LOGERR("Executing /bin/sh -c %s failed", cmd);
         this->video_aspect = video_aspect;
       }
     }
@@ -540,7 +541,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(this->xine)
     this->fe.xine_exit(this_gen);
-  
+
   this->stream          = NULL;
   this->video_port      = NULL;
   this->audio_port      = NULL;
@@ -628,8 +629,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   this->video_port_none = NULL;
   
   /* re-configure display size (DirectFB driver changes display mode in init) */
-  if(this->update_display_size)
-    this->update_display_size(this_gen);
+  if(this->update_display_size_cb)
+    this->update_display_size_cb(this_gen);
 
   /* create audio port */
 
@@ -741,6 +742,7 @@ static int fe_xine_open(frontend_t *this_gen, const char *mrl)
 
   this->input_plugin      = NULL;
   this->playback_finished = 1;
+  this->terminate_key_pressed = 0;
 
   if (asprintf(&url, "%s#nocache", mrl ? : MRL_ID "://") < 0)
     return 0;
@@ -1071,23 +1073,21 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
 static int fe_xine_play(frontend_t *this_gen) 
 {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
   if(!this)
     return 0;
 
   fe_post_rewire(this);
 
-  this->input_plugin = NULL;
+  this->input_plugin      = NULL;
   this->playback_finished = xine_play(this->stream, 0, 0) ? 0 : 1;
 
   if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
-  input_vdr->f.xine_input_event = this->keypress;
-  input_vdr->f.fe_control = fe_control;
-  input_vdr->f.fe_handle  = this_gen;
+  this->input_plugin->f.xine_input_event = this->keypress;
+  this->input_plugin->f.fe_control = fe_control;
+  this->input_plugin->f.fe_handle  = this_gen;
 
   if(this->playback_finished)
     LOGMSG("Error playing " MRL_ID ":// !");
@@ -1102,7 +1102,7 @@ static int fe_xine_stop(frontend_t *this_gen)
   if(!this)
     return 0;
 
-  this->input_plugin = NULL;
+  this->input_plugin      = NULL;
   this->playback_finished = 1;
 
   xine_stop(this->stream);
@@ -1120,13 +1120,10 @@ static void fe_xine_close(frontend_t *this_gen)
     return;
 
   if (this && this->xine) {
-#ifndef FE_STANDALONE
     if(this->input_plugin) {
-      vdr_input_plugin_t *input_vdr;
-      input_vdr = (vdr_input_plugin_t *)this->input_plugin;
-      input_vdr->f.xine_input_event = NULL;
+      this->input_plugin->f.xine_input_event = NULL;
+      this->input_plugin->f.fe_control       = NULL;
     }
-#endif
 
     fe_xine_stop(this_gen);
 
@@ -1200,6 +1197,8 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 
   if (!this)
     return FE_XINE_ERROR;
+  if (this->terminate_key_pressed)
+    return FE_XINE_EXIT;
   if (this->playback_finished)
     return FE_XINE_ERROR;
 
@@ -1213,7 +1212,6 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 
 /************************** hooks to input plugin ****************************/
 
-#ifndef FE_STANDALONE
 /*
  * data/control from VDR
  */
@@ -1221,64 +1219,130 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 static int xine_control(frontend_t *this_gen, const char *cmd)
 {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
   if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
-  return input_vdr->f.push_input_control(this->input_plugin, cmd);
+  return this->input_plugin->f.push_input_control(this->input_plugin, cmd);
 }
 
 static int xine_osd_command(frontend_t *this_gen, struct osd_command_s *cmd) {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
   if(!find_input_plugin(this))
     return -1;
 
-  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
-  return input_vdr->f.push_input_osd(this->input_plugin, cmd);
+  return this->input_plugin->f.push_input_osd(this->input_plugin, cmd);
 }
 
 static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len)
 {
   fe_t *this = (fe_t*)this_gen;
-  vdr_input_plugin_t *input_vdr;
 
   if(!find_input_plugin(this))
     return 0/*-1*/;
 
-  input_vdr = (vdr_input_plugin_t *)this->input_plugin;
-  return input_vdr->f.push_input_write(this->input_plugin, data, len);
+  return this->input_plugin->f.push_input_write(this->input_plugin, data, len);
 }
-
-#else /* #ifndef FE_STANDALONE */
 
 /*
  * control from frontend to xine/vdr
  */
 
-static void process_xine_keypress(fe_t *this, 
-				  const char *map, const char *key,
-				  int repeat, int release)
+
+static int fe_send_input_event(frontend_t *this_gen, const char *map, 
+			       const char *key, int repeat, int release)
 {
-  /* from UI --> input plugin --> vdr */
+  fe_t *this = (fe_t*)this_gen;
+
   LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
-  if(this->input_plugin || find_input_plugin(this)) {
-    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input_plugin;
-    if(input_vdr->f.input_control) {
-      input_vdr->f.input_control(this->input_plugin, map, key, repeat, release);
-    } else {
-      LOGMSG("Keypress --- NO HANDLER SET");
-    }
-  } else {
-    LOGMSG("Keypress --- NO PLUGIN FOUND");
+
+  /* local mode: --> vdr callback */
+  if(this->keypress) {
+    this->keypress(map, key);
+    return FE_OK;
   }
+
+  /* remote mode: --> input plugin --> vdr */
+  if (find_input_plugin(this)) {
+    if (this->input_plugin->f.post_vdr_event) {
+
+      char *msg = NULL;
+      if (map) {
+        if (asprintf(&msg, "KEY %s %s %s %s\r\n", map, key,
+                     repeat?"Repeat":"", release?"Release":"") < 0)
+          msg = NULL;
+      } else {
+        if (asprintf(&msg, "KEY %s\r\n", key) < 0)
+          msg = NULL;
+      }
+
+      if (msg) {
+        int r = this->input_plugin->f.post_vdr_event(this->input_plugin, msg);
+        free(msg);
+        if (r > 0)
+          return FE_OK;
+      }
+      LOGMSG("fe_send_input_event: message KEY %s lost", key);
+      return FE_ERROR;
+    }
+  }
+
+  LOGMSG("fe_send_input_event: handler not set, event lost !");
+  return FE_ERROR;
 }
 
-#endif /* #ifndef FE_STANDALONE */
+
+static int fe_send_event(frontend_t *this_gen, const char *data)
+{
+  fe_t *this = (fe_t*)this_gen;
+
+  if (!data)
+    return FE_ERROR;
+
+  if (!strcmp(data, "TOGGLE_FULLSCREEN")) {
+    if(this->toggle_fullscreen_cb)
+      this->toggle_fullscreen_cb(this_gen);
+
+  } else if (!strcmp(data, "QUIT")) {
+    this->terminate_key_pressed = 1;
+
+  } else if(!strcmp(data, "TOGGLE_DEINTERLACE")) {
+    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
+		   xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
+
+  } else if(!strncasecmp(data, "DEINTERLACE ", 12)) {
+    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, atoi(data+12) ? 1 : 0);
+
+  } else {
+
+    LOGDBG("Event: %s", data);
+
+    /* local mode: --> vdr callback */
+    if (this->keypress) {
+      this->keypress(data, NULL);
+      return FE_OK;
+    }
+
+    /* remote mode: --> input plugin --> vdr */
+    if (find_input_plugin(this)) {
+      if (this->input_plugin->f.post_vdr_event) {
+        char *msg = NULL;
+        if (asprintf(&msg, "%s\r\n", data) < 1)
+          msg = NULL;
+        if (msg) {
+          int r = this->input_plugin->f.post_vdr_event(this->input_plugin, msg);
+          free(msg);
+          return (r > 0) ? FE_OK : FE_ERROR;
+        }
+        return FE_ERROR;
+      }
+    }
+  }
+
+  return FE_OK;
+}
 
 /*
  *  Control messages from input plugin
@@ -1378,7 +1442,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
       posts->pip_stream = NULL;
     }
     return NULL;
-    
+
   } else if(!strncmp(cmd, "POST ", 5)) {
     char *name = strdup(cmd+5), *args = name, *pt;
 
@@ -1678,13 +1742,17 @@ void init_fe(fe_t *fe)
 
   fe->fe.xine_is_finished = fe_is_finished;
 
-#ifndef FE_STANDALONE
   fe->fe.xine_osd_command      = xine_osd_command;
   fe->fe.xine_control          = xine_control;
   fe->fe.xine_queue_pes_packet = xine_queue_pes_packet;
-#endif
 
   fe->fe.grab             = fe_grab;
+
+  fe->fe.send_event       = fe_send_event;
+  fe->fe.send_input_event = fe_send_input_event;
+
+  fe->dest_pixel_aspect    = fe_dest_pixel_aspect;
+  fe->frame_output_handler = fe_frame_output_cb;
 }
 
 #ifdef FE_STANDALONE
