@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.15 2009-06-16 21:58:13 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.16 2009-09-18 11:38:05 phintuka Exp $
  *
  */
 
@@ -28,6 +28,7 @@
 #include <sys/shm.h>
 #include <math.h>
 
+/* X11 */
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/keysym.h>
@@ -90,23 +91,23 @@
 #define MWM_HINTS_DECORATIONS       (1L << 1)
 #define PROP_MWM_HINTS_ELEMENTS     5
 typedef struct _mwmhints {
-  uint32_t                          flags;
-  uint32_t                          functions;
-  uint32_t                          decorations;
-  int32_t                           input_mode;
-  uint32_t                          status;
+  uint32_t     flags;
+  uint32_t     functions;
+  uint32_t     decorations;
+  int32_t      input_mode;
+  uint32_t     status;
 } MWMHints;
 
 #ifdef HAVE_XRENDER
 /* HUD Scaling */
 typedef struct _xrender_surf
 {
-  int w, h;
-  int depth;
-  Visual *vis;
-  Drawable draw;
-  Picture pic;
-  int allocated : 1;
+  Visual   *vis;
+  Drawable  draw;
+  Picture   pic;
+  uint16_t  w, h;
+  uint8_t   depth;
+  uint8_t   allocated : 1;
 } Xrender_Surf;
 #endif /* HAVE_XRENDER */
 
@@ -118,7 +119,20 @@ typedef struct sxfe_s {
 
   /* function pointers */
   frontend_t              fe;
-  void (*update_display_size)(frontend_t*);
+  void   (*update_display_size_cb)(frontend_t*);
+  void   (*toggle_fullscreen_cb)  (frontend_t*);
+
+  /* from xine_frontend.c */
+  double (*dest_pixel_aspect)   (const frontend_t *,
+                                 double video_pixel_aspect,
+                                 int video_width, int video_height);
+  void   (*frame_output_handler)(void *data,
+                                 int video_width, int video_height,
+                                 double video_pixel_aspect,
+                                 int *dest_x, int *dest_y,
+                                 int *dest_width, int *dest_height,
+                                 double *dest_pixel_aspect,
+                                 int *win_x, int *win_y);
 
   /* vdr */
   fe_keypress_f        keypress;
@@ -151,7 +165,7 @@ typedef struct sxfe_s {
   xine_t              *xine;
   xine_stream_t       *stream;
   xine_stream_t       *slave_stream;
-  input_plugin_t      *input;
+  vdr_input_plugin_if_t *input_plugin;
   xine_video_port_t   *video_port;
   xine_video_port_t   *video_port_none;
   xine_audio_port_t   *audio_port;
@@ -168,7 +182,7 @@ typedef struct sxfe_s {
   /* frontend */
   double    display_ratio;
   double    video_aspect;
-  char     *aspect_controller;
+  const char *aspect_controller;
   int       xpos, ypos;
   uint16_t  video_width, video_height;
   uint16_t  width, height;
@@ -178,6 +192,7 @@ typedef struct sxfe_s {
   uint8_t   cropping;
   uint8_t   scale_video;
   uint8_t   overscan;
+  uint8_t   terminate_key_pressed;
   uint8_t   playback_finished;
   uint8_t   slave_playback_finished;
   uint8_t   fullscreen;
@@ -187,6 +202,7 @@ typedef struct sxfe_s {
   uint8_t   stay_above;
   uint8_t   no_border;
   uint8_t   check_move;
+  uint8_t   gui_hotkeys;
   uint8_t   no_x_kbd;
 
   /* strings */
@@ -233,7 +249,7 @@ static void fe_dest_size_cb (void *data,
   *dest_width  = this->width;
   *dest_height = this->height;
 
-  *dest_pixel_aspect = fe_dest_pixel_aspect(this, video_pixel_aspect,
+  *dest_pixel_aspect = fe_dest_pixel_aspect((frontend_t*)this, video_pixel_aspect,
 					    video_width, video_height);
 }
 
@@ -903,8 +919,10 @@ static int sxfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
                              int width, int height, int fullscreen, int hud,
                              int modeswitch, const char *modeline, int aspect,
-                             fe_keypress_f keyfunc, int no_x_kbd, const char *video_port,
-                             int scale_video, int field_order)
+                             fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
+                             const char *video_port,
+                             int scale_video, int field_order,
+                             const char *aspect_controller, int window_id)
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
 
@@ -951,6 +969,10 @@ static int sxfe_display_open(frontend_t *this_gen,
   this->scale_video     = scale_video;
   this->overscan        = 0;
   this->no_x_kbd        = no_x_kbd ? 1 : 0;
+  this->gui_hotkeys     = gui_hotkeys;
+  this->aspect_controller = aspect_controller;
+  this->window_id       = window_id;
+
   this->fullscreen_state_forced = 0;
   strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));
   this->xinerama_screen = -1;
@@ -1156,6 +1178,7 @@ static int sxfe_display_open(frontend_t *this_gen,
  * configure windows
  */
 static int sxfe_display_config(frontend_t *this_gen, 
+                               int xpos, int ypos,
 			       int width, int height, int fullscreen, 
 			       int modeswitch, const char *modeline, 
 			       int aspect, int scale_video, 
@@ -1250,7 +1273,9 @@ static void sxfe_toggle_fullscreen(sxfe_t *this)
     this->ypos = this->origypos;
   }
 
-  this->fe.fe_display_config((frontend_t*)this, this->origwidth, this->origheight,
+  this->fe.fe_display_config((frontend_t*)this,
+                             -1, -1,
+                             this->origwidth, this->origheight,
 			     this->fullscreen ? 0 : 1, 
 			     this->vmode_switch, this->modeline, 
 			     this->aspect, this->scale_video, this->field_order);
@@ -1492,10 +1517,10 @@ static int sxfe_run(frontend_t *this_gen)
 #endif
 #ifdef FE_STANDALONE
 	  if(ks == XK_Escape) {
-	    terminate_key_pressed = 1;
+	    this->terminate_key_pressed = 1;
 	    keep_going = 0;
 	  } else if (!this->no_x_kbd) {
-            process_xine_keypress((fe_t*)this, "XKeySym",ksname, 0, 0);
+            this->fe.send_input_event((frontend_t*)this, "XKeySym",ksname, 0, 0);
           }
 #else
 	  if(this->keypress && !this->no_x_kbd)
@@ -1566,11 +1591,10 @@ static int sxfe_xine_play(frontend_t *this_gen)
 # ifdef HAVE_XRENDER
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(r && this->input && this->hud) {
-    vdr_input_plugin_t *input_vdr = (vdr_input_plugin_t *)this->input;
+  if(r && this->input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
-    input_vdr->f.fe_handle  = this_gen;
-    input_vdr->f.intercept_osd = hud_osd_command;
+    this->input_plugin->f.fe_handle  = this_gen;
+    this->input_plugin->f.intercept_osd = hud_osd_command;
   }
 # endif /* HAVE_XRENDER */
 #endif /* FE_STANDALONE */
