@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.2\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:49+0300\n"
+"POT-Creation-Date: 2009-06-09 14:45+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -153,6 +153,21 @@ msgstr "lähin"
 
 msgid "bilinear"
 msgstr "bilineaarinen"
+
+msgid "none"
+msgstr "ei"
+
+msgid "nonref"
+msgstr "ei referoituja"
+
+msgid "bidir"
+msgstr "vain B-ruudut"
+
+msgid "nonkey"
+msgstr "ei avainruutuja"
+
+msgid "all"
+msgstr "kaikki"
 
 msgid "Frontend initialization failed"
 msgstr "Näyttölaitteen alustus epäonnistui"
@@ -341,9 +356,6 @@ msgstr "Taajuuskorjain"
 msgid "Use Video-Out Driver"
 msgstr "videoajuri"
 
-msgid "none"
-msgstr "ei"
-
 msgid "vector"
 msgstr "vektoroitu"
 
@@ -458,6 +470,12 @@ msgstr "Kontrasti"
 msgid "Brightness"
 msgstr "Kirkkaus"
 
+msgid "Sharpness"
+msgstr "Terävöinti"
+
+msgid "Noise Reduction"
+msgstr "Kohinanpoisto"
+
 msgid "Smooth fast forward"
 msgstr "Tasainen kuvakelaus"
 
@@ -490,6 +508,9 @@ msgstr "Läpinäkyvyyden korjaus"
 
 msgid "External subtitle size"
 msgstr "Erillisen tekstityksen koko"
+
+msgid "DVB subtitle decoder"
+msgstr "DVB-tekstityksen dekooderi"
 
 msgid "Decoder"
 msgstr "Dekooderi"
@@ -547,6 +568,9 @@ msgstr "  Kuuntele osoitteessa"
 
 msgid "  Remote keyboard"
 msgstr "  Käytä etänäppäimistöä"
+
+msgid "  Max number of clients"
+msgstr "  Asiakkaiden enimmäismäärä"
 
 msgid "  PIPE transport"
 msgstr "  PIPE-siirto"
@@ -614,6 +638,9 @@ msgstr "Tutki kappaleiden metatiedot"
 msgid "Cache metainfo"
 msgstr "Tallenna metatieto"
 
+msgid "Arrow keys control DVD playback"
+msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
+
 msgid "Grayscale"
 msgstr "Harmaasävy"
 
@@ -631,15 +658,3 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
-
-#~ msgid "nonref"
-#~ msgstr "ei referoituja"
-
-#~ msgid "bidir"
-#~ msgstr "vain B-ruudut"
-
-#~ msgid "nonkey"
-#~ msgstr "ei avainruutuja"
-
-#~ msgid "all"
-#~ msgstr "kaikki"
