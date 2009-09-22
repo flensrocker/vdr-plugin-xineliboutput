@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.17 2009-09-22 09:02:33 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.18 2009-09-22 10:42:26 phintuka Exp $
  *
  */
 
@@ -1502,35 +1502,40 @@ static int sxfe_run(frontend_t *this_gen)
       {
 	XKeyEvent *kevent = (XKeyEvent *) &event;
 	KeySym          ks;
-	char            *ksname;
 	char            buffer[20];
-	int             buf_len = 20;
 	XComposeStatus  status;
+        const char     *fe_event = NULL;
 
 	if(kevent->keycode) {
 	  XLockDisplay (this->display);
-	  XLookupString(kevent, buffer, buf_len, &ks, &status);
+	  XLookupString(kevent, buffer, sizeof(buffer), &ks, &status);
 	  XUnlockDisplay (this->display);
-	  ksname = XKeysymToString(ks);
-#if defined(XINELIBOUTPUT_FE_TOGGLE_FULLSCREEN) || defined(INTERPRET_LIRC_KEYS)
-	  if(ks == XK_f || ks == XK_F) {
-	    sxfe_toggle_fullscreen(this);
-	  } else if(ks == XK_d || ks == XK_D) {
-	    xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, 
-			   xine_get_param(this->stream, XINE_PARAM_VO_DEINTERLACE) ? 0 : 1);
-	  } else
-#endif
-#ifdef FE_STANDALONE
-	  if(ks == XK_Escape) {
-	    this->terminate_key_pressed = 1;
-	    keep_going = 0;
-	  } else if (!this->no_x_kbd) {
-            this->fe.send_input_event((frontend_t*)this, "XKeySym",ksname, 0, 0);
+
+          switch(ks) {
+            case XK_f:
+            case XK_F:
+              if (this->gui_hotkeys)
+                fe_event = "TOGGLE_FULLSCREEN";
+              break;
+            case XK_d:
+            case XK_D:
+              if (this->gui_hotkeys)
+                fe_event = "TOGGLE_DEINTERLACE";
+              break;
+            case XK_Escape:
+              if (!this->keypress) { /* ESC exits only in remote mode */
+                fe_event = "QUIT";
+                this->terminate_key_pressed = 1;
+                keep_going = 0;
+              }
+              break;
+            default:;
           }
-#else
-	  if(this->keypress && !this->no_x_kbd)
-	    this->keypress("XKeySym",ksname);
-#endif
+          if (fe_event)
+            this->fe.send_event((frontend_t*)this, fe_event);
+          else if (!this->no_x_kbd)
+            this->fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
+
 	}
       }
       break;
