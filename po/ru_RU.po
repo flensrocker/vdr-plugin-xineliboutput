@@ -166,7 +166,7 @@ msgid "nonkey"
 msgstr ""
 
 msgid "all"
-msg""
+msgstr ""
 
 msgid "Frontend initialization failed"
 msgstr ""
