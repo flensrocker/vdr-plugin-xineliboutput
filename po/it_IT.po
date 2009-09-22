@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:41+0300\n"
+"POT-Creation-Date: 2009-06-09 14:45+0300\n"
 "PO-Revision-Date: 2009-02-08 20:09+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -154,6 +154,21 @@ msgstr "più vicino"
 
 msgid "bilinear"
 msgstr "bilineare"
+
+msgid "none"
+msgstr "nessuno"
+
+msgid "nonref"
+msgstr "nonref"
+
+msgid "bidir"
+msgstr "bidir"
+
+msgid "nonkey"
+msgstr "nonkey"
+
+msgid "all"
+msgstr "tutti"
 
 msgid "Frontend initialization failed"
 msgstr "Inizializzazione frontend fallita"
@@ -342,9 +357,6 @@ msgstr "Equalizzatore audio"
 msgid "Use Video-Out Driver"
 msgstr "Utilizza driver uscita video"
 
-msgid "none"
-msgstr "nessuno"
-
 msgid "vector"
 msgstr "vettoriale"
 
@@ -459,6 +471,12 @@ msgstr "Contrasto"
 msgid "Brightness"
 msgstr "Luminosità"
 
+msgid "Sharpness"
+msgstr "Nitidezza"
+
+msgid "Noise Reduction"
+msgstr "Riduzione rumore"
+
 msgid "Smooth fast forward"
 msgstr "Avanzamento veloce leggero"
 
@@ -491,6 +509,9 @@ msgstr "Correzione trasparenza statica"
 
 msgid "External subtitle size"
 msgstr "Dimensione sottotitoli esterni"
+
+msgid "DVB subtitle decoder"
+msgstr "Decoder sottotitoli DVB"
 
 msgid "Decoder"
 msgstr "Decoder"
@@ -548,6 +569,9 @@ msgstr "  Indirizzo in ascolto"
 
 msgid "  Remote keyboard"
 msgstr "  Tastiera remota"
+
+msgid "  Max number of clients"
+msgstr "  Numero massimo di client"
 
 msgid "  PIPE transport"
 msgstr "  Protocollo PIPE"
@@ -615,6 +639,9 @@ msgstr "Scansione metainfo"
 msgid "Cache metainfo"
 msgstr "Cache metainfo"
 
+msgid "Arrow keys control DVD playback"
+msgstr "Riproduzione DVD con tasti freccia"
+
 msgid "Grayscale"
 msgstr "Scala di grigi"
 
@@ -632,4 +659,3 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
-
