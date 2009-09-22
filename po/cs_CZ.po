@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:41+0300\n"
+"POT-Creation-Date: 2009-06-09 14:45+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -152,6 +152,21 @@ msgid "nearest"
 msgstr ""
 
 msgid "bilinear"
+msgstr ""
+
+msgid "none"
+msgstr ""
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
 msgstr ""
 
 msgid "Frontend initialization failed"
@@ -341,9 +356,6 @@ msgstr "Korekce zvuku"
 msgid "Use Video-Out Driver"
 msgstr ""
 
-msgid "none"
-msgstr ""
-
 msgid "vector"
 msgstr ""
 
@@ -458,6 +470,12 @@ msgstr "Kontrast"
 msgid "Brightness"
 msgstr "Jas"
 
+msgid "Sharpness"
+msgstr ""
+
+msgid "Noise Reduction"
+msgstr ""
+
 msgid "Smooth fast forward"
 msgstr "Plynulé pøetáèení"
 
@@ -490,6 +508,9 @@ msgstr "Úprava statické prùhlednosti"
 
 msgid "External subtitle size"
 msgstr "Velikost externích titulkù"
+
+msgid "DVB subtitle decoder"
+msgstr ""
 
 msgid "Decoder"
 msgstr "Dekodér"
@@ -546,6 +567,9 @@ msgid "  Listen address"
 msgstr ""
 
 msgid "  Remote keyboard"
+msgstr ""
+
+msgid "  Max number of clients"
 msgstr ""
 
 msgid "  PIPE transport"
@@ -613,6 +637,9 @@ msgstr "Vyhledávat metainfo"
 
 msgid "Cache metainfo"
 msgstr "Uchovávat metainfo"
+
+msgid "Arrow keys control DVD playback"
+msgstr ""
 
 msgid "Grayscale"
 msgstr "Odstíny ¹edi"
