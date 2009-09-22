@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.26 2009-09-22 09:44:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.27 2009-09-22 10:10:09 phintuka Exp $
  *
  */
 
@@ -968,7 +968,16 @@ static void create_timeout_time(struct timespec *abstime, int timeout_ms)
   abstime->tv_nsec = now.tv_usec * 1000;
 }
 
-static int io_select_rd (int fd) 
+/**************************** socket I/O *********************************/
+
+/*
+ * io_select_rd()
+ *
+ * - poll socket for read
+ * - timeouts in 500 ms
+ * - returns XIO_*
+ */
+static int io_select_rd (int fd)
 {
   fd_set fdset, eset;
   int ret;
@@ -981,7 +990,7 @@ static int io_select_rd (int fd)
   FD_ZERO (&eset);
   FD_SET  (fd, &fdset);
   FD_SET  (fd, &eset);
-    
+
   select_timeout.tv_sec  = 0;
   select_timeout.tv_usec = 500*1000; /* 500 ms */
   errno = 0;
@@ -990,189 +999,240 @@ static int io_select_rd (int fd)
   if (ret == 0)
     return XIO_TIMEOUT;
   if (ret < 0) {
-    if(errno == EINTR || errno == EAGAIN)
+    if (errno == EINTR || errno == EAGAIN)
       return XIO_TIMEOUT;
     return XIO_ERROR;
   }
-  if(FD_ISSET(fd,&eset))
+
+  if (FD_ISSET(fd,&eset))
     return XIO_ERROR;
-  if(FD_ISSET(fd,&fdset))
+  if (FD_ISSET(fd,&fdset))
     return XIO_READY;
 
   return XIO_TIMEOUT;
 }
 
-static void write_control_data(vdr_input_plugin_t *this, const char *str, size_t len)
+/*
+ * write_control_data()
+ *
+ * - write len bytes to control socket.
+ * - returns number of bytes written, < 0 on error.
+ *
+ * NOTE: caller must hold fd_control lock !
+ */
+static ssize_t write_control_data(vdr_input_plugin_t *this, const char *str, size_t len)
 {
-  size_t ret;
-  while(len>0) {
+  size_t ret, result = len;
 
-    if(!this->control_running) {
+  while (len > 0) {
+
+    if (!this->control_running) {
       LOGERR("write_control aborted");
-      return;  
+      return -1;
     }
 
-#if 1
+    /* poll the socket */
     fd_set fdset, eset;
     struct timeval select_timeout;
     FD_ZERO (&fdset);
     FD_ZERO (&eset);
     FD_SET  (this->fd_control, &fdset);
-    FD_SET  (this->fd_control, &eset);   
+    FD_SET  (this->fd_control, &eset);
     select_timeout.tv_sec  = 0;
     select_timeout.tv_usec = 500*1000; /* 500 ms */
     errno = 0;
-    if(1 != select (this->fd_control + 1, NULL, &fdset, &eset, &select_timeout) ||
-       !FD_ISSET(this->fd_control, &fdset) ||
-       FD_ISSET(this->fd_control, &eset)) {
+    if (1 != select (this->fd_control + 1, NULL, &fdset, &eset, &select_timeout) ||
+        !FD_ISSET(this->fd_control, &fdset) ||
+        FD_ISSET(this->fd_control, &eset)) {
       LOGERR("write_control failed (poll timeout or error)");
       this->control_running = 0;
-      return;
+      return -1;
     }
-#endif
 
-    if(!this->control_running) {
+    if (!this->control_running) {
       LOGERR("write_control aborted");
-      return;  
+      return -1;
     }
 
     errno = 0;
-    ret = write(this->fd_control, str, len);
+    ret = write (this->fd_control, str, len);
 
-    if(ret <= 0) {
-      if(ret == 0) {
-	LOGMSG("write_control: disconnected");
-      } else if(errno == EAGAIN) {
-	LOGERR("write_control failed: EAGAIN");
-	continue;
-      } else if(errno == EINTR) {
-	LOGERR("write_control failed: EINTR");
-	pthread_testcancel();
+    if (ret <= 0) {
+      if (ret == 0) {
+        LOGMSG("write_control: disconnected");
+      } else if (errno == EAGAIN) {
+        LOGERR("write_control failed: EAGAIN");
+        continue;
+      } else if (errno == EINTR) {
+        LOGERR ("write_control failed: EINTR");
+        pthread_testcancel();
         continue;
       } else {
-	LOGERR("write_control failed");
+        LOGERR("write_control failed");
       }
       this->control_running = 0;
-      return;
+      return -1;
     }
     len -= ret;
     str += ret;
   }
+
+  return result;
 }
 
-static void write_control(vdr_input_plugin_t *this, const char *str)
+/*
+ * write_control()
+ *
+ * - write null-terminated string to control socket.
+ * - returns number of bytes written, < 0 on error
+ *
+ * NOTE: caller should NOT hold fd_control lock !
+ */
+static ssize_t write_control(vdr_input_plugin_t *this, const char *str)
 {
-  size_t len = strlen(str);
+  ssize_t ret = -1;
   pthread_mutex_lock (&this->fd_control_lock);
-  write_control_data(this, str, len);
+  write_control_data(this, str, strlen(str));
   pthread_mutex_unlock (&this->fd_control_lock);
+  return ret;
 }
 
-static void printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
+/*
+ * printf_control()
+ *
+ * - returns number of bytes written, < 0 on error
+ *
+ * NOTE: caller should NOT hold fd_control lock !
+ */
+static ssize_t printf_control(vdr_input_plugin_t *this, const char *fmt, ...)
 {
   va_list argp;
-  char buf[512];
+  char    buf[512];
+  ssize_t result;
 
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
   buf[sizeof(buf)-1] = 0;
 
-  write_control(this, buf);
+  result = write_control(this, buf);
+
   va_end(argp);
+
+  return result;
 }
 
-static int readline_control(vdr_input_plugin_t *this, char *buf, int maxlen,
-			    int timeout)
+/*
+ * readline_control()
+ *
+ * - read CR/LF terminated string from control socket
+ * - remove trailing CR/LF
+ * - returns > 0 : length of string
+ *           = 0 : timeout
+ *           < 0 : error
+ */
+static ssize_t readline_control(vdr_input_plugin_t *this, char *buf, size_t maxlen, int timeout)
 {
-  int num_bytes = 0, total_bytes = 0, err;
+  int     poll_result;
+  ssize_t read_result;
+  size_t  total_bytes = 0;
 
   *buf = 0;
-  while(total_bytes < maxlen-1 ) {
+  while (total_bytes < maxlen - 1) {
 
-    if(!this->control_running && timeout<0)
+    if (!this->control_running && timeout < 0)
       return -1;
 
     pthread_testcancel();
-    err = io_select_rd(this->fd_control);
+    poll_result = io_select_rd(this->fd_control);
     pthread_testcancel();
 
-    if(!this->control_running && timeout<0)
+    if (!this->control_running && timeout < 0)
       return -1;
 
-    if(err == XIO_TIMEOUT) {
-      if(timeout==0)
+    if (poll_result == XIO_TIMEOUT) {
+      if (timeout == 0)
 	return 0;
-      if(timeout>0)
+      if (timeout > 0)
 	timeout--;
       continue;
     }
-    if(err == XIO_ABORTED) {
-      LOGERR("readline_control: XIO_ABORTED at [%d]", num_bytes);
+    if (poll_result == XIO_ABORTED) {
+      LOGERR("readline_control: XIO_ABORTED at [%u]", (uint)total_bytes);
       continue;
     }
-    if(err != XIO_READY /* == XIO_ERROR */) {
-      LOGERR("readline_control: poll error at [%d]", num_bytes);
+    if (poll_result != XIO_READY /* == XIO_ERROR */) {
+      LOGERR("readline_control: poll error at [%u]", (uint)total_bytes);
       return -1;
     }
 
     errno = 0;
-    num_bytes = read (this->fd_control, buf + total_bytes, 1);
+    read_result = read (this->fd_control, buf + total_bytes, 1);
     pthread_testcancel();
 
-    if(!this->control_running && timeout<0)
+    if (!this->control_running && timeout < 0)
       return -1;
 
-    if (num_bytes <= 0) {
-      if(num_bytes==0)
+    if (read_result <= 0) {
+      if (read_result == 0)
 	LOGERR("Control stream disconnected");
       else
-	LOGERR("readline_control: read error at [%d]", num_bytes);
-      if(num_bytes < 0 && (errno == EINTR || errno==EAGAIN))
+	LOGERR("readline_control: read error at [%u]", (uint)total_bytes);
+      if (read_result < 0 && (errno == EINTR || errno == EAGAIN))
 	continue;
       return -1;
     }
-      
-    if(buf[total_bytes]) {
-      if(buf[total_bytes] == '\r') {
-	buf[total_bytes] = 0;
-      } else if(buf[total_bytes] == '\n') {
-	buf[total_bytes] = 0;
-	break;
+
+    if (buf[total_bytes]) {
+      if (buf[total_bytes] == '\r') {
+        buf[total_bytes] = 0;
+      } else if (buf[total_bytes] == '\n') {
+        buf[total_bytes] = 0;
+        break;
       } else {
-	total_bytes ++;
-	buf[total_bytes] = 0;
+        total_bytes ++;
+        buf[total_bytes] = 0;
       }
     }
-    TRACE("readline_control: %d bytes ... %s\n", 
-	  total_bytes, buf);
+    TRACE("readline_control: %d bytes ... %s\n", len, buf);
   }
 
-  TRACE("readline_control: %d bytes (max %d)\n", total_bytes, maxlen);
+  TRACE("readline_control: %d bytes (max %d)\n", len, maxlen);
 
   return total_bytes;
 }
 
-
-static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
+/*
+ * read_control()
+ *
+ * - read len bytes from control socket
+ * - returns < 0 on error
+ */
+static ssize_t read_control(vdr_input_plugin_t *this, uint8_t *buf, size_t len)
 {
-  int num_bytes, total_bytes = 0, err;
+  int     poll_result;
+  ssize_t num_bytes;
+  size_t  total_bytes = 0;
 
-  while(total_bytes < len) {
-    pthread_testcancel();
-    err = io_select_rd(this->fd_control);
-    pthread_testcancel();
+  while (total_bytes < len) {
 
-    if(!this->control_running)
+    if (!this->control_running)
       return -1;
 
-    if(err == XIO_TIMEOUT) {
+    pthread_testcancel();
+    poll_result = io_select_rd(this->fd_control);
+    pthread_testcancel();
+
+    if (!this->control_running)
+      return -1;
+
+    if (poll_result == XIO_TIMEOUT) {
       continue;
     }
-    if(err == XIO_ABORTED) {
+    if (poll_result == XIO_ABORTED) {
       LOGERR("read_control: XIO_ABORTED");
       continue;
     }
-    if(err == XIO_ERROR) {
+    if (poll_result == XIO_ERROR) {
       LOGERR("read_control: poll error");
       return -1;
     }
@@ -1182,8 +1242,8 @@ static int read_control(vdr_input_plugin_t *this, uint8_t *buf, int len)
     pthread_testcancel();
 
     if (num_bytes <= 0) {
-      if(this->control_running && num_bytes<0)
-	LOGERR("read_control read() error"); 
+      if (this->control_running && num_bytes < 0)
+        LOGERR("read_control read() error");
       return -1;
     }
     total_bytes += num_bytes;
