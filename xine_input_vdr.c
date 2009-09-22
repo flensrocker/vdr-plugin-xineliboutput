@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.27 2009-09-22 10:10:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.28 2009-09-22 10:15:42 phintuka Exp $
  *
  */
 
@@ -2366,10 +2366,10 @@ static void vdr_scale_osds(vdr_input_plugin_t *this,
   }
 }
 
-static int vdr_plugin_exec_osd_command(input_plugin_t *this_gen, 
+static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
 				       osd_command_t *cmd)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   int result = CONTROL_DISCONNECTED;
   int video_changed = 0;
 
@@ -3209,7 +3209,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   }
 
   if(err == CONTROL_OK) 
-    err = vdr_plugin_exec_osd_command((input_plugin_t*)this, &osdcmd);
+    err = vdr_plugin_exec_osd_command((vdr_input_plugin_if_t*)this, &osdcmd);
 
   free(osdcmd.data);
   free(osdcmd.palette);
@@ -3448,9 +3448,9 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
   return CONTROL_OK;
 }
 
-static int vdr_plugin_parse_control(input_plugin_t *this_gen, const char *cmd)
+static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *cmd)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   int err = CONTROL_OK, i, j;
   int /*int32_t*/ tmp32 = 0;
   uint64_t tmp64 = 0ULL;
@@ -4313,7 +4313,7 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
     return;
   }
 
-  vdr_plugin_parse_control((input_plugin_t*)this, cmd);
+  vdr_plugin_parse_control((vdr_input_plugin_if_t*)this, cmd);
 }
 
 static int vdr_plugin_read_net_tcp(vdr_input_plugin_t *this)
@@ -4776,7 +4776,7 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
   if(!this->pip_stream) {
     LOGMSG("Detected new video stream 0x%X", (unsigned int)data[3]);
     LOGMSG("  no xine stream yet, trying to create ...");
-    vdr_plugin_parse_control((input_plugin_t*)this, "SUBSTREAM 0xE1 50 50 288 196");
+    vdr_plugin_parse_control((vdr_input_plugin_if_t*)this, "SUBSTREAM 0xE1 50 50 288 196");
   }
   if(!this->pip_stream) {
     LOGMSG("  pip substream: no stream !");
@@ -4815,9 +4815,9 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
 }
 #endif
 
-static int vdr_plugin_write(input_plugin_t *this_gen, const char *data, int len)
+static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, int len)
 {
-  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
+  vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   buf_element_t      *buf = NULL;
   static int overflows = 0;
 
