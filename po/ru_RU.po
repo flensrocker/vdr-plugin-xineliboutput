@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:41+0300\n"
+"POT-Creation-Date: 2009-06-09 14:45+0300\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Vladimir Monchenko\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -152,6 +152,21 @@ msgstr ""
 
 msgid "bilinear"
 msgstr ""
+
+msgid "none"
+msgstr ""
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
+msg""
 
 msgid "Frontend initialization failed"
 msgstr ""
@@ -340,9 +355,6 @@ msgstr "Аудио эквалайзер"
 msgid "Use Video-Out Driver"
 msgstr ""
 
-msgid "none"
-msgstr ""
-
 msgid "vector"
 msgstr ""
 
@@ -457,6 +469,12 @@ msgstr "Контрастность"
 msgid "Brightness"
 msgstr "Яркость"
 
+msgid "Sharpness"
+msgstr ""
+
+msgid "Noise Reduction"
+msgstr ""
+
 msgid "Smooth fast forward"
 msgstr ""
 
@@ -488,6 +506,9 @@ msgid "Static transparency correction"
 msgstr "Статическая коррекция прозрачности"
 
 msgid "External subtitle size"
+msgstr ""
+
+msgid "DVB subtitle decoder"
 msgstr ""
 
 msgid "Decoder"
@@ -546,6 +567,9 @@ msgstr ""
 
 msgid "  Remote keyboard"
 msgstr "  Удаленная клавиатура"
+
+msgid "  Max number of clients"
+msgstr ""
 
 msgid "  PIPE transport"
 msgstr "  PIPE транспорт"
@@ -611,6 +635,9 @@ msgid "Scan for metainfo"
 msgstr ""
 
 msgid "Cache metainfo"
+msgstr ""
+
+msgid "Arrow keys control DVD playback"
 msgstr ""
 
 msgid "Grayscale"
