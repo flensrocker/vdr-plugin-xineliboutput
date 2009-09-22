@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.16 2009-09-18 11:38:05 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.17 2009-09-22 09:02:33 phintuka Exp $
  *
  */
 
@@ -136,6 +136,10 @@ typedef struct sxfe_s {
 
   /* vdr */
   fe_keypress_f        keypress;
+
+  /* stored original handlers */
+  int (*fe_xine_open)(frontend_t *this_gen, const char *mrl);
+  int (*fe_xine_play)(frontend_t *this_gen);
 
   /* X11 */
   Display *display;
@@ -1258,8 +1262,9 @@ static int sxfe_display_config(frontend_t *this_gen,
   return 1;
 }
 
-static void sxfe_toggle_fullscreen(sxfe_t *this)
+static void sxfe_toggle_fullscreen(frontend_t *this_gen)
 {
+  sxfe_t *this = (sxfe_t*)this;
   int force = this->fullscreen_state_forced;
   this->fullscreen_state_forced = 0;
 
@@ -1467,7 +1472,7 @@ static int sxfe_run(frontend_t *this_gen)
 	  static Time prev_time = 0;
 	  if(bev->time - prev_time < DOUBLECLICK_TIME) {
 	    /* Toggle fullscreen */
-	    sxfe_toggle_fullscreen(this);
+	    this->toggle_fullscreen_cb((frontend_t*)this);
 	    prev_time = 0; /* don't react to third click ... */
 	  } else {
 	    prev_time = bev->time;
@@ -1554,21 +1559,24 @@ static void sxfe_display_close(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
-#ifdef HAVE_XRENDER
-  hud_osd_close(this_gen);
-#endif
+  if(!this)
+    return;
 
-  if(this && this->display) {
+  if(this->xine)
+    this->fe.xine_exit(this_gen);
+
+  if(this->display) {
     
-    if(this->xine)
-      this->fe.xine_exit(this_gen);
+#ifdef HAVE_XRENDER
+    hud_osd_close(this_gen);
+#endif
 
 #ifdef HAVE_DBUS_GLIB_1
     /* Restore GNOE screensaver */
     gnome_screensaver_control(1);
 #endif
 #ifdef HAVE_XDPMS
-    if(this->dpms_state == TRUE)
+    if(this->dpms_state)
       DPMSEnable(this->display);
 #endif
     if(this->window_id <= 0) {
@@ -1583,54 +1591,74 @@ static void sxfe_display_close(frontend_t *this_gen)
   }
 }
 
-static int sxfe_xine_play(frontend_t *this_gen)
+/*
+ * sxfe_xine_open
+ *
+ * Override fe_xine_open:
+ *  - Set window name: append remote host address to title bar text
+ */
+static int sxfe_xine_open(frontend_t *this_gen, const char *mrl)
 {
-  int r = fe_xine_play(this_gen);
-
-#ifdef FE_STANDALONE
-# ifdef HAVE_XRENDER
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(r && this->input_plugin && this->hud) {
+  int result = this->fe_xine_open(this_gen, mrl);
+
+  if(result && mrl && !strncmp(mrl, MRL_ID, MRL_ID_LEN) && strstr(mrl, "//")) {
+    char *name = NULL, *end;
+    if (asprintf(&name, "VDR - %s", strstr(mrl, "//")+2) >= 0) {
+      if (NULL != (end = strstr(name, ":37890")) || /* hide only default port */
+          NULL != (end = strchr(name, '#')))        /* hide attributes */
+        *end = 0;
+      XStoreName(this->display, this->window[0], name);
+      XStoreName(this->display, this->window[1], name);
+      free(name);
+    }
+  }
+
+  return result;
+}
+
+static int sxfe_xine_play(frontend_t *this_gen)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+
+  int result = this->fe_xine_play(this_gen);
+
+#ifdef HAVE_XRENDER
+  if (result && this->input_plugin && this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
-    this->input_plugin->f.fe_handle  = this_gen;
+    this->input_plugin->f.fe_handle     = this_gen;
     this->input_plugin->f.intercept_osd = hud_osd_command;
   }
-# endif /* HAVE_XRENDER */
-#endif /* FE_STANDALONE */
+#endif /* HAVE_XRENDER */
 
-  return r;
+  return result;
 }
 
 static frontend_t *sxfe_get_frontend(void)
 {
   sxfe_t *this = calloc(1, sizeof(sxfe_t));
 
+  init_fe((fe_t*)this);
+
   this->window_id = -1;
-  
+
   this->fe.fe_display_open   = sxfe_display_open;
   this->fe.fe_display_config = sxfe_display_config;
   this->fe.fe_display_close  = sxfe_display_close;
-  
-  this->fe.xine_init  = fe_xine_init;
-  this->fe.xine_open  = fe_xine_open;
-  this->fe.xine_play  = sxfe_xine_play;
-  this->fe.xine_stop  = fe_xine_stop;
-  this->fe.xine_close = fe_xine_close;
-  this->fe.xine_exit  = fe_xine_exit;
-  this->fe.xine_is_finished = fe_is_finished;
-  
-  this->fe.fe_run  = sxfe_run;
+
+  this->fe.fe_run       = sxfe_run;
   this->fe.fe_interrupt = sxfe_interrupt;
-  this->fe.fe_free = fe_free;
 
-  this->fe.grab                  = fe_grab;
-#ifndef FE_STANDALONE
-  this->fe.xine_osd_command      = xine_osd_command;
-  this->fe.xine_control          = xine_control;
+  this->toggle_fullscreen_cb = sxfe_toggle_fullscreen;
 
-  this->fe.xine_queue_pes_packet = xine_queue_pes_packet;
-#endif /*#ifndef FE_STANDALONE */
+  /* override */
+
+  this->fe_xine_open  = this->fe.xine_open;
+  this->fe_xine_play  = this->fe.xine_play;
+
+  this->fe.xine_open  = sxfe_xine_open;
+  this->fe.xine_play  = sxfe_xine_play;
 
   return (frontend_t*)this;
 }
