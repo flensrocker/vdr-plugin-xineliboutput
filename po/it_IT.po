@@ -162,10 +162,10 @@ msgid "nonref"
 msgstr "nonref"
 
 msgid "bidir"
-msgstr "nonref"
+msgstr "bidir"
 
 msgid "nonkey"
-msgstr "nonref"
+msgstr "nonkey"
 
 msgid "all"
 msgstr "tutti"
