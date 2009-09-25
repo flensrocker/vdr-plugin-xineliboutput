@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.1.0\n"
+"Project-Id-Version: Xineliboutput 1.0.5\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-09-21 03:00+0800\n"
+"POT-Creation-Date: 2009-09-25 15:30+0300\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -219,6 +219,9 @@ msgstr "播放文件"
 msgid "Button$Queue"
 msgstr "按钮$队列"
 
+msgid "Subtitles"
+msgstr ""
+
 msgid "Media"
 msgstr "媒体"
 
@@ -269,6 +272,9 @@ msgstr "音频压缩"
 
 msgid "Audio equalizer >>"
 msgstr "音频均衡器 >>"
+
+msgid "No subtitles available!"
+msgstr ""
 
 msgid "Local Frontend"
 msgstr "本地前端"
@@ -478,9 +484,6 @@ msgstr "屏幕显示"
 msgid "Hide main menu"
 msgstr "隐藏主菜单"
 
-msgid "Resolution"
-msgstr "解决方案"
-
 msgid "Blending method"
 msgstr "混合方法"
 
@@ -652,3 +655,5 @@ msgstr "测试图像"
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib 视频输出插件 by NFVDR-HD"
 
+#~ msgid "Resolution"
+#~ msgstr "解决方案"
