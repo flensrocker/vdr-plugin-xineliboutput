@@ -6,7 +6,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.2\n"
+"Project-Id-Version: Xineliboutput 1.0.5\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
 "POT-Creation-Date: 2009-06-09 14:45+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
@@ -426,7 +426,7 @@ msgid "  Chroma Filter"
 msgstr "  Käytä Chroma-suodinta"
 
 msgid "Sharpen / Blur"
-msgstr "Terävöinti / Sumennus"
+msgstr "Terävöinti / sumennus"
 
 msgid "  Width of the luma matrix"
 msgstr "  Luma-matriisin leveys"
@@ -447,7 +447,7 @@ msgid "  Amount of chroma sharpness/blur"
 msgstr "  Chroma-terävöinti/-sumennus"
 
 msgid "3D Denoiser"
-msgstr "3D kohinanpoisto"
+msgstr "3D-kohinanpoisto"
 
 msgid "  Spatial luma strength"
 msgstr "  Luman tilavoimakkuus"
@@ -570,7 +570,7 @@ msgid "  Remote keyboard"
 msgstr "  Käytä etänäppäimistöä"
 
 msgid "  Max number of clients"
-msgstr "  Asiakkaiden enimmäismäärä"
+msgstr "  Asiakkaiden maksimimäärä"
 
 msgid "  PIPE transport"
 msgstr "  PIPE-siirto"
