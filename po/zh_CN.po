@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.5\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-09-25 15:30+0300\n"
+"POT-Creation-Date: 2009-09-25 16:04+0300\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -245,6 +245,9 @@ msgstr "播放远程光盘 >>"
 
 msgid "Play audio CD >>"
 msgstr "播放音乐CD >>"
+
+msgid "Select subtitle track >>"
+msgstr ""
 
 msgid "Video settings"
 msgstr "视频设置"
