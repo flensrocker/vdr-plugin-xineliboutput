@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.100 2009-08-19 17:02:43 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.101 2009-09-27 13:04:06 phintuka Exp $
  *
  */
 
@@ -1386,6 +1386,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
     if(this->slave_stream)
       fe_control(this_gen, "SLAVE 0x0\r\n");
     init_dummy_ports(this, 0);
+    this->video_width = this->video_height = 0;
 
   } else if(!strncmp(cmd, "SLAVE 0x", 8)) {
     unsigned long pt;
@@ -1420,6 +1421,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
 	fe_post_rewire(this);
       }
       this->slave_playback_finished = !slave_stream;
+      this->video_width = this->video_height = 0;
     }
 
   } else if(!strncmp(cmd, "ENDOFSTREAM", 11)) {
