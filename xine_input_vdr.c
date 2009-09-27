@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.28 2009-09-22 10:15:42 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.29 2009-09-27 12:39:05 phintuka Exp $
  *
  */
 
@@ -1092,7 +1092,7 @@ static ssize_t write_control(vdr_input_plugin_t *this, const char *str)
 {
   ssize_t ret = -1;
   pthread_mutex_lock (&this->fd_control_lock);
-  write_control_data(this, str, strlen(str));
+  ret = write_control_data(this, str, strlen(str));
   pthread_mutex_unlock (&this->fd_control_lock);
   return ret;
 }
@@ -1252,7 +1252,7 @@ static ssize_t read_control(vdr_input_plugin_t *this, uint8_t *buf, size_t len)
   return total_bytes;
 }
 
-const char * const get_decoder_name(xine_t *xine, int video_type)
+const char * get_decoder_name(xine_t *xine, int video_type)
 {
   int streamtype = (video_type >> 16) & 0xFF;
   plugin_node_t *node = xine->plugin_catalog->video_decoder_map[streamtype][0];
@@ -2047,7 +2047,7 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
     return CONTROL_DISCONNECTED;
   }
 
-  if(cmd->wnd < 0 || cmd->wnd >= MAX_OSD_OBJECT) {
+  if(cmd->wnd >= MAX_OSD_OBJECT) {
     LOGMSG("exec_osd_command: OSD window handle %d out of range !", cmd->wnd);
     return CONTROL_PARAM_ERROR;
   }
