@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.81 2009-09-09 12:38:12 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.82 2009-09-28 12:22:14 phintuka Exp $
  *
  */
 
@@ -51,6 +51,9 @@
 
 #define PLAYFILE_CTRL_TIMEOUT   300   /* ms */
 #define PLAYFILE_TIMEOUT      20000   /* ms */
+
+#undef  MIN
+#define MIN(a,b) ( (a) < (b) ? (a) : (b))
 
 typedef struct {
   int    Size;
@@ -241,7 +244,7 @@ static int write_osd_command(cxSocket& s, osd_command_t *cmd)
                  (ssize_t)(sizeof(xine_clut_t) * ntohl(cmd->colors)) +
                  (ssize_t)(ntohl(cmd->datalen));
 
-  if(max > 0 && max < size) {
+  if(max > 0 && max < MIN(size, 32768)) {
 /* #warning TODO: buffer latest failed OSD and retry
                   -> skipped OSDs can be left out but
                   latest will be always delivered */
