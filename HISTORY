@@ -1,11 +1,29 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2009-06-06: Version 1.0.5  (branch-1_0_x)
+2009-10-01: Version 1.0.5  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
-- Fixed compilation with gcc-4.4.0
+- Fixed compilation with gcc-4.4.0 and recent glibc
 - Fixed memory leaks
 - Fixed setting focus in vdr-sxfe fullscreen mode
+- Fixed image player when playing non-local mrls (Thanks to Rolf Ahrenberg)
+- Fixed sending complex OSDs
+- Fixed VDR OSD when playing DVDs
+- Changed the default grab quality to match VDR's documentation.
+Features:
+- Added Chinese translations (Thanks to NanFeng)
+- Added "Rewind" key to media files menu
+- Added DVD menu navigation keys option
+- Added support for BluRay m2ts files
+- Added --terminal, --buffers and --geometry options to vdr-??fe
+- Updated logo (Thanks to Stefan Wagner)
+- Added Gnome screensaver support to vdr-sxfe (Thanks to Alex Stansfield)
+- Added sharpness and noise reduction setup options for VDPAU.
+- Added '-C'/'--config' command-line option to specify xine's configuration file.
+- Added an option to limit number of remote clients
+- Replaced build-time options INTERPRET_LIRC_KEYS and FE_TOGGLE_FULLSCREEN
+  with run-time option --hotkeys
+- Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
 
 2009-02-12: Version 1.0.4  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
