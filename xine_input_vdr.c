@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.31 2009-10-04 12:26:13 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.32 2009-10-04 12:29:00 phintuka Exp $
  *
  */
 
@@ -129,7 +129,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.31 2009-10-04 12:26:13 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.32 2009-10-04 12:29:00 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -451,6 +451,48 @@ static void free_udp_data(udp_data_t *data)
     }
   free(data);
 }
+
+#if 0
+static void flush_udp_data(udp_data_t *data)
+{
+  /* flush all data immediately even if there are gaps */
+}
+#endif
+
+/********************* cancellable mutex locking *************************/
+
+/*
+ * mutex cleanup()
+ *
+ *  Unlock mutex. Used as thread cleanup handler.
+ */
+static void mutex_cleanup(void *arg)
+{
+  pthread_mutex_unlock((pthread_mutex_t *)arg);
+}
+
+/*
+ * mutex_lock_cancellable() / mutex_unlock_cancellable()
+ *
+ * mutex lock/unlock for cancellable sections
+ *
+ *  - do not enter protected section if locking fails
+ *  - unlock mutex if thread is cancelled while holding the lock
+ *
+ *  - lock/unlock must be used pairwise within the same lexical scope !
+ *
+ */
+#define mutex_lock_cancellable(mutex)                   \
+  if (pthread_mutex_lock(mutex)) {                      \
+    LOGERR("pthread_mutex_lock (%s) failed, skipping locked block !", #mutex); \
+  } else {						\
+    pthread_cleanup_push(mutex_cleanup, (void*) mutex);
+
+#define mutex_unlock_cancellable(mutex)                     \
+    if (pthread_mutex_unlock(mutex))                        \
+      LOGERR("pthread_mutex_unlock (%s) failed !", #mutex); \
+    pthread_cleanup_pop(0);                                 \
+  }
 
 /******************************* SCR *************************************
  *
@@ -1116,9 +1158,9 @@ static ssize_t write_control_data(vdr_input_plugin_t *this, const void *str, siz
 static ssize_t write_control(vdr_input_plugin_t *this, const char *str)
 {
   ssize_t ret = -1;
-  pthread_mutex_lock (&this->fd_control_lock);
+  mutex_lock_cancellable (&this->fd_control_lock);
   ret = write_control_data(this, str, strlen(str));
-  pthread_mutex_unlock (&this->fd_control_lock);
+  mutex_unlock_cancellable (&this->fd_control_lock);
   return ret;
 }
 
@@ -3030,11 +3072,10 @@ static int handle_control_grab(vdr_input_plugin_t *this, const char *cmd)
       if(data && data->size>0 && data->data) {
 	char s[128];
 	sprintf(s, "GRAB %d %lu\r\n", this->token, (unsigned long)data->size);
-	pthread_mutex_lock (&this->fd_control_lock);
+	mutex_lock_cancellable (&this->fd_control_lock);
 	write_control_data(this, s, strlen(s));
 	write_control_data(this, data->data, data->size);
-	if(pthread_mutex_unlock (&this->fd_control_lock))
-	  LOGERR("pthread_mutex_unlock failed");
+	mutex_unlock_cancellable (&this->fd_control_lock);
       } else {
 	/* failed */
 	printf_control(this, "GRAB %d 0\r\n", this->token);
