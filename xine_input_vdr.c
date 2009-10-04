@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.35 2009-10-04 12:41:14 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.36 2009-10-04 12:45:16 phintuka Exp $
  *
  */
 
@@ -91,6 +91,8 @@
 
 #define RADIO_MAX_BUFFERS  10
 
+#define SLAVE_VIDEO_FIFO_SIZE 1000
+
 #ifndef NOSIGNAL_IMAGE_FILE
 #  define  NOSIGNAL_IMAGE_FILE "/usr/share/vdr/xineliboutput/nosignal.mpv"
 #endif
@@ -129,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.35 2009-10-04 12:41:14 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.36 2009-10-04 12:45:16 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -421,7 +423,7 @@ struct udp_data_s {
   /* SCR adjust */
   uint8_t  scr_jump_done;
 
-  int resend_requested : 1;
+  int resend_requested;
 };
 
 /* UDP sequence number handling */
@@ -1853,6 +1855,7 @@ static buf_element_t *fifo_read_block (input_plugin_t *this_gen,
   }
 
   LOGDBG("fifo_read_block: return NULL !");
+  errno = EAGAIN;
   return NULL;
 }
 
@@ -2163,6 +2166,8 @@ static int exec_osd_command(vdr_input_plugin_t *this, osd_command_t *cmd)
   } else if(cmd->cmd == OSD_Nop) {
     this->last_changed_vpts[cmd->wnd] = xine_get_current_vpts(stream);
 
+  } else if(cmd->cmd == OSD_Flush) {
+    /* TODO */
   } else if(cmd->cmd == OSD_SetPalette) {
     /* TODO */
   } else if(cmd->cmd == OSD_Move) {
@@ -2546,6 +2551,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 
   /* suspend demuxer */
   this->stream->demux_action_pending = 1;
+  pthread_cond_broadcast(&this->engine_flushed);
   if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
     LOGERR("pthread_mutex_unlock failed !");
   suspend_demuxer(this);
@@ -5594,6 +5600,8 @@ static void handle_disconnect(vdr_input_plugin_t *this)
   this->live_mode = 0;
   reset_scr_tuning(this, XINE_FINE_SPEED_NORMAL);
   this->stream->emergency_brake = 1;
+
+  errno = ENOTCONN;
 }
 
 static int adjust_scr_speed(vdr_input_plugin_t *this)
