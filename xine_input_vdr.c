@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.36 2009-10-04 12:45:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.37 2009-10-04 12:50:06 phintuka Exp $
  *
  */
 
@@ -131,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.36 2009-10-04 12:45:16 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.37 2009-10-04 12:50:06 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2449,18 +2449,17 @@ static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
     return this->funcs.intercept_osd(this->funcs.fe_handle, cmd) ? CONTROL_OK : CONTROL_DISCONNECTED;
   }
 
-  if(!pthread_mutex_lock (&this->osd_lock)) {
-    if(!(cmd->flags & OSDFLAG_YUV_CLUT))
-      palette_rgb_to_yuy(cmd->palette, cmd->colors);
-    cmd->flags &= ~OSDFLAG_YUV_CLUT;
+  mutex_lock_cancellable (&this->osd_lock);
 
-    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
-    result = exec_osd_command(this, cmd);
-    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);	  
-    pthread_mutex_unlock (&this->osd_lock);
-  } else {
-    LOGERR("vdr_plugin_exec_osd_command: pthread_mutex_lock failed");
-  }
+  if (!(cmd->flags & OSDFLAG_YUV_CLUT))
+    palette_rgb_to_yuy(cmd->palette, cmd->colors);
+  cmd->flags &= ~OSDFLAG_YUV_CLUT;
+
+  this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
+  result = exec_osd_command(this, cmd);
+  this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
+
+  mutex_unlock_cancellable (&this->osd_lock);
 
   return result;
 }
@@ -3216,10 +3215,32 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   if (!this->control_running)
     return CONTROL_DISCONNECTED;
 
-  if(read_control(this, (unsigned char*)&osdcmd, sizeof(osd_command_t))
-     != sizeof(osd_command_t)) {
+  /* read struct size first */
+  size_t   todo, expect = sizeof(osd_command_t);
+  uint8_t *pt = (uint8_t*)&osdcmd;
+  if (read_control(this, pt, sizeof(osdcmd.size)) != sizeof(osdcmd.size)) {
+    LOGMSG("control: error reading OSDCMD data length");
+    return CONTROL_DISCONNECTED;
+  }
+  pt     += sizeof(osdcmd.size);
+  expect -= sizeof(osdcmd.size);
+  todo    = osdcmd.size - sizeof(osdcmd.size);
+
+  /* read data */
+  size_t bytes = MIN(todo, expect);
+  if (read_control(this, pt, bytes) != bytes) {
     LOGMSG("control: error reading OSDCMD data");
     return CONTROL_DISCONNECTED;
+  }
+
+  if (expect < todo) {
+    /* server uses larger struct, discard rest of data */
+    uint8_t dummy[todo-expect];
+    LOGMSG("osd_command_t size %d, expected %d", (int)osdcmd.size, (int)expect);
+    if (read_control(this, dummy, todo-expect) != todo-expect) {
+      LOGMSG("control: error reading OSDCMD data (unknown part)");
+      return CONTROL_DISCONNECTED;
+    }
   }
 
   ntoh_osdcmd(osdcmd);
@@ -3772,6 +3793,12 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
     int ch_auto = strstr(cmd+10, "auto") ? 1 : 0;
+    int is_dvd  = 0;
+
+    if (this->slave_stream && this->slave_stream->input_plugin) {
+      const char *mrl = this->slave_stream->input_plugin->get_mrl(this->slave_stream->input_plugin);
+      is_dvd = !strncmp(mrl, "dvd:/", 5);
+    }
 
     if(strstr(cmd+10, "NEXT"))
       ch = ch < max_ch ? ch+1 : -2;
@@ -3793,7 +3820,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       old_ch = stream->spu_channel_auto;
 
     if (ch != old_ch) {
-      if (ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
+      if (is_dvd && ch_auto && stream->spu_channel_user == SPU_CHANNEL_AUTO) {
 	LOGDBG("Automatic SPU channel %d->%d ignored", old_ch, ch);
       } else {
 	LOGDBG("Forced SPU channel %d->%d", old_ch, ch);
