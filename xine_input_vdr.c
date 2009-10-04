@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.34 2009-10-04 12:35:08 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.35 2009-10-04 12:41:14 phintuka Exp $
  *
  */
 
@@ -129,7 +129,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.34 2009-10-04 12:35:08 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.35 2009-10-04 12:41:14 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1407,12 +1407,36 @@ static buf_element_t *fifo_buffer_try_get(fifo_buffer_t *fifo)
   return buf;
 }
 
+static buf_element_t *fifo_buffer_timed_get(fifo_buffer_t *fifo, int timeout)
+{
+  buf_element_t *buf = fifo_buffer_try_get (fifo);
+
+  if (!buf) {
+    struct timespec abstime;
+    int result = 0;
+    create_timeout_time (&abstime, timeout);
+
+    mutex_lock_cancellable (&fifo->mutex);
+    while (fifo->first == NULL && !result)
+      result = pthread_cond_timedwait (&fifo->not_empty, &fifo->mutex, &abstime);
+    mutex_unlock_cancellable (&fifo->mutex);
+    buf = fifo_buffer_try_get (fifo);
+  }
+
+  return buf;
+}
+
 static void signal_buffer_pool_not_empty(vdr_input_plugin_t *this)
 {
   if (this->buffer_pool) {
     pthread_mutex_lock(&this->buffer_pool->buffer_pool_mutex);
     pthread_cond_broadcast(&this->buffer_pool->buffer_pool_cond_not_empty);
     pthread_mutex_unlock(&this->buffer_pool->buffer_pool_mutex);
+  }
+  if (this->hd_buffer) {
+    pthread_mutex_lock(&this->hd_buffer->buffer_pool_mutex);
+    pthread_cond_broadcast(&this->hd_buffer->buffer_pool_cond_not_empty);
+    pthread_mutex_unlock(&this->hd_buffer->buffer_pool_mutex);
   }
 }
 
@@ -1492,6 +1516,32 @@ static fifo_buffer_t *fifo_buffer_new (xine_stream_t *stream, int num_buffers, u
   return this;
 }
 #endif
+
+static void flush_all_fifos (vdr_input_plugin_t *this, int full)
+{
+  LOGDBG("flush_all_fifos(%s)", full ? "full" : "");
+
+  if (this->udp_data) {
+    int i;
+    for (i = 0; i <= UDP_SEQ_MASK; i++)
+      if (this->udp_data->queue[i]) {
+        this->udp_data->queue[i]->free_buffer(this->udp_data->queue[i]);
+        this->udp_data->queue[i] = NULL;
+      }
+  }
+
+  if (full) {
+    if (this->stream && this->stream->audio_fifo)
+      this->stream->audio_fifo->clear(this->stream->audio_fifo);
+    if (this->stream && this->stream->video_fifo)
+      this->stream->video_fifo->clear(this->stream->video_fifo);
+  }
+
+  if (this->block_buffer)
+    this->block_buffer->clear(this->block_buffer);
+  if (this->hd_buffer)
+    this->hd_buffer->clear(this->hd_buffer);
+}
 
 static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int force)
 {
@@ -5537,10 +5587,9 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
 static void handle_disconnect(vdr_input_plugin_t *this)
 {
   LOGMSG("read_block: no data source, returning NULL");
-  if(this->block_buffer)
-    this->block_buffer->clear(this->block_buffer);
-  if(this->hd_buffer)
-    this->hd_buffer->clear(this->hd_buffer);
+
+  flush_all_fifos (this, 0);
+
   set_playback_speed(this, 1);
   this->live_mode = 0;
   reset_scr_tuning(this, XINE_FINE_SPEED_NORMAL);
@@ -5587,39 +5636,34 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   TRACE("vdr_plugin_read_block");
 
-  /* check for disconnection/termination */
-  if(!this->funcs.push_input_write /* reading from socket */ &&
-     !this->control_running) {
-    handle_disconnect(this);
-    return NULL; /* disconnected ? */
-  }
-
-  /* Return immediately if demux_action_pending flag is set */
-  if(this->stream->demux_action_pending) {
-    if(NULL != (buf = make_padding_frame(this)))
-      return buf;
-    LOGMSG("vdr_plugin_read_block: demux_action_pending, make_padding_frame failed");
-  }
-
   /* adjust SCR speed */
   need_pause = adjust_scr_speed(this);
 
   do {
-    buf = fifo_buffer_try_get(this->block_buffer);
-    if(!buf) {
-      struct timespec abstime;
-      create_timeout_time(&abstime, 500);
-      pthread_mutex_lock(&this->block_buffer->mutex);
-      if(this->block_buffer->fifo_size <= 0)
-	pthread_cond_timedwait (&this->block_buffer->not_empty, 
-				&this->block_buffer->mutex, &abstime);
-      pthread_mutex_unlock(&this->block_buffer->mutex);
-      if(!this->is_paused && 
-	 !this->still_mode &&
-	 !this->is_trickspeed &&
-	 !this->slave_stream && 
-	 this->stream->video_fifo->fifo_size <= 0) {
-	this->read_timeouts++;
+
+    /* check for disconnection/termination */
+    if (!this->funcs.push_input_write /* reading from socket */ &&
+        !this->control_running) {
+      /* disconnected ? */
+      handle_disconnect(this);
+      return NULL;
+    }
+
+    /* Return immediately if demux_action_pending flag is set */
+    if (this->stream->demux_action_pending) {
+      if (NULL != (buf = make_padding_frame(this)))
+        return buf;
+      LOGMSG("vdr_plugin_read_block: demux_action_pending, make_padding_frame failed");
+    }
+
+    buf = fifo_buffer_timed_get(this->block_buffer, 500);
+    if (!buf) {
+      if (!this->is_paused &&
+          !this->still_mode &&
+          !this->is_trickspeed &&
+          !this->slave_stream &&
+          this->stream->video_fifo->fifo_size <= 0) {
+        this->read_timeouts++;
 
 	if(this->read_timeouts > 16) {
 	  LOGMSG("No data in 8 seconds, queuing no signal image");
@@ -5856,18 +5900,10 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
     free_udp_data(this->udp_data);
 
   /* fifos */
+  LOGDBG("Disposing fifos");
 
   /* need to get all buffer elements back before disposing own buffers ... */
-  LOGDBG("Disposing fifos");
-  if(this->stream && this->stream->audio_fifo)
-    this->stream->audio_fifo->clear(this->stream->audio_fifo);
-  if(this->stream && this->stream->video_fifo)
-    this->stream->video_fifo->clear(this->stream->video_fifo);
-
-  if(this->block_buffer)
-    this->block_buffer->clear(this->block_buffer);
-  if(this->hd_buffer)
-    this->hd_buffer->clear(this->hd_buffer);
+  flush_all_fifos (this, 1);
 
   if (this->block_buffer)
     this->block_buffer->dispose(this->block_buffer);
