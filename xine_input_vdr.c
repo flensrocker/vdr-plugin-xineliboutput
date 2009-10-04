@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.32 2009-10-04 12:29:00 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.33 2009-10-04 12:33:38 phintuka Exp $
  *
  */
 
@@ -81,7 +81,7 @@
 /*#define LOG_GRAPH*/
 
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
-#define HD_BUF_NUM_BUFS         (2048)  /* 2k payload * 2048 = 4Mb , ~ 1 second */
+#define HD_BUF_NUM_BUFS         (2500)  /* 2k payload * 2500 = 5MB */
 #define HD_BUF_ELEM_SIZE        (2048+64)
 #define HD_BUF_RESERVED_BUFS    2
 #define TEST_H264               1
@@ -129,7 +129,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.32 2009-10-04 12:29:00 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.33 2009-10-04 12:33:38 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -278,6 +278,8 @@ typedef struct vdr_input_class_s {
   xine_t         *xine;
   char           *mrls[ 2 ];
   int             fast_osd_scaling;
+  double          scr_tuning_step;
+  int             num_buffers_hd;
 } vdr_input_class_t;
 
 /* input plugin */
@@ -375,12 +377,14 @@ typedef struct vdr_input_plugin_s {
   int64_t             last_delivered_vid_pts; /* detect PTS wraps */
 
   /* saved video properties */
-  int   video_properties_saved;
-  int   orig_hue;
-  int   orig_brightness;
-  int   orig_saturation;
-  int   orig_contrast;
-  int   orig_vo_aspect_ratio;
+  uint8_t video_properties_saved;
+  int     orig_hue;
+  int     orig_brightness;
+  int     orig_saturation;
+  int     orig_sharpness;
+  int     orig_noise_reduction;
+  int     orig_contrast;
+  int     orig_vo_aspect_ratio;
 
   /* OSD */
   pthread_mutex_t osd_lock;
@@ -957,14 +961,14 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     }
 
     if( scr_tuning != this->scr_tuning ) {
-      LOGSCR("scr_tuning: %s -> %s (buffer %d/%d)", 
+      LOGSCR("scr_tuning: %s -> %s (buffer %d/%d) (tuning now %f%%)", 
 	     scr_tuning_str(this->scr_tuning), 
-	     scr_tuning_str(scr_tuning), num_used, num_free);
+	     scr_tuning_str(scr_tuning), num_used, num_free, this->class->scr_tuning_step * scr_tuning * 100.0);
       this->scr_tuning = scr_tuning;
 
       /* make it play .5% / 1% faster or slower */
       if(this->scr)
-	pvrscr_speed_tuning(this->scr, 1.0 + (0.005 * scr_tuning) );
+	pvrscr_speed_tuning(this->scr, 1.0 + (this->class->scr_tuning_step * scr_tuning) );
     }
 
   /*
@@ -2556,7 +2560,8 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
 
 static int set_video_properties(vdr_input_plugin_t *this, 
 				int hue, int saturation, 
-				int brightness, int contrast,
+				int brightness, int sharpness,
+				int noise_reduction, int contrast,
                                 int vo_aspect_ratio)
 {
   pthread_mutex_lock(&this->lock);
@@ -2564,7 +2569,7 @@ static int set_video_properties(vdr_input_plugin_t *this,
   /* when changed first time, save original/default values */
   if(!this->video_properties_saved && 
      (hue>=0 || saturation>=0 || contrast>=0 || brightness>=0 || 
-      vo_aspect_ratio>=0)) {
+      sharpness>=0 || noise_reduction>=0 || vo_aspect_ratio>=0)) {
     this->video_properties_saved = 1;
     this->orig_hue        = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_HUE );
@@ -2572,6 +2577,14 @@ static int set_video_properties(vdr_input_plugin_t *this,
 					   XINE_PARAM_VO_SATURATION );
     this->orig_brightness = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_BRIGHTNESS );
+#ifdef XINE_PARAM_VO_SHARPNESS
+    this->orig_sharpness   = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_SHARPNESS );
+#endif
+#ifdef XINE_PARAM_VO_NOISE_REDUCTION
+    this->orig_noise_reduction = xine_get_param(this->stream, 
+					   XINE_PARAM_VO_NOISE_REDUCTION );
+#endif
     this->orig_contrast   = xine_get_param(this->stream, 
 					   XINE_PARAM_VO_CONTRAST );
     this->orig_vo_aspect_ratio   = xine_get_param(this->stream,
@@ -2588,6 +2601,16 @@ static int set_video_properties(vdr_input_plugin_t *this,
   if(brightness>=0 || this->video_properties_saved)
     xine_set_param(this->stream, XINE_PARAM_VO_BRIGHTNESS, 
 		   brightness>=0 ? brightness : this->orig_brightness );
+#ifdef XINE_PARAM_VO_SHARPNESS
+  if(sharpness>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_SHARPNESS, 
+		   sharpness>=0 ? sharpness : this->orig_sharpness );
+#endif
+#ifdef XINE_PARAM_VO_NOISE_REDUCTION
+  if(noise_reduction>=0 || this->video_properties_saved)
+    xine_set_param(this->stream, XINE_PARAM_VO_NOISE_REDUCTION, 
+		   noise_reduction>=0 ? noise_reduction : this->orig_noise_reduction );
+#endif
   if(contrast>=0 || this->video_properties_saved)
     xine_set_param(this->stream, XINE_PARAM_VO_CONTRAST, 
 		   contrast>=0 ? contrast : this->orig_contrast );
@@ -2595,7 +2618,7 @@ static int set_video_properties(vdr_input_plugin_t *this,
     xine_set_param(this->stream, XINE_PARAM_VO_ASPECT_RATIO,
                    vo_aspect_ratio>=0 ? vo_aspect_ratio : this->orig_vo_aspect_ratio );
 
-  if(hue<0 && saturation<0 && contrast<0 && brightness<0 && vo_aspect_ratio<0)
+  if(hue<0 && saturation<0 && contrast<0 && brightness<0 && sharpness<0 && noise_reduction<0 && vo_aspect_ratio<0)
     this->video_properties_saved = 0;
 
   pthread_mutex_unlock(&this->lock);
@@ -3454,10 +3477,10 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     err = handle_control_osdcmd(this);
 
   } else if(!strncasecmp(cmd, "VIDEO_PROPERTIES ", 17)) {
-    int hue, saturation, brightness, contrast, vo_aspect_ratio;
-    if(5 == sscanf(cmd+17, "%d %d %d %d %d", 
-		   &hue, &saturation, &brightness, &contrast, &vo_aspect_ratio))
-      err = set_video_properties(this, hue, saturation, brightness, contrast, vo_aspect_ratio);
+    int hue, saturation, brightness, sharpness, noise_reduction, contrast, vo_aspect_ratio;
+    if(7 == sscanf(cmd+17, "%d %d %d %d %d %d %d", 
+		   &hue, &saturation, &brightness, &sharpness, &noise_reduction, &contrast, &vo_aspect_ratio))
+      err = set_video_properties(this, hue, saturation, brightness, sharpness, noise_reduction, contrast, vo_aspect_ratio);
     else
       err = CONTROL_PARAM_ERROR;
 
@@ -3534,7 +3557,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       }
       if(tmp32) {
 	if(!this->hd_buffer)
-	  this->hd_buffer = fifo_buffer_new(this->stream, HD_BUF_NUM_BUFS, HD_BUF_ELEM_SIZE);
+	  this->hd_buffer = fifo_buffer_new(this->stream, this->class->num_buffers_hd, HD_BUF_ELEM_SIZE);
 	this->hd_stream = 1;
       } else {
 	this->hd_stream = 0;
@@ -5815,7 +5838,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* restore video properties */
   if(this->video_properties_saved)
-    set_video_properties(this, -1,-1,-1,-1,-1); /* restore defaults */
+    set_video_properties(this, -1,-1,-1,-1,-1, -1, -1); /* restore defaults */
 
   signal_buffer_pool_not_empty(this);
   signal_buffer_not_empty(this);
@@ -6546,6 +6569,14 @@ static void vdr_class_default_mrl_change_cb(void *data, xine_cfg_entry_t *cfg)
   class->mrls[0] = cfg->str_value;
 } 
 
+/* callback on scr tuning step change */
+static void vdr_class_scr_tuning_step_cb(void *data, xine_cfg_entry_t *cfg) 
+{
+  vdr_input_class_t *class = (vdr_input_class_t *) data;
+
+  class->scr_tuning_step = cfg->num_value / 1000000.0;
+}
+
 /* callback on OSD scaling mode change */
 static void vdr_class_fast_osd_scaling_cb(void *data, xine_cfg_entry_t *cfg) 
 {
@@ -6685,12 +6716,11 @@ static char **vdr_plugin_get_autoplay_list(input_class_t *this_gen, int *num_fil
 static void vdr_class_dispose (input_class_t *this_gen) 
 {
   vdr_input_class_t *this = (vdr_input_class_t *) this_gen;
+  config_values_t *config = this->xine->config;
 
-  this->xine->config->unregister_callback(this->xine->config,
-					  "media." MRL_ID ".default_mrl");
-  this->xine->config->unregister_callback(this->xine->config,
-					  MRL_ID ".osd.fast_scaling");
-
+  config->unregister_callback(config, "media." MRL_ID ".default_mrl");
+  config->unregister_callback(config, "media." MRL_ID ".osd.fast_scaling");
+  config->unregister_callback(config, "media." MRL_ID ".scr_tuning_step");
   free (this);
 }
 
@@ -6727,7 +6757,7 @@ static void *input_xvdr_init_class (xine_t *xine, void *data)
   this->mrls[ 1 ] = 0;
 
   this->fast_osd_scaling = config->register_bool(config,
-						 "input." MRL_ID ".fast_osd_scaling", 0,
+						 "media." MRL_ID ".fast_osd_scaling", 0,
 						 _("Fast (low-quality) OSD scaling"),
 						 _("Enable fast (lower quality) OSD scaling.\n"
 						   "Default is to use (slow) linear interpolation "
@@ -6737,6 +6767,19 @@ static void *input_xvdr_init_class (xine_t *xine, void *data)
 						   "and does not modify palette."),
 						 10, vdr_class_fast_osd_scaling_cb, 
 						 (void *)this);
+
+  this->scr_tuning_step = config->register_num(config,
+					       "media." MRL_ID ".scr_tuning_step", 5000,
+					       _("SRC tuning step"),
+					       _("SCR tuning step width unit %1000000."),
+					       10, vdr_class_scr_tuning_step_cb, 
+					       (void *)this) / 1000000.0;
+
+  this->num_buffers_hd = config->register_num(config,
+                                              "media." MRL_ID ".num_buffers_hd", HD_BUF_NUM_BUFS,
+                                              _("number of buffers for HD content"),
+                                              _("number of buffers for HD content"),
+                                              10, NULL, NULL);
 
   this->input_class.get_instance       = vdr_class_get_instance;
 #if INPUT_PLUGIN_IFACE_VERSION < 18
