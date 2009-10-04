@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.33 2009-10-04 12:33:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.34 2009-10-04 12:35:08 phintuka Exp $
  *
  */
 
@@ -129,7 +129,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.33 2009-10-04 12:33:38 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.34 2009-10-04 12:35:08 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5952,6 +5952,22 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   this->scr_tuning = SCR_TUNING_OFF;
   this->curpos = 0;
+
+  /* buffer */
+  this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
+  
+  /* sync */
+  pthread_mutex_init (&this->lock, NULL);
+  pthread_mutex_init (&this->osd_lock, NULL);
+  pthread_mutex_init (&this->vdr_entry_lock, NULL);
+  pthread_mutex_init (&this->fd_control_lock, NULL);
+  pthread_cond_init  (&this->engine_flushed, NULL);
+
+  LOGDBG("xine_input_xvdr: revision %s", module_revision);
+
+  if (this->class->num_buffers_hd != HD_BUF_NUM_BUFS)
+    LOGMSG("Using non-default \"media." MRL_ID ".num_buffers_hd:%d\"", this->class->num_buffers_hd);
+
   return 1;
 }
 
@@ -6669,16 +6685,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
     this->funcs.post_vdr_event    = post_vdr_event;
   }
   
-  /* buffer */
-  this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
-  
-  /* sync */
-  pthread_mutex_init (&this->lock, NULL);
-  pthread_mutex_init (&this->osd_lock, NULL);
-  pthread_mutex_init (&this->vdr_entry_lock, NULL);
-  pthread_mutex_init (&this->fd_control_lock, NULL);
-  pthread_cond_init  (&this->engine_flushed, NULL);
-
   detect_video_decoders(this);
 
   LOGDBG("vdr_class_get_instance done.");
