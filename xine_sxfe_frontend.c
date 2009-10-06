@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.19 2009-10-06 11:41:57 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.20 2009-10-06 19:05:30 phintuka Exp $
  *
  */
 
@@ -42,9 +42,6 @@
 #endif
 #ifdef HAVE_XDPMS
 #  include <X11/extensions/dpms.h>
-#endif
-#ifdef HAVE_XV_FIELD_ORDER
-#  include <X11/extensions/Xvlib.h>
 #endif
 #ifdef HAVE_XINERAMA
 #  include <X11/extensions/Xinerama.h>
@@ -913,11 +910,62 @@ static int hud_osd_open(sxfe_t *this)
 
     XUnlockDisplay(this->display);
 
-#ifndef FE_STANDALONE
     this->fe.xine_osd_command = hud_osd_command;
-#endif
   }
   return 1;
+}
+
+/*
+ * hud_osd_resize
+ *
+ * - Move and resize HUD along with main or fullscreen window
+ */
+static void hud_osd_resize(sxfe_t *this, Window video_window, int width, int height)
+{
+  if(this->hud) {
+    if(video_window == this->window[0]) {
+      int    hud_x, hud_y;
+      Window tmp_win;
+      XLockDisplay(this->display);
+      XTranslateCoordinates(this->display, this->window[0],
+                            DefaultRootWindow(this->display),
+                            0, 0, &hud_x, &hud_y, &tmp_win);
+      XResizeWindow(this->display, this->hud_window, width, height);
+      XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
+      set_cursor(this->display, this->hud_window, 1);
+      XUnlockDisplay(this->display);
+    } else if(video_window == this->window[1]) {
+      XLockDisplay(this->display);
+      XResizeWindow(this->display, this->hud_window, width, height);
+      XMoveWindow(this->display, this->hud_window, 0, 0);
+      set_cursor(this->display, this->hud_window, 0);
+      XUnlockDisplay(this->display);
+    }
+  }
+}
+
+/*
+ * hud_osd_focus
+ *
+ * - show / hide HUD OSD window
+ */
+static void hud_osd_focus(sxfe_t *this, XFocusChangeEvent *fev)
+{
+  if(this && this->hud)
+    if(fev->window == this->window[0] || fev->window == this->window[1]) {
+
+      XLockDisplay(this->display);
+
+      if(fev->type == FocusIn)
+        /* Show HUD again if sxfe window receives focus */
+        XMapWindow(this->display, this->hud_window);
+
+      else if(fev->type == FocusOut)
+        /* Dismiss HUD window if focusing away from frontend window */
+        XUnmapWindow(this->display, this->hud_window);
+
+      XUnlockDisplay(this->display);
+    }
 }
 
 static void hud_osd_close(sxfe_t *this)
@@ -1424,6 +1472,67 @@ static void sxfe_interrupt(frontend_t *this_gen)
 }
 
 /*
+ * XKeyEvent handler
+ *
+ */
+static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
+{
+}
+
+/*
+ * XConfigureEvent handler
+ *
+ */
+static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
+{
+}
+
+/*
+ * XMotionEvent handler
+ *
+ * Track mouse movement when Button1 is pressed down
+ *   - enable window dragging: user can simply drag window around screen
+ *   - useful when window is borderless (no title bar)
+ */
+static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
+{
+  if(this->dragging && !this->fullscreen) {
+    Window tmp_win;
+    int xpos, ypos;
+
+    XLockDisplay(this->display);
+
+    while(XCheckMaskEvent(this->display, ButtonMotionMask, (XEvent*)mev));
+
+    XTranslateCoordinates(this->display, this->window[0],
+                          DefaultRootWindow(this->display),
+                          0, 0, &xpos, &ypos, &tmp_win);
+
+    this->xpos = (xpos += mev->x_root - this->dragging_x);
+    this->ypos = (ypos += mev->y_root - this->dragging_y);
+    this->dragging_x = mev->x_root;
+    this->dragging_y = mev->y_root;
+
+    XMoveWindow(this->display, this->window[0], xpos, ypos);
+    LOGDBG("MotionNotify: XMoveWindow called with x=%d and y=%d", xpos, ypos);
+
+    XUnlockDisplay(this->display);
+  }
+}
+
+/*
+ * XButtonEvent handler
+ *
+ *  - Double click switches between windowed and fullscreen mode
+ *  - Window can be moved by dragging it
+ *  - Right mouse button switches window state:
+ *    normal window -> borderless window -> always on top -> ...
+ */
+static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
+{
+}
+
+/*
  * sxfe_run
  *
  *  - main X event loop
@@ -1466,27 +1575,8 @@ static int sxfe_run(frontend_t *this_gen)
 	XConfigureEvent *cev = (XConfigureEvent *) &event;
 	Window tmp_win;
 	
-	/* Move and resize HUD along with main or fullscreen window */
 #ifdef HAVE_XRENDER
-	if(this->hud) {
-	  if(cev->window == this->window[0]) {
-	    int hud_x, hud_y;
-	    XLockDisplay(cev->display);
-	    XTranslateCoordinates(this->display, this->window[0],
-				  DefaultRootWindow(this->display),
-				  0, 0, &hud_x, &hud_y, &tmp_win);
-	    XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
-	    XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
-	    set_cursor(this->display, this->hud_window, 1);
-	    XUnlockDisplay(cev->display);
-	  } else if(cev->window == this->window[1]) {
-	    XLockDisplay(cev->display);
-	    XResizeWindow(this->display, this->hud_window, cev->width, cev->height);
-	    XMoveWindow(this->display, this->hud_window, 0, 0);
-	    set_cursor(this->display, this->hud_window, 0);
-	    XUnlockDisplay(cev->display);
-	  }
-	}
+        hud_osd_resize(this, cev->window, cev->width, cev->height);
 #endif
 	this->width  = cev->width;
 	this->height = cev->height;
@@ -1520,63 +1610,18 @@ static int sxfe_run(frontend_t *this_gen)
 
 #ifdef HAVE_XRENDER
       case FocusIn:
-      {
-         if(this->hud) {
-           XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
-           /* Show HUD again if sxfe window receives focus */
-           if(fev->window == this->window[0] || fev->window == this->window[1]) {
-             XLockDisplay(fev->display);
-             XMapWindow(this->display, this->hud_window);
-             XUnlockDisplay(fev->display);
-           }
-        }
-        break;
-      }
       case FocusOut:
-      {
-	if(this->hud) {
-	  XFocusChangeEvent *fev = (XFocusChangeEvent *) &event;
-	  /* Dismiss HUD window if focusing away from frontend window */
-	  if(fev->window == this->window[0] || fev->window == this->window[1]) {
-            XLockDisplay(fev->display);
-            XUnmapWindow(this->display, this->hud_window);
-            XUnlockDisplay(fev->display);
-          }
-        }
+        hud_osd_focus(this, (XFocusChangeEvent *) &event);
         break;
-      }
-#endif /* HAVE_XRENDER */
+#endif
+
       case ButtonRelease:
         this->dragging = 0;
         break;
 
       case MotionNotify:
-      {
-	if(this->dragging && !this->fullscreen) {
-	  XMotionEvent *mev = (XMotionEvent *) &event;
-	  Window tmp_win;
-	  int xpos, ypos;
-
-	  XLockDisplay(this->display);
-
-	  while(XCheckMaskEvent(this->display, ButtonMotionMask, &event));
-
-	  XTranslateCoordinates(this->display, this->window[0],
-				DefaultRootWindow(this->display),
-				0, 0, &xpos, &ypos, &tmp_win);
-
-	  this->xpos = (xpos += mev->x_root - this->dragging_x);
-	  this->ypos = (ypos += mev->y_root - this->dragging_y);
-	  this->dragging_x = mev->x_root;
-	  this->dragging_y = mev->y_root;
-
-	  XMoveWindow(this->display, this->window[0], xpos, ypos);
-          LOGDBG("MotionNotify: XMoveWindow called with x=%d and y=%d", xpos, ypos);
-
-	  XUnlockDisplay(this->display);
-	}
-	break;
-      }
+        XMotionEvent_handler(this, (XMotionEvent *) &event);
+        break;
 
       case ButtonPress:
       {
