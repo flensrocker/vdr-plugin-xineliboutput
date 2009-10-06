@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.18 2009-09-22 10:42:26 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.19 2009-10-06 11:41:57 phintuka Exp $
  *
  */
 
@@ -141,6 +141,7 @@ typedef struct sxfe_s {
   int (*fe_xine_open)(frontend_t *this_gen, const char *mrl);
   int (*fe_xine_play)(frontend_t *this_gen);
 
+
   /* X11 */
   Display *display;
   Window   window[2];
@@ -151,19 +152,46 @@ typedef struct sxfe_s {
   int      XF86_modelines_count;
   XF86VidModeModeInfo**  XF86_modelines;
 #endif
+  Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
-  int xinerama_screen;
-  int xinerama_x, xinerama_y;
 
   /* Atoms */
-  Atom     atom_wm_delete_window;
-  Atom     atom_sxfe_interrupt;
-  Atom     atom_wm_hints, atom_win_layer;
+  Atom     xa_SXFE_INTERRUPT;
+  Atom     xa_WM_DELETE_WINDOW;
+  Atom     xa_MOTIF_WM_HINTS;
+  Atom     xa_WIN_LAYER;
+  Atom     xa_WIN_STATE;
   Atom     xa_NET_ACTIVE_WINDOW;
-  Atom     atom_state, atom_state_add, atom_state_del;
-  Atom     atom_state_above, atom_state_fullscreen, atom_state_on_top;
+  Atom     xa_NET_WM_STATE;
+  Atom     xa_NET_WM_STATE_ADD;
+  Atom     xa_NET_WM_STATE_DEL;
+  Atom     xa_NET_WM_STATE_ABOVE;
+  Atom     xa_NET_WM_STATE_STICKY;
+  Atom     xa_NET_WM_STATE_FULLSCREEN;
+  Atom     xa_NET_WM_STATE_STAYS_ON_TOP;
+
+  int      xinerama_screen; /* current xinerama screen, -1 = auto */
+  uint16_t xinerama_x;      /* left-top position of current xinerama screen */
+  uint16_t xinerama_y;
+  uint16_t origwidth;       /* saved window-mode window size */
+  uint16_t origheight;
+  uint16_t origxpos;        /* saved window-mode window position */
+  uint16_t origypos;
+  uint16_t dragging_x;
+  uint16_t dragging_y;
+
+  uint8_t  fullscreen : 1;
+/*uint8_t  vmode_switch : 1;*/
+  uint8_t  fullscreen_state_forced : 1;
+  uint8_t  stay_above : 1;
+  uint8_t  no_border : 1;
+  uint8_t  check_move : 1;
+  uint8_t  dragging : 1;
+  uint8_t  hud : 1;
+  uint8_t  gui_hotkeys : 1;
+  uint8_t  no_x_kbd : 1;
 
   /* xine stuff */
   xine_t              *xine;
@@ -190,8 +218,6 @@ typedef struct sxfe_s {
   int       xpos, ypos;
   uint16_t  video_width, video_height;
   uint16_t  width, height;
-  uint16_t  origxpos, origypos;
-  uint16_t  origwidth, origheight;
   uint8_t   aspect;
   uint8_t   cropping;
   uint8_t   scale_video;
@@ -199,33 +225,24 @@ typedef struct sxfe_s {
   uint8_t   terminate_key_pressed;
   uint8_t   playback_finished;
   uint8_t   slave_playback_finished;
-  uint8_t   fullscreen;
-  uint8_t   vmode_switch;
   uint8_t   field_order;
-  uint8_t   fullscreen_state_forced;
-  uint8_t   stay_above;
-  uint8_t   no_border;
-  uint8_t   check_move;
-  uint8_t   gui_hotkeys;
-  uint8_t   no_x_kbd;
 
   /* strings */
   char    configfile[256];
-  char    modeline[256];
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
-  uint8_t  hud;
-  GC       gc;
-  Window   hud_window;
-  XImage  *hud_img;
-  Visual  *hud_vis;
+  XImage         *hud_img;
+  Visual         *hud_vis;
+  Xrender_Surf   *surf_win;
+  Xrender_Surf   *surf_img;
+  uint32_t       *hud_img_mem;
+  GC              gc;
+  Window          hud_window;
   XShmSegmentInfo hud_shminfo;
-  Xrender_Surf *surf_win;
-  Xrender_Surf *surf_img;
-  int osd_width;
-  int osd_height;
-  uint32_t* hud_img_mem;
+
+  uint16_t      osd_width;
+  uint16_t      osd_height;
 #endif /* HAVE_XRENDER */
 
 } fe_t, sxfe_t;
@@ -241,20 +258,39 @@ typedef struct sxfe_s {
 #define HUD_MAX_WIDTH      1920
 #define HUD_MAX_HEIGHT     1080
 
-static void fe_dest_size_cb (void *data,
-			     int video_width, int video_height, double video_pixel_aspect,
-			     int *dest_width, int *dest_height, double *dest_pixel_aspect)  
-{ 
+static void sxfe_dest_size_cb (void *data,
+                               int video_width, int video_height, double video_pixel_aspect,
+                               int *dest_width, int *dest_height, double *dest_pixel_aspect)
+{
   fe_t *this = (fe_t *)data;
-  
+
   if (!this)
     return;
 
   *dest_width  = this->width;
   *dest_height = this->height;
 
-  *dest_pixel_aspect = fe_dest_pixel_aspect((frontend_t*)this, video_pixel_aspect,
-					    video_width, video_height);
+  *dest_pixel_aspect = this->dest_pixel_aspect((frontend_t*)this, video_pixel_aspect,
+                                               video_width, video_height);
+}
+
+static void init_atoms(sxfe_t *this)
+{
+  if (this->xa_SXFE_INTERRUPT == None) {
+    this->xa_SXFE_INTERRUPT     = XInternAtom(this->display, "SXFE_INTERRUPT", False);
+    this->xa_WM_DELETE_WINDOW   = XInternAtom(this->display, "WM_DELETE_WINDOW", False);
+    this->xa_MOTIF_WM_HINTS     = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
+    this->xa_WIN_LAYER          = XInternAtom(this->display, "_WIN_LAYER", False);
+    this->xa_WIN_STATE          = XInternAtom(this->display, "_WIN_STATE", False);
+    this->xa_NET_ACTIVE_WINDOW  = XInternAtom(this->display, "_NET_ACTIVE_WINDOW", False);
+    this->xa_NET_WM_STATE       = XInternAtom(this->display, "_NET_WM_STATE", False);
+    this->xa_NET_WM_STATE_ADD   = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
+    this->xa_NET_WM_STATE_DEL   = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
+    this->xa_NET_WM_STATE_ABOVE = XInternAtom(this->display, "_NET_WM_STATE_ABOVE", False);
+    this->xa_NET_WM_STATE_STICKY= XInternAtom(this->display, "_NET_WM_STATE_STICKY", False);
+    this->xa_NET_WM_STATE_FULLSCREEN = XInternAtom(this->display, "_NET_WM_STATE_FULLSCREEN", False);
+    this->xa_NET_WM_STATE_STAYS_ON_TOP = XInternAtom(this->display, "_NET_WM_STATE_STAYS_ON_TOP", False);
+  }
 }
 
 static void set_fs_size_hint(sxfe_t *this)
@@ -265,7 +301,32 @@ static void set_fs_size_hint(sxfe_t *this)
   hint.y      = this->xinerama_y;
   hint.width  = this->width;
   hint.height = this->height;
+  XLockDisplay(this->display);
   XSetNormalHints(this->display, this->window[1], &hint);
+  XUnlockDisplay(this->display);
+}
+
+/* set_border
+ *
+ * Set/remove window border
+ *
+ */
+static void set_border(sxfe_t *this, Window window, int border)
+{
+  MWMHints mwmhints = {
+    .flags       = MWM_HINTS_DECORATIONS,
+    .decorations = border ? 1 : 0,
+  };
+
+  if(this->window_id > 0)
+    return;
+
+  XLockDisplay(this->display);
+  XChangeProperty(this->display, window,
+                  this->xa_MOTIF_WM_HINTS, this->xa_MOTIF_WM_HINTS, 32,
+                  PropModeReplace, (unsigned char *) &mwmhints,
+                  PROP_MWM_HINTS_ELEMENTS);
+  XUnlockDisplay(this->display);
 }
 
 static void set_fullscreen_props(sxfe_t *this)
@@ -277,46 +338,37 @@ static void set_fullscreen_props(sxfe_t *this)
 
   set_fs_size_hint(this);
 
-  if(this->atom_state == None) {
-    this->atom_win_layer        = XInternAtom(this->display, "_WIN_LAYER", False);
-    this->xa_NET_ACTIVE_WINDOW  = XInternAtom(this->display, "_NET_ACTIVE_WINDOW", False);
-    this->atom_state            = XInternAtom(this->display, "_NET_WM_STATE", False);
-    this->atom_state_add        = XInternAtom(this->display, "_NET_WM_STATE_ADD", False);
-    this->atom_state_del        = XInternAtom(this->display, "_NET_WM_STATE_DEL", False);
-    this->atom_state_above      = XInternAtom(this->display, "_NET_WM_STATE_ABOVE", False);
-    this->atom_state_fullscreen = XInternAtom(this->display, "_NET_WM_STATE_FULLSCREEN", False);
-    this->atom_state_on_top     = XInternAtom(this->display, "_NET_WM_STATE_STAYS_ON_TOP", False);
-  }
+  /* no border in fullscreen window */
+  set_border(this, this->window[1], 0);
 
   memset(&ev, 0, sizeof(ev));
   ev.type                 = ClientMessage;
   ev.xclient.type         = ClientMessage;
-  ev.xclient.message_type = this->atom_state;
+  ev.xclient.message_type = this->xa_NET_WM_STATE;
   ev.xclient.display      = this->display;
   ev.xclient.window       = this->window[1];
   ev.xclient.format       = 32;
-  ev.xclient.data.l[0]    = 1; 
-  /*ev.xclient.data.l[0]    = this->atom_state_add;*/
+  ev.xclient.data.l[0]    = 1;
 
   /* _NET_WM_STATE_FULLSCREEN */
   XLockDisplay(this->display);
-  ev.xclient.data.l[1] = this->atom_state_fullscreen;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  ev.xclient.data.l[1] = this->xa_NET_WM_STATE_FULLSCREEN;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
   /* _NET_WM_STATE_ABOVE */
   XLockDisplay(this->display);
-  ev.xclient.data.l[1] = this->atom_state_above;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  ev.xclient.data.l[1] = this->xa_NET_WM_STATE_ABOVE;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
   /* _NET_WM_STATE_ON_TOP */
   XLockDisplay(this->display);
-  ev.xclient.data.l[1] = this->atom_state_on_top;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  ev.xclient.data.l[1] = this->xa_NET_WM_STATE_STAYS_ON_TOP;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
   /* _NET_ACTIVE_WINDOW */
@@ -329,22 +381,33 @@ static void set_fullscreen_props(sxfe_t *this)
   XUnlockDisplay(this->display);
 }
 
-static void set_border(sxfe_t *this, int border)
+static void update_window_title(sxfe_t *this)
 {
-  MWMHints   mwmhints;
+  XLockDisplay(this->display);
 
-  if(this->window_id > 0)
-    return;
+  if (!this->keypress) { /* handler is set only in local mode */
+    char *name = NULL;
+    if (XFetchName(this->display, this->window[0], &name) && name) {
+      char *newname = NULL;
+      if (strstr(name, " (top)"))
+        *strstr(name, " (top)") = 0;
+      if (this->stay_above)
+        if (asprintf(&newname, "%s (top)", name) < 0)
+          newname = NULL;
+      XStoreName(this->display, this->window[0], newname ?: name);
+      XStoreName(this->display, this->window[1], newname ?: name);
+      XFree(name);
+      free(newname);
+    } else {
+      XStoreName(this->display, this->window[0], this->stay_above ? "VDR - (top)" : "VDR");
+      XStoreName(this->display, this->window[1], this->stay_above ? "VDR - (top)" : "VDR");
+    }
+  } else {
+    XStoreName(this->display, this->window[0], this->stay_above ? "Local VDR (top)" : "Local VDR");
+    XStoreName(this->display, this->window[1], this->stay_above ? "Local VDR (top)" : "Local VDR");
+  }
 
-  this->no_border = border ? 0 : 1;
-
-  /* Set/remove border */
-  this->atom_wm_hints = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
-  mwmhints.flags = MWM_HINTS_DECORATIONS;
-  mwmhints.decorations = this->no_border ? 0 : 1;
-  XChangeProperty(this->display, this->window[0], this->atom_wm_hints, this->atom_wm_hints, 32,
-		  PropModeReplace, (unsigned char *) &mwmhints,
-		  PROP_MWM_HINTS_ELEMENTS);
+  XUnlockDisplay(this->display);
 }
 
 static void set_above(sxfe_t *this, int stay_above)
@@ -356,91 +419,73 @@ static void set_above(sxfe_t *this, int stay_above)
     return;
 
   if(this->stay_above != stay_above) {
-    XLockDisplay(this->display);
-#ifdef FE_STANDALONE
-    char *name, *newname = NULL;
-    if(XFetchName(this->display, this->window[0], &name) && name) {
-      if(strstr(name, " (top)"))
-	*strstr(name, " (top)") = 0;
-      if(stay_above)
-	if (asprintf(&newname, "%s (top)", name) < 0)
-          newname = NULL;
-      XStoreName(this->display, this->window[0], newname ?: name);
-      XStoreName(this->display, this->window[1], newname ?: name);
-      XFree(name);
-      free(newname);
-    } else {
-      XStoreName(this->display, this->window[0], stay_above ? "VDR - (top)" : "VDR");
-    }
-#else
-    XStoreName(this->display, this->window[0], stay_above ? "Local VDR (top)" : "Local VDR");
-#endif
     this->stay_above = stay_above;
-    XUnlockDisplay(this->display);
+    /* Update window title */
+    update_window_title(this);
   }
 
   memset(&ev, 0, sizeof(ev));
   ev.type                 = ClientMessage;
   ev.xclient.type         = ClientMessage;
-  ev.xclient.message_type = this->atom_state;
+  ev.xclient.message_type = this->xa_NET_WM_STATE;
   ev.xclient.display      = this->display;
   ev.xclient.window       = this->window[0];
   ev.xclient.format       = 32;
-  ev.xclient.data.l[0]    = stay_above ? 1:0; /*this->atom_state_add : this->atom_state_del;*/
+  ev.xclient.data.l[0]    = stay_above ? 1:0;
 
   /* _NET_WM_STATE_ABOVE */
   XLockDisplay(this->display);
-  ev.xclient.data.l[1] = this->atom_state_above;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  ev.xclient.data.l[1] = this->xa_NET_WM_STATE_ABOVE;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
-  /* _NET_WM_STATE_ON_TOP */
+  /* _NET_WM_STATE_STAYS_ON_TOP */
   XLockDisplay(this->display);
-  ev.xclient.data.l[1] = this->atom_state_on_top;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  ev.xclient.data.l[1] = this->xa_NET_WM_STATE_STAYS_ON_TOP;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
   /* _NET_WM_STATE_STICKY */
   XLockDisplay(this->display);
-  ev.xclient.data.l[1] = XInternAtom(this->display, "_NET_WM_STATE_STICKY", False);
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  ev.xclient.data.l[1] = this->xa_NET_WM_STATE_STICKY;
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
   XUnlockDisplay(this->display);
 
   /* _WIN_LAYER */
   propvalue[0] = stay_above ? WIN_LAYER_ONTOP : WIN_LAYER_NORMAL;
   XLockDisplay(this->display);
-  XChangeProperty(this->display, this->window[0], XInternAtom(this->display, "_WIN_LAYER", False),
-		  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)propvalue,
-		  1);
+  XChangeProperty(this->display, this->window[0], this->xa_WIN_LAYER,
+                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)propvalue,
+                  1);
   XUnlockDisplay(this->display);
 
 #if 0
   /* sticky */
   memset(&ev, 0, sizeof(ev));
   ev.xclient.type         = ClientMessage;
-  ev.xclient.message_type = XInternAtom(this->display, "_WIN_STATE", False);
+  ev.xclient.message_type = this->xa_WIN_STATE;
   ev.xclient.display      = this->display;
   ev.xclient.window       = this->window[0];
   ev.xclient.format       = 32;
   ev.xclient.data.l[0] = (1<<0);
   ev.xclient.data.l[1] = (stay_above?(1<<0):0);
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
 #endif
 #if 0
   /* on top */
   memset(&ev, 0, sizeof(ev));
   ev.xclient.type         = ClientMessage;
-  ev.xclient.message_type = XInternAtom(this->display, "_WIN_LAYER", False);
+  ev.xclient.message_type = this->xa_WIN_LAYER;
   ev.xclient.display      = this->display;
   ev.xclient.window       = this->window[0];
   ev.xclient.format       = 32;
   ev.xclient.data.l[0] = (stay_above?10:6);
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask|SubstructureRedirectMask, &ev);
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask|SubstructureRedirectMask, &ev);
 #endif
 #if 0
   /* layer */
@@ -450,34 +495,38 @@ static void set_above(sxfe_t *this, int stay_above)
   xev.type = ClientMessage;
   xev.display = this->display;
   xev.window = this->window[0];
-  xev.message_type = this->atom_win_layer;
+  xev.message_type = this->xa_WIN_LAYER;
   xev.format = 32;
   xev.data.l[0] = 10;
   xev.data.l[1] = CurrentTime;
-  XSendEvent(this->display, DefaultRootWindow(this->display), False, 
-	     SubstructureNotifyMask, (XEvent *) & xev);
+  XSendEvent(this->display, DefaultRootWindow(this->display), False,
+             SubstructureNotifyMask, (XEvent *) & xev);
 
   XMapRaised(this->display, this->window[0]);
 #endif
 #if 0
   xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			  (void*) this->window[this->fullscreen ? 1 : 0]);
+                          (void*) this->window[this->fullscreen ? 1 : 0]);
 #endif
 }
 
+/*
+ * set_cursor
+ *
+ * Disable mouse cursor in video window (set transparent cursor)
+ */
 static void set_cursor(Display *dpy, Window win, const int enable)
 {
   if(enable)
     XDefineCursor(dpy, win, None);
   else {
     /* no cursor */
-    static char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
-    Pixmap bm_no;
+    const char bm_no_data[] = { 0,0,0,0, 0,0,0,0 };
     Cursor no_ptr;
     XColor black, dummy;
-    bm_no = XCreateBitmapFromData(dpy, win, bm_no_data, 8, 8);
-    XAllocNamedColor(dpy, DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)), 
-		     "black", &black, &dummy);
+    Pixmap bm_no = XCreateBitmapFromData(dpy, win, bm_no_data, 8, 8);
+    XAllocNamedColor(dpy, DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+                     "black", &black, &dummy);
     no_ptr = XCreatePixmapCursor(dpy, bm_no, bm_no, &black, &black, 0, 0);
     XDefineCursor(dpy, win, None);
     XDefineCursor(dpy, win, no_ptr);
@@ -486,13 +535,13 @@ static void set_cursor(Display *dpy, Window win, const int enable)
 
 static void update_xinerama_info(sxfe_t *this)
 {
+#ifdef HAVE_XINERAMA
   int screen = this->xinerama_screen;
   this->xinerama_x = this->xinerama_y = 0;
-#ifdef HAVE_XINERAMA
+  XLockDisplay(this->display);
   if(screen >= -1 && XineramaIsActive(this->display)) {
     XineramaScreenInfo *screens;
     int num_screens;
-
     screens = XineramaQueryScreens(this->display, &num_screens);
     if(screen >= num_screens)
       screen = num_screens - 1;
@@ -500,12 +549,12 @@ static void update_xinerama_info(sxfe_t *this)
       const int x = this->origxpos + this->origwidth / 2;
       const int y = this->origypos + this->origheight / 2;
       for(screen = num_screens - 1; screen > 0; screen--) {
-	const int x0 = screens[screen].x_org;
-	const int y0 = screens[screen].y_org;
-	const int x1 = x0 + screens[screen].width;
-	const int y1 = y0  + screens[screen].height;
-	if(x0 <= x && x <= x1 && y0 <= y && y <= y1)
-	  break;
+        const int x0 = screens[screen].x_org;
+        const int y0 = screens[screen].y_org;
+        const int x1 = x0 + screens[screen].width;
+        const int y1 = y0  + screens[screen].height;
+        if(x0 <= x && x <= x1 && y0 <= y && y <= y1)
+          break;
       }
     }
     if (screen < 0)
@@ -517,9 +566,15 @@ static void update_xinerama_info(sxfe_t *this)
 
     XFree(screens);
   }
+  XUnlockDisplay(this->display);
 #endif
 }
 
+/*
+ * update_screen_size
+ *
+ * Update screen size (= size of fullscreen window)
+ */
 static void update_screen_size(sxfe_t *this)
 {
   this->width = DisplayWidth(this->display, this->screen);
@@ -527,15 +582,20 @@ static void update_screen_size(sxfe_t *this)
   update_xinerama_info(this);
 }
 
+/*
+ * HUD OSD stuff
+ */
+
 #ifdef HAVE_XRENDER
-Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w, int h, int alpha)
+static Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis,
+                                       int w, int h, int alpha)
 {
   Xrender_Surf *rs;
   XRenderPictFormat *fmt;
   XRenderPictureAttributes att;
-	
+
   rs = calloc(1, sizeof (Xrender_Surf));
-	
+
   fmt = XRenderFindStandardFormat(dpy, alpha ? PictStandardARGB32 : PictStandardRGB24);
   rs->w = w;
   rs->h = h;
@@ -550,8 +610,9 @@ Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis, int w,
   return rs;
 }
 
-void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
-                        int x, int y, int w, int h, XDouble scale_x, XDouble scale_y, int smooth)
+static void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
+                               int x, int y, int w, int h,
+                               XDouble scale_x, XDouble scale_y, int smooth)
 {
   XTransform xf;
 
@@ -572,14 +633,14 @@ void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
   XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic, x, y, 0, 0, x, y, w, h);
 }
 
-Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
+static Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
 {
   Xrender_Surf *rs;
   XRenderPictFormat *fmt;
   XRenderPictureAttributes att;
-  
+
   rs = calloc(1, sizeof(Xrender_Surf));
-  
+
   fmt = XRenderFindVisualFormat(dpy, vis);
   rs->w = w;
   rs->h = h;
@@ -594,7 +655,7 @@ Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int 
   return rs;
 }
 
-void xrender_surf_free(Display *dpy, Xrender_Surf *rs)
+static void xrender_surf_free(Display *dpy, Xrender_Surf *rs)
 {
   if(rs->allocated)
     XFreePixmap(dpy, rs->draw);
@@ -608,7 +669,7 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   int nvi, i;
   XRenderPictFormat *format;
   Visual *visual;
-  
+
   template.screen = scr;
   template.depth = 32;
   template.class = TrueColor;
@@ -628,7 +689,7 @@ static Visual *find_argb_visual(Display *dpy, int scr)
        visual = xvi[i].visual;
        break;
      }
-  }  
+  }
 
   XFree(xvi);
 
@@ -653,7 +714,7 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
     finalcolor |= ((r << 16) & 0x00FF0000);
     finalcolor |= ((g << 8) & 0x0000FF00);
     finalcolor |= (b & 0x000000FF);
-    
+
     for(j = 0; j < (cmd->data + i)->len; ++j) {
       if(pixelcounter >= cmd->w) {
         idx += HUD_MAX_WIDTH - pixelcounter;
@@ -682,9 +743,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
-		     0, 0, this->osd_width+2, this->osd_height+2);
+                     0, 0, this->osd_width+2, this->osd_height+2);
       XFlush(this->display);
-
       break;
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
@@ -711,11 +771,13 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                              cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                              cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
                              cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
-			     (XDouble)this->width / (XDouble)this->osd_width,
-			     (XDouble)this->height / (XDouble)this->osd_height,
-			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
+                             (XDouble)this->width / (XDouble)this->osd_width,
+                             (XDouble)this->height / (XDouble)this->osd_height,
+                             (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
-      } else {
+      }
+      else
+      {
         hud_fill_img_memory(this->hud_img_mem, cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window (always unscaled) */
@@ -735,9 +797,9 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                              cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
                              cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
                              cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
-			     (XDouble)this->width / (XDouble)this->osd_width,
-			     (XDouble)this->height / (XDouble)this->osd_height,
-			     (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
+                             (XDouble)this->width / (XDouble)this->osd_width,
+                             (XDouble)this->height / (XDouble)this->osd_height,
+                             (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       }
       break;
@@ -758,9 +820,9 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD osd Close");
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
-		     0, 0, this->width, this->height);
+                     0, 0, this->width, this->height);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
-		     0, 0, this->osd_width+2, this->osd_height+2);
+                     0, 0, this->osd_width+2, this->osd_height+2);
       XFlush(this->display);
       break;
 
@@ -773,9 +835,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   return 1;
 }
 
-static int hud_osd_open(frontend_t *this_gen)
+static int hud_osd_open(sxfe_t *this)
 {
-  sxfe_t *this = (sxfe_t*)this_gen;
   if(this && this->hud) {
     int dummy;
 
@@ -809,7 +870,7 @@ static int hud_osd_open(frontend_t *this_gen)
     attributes.border_pixel = 0;
     attributes.colormap = hud_colormap;
     attributes.backing_store = Always;
-    
+
     this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
                                      this->xpos, this->ypos,
                                      this->width, this->height,
@@ -859,9 +920,8 @@ static int hud_osd_open(frontend_t *this_gen)
   return 1;
 }
 
-static void hud_osd_close(frontend_t *this_gen)
+static void hud_osd_close(sxfe_t *this)
 {
-  sxfe_t *this = (sxfe_t*)this_gen;
   if(this && this->hud) {
     XLockDisplay(this->display);
     LOGDBG("closing hud window...");
@@ -871,7 +931,8 @@ static void hud_osd_close(frontend_t *this_gen)
       XDestroyImage(this->hud_img);
       shmdt(this->hud_shminfo.shmaddr);
       shmctl(this->hud_shminfo.shmid, IPC_RMID, 0);
-    } else
+    }
+    else
       XDestroyImage(this->hud_img);
 
     if(this->surf_img)
@@ -885,19 +946,86 @@ static void hud_osd_close(frontend_t *this_gen)
 }
 #endif /* HAVE_XRENDER */
 
+/*
+ * disable_DPMS
+ */
+static void disable_DPMS(sxfe_t *this)
+{
+#ifdef HAVE_XDPMS
+  int dpms_dummy;
+  XLockDisplay(this->display);
+  if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
+    CARD16 dpms_level;
+    DPMSInfo(this->display, &dpms_level, &this->dpms_state);
+    DPMSDisable(this->display);
+  } else {
+    LOGMSG("disable_DPMS: DPMS unavailable");
+  }
+  XUnlockDisplay(this->display);
+#endif
+}
 
+/*
+ * open_display
+ *
+ * Try to connect to X server, in order
+ *   1) user-given display
+ *   2) DISPLAY environment variable
+ *   3) default display
+ *   4) :0.0
+ *   5) 127.0.0.1:0.0
+ */
+static int open_display(sxfe_t *this, const char *video_port)
+{
+  if (video_port && strlen(video_port)>2) {
+    if (!(this->display = XOpenDisplay(video_port)))
+      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
+             video_port);
+  }
+
+  if (!this->display) {
+    if (NULL!=(video_port=getenv("DISPLAY")) && !(this->display = XOpenDisplay(video_port)))
+      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
+             video_port);
+  }
+
+  if (!this->display) {
+    this->display = XOpenDisplay(NULL);
+  }
+
+  if (!this->display) {
+    if (!(this->display = XOpenDisplay(":0.0")))
+      LOGERR("sxfe_display_open: failed to connect to X server (:0.0)");
+  }
+
+  if (!this->display) {
+    if (!(this->display = XOpenDisplay("127.0.0.1:0.0")))
+      LOGERR("sxfe_display_open: failed to connect to X server (127.0.0.1:0.0");
+  }
+
+  if (!this->display) {
+    LOGERR("sxfe_display_open: failed to connect to X server.");
+    LOGMSG("If X server is running, try running \"xhost +\" in xterm window");
+    return 0;
+  }
+
+  return 1;
+}
+
+/*
+ * set_icon
+ */
 static void set_icon(sxfe_t *this)
 {
 # include "vdrlogo_32x32.c"
-
   XLockDisplay(this->display);
 #if defined(__WORDSIZE) && (__WORDSIZE == 32)
   /* Icon */
   XChangeProperty(this->display, this->window[0],
-		  XInternAtom(this->display, "_NET_WM_ICON", False),
-		  XA_CARDINAL, 32, PropModeReplace,
-		  (unsigned char *) &vdrlogo_32x32,
-		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+                  XInternAtom(this->display, "_NET_WM_ICON", False),
+                  XA_CARDINAL, 32, PropModeReplace,
+                  (unsigned char *) &vdrlogo_32x32,
+                  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
 #else
   long      q[2+32*32];
   uint32_t *p = (uint32_t*)&vdrlogo_32x32;
@@ -905,11 +1033,84 @@ static void set_icon(sxfe_t *this)
   for (i = 0; i < 2 + vdrlogo_32x32.width*vdrlogo_32x32.height; i++)
     q[i] = p[i];
   XChangeProperty(this->display, this->window[0],
-		  XInternAtom(this->display, "_NET_WM_ICON", False),
-		  XA_CARDINAL, 32, PropModeReplace,
-		  (unsigned char *) q,
-		  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
+                  XInternAtom(this->display, "_NET_WM_ICON", False),
+                  XA_CARDINAL, 32, PropModeReplace,
+                  (unsigned char *) q,
+                  2 + vdrlogo_32x32.width*vdrlogo_32x32.height);
 #endif
+  XUnlockDisplay(this->display);
+}
+
+/*
+ * detect_display_ratio
+ *
+ * Calculate display aspect ratio
+ */
+static double detect_display_ratio(Display *dpy, int screen)
+{
+  double res_h = DisplayWidth  (dpy, screen) * 1000.0 / DisplayWidthMM  (dpy, screen);
+  double res_v = DisplayHeight (dpy, screen) * 1000.0 / DisplayHeightMM (dpy, screen);
+
+  double display_ratio = res_v / res_h;
+  double diff          = display_ratio - 1.0;
+
+  if ((diff < 0.01) && (diff > -0.01))
+    display_ratio   = 1.0;
+
+  LOGDBG("Display size : %d x %d mm",
+         DisplayWidthMM  (dpy, screen),
+         DisplayHeightMM (dpy, screen));
+  LOGDBG("               %d x %d pixels",
+         DisplayWidth  (dpy, screen),
+         DisplayHeight (dpy, screen));
+  LOGDBG("               %ddpi / %ddpi",
+         (int)(res_v/1000*25.4), (int)(res_h/1000*25.4));
+  LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, display_ratio);
+
+  return display_ratio;
+}
+
+/*
+ * create_windows
+ *
+ * Create and initialize fullscreen and windowed mode X11 windows
+ *  - Borderless fullscreen window
+ *  - Set window title and icon
+ */
+static void create_windows(sxfe_t *this)
+{
+  XLockDisplay(this->display);
+  /* create and display our video window */
+  this->window[0] = XCreateSimpleWindow (this->display,
+                                         DefaultRootWindow(this->display),
+                                         this->xpos, this->ypos,
+                                         this->width, this->height,
+                                         1, 0, 0);
+  this->window[1] = XCreateSimpleWindow(this->display, XDefaultRootWindow(this->display),
+                                        this->xinerama_x, this->xinerama_y,
+                                        this->width, this->height,
+                                        0, 0, 0);
+
+  /* full-screen window */
+  set_fullscreen_props(this);
+
+  /* Window hint */
+  XClassHint *classHint = XAllocClassHint();
+  if(classHint) {
+    classHint->res_name = "VDR";
+    classHint->res_class = "VDR";
+    XSetClassHint(this->display, this->window[0], classHint);
+    XSetClassHint(this->display, this->window[1], classHint);
+    XFree(classHint);
+  }
+
+  /* Window name */
+  const char *initial_title = (!this->keypress) ? "Connecting to VDR ..." : "Local VDR";
+  XStoreName(this->display, this->window[0], initial_title);
+  XStoreName(this->display, this->window[1], initial_title);
+
+  /* Icon */
+  set_icon(this);
   XUnlockDisplay(this->display);
 }
 
@@ -918,20 +1119,15 @@ static void set_icon(sxfe_t *this)
  *
  * connect to X server, create windows
  */
-
 static int sxfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
                              int width, int height, int fullscreen, int hud,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
-                             const char *video_port,
-                             int scale_video, int field_order,
+                             const char *video_port, int scale_video, int field_order,
                              const char *aspect_controller, int window_id)
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
-
-  MWMHints   mwmhints;
-  double     res_h, res_v, aspect_diff;
 
   if(this->display)
     this->fe.fe_display_close(this_gen);
@@ -942,12 +1138,12 @@ static int sxfe_display_open(frontend_t *this_gen,
   }
 
   LOGDBG("sxfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
-	 width, height, fullscreen, video_port);
+         width, height, fullscreen, video_port);
 
   if(hud) {
 #ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
-    this->hud = hud;
+    this->hud        = hud;
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
 #else
@@ -957,29 +1153,35 @@ static int sxfe_display_open(frontend_t *this_gen,
 
   this->xpos            = xpos;
   this->ypos            = ypos;
-  this->origxpos        = 0;
-  this->origypos        = 0;
   this->width           = width;
   this->height          = height;
-  this->origwidth       = width>0 ? width : OSD_DEF_WIDTH;
-  this->origheight      = height>0 ? height : OSD_DEF_HEIGHT;
-  this->check_move      = 0;
-
-  this->fullscreen      = fullscreen;
-  this->vmode_switch    = modeswitch;
   this->aspect          = aspect;
   this->cropping        = 0;
-  this->field_order     = field_order ? 1 : 0;
-  this->scale_video     = scale_video;
   this->overscan        = 0;
-  this->no_x_kbd        = no_x_kbd ? 1 : 0;
-  this->gui_hotkeys     = gui_hotkeys;
+  this->scale_video     = scale_video;
+  this->field_order     = field_order ? 1 : 0;
   this->aspect_controller = aspect_controller;
-  this->window_id       = window_id;
 
+  this->origxpos      = xpos;
+  this->origypos      = ypos;
+  this->origwidth     = width>0 ? width : OSD_DEF_WIDTH;
+  this->origheight    = height>0 ? height : OSD_DEF_HEIGHT;
+
+  this->check_move    = 0;
+  this->dragging      = 0;
+  this->dragging_x    = 0;
+  this->dragging_y    = 0;
+
+  this->fullscreen      = fullscreen;
+/*this->vmode_switch    = modeswitch;*/
   this->fullscreen_state_forced = 0;
-  strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));
+/*strn0cpy(this->modeline, modeline ? : "", sizeof(this->modeline));*/
+  this->window_id = window_id;
+
   this->xinerama_screen = -1;
+
+  this->gui_hotkeys = gui_hotkeys;
+  this->no_x_kbd    = no_x_kbd ? 1 : 0;
 
   /*
    * init x11 stuff
@@ -991,32 +1193,8 @@ static int sxfe_display_open(frontend_t *this_gen,
     return 0;
   }
 
-  if(video_port && strlen(video_port)>2) {
-    if(!(this->display = XOpenDisplay(video_port)))
-      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
-	     video_port);
-  }
-  if(!this->display) {
-    if(NULL!=(video_port=getenv("DISPLAY")) && !(this->display = XOpenDisplay(video_port)))
-      LOGERR("sxfe_display_open: failed to connect to X server (%s)",
-	     video_port);
-  }
-  if(!this->display) {
-    this->display = XOpenDisplay(NULL);
-  }
-  if(!this->display) {
-    if(!(this->display = XOpenDisplay(":0.0")))
-      LOGERR("sxfe_display_open: failed to connect to X server (:0.0)");
-  }
-  if(!this->display) {
-    if(!(this->display = XOpenDisplay("127.0.0.1:0.0")))
-      LOGERR("sxfe_display_open: failed to connect to X server (127.0.0.1:0.0");
-  }
-  if (!this->display) {
-    LOGERR("sxfe_display_open: failed to connect to X server.");
-    LOGMSG("If X server is running, try running \"xhost +\" in xterm window");
+  if (!open_display(this, video_port))
     return 0;
-  }
 
   XLockDisplay (this->display);
 
@@ -1025,131 +1203,60 @@ static int sxfe_display_open(frontend_t *this_gen,
   /* #warning sxfe_display_open: TODO: switch vmode */
 
   /* completion event */
+  this->completion_event = -1;
   if (XShmQueryExtension (this->display) == True) {
     this->completion_event = XShmGetEventBase (this->display) + ShmCompletion;
-  } else {
-    this->completion_event = -1;
   }
+
+  init_atoms(this);
 
   if(fullscreen)
     update_screen_size(this);
-  
+
+  /* Output to existing window ? (embedded to another app) */
   if(this->window_id > 0) {
     LOGMSG("sxfe_diaplay_open(): Using X11 window %d for output", this->window_id);
     this->window[0] = this->window[1] = (Window)this->window_id;
     XUnmapWindow(this->display, this->window[0]);
   } else {
-    /* create and display our video window */
-    this->window[0] = XCreateSimpleWindow (this->display,
-					   DefaultRootWindow(this->display),
-					   this->xpos, this->ypos,
-					   this->width, this->height,
-					   1, 0, 0);
-    this->window[1] = XCreateSimpleWindow(this->display, XDefaultRootWindow(this->display),
-					  this->xinerama_x, this->xinerama_y, 
-					  this->width, this->height,
-					  0, 0, 0);
-  }
-
-  if(this->window_id <= 0) {
-    /* full-screen window */
-    set_fullscreen_props(this);
-
-    /* no border in fullscreen window */
-    this->atom_wm_hints = XInternAtom(this->display, "_MOTIF_WM_HINTS", False);
-    mwmhints.flags = MWM_HINTS_DECORATIONS;
-    mwmhints.decorations = 0;
-    XChangeProperty(this->display, this->window[1], this->atom_wm_hints, this->atom_wm_hints, 32,
-		    PropModeReplace, (unsigned char *) &mwmhints,
-		    PROP_MWM_HINTS_ELEMENTS);
+    create_windows(this);
   }
 
   /* Select input */
   XSelectInput (this->display, this->window[0],
-		StructureNotifyMask |
-		ExposureMask |
-		KeyPressMask | 
-		ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | 
-		FocusChangeMask);
+                StructureNotifyMask |
+                ExposureMask |
+                KeyPressMask |
+                ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |
+                FocusChangeMask);
   XSelectInput (this->display, this->window[1],
-		StructureNotifyMask |
-		ExposureMask |
-		KeyPressMask | 
-		ButtonPressMask | 
-		FocusChangeMask);
-
-
-  if(this->window_id <= 0) {
-
-    /* Window hint */
-    XClassHint *classHint = XAllocClassHint();
-    if(classHint) {
-      classHint->res_name = "VDR";
-      classHint->res_class = "VDR";
-      XSetClassHint(this->display, this->window[0], classHint);
-      XSetClassHint(this->display, this->window[1], classHint);
-      XFree(classHint);
-    }
-
-    /* Window name */
-#ifdef FE_STANDALONE
-    XStoreName(this->display, this->window[0], "VDR - ");
-    XStoreName(this->display, this->window[1], "VDR - ");
-#else
-    XStoreName(this->display, this->window[0], "Local VDR");
-    XStoreName(this->display, this->window[1], "Local VDR");
-#endif
-
-    /* Icon */
-    set_icon(this);
-  }
+                StructureNotifyMask |
+                ExposureMask |
+                KeyPressMask |
+                ButtonPressMask |
+                FocusChangeMask);
 
   /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
   XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
 
   /* determine display aspect ratio */
-  res_h = (DisplayWidth  (this->display, this->screen)*1000
-	   / DisplayWidthMM (this->display, this->screen));
-  res_v = (DisplayHeight (this->display, this->screen)*1000
-	   / DisplayHeightMM (this->display, this->screen));
-  this->display_ratio = res_v / res_h;
-  aspect_diff = this->display_ratio - 1.0;
-  if ((aspect_diff < 0.01) && (aspect_diff > -0.01)) {
-    this->display_ratio   = 1.0;
-  }
-  LOGDBG("Display size : %d x %d mm", 
-	 DisplayWidthMM (this->display, this->screen),
-	 DisplayHeightMM (this->display, this->screen));
-  LOGDBG("               %d x %d pixels", 
-	 DisplayWidth (this->display, this->screen),
-	 DisplayHeight (this->display, this->screen));
-  LOGDBG("               %ddpi / %ddpi", 
-	 (int)(res_v/1000*25.4), (int)(res_h/1000*25.4));
-  LOGDBG("Display ratio: %f/%f = %f", res_v, res_h, this->display_ratio);
+  this->display_ratio = detect_display_ratio(this->display, this->screen);
 
   /* we want to get notified if user closes the window */
-  this->atom_wm_delete_window = XInternAtom(this->display, "WM_DELETE_WINDOW", False);
-  XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->atom_wm_delete_window), 1);
+  XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->xa_WM_DELETE_WINDOW), 1);
 
+  /* Hide cursor */
   if(this->window_id <= 0)
     set_cursor(this->display, this->window[1], 0);
 
   /* No screen saver */
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
   XSetScreenSaver(this->display, 0, 0, DefaultBlanking, DefaultExposures);
-#ifdef HAVE_XDPMS
-  {
-    int dpms_dummy;
-    if (DPMSQueryExtension(this->display, &dpms_dummy, &dpms_dummy) && DPMSCapable(this->display)) {
-      CARD16 dpms_level;
-      DPMSInfo(this->display, &dpms_level, &this->dpms_state);
-      DPMSDisable(this->display);
-    } else {
-      LOGMSG("sxfe_display_open: DPMS unavailable");
-    }
-  }
-#endif
+
+  /* Disable DPMS */
+  disable_DPMS(this);
+
 #ifdef HAVE_DBUS_GLIB_1
   /* Disable GNOME screensaver */
   gnome_screensaver_control(0);
@@ -1159,18 +1266,15 @@ static int sxfe_display_open(frontend_t *this_gen,
   this->vis.display          = this->display;
   this->vis.screen           = this->screen;
   this->vis.d                = this->window[this->fullscreen ? 1 : 0];
-  this->vis.dest_size_cb     = fe_dest_size_cb;
+  this->vis.dest_size_cb     = sxfe_dest_size_cb;
   this->vis.frame_output_cb  = fe_frame_output_cb;
   this->vis.user_data        = this;
-
-  this->atom_sxfe_interrupt  = XInternAtom(this->display, "SXFE_INTERRUPT", False);
 
   set_fullscreen_props(this);
 
   XUnlockDisplay (this->display);
-
 #ifdef HAVE_XRENDER
-  return hud_osd_open(this_gen);
+  return hud_osd_open(this);
 #else
   return 1;
 #endif
@@ -1181,35 +1285,44 @@ static int sxfe_display_open(frontend_t *this_gen,
  *
  * configure windows
  */
-static int sxfe_display_config(frontend_t *this_gen, 
+static int sxfe_display_config(frontend_t *this_gen,
                                int xpos, int ypos,
-			       int width, int height, int fullscreen, 
-			       int modeswitch, const char *modeline, 
-			       int aspect, int scale_video, 
-			       int field_order) 
+                               int width, int height, int fullscreen,
+                               int modeswitch, const char *modeline,
+                               int aspect, int scale_video,
+                               int field_order)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  
+
   if(this->fullscreen_state_forced)
     fullscreen = this->fullscreen ? 1 : 0;
 
-  if(!fullscreen && (this->width != width || this->height != height)) {
+  if (xpos < 0) xpos = this->xpos;
+  if (ypos < 0) ypos = this->ypos;
+
+  if ( !fullscreen &&
+       ( this->width != width || this->height != height ||
+         this->xpos  != xpos  || this->ypos   != ypos)) {
+    this->xpos       = xpos;
+    this->ypos       = ypos;
     this->width      = width;
     this->height     = height;
 
     XLockDisplay(this->display);
     XResizeWindow(this->display, this->window[0], this->width, this->height);
+    XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
     XUnlockDisplay(this->display);
     if(!fullscreen && !this->fullscreen)
       xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			      (void*) this->window[0]);
+                              (void*) this->window[0]);
   }
 
   if(fullscreen)
     update_screen_size(this);
-  
+
   if(fullscreen != this->fullscreen) {
-    Window    tmp_win;
+    Window tmp_win;
+    int    tmp_x, tmp_y;
     XLockDisplay(this->display);
     XUnmapWindow(this->display, this->window[this->fullscreen ? 1 : 0]);
     this->fullscreen = fullscreen ? 1 : 0;
@@ -1222,7 +1335,7 @@ static int sxfe_display_config(frontend_t *this_gen,
       XResizeWindow(this->display, this->window[0], this->width, this->height);
       XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
       LOGDBG("sxfe_display_config: XMoveWindow called with x=%d and y=%d",
-	     this->xpos, this->ypos);
+             this->xpos, this->ypos);
       this->check_move = 1;
       set_above(this, this->stay_above);
     } else {
@@ -1231,34 +1344,29 @@ static int sxfe_display_config(frontend_t *this_gen,
       XMoveWindow(this->display, this->window[1], this->xinerama_x, this->xinerama_y);
     }
     XSync(this->display, False);
-    XTranslateCoordinates(this->display, this->window[this->fullscreen ? 1 : 0],
-			  DefaultRootWindow(this->display),
-			  0, 0, &this->xpos, &this->ypos, &tmp_win);
+    if(XTranslateCoordinates(this->display, this->window[this->fullscreen ? 1 : 0],
+                             DefaultRootWindow(this->display),
+                             0, 0, &tmp_x, &tmp_y, &tmp_win)) {
+      this->xpos = tmp_x;
+      this->ypos = tmp_y;
+    }
     XUnlockDisplay(this->display);
     xine_port_send_gui_data(this->video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
-			    (void*) this->window[this->fullscreen ? 1 : 0]);
+                            (void*) this->window[this->fullscreen ? 1 : 0]);
   }
 
+#if 0
   if(!modeswitch && strcmp(modeline, this->modeline)) {
     strn0cpy(this->modeline, modeline, sizeof(this->modeline));
     /* #warning TODO - switch vmode */
   }
+#endif
 
-  this->vmode_switch = modeswitch;
+/*this->vmode_switch = modeswitch;*/
   this->aspect = aspect;
   this->scale_video = scale_video;
-#ifdef HAVE_XV_FIELD_ORDER
-  if(this->field_order != field_order) {
-    XLockDisplay (this->display);
-    if(XInternAtom(this->display, "XV_SWAP_FIELDS", True) != None)
-      XvSetPortAttribute (this->display, 53, 
-			  XInternAtom (this->display, "XV_SWAP_FIELDS", False), 
-			  field_order);
-    XUnlockDisplay (this->display);
-  }
-#endif
   this->field_order = field_order ? 1 : 0;
-  
+
   return 1;
 }
 
@@ -1278,13 +1386,11 @@ static void sxfe_toggle_fullscreen(frontend_t *this_gen)
     this->ypos = this->origypos;
   }
 
-  this->fe.fe_display_config((frontend_t*)this,
-                             -1, -1,
-                             this->origwidth, this->origheight,
-			     this->fullscreen ? 0 : 1, 
-			     this->vmode_switch, this->modeline, 
-			     this->aspect, this->scale_video, this->field_order);
-  
+  this->fe.fe_display_config((frontend_t*)this, -1, -1, this->origwidth, this->origheight,
+                             this->fullscreen ? 0 : 1,
+                             0/*this->vmode_switch*/, NULL/*this->modeline*/,
+                             this->aspect, this->scale_video, this->field_order);
+
   this->fullscreen_state_forced = !force;
 }
 
@@ -1292,49 +1398,58 @@ static void sxfe_toggle_fullscreen(frontend_t *this_gen)
  *   X event loop
  */
 
+/*
+ * sxfe_interrupt
+ *
+ * - Interrupt X event loop (sxfe_run)
+ *
+ */
 static void sxfe_interrupt(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  XClientMessageEvent ev2;
 
-  ev2.type    = ClientMessage;
-  ev2.display = this->display;
-  ev2.window  = this->window[this->fullscreen ? 1 : 0];
-  ev2.message_type = this->atom_sxfe_interrupt;
-  ev2.format  = 32;
-
+  XClientMessageEvent event = {
+    .type         = ClientMessage,
+    .display      = this->display,
+    .window       = this->window[this->fullscreen ? 1 : 0],
+    .message_type = this->xa_SXFE_INTERRUPT,
+    .format       = 32,
+  };
   XLockDisplay (this->display);
-
-  if(!XSendEvent(ev2.display, ev2.window, TRUE, /*KeyPressMask*/0, (XEvent *)&ev2))
+  if(!XSendEvent(event.display, event.window, 1, /*KeyPressMask*/0, (XEvent *)&event))
     LOGERR("sxfe_interrupt: XSendEvent(ClientMessage) FAILED\n");
 
   XFlush(this->display);
-
   XUnlockDisplay (this->display);
 }
 
+/*
+ * sxfe_run
+ *
+ *  - main X event loop
+ */
 static int sxfe_run(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  static int dragging = 0, drx = 0, dry = 0;
 
-  int keep_going = 1;
-  XEvent event;
-
-  /* poll X server (connection socket). 
-     (XNextEvent will block if no events are queued).
-     We want to use timeout, blocking for long time usually causes vdr
-     watchdog to emergency exit ... */
+  /* poll X server (connection socket).
+   * (XNextEvent will block until events are queued).
+   * We want to use timeout, blocking for long time usually causes vdr
+   * watchdog to emergency exit ...
+   */
   if (! XPending(this->display)) {
-    struct pollfd pfd[2];
-    pfd[0].fd = ConnectionNumber(this->display);
-    pfd[0].events = POLLIN;
-    if(poll(pfd, 1, 50) < 1 || !(pfd[0].revents & POLLIN)) {
+    struct pollfd pfd = {
+      .fd = ConnectionNumber(this->display),
+      .events = POLLIN,
+    };
+    if (poll(&pfd, 1, 50) < 1 || !(pfd.revents & POLLIN)) {
       return 1;
     }
   }
 
-  while(keep_going && XPending(this->display) > 0) {
+  while (XPending(this->display) > 0) {
+
+    XEvent event;
 
     XLockDisplay (this->display);
     XNextEvent (this->display, &event);
@@ -1342,10 +1457,10 @@ static int sxfe_run(frontend_t *this_gen)
 
     switch (event.type) {
       case Expose:
-	if (event.xexpose.count == 0)
-	  xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_EXPOSE_EVENT, &event);
-	break;
-	
+        if (event.xexpose.count == 0)
+          xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_EXPOSE_EVENT, &event);
+        break;
+
       case ConfigureNotify:
       {
 	XConfigureEvent *cev = (XConfigureEvent *) &event;
@@ -1432,14 +1547,12 @@ static int sxfe_run(frontend_t *this_gen)
       }
 #endif /* HAVE_XRENDER */
       case ButtonRelease:
-      {
-	dragging = 0;
-	break;
-      }
+        this->dragging = 0;
+        break;
 
       case MotionNotify:
       {
-	if(dragging && !this->fullscreen) {
+	if(this->dragging && !this->fullscreen) {
 	  XMotionEvent *mev = (XMotionEvent *) &event;
 	  Window tmp_win;
 	  int xpos, ypos;
@@ -1452,10 +1565,10 @@ static int sxfe_run(frontend_t *this_gen)
 				DefaultRootWindow(this->display),
 				0, 0, &xpos, &ypos, &tmp_win);
 
-	  this->xpos = (xpos += mev->x_root - drx);
-	  this->ypos = (ypos += mev->y_root - dry);
-	  drx = mev->x_root;
-	  dry = mev->y_root;
+	  this->xpos = (xpos += mev->x_root - this->dragging_x);
+	  this->ypos = (ypos += mev->y_root - this->dragging_y);
+	  this->dragging_x = mev->x_root;
+	  this->dragging_y = mev->y_root;
 
 	  XMoveWindow(this->display, this->window[0], xpos, ypos);
           LOGDBG("MotionNotify: XMoveWindow called with x=%d and y=%d", xpos, ypos);
@@ -1469,17 +1582,16 @@ static int sxfe_run(frontend_t *this_gen)
       {
 	XButtonEvent *bev = (XButtonEvent *) &event;
 	if(bev->button == Button1) {
-	  static Time prev_time = 0;
-	  if(bev->time - prev_time < DOUBLECLICK_TIME) {
+	  if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
 	    /* Toggle fullscreen */
 	    this->toggle_fullscreen_cb((frontend_t*)this);
-	    prev_time = 0; /* don't react to third click ... */
+	    this->prev_click_time = 0; /* don't react to third click ... */
 	  } else {
-	    prev_time = bev->time;
-	    if(!this->fullscreen && this->no_border && !dragging) {
-	      dragging = 1;
-	      drx = bev->x_root;
-	      dry = bev->y_root;
+	    this->prev_click_time = bev->time;
+	    if(!this->fullscreen && this->no_border && !this->dragging) {
+	      this->dragging = 1;
+	      this->dragging_x = bev->x_root;
+	      this->dragging_y = bev->y_root;
 	    }
 	  }
 	} else if(bev->button == Button3) {
@@ -1487,9 +1599,9 @@ static int sxfe_run(frontend_t *this_gen)
 	    if(!this->stay_above) {
 	      set_above(this, 1);
 	    } else if(!this->no_border) {
-	      set_border(this, 0);
+	      set_border(this, this->window[0], 0);
 	    } else {
-	      set_border(this, 1);
+	      set_border(this, this->window[0], 1);
 	      set_above(this, 0);
 	    }
 	  }
@@ -1525,8 +1637,6 @@ static int sxfe_run(frontend_t *this_gen)
             case XK_Escape:
               if (!this->keypress) { /* ESC exits only in remote mode */
                 fe_event = "QUIT";
-                this->terminate_key_pressed = 1;
-                keep_going = 0;
               }
               break;
             default:;
@@ -1539,28 +1649,31 @@ static int sxfe_run(frontend_t *this_gen)
 	}
       }
       break;
-      
+
       case ClientMessage:
       {
-	XClientMessageEvent *cmessage = (XClientMessageEvent *) &event;	
-	if ( cmessage->message_type == this->atom_sxfe_interrupt )
-	  LOGDBG("ClientMessage: sxfe_interrupt");
+        XClientMessageEvent *cmessage = (XClientMessageEvent *) &event;
+        if ( cmessage->message_type == this->xa_SXFE_INTERRUPT )
+          LOGDBG("ClientMessage: sxfe_interrupt");
 
-	if ( cmessage->data.l[0] == this->atom_wm_delete_window )
-	  /* we got a window deletion message from out window manager.*/
-	  LOGDBG("ClientMessage: WM_DELETE_WINDOW");
-	  keep_going=0;
+        if ( cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW ) {
+          /* we got a window deletion message from out window manager.*/
+          LOGDBG("ClientMessage: WM_DELETE_WINDOW");
+
+          this->fe.send_event((frontend_t*)this, "QUIT");
+        }
+        break;
       }
     }
-    
+
     if (event.type == this->completion_event)
       xine_port_send_gui_data (this->video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
   }
 
-  return keep_going;
+  return !this->fe.xine_is_finished((frontend_t*)this, 0);
 }
 
-static void sxfe_display_close(frontend_t *this_gen) 
+static void sxfe_display_close(frontend_t *this_gen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
@@ -1571,15 +1684,16 @@ static void sxfe_display_close(frontend_t *this_gen)
     this->fe.xine_exit(this_gen);
 
   if(this->display) {
-    
+
 #ifdef HAVE_XRENDER
-    hud_osd_close(this_gen);
+    hud_osd_close(this);
 #endif
 
 #ifdef HAVE_DBUS_GLIB_1
     /* Restore GNOE screensaver */
     gnome_screensaver_control(1);
 #endif
+
 #ifdef HAVE_XDPMS
     if(this->dpms_state)
       DPMSEnable(this->display);
