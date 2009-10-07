@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.21 2009-10-07 11:38:11 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.22 2009-10-07 12:05:25 phintuka Exp $
  *
  */
 
@@ -749,6 +749,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
       LOGDBG("HUD Set RLE");
+      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+        break;
       if(this->completion_event != -1) {
         hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
         if(!cmd->scaling) {
@@ -818,6 +820,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Close: /* Close OSD window */
       LOGDBG("HUD osd Close");
+      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+        break;
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
                      0, 0, this->width, this->height);
@@ -1211,7 +1215,7 @@ static int sxfe_display_open(frontend_t *this_gen,
   this->overscan        = 0;
   this->scale_video     = scale_video;
   this->field_order     = field_order ? 1 : 0;
-  this->aspect_controller = aspect_controller;
+  this->aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
 
   this->origxpos      = xpos;
   this->origypos      = ypos;
@@ -1423,7 +1427,8 @@ static int sxfe_display_config(frontend_t *this_gen,
 
 static void sxfe_toggle_fullscreen(frontend_t *this_gen)
 {
-  sxfe_t *this = (sxfe_t*)this;
+  sxfe_t *this = (sxfe_t*)this_gen;
+
   int force = this->fullscreen_state_forced;
   this->fullscreen_state_forced = 0;
 
@@ -1480,7 +1485,7 @@ static void sxfe_interrupt(frontend_t *this_gen)
  */
 static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 {
-  if(kev->keycode) {
+  if(kev->keycode && kev->type == KeyPress) {
     KeySym         ks;
     char           buffer[20];
     XComposeStatus status;
@@ -1531,13 +1536,18 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
   if (this->width != cev->width || this->height != cev->height) {
     this->width  = cev->width;
     this->height = cev->height;
+
+    /* inform VDR about new size */
+    char str[128];
+    snprintf(str, sizeof(str), "INFO WINDOW %dx%d", this->width, this->height);
+    this->fe.send_event((frontend_t*)this, str);
   }
 
   if(this->window[0] == cev->window && this->check_move) {
     LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d",
            cev->x, cev->y, this->check_move);
     this->check_move = 0;
-    if(this->xpos != cev->x || this->ypos != cev->y) {
+    if(this->xpos != cev->x && this->ypos != cev->y) {
       XLockDisplay (this->display);
       XMoveWindow(this->display, this->window[0], cev->x, cev->y);
       XUnlockDisplay (this->display);
@@ -1559,6 +1569,7 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
     }
   } else {
     if(!this->fullscreen) {
+      /* update video window position */
       this->xpos = cev->x;
       this->ypos = cev->y;
     }
@@ -1768,6 +1779,13 @@ static void sxfe_display_close(frontend_t *this_gen)
     XCloseDisplay (this->display);
     this->display = NULL;
   }
+
+  free(this->x.aspect_controller);
+  this->x.aspect_controller = NULL;
+#if 0
+  free(this->modeline);
+  this->modeline = NULL;
+#endif
 }
 
 /*
