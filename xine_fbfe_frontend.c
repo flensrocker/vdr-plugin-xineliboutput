@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.20.2.3 2009-09-18 11:31:34 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.20.2.4 2009-10-07 12:34:40 phintuka Exp $
  *
  */
 
@@ -49,10 +49,13 @@
  * data
  */
 
-typedef struct fbfe_t {
+typedef struct fbfe_s {
 
-  /* function pointers */
-  frontend_t              fe;
+  /* function pointers / base class */
+  union {
+    frontend_t fe;  /* generic frontend */
+  };
+
   void   (*update_display_size_cb)(frontend_t*);
   void   (*toggle_fullscreen_cb)  (frontend_t*);
 
@@ -99,9 +102,6 @@ typedef struct fbfe_t {
                       const char *static_post_plugins,
                       const char *config_file);
 
-  /* display */
-  int         fd_tty;
-
   /* frontend */
   double      display_ratio;
   double      video_aspect;
@@ -115,13 +115,17 @@ typedef struct fbfe_t {
   uint8_t     aspect;
   uint8_t     cropping;
   uint8_t     scale_video;
-  uint8_t     fullscreen;
-  uint8_t     vmode_switch;
   uint8_t     field_order;
 
   /* strings */
   char        configfile[256];
-  char        modeline[256];
+
+  /* display */
+/*char   *modeline;*/
+  int     fd_tty;
+
+  uint8_t fullscreen : 1;
+/*uint8_t vmode_switch : 1;*/
 
 } fbfe_t, fe_t;
 
@@ -132,12 +136,12 @@ typedef struct fbfe_t {
 
 static void fbfe_update_display_size(frontend_t *this_gen)
 {
-  fe_t *this = (fe_t*)this_gen;
-  if(this->fullscreen) {
-    this->width  = this->video_port->get_property(this->video_port, 
-						  VO_PROP_WINDOW_WIDTH);
-    this->height = this->video_port->get_property(this->video_port, 
-						  VO_PROP_WINDOW_HEIGHT);
+  fbfe_t *this = (fbfe_t*)this_gen;
+  if(this->fullscreen && this->video_port) {
+    this->width  = this->video_port->get_property(this->video_port,
+                                                  VO_PROP_WINDOW_WIDTH);
+    this->height = this->video_port->get_property(this->video_port,
+                                                  VO_PROP_WINDOW_HEIGHT);
     LOGDBG("Framebuffer size after initialization: %dx%d",
 	   this->width, this->height);
   }
@@ -221,27 +225,30 @@ static int fbfe_display_open(frontend_t *this_gen,
   this->ypos            = ypos;
   this->width           = width;
   this->height          = height;
-  this->fullscreen      = fullscreen;
-  this->vmode_switch    = 0/*modeswitch*/;
   this->aspect          = aspect;
   this->cropping        = 0;
   this->field_order     = 0/*field_order ? 1 : 0*/;
   this->scale_video     = scale_video;
   this->overscan        = 0;
-  strn0cpy(this->modeline, modeline, sizeof(this->modeline));
   this->display_ratio   = 1.0;
+  this->aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
 
+  this->fullscreen      = fullscreen;
+/*this->vmode_switch    = modeswitch;*/
+/*this->modeline        = strdup(modeline ?: "");*/
+
+  /* setup xine FB visual */
   this->xine_visual_type = XINE_VISUAL_TYPE_FB;
   this->vis.frame_output_cb = fe_frame_output_cb;
   this->vis.user_data = this;
 
-  this->update_display_size_cb = fbfe_update_display_size;
-
+  /* select framebuffer device ? */
   if(video_port && !strncmp(video_port, "/dev/", 5))
     this->video_port_name = strdup(video_port);
   else
     this->video_port_name = NULL;
 
+  /* set console to graphics mode */
 #if defined(KDSETMODE) && defined(KD_GRAPHICS)
   if (isatty(STDIN_FILENO))
     this->fd_tty = dup(STDIN_FILENO);
@@ -276,27 +283,22 @@ static int fbfe_display_config(frontend_t *this_gen,
   if(!this)
     return 0;
 
-  if(this->width != width || this->height != height) {
-    this->width           = width;
-    this->height          = height;
-  }
-
-  if(fullscreen != this->fullscreen) {
-    this->fullscreen = fullscreen;
-  }
-
+  this->xpos          = xpos   >= 0 ? xpos   : this->xpos;
+  this->ypos          = ypos   >= 0 ? ypos   : this->ypos;
+  this->width         = width  >= 0 ? width  : this->width;
+  this->height        = height >= 0 ? height : this->height;
+  this->aspect        = aspect;
+  this->scale_video   = scale_video;
+  this->field_order   = field_order;
+  this->fullscreen    = fullscreen;
+/*this->vmode_switch  = modeswitch;*/
+#if 0
   if(!modeswitch && strcmp(modeline, this->modeline)) {
     strn0cpy(this->modeline, modeline, sizeof(this->modeline));
     /* XXX TODO - switch vmode */
-#ifdef LOG
-    LOGDBG("fbfe_display_config: TODO: switch vmode\n");fflush(stdout);
-#endif
   }
+#endif
 
-  this->vmode_switch = modeswitch;
-  this->aspect = aspect;
-  this->scale_video = scale_video;
-  this->field_order = field_order ? 1 : 0;
   return 1;
 }
 
@@ -309,13 +311,13 @@ static int fbfe_run(frontend_t *this_gen)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
-  if(this && this->playback_finished)
-    return !this->playback_finished;
+  if (!this || this->fe.xine_is_finished(this_gen, 0) != FE_XINE_RUNNING)
+    return 0;
 
   /* just sleep 500ms */
   select(0, NULL, NULL, NULL, &(struct timeval){ .tv_sec = 0, .tv_usec = 500*1000 }); 
 
-  return !(!this || this->playback_finished);
+  return 1;
 }
 
 static void fbfe_display_close(frontend_t *this_gen) 
@@ -339,13 +341,16 @@ static void fbfe_display_close(frontend_t *this_gen)
 
   free(this->video_port_name);
   this->video_port_name = NULL;
+
+  free(this->aspect_controller);
+  this->aspect_controller = NULL;
 }
 
-static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver, 
-			  const char *audio_port,
-			  const char *video_driver, 
-			  int pes_buffers,
-			  const char *static_post_plugins,
+static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
+                          const char *audio_port,
+                          const char *video_driver,
+                          int pes_buffers,
+                          const char *static_post_plugins,
                           const char *config_file)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
