@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.11 2009-10-07 12:48:48 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.12 2009-10-07 18:39:14 phintuka Exp $
  *
  */
 
@@ -1561,6 +1561,89 @@ static void JpegCompressTermDestination(const j_compress_ptr cinfo)
      }
 }
 
+static vo_frame_t *yv12_to_yuy2_frame(xine_stream_t *stream, vo_frame_t *frame)
+{
+  /* convert yv12 frames to yuy2 */
+  if (frame->format == XINE_IMGFMT_YV12) {
+    stream->xine->port_ticket->acquire(stream->xine->port_ticket, 0);
+    vo_frame_t *img = stream->video_out->get_frame (stream->video_out,
+                                                    frame->width, frame->height,
+                                                    frame->ratio, XINE_IMGFMT_YUY2,
+                                                    VO_BOTH_FIELDS);
+    stream->xine->port_ticket->release(stream->xine->port_ticket, 0);
+
+    if (!img) {
+      LOGMSG("yv12_to_yuy2_frame: get_frame failed");
+      frame->free(frame);
+      return NULL;
+    }
+
+    init_yuv_conversion();
+    yv12_to_yuy2(frame->base[0], frame->pitches[0],
+                 frame->base[1], frame->pitches[1],
+                 frame->base[2], frame->pitches[2],
+                 img->base[0],   img->pitches[0],
+                 frame->width, frame->height,
+                 frame->progressive_frame);
+
+    frame->free(frame);
+    return img;
+  }
+
+  return frame;
+}
+
+#define YCBCR_TO_RGB( y, cb, cr, r, g, b ) \
+  do { \
+  int _y, _cb, _cr, _r, _g, _b; \
+  _y  = ((y) - 16) * 76309; \
+  _cb = (cb) - 128; \
+  _cr = (cr) - 128; \
+  _r = (_y                + _cr * 104597 + 0x8000) >> 16; \
+  _g = (_y - _cb *  25675 - _cr *  53279 + 0x8000) >> 16; \
+  _b = (_y + _cb * 132201                + 0x8000) >> 16; \
+  (r) = (_r < 0) ? 0 : ((_r > 255) ? 255 : _r); \
+  (g) = (_g < 0) ? 0 : ((_g > 255) ? 255 : _g); \
+  (b) = (_b < 0) ? 0 : ((_b > 255) ? 255 : _b); \
+} while (0)
+
+static char *frame_compress_pnm(fe_t *this, int *size, vo_frame_t *frame)
+{
+  /* ensure yuy2 */
+  if (!(frame = yv12_to_yuy2_frame(this->stream, frame)))
+    return NULL;
+
+  /* convert to PNM */
+
+  /* allocate memory for result */
+  size_t bytes = frame->width * frame->height * 3;
+  uint8_t *pnm = malloc(bytes + 64);
+  if (!pnm) {
+    LOGMSG("fe_grab: malloc failed");
+    return NULL;
+  }
+
+  /* PNM header */
+  sprintf((char*)pnm, "P6\n%d\n%d\n255\n", frame->width, frame->height);
+  int hdrlen = strlen((char*)pnm);
+  uint8_t *p = pnm + hdrlen;
+  uint8_t *s = frame->base[0];
+  int x, y;
+
+  *size = bytes + hdrlen;
+
+  /* convert to RGB */
+  for (y=0; y < frame->height; y++) {
+    for (x=0; x < frame->width; x+=2, s+=4, p+=6) {
+      YCBCR_TO_RGB(s[0], s[1], s[3], p[0], p[1], p[2]);
+      YCBCR_TO_RGB(s[2], s[1], s[3], p[3], p[4], p[5]);
+    }
+    s = frame->base[0] + y*frame->pitches[0];
+  }
+
+  return (char*)pnm;
+}
+
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
 		     int quality, int width, int height)
 {
@@ -1572,32 +1655,38 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   fe_t *this = (fe_t*)this_gen;
   vo_frame_t *frame, *img;
 
-#ifndef PPM_SUPPORTED
-  if(!jpeg) {
-    LOGMSG("fe_grab: PPM grab not implemented");
-    return 0;
-  }
-#else
-  /* #warning TODO: convert to RGB PPM */
-#endif
-
-  if(!this->input_plugin && !find_input_plugin(this))
+  if(!find_input_plugin(this))
     return 0;
 
   LOGDBG("fe_grab: grabbing %s %d %dx%d", 
 	 jpeg ? "JPEG" : "PNM", quality, width, height);
 
+  /* validate parameters */
   if ((quality < 0) || (quality > 100))
     quality = 100;
+  width  = (MIN(16, MAX(width, 1920)) + 1) & ~1; /* 16...1920, even */
+  height = (MIN(16, MAX(width, 1200)) + 1) & ~1; /* 16...1200, even */
 
+  /* get last frame */
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
   frame = this->stream->video_out->get_last_frame (this->stream->video_out);
   if(frame)
     frame->lock(frame);
   this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
 
-  if(!frame)
+  if(!frame) {
+    LOGMSG("fe_grab: get_last_frame() failed");
     return NULL;
+  }
+
+  /* Scale image */
+  if (frame->width != width || frame->height != height) {
+    /* #warning TODO - scaling here */
+    LOGMSG("fe_grab: scaling not implemented");
+  }
+
+  if (!jpeg)
+    return frame_compress_pnm(this, size, frame);
 
   // convert yuy2 frames to yv12
   if (frame->format == XINE_IMGFMT_YUY2) {
