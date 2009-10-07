@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.20 2009-10-06 19:05:30 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.21 2009-10-07 11:38:11 phintuka Exp $
  *
  */
 
@@ -114,8 +114,11 @@ typedef struct _xrender_surf
 
 typedef struct sxfe_s {
 
-  /* function pointers */
-  frontend_t              fe;
+  /* function pointers / base class */
+  union {
+    frontend_t fe;  /* generic frontend */
+  };
+
   void   (*update_display_size_cb)(frontend_t*);
   void   (*toggle_fullscreen_cb)  (frontend_t*);
 
@@ -1477,6 +1480,39 @@ static void sxfe_interrupt(frontend_t *this_gen)
  */
 static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
 {
+  if(kev->keycode) {
+    KeySym         ks;
+    char           buffer[20];
+    XComposeStatus status;
+    const char    *fe_event = NULL;
+
+    XLockDisplay (this->display);
+    XLookupString(kev, buffer, sizeof(buffer), &ks, &status);
+    XUnlockDisplay (this->display);
+
+    switch(ks) {
+      case XK_f:
+      case XK_F:
+        if (this->gui_hotkeys)
+          fe_event = "TOGGLE_FULLSCREEN";
+        break;
+      case XK_d:
+      case XK_D:
+        if (this->gui_hotkeys)
+          fe_event = "TOGGLE_DEINTERLACE";
+        break;
+      case XK_Escape:
+        if (!this->keypress) { /* ESC exits only in remote mode */
+          fe_event = "QUIT";
+        }
+        break;
+      default:;
+    }
+    if (fe_event)
+      this->fe.send_event((frontend_t*)this, fe_event);
+    else if (!this->no_x_kbd)
+      this->fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
+  }
 }
 
 /*
@@ -1485,6 +1521,48 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
  */
 static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 {
+  /* Move and resize HUD along with main or fullscreen window */
+#ifdef HAVE_XRENDER
+  if(this->hud)
+    hud_osd_resize(this, cev->window, cev->width, cev->height);
+#endif
+
+  /* update video window size */
+  if (this->width != cev->width || this->height != cev->height) {
+    this->width  = cev->width;
+    this->height = cev->height;
+  }
+
+  if(this->window[0] == cev->window && this->check_move) {
+    LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d",
+           cev->x, cev->y, this->check_move);
+    this->check_move = 0;
+    if(this->xpos != cev->x || this->ypos != cev->y) {
+      XLockDisplay (this->display);
+      XMoveWindow(this->display, this->window[0], cev->x, cev->y);
+      XUnlockDisplay (this->display);
+    }
+  }
+
+  if ((cev->x == 0) && (cev->y == 0)) {
+    if(!this->fullscreen) {
+      int tmp_x, tmp_y;
+      Window tmp_win;
+      XLockDisplay(this->display);
+      if(XTranslateCoordinates(this->display, cev->window,
+                               DefaultRootWindow(this->display),
+                               0, 0, &tmp_x, &tmp_y, &tmp_win)) {
+        this->xpos = tmp_x;
+        this->ypos = tmp_y;
+      }
+      XUnlockDisplay(this->display);
+    }
+  } else {
+    if(!this->fullscreen) {
+      this->xpos = cev->x;
+      this->ypos = cev->y;
+    }
+  }
 }
 
 /*
@@ -1530,6 +1608,40 @@ static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
  */
 static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
 {
+  switch(bev->button) {
+    case Button1:
+      /* Double-click toggles between fullscreen and windowed mode */
+      if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
+        /* Toggle fullscreen */
+        this->toggle_fullscreen_cb((frontend_t*)this);
+        this->prev_click_time = 0; /* don't react to third click ... */
+      } else {
+        this->prev_click_time = bev->time;
+        if(!this->fullscreen && this->no_border && !this->dragging) {
+          /* start dragging window */
+          this->dragging = 1;
+          this->dragging_x = bev->x_root;
+          this->dragging_y = bev->y_root;
+        }
+      }
+      break;
+
+    case Button3:
+      /* Toggle border and stacking */
+      if(!this->fullscreen) {
+        if(!this->stay_above) {
+          set_above(this, 1);
+        } else if(!this->no_border) {
+          set_border(this, this->window[0], 0);
+          this->no_border = 1;
+        } else {
+          set_border(this, this->window[0], 1);
+          this->no_border = 0;
+          set_above(this, 0);
+        }
+      }
+      break;
+  }
 }
 
 /*
@@ -1571,42 +1683,8 @@ static int sxfe_run(frontend_t *this_gen)
         break;
 
       case ConfigureNotify:
-      {
-	XConfigureEvent *cev = (XConfigureEvent *) &event;
-	Window tmp_win;
-	
-#ifdef HAVE_XRENDER
-        hud_osd_resize(this, cev->window, cev->width, cev->height);
-#endif
-	this->width  = cev->width;
-	this->height = cev->height;
-
-        if(this->window[0] == cev->window && this->check_move) {
-	  LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d", 
-		 cev->x, cev->y, this->check_move);
-	  this->check_move = 0;
-	  if(this->xpos != cev->x && this->ypos != cev->y) {
-	    XLockDisplay (this->display);
-	    XMoveWindow(this->display, this->window[0], cev->x, cev->y);
-	    XUnlockDisplay (this->display);
-	  }
-	}
-	
-	if ((cev->x == 0) && (cev->y == 0)) {
-	  XLockDisplay(cev->display);
-	  if(!this->fullscreen) 
-	    XTranslateCoordinates(cev->display, cev->window,
-				  DefaultRootWindow(cev->display),
-				  0, 0, &this->xpos, &this->ypos, &tmp_win);
-	  XUnlockDisplay(cev->display);
-	} else {
-	  if(!this->fullscreen) {
-	    this->xpos = cev->x;
-	    this->ypos = cev->y;
-	  }
-	}
-	break;
-      }
+        XConfigureEvent_handler(this, (XConfigureEvent *) &event);
+        break;
 
 #ifdef HAVE_XRENDER
       case FocusIn:
@@ -1624,76 +1702,13 @@ static int sxfe_run(frontend_t *this_gen)
         break;
 
       case ButtonPress:
-      {
-	XButtonEvent *bev = (XButtonEvent *) &event;
-	if(bev->button == Button1) {
-	  if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
-	    /* Toggle fullscreen */
-	    this->toggle_fullscreen_cb((frontend_t*)this);
-	    this->prev_click_time = 0; /* don't react to third click ... */
-	  } else {
-	    this->prev_click_time = bev->time;
-	    if(!this->fullscreen && this->no_border && !this->dragging) {
-	      this->dragging = 1;
-	      this->dragging_x = bev->x_root;
-	      this->dragging_y = bev->y_root;
-	    }
-	  }
-	} else if(bev->button == Button3) {
-	  if(!this->fullscreen) {
-	    if(!this->stay_above) {
-	      set_above(this, 1);
-	    } else if(!this->no_border) {
-	      set_border(this, this->window[0], 0);
-	    } else {
-	      set_border(this, this->window[0], 1);
-	      set_above(this, 0);
-	    }
-	  }
-	}
-	break;
-      }
+        XButtonEvent_handler(this, (XButtonEvent *) &event);
+        break;
 
       case KeyPress:
       case KeyRelease:
-      {
-	XKeyEvent *kevent = (XKeyEvent *) &event;
-	KeySym          ks;
-	char            buffer[20];
-	XComposeStatus  status;
-        const char     *fe_event = NULL;
-
-	if(kevent->keycode) {
-	  XLockDisplay (this->display);
-	  XLookupString(kevent, buffer, sizeof(buffer), &ks, &status);
-	  XUnlockDisplay (this->display);
-
-          switch(ks) {
-            case XK_f:
-            case XK_F:
-              if (this->gui_hotkeys)
-                fe_event = "TOGGLE_FULLSCREEN";
-              break;
-            case XK_d:
-            case XK_D:
-              if (this->gui_hotkeys)
-                fe_event = "TOGGLE_DEINTERLACE";
-              break;
-            case XK_Escape:
-              if (!this->keypress) { /* ESC exits only in remote mode */
-                fe_event = "QUIT";
-              }
-              break;
-            default:;
-          }
-          if (fe_event)
-            this->fe.send_event((frontend_t*)this, fe_event);
-          else if (!this->no_x_kbd)
-            this->fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
-
-	}
-      }
-      break;
+        XKeyEvent_handler(this, (XKeyEvent *) &event);
+        break;
 
       case ClientMessage:
       {
