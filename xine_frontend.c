@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.12 2009-10-07 18:39:14 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.13 2009-10-07 18:52:31 phintuka Exp $
  *
  */
 
@@ -1561,10 +1561,138 @@ static void JpegCompressTermDestination(const j_compress_ptr cinfo)
      }
 }
 
+static vo_frame_t *yuy2_to_yv12_frame(xine_stream_t *stream, vo_frame_t *frame)
+{
+  /* convert yuy12 frames to yv12 */
+  if (frame && frame->format == XINE_IMGFMT_YUY2) {
+    stream->xine->port_ticket->acquire(stream->xine->port_ticket, 0);
+    vo_frame_t *img = stream->video_out->get_frame (stream->video_out,
+                                                    frame->width, frame->height,
+                                                    frame->ratio, XINE_IMGFMT_YV12,
+                                                    VO_BOTH_FIELDS);
+    stream->xine->port_ticket->release(stream->xine->port_ticket, 0);
+
+    if (!img) {
+      LOGMSG("yuy2_to_yv12_frame: get_frame failed");
+      frame->free(frame);
+      return NULL;
+    }
+
+    init_yuv_conversion();
+    yuy2_to_yv12(frame->base[0], frame->pitches[0],
+                 img->base[0], img->pitches[0],
+                 img->base[1], img->pitches[1],
+                 img->base[2], img->pitches[2],
+                 frame->width, frame->height);
+
+    frame->free(frame);
+    return img;
+  }
+
+  return frame;
+}
+
+static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t *frame)
+{
+  struct jpeg_destination_mgr jdm;
+  struct jpeg_compress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+  tJpegCompressData jcd;
+
+  /* convert yuy2 frames to yv12 */
+  frame = yuy2_to_yv12_frame(this->stream, frame);
+
+  /* Compress JPEG */
+
+  jdm.init_destination = JpegCompressInitDestination;
+  jdm.empty_output_buffer = JpegCompressEmptyOutputBuffer;
+  jdm.term_destination = JpegCompressTermDestination;
+
+  cinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_compress(&cinfo);
+  cinfo.dest = &jdm;
+
+  cinfo.client_data = &jcd;
+  cinfo.image_width = frame->width;
+  cinfo.image_height = frame->height;
+
+  cinfo.input_components = 3;
+  cinfo.in_color_space = JCS_YCbCr;
+
+  switch (frame->format) {
+    case XINE_IMGFMT_YV12: {
+      JSAMPARRAY pp[3];
+      JSAMPROW *rpY = (JSAMPROW*)malloc(sizeof(JSAMPROW) * frame->height);
+      JSAMPROW *rpU = (JSAMPROW*)malloc(sizeof(JSAMPROW) * frame->height);
+      JSAMPROW *rpV = (JSAMPROW*)malloc(sizeof(JSAMPROW) * frame->height);
+      int k;
+
+      jpeg_set_defaults(&cinfo);
+      jpeg_set_quality(&cinfo, quality, TRUE);
+      cinfo.raw_data_in = TRUE;
+
+      jpeg_set_colorspace(&cinfo, JCS_YCbCr);
+      cinfo.comp_info[0].h_samp_factor =
+      cinfo.comp_info[0].v_samp_factor = 2;
+      cinfo.comp_info[1].h_samp_factor =
+      cinfo.comp_info[1].v_samp_factor =
+      cinfo.comp_info[2].h_samp_factor =
+      cinfo.comp_info[2].v_samp_factor = 1;
+      jpeg_start_compress(&cinfo, TRUE);
+
+      for (k = 0; k < frame->height; k+=2) {
+        rpY[k]   = frame->base[0] + k*frame->pitches[0];
+        rpY[k+1] = frame->base[0] + (k+1)*frame->pitches[0];
+        rpU[k/2] = frame->base[1] + (k/2)*frame->pitches[1];
+        rpV[k/2] = frame->base[2] + (k/2)*frame->pitches[2];
+      }
+      for (k = 0; k < frame->height; k+=2*DCTSIZE) {
+        pp[0] = &rpY[k];
+        pp[1] = &rpU[k/2];
+        pp[2] = &rpV[k/2];
+        jpeg_write_raw_data(&cinfo, pp, 2*DCTSIZE);
+      }
+      free(rpY);
+      free(rpU);
+      free(rpV);
+      break;
+    }
+#if 0
+    case XINE_IMGFMT_RGB: {
+      JSAMPROW rp[height];
+      int rs, k;
+
+      cinfo.in_color_space = JCS_RGB;
+
+      jpeg_set_defaults(&cinfo);
+      jpeg_set_quality(&cinfo, quality, TRUE);
+      jpeg_start_compress(&cinfo, TRUE);
+
+      rs = frame->pitches[0];
+      for (k = 0; k < height; k++)
+	rp[k] = frame->base[0] + k*rs;
+      jpeg_write_scanlines(&cinfo, rp, height);
+      break;
+    }
+#endif
+    default:
+      LOGMSG("fe_grab: grabbing failed (unsupported image format %d)",
+             frame->format);
+      break;
+  }
+
+  jpeg_finish_compress(&cinfo);
+  jpeg_destroy_compress(&cinfo);
+  frame->free(frame);
+
+  *size = jcd.size;
+  return (char*) jcd.mem;
+}
+
 static vo_frame_t *yv12_to_yuy2_frame(xine_stream_t *stream, vo_frame_t *frame)
 {
   /* convert yv12 frames to yuy2 */
-  if (frame->format == XINE_IMGFMT_YV12) {
+  if (frame && frame->format == XINE_IMGFMT_YV12) {
     stream->xine->port_ticket->acquire(stream->xine->port_ticket, 0);
     vo_frame_t *img = stream->video_out->get_frame (stream->video_out,
                                                     frame->width, frame->height,
@@ -1647,13 +1775,8 @@ static char *frame_compress_pnm(fe_t *this, int *size, vo_frame_t *frame)
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
 		     int quality, int width, int height)
 {
-  struct jpeg_destination_mgr jdm;
-  struct jpeg_compress_struct cinfo;
-  struct jpeg_error_mgr jerr;
-  tJpegCompressData jcd;
-
   fe_t *this = (fe_t*)this_gen;
-  vo_frame_t *frame, *img;
+  vo_frame_t *frame;
 
   if(!find_input_plugin(this))
     return 0;
@@ -1688,123 +1811,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   if (!jpeg)
     return frame_compress_pnm(this, size, frame);
 
-  // convert yuy2 frames to yv12
-  if (frame->format == XINE_IMGFMT_YUY2) {
-    this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
-    img = this->stream->video_out->get_frame (this->stream->video_out,
-                                              frame->width, frame->height,
-                                              frame->ratio, XINE_IMGFMT_YV12, 
-                                              VO_BOTH_FIELDS);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
-
-    if(!img) {
-      LOGMSG("fe_grab: get_frame failed");
-      frame->free(frame);
-      return NULL;
-    } 
-
-    init_yuv_conversion();
-    yuy2_to_yv12(frame->base[0], frame->pitches[0], 
-                 img->base[0], img->pitches[0],
-                 img->base[1], img->pitches[1],
-                 img->base[2], img->pitches[2],
-                 frame->width, frame->height);     
-    
-    frame->free(frame);
-    frame = img;
-  }
-
-  /* #warning TODO: no scaling implemented */
-  if(width != frame->width)
-    width = frame->width;
-  if(height != frame->height)
-    height = frame->height;
-
-  /* Compress JPEG */
-
-  jdm.init_destination = JpegCompressInitDestination;
-  jdm.empty_output_buffer = JpegCompressEmptyOutputBuffer;
-  jdm.term_destination = JpegCompressTermDestination;
-
-  cinfo.err = jpeg_std_error(&jerr);
-  jpeg_create_compress(&cinfo);
-  cinfo.dest = &jdm;
-
-  cinfo.client_data = &jcd;
-  cinfo.image_width = width;
-  cinfo.image_height = height;
-
-  cinfo.input_components = 3;
-  cinfo.in_color_space = JCS_YCbCr;
-
-  switch (frame->format) {
-    case XINE_IMGFMT_YV12: {
-      JSAMPARRAY pp[3];
-      JSAMPROW *rpY = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
-      JSAMPROW *rpU = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
-      JSAMPROW *rpV = (JSAMPROW*)malloc(sizeof(JSAMPROW) * height);
-      int k;
-
-      jpeg_set_defaults(&cinfo);
-      jpeg_set_quality(&cinfo, quality, TRUE);
-      cinfo.raw_data_in = TRUE;
-
-      jpeg_set_colorspace(&cinfo, JCS_YCbCr);
-      cinfo.comp_info[0].h_samp_factor = 
-      cinfo.comp_info[0].v_samp_factor = 2;
-      cinfo.comp_info[1].h_samp_factor =
-      cinfo.comp_info[1].v_samp_factor =
-      cinfo.comp_info[2].h_samp_factor =
-      cinfo.comp_info[2].v_samp_factor = 1;
-      jpeg_start_compress(&cinfo, TRUE);
-      
-      for (k = 0; k < height; k+=2) {
-	rpY[k]   = frame->base[0] + k*frame->pitches[0];
-	rpY[k+1] = frame->base[0] + (k+1)*frame->pitches[0];
-	rpU[k/2] = frame->base[1] + (k/2)*frame->pitches[1];
-	rpV[k/2] = frame->base[2] + (k/2)*frame->pitches[2];
-      }
-      for (k = 0; k < height; k+=2*DCTSIZE) {
-	pp[0] = &rpY[k];
-	pp[1] = &rpU[k/2];
-	pp[2] = &rpV[k/2];
-	jpeg_write_raw_data(&cinfo, pp, 2*DCTSIZE);
-      }
-      free(rpY);
-      free(rpU);
-      free(rpV);
-      break;
-    }
-#if 0
-    case XINE_IMGFMT_RGB: {
-      JSAMPROW rp[height];
-      int rs, k;
-
-      cinfo.in_color_space = JCS_RGB;
-
-      jpeg_set_defaults(&cinfo);
-      jpeg_set_quality(&cinfo, quality, TRUE);
-      jpeg_start_compress(&cinfo, TRUE);
-
-      rs = frame->pitches[0];
-      for (k = 0; k < height; k++)
-	rp[k] = frame->base[0] + k*rs;
-      jpeg_write_scanlines(&cinfo, rp, height);
-      break;
-    }
-#endif
-    default:
-      LOGMSG("fe_grab: grabbing failed (unsupported image format %d)", 
-	     frame->format);
-      break;
-  }
-
-  jpeg_finish_compress(&cinfo);
-  jpeg_destroy_compress(&cinfo);
-  frame->free(frame);
-
-  *size = jcd.size;
-  return (char*) jcd.mem;
+  return frame_compress_jpeg(this, size, quality, frame);
 }
 
 /*
