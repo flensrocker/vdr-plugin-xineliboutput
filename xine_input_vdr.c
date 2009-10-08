@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.37 2009-10-04 12:50:06 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.38 2009-10-08 12:14:15 phintuka Exp $
  *
  */
 
@@ -131,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.37 2009-10-04 12:50:06 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.38 2009-10-08 12:14:15 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4228,17 +4228,13 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       LOGDBG("XINE_EVENT (input) %d --> %s", 
              event->type, vdr_keymap[i].name);
 
-      if(this->funcs.post_vdr_event) {
-	/* remote mode: -> input_plugin -> connection -> VDR */
-        char *msg=NULL;
-        if (asprintf(&msg, "KEY %s\r\n", vdr_keymap[i].name) >= 0) {
-          this->funcs.post_vdr_event((vdr_input_plugin_if_t*)this, msg);
-          free(msg);
-        }
+      if (this->fd_control >= 0) {
+        /* remote mode: -> input_plugin -> connection -> VDR */
+        printf_control(this, "KEY %s\r\n", vdr_keymap[i].name);
       }
-      if(this->funcs.xine_input_event) {
-	/* local mode: -> VDR */
-	this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
+      if (this->funcs.xine_input_event) {
+        /* local mode: -> VDR */
+        this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
       }
       return;
     }
