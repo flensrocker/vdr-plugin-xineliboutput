@@ -24,6 +24,8 @@ Features:
 - Replaced build-time options INTERPRET_LIRC_KEYS and FE_TOGGLE_FULLSCREEN
   with run-time option --hotkeys
 - Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
+- Added support for XINE_GUI_SEND_GRAB_FRAME (Thanks to durchflieger)
+- Added StartFrontend-1.0 service (Thanks to durchflieger)
 
 2009-02-12: Version 1.0.4  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
