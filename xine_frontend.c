@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.13 2009-10-07 18:52:31 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.14 2009-10-08 12:13:10 phintuka Exp $
  *
  */
 
@@ -557,13 +557,14 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   /*xine_register_log_cb(this->xine, xine_log_cb, this);*/
 
+  free(this->configfile);
+  this->configfile = NULL;
   if (config_file)
-    strncpy(this->configfile, config_file, sizeof(this->configfile));
-  else
-    snprintf(this->configfile, sizeof(this->configfile),
-             "%s%s", xine_get_homedir(),
-             "/.xine/config_xineliboutput");
-  this->configfile[sizeof(this->configfile)-1] = 0;
+    this->configfile = strdup(config_file);
+  else if(asprintf(&this->configfile, "%s%s", xine_get_homedir(), 
+                   "/.xine/config_xineliboutput") < 0)
+    return 0;
+
   xine_config_load (this->xine, this->configfile);
 
   x_reg_num ("engine.buffers.video_num_buffers",
@@ -589,12 +590,10 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   x_upd_num("video.device.xv_double_buffer", 1);
   x_upd_num("engine.buffers.video_num_buffers", pes_buffers);
 
-#ifdef IS_FBFE
   if(this->video_port_name) {
     if(video_driver && !strcmp(video_driver, "fb"))
       x_upd_str("video.device.fb_device", this->video_port_name);
   }
-#endif
 
   this->playback_finished = 0;
 
@@ -1137,7 +1136,11 @@ static void fe_xine_exit(frontend_t *this_gen)
       fe_xine_close(this_gen);
     fe_post_unload(this);
 
-    xine_config_save (this->xine, this->configfile);
+    if(this->configfile) {
+      xine_config_save (this->xine, this->configfile);
+      free(this->configfile);
+      this->configfile = NULL;
+    }
     if(this->event_queue)
       xine_event_dispose_queue(this->event_queue);
     this->event_queue = NULL;
@@ -1179,6 +1182,7 @@ static void fe_free(frontend_t *this_gen)
   if (this_gen) {
     fe_t *this = (fe_t*)this_gen;
     this->fe.fe_display_close(this_gen);
+    free(this->configfile);
     free(this);
   }
 }
@@ -1670,7 +1674,7 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
 
       rs = frame->pitches[0];
       for (k = 0; k < height; k++)
-	rp[k] = frame->base[0] + k*rs;
+        rp[k] = frame->base[0] + k*rs;
       jpeg_write_scanlines(&cinfo, rp, height);
       break;
     }
