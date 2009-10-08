@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.14 2009-10-08 12:13:10 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.15 2009-10-08 13:13:53 phintuka Exp $
  *
  */
 
@@ -1776,6 +1776,73 @@ static char *frame_compress_pnm(fe_t *this, int *size, vo_frame_t *frame)
   return (char*)pnm;
 }
 
+#ifdef  XINE_GUI_SEND_GRAB_FRAME
+static char *fe_grab_raw_frame(fe_t *this, int *size, int jpeg, int quality, int width, int height, xine_grab_frame_t *frame)
+{
+  frame->width = width;
+  frame->height = height;
+  if (xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_GRAB_FRAME, frame))
+    return NULL;
+
+  if (jpeg) {
+    /* Compress JPEG */
+    struct jpeg_destination_mgr jdm;
+    struct jpeg_compress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    tJpegCompressData jcd;
+
+    jdm.init_destination = JpegCompressInitDestination;
+    jdm.empty_output_buffer = JpegCompressEmptyOutputBuffer;
+    jdm.term_destination = JpegCompressTermDestination;
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_compress(&cinfo);
+    cinfo.dest = &jdm;
+    cinfo.client_data = &jcd;
+    cinfo.image_width = width;
+    cinfo.image_height = height;
+    cinfo.input_components = 3;
+    cinfo.in_color_space = JCS_RGB;
+
+    jpeg_set_defaults(&cinfo);
+    jpeg_set_quality(&cinfo, quality, TRUE);
+    jpeg_start_compress(&cinfo, TRUE);
+
+    JSAMPROW rp[height];
+    int rs = width * 3;
+    int k;
+    for (k = 0; k < height; k++)
+      rp[k] = frame->img + k * rs;
+    jpeg_write_scanlines(&cinfo, rp, height);
+
+    jpeg_finish_compress(&cinfo);
+    jpeg_destroy_compress(&cinfo);
+
+    *size = jcd.size;
+    return (char*) jcd.mem;
+  }
+
+  /* convert to PNM */
+
+  /* allocate memory for result */
+  size_t bytes = width * height * 3;
+  uint8_t *pnm = malloc(bytes + 64);
+  if (!pnm) {
+    LOGMSG("fe_grab: malloc failed");
+    return NULL;
+  }
+
+  /* PNM header */
+  sprintf((char*)pnm, "P6\n%d\n%d\n255\n", width, height);
+  int hdrlen = strlen((char*)pnm);
+
+  /* copy image */
+  xine_fast_memcpy(pnm + hdrlen, frame->img, bytes);
+
+  *size = bytes + hdrlen;
+  return (char*)pnm;
+}
+#endif
+
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
 		     int quality, int width, int height)
 {
@@ -1791,11 +1858,20 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   /* validate parameters */
   if ((quality < 0) || (quality > 100))
     quality = 100;
-  width  = (MIN(16, MAX(width, 1920)) + 1) & ~1; /* 16...1920, even */
-  height = (MIN(16, MAX(width, 1200)) + 1) & ~1; /* 16...1200, even */
+  width  = (MAX(16, MIN(width, 1920)) + 1) & ~1; /* 16...1920, even */
+  height = (MAX(16, MIN(width, 1200)) + 1) & ~1; /* 16...1200, even */
 
   /* get last frame */
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
+#ifdef XINE_GUI_SEND_GRAB_FRAME
+  xine_grab_frame_t *grab_frame;
+  if (!xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_ALLOC_GRAB_FRAME, &grab_frame)) {
+    char *img = fe_grab_raw_frame(this, size, jpeg, quality, width, height, grab_frame);
+    xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_FREE_GRAB_FRAME, grab_frame);
+    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+    return img;
+  }
+#endif
   frame = this->stream->video_out->get_last_frame (this->stream->video_out);
   if(frame)
     frame->lock(frame);
