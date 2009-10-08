@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.101 2009-09-27 13:04:06 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.102 2009-10-08 19:51:08 phintuka Exp $
  *
  */
 
@@ -1588,12 +1588,12 @@ static void JpegCompressTermDestination(const j_compress_ptr cinfo)
 static vo_frame_t *yuy2_to_yv12_frame(xine_stream_t *stream, vo_frame_t *frame)
 {
   /* convert yuy12 frames to yv12 */
-  if (frame->format == XINE_IMGFMT_YUY2) {
+  if (frame && frame->format == XINE_IMGFMT_YUY2) {
     stream->xine->port_ticket->acquire(stream->xine->port_ticket, 0);
     vo_frame_t *img = stream->video_out->get_frame (stream->video_out,
-						    frame->width, frame->height,
-						    frame->ratio, XINE_IMGFMT_YV12,
-						    VO_BOTH_FIELDS);
+                                                    frame->width, frame->height,
+                                                    frame->ratio, XINE_IMGFMT_YV12,
+                                                    VO_BOTH_FIELDS);
     stream->xine->port_ticket->release(stream->xine->port_ticket, 0);
 
     if (!img) {
@@ -1603,11 +1603,11 @@ static vo_frame_t *yuy2_to_yv12_frame(xine_stream_t *stream, vo_frame_t *frame)
     }
 
     init_yuv_conversion();
-    yuy2_to_yv12(frame->base[0], frame->pitches[0], 
+    yuy2_to_yv12(frame->base[0], frame->pitches[0],
                  img->base[0], img->pitches[0],
                  img->base[1], img->pitches[1],
                  img->base[2], img->pitches[2],
-                 frame->width, frame->height);     
+                 frame->width, frame->height);
 
     frame->free(frame);
     return img;
@@ -1656,25 +1656,25 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
       cinfo.raw_data_in = TRUE;
 
       jpeg_set_colorspace(&cinfo, JCS_YCbCr);
-      cinfo.comp_info[0].h_samp_factor = 
+      cinfo.comp_info[0].h_samp_factor =
       cinfo.comp_info[0].v_samp_factor = 2;
       cinfo.comp_info[1].h_samp_factor =
       cinfo.comp_info[1].v_samp_factor =
       cinfo.comp_info[2].h_samp_factor =
       cinfo.comp_info[2].v_samp_factor = 1;
       jpeg_start_compress(&cinfo, TRUE);
-      
+
       for (k = 0; k < frame->height; k+=2) {
-	rpY[k]   = frame->base[0] + k*frame->pitches[0];
-	rpY[k+1] = frame->base[0] + (k+1)*frame->pitches[0];
-	rpU[k/2] = frame->base[1] + (k/2)*frame->pitches[1];
-	rpV[k/2] = frame->base[2] + (k/2)*frame->pitches[2];
+        rpY[k]   = frame->base[0] + k*frame->pitches[0];
+        rpY[k+1] = frame->base[0] + (k+1)*frame->pitches[0];
+        rpU[k/2] = frame->base[1] + (k/2)*frame->pitches[1];
+        rpV[k/2] = frame->base[2] + (k/2)*frame->pitches[2];
       }
       for (k = 0; k < frame->height; k+=2*DCTSIZE) {
-	pp[0] = &rpY[k];
-	pp[1] = &rpU[k/2];
-	pp[2] = &rpV[k/2];
-	jpeg_write_raw_data(&cinfo, pp, 2*DCTSIZE);
+        pp[0] = &rpY[k];
+        pp[1] = &rpU[k/2];
+        pp[2] = &rpV[k/2];
+        jpeg_write_raw_data(&cinfo, pp, 2*DCTSIZE);
       }
       free(rpY);
       free(rpU);
@@ -1694,14 +1694,14 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
 
       rs = frame->pitches[0];
       for (k = 0; k < height; k++)
-	rp[k] = frame->base[0] + k*rs;
+        rp[k] = frame->base[0] + k*rs;
       jpeg_write_scanlines(&cinfo, rp, height);
       break;
     }
 #endif
     default:
-      LOGMSG("fe_grab: grabbing failed (unsupported image format %d)", 
-	     frame->format);
+      LOGMSG("fe_grab: grabbing failed (unsupported image format %d)",
+             frame->format);
       break;
   }
 
@@ -1718,27 +1718,27 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
 static vo_frame_t *yv12_to_yuy2_frame(xine_stream_t *stream, vo_frame_t *frame)
 {
   /* convert yv12 frames to yuy2 */
-  if (frame->format == XINE_IMGFMT_YV12) {
+  if (frame && frame->format == XINE_IMGFMT_YV12) {
     stream->xine->port_ticket->acquire(stream->xine->port_ticket, 0);
     vo_frame_t *img = stream->video_out->get_frame (stream->video_out,
-                                              frame->width, frame->height,
-                                              frame->ratio, XINE_IMGFMT_YUY2,
-                                              VO_BOTH_FIELDS);
+                                                    frame->width, frame->height,
+                                                    frame->ratio, XINE_IMGFMT_YUY2,
+                                                    VO_BOTH_FIELDS);
     stream->xine->port_ticket->release(stream->xine->port_ticket, 0);
 
     if (!img) {
       LOGMSG("yv12_to_yuy2_frame: get_frame failed");
       frame->free(frame);
       return NULL;
-    } 
+    }
 
     init_yuv_conversion();
     yv12_to_yuy2(frame->base[0], frame->pitches[0],
                  frame->base[1], frame->pitches[1],
                  frame->base[2], frame->pitches[2],
-		 img->base[0],   img->pitches[0], 
+                 img->base[0],   img->pitches[0],
                  frame->width, frame->height,
-		 frame->progressive_frame);
+                 frame->progressive_frame);
 
     frame->free(frame);
     return img;
@@ -1838,9 +1838,10 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   /* Scale image */
   if (frame->width != width || frame->height != height) {
     /* #warning TODO - scaling here */
+    LOGMSG("fe_grab: scaling not implemented");
   }
 
-  if (!jpeg) 
+  if (!jpeg)
     return frame_compress_pnm(this, size, frame);
 
 #ifdef HAVE_LIBJPEG
