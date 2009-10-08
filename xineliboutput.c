@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.30.2.6 2009-09-16 16:59:59 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.30.2.7 2009-10-08 13:08:37 phintuka Exp $
  *
  */
 
@@ -139,6 +139,7 @@ const char cmdLineHelp[] =
 "  -p        --primary      Force xineliboutput to be primary device when\n"
 "                           there are active frontend(s)\n"
 "  -c        --exit-on-close  Exit vdr when local frontend window is closed\n"
+"  -C        --config=file  Use xine-lib config file\n"
 ;
 
 const char *cPluginXinelibOutput::CommandLineHelp(void)
@@ -270,6 +271,22 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
 	list[1] = NULL;
 	cControl::Launch(new cXinelibImagesControl(list, 0, 1));
 	return true;
+      }
+      LOGMSG("Service(%s) -> true", Id);
+      return true;
+    }
+
+    else if(!strcmp(Id, "StartFrontend-1.0")) {
+      if(CData && *CData) {
+        LOGMSG("Service(%s, %s)", Id, CData);
+        int local_frontend = strstra(CData, xc.s_frontends, -1);
+        if (local_frontend >= 0 && local_frontend < FRONTEND_count && strcmp(CData, xc.local_frontend)) {
+          strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));
+          cXinelibDevice::Instance().ConfigureWindow(
+               xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline,
+               xc.display_aspect, xc.scale_video, xc.field_order);
+        }
+        return true;
       }
       LOGMSG("Service(%s) -> true", Id);
       return true;
