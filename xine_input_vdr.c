@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.287 2009-10-08 15:15:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.288 2009-10-08 19:48:19 phintuka Exp $
  *
  */
 
@@ -127,7 +127,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.287 2009-10-08 15:15:37 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.288 2009-10-08 19:48:19 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -336,11 +336,11 @@ typedef struct vdr_input_plugin_s {
   pthread_t           control_thread;
   pthread_mutex_t     fd_control_lock;
   buf_element_t      *read_buffer;
-  int                 threads_initialized;
+  uint8_t             threads_initialized;
+  uint8_t             tcp, udp, rtp;
   volatile int        control_running;
   volatile int        fd_data;
   volatile int        fd_control;
-  uint8_t             tcp, udp, rtp;
   udp_data_t         *udp_data;
   int                 client_id;
   int                 token;
@@ -353,22 +353,22 @@ typedef struct vdr_input_plugin_s {
 					all data before this offset will 
 					be discarded */
   uint64_t            discard_index_ds;
-  int                 discard_frame;
+  uint                discard_frame;
   uint64_t            guard_index;   /* data before this offset will not be discarded */
-  int                 guard_frame;
+  uint                guard_frame;
   uint64_t            curpos;        /* current position (demux side) */
-  int                 curframe;      
+  uint                curframe;      
   int                 max_buffers;   /* max no. of non-demuxed buffers */
 
   /* saved video properties */
-  int   video_properties_saved;
-  int   orig_hue;
-  int   orig_brightness;
-  int   orig_saturation;
-  int   orig_sharpness;
-  int   orig_noise_reduction;
-  int   orig_contrast;
-  int   orig_vo_aspect_ratio;
+  uint8_t video_properties_saved;
+  int     orig_hue;
+  int     orig_brightness;
+  int     orig_saturation;
+  int     orig_sharpness;
+  int     orig_noise_reduction;
+  int     orig_contrast;
+  int     orig_vo_aspect_ratio;
 
 } vdr_input_plugin_t;
 
@@ -1992,9 +1992,9 @@ static void send_meta_info(vdr_input_plugin_t *this)
     char *album        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
     char *tracknumber  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TRACK_NUMBER);
 
-    if(asprintf(&meta,
-             "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
-             title?:"", artist?:"", album?:"", tracknumber?:"") < 0)
+    if (asprintf(&meta,
+                 "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
+                 title?:"", artist?:"", album?:"", tracknumber?:"") < 0)
       return;
 
     if(this->fd_control < 0)
@@ -2809,14 +2809,14 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
     for(i=0; i<sizeof(eventmap)/sizeof(eventmap[0]); i++)
       if(!strcmp(cmd+6, eventmap[i].name)) {
-	xine_event_t ev = {
-	  .type = eventmap[i].type,
-	  .stream = this->slave_stream ?: this->stream,
-	  /* tag event to prevent circular input events 
-	     (vdr -> here -> event_listener -> vdr -> ...) */
-	  .data = "VDR",
-	  .data_length = 4,
-	};
+        xine_event_t ev = {
+          .type = eventmap[i].type,
+          .stream = this->slave_stream ?: this->stream,
+          /* tag event to prevent circular input events
+             (vdr -> here -> event_listener -> vdr -> ...) */
+          .data = "VDR",
+          .data_length = 4,
+        };
 	xine_event_send(ev.stream, &ev);
 	break;
       }
@@ -4351,7 +4351,7 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
 }
 
 /*
- * vdr_plugin_keypress()
+ * post_vdr_event()
  *
  * - Called by frontend
  * - forward (input) events to VDR
