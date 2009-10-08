@@ -26,6 +26,8 @@ Features:
 - Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
 - Added support for XINE_GUI_SEND_GRAB_FRAME (Thanks to durchflieger)
 - Added StartFrontend-1.0 service (Thanks to durchflieger)
+- Added an option to use smoother SCR tuning (Thanks to Thomas Hilber and Paul Menzel)
+  (smooth tuning can be enabled with xine-lib config key media.xvdr.smooth_scr_tuning)
 
 2009-02-12: Version 1.0.4  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
