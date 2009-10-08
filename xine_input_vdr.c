@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.286 2009-10-08 15:13:58 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.287 2009-10-08 15:15:37 phintuka Exp $
  *
  */
 
@@ -127,7 +127,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.286 2009-10-08 15:13:58 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.287 2009-10-08 15:15:37 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -303,6 +303,7 @@ typedef struct vdr_input_plugin_s {
 
   /* Playback */
   uint8_t             read_timeouts;        /* number of timeouts in read_block */
+  uint8_t             write_overflows;
   uint8_t             no_video : 1;
   uint8_t             live_mode : 1;
   uint8_t             still_mode : 1;
@@ -4300,7 +4301,6 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   buf_element_t      *buf = NULL;
-  static int overflows = 0;
 
   if(this->slave_stream)
     return len;
@@ -4321,14 +4321,14 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
   if(!buf) {
     /* need counter to filter non-fatal overflows
        (VDR is not polling for every PES packet) */
-    if(overflows++ > 1)
+    if (this->write_overflows++ > 1)
       LOGMSG("vdr_plugin_write: buffer overflow ! (%d bytes)", len);
     VDR_ENTRY_UNLOCK();
     xine_usec_sleep(5*1000);
     errno = EAGAIN;
     return 0; /* EAGAIN */
   }
-  overflows = 0;
+  this->write_overflows = 0;
 
   if(len > buf->max_size) {
     LOGMSG("vdr_plugin_write: PES too long (%d bytes, max size "
