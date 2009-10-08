@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.38 2009-10-08 12:14:15 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.39 2009-10-08 13:34:16 phintuka Exp $
  *
  */
 
@@ -131,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.38 2009-10-08 12:14:15 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.39 2009-10-08 13:34:16 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -280,6 +280,7 @@ typedef struct vdr_input_class_s {
   xine_t         *xine;
   char           *mrls[ 2 ];
   int             fast_osd_scaling;
+  int             smooth_scr_tuning;
   double          scr_tuning_step;
   int             num_buffers_hd;
 } vdr_input_class_t;
@@ -948,6 +949,70 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
         scr_tuning = -1; /* play slower */
       else
         scr_tuning = SCR_TUNING_OFF;
+
+    } else if(this->class->smooth_scr_tuning) {
+      /*
+       * Experimental only.
+       * Major sync point displacements are handled by xine-lib.
+       * This provides much faster sync after channel switch, replay start etc.
+       */
+
+      int bfill, trim_rel, trim_act;
+
+#define DIVIDER 8000
+#define WEIGHTING 2
+#define CENTER_POS 0
+#define MAX_TRIM_REL 1
+#define MAX_TRIM_ABS 2
+#define MIN_FILL_PER_CENT 0
+#define MAX_FILL_PER_CENT 100
+#define TARGET_FILL_PER_CENT 50
+
+#ifdef LOG_GRAPH
+      if (!this->scr_buf.cnt) {
+        log_graph(0, 0);
+        printf("  R\n");
+      }
+#endif
+      trim_act = scr_tuning - CENTER_POS;
+      bfill = MAX_FILL_PER_CENT * num_used / (num_used + num_free);
+      this->scr_buf.fill_avg += bfill;
+      this->scr_buf.fill_min = MIN(this->scr_buf.fill_min, bfill);
+      this->scr_buf.fill_max = MAX(this->scr_buf.fill_max, bfill);
+
+#ifdef LOG_GRAPH
+      log_graph(bfill, '.');
+#endif
+      ++this->scr_buf.cnt;
+      if (!(this->scr_buf.cnt % DIVIDER)) {
+        this->scr_buf.fill_avg /= DIVIDER;
+        trim_rel = (this->scr_buf.fill_avg - TARGET_FILL_PER_CENT) / WEIGHTING;
+        trim_rel = MIN(trim_rel,  MAX_TRIM_REL);
+        trim_rel = MAX(trim_rel, -MAX_TRIM_REL);
+
+#ifdef LOG_GRAPH
+        log_graph(this->scr_buf.fill_avg, '|');
+        log_graph(0, 1);
+        printf(" %2d%% %2d%% %2d%% [%3d%+4d]\n",
+               this->scr_buf.fill_min,
+               this->scr_buf.fill_max,
+               this->scr_buf.fill_avg,
+               trim_act, trim_rel);
+#endif
+
+        this->scr_buf.fill_avg = 0;
+        this->scr_buf.fill_min = MAX_FILL_PER_CENT;
+        this->scr_buf.fill_max = MIN_FILL_PER_CENT;
+
+        if (trim_rel) {
+          trim_act += trim_rel;
+          trim_act = MIN(trim_act,  MAX_TRIM_ABS);
+          trim_act = MAX(trim_act, -MAX_TRIM_ABS);
+          /* reprog clock correction */
+          scr_tuning = trim_act + CENTER_POS;
+        }
+      }
+
     } else {
       if( num_used > 4*num_free )
         scr_tuning = +2; /* play 1% faster */
@@ -6660,6 +6725,14 @@ static void vdr_class_scr_tuning_step_cb(void *data, xine_cfg_entry_t *cfg)
   class->scr_tuning_step = cfg->num_value / 1000000.0;
 }
 
+/* callback on scr tuning mode change */
+static void vdr_class_smooth_scr_tuning_cb(void *data, xine_cfg_entry_t *cfg)
+{
+  vdr_input_class_t *class = (vdr_input_class_t *) data;
+
+  class->smooth_scr_tuning = cfg->num_value;
+}
+
 /* callback on OSD scaling mode change */
 static void vdr_class_fast_osd_scaling_cb(void *data, xine_cfg_entry_t *cfg) 
 {
@@ -6794,6 +6867,7 @@ static void vdr_class_dispose (input_class_t *this_gen)
   config->unregister_callback(config, "media." MRL_ID ".default_mrl");
   config->unregister_callback(config, "media." MRL_ID ".osd.fast_scaling");
   config->unregister_callback(config, "media." MRL_ID ".scr_tuning_step");
+  config->unregister_callback(config, "media." MRL_ID ".smooth_scr_tuning");
   free (this);
 }
 
@@ -6847,6 +6921,13 @@ static void *input_xvdr_init_class (xine_t *xine, void *data)
 					       _("SCR tuning step width unit %1000000."),
 					       10, vdr_class_scr_tuning_step_cb, 
 					       (void *)this) / 1000000.0;
+
+  this->smooth_scr_tuning = config->register_bool(config,
+                                                  "media." MRL_ID ".smooth_scr_tuning", 0,
+                                                  _("Smoother SRC tuning"),
+                                                  _("Smoother SCR tuning"),
+                                                  10, vdr_class_smooth_scr_tuning_cb,
+                                                  (void *)this);
 
   this->num_buffers_hd = config->register_num(config,
                                               "media." MRL_ID ".num_buffers_hd", HD_BUF_NUM_BUFS,
