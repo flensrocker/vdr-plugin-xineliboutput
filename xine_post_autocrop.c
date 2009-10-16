@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.18 2009-10-16 13:28:39 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.19 2009-10-16 20:06:29 phintuka Exp $
  *
  */
 
@@ -140,6 +140,10 @@ typedef struct autocrop_post_plugin_s
   int height_limit_timer;   /* counter how many following frames must have black
 			       bottom bar until returning to full cropping
 			       (used to reset height_limit when there are no subtitles) */
+
+  int has_driver_crop;  /* true if driver has cropping capability */
+  int has_unscaled_overlay; /* true if driver has unscaled overlay capability */
+
 } autocrop_post_plugin_t;
 
 
@@ -1372,7 +1376,6 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
   post_video_port_t      *port  = _x_post_ovl_manager_to_port(this_gen);
   autocrop_post_plugin_t *this  = (autocrop_post_plugin_t *)port->post;
   video_overlay_event_t  *event = (video_overlay_event_t *)event_gen;
-  int caps;
 
   if(this->cropping_active && this->crop_total>10) {
     if (event->event_type == OVERLAY_EVENT_SHOW) {
@@ -1381,20 +1384,19 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 	/* regular subtitle */
 	/* Subtitle overlays must be coming somewhere inside xine engine */
 
-	caps = port->stream->video_out->get_capabilities (port->stream->video_out);
 #ifdef USE_CROP
-	if(caps & VO_CAP_CROP) {
-	  if(! event->object.overlay->unscaled || !(caps & VO_CAP_UNSCALED_OVERLAY)) {
-	    event->object.overlay->y -= this->crop_total;
+        if (this->has_driver_crop) {
+            if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
+              event->object.overlay->y -= this->crop_total;
 	  }
 	} else {
 	  /* object is moved crop_top amount in video_out */
-	  if(event->object.overlay->unscaled && (caps & VO_CAP_UNSCALED_OVERLAY)) {
+            if(event->object.overlay->unscaled && this->has_unscaled_overlay) {
 	    /* cancel incorrect move that will be done in video_out */
-	    event->object.overlay->y += this->start_line;
+              event->object.overlay->y += this->start_line;
 	  } else {
 	    /* move crop_bottom pixels up */
-	    event->object.overlay->y -= (this->crop_total - this->start_line);
+              event->object.overlay->y -= (this->crop_total - this->start_line);
 	  }
 	}
 
@@ -1402,10 +1404,10 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 	INFO("autocrop_overlay_add_event: subtitle event untouched\n");
 #else
 	/* when cropping here subtitles coming from inside of xine must be re-positioned */
-	if(! event->object.overlay->unscaled || !(caps & VO_CAP_UNSCALED_OVERLAY)) {
-	  event->object.overlay->y -= this->crop_total;
+          if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
+            event->object.overlay->y -= this->crop_total;
 	  INFO("autocrop_overlay_add_event: subtitle event moved up\n");
-	}
+          }
 #endif
 	break;
       case 1:
@@ -1428,13 +1430,9 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 	  }
 #endif
 #ifdef USE_CROP
-	  if(!event->object.overlay->unscaled) {
-	    event->object.overlay->y += this->start_line;//crop_total;
-	  } else {
-	    caps = port->stream->video_out->get_capabilities (port->stream->video_out);
-	    if(!(caps & VO_CAP_UNSCALED_OVERLAY))
-	      event->object.overlay->y += this->start_line;//crop_total;
-	  }
+            if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
+              event->object.overlay->y += this->start_line;//crop_total;
+            }
 #endif
 	}
 	break;
@@ -1570,6 +1568,10 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
 
       this->prev_start_line = 0;
       this->prev_end_line = 576;
+
+      int caps = port->original_port->get_capabilities(port->original_port);
+      this->has_driver_crop = caps & VO_CAP_CROP;
+      this->has_unscaled_overlay = caps & VO_CAP_UNSCALED_OVERLAY;
 
       return &this->post_plugin;
     }
