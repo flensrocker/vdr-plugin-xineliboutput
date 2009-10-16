@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.17 2009-10-16 13:16:49 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.18 2009-10-16 13:28:39 phintuka Exp $
  *
  */
 
@@ -718,12 +718,13 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
   post_video_port_t *port = (post_video_port_t *)frame->port;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
-  int result;
+  int start_line, end_line;
+  int result = 0;
 
-  if(frame->format == XINE_IMGFMT_YV12) 
-    result = analyze_frame_yv12(frame, crop_top, crop_bottom);
-  else /*if(frame->format == XINE_IMGFMT_YUY2)*/
-    result = analyze_frame_yuy2(frame, crop_top, crop_bottom);
+  if(frame->format == XINE_IMGFMT_YV12)
+    result = analyze_frame_yv12(frame, &start_line, &end_line);
+  else if(frame->format == XINE_IMGFMT_YUY2)
+    result = analyze_frame_yuy2(frame, &start_line, &end_line);
 
 #if defined(__MMX__)
   _mm_empty();
@@ -736,91 +737,91 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
   }
 
 #ifdef MARK_FRAME
-  dbg_top = *crop_top; dbg_bottom = *crop_bottom;
+  dbg_top = start_line; dbg_bottom = end_line;
 #endif
 
   if(this->stabilize) {
-    int bottom = frame->height - *crop_bottom;
+    int bottom = frame->height - end_line;
     int wide = 0;
 
     /* bottom bar size */
     if(bottom < frame->height/32) {
-      TRACE("bottom: %d ->  4:3       ", *crop_bottom);
-      *crop_bottom = frame->height - 1;  /* no cropping */
+      TRACE2("bottom: %d ->  4:3       ", end_line);
+      end_line = frame->height - 1;  /* no cropping */
     } else if(bottom < frame->height*3/32) {
-      TRACE("bottom: %d -> 14:9 (%d) ", *crop_bottom, frame->height * 15 / 16 - 1);
-      *crop_bottom = frame->height * 15 / 16 - 1; /* 14:9 */
+      TRACE2("bottom: %d -> 14:9 (%d) ", end_line, frame->height * 15 / 16 - 1);
+      end_line = frame->height * 15 / 16 - 1; /* 14:9 */
     } else if(bottom < frame->height*3/16) {
-      TRACE("bottom: %d -> 16:9 (%d) ", *crop_bottom, frame->height * 7 / 8 - 1);
-      *crop_bottom = frame->height * 7 / 8 - 1;   /* 16:9 */
+      TRACE2("bottom: %d -> 16:9 (%d) ", end_line, frame->height * 7 / 8 - 1);
+      end_line = frame->height * 7 / 8 - 1;   /* 16:9 */
       wide = 1;
     } else {
-      TRACE("bottom: %d -> 20:9 (%d) ", *crop_bottom, frame->height * 3 / 4 - 1);
-      *crop_bottom = frame->height * 3 / 4 - 1;   /* 20:9 */
+      TRACE2("bottom: %d -> 20:9 (%d) ", end_line, frame->height * 3 / 4 - 1);
+      end_line = frame->height * 3 / 4 - 1;   /* 20:9 */
       wide = 2;
     }
 
     /* top bar size */
-    if(*crop_top < frame->height/32) {
-      TRACE("top:    %3d ->  4:3      \n", *crop_top);
-      *crop_top = 0;        /* no cropping */
-    } else if(*crop_top < frame->height*3/32) {
-      TRACE("top:    %3d -> 14:9 (%d)\n", *crop_top, frame->height / 16);
-      *crop_top = frame->height / 16; /* 14:9 */
-    } else if(*crop_top < frame->height*3/16 || wide) {
-      TRACE("top:    %3d -> 16:9 (%d)\n", *crop_top, frame->height / 8);
-      *crop_top = frame->height / 8;   /* 16:9 */
+    if(start_line < frame->height/32) {
+      TRACE2("top:    %3d ->  4:3      \n", start_line);
+      start_line = 0;        /* no cropping */
+    } else if(start_line < frame->height*3/32) {
+      TRACE2("top:    %3d -> 14:9 (%d)\n", start_line, frame->height / 16);
+      start_line = frame->height / 16; /* 14:9 */
+    } else if(start_line < frame->height*3/16 || wide) {
+      TRACE2("top:    %3d -> 16:9 (%d)\n", start_line, frame->height / 8);
+      start_line = frame->height / 8;   /* 16:9 */
     } else { 
-      TRACE("top:    %3d -> 20:9 (%d)\n", *crop_top, frame->height / 4);
-      *crop_top = frame->height / 4;   /* 20:9 */
+      TRACE2("top:    %3d -> 20:9 (%d)\n", start_line, frame->height / 4);
+      start_line = frame->height / 4;   /* 20:9 */
       wide++;
     }
     switch(wide) {
-    case 3: *crop_top -= frame->height / 8;
-            if(*crop_top < 0) 
-	      *crop_top = 0;
-            TRACE("        wide -> center top\n");
-    case 2: *crop_bottom += frame->height / 8;
-            if(*crop_bottom >= frame->height) 
-	      *crop_bottom = frame->height-1;
-            TRACE("        wide -> center bottom\n");
+    case 3: start_line -= frame->height / 8;
+            if(start_line < 0)
+              start_line = 0;
+            TRACE2("        wide -> center top\n");
+    case 2: end_line += frame->height / 8;
+            if(end_line >= frame->height)
+              end_line = frame->height-1;
+            TRACE2("        wide -> center bottom\n");
     }
 
   } else {
 
-    if(*crop_top > (frame->height/8  *2))  /* *2 --> 20:9 -> 16:9 + subtitles */
-      *crop_top = frame->height/8  *2 ;
-    if(*crop_bottom < (frame->height*7/8))
-      *crop_bottom = frame->height*7/8;
+    if(start_line > (frame->height/8  *2))  /* *2 --> 20:9 -> 16:9 + subtitles */
+      start_line = frame->height/8  *2 ;
+    if(end_line < (frame->height*7/8))
+      end_line = frame->height*7/8;
 
-    if(*crop_top > (frame->height/8)) {
+    if(start_line > (frame->height/8)) {
       /* if wider than 16:9, prefer cropping top if subtitles are inside bottom bar */
-      if(*crop_top + (frame->height - *crop_bottom) > frame->height/4) {
-	int diff = *crop_top + (frame->height - *crop_bottom) - frame->height/4;
+      if(start_line + (frame->height - end_line) > frame->height/4) {
+        int diff = start_line + (frame->height - end_line) - frame->height/4;
 	diff &= ~1;
-	TRACE("balance: %d,%d -> %d,%d\n",
-	      *crop_top, *crop_bottom, 
-	      *crop_top, *crop_bottom + diff);
+        TRACE2("balance: %d,%d -> %d,%d\n",
+              start_line, end_line,
+              start_line, end_line + diff);
 #if 0
         /* this moves image to top (crop only top) */ 
-        *crop_bottom += diff;
+        end_line += diff;
 #endif
 #if 0
         /* this moves image to center */ 
 	/* may cause problems with subtitles ... */
-	*crop_top -= diff;
+        start_line -= diff;
 #endif
 #if 1
         /* this moves image to center when there are no 
 	   detected subtitles inside bottom bar */
-	if(this->height_limit_active) {
-	  int reserved = this->height_limit - *crop_bottom;
+        if(this->height_limit_active) {
+          int reserved = this->height_limit - end_line;
 	  if(reserved>0) {
-	    *crop_bottom += reserved;
+            end_line += reserved;
 	    diff -= reserved;
 	  }
 	}
-	*crop_top -= diff;
+        start_line -= diff;
 #endif
 #if 0
 	/* do nothing - image will be centered in video out.
@@ -830,37 +831,37 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
     }
 
     /* stay inside frame and forget very small bars */
-    if(*crop_top <= 8)
-      *crop_top = 0;
-    if(*crop_bottom >= (frame->height-6))
-      *crop_bottom = frame->height;
+    if(start_line <= 8)
+      start_line = 0;
+    if(end_line >= (frame->height-6))
+      end_line = frame->height;
  
-    if(*crop_top < frame->height/12 || *crop_bottom > frame->height*11/12) {
+    if(start_line < frame->height/12 || end_line > frame->height*11/12) {
       /* Small bars -> crop only detected borders */
-     if(*crop_top || *crop_bottom < frame->height-1) {
-	TRACE("Small bars -> <16:9 : start_line = %d end_line = %d (%s%d t%d)\n", 
-	      *crop_top, *crop_bottom,
+     if(start_line || end_line < frame->height-1) {
+       TRACE2("Small bars -> <16:9 : start_line = %d end_line = %d (%s%d t%d)\n",
+	      start_line, end_line,
 	      this->height_limit_active ? "height limit " : "",
 	      this->height_limit,
 	      this->height_limit_active ? this->height_limit_timer : 0);
       }
     } else {
       /* Large bars -> crop to 16:9 */
-      TRACE("Large bars -> 16:9  : start_line = %d end_line = %d (%s%d t%d)\n", 
-	    *crop_top, *crop_bottom, 
+      TRACE2("Large bars -> 16:9  : start_line = %d end_line = %d (%s%d t%d)\n",
+	    start_line, end_line,
 	    this->height_limit_active ? "height limit " : "",
 	    this->height_limit,
 	    this->height_limit_active ? this->height_limit_timer : 0);
-      if(*crop_top < frame->height / 8)
-	*crop_top = frame->height / 8;
-      if(*crop_bottom < frame->height * 7 / 8)
-	*crop_bottom = frame->height * 7 / 8;
+      if(start_line < frame->height / 8)
+        start_line = frame->height / 8;
+      if(end_line < frame->height * 7 / 8)
+        end_line = frame->height * 7 / 8;
     }
   }
 
   /* adjust start and stop to even lines */
-  (*crop_top)    = (*crop_top)        & (~1);
-  (*crop_bottom) = (*crop_bottom + 1) & (~1);
+  (*crop_top)    = (start_line) & (~1);
+  (*crop_bottom) = (end_line + 1) & (~1);
 }
 
 #ifdef MARK_FRAME
@@ -938,12 +939,17 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
   int   new_height;
   double new_ratio;
 
-  /* top bar */
-  ydata += this->start_line * yp;
-  udata += (this->start_line/2) * up;
-  vdata += (this->start_line/2) * vp;
+  int start_line = this->start_line;
+  int end_line = this->end_line;
+  start_line &= ~1;
+  end_line = (end_line + 1) & ~1;
 
-  new_height = this->end_line - this->start_line;
+  /* top bar */
+  ydata += start_line * yp;
+  udata += (start_line/2) * up;
+  vdata += (start_line/2) * vp;
+
+  new_height = end_line - start_line;
   new_ratio  = 12.0/9.0 * ((double)frame->height / (double)new_height);
 
   new_frame = port->original_port->get_frame(port->original_port,
@@ -1008,10 +1014,15 @@ static int crop_copy_yuy2(vo_frame_t *frame, xine_stream_t *stream)
   int   new_height;
   double new_ratio;
 
-  /* top bar */
-  data += this->start_line * p;
+  int start_line = this->start_line;
+  int end_line = this->end_line;
+  start_line &= ~1;
+  end_line = (end_line + 1) & ~1;
 
-  new_height = this->end_line - this->start_line;
+  /* top bar */
+  data += start_line * p;
+
+  new_height = end_line - start_line;
   new_ratio = 12.0/9.0 * ((double)frame->height / (double)new_height);
   new_frame = port->original_port->get_frame(port->original_port,
 					     frame->width, new_height, 
@@ -1052,13 +1063,18 @@ static int crop_nocopy(vo_frame_t *frame, xine_stream_t *stream)
   double new_ratio = frame->ratio;
   int new_height;
 
+  int start_line = this->start_line;
+  int end_line = this->end_line;
+  start_line &= ~1;
+  end_line = (end_line + 1) & ~1;
+
   if(this->cropping_active) {
-    frame->crop_top += this->start_line;
+    frame->crop_top += start_line;
     frame->crop_bottom += (frame->height + 1 - this->end_line);
 
     TRACE("crop_nocopy: top ->%d bottom ->%d\n", frame->crop_top, frame->crop_bottom);
 
-    new_height = this->end_line - this->start_line;
+    new_height = end_line - start_line;
     new_ratio  = 12.0/9.0 * ((double)frame->height / (double)new_height);
   }
 
@@ -1231,18 +1247,17 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       if(!this->height_limit_active || 
 	 this->height_limit < this->end_line) {
 	/* start or increase height limit */
-	TRACE("height limit %d -> %d (%d secs)\n", 
-	      this->height_limit, this->end_line, 
+	TRACE("height limit %d -> %d (%d secs)\n",
+	      this->height_limit, this->end_line,
 	      HEIGHT_LIMIT_LIFETIME/25);
 	this->height_limit = this->end_line;
-	this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
+        this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
 	this->height_limit_active = 1;
       }
-      if(this->height_limit_active &&
-	 this->height_limit_timer < HEIGHT_LIMIT_LIFETIME/4) {
-	/* keep heigh limit timer running */
-	TRACE("height_limit_timer increment (still needed)\n");
-	this->height_limit_timer = HEIGHT_LIMIT_LIFETIME/2;
+      if(this->height_limit_active && this->height_limit_timer < HEIGHT_LIMIT_LIFETIME / 4) {
+        /* keep heigh limit timer running */
+        TRACE("height_limit_timer increment (still needed)\n");
+	this->height_limit_timer = HEIGHT_LIMIT_LIFETIME / 2;
       }
     }
   }
