@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.16 2009-10-16 11:46:18 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.17 2009-10-16 13:16:49 phintuka Exp $
  *
  */
 
@@ -41,10 +41,12 @@
  *
  */
 
+
 #include <stdint.h>
 
 #include <xine/xine_internal.h>
 #include <xine/post.h>
+
 
 /*
  *  Configuration
@@ -56,6 +58,90 @@
 /*#undef __MMX__           Disable MMX */
 /*#undef __SSE__           Disable SSE */
 /*#define FILTER2          Tighter Y-filter */
+
+/*#define TRACE        printf*/
+#define TRACE(x...)  do {} while(0)
+/*#define TRACE2       printf*/
+#define TRACE2(x...) do {} while(0)
+/*#define INFO         printf*/
+#define INFO(x...)   do {} while(0)
+
+#define START_TIMER_INIT               (25) /* 1 second, unit: frames */
+#define HEIGHT_LIMIT_LIFETIME          (60*25) /* 1 minute, unit: frames */
+
+#define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-left or top-right quarter) */
+
+/*
+ * Plugin
+ */
+
+typedef struct autocrop_parameters_s {
+  int    enable_autodetect;
+  int    enable_subs_detect;
+  int    soft_start;
+  int    stabilize;
+} autocrop_parameters_t;
+
+START_PARAM_DESCR(autocrop_parameters_t)
+PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_autodetect, NULL, 0, 1, 0,
+  "enable automatic border detecton")
+PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_subs_detect, NULL, 0, 1, 0,
+  "enable automatic subtitle detecton")
+PARAM_ITEM(POST_PARAM_TYPE_BOOL, soft_start, NULL, 0, 1, 0,
+  "enable soft start of cropping")
+PARAM_ITEM(POST_PARAM_TYPE_BOOL, stabilize, NULL, 0, 1, 0,
+  "stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)")
+END_PARAM_DESCR(autocrop_param_descr)
+
+
+typedef struct autocrop_post_plugin_s
+{
+  post_plugin_t  post_plugin;
+
+  xine_post_in_t parameter_input;
+
+  /* setup */
+  int autodetect;
+  int subs_detect;
+  int soft_start;
+  int stabilize;
+
+  /* Current cropping status */
+  int cropping_active;
+
+  /* Detected bars */
+  int start_line;
+  int end_line;
+  int crop_total;
+
+  /* Previously detected bars
+     - eliminate jumping if there is some noise at bar boundaries: 
+       don't change cropped area unless it has been stable for
+       some time */
+  int prev_start_line;
+  int prev_end_line;
+
+  /* Delayed start for cropping */
+  int start_timer;
+  int stabilize_timer;
+
+  /* Last seen frame */
+  int     prev_height;
+  int     prev_width;
+  int64_t prev_pts;
+
+  /* eliminate jumping when when there are subtitles inside bottom bar:
+     - when cropping is active and one frame has larger end_line
+       than previous, we enlarge frame.
+     - after this, cropping is not resetted to previous value unless
+       bottom bar has been empty for certain time */
+  int height_limit_active;  /* true if detected possible subtitles in bottom area */
+  int height_limit;         /* do not crop bottom above this value (bottom of subtitles) */
+  int height_limit_timer;   /* counter how many following frames must have black
+			       bottom bar until returning to full cropping
+			       (used to reset height_limit when there are no subtitles) */
+} autocrop_post_plugin_t;
+
 
 # if defined(__SSE__)
 #  warning Compiling with SSE support
@@ -71,11 +157,6 @@
 #    define ENABLE_64BIT (sizeof(int) > 32)
 #  endif
 #endif
-
-/*#define TRACE       printf*/
-#define TRACE(x...)   do {} while(0)
-#define INFO          printf
-
 
 /*
  * Constants
@@ -121,83 +202,6 @@
 # define YUY2SHIFTUP32  ((UVSHIFTUP    * 0x00010001U)|(YSHIFTUP      * 0x01000100U))
 # undef __SSE__
 #endif
-
-
-#define START_TIMER_INIT         (25) /* 1 second, unit: frames */
-#define HEIGHT_LIMIT_LIFETIME (60*25) /* 1 minute, unit: frames */
-
-#define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-left or top-right quarter) */
-
-/*
- * Plugin
- */
-
-typedef struct autocrop_parameters_s {
-  int    enable_autodetect;
-  int    enable_subs_detect;
-  int    soft_start;
-  int    stabilize;
-} autocrop_parameters_t;
-
-START_PARAM_DESCR(autocrop_parameters_t)
-PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_autodetect, NULL, 0, 1, 0,
-  "enable automatic border detecton")
-PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_subs_detect, NULL, 0, 1, 0,
-  "enable automatic subtitle detecton")
-PARAM_ITEM(POST_PARAM_TYPE_BOOL, soft_start, NULL, 0, 1, 0,
-  "enable soft start of cropping")
-PARAM_ITEM(POST_PARAM_TYPE_BOOL, stabilize, NULL, 0, 1, 0,
-  "stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)")
-END_PARAM_DESCR(autocrop_param_descr)
-
-
-typedef struct autocrop_post_plugin_s
-{
-  post_plugin_t  post_plugin;
-
-  xine_post_in_t parameter_input;
-
-  /* setup */
-  int autodetect;
-  int subs_detect;
-  int soft_start;
-  int stabilize;
-
-  /* Current cropping status */
-  int cropping_active; 
-
-  /* Detected bars */
-  int start_line;       
-  int end_line;
-  int crop_total;
-
-  /* Previously detected bars
-     - eliminate jumping if there is some noise at bar boundaries: 
-       don't change cropped area unless it has been stable for
-       some time */
-  int prev_start_line;
-  int prev_end_line;
-
-  /* Delayed start for cropping */
-  int start_timer;
-  int stabilize_timer;
-
-  /* Last seen frame */
-  int     prev_height;
-  int     prev_width;
-  int64_t prev_pts;
-
-  /* eliminate jumping when when there are subtitles inside bottom bar:
-     - when cropping is active and one frame has larger end_line 
-       than previous, we enlarge frame.
-     - after this, cropping is not resetted to previous value unless 
-       bottom bar has been empty for certain time */
-  int height_limit_active;  /* true if detected possible subtitles in bottom area */
-  int height_limit;         /* do not crop bottom above this value (bottom of subtitles) */
-  int height_limit_timer;   /* counter how many following frames must have black 
-			       bottom bar until returning to full cropping
-			       (used to reset height_limit when there are no subtitles) */
-} autocrop_post_plugin_t;
 
 
 /*
@@ -664,12 +668,7 @@ static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom
 	blank_line_UV(udata,       frame->width/2) &&
 	blank_line_UV(vdata,       frame->width/2)) {
       TRACE("not cropping black frame\n");
-#if 0
-      *crop_top = 0;
-      *crop_bottom = frame->height - 1;
-#else
       return 0;
-#endif
     }
   }
   return 1;
@@ -708,12 +707,7 @@ static int analyze_frame_yuy2(vo_frame_t *frame, int *crop_top, int *crop_bottom
     data = frame->base[0] + (frame->height/2)*pitch;
     if( blank_line_YUY2(data, frame->width * 2)) {
       TRACE("not cropping black frame\n");
-#if 0
-      *crop_top = 0;
-      *crop_bottom = frame->height - 1;
-#else
       return 0;
-#endif
     }
   }
 
@@ -735,8 +729,11 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
   _mm_empty();
 #endif
 
-  if(!result)
+  /* Ignore empty frames */
+  if(!result) {
+    TRACE2("not cropping black frame\n");
     return;
+  }
 
 #ifdef MARK_FRAME
   dbg_top = *crop_top; dbg_bottom = *crop_bottom;
@@ -1109,13 +1106,13 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       int64_t dpts = frame->pts - this->prev_pts;
       if(dpts < INT64_C(-30*90000) || dpts > INT64_C(30*90000)) { /* 30 sec */
 	if(this->height_limit_active) {
-	  this->height_limit_timer = START_TIMER_INIT;
-	  TRACE("short pts jump resetted height limit");
+          this->height_limit_timer = START_TIMER_INIT;
+          TRACE("short pts jump reseted height limit\n");
 	}
       }
       if(dpts < INT64_C(-30*60*90000) || dpts > INT64_C(30*60*90000)) { /* 30 min */ 
-	this->cropping_active = 0;
-	TRACE("long pts jump resetted cropping");
+        this->cropping_active = 0;
+        TRACE("long pts jump reseted cropping\n");
       }
     }
     this->prev_pts = frame->pts;
@@ -1299,9 +1296,10 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
   
   _x_post_rewire(this_gen);
   
-  if (ratio <= 0.0)
+  if (ratio <= 0.0) {
     if(height > 1)
       ratio = (double)width / (double)height;
+  }
   
   if (this->cropping_active &&
       ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
@@ -1480,11 +1478,10 @@ static char *autocrop_get_help(void) {
 	   "of the frame.\n"
            "\n"
            "Parameters\n"
-           "  enable_autodetect:  Enable automatic letterbox detection\n"
-           "  enable_subs_detect: Enable automatic subtitle detection inside bottom bar\n"
-           "  soft_start:         Enable soft start of cropping\n"
-           "  stabilize:          Stabilize cropping to\n"
-	   "                      14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
+           "  enable_autodetect:          Enable automatic letterbox detection\n"
+           "  enable_subs_detect:         Enable automatic subtitle detection inside bottom bar\n"
+           "  soft_start:                 Enable soft start of cropping\n"
+           "  stabilize:                  Stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
            "\n"
          );
 }
@@ -1496,8 +1493,10 @@ static char *autocrop_get_help(void) {
 
 static void autocrop_dispose(post_plugin_t *this_gen)
 {
-  if (_x_post_dispose(this_gen)) 
-    free(this_gen);
+  if (_x_post_dispose(this_gen)) {
+    autocrop_post_plugin_t *this = (autocrop_post_plugin_t *) this_gen;
+    free(this);
+  }
 }
 
 static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen, 
