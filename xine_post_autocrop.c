@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.15 2008-11-01 07:07:12 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.16 2009-10-16 11:46:18 phintuka Exp $
  *
  */
 
@@ -939,7 +939,7 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
   uint8_t *vdata = frame->base[2], *vdata2;
 
   int   new_height;
-  float new_ratio;
+  double new_ratio;
 
   /* top bar */
   ydata += this->start_line * yp;
@@ -947,7 +947,7 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
   vdata += (this->start_line/2) * vp;
 
   new_height = this->end_line - this->start_line;
-  new_ratio  = 12.0/9.0 * ((float)frame->height / (float)new_height);
+  new_ratio  = 12.0/9.0 * ((double)frame->height / (double)new_height);
 
   new_frame = port->original_port->get_frame(port->original_port,
 					     frame->width, new_height, 
@@ -1009,13 +1009,13 @@ static int crop_copy_yuy2(vo_frame_t *frame, xine_stream_t *stream)
   uint8_t *data = frame->base[0], *data2;
 
   int   new_height;
-  float new_ratio;
+  double new_ratio;
 
   /* top bar */
   data += this->start_line * p;
 
   new_height = this->end_line - this->start_line;
-  new_ratio = 12.0/9.0 * ((float)frame->height / (float)new_height);
+  new_ratio = 12.0/9.0 * ((double)frame->height / (double)new_height);
   new_frame = port->original_port->get_frame(port->original_port,
 					     frame->width, new_height, 
 					     new_ratio, frame->format, 
@@ -1062,7 +1062,7 @@ static int crop_nocopy(vo_frame_t *frame, xine_stream_t *stream)
     TRACE("crop_nocopy: top ->%d bottom ->%d\n", frame->crop_top, frame->crop_bottom);
 
     new_height = this->end_line - this->start_line;
-    new_ratio  = 12.0/9.0 * ((float)frame->height / (float)new_height);
+    new_ratio  = 12.0/9.0 * ((double)frame->height / (double)new_height);
   }
 
   _x_post_frame_copy_down(frame, frame->next);
@@ -1307,7 +1307,7 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
       ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
 			   format == XINE_IMGFMT_YUY2)) {
     int new_height = this->end_line+2 - this->start_line;
-    float new_ratio = 12.0/9.0 * ((float)height / (float)new_height);
+    double new_ratio = 12.0/9.0 * ((double)height / (double)new_height);
 
     frame = port->original_port->get_frame(port->original_port,
 					   width, height, 
