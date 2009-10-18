@@ -120,6 +120,27 @@ struct composition_object_s {
   composition_object_t *next;
 };
 
+typedef struct composition_descriptor_s composition_descriptor_t;
+struct composition_descriptor_s {
+  uint16_t number;
+  uint8_t  state;
+};
+
+typedef struct presentation_segment_s presentation_segment_t;
+struct presentation_segment_s {
+  composition_descriptor_t comp_descr;
+
+  uint8_t palette_update_flag;
+  uint8_t palette_id_ref;
+  uint8_t object_number;
+
+  composition_object_t *comp_objs;
+
+  //presentation_segment_t *next;
+
+  int64_t pts;
+};
+
 /*
  * segment_buffer_t
  *
@@ -451,12 +472,6 @@ static int segbuf_decode_video_descriptor(segment_buffer_t *buf)
   return buf->error;
 }
 
-typedef struct composition_descriptor_s composition_descriptor_t;
-struct composition_descriptor_s {
-  uint16_t number;
-  uint8_t  state;
-};
-
 static int segbuf_decode_composition_descriptor(segment_buffer_t *buf, composition_descriptor_t *descr)
 {
   descr->number = segbuf_get_u16(buf);
@@ -700,21 +715,6 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
 
   return 0;
 }
-
-typedef struct presentation_segment_s presentation_segment_t;
-struct presentation_segment_s {
-  composition_descriptor_t comp_descr;
-
-  uint8_t palette_update_flag;
-  uint8_t palette_id_ref;
-  uint8_t object_number;
-
-  composition_object_t *comp_objs;
-
-  presentation_segment_t *next;
-
-  int64_t pts;
-};
 
 static void show_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
 {
