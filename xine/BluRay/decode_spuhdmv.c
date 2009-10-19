@@ -643,11 +643,6 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
     return -1;
   }
 
-  /* copy palette to xine overlay */
-  overlay.rgb_clut = 0;
-  memcpy(overlay.color, clut->color, sizeof(uint32_t) * 256);
-  memcpy(overlay.trans, clut->trans, sizeof(uint8_t)  * 256);
-
   /* find RLE image */
   subtitle_object_t *obj = this->objects;
   while (obj && obj->id != cobj->object_id_ref)
@@ -665,6 +660,11 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
     ERROR("  fill_overlay: window %d not found !\n", cobj->window_id_ref);
     return -1;
   }
+
+  /* copy palette to xine overlay */
+  overlay.rgb_clut = 0;
+  memcpy(overlay.color, clut->color, sizeof(uint32_t) * 256);
+  memcpy(overlay.trans, clut->trans, sizeof(uint8_t)  * 256);
 
   /* copy and crop RLE image to xine overlay */
   overlay.width     = obj->width;
