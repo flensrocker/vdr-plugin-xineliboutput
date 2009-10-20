@@ -786,8 +786,17 @@ static void hide_overlays(spuhdmv_decoder_t *this, int64_t pts)
   }
 }
 
-static void show_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
+static void update_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
 {
+    if (!pseg->comp_descr.state) {
+
+      /* HIDE */
+      if (!pseg->shown)
+        hide_overlays (this, pseg->pts);
+
+    } else {
+
+      /* SHOW */
       composition_object_t *cobj = pseg->comp_objs;
       int i;
 
@@ -799,6 +808,7 @@ static void show_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
           cobj = cobj->next;
         }
       }
+    }
 
     pseg->shown = 1;
 }
@@ -811,11 +821,8 @@ static int decode_presentation_segment(spuhdmv_decoder_t *this)
 
   seg->pts = this->pts; /* !! todo - use it ? */
 
-  if (!seg->comp_descr.state) {
-    hide_overlays (this, seg->pts);
-  } else {
-    show_overlays (this, seg);
-  }
+  update_overlays (this, seg);
+
   free_presentation_segment(seg);
 
   return 0;
