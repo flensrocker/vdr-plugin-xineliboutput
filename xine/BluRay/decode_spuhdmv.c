@@ -144,7 +144,7 @@ struct presentation_segment_s {
 
   composition_object_t *comp_objs;
 
-  //presentation_segment_t *next;
+  presentation_segment_t *next;
 
   int64_t pts;
   int     shown;
@@ -623,9 +623,11 @@ typedef struct spuhdmv_decoder_s {
 
   segment_buffer_t *buf;
 
-  subtitle_clut_t      *cluts;
-  subtitle_object_t    *objects;
-  window_def_t         *windows;
+  subtitle_clut_t        *cluts;
+  subtitle_object_t      *objects;
+  window_def_t           *windows;
+  presentation_segment_t *segments;
+
   int overlay_handles[MAX_OBJECTS];
 
   int64_t               pts;
@@ -786,8 +788,12 @@ static void hide_overlays(spuhdmv_decoder_t *this, int64_t pts)
   }
 }
 
-static void update_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
+static void update_overlays(spuhdmv_decoder_t *this)
 {
+  presentation_segment_t *pseg = this->segments;
+
+  while (pseg) {
+
     if (!pseg->comp_descr.state) {
 
       /* HIDE */
@@ -811,28 +817,34 @@ static void update_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pse
     }
 
     pseg->shown = 1;
+
+    pseg = pseg->next;
+  }
 }
 
 static int decode_presentation_segment(spuhdmv_decoder_t *this)
 {
+  /* decode */
   presentation_segment_t *seg = segbuf_decode_presentation_segment(this->buf);
   if (!seg)
     return 1;
 
   seg->pts = this->pts; /* !! todo - use it ? */
 
-  update_overlays (this, seg);
-
-  free_presentation_segment(seg);
+  /* replace */
+  if (this->segments)
+    LIST_DESTROY(this->segments, free_presentation_segment);
+  this->segments = seg;
 
   return 0;
 }
 
 static void free_objs(spuhdmv_decoder_t *this)
 {
-  LIST_DESTROY (this->cluts  , free);
-  LIST_DESTROY (this->objects, free_subtitle_object);
-  LIST_DESTROY (this->windows, free);
+  LIST_DESTROY (this->cluts,    free);
+  LIST_DESTROY (this->objects,  free_subtitle_object);
+  LIST_DESTROY (this->windows,  free);
+  LIST_DESTROY (this->segments, free_presentation_segment);
 }
 
 static void decode_segment(spuhdmv_decoder_t *this)
@@ -877,6 +889,8 @@ static void decode_segment(spuhdmv_decoder_t *this)
   if (this->buf->error) {
     ERROR("*** DECODE ERROR ***\n");
   }
+
+  update_overlays (this);
 }
 
 static void close_osd(spuhdmv_decoder_t *this)
