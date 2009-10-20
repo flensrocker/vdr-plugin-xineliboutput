@@ -880,7 +880,8 @@ static void decode_segment(spuhdmv_decoder_t *this)
                                            METRONOM_VPTS_OFFSET);
       TRACE(" * current pts = %ld\n", pts);
     }
-
+    /* drop all cached objects */
+    free_objs(this);
     break;
   default:
     ERROR("  segment type 0x%x unknown, skipping\n", this->buf->segment_type);
