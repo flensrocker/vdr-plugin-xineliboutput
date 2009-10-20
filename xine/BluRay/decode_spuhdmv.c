@@ -761,23 +761,6 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   return 0;
 }
 
-static void show_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
-{
-  composition_object_t *cobj = pseg->comp_objs;
-  int i;
-
-  for (i = 0; i < pseg->object_number; i++) {
-    if (!cobj) {
-      ERROR("show_overlays: composition object %d missing !\n", i);
-    } else {
-      show_overlay(this, cobj, pseg->palette_id_ref, i, pseg->pts, !pseg->shown);
-      cobj = cobj->next;
-    }
-  }
-
-  pseg->shown = 1;
-}
-
 static void hide_overlays(spuhdmv_decoder_t *this, int64_t pts)
 {
   video_overlay_event_t event = {0};
@@ -801,6 +784,23 @@ static void hide_overlays(spuhdmv_decoder_t *this, int64_t pts)
     //this->overlay_handles[i] = -1;
     i++;
   }
+}
+
+static void show_overlays(spuhdmv_decoder_t *this, presentation_segment_t *pseg)
+{
+      composition_object_t *cobj = pseg->comp_objs;
+      int i;
+
+      for (i = 0; i < pseg->object_number; i++) {
+        if (!cobj) {
+          ERROR("show_overlays: composition object %d missing !\n", i);
+        } else {
+          show_overlay(this, cobj, pseg->palette_id_ref, i, pseg->pts, !pseg->shown);
+          cobj = cobj->next;
+        }
+      }
+
+    pseg->shown = 1;
 }
 
 static int decode_presentation_segment(spuhdmv_decoder_t *this)
