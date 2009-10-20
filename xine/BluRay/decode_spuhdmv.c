@@ -481,14 +481,14 @@ static subtitle_object_t *segbuf_decode_object(segment_buffer_t *buf)
     segbuf_decode_rle (buf, obj);
 
     if (buf->error) {
-      free(obj);
+      free_subtitle_object(obj);
       return NULL;
     }
 
   } else {
     ERROR("    TODO: APPEND RLE, length %d bytes\n", buf->segment_len - 4);
     /* TODO */
-    free(obj);
+    free_subtitle_object(obj);
     return NULL;
   }
 
