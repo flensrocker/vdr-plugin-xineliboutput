@@ -47,7 +47,7 @@
 
 #define TRACE(x...) printf(x)
 /*#define TRACE(x...) */
-#define ERROR(x...) fprintf(stderr, x)
+#define ERROR(x...) fprintf(stderr, "spuhdmv: " x)
 /*#define ERROR(x...) lprintf(x) */
 
 #ifndef EXPORTED
@@ -84,9 +84,11 @@ struct subtitle_object_s {
   uint        num_rle;
   size_t      data_size;
 
+#if 0
   uint8_t    *raw_data; /* partial RLE data in HDMV format */
   size_t      raw_data_len;
   size_t      raw_data_size;
+#endif
 
   subtitle_object_t *next;
 
@@ -599,7 +601,7 @@ static presentation_segment_t *segbuf_decode_presentation_segment(segment_buffer
 
 static rle_elem_t *copy_crop_rle(subtitle_object_t *obj, composition_object_t *cobj)
 {
-  /* TODO: exec cropping here (w,h sized image from pos x,y) */
+  /* TODO: cropping (w,h sized image from pos x,y) */
 
   rle_elem_t *rle = calloc (obj->num_rle, sizeof(rle_elem_t));
   memcpy (rle, obj->rle, obj->num_rle * sizeof(rle_elem_t));
@@ -670,6 +672,23 @@ static int decode_window_definition(spuhdmv_decoder_t *this)
   return 0;
 }
 
+static int decode_presentation_segment(spuhdmv_decoder_t *this)
+{
+  /* decode */
+  presentation_segment_t *seg = segbuf_decode_presentation_segment(this->buf);
+  if (!seg)
+    return 1;
+
+  seg->pts = this->pts;
+
+  /* replace */
+  if (this->segments)
+    LIST_DESTROY(this->segments, free_presentation_segment);
+  this->segments = seg;
+
+  return 0;
+}
+
 static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uint palette_id_ref,
 			int overlay_index, int64_t pts, int force_update)
 {
@@ -683,7 +702,7 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   while (clut && clut->id != palette_id_ref)
     clut = clut->next;
   if (!clut) {
-    ERROR("  fill_overlay: clut %d not found !\n", palette_id_ref);
+    TRACE("  show_overlay: clut %d not found !\n", palette_id_ref);
     return -1;
   }
 
@@ -692,7 +711,7 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   while (obj && obj->id != cobj->object_id_ref)
     obj = obj->next;
   if (!obj) {
-    ERROR("  fill_overlay: object %d not found !\n", cobj->object_id_ref);
+    TRACE("  show_overlay: object %d not found !\n", cobj->object_id_ref);
     return -1;
   }
 
@@ -701,7 +720,7 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   while (wnd && wnd->id != cobj->window_id_ref)
     wnd = wnd->next;
   if (!wnd) {
-    ERROR("  fill_overlay: window %d not found !\n", cobj->window_id_ref);
+    TRACE("  show_overlay: window %d not found !\n", cobj->window_id_ref);
     return -1;
   }
 
@@ -822,23 +841,6 @@ static void update_overlays(spuhdmv_decoder_t *this)
   }
 }
 
-static int decode_presentation_segment(spuhdmv_decoder_t *this)
-{
-  /* decode */
-  presentation_segment_t *seg = segbuf_decode_presentation_segment(this->buf);
-  if (!seg)
-    return 1;
-
-  seg->pts = this->pts; /* !! todo - use it ? */
-
-  /* replace */
-  if (this->segments)
-    LIST_DESTROY(this->segments, free_presentation_segment);
-  this->segments = seg;
-
-  return 0;
-}
-
 static void free_objs(spuhdmv_decoder_t *this)
 {
   LIST_DESTROY (this->cluts,    free);
@@ -874,12 +876,6 @@ static void decode_segment(spuhdmv_decoder_t *this)
     break;
   case 0x80:
     TRACE("  segment: END OF DISPLAY\n");
-    {
-      int64_t pts = xine_get_current_vpts(this->stream) -
-        this->stream->metronom->get_option(this->stream->metronom,
-                                           METRONOM_VPTS_OFFSET);
-      TRACE(" * current pts = %ld\n", pts);
-    }
     /* drop all cached objects */
     free_objs(this);
     break;
@@ -896,7 +892,7 @@ static void decode_segment(spuhdmv_decoder_t *this)
 
 static void close_osd(spuhdmv_decoder_t *this)
 {
-  video_overlay_manager_t  *ovl_manager = this->stream->video_out->get_overlay_manager (this->stream->video_out);
+  video_overlay_manager_t *ovl_manager = this->stream->video_out->get_overlay_manager (this->stream->video_out);
 
   int i = 0;
   while (this->overlay_handles[i] >= 0) {
