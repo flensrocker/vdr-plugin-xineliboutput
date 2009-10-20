@@ -84,9 +84,11 @@ struct subtitle_object_s {
   uint        num_rle;
   size_t      data_size;
 
+#if 0
   uint8_t    *raw_data; /* partial RLE data in HDMV format */
   size_t      raw_data_len;
   size_t      raw_data_size;
+#endif
 
   subtitle_object_t *next;
 
@@ -149,6 +151,36 @@ struct presentation_segment_s {
   int64_t pts;
   int     shown;
 };
+
+/*
+ * list handling
+ */
+
+#define LIST_REPLACE(list, obj)			\
+  do {						\
+    uint id = obj->id;				\
+						\
+    /* insert to list */			\
+    obj->next = list;				\
+    list = obj;					\
+						\
+    /* remove old */				\
+    while (obj->next && obj->next->id != id)	\
+      obj = obj->next;				\
+    if (obj->next) {				\
+      void *tmp = (void*)obj->next;		\
+      obj->next = obj->next->next;		\
+      free(tmp);				\
+    }						\
+  } while (0);
+
+#define LIST_DESTROY(list)     \
+  while (list) {	       \
+    void *tmp = (void*)list;   \
+    list = list->next;	       \
+    free (tmp);		       \
+  }
+
 
 /*
  * segment_buffer_t
@@ -556,48 +588,6 @@ typedef struct spuhdmv_decoder_s {
   int64_t               pts;
 
 } spuhdmv_decoder_t;
-
-#define LIST_REPLACE_OLD(type, list, obj) \
-  do { \
-    /* insert to list */ \
-    obj->next = list; \
-    list = obj; \
-\
-    /* remove old */ \
-    type *i = list; \
-    while (i->next && i->next->id != obj->id) \
-      i = i->next; \
-    if (i->next) { \
-      void *tmp = (void*)i->next; \
-      i->next = i->next->next; \
-      free(tmp); \
-    } \
-  } while (0);
-
-#define LIST_REPLACE(list, obj)			\
-  do {						\
-    uint id = obj->id;				\
-						\
-    /* insert to list */			\
-    obj->next = list;				\
-    list = obj;					\
-						\
-    /* remove old */				\
-    while (obj->next && obj->next->id != id)	\
-      obj = obj->next;				\
-    if (obj->next) {				\
-      void *tmp = (void*)obj->next;		\
-      obj->next = obj->next->next;		\
-      free(tmp);				\
-    }						\
-  } while (0);
-
-#define LIST_DESTROY(list)     \
-  while (list) {	       \
-    void *tmp = (void*)list;   \
-    list = list->next;	       \
-    free (tmp);		       \
-  }
 
 static int decode_palette(spuhdmv_decoder_t *this)
 {
