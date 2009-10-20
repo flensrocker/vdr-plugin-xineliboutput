@@ -568,6 +568,35 @@ static composition_object_t *segbuf_decode_composition_object(segment_buffer_t *
   return cobj;
 }
 
+static presentation_segment_t *segbuf_decode_presentation_segment(segment_buffer_t *buf)
+{
+  presentation_segment_t *seg = calloc(1, sizeof(presentation_segment_t));
+  int                     index;
+
+  segbuf_decode_video_descriptor (buf);
+  segbuf_decode_composition_descriptor (buf, &seg->comp_descr);
+
+  seg->palette_update_flag  = !!((segbuf_get_u8(buf)) & 0x80);
+  seg->palette_id_ref       = segbuf_get_u8 (buf);
+  seg->object_number        = segbuf_get_u8 (buf);
+
+  TRACE("  presentation_segment: object_number %d, palette %d\n",
+        seg->object_number, seg->palette_id_ref);
+
+  for (index = 0; index < seg->object_number; index++) {
+    composition_object_t *cobj = segbuf_decode_composition_object (buf);
+    cobj->next = seg->comp_objs;
+    seg->comp_objs = cobj;
+  }
+
+  if (buf->error) {
+    free_presentation_segment(seg);
+    return NULL;
+  }
+
+  return seg;
+}
+
 static rle_elem_t *copy_crop_rle(subtitle_object_t *obj, composition_object_t *cobj)
 {
   /* TODO: exec cropping here (w,h sized image from pos x,y) */
@@ -776,36 +805,20 @@ static void hide_overlays(spuhdmv_decoder_t *this, int64_t pts)
 
 static int decode_presentation_segment(spuhdmv_decoder_t *this)
 {
-  presentation_segment_t p     = {0};
-  segment_buffer_t      *buf   = this->buf;
-  int                    index;
+  presentation_segment_t *seg = segbuf_decode_presentation_segment(this->buf);
+  if (!seg)
+    return 1;
 
-  segbuf_decode_video_descriptor (this->buf);
-  segbuf_decode_composition_descriptor (this->buf, &p.comp_descr);
+  seg->pts = this->pts; /* !! todo - use it ? */
 
-  p.palette_update_flag  = !!((segbuf_get_u8(buf)) & 0x80);
-  p.palette_id_ref       = segbuf_get_u8 (buf);
-  p.object_number        = segbuf_get_u8 (buf);
-
-  TRACE("  presentation_segment: object_number %d, palette %d\n",
-        p.object_number, p.palette_id_ref);
-
-  p.pts = this->pts; /* !! todo - use it ? */
-
-  for (index = 0; index < p.object_number; index++) {
-    composition_object_t *cobj = segbuf_decode_composition_object (this->buf);
-    cobj->next = p.comp_objs;
-    p.comp_objs = cobj;
-  }
-
-  if (!p.comp_descr.state) {
-    hide_overlays (this, this->pts);
+  if (!seg->comp_descr.state) {
+    hide_overlays (this, seg->pts);
   } else {
-    show_overlays (this, &p);
-    LIST_DESTROY (p.comp_objs, free);
+    show_overlays (this, seg);
   }
+  free_presentation_segment(seg);
 
-  return buf->error;
+  return 0;
 }
 
 static void free_objs(spuhdmv_decoder_t *this)
