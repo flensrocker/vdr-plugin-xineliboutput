@@ -47,6 +47,10 @@
 /*
 #define LOG
 */
+#define TRACE(x...)   fprintf(stderr, "input_bluray: " x )
+/*#define TRACE(x...) do {} while(0) */
+#define LOGMSG(x...)  xine_log (this->stream->xine, XINE_LOG_MSG, "input_bluray: " x);
+
 
 #ifdef HAVE_CONFIG_H
 # include "xine_internal.h"
@@ -104,17 +108,13 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
 
   int got = bd_read (this->bdh, (unsigned char *)buf, len);
 
-#ifdef LOG
-  if (got != len) {
-    fprintf(stderr, "input_bluray: bd_read() failed: %s (%d of %d)\n",
-            strerror(errno), got, (int)len);
-  }
+  if (got != len)
+    LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), got, (int)len);
 
   if (buf[4] != 0x47) {
-    fprintf(stderr, "input_bluray: %02x %02x %02x %02x %02x\n",
-            buf[0], buf[1], buf[2], buf[3], buf[4]);
+    TRACE("%02x %02x %02x %02x %02x\n",
+          buf[0], buf[1], buf[2], buf[3], buf[4]);
   }
-#endif
 
   return got;
 }
@@ -209,7 +209,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this  = (bluray_input_plugin_t *) this_gen;
   int                    title = -1;
-  char                  *filename;
+  char                  *disc_root;
 
   lprintf("bluray_plugin_open\n");
 
@@ -223,21 +223,21 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
       !strcasecmp (this->mrl, "bluray://") ||
       !strcasecmp (this->mrl, "bluray:///")) {
 
-    filename = strdup(this->class->mountpoint);
+    disc_root = strdup(this->class->mountpoint);
 
   } else if (!strncasecmp (this->mrl, "bluray:/", 8)) {
 
     if (!strncasecmp (this->mrl, "bluray:///", 10))
-      filename = strdup(this->mrl + 9);
+      disc_root = strdup(this->mrl + 9);
     else if (!strncasecmp (this->mrl, "bluray://", 9))
-      filename = strdup(this->mrl + 8);
+      disc_root = strdup(this->mrl + 8);
     else
-      filename = strdup(this->mrl + 7);
+      disc_root = strdup(this->mrl + 7);
 
-    _x_mrl_unescape(filename);
+    _x_mrl_unescape(disc_root);
 
-    if (filename[strlen(filename)-1] != '/') {
-      char *end = strrchr(filename, '/');
+    if (disc_root[strlen(disc_root)-1] != '/') {
+      char *end = strrchr(disc_root, '/');
       if (end && end[1])
         if (sscanf(end, "/%d", &title) != 1)
           title = 0;
@@ -251,44 +251,46 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   /* if title was not in mrl, find the main title */
 
   if (title < 0) {
-    char *main_title = nav_find_main_title(filename);
+    char *main_title = nav_find_main_title(disc_root);
     title = 0;
     if (main_title) {
       if (sscanf(main_title, "%d.mpls", &title) != 1)
         title = 0;
-      fprintf(stderr, "input_bluray: main title: %s (%d) \n", main_title, title);
+      TRACE("main title: %s (%d) \n", main_title, title);
     } else {
-      fprintf(stderr, "input_bluray: nav_find_main_title(%s) failed\n", filename);
+      LOGMSG("nav_find_main_title(%s) failed\n", disc_root);
     }
   }
 
   /* open libbluray */
 
-  if (! (this->bdh = bd_open (filename, this->class->keyfile))) {
-    fprintf(stderr, "input_bluray: bd_open(\'%s\') failed: %s\n", filename, strerror(errno));
-    free(filename);
+  if (! (this->bdh = bd_open (disc_root, this->class->keyfile))) {
+    LOGMSG("bd_open(\'%s\') failed: %s\n", disc_root, strerror(errno));
+    free(disc_root);
     return -1;
   }
-  fprintf(stderr, "input_bluray: bd_open(\'%s\') OK\n", filename);
+  TRACE("bd_open(\'%s\') OK\n", disc_root);
 
   /* select title */
 
   if (!bd_select_title(this->bdh, title)) {
-    fprintf(stderr, "input_bluray: bd_select_title(%d) failed: %s\n", title, strerror(errno));
-    free(filename);
+    LOGMSG("bd_select_title(%d) failed: %s\n", title, strerror(errno));
+    _x_message(this->stream, XINE_MSG_FILE_NOT_FOUND, this->mrl, NULL);
+
+    free(disc_root);
     return -1;
   }
-  fprintf(stderr, "input_bluray: bd_select_title(%d) OK\n", title);
+  TRACE("bd_select_title(%d) OK\n", title);
 
   /* set stream metainfo */
 
-  fprintf(stderr, "input_bluray: title length: %"PRIu64" bytes\n", this->bdh->s_size);
+  TRACE("title length: %"PRIu64" bytes\n", this->bdh->s_size);
 
   //_x_meta_info_set(this->stream, XINE_META_INFO_TITLE, this->dvd_name);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, title);
   //_x_stream_info_set(this->stream,XINE_STREAM_INFO_DVD_TITLE_COUNT,num_tt);
 
-  free(filename);
+  free(disc_root);
   return 1;
 }
 
