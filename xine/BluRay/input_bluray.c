@@ -40,6 +40,7 @@
 #include <dlfcn.h>
 
 #include <bluray.h>
+#include <libbdnav/navigation.h>
 
 #define LOG_MODULE "input_bluray"
 #define LOG_VERBOSE
@@ -207,10 +208,12 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
 static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this  = (bluray_input_plugin_t *) this_gen;
-  int                    title = 0;
+  int                    title = -1;
   char                  *filename;
 
   lprintf("bluray_plugin_open\n");
+
+  /* validate mrl */
 
   if (strncasecmp (this->mrl, "bluray:", 7))
     return -1;
@@ -245,6 +248,22 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     return -1;
   }
 
+  /* if title was not in mrl, find the main title */
+
+  if (title < 0) {
+    char *main_title = nav_find_main_title(filename);
+    title = 0;
+    if (main_title) {
+      if (sscanf(main_title, "%d.mpls", &title) != 1)
+        title = 0;
+      fprintf(stderr, "input_bluray: main title: %s (%d) \n", main_title, title);
+    } else {
+      fprintf(stderr, "input_bluray: nav_find_main_title(%s) failed\n", filename);
+    }
+  }
+
+  /* open libbluray */
+
   if (! (this->bdh = bd_open (filename, this->class->keyfile))) {
     fprintf(stderr, "input_bluray: bd_open(\'%s\') failed: %s\n", filename, strerror(errno));
     free(filename);
@@ -252,12 +271,16 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   }
   fprintf(stderr, "input_bluray: bd_open(\'%s\') OK\n", filename);
 
+  /* select title */
+
   if (!bd_select_title(this->bdh, title)) {
     fprintf(stderr, "input_bluray: bd_select_title(%d) failed: %s\n", title, strerror(errno));
     free(filename);
     return -1;
   }
   fprintf(stderr, "input_bluray: bd_select_title(%d) OK\n", title);
+
+  /* set stream metainfo */
 
   fprintf(stderr, "input_bluray: title length: %"PRIu64" bytes\n", this->bdh->s_size);
 
