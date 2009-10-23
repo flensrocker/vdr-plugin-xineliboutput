@@ -412,6 +412,17 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
                                                _("BluRay mount point"),
                                                _("Default mount location for BluRay discs."),
                                                0, mountpoint_change_cb, (void *) this);
+  this->device = config->register_filename(config, "media.bluray.device",
+                                           "/dev/dvd", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
+                                           _("device used for BluRay playback"),
+                                           _("The path to the device "
+                                             "which you intend to use for playing BluRy discs."),
+                                           0, device_change_cb, (void *) this);
+  this->keyfile = config->register_filename(config, "media.bluray.keyfile",
+                                            "~/.xine/aacskeys.bin", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
+                                            _("AACS key file"),
+                                            _("Location of libaacs key file."),
+                                            0, keyfile_change_cb, (void *) this);
 
   return this;
 }
