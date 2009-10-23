@@ -164,7 +164,7 @@
 #endif
 
 #ifndef BUF_SPU_HDMV
-#  define BUF_SPU_HDMV            0x04180000
+#  define BUF_SPU_HDMV            0x04080000
 #endif
 
 /*
