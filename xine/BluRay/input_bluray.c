@@ -264,11 +264,19 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* open libbluray */
 
-  if (! (this->bdh = bd_open (disc_root, this->class->keyfile))) {
+  /* replace ~/ in keyfile path */
+  char *keyfile = NULL;
+  if (this->class->keyfile && !strncmp(this->class->keyfile, "~/", 2))
+    if (asprintf(&keyfile, "%s/%s", xine_get_homedir(), this->class->keyfile + 2) < 0)
+      keyfile = NULL;
+  /* open */
+  if (! (this->bdh = bd_open (disc_root, keyfile ?: this->class->keyfile))) {
     LOGMSG("bd_open(\'%s\') failed: %s\n", disc_root, strerror(errno));
+    free(keyfile);
     free(disc_root);
     return -1;
   }
+  free(keyfile);
   TRACE("bd_open(\'%s\') OK\n", disc_root);
 
   /* select title */
