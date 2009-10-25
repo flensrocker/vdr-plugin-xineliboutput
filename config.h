@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.65 2009-10-25 12:56:11 phintuka Exp $
+ * $Id: config.h,v 1.66 2009-10-25 13:02:33 phintuka Exp $
  *
  */
 
@@ -172,6 +172,7 @@
 #define MEDIA_MENU_IMAGES       (1<<2)
 #define MEDIA_MENU_DVD          (1<<3)
 #define MEDIA_MENU_CD           (1<<4)
+#define MEDIA_MENU_BLURAY       (1<<5)
 #define MEDIA_MENU_VIDEO_SETUP  (1<<6)
 #define MEDIA_MENU_AUDIO_SETUP  (1<<7)
 

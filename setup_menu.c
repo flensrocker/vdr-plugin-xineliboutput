@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.72 2009-10-25 12:56:11 phintuka Exp $
+ * $Id: setup_menu.c,v 1.73 2009-10-25 13:02:33 phintuka Exp $
  *
  */
 
@@ -1681,6 +1681,7 @@ void cMenuSetupMediaPlayer::Set(void)
   Add(new cMenuEditBitItem(tr("View images >>"),      &newconfig.media_menu_items, MEDIA_MENU_IMAGES));
   Add(new cMenuEditBitItem(tr("Play DVD disc >>"),    &newconfig.media_menu_items, MEDIA_MENU_DVD));
   Add(new cMenuEditBitItem(tr("Play audio CD >>"),    &newconfig.media_menu_items, MEDIA_MENU_CD));
+  Add(new cMenuEditBitItem(tr("Play BluRay disc >>"), &newconfig.media_menu_items, MEDIA_MENU_BLURAY));
   Add(new cMenuEditBitItem(tr("Video settings"),      &newconfig.media_menu_items, MEDIA_MENU_VIDEO_SETUP));
   Add(new cMenuEditBitItem(tr("Audio settings"),      &newconfig.media_menu_items, MEDIA_MENU_AUDIO_SETUP));
 

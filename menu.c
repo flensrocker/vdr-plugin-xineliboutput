@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.69 2009-10-25 12:56:11 phintuka Exp $
+ * $Id: menu.c,v 1.70 2009-10-25 13:02:33 phintuka Exp $
  *
  */
 
@@ -275,13 +275,11 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
       return osEnd;
     }
     if(!ForceOpen && GetCurrent()->IsBluRay()) {
-#if 0
-      /* play bd */
-      cString f = cString::sprintf("bd:%s/%s", m_CurrentDir, GetCurrent()->Name());
+      /* play BluRay disc/image */
+      cString f = cString::sprintf("bluray:%s/%s/", m_CurrentDir, GetCurrent()->Name());
       cControl::Shutdown();
-      cControl::Launch(new cXinelibBdPlayerControl(f));
+      cControl::Launch(new cXinelibDvdPlayerControl(f));
       return osEnd;
-#endif
     }
     if(ForceOpen && GetCurrent()->IsDir() &&
        !GetCurrent()->IsDvd() && !GetCurrent()->IsBluRay()) {
@@ -536,6 +534,12 @@ cMenuXinelib::cMenuXinelib()
     else
       Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
   }
+  if (xc.media_menu_items & MEDIA_MENU_BLURAY) {
+    if(xc.remote_mode)
+      Add(new cOsdItem(tr("Play remote BluRay >>"), osUser5));
+    else
+      Add(new cOsdItem(tr("Play BluRay disc >>"), osUser5));
+  }
 
   if (xc.media_menu_items & MEDIA_MENU_VIDEO_SETUP) {
   Add(NewTitle(tr("Video settings")));
@@ -649,6 +653,10 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     case osUser4:
       cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
+      return osEnd;
+    case osUser5:
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibDvdPlayerControl("bluray:/"));
       return osEnd;
     case osUser6:
       cControl::Shutdown();
