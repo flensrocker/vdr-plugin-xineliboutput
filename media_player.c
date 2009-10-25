@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.69 2009-10-25 20:36:08 phintuka Exp $
+ * $Id: media_player.c,v 1.70 2009-10-25 23:25:03 phintuka Exp $
  *
  */
 
@@ -49,11 +49,13 @@ class cXinelibPlayer : public cPlayer
 
     void UpdateNumTracks(void);
 
+    cXinelibDevice *m_Dev;
+
   protected:
     virtual void Activate(bool On);
 
   public:
-    cXinelibPlayer(const char *File, bool Queue = false, const char *SubFile = NULL);
+    cXinelibPlayer(cXinelibDevice *Dev, const char *File, bool Queue = false, const char *SubFile = NULL);
     virtual ~cXinelibPlayer();
 
     // cPlayer
@@ -63,7 +65,7 @@ class cXinelibPlayer : public cPlayer
     virtual bool GetReplayMode(bool &Play, bool &Forward, int &Speed);
 
     // cXinelibPlayer
-    void Control(const char *s) { (void)cXinelibDevice::Instance().PlayFileCtrl(s); }
+    void Control(const char *s) { (void)m_Dev->PlayFileCtrl(s); }
     void Control(const char *s, int i) {
       cString cmd = cString::sprintf(s, i);
       Control(cmd);
@@ -72,7 +74,7 @@ class cXinelibPlayer : public cPlayer
     int  Speed(void) { return m_Speed; };
 
     bool NextFile(int step);
-    bool Playing(void) { return !(m_Error || cXinelibDevice::Instance().EndOfStreamReached()); }
+    bool Playing(void) { return !(m_Error || m_Dev->EndOfStreamReached()); }
     bool Error(void)   { return m_Error; }
     void UseResumeFile(bool Val) { m_UseResumeFile = Val; }
 
@@ -83,12 +85,13 @@ class cXinelibPlayer : public cPlayer
     int  Files(void) { return m_Playlist.Count(); }
 };
 
-cXinelibPlayer::cXinelibPlayer(const char *File, bool Queue, const char *SubFile) 
+cXinelibPlayer::cXinelibPlayer(cXinelibDevice *Dev, const char *File, bool Queue, const char *SubFile)
 {
   m_ResumeFile = NULL;
   m_UseResumeFile = true;
   m_Error = false;
   m_Speed = 1;
+  m_Dev = Dev;
 
   if(File) {
     size_t len = strlen(File);
@@ -130,15 +133,15 @@ void cXinelibPlayer::SetAudioTrack(eTrackType Type, const tTrackId *TrackId)
 
 void cXinelibPlayer::SetSubtitleTrack(eTrackType Type, const tTrackId *TrackId)
 {
-  cXinelibDevice::Instance().SetSubtitleTrackDevice(Type);
+  m_Dev->SetSubtitleTrackDevice(Type);
 }
 
 bool cXinelibPlayer::GetIndex(int &Current, int &Total, bool SnapToIFrame) 
 { 
   // Returns the current and total frame index, optionally snapped to the
   // nearest I-frame.
-  int msCurrent = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-  int msTotal   = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
+  int msCurrent = m_Dev->PlayFileCtrl("GETPOS");
+  int msTotal   = m_Dev->PlayFileCtrl("GETLENGTH");
   if(msCurrent>=0 && msTotal>=0) {
     Current = msCurrent * 25 / 1000;
     Total = msTotal * 25 / 1000;
@@ -203,7 +206,7 @@ void cXinelibPlayer::UpdateNumTracks(void)
 {
   // cdda tracks
   if(m_Playlist.Count() == 1 && !strcmp("cdda:/", m_Playlist.First()->Filename)) {
-    int count = cXinelibDevice::Instance().PlayFileCtrl("GETAUTOPLAYSIZE CD", 10000);
+    int count = m_Dev->PlayFileCtrl("GETAUTOPLAYSIZE CD", 10000);
     if(count>0) {
       for(int i=0; i<count; i++)
         m_Playlist.Read(cString::sprintf("cdda:/%d", i+1));
@@ -242,15 +245,15 @@ void cXinelibPlayer::Activate(bool On)
 
     // Start replay
     UpdateNumTracks();
-    m_Error = !cXinelibDevice::Instance().PlayFile(mrl, pos);
+    m_Error = !m_Dev->PlayFile(mrl, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Error ? "FAIL" : "OK");
 
     if(!m_Error) {
       // update playlist metainfo
-      const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
-      const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTracknumber);
-      const char *al = cXinelibDevice::Instance().GetMetaInfo(miAlbum);
-      const char *ar = cXinelibDevice::Instance().GetMetaInfo(miArtist);
+      const char *ti = m_Dev->GetMetaInfo(miTitle);
+      const char *tr = m_Dev->GetMetaInfo(miTracknumber);
+      const char *al = m_Dev->GetMetaInfo(miAlbum);
+      const char *ar = m_Dev->GetMetaInfo(miArtist);
       if(ti && ti[0] && (!*m_Playlist.Current()->Title || !strstr(m_Playlist.Current()->Title, ti)))
 	m_Playlist.Current()->Title = ti;
       if(tr && tr[0])
@@ -264,8 +267,8 @@ void cXinelibPlayer::Activate(bool On)
     }
   } else {
     if(m_UseResumeFile && *m_ResumeFile) {
-      pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-      len = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
+      pos = m_Dev->PlayFileCtrl("GETPOS");
+      len = m_Dev->PlayFileCtrl("GETLENGTH");
       if(pos>10000 && pos < (len-10000)) {
 	pos = (pos/1000) - 10; // skip back 10 seconds ("VDR style")
 	if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
@@ -282,7 +285,7 @@ void cXinelibPlayer::Activate(bool On)
       }
       m_ResumeFile = NULL;
     }
-    cXinelibDevice::Instance().PlayFile(NULL);
+    m_Dev->PlayFile(NULL);
     m_Error = false;
   }
 }
@@ -518,7 +521,7 @@ cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(const char *File, bool Queue, 
 {
   m_Lock.Lock();
   if(!m_Player)
-    m_Player = new cXinelibPlayer(File, Queue, SubFile);
+    m_Player = new cXinelibPlayer(&(cXinelibDevice::Instance()), File, Queue, SubFile);
   m_Lock.Unlock();
   return m_Player;
 }
@@ -1098,19 +1101,19 @@ class cXinelibImagePlayer : public cPlayer {
     virtual void Activate(bool On);
 
   public:
-    cXinelibImagePlayer(const char *File); 
+    cXinelibImagePlayer(cXinelibDevice *Dev, const char *File);
     virtual ~cXinelibImagePlayer();
 
     bool ShowImage(const char *File);
     bool Error(void)                 { return m_Error; } 
 };
 
-cXinelibImagePlayer::cXinelibImagePlayer(const char *File) 
+cXinelibImagePlayer::cXinelibImagePlayer(cXinelibDevice *Dev, const char *File)
 {
   m_Mrl    = File;
   m_Active = false;
   m_Error  = false;
-  m_Dev    = &(cXinelibDevice::Instance());
+  m_Dev    = Dev;
 }
 
 cXinelibImagePlayer::~cXinelibImagePlayer()
@@ -1192,7 +1195,7 @@ cXinelibImagePlayer *cXinelibImagesControl::OpenPlayer(const char *File)
 {
   m_Lock.Lock();
   if(!m_Player)
-    m_Player = new cXinelibImagePlayer(File);
+    m_Player = new cXinelibImagePlayer(&(cXinelibDevice::Instance()), File);
   m_Lock.Unlock();
   return m_Player;
 }
