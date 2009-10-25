@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.68 2009-06-02 08:59:45 phintuka Exp $
+ * $Id: media_player.c,v 1.69 2009-10-25 20:36:08 phintuka Exp $
  *
  */
 
@@ -45,7 +45,7 @@ class cXinelibPlayer : public cPlayer
 
     bool m_Error;
     bool m_UseResumeFile;
-    int  m_Speed; 
+    int  m_Speed;
 
     void UpdateNumTracks(void);
 
@@ -64,9 +64,9 @@ class cXinelibPlayer : public cPlayer
 
     // cXinelibPlayer
     void Control(const char *s) { (void)cXinelibDevice::Instance().PlayFileCtrl(s); }
-    void Control(const char *s, int i) { 
+    void Control(const char *s, int i) {
       cString cmd = cString::sprintf(s, i);
-      Control(cmd); 
+      Control(cmd);
     }
     void SetSpeed(int Speed);
     int  Speed(void) { return m_Speed; };
@@ -180,13 +180,13 @@ void cXinelibPlayer::SetSpeed(int Speed)
 
 bool cXinelibPlayer::NextFile(int step)
 {
-  if(m_Playlist.Count()>0) {
-    for(;step < 0; step++)
+  if (m_Playlist.Count() > 0) {
+    for (;step < 0; step++)
       m_Playlist.Prev();
-    for(;step > 0; step--) 
+    for (;step > 0; step--)
       m_Playlist.Next();
 
-    if(!m_Playlist.Current())
+    if (!m_Playlist.Current())
       LOGERR("!m_Playlist.Get(m_CurrInd)");
     m_File = *m_Playlist.Current()->Filename;
     m_ResumeFile = NULL;
@@ -195,7 +195,7 @@ bool cXinelibPlayer::NextFile(int step)
     Activate(true);
     return !m_Error;
   }
-  
+
   return false;
 }
 
@@ -460,17 +460,22 @@ cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *Fil
 
 cXinelibPlayerControl::~cXinelibPlayerControl()
 {
-  if(m_PlaylistMenu) {
-    delete m_PlaylistMenu;
-    m_PlaylistMenu = NULL;
-  }
-  if(m_DisplayReplay) {
-    delete m_DisplayReplay;
-    m_DisplayReplay = NULL;
-  }
+  CloseMenus();
 
   MsgReplaying(NULL, NULL);
   Close();
+}
+
+void cXinelibPlayerControl::CloseMenus(void)
+{
+  if (m_PlaylistMenu) {
+    delete m_PlaylistMenu;
+    m_PlaylistMenu = NULL;
+  }
+  if (m_DisplayReplay) {
+    delete m_DisplayReplay;
+    m_DisplayReplay = NULL;
+  }
 }
 
 void cXinelibPlayerControl::MsgReplaying(const char *Title, const char *File)
@@ -571,14 +576,7 @@ void cXinelibPlayerControl::Show()
 
 void cXinelibPlayerControl::Hide()
 {
-  if(m_PlaylistMenu) {
-    delete m_PlaylistMenu;
-    m_PlaylistMenu = NULL;
-  }
-  if(m_DisplayReplay) {
-    delete m_DisplayReplay;
-    m_DisplayReplay = NULL;
-  }
+  CloseMenus();
 }
 
 cOsdObject *cXinelibPlayerControl::GetInfo(void)
@@ -638,31 +636,33 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
     }
   }
 
-  if(m_PlaylistMenu) {
+  // playlist menu
+  if (m_PlaylistMenu) {
     m_AutoShowStart = 0;
 
     eOSState state = osUnknown;
 
-    switch(state=m_PlaylistMenu->ProcessKey(Key)) {
+    switch (state = m_PlaylistMenu->ProcessKey(Key)) {
       case osBack:
       case osEnd:   Hide(); break;
-      default:      if(state >= os_User) {
-	              m_Player->NextFile( (int)state - (int)os_User - m_Player->CurrentFile());
-		      m_PlaylistMenu->SetCurrentExt(m_Player->CurrentFile()); 
-		      MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
+      default:      if (state >= os_User) {
+                      m_Player->NextFile( (int)state - (int)os_User - m_Player->CurrentFile());
+                      m_PlaylistMenu->SetCurrentExt(m_Player->CurrentFile());
+                      MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
                     }
 	            break;
     }
 
-    if(state != osUnknown)
+    if (state != osUnknown)
       return osContinue;
   }
 
-  if (m_DisplayReplay) 
+  if (m_DisplayReplay)
     Show();
 
   if ( m_Mode == ShowFiles ) {
     switch(Key) {
+      // replay menu
       case kRed:    if(m_Player->Playlist().Count() > 1) {
                       Hide();
                       m_PlaylistMenu = new cPlaylistMenu(m_Player->Playlist(), m_RandomPlay);
@@ -700,8 +700,9 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                       break;
                     }
       default:      break;
-    }   
+    }
   }
+
   if ( m_Mode == ShowMusic ) {
     switch(Key) {
       case kRed:    Hide();
@@ -754,6 +755,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       default:      break;
     }
   }
+
   switch(Key) { // key bindings common for both players
     case kBack:   xc.main_menu_mode = m_Mode;
                   Hide(); 
@@ -853,19 +855,23 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 //
 
 class cDvdMenu : public cOsdMenu {
- public:
-  cDvdMenu(void) : cOsdMenu("DVD Menu")
-  {
-    Add(new cOsdItem("Exit DVD menu",  osUser1));
-    Add(new cOsdItem("DVD Root menu",  osUser2));
-    Add(new cOsdItem("DVD Title menu", osUser3));
-    Add(new cOsdItem("DVD SPU menu",   osUser4));
-    Add(new cOsdItem("DVD Audio menu", osUser5));
-    Add(new cOsdItem("Close menu",     osEnd));
-    Display();
-  }
+  private:
+    cXinelibPlayer *m_Player;
+
+  public:
+    cDvdMenu(cXinelibPlayer *Player);
 };
 
+cDvdMenu::cDvdMenu(cXinelibPlayer *Player) : cOsdMenu("DVD Menu"), m_Player(Player)
+{
+  Add(new cOsdItem("Exit DVD menu",  osUser1));
+  Add(new cOsdItem("DVD Root menu",  osUser2));
+  Add(new cOsdItem("DVD Title menu", osUser3));
+  Add(new cOsdItem("DVD SPU menu",   osUser4));
+  Add(new cOsdItem("DVD Audio menu", osUser5));
+  Add(new cOsdItem("Close menu",     osEnd));
+  Display();
+}
 
 //
 // cXinelibDvdPlayerControl
@@ -873,24 +879,26 @@ class cDvdMenu : public cOsdMenu {
 
 cXinelibDvdPlayerControl::~cXinelibDvdPlayerControl() 
 {
-  if(Menu) {
-    delete Menu;
-    Menu = NULL;
-  }
+  CloseDvdMenu();
 }
 
 void cXinelibDvdPlayerControl::Hide(void)
 {
-  if(Menu) {
-    delete Menu;
-    Menu = NULL;
-  }
+  CloseDvdMenu();
   cXinelibPlayerControl::Hide();
+}
+
+void cXinelibDvdPlayerControl::CloseDvdMenu(void)
+{
+  if (m_DvdMenu) {
+    delete m_DvdMenu;
+    m_DvdMenu = NULL;
+  }
 }
 
 void cXinelibDvdPlayerControl::Show(void)
 {
-  if(!Menu)
+  if (!m_DvdMenu)
     cXinelibPlayerControl::Show();
   else
     cXinelibPlayerControl::Hide();
@@ -915,10 +923,10 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   }
 
   // Handle menu selection
-  if(Menu) {
-    if(Key == kRed)
+  if (m_DvdMenu) {
+    if (Key == kRed)
       Hide();
-    else switch(Menu->ProcessKey(Key)) {
+    else switch(m_DvdMenu->ProcessKey(Key)) {
       case osUser1: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU1"); break;
       case osUser2: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU2"); break;
       case osUser3: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU3"); break;
@@ -932,15 +940,14 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   }
 
   // Update progress bar display
-  if (m_DisplayReplay) 
+  if (m_DisplayReplay)
     Show();
 
-  // Handle menu navigation
-
+  // Detect DVD menus
   bool MenuDomain = !xc.dvd_arrow_keys_control_playback;
   if(Key != kNone || m_DisplayReplay) {
     const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
-    if(dt && !strcmp("0", dt)) 
+    if(dt && !strcmp("0", dt))
       MenuDomain = true;
     else {
       dt = cXinelibDevice::Instance().GetMetaInfo(miDvdButtons);
@@ -949,12 +956,11 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     }
   }
 
+  // DVD menu navigation
   if(MenuDomain) {
     if(m_DisplayReplay)
       Hide();
-
     switch(Key) {
-      // DVD navigation
       case kUp:    m_Player->Control("EVENT XINE_EVENT_INPUT_UP");     return osContinue;
       case kDown:  m_Player->Control("EVENT XINE_EVENT_INPUT_DOWN");   return osContinue;
       case kLeft:  m_Player->Control("EVENT XINE_EVENT_INPUT_LEFT");   return osContinue;
@@ -1009,7 +1015,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   switch(Key) {
     // DVD menus
     case kRed:    Hide();
-                  Menu = new cDvdMenu();
+                  m_DvdMenu = new cDvdMenu(m_Player);
 		  break;
     // Playback control
     case kGreen:  m_Player->Control("SEEK -60");  break;
@@ -1019,7 +1025,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     case kUser9:
     case k3:      m_Player->Control("SEEK +20");  break;
 
-    case kStop: 
+    case kStop:
     case kBlue:   Hide();
                   Close();
                   return osEnd;
