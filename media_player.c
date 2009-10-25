@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.70 2009-10-25 23:25:03 phintuka Exp $
+ * $Id: media_player.c,v 1.71 2009-10-25 23:41:28 phintuka Exp $
  *
  */
 
@@ -73,6 +73,10 @@ class cXinelibPlayer : public cPlayer
     void SetSpeed(int Speed);
     int  Speed(void) { return m_Speed; };
 
+    int  GetPos(void)    { return m_Dev->PlayFileCtrl("GETPOS");    }
+    int  GetLength(void) { return m_Dev->PlayFileCtrl("GETLENGTH"); }
+    const char *GetMetaInfo(eMetainfoType mi) { return m_Dev->GetMetaInfo(mi); }
+
     bool NextFile(int step);
     bool Playing(void) { return !(m_Error || m_Dev->EndOfStreamReached()); }
     bool Error(void)   { return m_Error; }
@@ -140,8 +144,8 @@ bool cXinelibPlayer::GetIndex(int &Current, int &Total, bool SnapToIFrame)
 { 
   // Returns the current and total frame index, optionally snapped to the
   // nearest I-frame.
-  int msCurrent = m_Dev->PlayFileCtrl("GETPOS");
-  int msTotal   = m_Dev->PlayFileCtrl("GETLENGTH");
+  int msCurrent = GetPos();
+  int msTotal   = GetLength();
   if(msCurrent>=0 && msTotal>=0) {
     Current = msCurrent * 25 / 1000;
     Total = msTotal * 25 / 1000;
@@ -250,10 +254,10 @@ void cXinelibPlayer::Activate(bool On)
 
     if(!m_Error) {
       // update playlist metainfo
-      const char *ti = m_Dev->GetMetaInfo(miTitle);
-      const char *tr = m_Dev->GetMetaInfo(miTracknumber);
-      const char *al = m_Dev->GetMetaInfo(miAlbum);
-      const char *ar = m_Dev->GetMetaInfo(miArtist);
+      const char *ti = GetMetaInfo(miTitle);
+      const char *tr = GetMetaInfo(miTracknumber);
+      const char *al = GetMetaInfo(miAlbum);
+      const char *ar = GetMetaInfo(miArtist);
       if(ti && ti[0] && (!*m_Playlist.Current()->Title || !strstr(m_Playlist.Current()->Title, ti)))
 	m_Playlist.Current()->Title = ti;
       if(tr && tr[0])
@@ -267,8 +271,8 @@ void cXinelibPlayer::Activate(bool On)
     }
   } else {
     if(m_UseResumeFile && *m_ResumeFile) {
-      pos = m_Dev->PlayFileCtrl("GETPOS");
-      len = m_Dev->PlayFileCtrl("GETLENGTH");
+      pos = GetPos();
+      len = GetLength();
       if(pos>10000 && pos < (len-10000)) {
 	pos = (pos/1000) - 10; // skip back 10 seconds ("VDR style")
 	if(0 <= (fd = open(m_ResumeFile, O_WRONLY | O_CREAT, 
@@ -550,8 +554,8 @@ void cXinelibPlayerControl::Show()
 
   if(!m_ShowModeOnly) {
     char t[128] = "";
-    int  Current = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
-    int  Total   = cXinelibDevice::Instance().PlayFileCtrl("GETLENGTH");
+    int  Current = m_Player->GetPos();
+    int  Total   = m_Player->GetLength();
     if(Current>=0) m_CurrentPos = Current;
     if(Total>=0) m_CurrentLen = Total;
 
@@ -617,12 +621,12 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
 
   else {
     // metainfo may change during playback (DVD titles, CDDA tracks)
-    const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
+    const char *ti = m_Player->GetMetaInfo(miTitle);
     if(ti && ti[0] && (!*m_Player->Playlist().Current()->Title ||
 		       !strstr(m_Player->Playlist().Current()->Title, ti))) {
-      const char *tr = cXinelibDevice::Instance().GetMetaInfo(miTracknumber);
-      const char *al = cXinelibDevice::Instance().GetMetaInfo(miAlbum);
-      const char *ar = cXinelibDevice::Instance().GetMetaInfo(miArtist);
+      const char *tr = m_Player->GetMetaInfo(miTracknumber);
+      const char *al = m_Player->GetMetaInfo(miAlbum);
+      const char *ar = m_Player->GetMetaInfo(miArtist);
       LOGDBG("metainfo changed: %s->%s %s->%s %s->%s %s->%s",
 	     *m_Player->Playlist().Current()->Artist?:"-", ar?:"-", 
 	     *m_Player->Playlist().Current()->Album ?:"-", al?:"-", 
@@ -725,7 +729,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
                     MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
                     break;
       case kPrev:
-      case kLeft:   if(cXinelibDevice::Instance().PlayFileCtrl("GETPOS") < 3000) {
+      case kLeft:   if(m_Player->GetPos() < 3000) {
                       m_Player->NextFile(-1);
                       if(!m_DisplayReplay)
                         m_AutoShowStart = time(NULL);
@@ -917,7 +921,7 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   }
 
   // Update DVD title information
-  const char *ti = cXinelibDevice::Instance().GetMetaInfo(miTitle);
+  const char *ti = m_Player->GetMetaInfo(miTitle);
   if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
     memset(m_CurrentDVDTitle, 0, 63);
     strn0cpy(m_CurrentDVDTitle, ti, 63);
@@ -949,11 +953,11 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   // Detect DVD menus
   bool MenuDomain = !xc.dvd_arrow_keys_control_playback;
   if(Key != kNone || m_DisplayReplay) {
-    const char *dt = cXinelibDevice::Instance().GetMetaInfo(miDvdTitleNo);
+    const char *dt = m_Player->GetMetaInfo(miDvdTitleNo);
     if(dt && !strcmp("0", dt))
       MenuDomain = true;
     else {
-      dt = cXinelibDevice::Instance().GetMetaInfo(miDvdButtons);
+      dt = m_Player->GetMetaInfo(miDvdButtons);
       if(dt && *dt && *dt != '0')
 	MenuDomain = true;
     }
