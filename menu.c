@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.68 2009-08-03 12:40:09 phintuka Exp $
+ * $Id: menu.c,v 1.69 2009-10-25 12:56:11 phintuka Exp $
  *
  */
 
@@ -518,17 +518,26 @@ cMenuXinelib::cMenuXinelib()
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
   Add(NewTitle(tr("Media")));
-  Add(new cOsdItem(tr("Play file >>"), osUser1));
-  Add(new cOsdItem(tr("Play music >>"), osUser2));
-  Add(new cOsdItem(tr("View images >>"), osUser3));
-  if(xc.remote_mode)
-    Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
-  else
-    Add(new cOsdItem(tr("Play DVD disc >>"), osUser4));
-  if(xc.remote_mode)
-    Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
-  else
-    Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
+  if (xc.media_menu_items & MEDIA_MENU_FILES)
+    Add(new cOsdItem(tr("Play file >>"), osUser1));
+  if (xc.media_menu_items & MEDIA_MENU_MUSIC)
+    Add(new cOsdItem(tr("Play music >>"), osUser2));
+  if (xc.media_menu_items & MEDIA_MENU_IMAGES)
+    Add(new cOsdItem(tr("View images >>"), osUser3));
+  if (xc.media_menu_items & MEDIA_MENU_DVD) {
+    if(xc.remote_mode)
+      Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
+    else
+      Add(new cOsdItem(tr("Play DVD disc >>"), osUser4));
+  }
+  if (xc.media_menu_items & MEDIA_MENU_CD) {
+    if(xc.remote_mode)
+      Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
+    else
+      Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
+  }
+
+  if (xc.media_menu_items & MEDIA_MENU_VIDEO_SETUP) {
   Add(NewTitle(tr("Video settings")));
   Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"), 
 					   &novideo));
@@ -541,7 +550,9 @@ cMenuXinelib::cMenuXinelib()
   Add(video_ctrl_interlace_order = new cMenuEditStraI18nItem(tr("Interlaced Field Order"), 
 							     &field_order, 2, xc.s_fieldOrder));
 #endif
+  }
 
+  if (xc.media_menu_items & MEDIA_MENU_AUDIO_SETUP) {
   Add(NewTitle(tr("Audio settings")));
 #ifdef ENABLE_TEST_POSTPLUGINS
   Add(ctrl_headphone = new cMenuEditBoolItem(tr("Headphone audio mode"), 
@@ -554,6 +565,7 @@ cMenuXinelib::cMenuXinelib()
 						      &compression, 100, 500, NULL, tr("Off")));
 
   Add(new cOsdItem(tr("Audio equalizer >>"), osUser7));
+  }
 
   switch(xc.main_menu_mode) {
     case ShowFiles:  AddSubMenu(new cMenuBrowseFiles(ShowFiles)); break;

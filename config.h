@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.64 2009-08-19 13:12:10 phintuka Exp $
+ * $Id: config.h,v 1.65 2009-10-25 12:56:11 phintuka Exp $
  *
  */
 
@@ -166,6 +166,15 @@
 #define OSD_SIZE_custom         4
 #define OSD_SIZE_count          5
 
+// Media player menu (bitmask)
+#define MEDIA_MENU_FILES        (1<<0)
+#define MEDIA_MENU_MUSIC        (1<<1)
+#define MEDIA_MENU_IMAGES       (1<<2)
+#define MEDIA_MENU_DVD          (1<<3)
+#define MEDIA_MENU_CD           (1<<4)
+#define MEDIA_MENU_VIDEO_SETUP  (1<<6)
+#define MEDIA_MENU_AUDIO_SETUP  (1<<7)
+
 // Video decoder
 #define DECODER_MPEG2_auto       0 /* use value from frontend config_xineliboutput */
 #define DECODER_MPEG2_LIBMPEG2   1
@@ -318,6 +327,7 @@ class config_t {
     int  playlist_artist;
     int  playlist_album;
     int  dvd_arrow_keys_control_playback;
+    uint media_menu_items;         // enabled items in media player menu (bitmask)
 
     // Audio visualization
     char audio_visualization[64];
