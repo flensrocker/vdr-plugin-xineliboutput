@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.h,v 1.8 2008-02-19 04:24:34 phintuka Exp $
+ * $Id: playlist.h,v 1.9 2009-10-26 23:16:46 phintuka Exp $
  *
  */
 
@@ -94,7 +94,6 @@ class cPlaylist : protected cList<cPlaylistItem>
   friend class cID3Scanner;
   friend class cPlaylistReader;
   void PlaylistChanged(const cPlaylistItem *Item);
-  cPlaylistItem *Last(void) { return cList<cPlaylistItem>::Last(); }
 
  public:
 
@@ -117,6 +116,7 @@ class cPlaylist : protected cList<cPlaylistItem>
   // access/iterate playlist items
   cPlaylistItem *First(void) { return Next(NULL); }
   cPlaylistItem *Next(const cPlaylistItem *i);
+  cPlaylistItem *Last(void) { return cList<cPlaylistItem>::Last(); }
 
   // get/set current (now playing) item
   cPlaylistItem *Current(void);
