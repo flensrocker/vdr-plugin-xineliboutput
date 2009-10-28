@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.19 2009-10-16 20:06:29 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.20 2009-10-28 13:04:18 phintuka Exp $
  *
  */
 
@@ -52,7 +52,6 @@
  *  Configuration
  */
 
-/*#define USE_CROP         / * Crop frame in video_out instead of copying */
 /*#define MARK_FRAME       Draw markers on detected boundaries */
 /*#define ENABLE_64BIT 1   Force using of 64-bit routines */
 /*#undef __MMX__           Disable MMX */
@@ -925,7 +924,7 @@ vdata = frame->base[2] + ((frame->height-72)/2)*vpitch;
 /* 
  * crop frame by copying 
  */
-#ifndef USE_CROP
+
 static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
 {
   post_video_port_t *port = (post_video_port_t *)frame->port;
@@ -943,17 +942,12 @@ static int crop_copy_yv12(vo_frame_t *frame, xine_stream_t *stream)
   int   new_height;
   double new_ratio;
 
-  int start_line = this->start_line;
-  int end_line = this->end_line;
-  start_line &= ~1;
-  end_line = (end_line + 1) & ~1;
-
   /* top bar */
-  ydata += start_line * yp;
-  udata += (start_line/2) * up;
-  vdata += (start_line/2) * vp;
+  ydata += this->start_line * yp;
+  udata += (this->start_line/2) * up;
+  vdata += (this->start_line/2) * vp;
 
-  new_height = end_line - start_line;
+  new_height = this->end_line - this->start_line;
   new_ratio  = 12.0/9.0 * ((double)frame->height / (double)new_height);
 
   new_frame = port->original_port->get_frame(port->original_port,
@@ -1018,15 +1012,10 @@ static int crop_copy_yuy2(vo_frame_t *frame, xine_stream_t *stream)
   int   new_height;
   double new_ratio;
 
-  int start_line = this->start_line;
-  int end_line = this->end_line;
-  start_line &= ~1;
-  end_line = (end_line + 1) & ~1;
-
   /* top bar */
-  data += start_line * p;
+  data += this->start_line * p;
 
-  new_height = end_line - start_line;
+  new_height = this->end_line - this->start_line;
   new_ratio = 12.0/9.0 * ((double)frame->height / (double)new_height);
   new_frame = port->original_port->get_frame(port->original_port,
 					     frame->width, new_height, 
@@ -1053,47 +1042,6 @@ static int crop_copy_yuy2(vo_frame_t *frame, xine_stream_t *stream)
   return result;
 }
 
-#endif
-
-/*
- * crop frame without copying 
- */
-#ifdef USE_CROP
-static int crop_nocopy(vo_frame_t *frame, xine_stream_t *stream)
-{
-  post_video_port_t *port = (post_video_port_t *)frame->port;
-  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
-  int skip;
-  double new_ratio = frame->ratio;
-  int new_height;
-
-  int start_line = this->start_line;
-  int end_line = this->end_line;
-  start_line &= ~1;
-  end_line = (end_line + 1) & ~1;
-
-  if(this->cropping_active) {
-    frame->crop_top += start_line;
-    frame->crop_bottom += (frame->height + 1 - this->end_line);
-
-    TRACE("crop_nocopy: top ->%d bottom ->%d\n", frame->crop_top, frame->crop_bottom);
-
-    new_height = end_line - start_line;
-    new_ratio  = 12.0/9.0 * ((double)frame->height / (double)new_height);
-  }
-
-  _x_post_frame_copy_down(frame, frame->next);
-
-  /* ??? */
-  frame->ratio = new_ratio;
-
-  skip = frame->next->draw(frame->next, stream);
-  TRACE("crop: top %d, bottom %d\n", frame->crop_top, frame->crop_bottom);
-  _x_post_frame_copy_up(frame, frame->next);
-
-  return skip;
-}
-#endif
 
 /*
  *    Frame handling
@@ -1110,14 +1058,13 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     this->start_line = frame->height/8;
     this->end_line   = frame->height*7/8;
     this->crop_total = frame->height/4;
-#ifdef USE_CROP
-    return crop_nocopy(frame, stream);
-#else
+
     if(frame->format == XINE_IMGFMT_YV12)
-      return crop_copy_yv12(frame, stream);
+      result = crop_copy_yv12(frame, stream);
     else /*if(frame->format == XINE_IMGFMT_YUY2)*/
-      return crop_copy_yuy2(frame, stream);
-#endif
+      result = crop_copy_yuy2(frame, stream);
+
+    return result;
   }
 
   /* use pts jumps to track stream changes (and seeks) */
@@ -1286,14 +1233,11 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
    *    and height of frame ?
    *    -> no time-consuming copying 
    */
-#ifdef USE_CROP
-  result = crop_nocopy(frame, stream);
-#else
   if(frame->format == XINE_IMGFMT_YV12)
     result = crop_copy_yv12(frame, stream);
   else /*if(frame->format == XINE_IMGFMT_YUY2)*/
     result = crop_copy_yuy2(frame, stream);
-#endif
+
   this->crop_total = this->start_line + frame->height - this->end_line;
 
   /* forget stabilized values */
@@ -1303,7 +1247,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   return result;
 }
 
-#ifdef USE_CROP
 static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen, 
 				       uint32_t width, uint32_t height, 
 				       double ratio, int format, int flags)
@@ -1316,7 +1259,7 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
   _x_post_rewire(this_gen);
   
   if (ratio <= 0.0) {
-    if(height > 1)
+    if (height > 1)
       ratio = (double)width / (double)height;
   }
   
@@ -1340,7 +1283,6 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
 					width, height, 
 					ratio, format, flags);
 }
-#endif
 
 static int autocrop_intercept_frame(post_video_port_t *port, vo_frame_t *frame)
 {
@@ -1377,7 +1319,11 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
   autocrop_post_plugin_t *this  = (autocrop_post_plugin_t *)port->post;
   video_overlay_event_t  *event = (video_overlay_event_t *)event_gen;
 
-  if(this->cropping_active && this->crop_total>10) {
+  int cropping_active = this->cropping_active;
+  int crop_total = this->crop_total;
+  int start_line = this->start_line;
+
+  if(cropping_active && crop_total>10) {
     if (event->event_type == OVERLAY_EVENT_SHOW) {
       switch (event->object.object_type) {
       case 0:
@@ -1387,16 +1333,16 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 #ifdef USE_CROP
         if (this->has_driver_crop) {
             if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
-              event->object.overlay->y -= this->crop_total;
+              event->object.overlay->y -= crop_total;
 	  }
 	} else {
 	  /* object is moved crop_top amount in video_out */
             if(event->object.overlay->unscaled && this->has_unscaled_overlay) {
 	    /* cancel incorrect move that will be done in video_out */
-              event->object.overlay->y += this->start_line;
+              event->object.overlay->y += start_line;
 	  } else {
 	    /* move crop_bottom pixels up */
-              event->object.overlay->y -= (this->crop_total - this->start_line);
+              event->object.overlay->y -= (crop_total - start_line);
 	  }
 	}
 
@@ -1405,7 +1351,7 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 #else
 	/* when cropping here subtitles coming from inside of xine must be re-positioned */
           if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
-            event->object.overlay->y -= this->crop_total;
+            event->object.overlay->y -= crop_total;
 	  INFO("autocrop_overlay_add_event: subtitle event moved up\n");
           }
 #endif
@@ -1431,7 +1377,7 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 #endif
 #ifdef USE_CROP
             if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
-              event->object.overlay->y += this->start_line;//crop_total;
+              event->object.overlay->y += start_line;//crop_total;
             }
 #endif
 	}
