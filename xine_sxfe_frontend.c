@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.115 2009-10-31 19:33:38 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.116 2009-10-31 19:35:45 phintuka Exp $
  *
  */
 
@@ -1451,15 +1451,16 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
     hud_osd_resize(this, cev->window, cev->width, cev->height);
 #endif
 
+  /* update video window size */
   if (this->x.width != cev->width || this->x.height != cev->height) {
+    this->x.width  = cev->width;
+    this->x.height = cev->height;
+
+    /* inform VDR about new size */
     char str[128];
     snprintf(str, sizeof(str), "INFO WINDOW %dx%d", this->x.width, this->x.height);
     this->x.fe.send_event((frontend_t*)this, str);
   }
-
-  /* update video window size */
-  this->x.width  = cev->width;
-  this->x.height = cev->height;
 
   if(this->window[0] == cev->window && this->check_move) {
     LOGDBG("ConfigureNotify reveived with x=%d, y=%d, check_move=%d",
