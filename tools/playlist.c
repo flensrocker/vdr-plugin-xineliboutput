@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.23 2009-06-02 08:36:16 phintuka Exp $
+ * $Id: playlist.c,v 1.24 2009-10-31 19:59:50 phintuka Exp $
  *
  */
 
@@ -634,7 +634,7 @@ static FILE *open_http(const char *PlaylistFile)
 
 int cPlaylist::ScanFolder(const char *FolderName, 
 			  bool Recursive,
-			  bool (config_t::*Filter)(const char *))
+			  bool (*Filter)(const char *))
 {
   cMutexLock ml(&m_Lock);  
   static int depth = 0;
@@ -676,7 +676,7 @@ int cPlaylist::ScanFolder(const char *FolderName,
 	    if (stat(Buffer, &st) != 0)
 	      continue;
 	  }
-	  if((xc.*Filter)(Buffer)) {
+	  if((*Filter)(Buffer)) {
 	    /* TODO: Should ScanDir add contents of playlist files ... ? */
 	    if(Filter == &config_t::IsPlaylistFile || !xc.IsPlaylistFile(Buffer)) {
 	      n++;
