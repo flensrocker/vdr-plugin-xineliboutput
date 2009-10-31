@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.114 2009-08-19 16:58:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.115 2009-10-31 19:33:38 phintuka Exp $
  *
  */
 
@@ -1593,7 +1593,7 @@ static int sxfe_run(frontend_t *this_gen)
       .events = POLLIN,
     };
     if (poll(&pfd, 1, 50) < 1 || !(pfd.revents & POLLIN)) {
-      return 1;
+      return !this->x.fe.xine_is_finished((frontend_t*)this, 0);
     }
   }
 
