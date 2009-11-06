@@ -2259,8 +2259,14 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
       if ((channel >= 0) && (channel < this->audio_tracks_count)) {
         if(this->audio_tracks[channel].lang[0])
           strcpy(str, this->audio_tracks[channel].lang);
-        else
+        else {
+          input_plugin_t *input_plugin = this->stream->input_plugin;
+          /* Language not known. Use track number. */
           sprintf(str, "%3i", channel);
+          /* Ask input plugin */
+          if (input_plugin && input_plugin->get_capabilities (input_plugin) & INPUT_CAP_SPULANG)
+            return input_plugin->get_optional_data (input_plugin, data, data_type);
+        }
       }
       else {
         strcpy(str, "none");
@@ -2273,8 +2279,14 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
         if (this->spu_langs[channel].desc.lang[0]) {
           memcpy(str, this->spu_langs[channel].desc.lang, 3);
           str[3] = 0;
-        } else
+        } else {
+          input_plugin_t *input_plugin = this->stream->input_plugin;
+          /* Language not known. Use track number. */
           sprintf(str, "%3i", channel);
+          /* Ask input plugin */
+          if (input_plugin && input_plugin->get_capabilities (input_plugin) & INPUT_CAP_SPULANG)
+            return input_plugin->get_optional_data (input_plugin, data, data_type);
+        }
       }
       else  {
         strcpy(str, "none");
