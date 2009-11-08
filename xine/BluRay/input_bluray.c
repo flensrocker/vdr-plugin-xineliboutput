@@ -152,15 +152,39 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  if (!this->bdh)
+  if (!this || !this->bdh)
     return -1;
+
+  /* convert relative seeks to absolute */
 
   if (origin == SEEK_CUR) {
     offset = this->bdh->s_pos + offset;
-    origin = SEEK_SET;
   }
-  if (origin != SEEK_SET)
-    return this->bdh->s_pos;
+  else if (origin == SEEK_END) {
+    if (offset < this->bdh->s_size)
+      offset = this->bdh->s_size - offset;
+    else
+      offset = 0;
+  }
+
+  /* clip seek point to nearest random access point */
+
+  if (this->nav_title) {
+    uint32_t in_pkt  = offset / 192;
+    uint32_t out_pkt = in_pkt;
+    nav_packet_search(this->nav_title, in_pkt, &out_pkt);
+    lprintf("bluray_plugin_seek() seeking to %"PRId64" (packet %d)\n", offset, in_pkt);
+    offset = (off_t)192 * (off_t)out_pkt;
+    lprintf("Nearest random access point at %"PRId64" (packet %d)\n", offset, out_pkt);
+  }
+
+  /* clip to aligned unit start */
+
+  offset -= (offset % ALIGNED_UNIT_SIZE);
+
+  /* seek */
+
+  lprintf("bluray_plugin_seek() seeking to %lld (aligned unit)\n", (long long)offset);
 
   return bd_seek (this->bdh, offset);
 }
