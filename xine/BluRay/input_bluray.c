@@ -91,6 +91,9 @@ typedef struct {
   char                 *mrl;
   BLURAY               *bdh;
 
+  NAV_TITLE            *nav_title;
+  char                  current_title[11]; /* ?????.mpls\0 */
+
 } bluray_input_plugin_t;
 
 
@@ -200,6 +203,9 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
   if (this->bdh)
     bd_close(this->bdh);
 
+  if (this->nav_title)
+    nav_title_close(this->nav_title);
+
   free (this->mrl);
 
   free (this);
@@ -288,7 +294,15 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     free(disc_root);
     return -1;
   }
+  snprintf(this->current_title, sizeof(this->current_title), "%05d.mpls", title);
   TRACE("bd_select_title(%d) OK\n", title);
+
+  /* acquire navigation data and stream info */
+
+  this->nav_title = nav_title_open(disc_root, this->current_title);
+  if (!this->nav_title) {
+    LOGMSG("nav_title_open(%s,%s) FAILED\n", disc_root, this->current_title);
+  }
 
   /* set stream metainfo */
 
