@@ -217,6 +217,68 @@ static const char* bluray_plugin_get_mrl (input_plugin_t *this_gen)
 
 static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data, int data_type)
 {
+  bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
+  int   channel = *((int *)data);
+
+  if (!this || !this->stream)
+    return INPUT_OPTIONAL_UNSUPPORTED;
+
+  switch (data_type) {
+
+    /*
+     * audio track language:
+     * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
+     */
+    case INPUT_OPTIONAL_DATA_AUDIOLANG:
+      if (this->nav_title) {
+        CLPI_PROG *prog = &this->nav_title->clip->cl->program.progs[0];
+        int i, n = 0;
+        for (i=0 ; i < prog->num_streams; i++)
+          if (prog->streams[i].pid >= 0x1100 && prog->streams[i].pid < 0x1200) {
+            /* audio stream #n */
+            if (channel == n || channel == prog->streams[i].pid) {
+              memcpy(data, prog->streams[i].lang, 4);
+
+              lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: ch %d pid %x: %s\n",
+                      channel, prog->streams[i].pid, prog->streams[i].lang);
+
+              return INPUT_OPTIONAL_SUCCESS;
+            }
+            n++;
+          }
+      }
+      return INPUT_OPTIONAL_UNSUPPORTED;
+
+    /*
+     * SPU track language:
+     * - channel number can be mpeg-ts PID (0x1200 ... 0x12ff)
+     */
+    case INPUT_OPTIONAL_DATA_SPULANG:
+      if (this->nav_title) {
+        CLPI_PROG *prog = &this->nav_title->clip->cl->program.progs[0];
+        int i, n = 0;
+        for (i=0 ; i < prog->num_streams; i++)
+          if (prog->streams[i].pid         >= 0x1200 && prog->streams[i].pid         <  0x1300 &&
+              prog->streams[i].coding_type >= 0x90   && prog->streams[i].coding_type <= 0x92) {
+            /* subtitle stream #n */
+            if (channel == n || channel == prog->streams[i].pid) {
+
+              memcpy(data, prog->streams[i].lang, 4);
+
+              lprintf("INPUT_OPTIONAL_DATA_SPULANG: ch %d pid %x: %s\n",
+                      channel, prog->streams[i].pid, prog->streams[i].lang);
+
+              return INPUT_OPTIONAL_SUCCESS;
+            }
+            n++;
+          }
+      }
+      return INPUT_OPTIONAL_UNSUPPORTED;
+
+    default:
+      return DEMUX_OPTIONAL_UNSUPPORTED;
+    }
+
   return INPUT_OPTIONAL_UNSUPPORTED;
 }
 
