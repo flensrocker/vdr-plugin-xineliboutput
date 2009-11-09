@@ -102,10 +102,10 @@ typedef struct {
 
 static uint32_t bluray_plugin_get_capabilities (input_plugin_t *this_gen)
 {
-  return INPUT_CAP_SEEKABLE |
+  return INPUT_CAP_SEEKABLE  |
+         INPUT_CAP_BLOCK     |
          INPUT_CAP_AUDIOLANG |
-         INPUT_CAP_SPULANG |
-         0/*INPUT_CAP_BLOCK*/;
+         INPUT_CAP_SPULANG;
 }
 
 static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
@@ -162,26 +162,23 @@ static buf_element_t *bluray_plugin_read_block (input_plugin_t *this_gen, fifo_b
 {
   buf_element_t *buf = fifo->buffer_pool_alloc (fifo);
 
-  if (todo < 0) {
-    buf->free_buffer (buf);
-    return NULL;
-  }
-
   if (todo > (off_t)buf->max_size)
     todo = buf->max_size;
 
   if (todo > ALIGNED_UNIT_SIZE)
     todo = ALIGNED_UNIT_SIZE;
 
-  buf->type = BUF_DEMUX_BLOCK;
-  buf->size = bluray_plugin_read(this_gen, (char*)buf->content, todo);
+  if (todo > 0) {
 
-  if (buf->size <= 0) {
-    buf->free_buffer (buf);
-    return NULL;
+    buf->size = bluray_plugin_read(this_gen, (char*)buf->mem, todo);
+    buf->type = BUF_DEMUX_BLOCK;
+
+    if (buf->size > 0)
+      return buf;
   }
 
-  return buf;
+  buf->free_buffer (buf);
+  return NULL;
 }
 
 static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int origin)
