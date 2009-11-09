@@ -99,7 +99,10 @@ typedef struct {
 
 static uint32_t bluray_plugin_get_capabilities (input_plugin_t *this_gen)
 {
-  return INPUT_CAP_SEEKABLE /*| INPUT_CAP_BLOCK*/;
+  return INPUT_CAP_SEEKABLE |
+         INPUT_CAP_AUDIOLANG |
+         INPUT_CAP_SPULANG |
+         0/*INPUT_CAP_BLOCK*/;
 }
 
 static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
