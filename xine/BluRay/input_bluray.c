@@ -47,11 +47,9 @@
 
 #define LOG_MODULE "input_bluray"
 #define LOG_VERBOSE
-/*
+
 #define LOG
-*/
-#define TRACE(x...)   fprintf(stderr, "input_bluray: " x )
-/*#define TRACE(x...) do {} while(0) */
+
 #define LOGMSG(x...)  xine_log (this->stream->xine, XINE_LOG_MSG, "input_bluray: " x);
 
 
@@ -392,7 +390,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     if (main_title) {
       if (sscanf(main_title, "%d.mpls", &title) != 1)
         title = 0;
-      TRACE("main title: %s (%d) \n", main_title, title);
+      lprintf("main title: %s (%d) \n", main_title, title);
     } else {
       LOGMSG("nav_find_main_title(%s) failed\n", disc_root);
     }
@@ -413,7 +411,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     return -1;
   }
   free(keyfile);
-  TRACE("bd_open(\'%s\') OK\n", disc_root);
+  lprintf("bd_open(\'%s\') OK\n", disc_root);
 
   /* select title */
 
@@ -425,7 +423,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     return -1;
   }
   snprintf(this->current_title, sizeof(this->current_title), "%05d.mpls", title);
-  TRACE("bd_select_title(%d) OK\n", title);
+  lprintf("bd_select_title(%d) OK\n", title);
 
   /* acquire navigation data and stream info */
 
@@ -436,7 +434,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* set stream metainfo */
 
-  TRACE("title length: %"PRIu64" bytes\n", this->bdh->s_size);
+  lprintf("title length: %"PRIu64" bytes\n", this->bdh->s_size);
 
   //_x_meta_info_set(this->stream, XINE_META_INFO_TITLE, this->dvd_name);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, title);
