@@ -67,6 +67,9 @@
 #ifndef MIN
 # define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
+#ifndef MAX
+# define MAX(a,b) ((a)<(b)?(a):(b))
+#endif
 
 #define ALIGNED_UNIT_SIZE (6144)
 
@@ -109,20 +112,50 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  if (len < 0)
+  if (!this || !this->bdh || len < 0)
     return -1;
 
-  int got = bd_read (this->bdh, (unsigned char *)buf, len);
+  if (this->bdh->aacs) {
 
-  if (got != len)
-    LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), got, (int)len);
+    /*
+     * Split large reads to aligned units
+     */
 
-  if (buf[4] != 0x47) {
-    TRACE("%02x %02x %02x %02x %02x\n",
-          buf[0], buf[1], buf[2], buf[3], buf[4]);
+    off_t todo  = len;
+    off_t block = MIN(todo, ALIGNED_UNIT_SIZE - (this->bdh->s_pos % ALIGNED_UNIT_SIZE));
+
+    while (block > 0) {
+      off_t result = bd_read(this->bdh, (unsigned char *)buf, block);
+      if (result != block) {
+        if (result < 0) {
+          LOGMSG("ERROR: bd_read(aacs, %"PRId64") : got %"PRId64" !\n", block, result);
+          return result;
+        }
+        return len - todo + MAX(0, result);
+      }
+      todo -= result;
+      buf  += result;
+
+      block = MIN(todo, ALIGNED_UNIT_SIZE);
+    }
+
+    return len;
   }
 
-  return got;
+  off_t result = bd_read (this->bdh, (unsigned char *)buf, len);
+
+  if (result < 0)
+    LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), (int)result, (int)len);
+
+#if 0
+  if (buf[4] != 0x47) {
+    LOGMSG("bd_read(): invalid data ? [%02x %02x %02x %02x %02x ...]\n",
+          buf[0], buf[1], buf[2], buf[3], buf[4]);
+    return 0;
+  }
+#endif
+
+  return result;
 }
 
 static buf_element_t *bluray_plugin_read_block (input_plugin_t *this_gen, fifo_buffer_t *fifo, off_t todo)
