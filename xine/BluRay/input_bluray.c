@@ -261,6 +261,14 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
 
   switch (data_type) {
 
+    case INPUT_OPTIONAL_DATA_DEMUXER:
+#ifdef HAVE_CONFIG_H
+      *(const char **)data = "mpeg-ts";
+#else
+      *(const char **)data = "mpeg-ts-hdmv";
+#endif
+      return INPUT_OPTIONAL_SUCCESS;
+
     /*
      * audio track language:
      * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
