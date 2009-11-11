@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.70 2009-10-25 13:02:33 phintuka Exp $
+ * $Id: menu.c,v 1.71 2009-11-11 16:09:09 phintuka Exp $
  *
  */
 
@@ -223,7 +223,6 @@ void cMenuBrowseFiles::SetHelpButtons(void)
   }
 
   SetHelp(help[0], help[1], help[2], help[3]);
-  Display();
 }
 
 eOSState cMenuBrowseFiles::Delete(void)
@@ -478,7 +477,7 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
   if (state == osUnknown)
     state = osContinue;
 
-  if (!HasSubMenu())
+  if (!HasSubMenu() && Key != kNone)
     SetHelpButtons();
 
   return state;
