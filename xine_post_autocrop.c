@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.21 2009-11-12 11:13:55 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.22 2009-11-12 12:11:51 phintuka Exp $
  *
  */
 
@@ -79,6 +79,7 @@ typedef struct autocrop_parameters_s {
   int    enable_subs_detect;
   int    soft_start;
   int    stabilize;
+  int    use_driver_crop;
 } autocrop_parameters_t;
 
 START_PARAM_DESCR(autocrop_parameters_t)
@@ -90,6 +91,8 @@ PARAM_ITEM(POST_PARAM_TYPE_BOOL, soft_start, NULL, 0, 1, 0,
   "enable soft start of cropping")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, stabilize, NULL, 0, 1, 0,
   "stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)")
+PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_driver_crop, NULL, 0, 1, 0,
+  "use video driver to crop frames (default is to copy frames in post plugin)")
 END_PARAM_DESCR(autocrop_param_descr)
 
 
@@ -104,6 +107,7 @@ typedef struct autocrop_post_plugin_s
   int subs_detect;
   int soft_start;
   int stabilize;
+  int always_use_driver_crop;
 
   /* Current cropping status */
   int cropping_active;
@@ -129,10 +133,10 @@ typedef struct autocrop_post_plugin_s
   int     prev_width;
   int64_t prev_pts;
 
-  /* eliminate jumping when when there are subtitles inside bottom bar:
+  /* eliminate jumping when there are subtitles inside bottom bar:
      - when cropping is active and one frame has larger end_line
        than previous, we enlarge frame.
-     - after this, cropping is not resetted to previous value unless
+     - after this, cropping is not reseted to previous value unless
        bottom bar has been empty for certain time */
   int height_limit_active;  /* true if detected possible subtitles in bottom area */
   int height_limit;         /* do not crop bottom above this value (bottom of subtitles) */
@@ -140,6 +144,7 @@ typedef struct autocrop_post_plugin_s
 			       bottom bar until returning to full cropping
 			       (used to reset height_limit when there are no subtitles) */
 
+  int use_driver_crop;  /* true if non standard frame format (e.g. vdpau) used */
   int has_driver_crop;  /* true if driver has cropping capability */
   int has_unscaled_overlay; /* true if driver has unscaled overlay capability */
 
@@ -1058,8 +1063,13 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     this->start_line = frame->height/8;
     this->end_line   = frame->height*7/8;
     this->crop_total = frame->height/4;
+    this->use_driver_crop = this->always_use_driver_crop || (frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2);
 
-    if(frame->format == XINE_IMGFMT_YV12)
+    if (frame->bad_frame || this->use_driver_crop) {
+      _x_post_frame_copy_down(frame, frame->next);
+      result = frame->next->draw(frame->next, stream);
+      _x_post_frame_copy_up(frame, frame->next);
+    } else if(frame->format == XINE_IMGFMT_YV12)
       result = crop_copy_yv12(frame, stream);
     else /*if(frame->format == XINE_IMGFMT_YUY2)*/
       result = crop_copy_yuy2(frame, stream);
@@ -1226,6 +1236,8 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     }
   }
 
+  this->use_driver_crop = this->always_use_driver_crop || (frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2);
+
   /*
    * do cropping 
    *  - using frame->crop_... does not seem to work with my xv and xine-lib-1.1.1. 
@@ -1233,7 +1245,11 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
    *    and height of frame ?
    *    -> no time-consuming copying 
    */
-  if(frame->format == XINE_IMGFMT_YV12)
+  if(frame->bad_frame || !this->cropping_active || this->use_driver_crop) {
+    _x_post_frame_copy_down(frame, frame->next);
+    result = frame->next->draw(frame->next, stream);
+    _x_post_frame_copy_up(frame, frame->next);
+  } else if(frame->format == XINE_IMGFMT_YV12)
     result = crop_copy_yv12(frame, stream);
   else /*if(frame->format == XINE_IMGFMT_YUY2)*/
     result = crop_copy_yuy2(frame, stream);
@@ -1263,7 +1279,7 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
   }
 
   /* Crop only SDTV 4:3 frames ... */
-  int intercept = ((format == XINE_IMGFMT_YV12 || format == XINE_IMGFMT_YUY2) &&
+  int intercept = ((format == XINE_IMGFMT_YV12 || format == XINE_IMGFMT_YUY2 || this->has_driver_crop) &&
        ratio == 4.0/3.0 &&
        width  >= 480 && width  <= 768 &&
        height >= 288 && height <= 576);
@@ -1277,11 +1293,38 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
     cropping_active = 0;
   }
 
+  /* set new ratio when using driver crop */
+  if (cropping_active && this->use_driver_crop) {
+    if (this->autodetect) {
+      int new_height = this->end_line - this->start_line;
+      if (new_height > 1 && new_height != height)
+        ratio *= (double)height / (double)new_height;
+    } else {
+      ratio *= 4.0 / 3.0;
+    }
+  }
+
   _x_post_rewire(this_gen);
   vo_frame_t *frame = port->original_port->get_frame(port->original_port, width, height, ratio, format, flags);
 
   if (frame) {
+    /* set cropping when using driver crop */
+    if (cropping_active && this->use_driver_crop) {
+      if (this->autodetect) {
+        frame->crop_top = this->start_line;
+        frame->crop_bottom = (height - this->end_line);
+      } else {
+        frame->crop_top = frame->crop_bottom = height / 8;
+      }
+    }
+
     /* intercept frame for analysis and crop-by-copy */
+    if (intercept && format != XINE_IMGFMT_YV12 && format != XINE_IMGFMT_YUY2) {
+      TRACE("get_frame: deactivate because missing provide_standard_frame_data feature\n");
+      cropping_active = 0;
+      intercept = 0;
+    }
+
     if (intercept) {
       _x_post_inc_usage(port);
       frame = _x_post_intercept_video_frame(frame, port);
@@ -1311,6 +1354,7 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 
   int cropping_active = this->cropping_active;
   int crop_total = this->crop_total;
+  int use_driver_crop = this->use_driver_crop;
   int start_line = this->start_line;
 
   if(cropping_active && crop_total>10) {
@@ -1319,9 +1363,8 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
       case 0:
 	/* regular subtitle */
 	/* Subtitle overlays must be coming somewhere inside xine engine */
-
-#ifdef USE_CROP
-        if (this->has_driver_crop) {
+        if (use_driver_crop) {
+          if(this->has_driver_crop) {
             if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
               event->object.overlay->y -= crop_total;
 	  }
@@ -1338,13 +1381,13 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 
 	/* when using cropping overlays are moved in video_out */
 	INFO("autocrop_overlay_add_event: subtitle event untouched\n");
-#else
+        } else {
 	/* when cropping here subtitles coming from inside of xine must be re-positioned */
           if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
             event->object.overlay->y -= crop_total;
 	  INFO("autocrop_overlay_add_event: subtitle event moved up\n");
-          }
-#endif
+	}
+        }
 	break;
       case 1:
 	/* menu overlay */
@@ -1365,11 +1408,11 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 	    }
 	  }
 #endif
-#ifdef USE_CROP
+          if (use_driver_crop) {
             if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
               event->object.overlay->y += start_line;//crop_total;
             }
-#endif
+	  }
 	}
 	break;
       }
@@ -1398,10 +1441,11 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->subs_detect = param->enable_subs_detect;  
   this->soft_start  = param->soft_start;
   this->stabilize   = param->stabilize;
+  this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
   TRACE("autocrop_set_parameters: "
-	"auto=%d  subs=%d  soft=%d  stabilize=%d\n",
+	"auto=%d  subs=%d  soft=%d  stabilize=%d  use_driver_crop=%d\n",
 	this->autodetect, this->subs_detect,
-	this->soft_start, this->stabilize);
+	this->soft_start, this->stabilize, this->always_use_driver_crop);
   return 1;
 }
 
@@ -1411,13 +1455,15 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   autocrop_parameters_t *param = (autocrop_parameters_t *)param_gen;
   
   TRACE("autocrop_get_parameters: "
-	"auto=%d  subs=%d  soft=%d  stabilize=%d\n",
+	"auto=%d  subs=%d  soft=%d  stabilize=%d  use_driver_crop=%d\n",
 	this->autodetect, this->subs_detect,
-	this->soft_start, this->stabilize);
+	this->soft_start, this->stabilize, this->always_use_driver_crop);
   param->enable_autodetect  = this->autodetect;
   param->enable_subs_detect = this->subs_detect;
   param->soft_start         = this->soft_start;
   param->stabilize          = this->stabilize;
+  param->use_driver_crop    = this->always_use_driver_crop;
+
   return 1;
 }
 
@@ -1431,6 +1477,7 @@ static char *autocrop_get_help(void) {
            "  enable_subs_detect:         Enable automatic subtitle detection inside bottom bar\n"
            "  soft_start:                 Enable soft start of cropping\n"
            "  stabilize:                  Stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
+           "  use_driver_crop:            Always use video driver crop"
            "\n"
          );
 }
