@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.20 2009-10-28 13:04:18 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.21 2009-11-12 11:13:55 phintuka Exp $
  *
  */
 
@@ -1254,53 +1254,43 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
   post_video_port_t      *port = (post_video_port_t *)port_gen;
   post_plugin_t          *this_gen = port->post;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)this_gen;
-  vo_frame_t             *frame;
-  
-  _x_post_rewire(this_gen);
-  
+
+  int cropping_active = this->cropping_active;
+
   if (ratio <= 0.0) {
     if (height > 1)
       ratio = (double)width / (double)height;
   }
-  
-  if (this->cropping_active &&
-      ratio == 4.0/3.0 && (format == XINE_IMGFMT_YV12 ||
-			   format == XINE_IMGFMT_YUY2)) {
-    int new_height = this->end_line+2 - this->start_line;
-    double new_ratio = 12.0/9.0 * ((double)height / (double)new_height);
 
-    frame = port->original_port->get_frame(port->original_port,
-					   width, height, 
-					   new_ratio, format, flags);
-    _x_post_inc_usage(port);
-    frame = _x_post_intercept_video_frame(frame, port);
-    
-    frame->ratio = ratio;
-    return frame;
-  }
-  
-  return port->original_port->get_frame(port->original_port,
-					width, height, 
-					ratio, format, flags);
-}
+  /* Crop only SDTV 4:3 frames ... */
+  int intercept = ((format == XINE_IMGFMT_YV12 || format == XINE_IMGFMT_YUY2) &&
+       ratio == 4.0/3.0 &&
+       width  >= 480 && width  <= 768 &&
+       height >= 288 && height <= 576);
 
-static int autocrop_intercept_frame(post_video_port_t *port, vo_frame_t *frame)
-{
-  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
-
-  /* Crop only SDTV YV12 4:3 frames ... */
-  int intercept = ((frame->format == XINE_IMGFMT_YV12 || 
-		    frame->format == XINE_IMGFMT_YUY2) &&
-		   frame->ratio == 4.0/3.0 &&
-		   frame->width  >= 480 && frame->width  <= 768 &&
-		   frame->height >= 288 && frame->height <= 576);
   if(!intercept) {
-    this->height_limit_active = 0;
-    this->crop_total = 0;
-    this->cropping_active = 0;
+    cropping_active = 0;
   }
 
-  return intercept;
+  /* reset when format changes */
+  if (cropping_active && (height != this->prev_height || width != this->prev_width)) {
+    cropping_active = 0;
+  }
+
+  _x_post_rewire(this_gen);
+  vo_frame_t *frame = port->original_port->get_frame(port->original_port, width, height, ratio, format, flags);
+
+  if (frame) {
+    /* intercept frame for analysis and crop-by-copy */
+    if (intercept) {
+      _x_post_inc_usage(port);
+      frame = _x_post_intercept_video_frame(frame, port);
+    }
+  }
+
+  this->cropping_active = cropping_active;
+
+  return frame;
 }
 
 static int autocrop_intercept_ovl(post_video_port_t *port)
@@ -1486,10 +1476,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
 
       port->intercept_ovl          = autocrop_intercept_ovl;
       port->new_manager->add_event = autocrop_overlay_add_event;
-      port->intercept_frame        = autocrop_intercept_frame;
-#ifdef USE_CROP
       port->new_port.get_frame     = autocrop_get_frame;
-#endif
       port->new_frame->draw        = autocrop_draw;
 
       this->post_plugin.xine_post.video_input[ 0 ] = &port->new_port;
