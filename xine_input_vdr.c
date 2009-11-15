@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.39 2009-10-08 13:34:16 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.40 2009-11-15 12:35:53 phintuka Exp $
  *
  */
 
@@ -131,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.39 2009-10-08 13:34:16 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.40 2009-11-15 12:35:53 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4436,21 +4436,31 @@ static void data_stream_parse_control(vdr_input_plugin_t *this, char *cmd)
   if(!strncasecmp(cmd, "DISCARD ", 8)) {
     uint64_t index;
     if(1 == sscanf(cmd+8, "%" PRIu64, &index)) {
-      struct timespec abstime;
-      create_timeout_time(&abstime, 100);
-
-      this->block_buffer->clear(this->block_buffer);
+      int counter = 100;
+      //this->block_buffer->clear(this->block_buffer);
 
       pthread_mutex_lock(&this->lock);
-      while(this->control_running &&
-	    this->discard_index < index) {
+
+      if (this->discard_index < index)
 	LOGDBG("data_stream_parse_control: waiting for engine_flushed condition %"PRIu64"<%"PRIu64,
 	       this->discard_index, index);
+
+      while(this->control_running &&
+	    this->discard_index < index &&
+            --counter > 0) {
+        struct timespec abstime;
+        create_timeout_time(&abstime, 10);
 	pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
-      } 
+      }
       pthread_mutex_unlock(&this->lock);
-      LOGDBG("data_stream_parse_control: streams synced at %"PRIu64"/%"PRIu64,
-	     index, this->discard_index);
+
+      if (this->discard_index >= index) {
+        LOGVERBOSE("wait_stream_sync: streams synced at %"PRIu64"/%"PRIu64,
+                   this->discard_index, index);
+        return;
+      }
+      LOGMSG("wait_stream_sync: Timed out ! diff %"PRId64,
+             (int64_t)(this->discard_index - index));
     }
     return;
   }
