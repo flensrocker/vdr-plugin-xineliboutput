@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.71 2009-11-11 16:09:09 phintuka Exp $
+ * $Id: menu.c,v 1.72 2009-11-15 11:58:12 phintuka Exp $
  *
  */
 
@@ -177,6 +177,7 @@ void cMenuBrowseFiles::Set(void)
   StoreConfig();
 
   SetHelpButtons();
+  Display();
 }
 
 void cMenuBrowseFiles::StoreConfig(void)
