@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.46.2.6 2009-09-13 13:23:09 phintuka Exp $
+ * $Id: config.h,v 1.46.2.7 2009-11-16 11:23:57 phintuka Exp $
  *
  */
 
@@ -168,6 +168,16 @@
 #define OSD_SIZE_custom         4
 #define OSD_SIZE_count          5
 
+// Media player menu (bitmask)
+#define MEDIA_MENU_FILES        (1<<0)
+#define MEDIA_MENU_MUSIC        (1<<1)
+#define MEDIA_MENU_IMAGES       (1<<2)
+#define MEDIA_MENU_DVD          (1<<3)
+#define MEDIA_MENU_CD           (1<<4)
+#define MEDIA_MENU_BLURAY       (1<<5)
+#define MEDIA_MENU_VIDEO_SETUP  (1<<6)
+#define MEDIA_MENU_AUDIO_SETUP  (1<<7)
+
 // Video decoder
 #define DECODER_MPEG2_auto       0 /* use value from frontend config_xineliboutput */
 #define DECODER_MPEG2_LIBMPEG2   1
@@ -314,6 +324,7 @@ class config_t {
     int  spu_autoshow;    // Preferred SPU language(s) for media player
     char spu_lang[4][4];
 #endif
+    char media_root_dir[4096];     // restrict file browser
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];
@@ -324,6 +335,7 @@ class config_t {
     int  playlist_artist;
     int  playlist_album;
     int  dvd_arrow_keys_control_playback;
+    uint media_menu_items;         // enabled items in media player menu (bitmask)
 
     // Audio visualization
     char audio_visualization[64];
@@ -413,13 +425,13 @@ class config_t {
     bool SetupParse(const char *Name, const char *Value);
     bool ProcessArgs(int argc, char *argv[]);
 
-    bool IsImageFile(const char *);
-    bool IsAudioFile(const char *);
-    bool IsVideoFile(const char *);
-    bool IsPlaylistFile(const char *);
-    bool IsDvdFolder(const char *);
-    bool IsBluRayFolder(const char *);
-    bool IsDvdImage(const char *);
+    static bool IsImageFile(const char *);
+    static bool IsAudioFile(const char *);
+    static bool IsVideoFile(const char *);
+    static bool IsPlaylistFile(const char *);
+    static bool IsDvdFolder(const char *);
+    static bool IsBluRayFolder(const char *);
+    static bool IsDvdImage(const char *);
 
     cString AutocropOptions(void);
     cString SwScaleOptions(void);
