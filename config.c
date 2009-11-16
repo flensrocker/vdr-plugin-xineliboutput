@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.86 2009-10-25 12:56:11 phintuka Exp $
+ * $Id: config.c,v 1.87 2009-11-16 11:16:16 phintuka Exp $
  *
  */
 
@@ -662,6 +662,7 @@ config_t::config_t() {
   ff_h264_speed_over_accurancy = FF_H264_SPEED_OVER_ACCURACY_auto;
   ff_h264_skip_loop_filter     = FF_H264_SKIP_LOOPFILTER_auto;
 
+  strn0cpy(media_root_dir,    "/",            sizeof(media_root_dir));
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
   strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
@@ -918,6 +919,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.denoise3d.chroma"))  denoise3d_chroma = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.time"))    denoise3d_time   = atoi(Value);
 
+  else if (!strcasecmp(Name, "Media.RootDir"))           STRN0CPY(media_root_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);

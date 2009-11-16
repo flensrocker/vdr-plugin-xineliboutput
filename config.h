@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.67 2009-10-31 19:59:50 phintuka Exp $
+ * $Id: config.h,v 1.68 2009-11-16 11:16:16 phintuka Exp $
  *
  */
 
@@ -318,6 +318,7 @@ class config_t {
     int  dvb_subtitles;            // send DVB subtitles in data stream (decode+display using xine-lib or external media player)
 
     // Media player
+    char media_root_dir[4096];     // restrict file browser
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];
