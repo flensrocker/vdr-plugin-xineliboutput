@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.62.2.2 2009-06-09 11:45:38 phintuka Exp $
+ * $Id: setup_menu.c,v 1.62.2.3 2009-11-16 11:34:49 phintuka Exp $
  *
  */
 
@@ -1688,27 +1688,38 @@ void cMenuSetupMediaPlayer::Set(void)
   Add(new cMenuEditBoolItem(tr("Arrow keys control DVD playback"),
                             &newconfig.dvd_arrow_keys_control_playback));
 
+  Add(NewTitle(tr("Media Player")));
+  Add(new cMenuEditBitItem(tr("Play file >>"),        &newconfig.media_menu_items, MEDIA_MENU_FILES));
+  Add(new cMenuEditBitItem(tr("Play music >>"),       &newconfig.media_menu_items, MEDIA_MENU_MUSIC));
+  Add(new cMenuEditBitItem(tr("View images >>"),      &newconfig.media_menu_items, MEDIA_MENU_IMAGES));
+  Add(new cMenuEditBitItem(tr("Play DVD disc >>"),    &newconfig.media_menu_items, MEDIA_MENU_DVD));
+  Add(new cMenuEditBitItem(tr("Play audio CD >>"),    &newconfig.media_menu_items, MEDIA_MENU_CD));
+  Add(new cMenuEditBitItem(tr("Play BluRay disc >>"), &newconfig.media_menu_items, MEDIA_MENU_BLURAY));
+  Add(new cMenuEditBitItem(tr("Video settings"),      &newconfig.media_menu_items, MEDIA_MENU_VIDEO_SETUP));
+  Add(new cMenuEditBitItem(tr("Audio settings"),      &newconfig.media_menu_items, MEDIA_MENU_AUDIO_SETUP));
+
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
   Display();
 }
 
 eOSState cMenuSetupMediaPlayer::ProcessKey(eKeys Key)
-{ 
+{
   eOSState state = cMenuSetupPage::ProcessKey(Key);
   return state;
 }
 
 void cMenuSetupMediaPlayer::Store(void)
-{ 
+{
   memcpy(&xc, &newconfig, sizeof(config_t));
-  
+
   SetupStore("Playlist.Tracknumber", xc.playlist_tracknumber);
   SetupStore("Playlist.Album", xc.playlist_album);
   SetupStore("Playlist.Artist", xc.playlist_artist);
   SetupStore("Media.CacheImplicitPlaylists", xc.cache_implicit_playlists);
   SetupStore("Media.EnableID3Scanner", xc.enable_id3_scanner);
   SetupStore("Media.DVD.ArrowKeysControlPlayback", xc.dvd_arrow_keys_control_playback);
+  SetupStore("Media.MenuItems", xc.media_menu_items);
 
   Setup.Save();
 }
