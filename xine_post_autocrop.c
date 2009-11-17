@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.22 2009-11-12 12:11:51 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.23 2009-11-17 12:50:54 phintuka Exp $
  *
  */
 
@@ -148,8 +148,22 @@ typedef struct autocrop_post_plugin_s
   int has_driver_crop;  /* true if driver has cropping capability */
   int has_unscaled_overlay; /* true if driver has unscaled overlay capability */
 
+  /* retrieval of standard frame format image */
+  vo_frame_t frame;
+  uint8_t *img;
+  int img_size;
+
 } autocrop_post_plugin_t;
 
+
+#if (XINE_VERSION_CODE < 10190) && defined(VO_CAP_ARGB_LAYER_OVERLAY)
+/* xine-lib-vdpau r134+ */
+#  define HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
+#endif
+#if XINE_VERSION_CODE >= 10190
+/* xine-lib 1.2 r10718+ (2008-12-30) */
+#  define HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
+#endif
 
 # if defined(__SSE__)
 #  warning Compiling with SSE support
@@ -727,6 +741,44 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
   post_video_port_t *port = (post_video_port_t *)frame->port;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
   int start_line, end_line;
+
+#ifdef HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
+  if ((frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2) && frame->proc_provide_standard_frame_data) {
+    xine_current_frame_data_t data;
+    memset(&data, 0, sizeof(data));
+    frame->proc_provide_standard_frame_data(frame->next, &data);
+    if (data.img_size > this->img_size) {
+      free(this->img);
+      this->img = calloc(1, data.img_size);
+      if (!this->img) {
+        this->img_size = 0;
+        return;
+      }
+      this->img_size = data.img_size;
+    }
+
+    data.img = this->img;
+    frame->proc_provide_standard_frame_data(frame->next, &data);
+
+    if (data.format == XINE_IMGFMT_YV12) {
+      this->frame.pitches[0] = frame->width;
+      this->frame.pitches[1] = frame->width / 2;
+      this->frame.pitches[2] = frame->width / 2;
+      this->frame.base[0] = this->img;
+      this->frame.base[1] = this->img + frame->width * frame->height;
+      this->frame.base[2] = this->img + frame->width * frame->height + frame->width * frame->height / 4;
+    } else if (data.format == XINE_IMGFMT_YUY2) {
+      this->frame.pitches[0] = frame->width * 2;
+      this->frame.base[0] = this->img;
+    }
+    this->frame.format = data.format;
+    this->frame.height = frame->height;
+    this->frame.width = frame->width;
+
+    frame = &this->frame;
+  }
+#endif
+
   int result = 0;
 
   if(frame->format == XINE_IMGFMT_YV12)
@@ -1320,9 +1372,15 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
 
     /* intercept frame for analysis and crop-by-copy */
     if (intercept && format != XINE_IMGFMT_YV12 && format != XINE_IMGFMT_YUY2) {
+#ifdef HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
+      if (!frame->proc_provide_standard_frame_data) {
+#endif
       TRACE("get_frame: deactivate because missing provide_standard_frame_data feature\n");
       cropping_active = 0;
       intercept = 0;
+#ifdef HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
+    }
+#endif
     }
 
     if (intercept) {
@@ -1491,6 +1549,7 @@ static void autocrop_dispose(post_plugin_t *this_gen)
 {
   if (_x_post_dispose(this_gen)) {
     autocrop_post_plugin_t *this = (autocrop_post_plugin_t *) this_gen;
+    free(this->img);
     free(this);
   }
 }
