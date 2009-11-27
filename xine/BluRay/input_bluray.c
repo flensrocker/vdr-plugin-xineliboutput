@@ -22,7 +22,7 @@
  * Input plugin for BluRay discs / images
  *
  * Requires libbluray from http://www.assembla.com/spaces/libbluray/
- * Tested with revision 97
+ * Tested with SVN revision 103
  *
  */
 
@@ -204,9 +204,10 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
   /* clip seek point to nearest random access point */
 
   if (this->nav_title) {
-    uint32_t in_pkt  = offset / 192;
-    uint32_t out_pkt = in_pkt;
-    nav_packet_search(this->nav_title, in_pkt, &out_pkt);
+    uint32_t in_pkt   = offset / 192;
+    uint32_t out_pkt  = in_pkt;
+    uint32_t out_time = 0;
+    nav_packet_search(this->nav_title, in_pkt, &out_pkt, &out_time);
     lprintf("bluray_plugin_seek() seeking to %"PRId64" (packet %d)\n", offset, in_pkt);
     offset = (off_t)192 * (off_t)out_pkt;
     lprintf("Nearest random access point at %"PRId64" (packet %d)\n", offset, out_pkt);
@@ -273,7 +274,7 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      */
     case INPUT_OPTIONAL_DATA_AUDIOLANG:
       if (this->nav_title) {
-        CLPI_PROG *prog = &this->nav_title->clip->cl->program.progs[0];
+        CLPI_PROG *prog = &this->nav_title->clip_list.clip->cl->program.progs[0];
         int i, n = 0;
         for (i=0 ; i < prog->num_streams; i++)
           if (prog->streams[i].pid >= 0x1100 && prog->streams[i].pid < 0x1200) {
@@ -297,7 +298,7 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      */
     case INPUT_OPTIONAL_DATA_SPULANG:
       if (this->nav_title) {
-        CLPI_PROG *prog = &this->nav_title->clip->cl->program.progs[0];
+        CLPI_PROG *prog = &this->nav_title->clip_list.clip->cl->program.progs[0];
         int i, n = 0;
         for (i=0 ; i < prog->num_streams; i++)
           if (prog->streams[i].pid         >= 0x1200 && prog->streams[i].pid         <  0x1300 &&
