@@ -93,6 +93,7 @@ typedef struct {
   xine_stream_t        *stream;
   bluray_input_class_t *class;
   char                 *mrl;
+  char                 *disc_root;
   BLURAY               *bdh;
 
   NAV_TITLE            *nav_title;
@@ -336,6 +337,7 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
     nav_title_close(this->nav_title);
 
   free (this->mrl);
+  free (this->disc_root);
 
   free (this);
 }
@@ -344,7 +346,6 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this  = (bluray_input_plugin_t *) this_gen;
   int                    title = -1;
-  char                  *disc_root;
 
   lprintf("bluray_plugin_open\n");
 
@@ -358,21 +359,21 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
       !strcasecmp (this->mrl, "bluray://") ||
       !strcasecmp (this->mrl, "bluray:///")) {
 
-    disc_root = strdup(this->class->mountpoint);
+    this->disc_root = strdup(this->class->mountpoint);
 
   } else if (!strncasecmp (this->mrl, "bluray:/", 8)) {
 
     if (!strncasecmp (this->mrl, "bluray:///", 10))
-      disc_root = strdup(this->mrl + 9);
+      this->disc_root = strdup(this->mrl + 9);
     else if (!strncasecmp (this->mrl, "bluray://", 9))
-      disc_root = strdup(this->mrl + 8);
+      this->disc_root = strdup(this->mrl + 8);
     else
-      disc_root = strdup(this->mrl + 7);
+      this->disc_root = strdup(this->mrl + 7);
 
-    _x_mrl_unescape(disc_root);
+    _x_mrl_unescape(this->disc_root);
 
-    if (disc_root[strlen(disc_root)-1] != '/') {
-      char *end = strrchr(disc_root, '/');
+    if (this->disc_root[strlen(this->disc_root)-1] != '/') {
+      char *end = strrchr(this->disc_root, '/');
       if (end && end[1])
         if (sscanf(end, "/%d", &title) != 1)
           title = 0;
@@ -386,14 +387,14 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   /* if title was not in mrl, find the main title */
 
   if (title < 0) {
-    char *main_title = nav_find_main_title(disc_root);
+    char *main_title = nav_find_main_title(this->disc_root);
     title = 0;
     if (main_title) {
       if (sscanf(main_title, "%d.mpls", &title) != 1)
         title = 0;
       lprintf("main title: %s (%d) \n", main_title, title);
     } else {
-      LOGMSG("nav_find_main_title(%s) failed\n", disc_root);
+      LOGMSG("nav_find_main_title(%s) failed\n", this->disc_root);
     }
   }
 
@@ -405,22 +406,19 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     if (asprintf(&keyfile, "%s/%s", xine_get_homedir(), this->class->keyfile + 2) < 0)
       keyfile = NULL;
   /* open */
-  if (! (this->bdh = bd_open (disc_root, keyfile ?: this->class->keyfile))) {
-    LOGMSG("bd_open(\'%s\') failed: %s\n", disc_root, strerror(errno));
+  if (! (this->bdh = bd_open (this->disc_root, keyfile ?: this->class->keyfile))) {
+    LOGMSG("bd_open(\'%s\') failed: %s\n", this->disc_root, strerror(errno));
     free(keyfile);
-    free(disc_root);
     return -1;
   }
   free(keyfile);
-  lprintf("bd_open(\'%s\') OK\n", disc_root);
+  lprintf("bd_open(\'%s\') OK\n", this->disc_root);
 
   /* select title */
 
   if (!bd_select_title(this->bdh, title)) {
     LOGMSG("bd_select_title(%d) failed: %s\n", title, strerror(errno));
     _x_message(this->stream, XINE_MSG_FILE_NOT_FOUND, this->mrl, NULL);
-
-    free(disc_root);
     return -1;
   }
   snprintf(this->current_title, sizeof(this->current_title), "%05d.mpls", title);
@@ -428,9 +426,9 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* acquire navigation data and stream info */
 
-  this->nav_title = nav_title_open(disc_root, this->current_title);
+  this->nav_title = nav_title_open(this->disc_root, this->current_title);
   if (!this->nav_title) {
-    LOGMSG("nav_title_open(%s,%s) FAILED\n", disc_root, this->current_title);
+    LOGMSG("nav_title_open(%s,%s) FAILED\n", this->disc_root, this->current_title);
   }
 
   /* set stream metainfo */
@@ -441,7 +439,6 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, title);
   //_x_stream_info_set(this->stream,XINE_STREAM_INFO_DVD_TITLE_COUNT,num_tt);
 
-  free(disc_root);
   return 1;
 }
 
