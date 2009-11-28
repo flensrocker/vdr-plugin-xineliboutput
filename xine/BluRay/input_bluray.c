@@ -189,7 +189,7 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  if (!this || !this->bdh)
+  if (!this || !this->bdh || !this->nav_title)
     return -1;
 
   /* convert relative seeks to absolute */
@@ -206,7 +206,6 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
 
   /* clip seek point to nearest random access point */
 
-  if (this->nav_title) {
     uint32_t in_pkt   = offset / PKT_SIZE;
     uint32_t out_pkt  = in_pkt;
     uint32_t out_time = 0;
@@ -214,7 +213,6 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
     lprintf("bluray_plugin_seek() seeking to %"PRId64" (packet %d)\n", offset, in_pkt);
     offset = (off_t)PKT_SIZE * (off_t)out_pkt;
     lprintf("Nearest random access point at %"PRId64" (packet %d)\n", offset, out_pkt);
-  }
 
   /* clip to aligned unit start */
 
@@ -431,6 +429,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   this->nav_title = nav_title_open(this->disc_root, this->current_title);
   if (!this->nav_title) {
     LOGMSG("nav_title_open(%s,%s) FAILED\n", this->disc_root, this->current_title);
+    return -1;
   }
 
   /* set stream metainfo */
