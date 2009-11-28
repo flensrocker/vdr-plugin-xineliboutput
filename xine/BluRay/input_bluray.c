@@ -72,7 +72,9 @@
 # define MAX(a,b) ((a)<(b)?(a):(b))
 #endif
 
-#define ALIGNED_UNIT_SIZE (6144)
+#define ALIGNED_UNIT_SIZE 6144
+#define PKT_SIZE          192
+#define TICKS_IN_MS       45
 
 typedef struct {
 
@@ -205,12 +207,12 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
   /* clip seek point to nearest random access point */
 
   if (this->nav_title) {
-    uint32_t in_pkt   = offset / 192;
+    uint32_t in_pkt   = offset / PKT_SIZE;
     uint32_t out_pkt  = in_pkt;
     uint32_t out_time = 0;
     nav_packet_search(this->nav_title, in_pkt, &out_pkt, &out_time);
     lprintf("bluray_plugin_seek() seeking to %"PRId64" (packet %d)\n", offset, in_pkt);
-    offset = (off_t)192 * (off_t)out_pkt;
+    offset = (off_t)PKT_SIZE * (off_t)out_pkt;
     lprintf("Nearest random access point at %"PRId64" (packet %d)\n", offset, out_pkt);
   }
 
