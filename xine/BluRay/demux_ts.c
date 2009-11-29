@@ -236,11 +236,18 @@
       ISO_14496_PART10_VIDEO = 0x1b,    /* ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264) */
       STREAM_VIDEO_MPEG      = 0x80,
       STREAM_AUDIO_AC3       = 0x81,
-      STREAM_AUDIO_PRIMARY_DTS_HDMV = 0x86,
       STREAM_SPU_BITMAP_HDMV = 0x90,
 
-      STREAM_VIDEO_VC1       = 0xea,    /* VC-1 */
+      STREAM_VIDEO_VC1       = 0xea,    /* VC-1 Video */
       STREAM_VIDEO_SMTPE_VC1 = 0xeb,    /* SMTPE VC-1 */
+
+      HDMV_AUDIO_80_PCM       = 0x80, /* BluRay PCM */
+      HDMV_AUDIO_82_DTS       = 0x82, /* DTS */
+      HDMV_AUDIO_83_TRUEHD    = 0x83, /* Dolby TrueHD, primary audio */
+      HDMV_AUDIO_84_EAC3      = 0x84, /* Dolby Digital plus, primary audio */
+      HDMV_AUDIO_85_DTS_HRA   = 0x85, /* DTS-HRA */
+      HDMV_AUDIO_86_DTS_HD_MA = 0x86, /* DTS-HD Master audio */
+
     } streamType;
 
 #define WRAP_THRESHOLD       270000
@@ -815,7 +822,16 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       m->type |= BUF_AUDIO_A52;
       return 1;
 
-    } else if (m->descriptor_tag == STREAM_AUDIO_PRIMARY_DTS_HDMV) {
+    } else if (m->descriptor_tag == HDMV_AUDIO_83_TRUEHD) {
+      /* TODO: separate AC3 and TrueHD streams ... */
+      m->content = p;
+      m->size = packet_len;
+      m->type |= BUF_AUDIO_A52;
+      return 1;
+
+    } else if (m->descriptor_tag == HDMV_AUDIO_82_DTS ||
+               m->descriptor_tag == HDMV_AUDIO_85_DTS_HRA ||
+               m->descriptor_tag == HDMV_AUDIO_86_DTS_HD_MA ) {
       m->content = p;
       m->size = packet_len;
       m->type |= BUF_AUDIO_DTS;
