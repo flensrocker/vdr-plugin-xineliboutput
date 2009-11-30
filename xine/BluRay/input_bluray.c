@@ -96,11 +96,52 @@ typedef struct {
   bluray_input_class_t *class;
   char                 *mrl;
   char                 *disc_root;
-  BLURAY               *bdh;
 
+  BLURAY               *bdh;
   NAV_TITLE            *nav_title;
 
 } bluray_input_plugin_t;
+
+static int open_clip (bluray_input_plugin_t *this, NAV_CLIP *clip)
+{
+  /* NOTE: bluray.h bd_select_title() actually opens CLIP, not TITLE ! */
+
+  int clip_id;
+  if (sscanf(clip->name, "%d.m2ts", &clip_id) != 1)
+    clip_id = 0;
+
+  lprintf("Selecting clip %d: bd_select_title(%d - %s) for title %s\n",
+          clip_id, clip_id, clip->name, this->nav_title->name);
+
+  if (!bd_select_title(this->bdh, clip_id)) {
+    LOGMSG("bd_select_title(%d) failed: %s\n", clip_id, strerror(errno));
+    _x_message(this->stream, XINE_MSG_FILE_NOT_FOUND, this->mrl, NULL);
+
+    return -1;
+  }
+
+  lprintf("Clip length: %"PRIu64" bytes\n", (uint64_t)this->bdh->s_size);
+
+  return 1;
+}
+
+static int next_clip (bluray_input_plugin_t *this)
+{
+  /* select clip */
+
+  NAV_CLIP *clip = nav_next_clip(this->nav_title, NULL);
+  if (!clip) {
+    LOGMSG("nav_next_clip() FAILED\n");
+    return -1;
+  }
+  lprintf("clip change: title %s clip %s (%d clips, %d chapters)\n",
+          this->nav_title->name, clip->name,
+          this->nav_title->clip_list.count, this->nav_title->chap_list.count);
+
+  /* open clip */
+
+  return open_clip(this, clip);
+}
 
 static int open_title (bluray_input_plugin_t *this, int title)
 {
@@ -146,13 +187,7 @@ static int open_title (bluray_input_plugin_t *this, int title)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->nav_title->chap_list.count);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->nav_title->chap_list.count>0);
 
-  if (!bd_select_title(this->bdh, title)) {
-    LOGMSG("bd_select_title(%d) failed: %s\n", title, strerror(errno));
-    _x_message(this->stream, XINE_MSG_FILE_NOT_FOUND, this->mrl, NULL);
-    return -1;
-  }
-
-  return 1;
+  return next_clip(this);
 }
 
 /*
