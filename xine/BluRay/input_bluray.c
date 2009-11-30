@@ -99,10 +99,44 @@ typedef struct {
   BLURAY               *bdh;
 
   NAV_TITLE            *nav_title;
-  char                  current_title[11]; /* ?????.mpls\0 */
 
 } bluray_input_plugin_t;
 
+static int open_title (bluray_input_plugin_t *this, int title)
+{
+  if (this->nav_title)
+    nav_title_close(this->nav_title);
+
+  /* open title */
+
+  char mpls[11] = {0};
+  snprintf(mpls, sizeof(mpls), "%05d.mpls", MIN(99999, MAX(0, title)));
+
+  this->nav_title = nav_title_open(this->disc_root, mpls);
+
+  if (!this->nav_title) {
+    LOGMSG("nav_title_open(%s, %s) FAILED\n", this->disc_root, mpls);
+    return -1;
+  }
+
+  /* set stream metainfo */
+
+  lprintf("title length: %"PRIu64" bytes\n", this->bdh->s_size);
+
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER,   title);
+
+  if (!bd_select_title(this->bdh, title)) {
+    LOGMSG("bd_select_title(%d) failed: %s\n", title, strerror(errno));
+    _x_message(this->stream, XINE_MSG_FILE_NOT_FOUND, this->mrl, NULL);
+    return -1;
+  }
+
+  return 1;
+}
+
+/*
+ * xine plugin interface
+ */
 
 static uint32_t bluray_plugin_get_capabilities (input_plugin_t *this_gen)
 {
@@ -416,29 +450,8 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* select title */
 
-  if (!bd_select_title(this->bdh, title)) {
-    LOGMSG("bd_select_title(%d) failed: %s\n", title, strerror(errno));
-    _x_message(this->stream, XINE_MSG_FILE_NOT_FOUND, this->mrl, NULL);
+  if (open_title(this, title) < 0)
     return -1;
-  }
-  snprintf(this->current_title, sizeof(this->current_title), "%05d.mpls", title);
-  lprintf("bd_select_title(%d) OK\n", title);
-
-  /* acquire navigation data and stream info */
-
-  this->nav_title = nav_title_open(this->disc_root, this->current_title);
-  if (!this->nav_title) {
-    LOGMSG("nav_title_open(%s,%s) FAILED\n", this->disc_root, this->current_title);
-    return -1;
-  }
-
-  /* set stream metainfo */
-
-  lprintf("title length: %"PRIu64" bytes\n", this->bdh->s_size);
-
-  //_x_meta_info_set(this->stream, XINE_META_INFO_TITLE, this->dvd_name);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, title);
-  //_x_stream_info_set(this->stream,XINE_STREAM_INFO_DVD_TITLE_COUNT,num_tt);
 
   /* jump to chapter */
 
