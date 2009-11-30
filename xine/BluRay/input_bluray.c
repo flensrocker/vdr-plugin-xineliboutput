@@ -345,7 +345,7 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
 static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this  = (bluray_input_plugin_t *) this_gen;
-  int                    title = -1;
+  int                    title = -1, chapter = 0;
 
   lprintf("bluray_plugin_open\n");
 
@@ -375,7 +375,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     if (this->disc_root[strlen(this->disc_root)-1] != '/') {
       char *end = strrchr(this->disc_root, '/');
       if (end && end[1])
-        if (sscanf(end, "/%d", &title) != 1)
+        if (sscanf(end, "/%d.%d", &title, &chapter) < 1)
           title = 0;
       *end = 0;
     }
@@ -439,6 +439,16 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   //_x_meta_info_set(this->stream, XINE_META_INFO_TITLE, this->dvd_name);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, title);
   //_x_stream_info_set(this->stream,XINE_STREAM_INFO_DVD_TITLE_COUNT,num_tt);
+
+  /* jump to chapter */
+
+  if (chapter > 0) {
+    uint32_t out_pkt = 0;
+    NAV_CLIP *clip = nav_chapter_search(this->nav_title, chapter, &out_pkt);
+    bluray_plugin_seek(&this->input_plugin, (off_t)(clip->title_pkt + out_pkt) * PKT_SIZE, SEEK_SET);
+
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter);
+  }
 
   return 1;
 }
