@@ -119,11 +119,32 @@ static int open_title (bluray_input_plugin_t *this, int title)
     return -1;
   }
 
+#ifdef LOG
+  int ms = this->nav_title->duration / TICKS_IN_MS;
+  lprintf("Opened title %s. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
+          this->nav_title->name, (int64_t)this->nav_title->packets * PKT_SIZE,
+          ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
+#endif
+
   /* set stream metainfo */
 
-  lprintf("title length: %"PRIu64" bytes\n", this->bdh->s_size);
+  /* title */
+  if (strcmp(this->disc_root, this->class->mountpoint)) {
+    char *t = strrchr(this->disc_root, '/');
+    if (!t[1])
+      while (t > this->disc_root && t[-1] != '/') t--;
+    t = strdup(t);
+    if (t[strlen(t)-1] ==  '/')
+      t[strlen(t)-1] = 0;
+    _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, t);
+    free(t);
+  }
 
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER,   title);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   this->nav_title->angle);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, 1);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->nav_title->chap_list.count);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->nav_title->chap_list.count>0);
 
   if (!bd_select_title(this->bdh, title)) {
     LOGMSG("bd_select_title(%d) failed: %s\n", title, strerror(errno));
