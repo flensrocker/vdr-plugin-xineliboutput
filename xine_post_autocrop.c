@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.23 2009-11-17 12:50:54 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.24 2009-12-06 10:52:27 phintuka Exp $
  *
  */
 
@@ -1129,6 +1129,8 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     return result;
   }
 
+  int cropping_active = this->cropping_active;
+
   /* use pts jumps to track stream changes (and seeks) */
   if(frame->pts > 0) {
     if(this->prev_pts>0) {
@@ -1140,7 +1142,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 	}
       }
       if(dpts < INT64_C(-30*60*90000) || dpts > INT64_C(30*60*90000)) { /* 30 min */ 
-        this->cropping_active = 0;
+        cropping_active = 0;
         TRACE("long pts jump reseted cropping\n");
       }
     }
@@ -1148,7 +1150,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   }
 
   /* reset ? */
-  if(! this->cropping_active) {
+  if(!cropping_active) {
     this->prev_start_line = 0;
     this->prev_end_line = frame->height;
     this->start_timer = START_TIMER_INIT;
@@ -1163,7 +1165,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   /* only 4:3 YV12 frames are cropped */
   if(frame->ratio != 4.0/3.0 || (frame->format != XINE_IMGFMT_YV12 && 
 				 frame->format != XINE_IMGFMT_YUY2)) {
-    this->cropping_active = 0;
+    cropping_active = 0;
     
   } else if(frame->bad_frame) {
 
@@ -1174,9 +1176,9 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 
     /* ignore very small bars */
     if(this->start_line > 10 || this->end_line < frame->height - 10) 
-      this->cropping_active = 1;
+      cropping_active = 1;
     else 
-      this->cropping_active = 0;
+      cropping_active = 0;
     
     this->prev_height = frame->height;
     this->prev_width = frame->width;
@@ -1201,9 +1203,9 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   } else {
     /* reset when format changes */
     if(frame->height != this->prev_height)
-      this->cropping_active = 0;
+      cropping_active = 0;
     if(frame->width != this->prev_width)
-      this->cropping_active = 0;
+      cropping_active = 0;
   }
 
   /* update timers */
@@ -1219,7 +1221,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   } 
 
   /* no cropping to be done ? */
-  if (/*frame->bad_frame ||*/ !this->cropping_active || this->start_timer>0) {
+  if (/*frame->bad_frame ||*/ !cropping_active || this->start_timer>0) {
     _x_post_frame_copy_down(frame, frame->next);
     result = frame->next->draw(frame->next, stream);
     _x_post_frame_copy_up(frame, frame->next);
@@ -1288,6 +1290,10 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     }
   }
 
+  if (this->cropping_active != cropping_active)
+    TRACE("draw: active %d -> %d\n", this->cropping_active, cropping_active);
+
+  this->cropping_active = cropping_active;
   this->use_driver_crop = this->always_use_driver_crop || (frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2);
 
   /*
@@ -1297,7 +1303,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
    *    and height of frame ?
    *    -> no time-consuming copying 
    */
-  if(frame->bad_frame || !this->cropping_active || this->use_driver_crop) {
+  if(frame->bad_frame || !cropping_active || this->use_driver_crop) {
     _x_post_frame_copy_down(frame, frame->next);
     result = frame->next->draw(frame->next, stream);
     _x_post_frame_copy_up(frame, frame->next);
