@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.24 2009-12-06 10:52:27 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.25 2009-12-06 11:05:52 phintuka Exp $
  *
  */
 
@@ -116,13 +116,6 @@ typedef struct autocrop_post_plugin_s
   int start_line;
   int end_line;
   int crop_total;
-
-  /* Previously detected bars
-     - eliminate jumping if there is some noise at bar boundaries: 
-       don't change cropped area unless it has been stable for
-       some time */
-  int prev_start_line;
-  int prev_end_line;
 
   /* Delayed start for cropping */
   int start_timer;
@@ -1108,8 +1101,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 {
   post_video_port_t *port = (post_video_port_t *)frame->port;
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
-  int result;
-  int detected_start, detected_end;
+  int result, start_line, end_line;
 
   if(!this->autodetect) {
     this->start_line = frame->height/8;
@@ -1149,10 +1141,14 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     this->prev_pts = frame->pts;
   }
 
-  /* reset ? */
-  if(!cropping_active) {
-    this->prev_start_line = 0;
-    this->prev_end_line = frame->height;
+  if (cropping_active) {
+    start_line = this->start_line;
+    end_line = this->end_line;
+  } else {
+    start_line = 0;
+    end_line = frame->height;
+    this->start_line = 0;
+    this->end_line = frame->height;
     this->start_timer = START_TIMER_INIT;
     this->prev_pts = -1;
     if(this->height_limit_active) {
@@ -1166,37 +1162,35 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   if(frame->ratio != 4.0/3.0 || (frame->format != XINE_IMGFMT_YV12 && 
 				 frame->format != XINE_IMGFMT_YUY2)) {
     cropping_active = 0;
-    
+
   } else if(frame->bad_frame) {
 
   /* check for letterbox borders only from I-frames */
   } else if(frame->picture_coding_type == 1/*XINE_PICT_I_TYPE*/) {
 
-    analyze_frame(frame, &this->start_line, &this->end_line);
+    analyze_frame(frame, &start_line, &end_line);
 
-    /* ignore very small bars */
-    if(this->start_line > 10 || this->end_line < frame->height - 10) 
+    /* activate cropping if bars are large enough */
+    if(!cropping_active && (start_line > 10 || end_line < (frame->height - 10))) {
       cropping_active = 1;
-    else 
+    }
+    else
       cropping_active = 0;
-    
-    this->prev_height = frame->height;
-    this->prev_width = frame->width;
 
     /* no change unless same values for several frames */
     if(this->stabilize &&
-       (this->start_line != this->prev_start_line ||
-	this->end_line != this->prev_end_line)) {
+       (start_line != this->start_line ||
+	end_line != this->end_line)) {
       if(this->stabilize_timer)
 	this->stabilize_timer--;
       else
 	this->stabilize_timer = 4;
       if(this->stabilize_timer) {
 	TRACE("stabilize start_line: %d -> %d, end_line %d -> %d\n", 
-	      this->start_line, this->prev_start_line,
-	      this->end_line, this->prev_end_line);
-	this->start_line = this->prev_start_line;
-	this->end_line = this->prev_end_line;
+	      start_line, this->start_line,
+	      end_line, this->end_line);
+	start_line = this->start_line;
+	end_line = this->end_line;
       }
     }
 
@@ -1229,43 +1223,43 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   }
 
   /* "soft start" and border stabilization */
-  detected_start = this->start_line;
-  detected_end = this->end_line;
+  int detected_start = start_line;
+  int detected_end = end_line;
   if(this->soft_start) {
-    if(this->prev_start_line != this->start_line) {
-      int diff = this->prev_start_line - this->start_line;
+    if(this->start_line != start_line) {
+      int diff = this->start_line - start_line;
       if(diff < -4) diff = -4;
       else if(diff > 4) diff = 4;
       else diff = 0;
-      this->start_line = this->prev_start_line - diff;
+      start_line = this->start_line - diff;
     }
-    if(this->prev_end_line != this->end_line) {
-      int diff = this->prev_end_line - this->end_line;
+    if(this->end_line != end_line) {
+      int diff = this->end_line - end_line;
       if(diff < -4) diff = -4;
       else if(diff > 4) diff = 4;
       else diff = 0;
-      this->end_line = this->prev_end_line - diff;
+      end_line = this->end_line - diff;
     }
   }
 
   /* handle fixed subtitles inside bottom bar */
   if(this->subs_detect) {
-    if(abs(this->prev_start_line - this->start_line) > 5 ) {
+    if(abs(this->start_line - start_line) > 5 ) {
       /* reset height limit if top bar changes */
       TRACE("height limit reset, top bar moved from %d -> %d\n", 
-	    this->prev_start_line, this->start_line);
+	    this->start_line, start_line);
       this->height_limit_active = 0;
       this->height_limit = frame->height;
       this->height_limit_timer = 0;
     }
-    if (this->end_line > this->prev_end_line) {
+    if (end_line > this->end_line) {
       if(!this->height_limit_active || 
-	 this->height_limit < this->end_line) {
+	 this->height_limit < end_line) {
 	/* start or increase height limit */
 	TRACE("height limit %d -> %d (%d secs)\n",
-	      this->height_limit, this->end_line,
+	      this->height_limit, end_line,
 	      HEIGHT_LIMIT_LIFETIME/25);
-	this->height_limit = this->end_line;
+	this->height_limit = end_line;
         this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
 	this->height_limit_active = 1;
       }
@@ -1275,25 +1269,33 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 	this->height_limit_timer = HEIGHT_LIMIT_LIFETIME / 2;
       }
     }
-  }
 
-  this->prev_start_line = this->start_line;
-  this->prev_end_line = this->end_line;
-
-  if(this->subs_detect) {
     if(this->height_limit_active) {
       /* apply height limit */
-      if(this->end_line < this->height_limit)
-	this->end_line = this->height_limit;
+      if(end_line < this->height_limit)
+	end_line = this->height_limit;
     } else {
       this->height_limit = frame->height;
     }
   }
 
+  this->prev_height = frame->height;
+  this->prev_width = frame->width;
+
+  if (cropping_active && (start_line != this->start_line || end_line != this->end_line)) {
+    TRACE("active start: %d -> %d, end %d -> %d\n",
+          this->start_line, start_line,
+          this->end_line, end_line);
+  }
+
+
   if (this->cropping_active != cropping_active)
     TRACE("draw: active %d -> %d\n", this->cropping_active, cropping_active);
 
   this->cropping_active = cropping_active;
+  this->start_line = start_line;
+  this->end_line = end_line;
+  this->crop_total = start_line + frame->height - end_line;
   this->use_driver_crop = this->always_use_driver_crop || (frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2);
 
   /*
@@ -1311,8 +1313,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     result = crop_copy_yv12(frame, stream);
   else /*if(frame->format == XINE_IMGFMT_YUY2)*/
     result = crop_copy_yuy2(frame, stream);
-
-  this->crop_total = this->start_line + frame->height - this->end_line;
 
   /* forget stabilized values */
   this->start_line = detected_start;
@@ -1610,9 +1610,6 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->stabilize   = 1;
       this->start_line  = 0;
       this->end_line    = 576;
-
-      this->prev_start_line = 0;
-      this->prev_end_line = 576;
 
       int caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
