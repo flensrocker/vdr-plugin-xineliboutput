@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.26 2009-12-07 12:44:23 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.27 2009-12-07 13:09:06 phintuka Exp $
  *
  */
 
@@ -67,6 +67,7 @@
 
 #define START_TIMER_INIT               (25) /* 1 second, unit: frames */
 #define HEIGHT_LIMIT_LIFETIME          (60*25) /* 1 minute, unit: frames */
+#define DEFAULT_AUTODETECT_RATE          4      /* unit: frames */
 #define DEFAULT_SOFT_START_STEP          4      /* unit: lines per frame */
 
 #define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-left or top-right quarter) */
@@ -77,6 +78,7 @@
 
 typedef struct autocrop_parameters_s {
   int    enable_autodetect;
+  int    autodetect_rate;
   int    enable_subs_detect;
   int    soft_start;
   int    soft_start_step;
@@ -87,6 +89,8 @@ typedef struct autocrop_parameters_s {
 START_PARAM_DESCR(autocrop_parameters_t)
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_autodetect, NULL, 0, 1, 0,
   "enable automatic border detecton")
+PARAM_ITEM(POST_PARAM_TYPE_INT, autodetect_rate, NULL, 1, 30, 0,
+  "rate of automatic letterbox detection")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_subs_detect, NULL, 0, 1, 0,
   "enable automatic subtitle detecton")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, soft_start, NULL, 0, 1, 0,
@@ -108,6 +112,7 @@ typedef struct autocrop_post_plugin_s
 
   /* setup */
   int autodetect;
+  int autodetect_rate;
   int subs_detect;
   int soft_start;
   int soft_start_step;
@@ -125,6 +130,8 @@ typedef struct autocrop_post_plugin_s
   /* Delayed start for cropping */
   int start_timer;
   int stabilize_timer;
+
+  int analyze_timer;
 
   /* Last seen frame */
   int     prev_height;
@@ -1126,6 +1133,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     return result;
   }
 
+  int autodetect_rate = this->autodetect_rate;
   int cropping_active = this->cropping_active;
 
   /* use pts jumps to track stream changes (and seeks) */
@@ -1163,16 +1171,8 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     this->height_limit = frame->height;
   }
 
-  /* only 4:3 YV12 frames are cropped */
-  if(frame->ratio != 4.0/3.0 || (frame->format != XINE_IMGFMT_YV12 && 
-				 frame->format != XINE_IMGFMT_YUY2)) {
-    cropping_active = 0;
-
-  } else if(frame->bad_frame) {
-
-  /* check for letterbox borders only from I-frames */
-  } else if(frame->picture_coding_type == 1/*XINE_PICT_I_TYPE*/) {
-
+  /* Analyze frame for letterbox borders */
+  if(!frame->bad_frame && (this->analyze_timer % autodetect_rate) == 0) {
     analyze_frame(frame, &start_line, &end_line);
 
     /* activate cropping if bars are large enough */
@@ -1226,6 +1226,9 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     _x_post_frame_copy_up(frame, frame->next);
     return result;
   }
+
+  /* update timers */
+  ++this->analyze_timer;
 
   /* "soft start" */
   int detected_start = start_line;
@@ -1294,7 +1297,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
           this->start_line, start_line,
           this->end_line, end_line);
   }
-
 
   if (this->cropping_active != cropping_active)
     TRACE("draw: active %d -> %d\n", this->cropping_active, cropping_active);
@@ -1509,14 +1511,16 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   autocrop_parameters_t *param = (autocrop_parameters_t *)param_gen;
 
   this->autodetect  = param->enable_autodetect;
+  this->autodetect_rate = param->autodetect_rate;
   this->subs_detect = param->enable_subs_detect;
   this->soft_start  = param->soft_start;
   this->soft_start_step = param->soft_start_step;
   this->stabilize   = param->stabilize;
   this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
+
   TRACE("autocrop_set_parameters: "
-	"autodetect=%d  subs_detect=%d  soft_start=%d  soft_start_step=%d stabilize=%d  use_driver_crop=%d\n",
-	this->autodetect, this->subs_detect,
+	"autodetect=%d  autodetect_rate=%d  subs_detect=%d  soft_start=%d  soft_start_step=%d stabilize=%d  use_driver_crop=%d\n",
+	this->autodetect, this->autodetect_rate, this->subs_detect,
 	this->soft_start, this->soft_start_step, this->stabilize,
         this->always_use_driver_crop);
   return 1;
@@ -1527,17 +1531,19 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)this_gen;
   autocrop_parameters_t *param = (autocrop_parameters_t *)param_gen;
   
-  TRACE("autocrop_get_parameters: "
-	"autodetect=%d  subs_detect=%d  soft_start=%d  soft_start_step=%d  stabilize=%d  use_driver_crop=%d\n",
-	this->autodetect, this->subs_detect,
-	this->soft_start, this->soft_start_step, this->stabilize,
-        this->always_use_driver_crop);
   param->enable_autodetect  = this->autodetect;
+  param->autodetect_rate  = this->autodetect_rate;
   param->enable_subs_detect = this->subs_detect;
   param->soft_start         = this->soft_start;
   param->soft_start_step = this->soft_start_step;
   param->stabilize          = this->stabilize;
   param->use_driver_crop    = this->always_use_driver_crop;
+
+  TRACE("autocrop_get_parameters: "
+        "autodetect=%d  subs_detect=%d  soft_start=%d  soft_start_step=%d  stabilize=%d  use_driver_crop=%d\n",
+        this->autodetect, this->autodetect_rate, this->subs_detect,
+        this->soft_start, this->soft_start_step, this->stabilize,
+        this->always_use_driver_crop);
 
   return 1;
 }
@@ -1549,9 +1555,10 @@ static char *autocrop_get_help(void) {
            "\n"
            "Parameters\n"
            "  enable_autodetect:          Enable automatic letterbox detection\n"
+           "  autodetect_rate:            Rate of automatic letterbox detection\n"
            "  enable_subs_detect:         Enable automatic subtitle detection inside bottom bar\n"
            "  soft_start:                 Enable soft start of cropping\n"
-           "  soft_start_step:            Soft start step width of cropping. 0 disables soft start\n"
+           "  soft_start_step:            Soft start step width of cropping\n"
            "  stabilize:                  Stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
            "  use_driver_crop:            Always use video driver crop"
            "\n"
@@ -1617,6 +1624,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
 #endif
       this->cropping_active = 0;
       this->autodetect  = 1;
+      this->autodetect_rate = DEFAULT_AUTODETECT_RATE;
       this->subs_detect = 1;
       this->soft_start  = 1;
       this->soft_start_step = DEFAULT_SOFT_START_STEP;
