@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.29 2009-12-08 11:43:03 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.30 2009-12-08 12:58:50 phintuka Exp $
  *
  */
 
@@ -882,7 +882,7 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 #if 1
         /* this moves image to center when there are no 
 	   detected subtitles inside bottom bar */
-        if(this->height_limit_active) {
+        if(this->cropping_active && this->height_limit_active) {
           int reserved = this->height_limit - end_line;
 	  if(reserved>0) {
             end_line += reserved;
@@ -1121,6 +1121,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   if(!this->autodetect) {
 
     pthread_mutex_lock(&this->crop_lock);
+    this->cropping_active = 1;
     this->start_line = frame->height/8;
     this->end_line   = frame->height*7/8;
     this->crop_total = frame->height/4;
@@ -1143,7 +1144,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   int cropping_active = this->cropping_active;
 
   /* use pts jumps to track stream changes (and seeks) */
-  if(frame->pts > 0) {
+  if(cropping_active && frame->pts > 0) {
     if(this->prev_pts>0) {
       int64_t dpts = frame->pts - this->prev_pts;
       if(dpts < INT64_C(-30*90000) || dpts > INT64_C(30*90000)) { /* 30 sec */
@@ -1217,7 +1218,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     }
 
     /* handle fixed subtitles inside bottom bar */
-    if(this->subs_detect) {
+    if(cropping_active && this->subs_detect) {
       if(abs(this->start_line - start_line) > 5 ) {
         /* reset height limit if top bar changes */
         TRACE("height limit reset, top bar moved from %d -> %d\n", this->start_line, start_line);
@@ -1258,15 +1259,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   if(this->start_timer)
     this->start_timer--;
 
-  /* no cropping to be done ? */
-  if (/*frame->bad_frame ||*/ !cropping_active || this->start_timer>0) {
-    _x_post_frame_copy_down(frame, frame->next);
-    result = frame->next->draw(frame->next, stream);
-    _x_post_frame_copy_up(frame, frame->next);
-    return result;
-  }
-
-  /* update timers */
   ++this->analyze_timer;
 
   /* "soft start" */
@@ -1318,7 +1310,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
    *    and height of frame ?
    *    -> no time-consuming copying 
    */
-  if(frame->bad_frame || !cropping_active || this->use_driver_crop) {
+  if(frame->bad_frame || !cropping_active || this->use_driver_crop || this->start_timer > 0) {
     _x_post_frame_copy_down(frame, frame->next);
     result = frame->next->draw(frame->next, stream);
     _x_post_frame_copy_up(frame, frame->next);
