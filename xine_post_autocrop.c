@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.27 2009-12-07 13:09:06 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.28 2009-12-08 11:22:26 phintuka Exp $
  *
  */
 
@@ -152,6 +152,9 @@ typedef struct autocrop_post_plugin_s
   int use_driver_crop;  /* true if non standard frame format (e.g. vdpau) used */
   int has_driver_crop;  /* true if driver has cropping capability */
   int has_unscaled_overlay; /* true if driver has unscaled overlay capability */
+  int prev_autodetect_rate;
+
+  pthread_mutex_t crop_lock;
 
   /* retrieval of standard frame format image */
   vo_frame_t frame;
@@ -1116,10 +1119,13 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   int result, start_line, end_line;
 
   if(!this->autodetect) {
+
+    pthread_mutex_lock(&this->crop_lock);
     this->start_line = frame->height/8;
     this->end_line   = frame->height*7/8;
     this->crop_total = frame->height/4;
     this->use_driver_crop = this->always_use_driver_crop || (frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2);
+    pthread_mutex_unlock(&this->crop_lock);
 
     if (frame->bad_frame || this->use_driver_crop) {
       _x_post_frame_copy_down(frame, frame->next);
@@ -1301,11 +1307,13 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   if (this->cropping_active != cropping_active)
     TRACE("draw: active %d -> %d\n", this->cropping_active, cropping_active);
 
+  pthread_mutex_lock(&this->crop_lock);
   this->cropping_active = cropping_active;
   this->start_line = start_line;
   this->end_line = end_line;
   this->crop_total = start_line + frame->height - end_line;
   this->use_driver_crop = this->always_use_driver_crop || (frame->format != XINE_IMGFMT_YV12 && frame->format != XINE_IMGFMT_YUY2);
+  pthread_mutex_unlock(&this->crop_lock);
 
   /*
    * do cropping 
@@ -1425,10 +1433,12 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
   autocrop_post_plugin_t *this  = (autocrop_post_plugin_t *)port->post;
   video_overlay_event_t  *event = (video_overlay_event_t *)event_gen;
 
+  pthread_mutex_lock(&this->crop_lock);
   int cropping_active = this->cropping_active;
   int crop_total = this->crop_total;
   int use_driver_crop = this->use_driver_crop;
   int start_line = this->start_line;
+  pthread_mutex_unlock(&this->crop_lock);
 
   if(cropping_active && crop_total>10) {
     if (event->event_type == OVERLAY_EVENT_SHOW) {
@@ -1574,6 +1584,7 @@ static void autocrop_dispose(post_plugin_t *this_gen)
 {
   if (_x_post_dispose(this_gen)) {
     autocrop_post_plugin_t *this = (autocrop_post_plugin_t *) this_gen;
+    pthread_mutex_destroy(&this->crop_lock);
     free(this->img);
     free(this);
   }
@@ -1635,6 +1646,8 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       int caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
       this->has_unscaled_overlay = caps & VO_CAP_UNSCALED_OVERLAY;
+
+      pthread_mutex_init(&this->crop_lock, NULL);
 
       return &this->post_plugin;
     }
