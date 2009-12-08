@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.28 2009-12-08 11:22:26 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.29 2009-12-08 11:43:03 phintuka Exp $
  *
  */
 
@@ -1188,6 +1188,17 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     else
       cropping_active = 0;
 
+    if(cropping_active && this->subs_detect) {
+      if(this->height_limit_active) {
+        this->height_limit_timer -= autodetect_rate;
+        if (this->height_limit_timer <= 0) {
+          this->height_limit_active = 0;
+          this->height_limit = frame->height;
+          TRACE("height limit timer expired\n");
+        }
+      }
+    }
+
     /* no change unless same values for several frames */
     if(this->stabilize &&
        (start_line != this->start_line ||
@@ -1205,6 +1216,36 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       }
     }
 
+    /* handle fixed subtitles inside bottom bar */
+    if(this->subs_detect) {
+      if(abs(this->start_line - start_line) > 5 ) {
+        /* reset height limit if top bar changes */
+        TRACE("height limit reset, top bar moved from %d -> %d\n", this->start_line, start_line);
+        this->height_limit_active = 0;
+        this->height_limit = frame->height;
+        this->height_limit_timer = 0;
+      }
+      if (end_line > this->end_line) {
+        if(!this->height_limit_active || 
+           this->height_limit < end_line) {
+          /* start or increase height limit */
+          TRACE("height limit %d -> %d (%d secs)\n", this->height_limit, end_line, HEIGHT_LIMIT_LIFETIME/25);
+          this->height_limit = end_line;
+          this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
+          this->height_limit_active = 1;
+        }
+        if(this->height_limit_active && this->height_limit_timer < HEIGHT_LIMIT_LIFETIME / 4) {
+          /* keep heigh limit timer running */
+          TRACE("height_limit_timer increment (still needed)\n");
+          this->height_limit_timer = HEIGHT_LIMIT_LIFETIME / 2;
+        }
+      }
+    }
+
+    /* apply height limit */
+    if(this->height_limit_active && end_line < this->height_limit)
+      end_line = this->height_limit;
+
   } else {
     /* reset when format changes */
     if(frame->height != this->prev_height)
@@ -1216,14 +1257,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   /* update timers */
   if(this->start_timer)
     this->start_timer--;
-
-  if(this->height_limit_timer) {
-    if (! --this->height_limit_timer) {
-      this->height_limit_active = 0;
-      this->height_limit = frame->height;
-      TRACE("height limit timer expired");
-    }
-  } 
 
   /* no cropping to be done ? */
   if (/*frame->bad_frame ||*/ !cropping_active || this->start_timer>0) {
@@ -1255,43 +1288,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       else if(diff > this->soft_start_step)
         diff = this->soft_start_step;
       end_line = this->end_line - diff;
-    }
-  }
-
-  /* handle fixed subtitles inside bottom bar */
-  if(this->subs_detect) {
-    if(abs(this->start_line - start_line) > 5 ) {
-      /* reset height limit if top bar changes */
-      TRACE("height limit reset, top bar moved from %d -> %d\n", 
-	    this->start_line, start_line);
-      this->height_limit_active = 0;
-      this->height_limit = frame->height;
-      this->height_limit_timer = 0;
-    }
-    if (end_line > this->end_line) {
-      if(!this->height_limit_active || 
-	 this->height_limit < end_line) {
-	/* start or increase height limit */
-	TRACE("height limit %d -> %d (%d secs)\n",
-	      this->height_limit, end_line,
-	      HEIGHT_LIMIT_LIFETIME/25);
-	this->height_limit = end_line;
-        this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
-	this->height_limit_active = 1;
-      }
-      if(this->height_limit_active && this->height_limit_timer < HEIGHT_LIMIT_LIFETIME / 4) {
-        /* keep heigh limit timer running */
-        TRACE("height_limit_timer increment (still needed)\n");
-	this->height_limit_timer = HEIGHT_LIMIT_LIFETIME / 2;
-      }
-    }
-
-    if(this->height_limit_active) {
-      /* apply height limit */
-      if(end_line < this->height_limit)
-	end_line = this->height_limit;
-    } else {
-      this->height_limit = frame->height;
     }
   }
 
