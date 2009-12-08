@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.31 2009-12-08 13:02:09 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.32 2009-12-08 13:22:22 phintuka Exp $
  *
  */
 
@@ -123,6 +123,14 @@ typedef struct autocrop_post_plugin_s
   int cropping_active;
 
   /* Detected bars */
+  int detected_end_line;
+  int prev_detected_end_line;
+
+  /* Stabilized bars */
+  int stabilized_start_line;
+  int stabilized_end_line;
+
+  /* Active bars */
   int start_line;
   int end_line;
   int crop_total;
@@ -1162,8 +1170,8 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   }
 
   if (cropping_active) {
-    start_line = this->start_line;
-    end_line = this->end_line;
+    start_line = this->stabilized_start_line;
+    end_line = this->stabilized_end_line;
   } else {
     start_line = 0;
     end_line = frame->height;
@@ -1181,15 +1189,19 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   /* Analyze frame for letterbox borders */
   if(!frame->bad_frame && (this->analyze_timer % autodetect_rate) == 0) {
     analyze_frame(frame, &start_line, &end_line);
+    int detected_end_line = end_line;
 
     /* activate cropping if bars are large enough */
     if(!cropping_active && (start_line > 10 || end_line < (frame->height - 10))) {
       cropping_active = 1;
+      this->stabilized_start_line = this->start_line = 0;
+      this->stabilized_end_line = this->end_line = this->detected_end_line = this->prev_detected_end_line = frame->height;
     }
     else
       cropping_active = 0;
 
     if(cropping_active && this->subs_detect) {
+          this->detected_end_line = end_line;
       if(this->height_limit_active) {
         this->height_limit_timer -= autodetect_rate;
         if (this->height_limit_timer <= 0) {
@@ -1202,36 +1214,36 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
 
     /* no change unless same values for several frames */
     if(this->stabilize &&
-       (start_line != this->start_line ||
-	end_line != this->end_line)) {
+       (start_line != this->stabilized_start_line ||
+	end_line != this->stabilized_end_line)) {
       if(this->stabilize_timer)
 	this->stabilize_timer--;
       else
 	this->stabilize_timer = 4;
-      if(this->stabilize_timer) {
-	TRACE("stabilize start_line: %d -> %d, end_line %d -> %d\n", 
-	      start_line, this->start_line,
-	      end_line, this->end_line);
-	start_line = this->start_line;
-	end_line = this->end_line;
+      if(this->stabilize_timer > 0) {
+        TRACE("stabilized start: %d -> %d, end %d -> %d\n",
+              this->stabilized_start_line, start_line,
+              this->stabilized_end_line, end_line);
+        start_line = this->stabilized_start_line;
+        end_line = this->stabilized_end_line;
       }
     }
 
     /* handle fixed subtitles inside bottom bar */
     if(cropping_active && this->subs_detect) {
-      if(abs(this->start_line - start_line) > 5 ) {
+      if(this->height_limit_active && abs(this->stabilized_start_line - start_line) > 5) {
         /* reset height limit if top bar changes */
-        TRACE("height limit reset, top bar moved from %d -> %d\n", this->start_line, start_line);
         this->height_limit_active = 0;
         this->height_limit = frame->height;
         this->height_limit_timer = 0;
-      }
-      if (end_line > this->end_line) {
-        if(!this->height_limit_active || 
-           this->height_limit < end_line) {
+        end_line = this->detected_end_line = detected_end_line;
+        TRACE("height limit reset, top bar moved from %d -> %d, bottom now %d\n", this->stabilized_start_line, start_line, end_line);
+
+      } else if (this->detected_end_line > this->prev_detected_end_line) {
+        if(!this->height_limit_active || this->height_limit < this->detected_end_line) {
           /* start or increase height limit */
           TRACE("height limit %d -> %d (%d secs)\n", this->height_limit, end_line, HEIGHT_LIMIT_LIFETIME/25);
-          this->height_limit = end_line;
+          this->height_limit = this->detected_end_line;
           this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
           this->height_limit_active = 1;
         }
@@ -1241,11 +1253,15 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
           this->height_limit_timer = HEIGHT_LIMIT_LIFETIME / 2;
         }
       }
+      this->prev_detected_end_line = this->detected_end_line;
     }
 
     /* apply height limit */
     if(this->height_limit_active && end_line < this->height_limit)
       end_line = this->height_limit;
+
+    this->stabilized_start_line = start_line;
+    this->stabilized_end_line = end_line;
   }
 
   /* update timers */
@@ -1255,8 +1271,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   ++this->analyze_timer;
 
   /* "soft start" */
-  int detected_start = start_line;
-  int detected_end = end_line;
   if(cropping_active && this->soft_start) {
     if(this->start_line != start_line) {
       int diff = this->start_line - start_line;
@@ -1311,10 +1325,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     result = crop_copy_yv12(frame, stream);
   else /*if(frame->format == XINE_IMGFMT_YUY2)*/
     result = crop_copy_yuy2(frame, stream);
-
-  /* forget stabilized values */
-  this->start_line = detected_start;
-  this->end_line = detected_end; 
 
   return result;
 }
