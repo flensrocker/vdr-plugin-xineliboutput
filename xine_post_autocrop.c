@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.30 2009-12-08 12:58:50 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.31 2009-12-08 13:02:09 phintuka Exp $
  *
  */
 
@@ -1246,13 +1246,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     /* apply height limit */
     if(this->height_limit_active && end_line < this->height_limit)
       end_line = this->height_limit;
-
-  } else {
-    /* reset when format changes */
-    if(frame->height != this->prev_height)
-      cropping_active = 0;
-    if(frame->width != this->prev_width)
-      cropping_active = 0;
   }
 
   /* update timers */
@@ -1347,13 +1340,15 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
        width  >= 480 && width  <= 768 &&
        height >= 288 && height <= 576);
 
-  if(!intercept) {
+  if(cropping_active && !intercept) {
     cropping_active = 0;
+    TRACE("get_frame: deactivate ratio %d width: %d height %d\n", (ratio == 4.0/3.0), width, height);
   }
 
   /* reset when format changes */
-  if (cropping_active && (height != this->prev_height || width != this->prev_width)) {
+  if (cropping_active && this->autodetect && (height != this->prev_height || width != this->prev_width)) {
     cropping_active = 0;
+    TRACE("get_frame: deactivate width %d -> %d height %d -> %d\n", this->prev_width, width, this->prev_height, height);
   }
 
   /* set new ratio when using driver crop */
