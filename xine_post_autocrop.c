@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.32 2009-12-08 13:22:22 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.33 2009-12-14 12:15:46 phintuka Exp $
  *
  */
 
@@ -66,9 +66,10 @@
 #define INFO(x...)   do {} while(0)
 
 #define START_TIMER_INIT               (25) /* 1 second, unit: frames */
-#define HEIGHT_LIMIT_LIFETIME          (60*25) /* 1 minute, unit: frames */
 #define DEFAULT_AUTODETECT_RATE          4      /* unit: frames */
 #define DEFAULT_SOFT_START_STEP          4      /* unit: lines per frame */
+#define DEFAULT_SUBS_DETECT_LIFETIME   (60*25)  /* 1 minute, unit: frames */
+#define DEFAULT_SUBS_DETECT_STABILIZE_TIME 12    /* unit: frames */
 
 #define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-left or top-right quarter) */
 
@@ -80,6 +81,8 @@ typedef struct autocrop_parameters_s {
   int    enable_autodetect;
   int    autodetect_rate;
   int    enable_subs_detect;
+  int    subs_detect_lifetime;
+  int    subs_detect_stabilize_time;
   int    soft_start;
   int    soft_start_step;
   int    stabilize;
@@ -93,6 +96,10 @@ PARAM_ITEM(POST_PARAM_TYPE_INT, autodetect_rate, NULL, 1, 30, 0,
   "rate of automatic letterbox detection")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_subs_detect, NULL, 0, 1, 0,
   "enable automatic subtitle detecton")
+PARAM_ITEM(POST_PARAM_TYPE_INT, subs_detect_lifetime, NULL, 0, 9999, 0,
+  "lifetime of automatic subtitle detection. 0 disables automatic")
+PARAM_ITEM(POST_PARAM_TYPE_INT, subs_detect_stabilize_time, NULL, 0, 9999, 0,
+  "stabilize time of automatic subtitle detection")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, soft_start, NULL, 0, 1, 0,
   "enable soft start of cropping")
 PARAM_ITEM(POST_PARAM_TYPE_INT, soft_start_step, NULL, 1, 999, 0,
@@ -114,6 +121,8 @@ typedef struct autocrop_post_plugin_s
   int autodetect;
   int autodetect_rate;
   int subs_detect;
+  int subs_detect_lifetime;
+  int subs_detect_stabilize_time;
   int soft_start;
   int soft_start_step;
   int stabilize;
@@ -156,6 +165,7 @@ typedef struct autocrop_post_plugin_s
   int height_limit_timer;   /* counter how many following frames must have black
 			       bottom bar until returning to full cropping
 			       (used to reset height_limit when there are no subtitles) */
+  int end_line_stabilize_timer; /* counter for detecting changes of end line */
 
   int use_driver_crop;  /* true if non standard frame format (e.g. vdpau) used */
   int has_driver_crop;  /* true if driver has cropping capability */
@@ -1157,7 +1167,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       int64_t dpts = frame->pts - this->prev_pts;
       if(dpts < INT64_C(-30*90000) || dpts > INT64_C(30*90000)) { /* 30 sec */
 	if(this->height_limit_active) {
-          this->height_limit_timer = START_TIMER_INIT;
+          this->height_limit_timer = this->subs_detect_lifetime / 2;
           TRACE("short pts jump reseted height limit\n");
 	}
       }
@@ -1196,12 +1206,23 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       cropping_active = 1;
       this->stabilized_start_line = this->start_line = 0;
       this->stabilized_end_line = this->end_line = this->detected_end_line = this->prev_detected_end_line = frame->height;
+      this->height_limit_active = 0;
+      this->end_line_stabilize_timer = this->subs_detect_stabilize_time;
     }
     else
       cropping_active = 0;
 
     if(cropping_active && this->subs_detect) {
+      /* no change unless different values for several frames */
+      if (abs(this->detected_end_line - end_line) > 5) {
+        this->end_line_stabilize_timer -= autodetect_rate;
+        if (this->end_line_stabilize_timer <= 0) {
           this->detected_end_line = end_line;
+          this->end_line_stabilize_timer = this->subs_detect_stabilize_time;
+        }
+      } else
+        this->end_line_stabilize_timer = this->subs_detect_stabilize_time;
+
       if(this->height_limit_active) {
         this->height_limit_timer -= autodetect_rate;
         if (this->height_limit_timer <= 0) {
@@ -1210,6 +1231,9 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
           TRACE("height limit timer expired\n");
         }
       }
+      /* apply height limit */
+      if(this->height_limit_active && end_line < this->height_limit)
+        end_line = this->height_limit;
     }
 
     /* no change unless same values for several frames */
@@ -1239,26 +1263,25 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         end_line = this->detected_end_line = detected_end_line;
         TRACE("height limit reset, top bar moved from %d -> %d, bottom now %d\n", this->stabilized_start_line, start_line, end_line);
 
-      } else if (this->detected_end_line > this->prev_detected_end_line) {
+      } else if (this->detected_end_line > (this->prev_detected_end_line + 5)) {
         if(!this->height_limit_active || this->height_limit < this->detected_end_line) {
           /* start or increase height limit */
-          TRACE("height limit %d -> %d (%d secs)\n", this->height_limit, end_line, HEIGHT_LIMIT_LIFETIME/25);
+          if (this->height_limit_active)
+            TRACE("height limit %d -> %d, prev bottom %d\n", this->height_limit, this->detected_end_line, this->prev_detected_end_line);
+          else
+            TRACE("activate height limit %d, prev bottom %d\n", this->detected_end_line, this->prev_detected_end_line);
           this->height_limit = this->detected_end_line;
-          this->height_limit_timer = HEIGHT_LIMIT_LIFETIME;
+          this->height_limit_timer = this->subs_detect_lifetime;
           this->height_limit_active = 1;
-        }
-        if(this->height_limit_active && this->height_limit_timer < HEIGHT_LIMIT_LIFETIME / 4) {
-          /* keep heigh limit timer running */
-          TRACE("height_limit_timer increment (still needed)\n");
-          this->height_limit_timer = HEIGHT_LIMIT_LIFETIME / 2;
+
+        } else if(this->height_limit_active && this->height_limit_timer < (this->subs_detect_lifetime / 4)) {
+          /* keep height limit timer running */
+          this->height_limit_timer = this->subs_detect_lifetime / 2;
+          TRACE("height_limit_timer increment bottom %d;%d -> %d\n", this->prev_detected_end_line, this->detected_end_line, detected_end_line);
         }
       }
       this->prev_detected_end_line = this->detected_end_line;
     }
-
-    /* apply height limit */
-    if(this->height_limit_active && end_line < this->height_limit)
-      end_line = this->height_limit;
 
     this->stabilized_start_line = start_line;
     this->stabilized_end_line = end_line;
@@ -1516,15 +1539,22 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->autodetect  = param->enable_autodetect;
   this->autodetect_rate = param->autodetect_rate;
   this->subs_detect = param->enable_subs_detect;
+  this->subs_detect_lifetime = param->subs_detect_lifetime;
+  this->subs_detect_stabilize_time = param->subs_detect_stabilize_time;
   this->soft_start  = param->soft_start;
   this->soft_start_step = param->soft_start_step;
   this->stabilize   = param->stabilize;
   this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
 
   TRACE("autocrop_set_parameters: "
-	"autodetect=%d  autodetect_rate=%d  subs_detect=%d  soft_start=%d  soft_start_step=%d stabilize=%d  use_driver_crop=%d\n",
-	this->autodetect, this->autodetect_rate, this->subs_detect,
-	this->soft_start, this->soft_start_step, this->stabilize,
+	"autodetect=%d  autodetect_rate=%d  "
+        "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
+        "soft_start=%d  soft_start_step=%d  "
+        "stabilize=%d  use_driver_crop=%d\n",
+	this->autodetect, this->autodetect_rate,
+        this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
+	this->soft_start, this->soft_start_step,
+        this->stabilize,
         this->always_use_driver_crop);
   return 1;
 }
@@ -1537,15 +1567,22 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->enable_autodetect  = this->autodetect;
   param->autodetect_rate  = this->autodetect_rate;
   param->enable_subs_detect = this->subs_detect;
+  param->subs_detect_lifetime = this->subs_detect_lifetime;
+  param->subs_detect_stabilize_time = this->subs_detect_stabilize_time;
   param->soft_start         = this->soft_start;
   param->soft_start_step = this->soft_start_step;
   param->stabilize          = this->stabilize;
   param->use_driver_crop    = this->always_use_driver_crop;
 
   TRACE("autocrop_get_parameters: "
-        "autodetect=%d  subs_detect=%d  soft_start=%d  soft_start_step=%d  stabilize=%d  use_driver_crop=%d\n",
-        this->autodetect, this->autodetect_rate, this->subs_detect,
-        this->soft_start, this->soft_start_step, this->stabilize,
+	"autodetect=%d  autodetect_rate=%d  "
+        "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
+        "soft_start=%d  soft_start_step=%d  "
+        "stabilize=%d  use_driver_crop=%d\n",
+	this->autodetect, this->autodetect_rate,
+        this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
+	this->soft_start, this->soft_start_step,
+        this->stabilize,
         this->always_use_driver_crop);
 
   return 1;
@@ -1560,6 +1597,8 @@ static char *autocrop_get_help(void) {
            "  enable_autodetect:          Enable automatic letterbox detection\n"
            "  autodetect_rate:            Rate of automatic letterbox detection\n"
            "  enable_subs_detect:         Enable automatic subtitle detection inside bottom bar\n"
+           "  subs_detect_lifetime:       Lifetime of automatic subtitle detection\n"
+           "  subs_detect_stabilize_time: Stabilize time of automatic subtitle detection\n"
            "  soft_start:                 Enable soft start of cropping\n"
            "  soft_start_step:            Soft start step width of cropping\n"
            "  stabilize:                  Stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
@@ -1630,6 +1669,8 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->autodetect  = 1;
       this->autodetect_rate = DEFAULT_AUTODETECT_RATE;
       this->subs_detect = 1;
+      this->subs_detect_lifetime = DEFAULT_SUBS_DETECT_LIFETIME;
+      this->subs_detect_stabilize_time = DEFAULT_SUBS_DETECT_STABILIZE_TIME;
       this->soft_start  = 1;
       this->soft_start_step = DEFAULT_SOFT_START_STEP;
       this->stabilize   = 1;
