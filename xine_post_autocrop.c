@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.33 2009-12-14 12:15:46 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.34 2009-12-14 12:31:43 phintuka Exp $
  *
  */
 
@@ -1185,15 +1185,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   } else {
     start_line = 0;
     end_line = frame->height;
-    this->start_line = 0;
-    this->end_line = frame->height;
     this->start_timer = START_TIMER_INIT;
-    this->prev_pts = -1;
-    if(this->height_limit_active) {
-      TRACE("height limit reset (no cropping)");
-    }
-    this->height_limit_active = 0;
-    this->height_limit = frame->height;
   }
 
   /* Analyze frame for letterbox borders */
@@ -1206,6 +1198,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       cropping_active = 1;
       this->stabilized_start_line = this->start_line = 0;
       this->stabilized_end_line = this->end_line = this->detected_end_line = this->prev_detected_end_line = frame->height;
+      this->prev_pts = -1;
       this->height_limit_active = 0;
       this->end_line_stabilize_timer = this->subs_detect_stabilize_time;
     }
@@ -1227,7 +1220,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         this->height_limit_timer -= autodetect_rate;
         if (this->height_limit_timer <= 0) {
           this->height_limit_active = 0;
-          this->height_limit = frame->height;
           TRACE("height limit timer expired\n");
         }
       }
@@ -1258,8 +1250,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       if(this->height_limit_active && abs(this->stabilized_start_line - start_line) > 5) {
         /* reset height limit if top bar changes */
         this->height_limit_active = 0;
-        this->height_limit = frame->height;
-        this->height_limit_timer = 0;
         end_line = this->detected_end_line = detected_end_line;
         TRACE("height limit reset, top bar moved from %d -> %d, bottom now %d\n", this->stabilized_start_line, start_line, end_line);
 
@@ -1674,8 +1664,6 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->soft_start  = 1;
       this->soft_start_step = DEFAULT_SOFT_START_STEP;
       this->stabilize   = 1;
-      this->start_line  = 0;
-      this->end_line    = 576;
 
       int caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
