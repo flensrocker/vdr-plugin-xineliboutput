@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.34 2009-12-14 12:31:43 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.35 2009-12-15 19:44:51 phintuka Exp $
  *
  */
 
@@ -65,8 +65,8 @@
 /*#define INFO         printf*/
 #define INFO(x...)   do {} while(0)
 
-#define START_TIMER_INIT               (25) /* 1 second, unit: frames */
 #define DEFAULT_AUTODETECT_RATE          4      /* unit: frames */
+#define DEFAULT_STABILIZE_TIME         (5*25)   /* 5 seconds, unit: frames */
 #define DEFAULT_SOFT_START_STEP          4      /* unit: lines per frame */
 #define DEFAULT_SUBS_DETECT_LIFETIME   (60*25)  /* 1 minute, unit: frames */
 #define DEFAULT_SUBS_DETECT_STABILIZE_TIME 12    /* unit: frames */
@@ -86,6 +86,7 @@ typedef struct autocrop_parameters_s {
   int    soft_start;
   int    soft_start_step;
   int    stabilize;
+  int    stabilize_time;
   int    use_driver_crop;
 } autocrop_parameters_t;
 
@@ -94,6 +95,8 @@ PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_autodetect, NULL, 0, 1, 0,
   "enable automatic border detecton")
 PARAM_ITEM(POST_PARAM_TYPE_INT, autodetect_rate, NULL, 1, 30, 0,
   "rate of automatic letterbox detection")
+PARAM_ITEM(POST_PARAM_TYPE_INT, stabilize_time, NULL, 1, 9999, 0,
+  "number of frames with equal bars before cropping value changes")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_subs_detect, NULL, 0, 1, 0,
   "enable automatic subtitle detecton")
 PARAM_ITEM(POST_PARAM_TYPE_INT, subs_detect_lifetime, NULL, 0, 9999, 0,
@@ -126,6 +129,7 @@ typedef struct autocrop_post_plugin_s
   int soft_start;
   int soft_start_step;
   int stabilize;
+  int stabilize_time;
   int always_use_driver_crop;
 
   /* Current cropping status */
@@ -145,9 +149,9 @@ typedef struct autocrop_post_plugin_s
   int crop_total;
 
   /* Delayed start for cropping */
-  int start_timer;
   int stabilize_timer;
 
+  /* frame counter (used to select frames for analysis) */
   int analyze_timer;
 
   /* Last seen frame */
@@ -1185,7 +1189,6 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   } else {
     start_line = 0;
     end_line = frame->height;
-    this->start_timer = START_TIMER_INIT;
   }
 
   /* Analyze frame for letterbox borders */
@@ -1198,12 +1201,11 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       cropping_active = 1;
       this->stabilized_start_line = this->start_line = 0;
       this->stabilized_end_line = this->end_line = this->detected_end_line = this->prev_detected_end_line = frame->height;
+      this->stabilize_timer = this->stabilize_time;
       this->prev_pts = -1;
       this->height_limit_active = 0;
       this->end_line_stabilize_timer = this->subs_detect_stabilize_time;
     }
-    else
-      cropping_active = 0;
 
     if(cropping_active && this->subs_detect) {
       /* no change unless different values for several frames */
@@ -1228,21 +1230,26 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         end_line = this->height_limit;
     }
 
-    /* no change unless same values for several frames */
-    if(this->stabilize &&
-       (start_line != this->stabilized_start_line ||
-	end_line != this->stabilized_end_line)) {
-      if(this->stabilize_timer)
-	this->stabilize_timer--;
-      else
-	this->stabilize_timer = 4;
+    /* no change unless different values for several frames */
+    if(abs(start_line - this->stabilized_start_line) > 5 || abs(end_line - this->stabilized_end_line) > 5) {
+      this->stabilize_timer -= autodetect_rate;
       if(this->stabilize_timer > 0) {
-        TRACE("stabilized start: %d -> %d, end %d -> %d\n",
-              this->stabilized_start_line, start_line,
-              this->stabilized_end_line, end_line);
         start_line = this->stabilized_start_line;
         end_line = this->stabilized_end_line;
       }
+      else {
+        /* ignore very small bars */
+        if(start_line <= 10 && end_line >= (frame->height - 10))
+          cropping_active = 0;
+        this->stabilize_timer = this->stabilize_time;
+        TRACE("stabilized start: %d -> %d, end %d -> %d\n",
+              this->stabilized_start_line, start_line,
+              this->stabilized_end_line, end_line);
+      }
+    } else {
+      this->stabilize_timer = this->stabilize_time;
+      start_line = this->stabilized_start_line;
+      end_line = this->stabilized_end_line;
     }
 
     /* handle fixed subtitles inside bottom bar */
@@ -1277,10 +1284,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
     this->stabilized_end_line = end_line;
   }
 
-  /* update timers */
-  if(this->start_timer)
-    this->start_timer--;
-
+  /* update frame counter */
   ++this->analyze_timer;
 
   /* "soft start" */
@@ -1330,7 +1334,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
    *    and height of frame ?
    *    -> no time-consuming copying 
    */
-  if(frame->bad_frame || !cropping_active || this->use_driver_crop || this->start_timer > 0) {
+  if(frame->bad_frame || !cropping_active || this->use_driver_crop) {
     _x_post_frame_copy_down(frame, frame->next);
     result = frame->next->draw(frame->next, stream);
     _x_post_frame_copy_up(frame, frame->next);
@@ -1534,17 +1538,18 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->soft_start  = param->soft_start;
   this->soft_start_step = param->soft_start_step;
   this->stabilize   = param->stabilize;
+  this->stabilize_time = param->stabilize_time;
   this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
 
   TRACE("autocrop_set_parameters: "
 	"autodetect=%d  autodetect_rate=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
-        "stabilize=%d  use_driver_crop=%d\n",
+        "stabilize=%d  stabilize_time=%d  use_driver_crop=%d\n",
 	this->autodetect, this->autodetect_rate,
         this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
 	this->soft_start, this->soft_start_step,
-        this->stabilize,
+        this->stabilize, this->stabilize_time,
         this->always_use_driver_crop);
   return 1;
 }
@@ -1562,17 +1567,18 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->soft_start         = this->soft_start;
   param->soft_start_step = this->soft_start_step;
   param->stabilize          = this->stabilize;
+  param->stabilize_time = this->stabilize_time;
   param->use_driver_crop    = this->always_use_driver_crop;
 
   TRACE("autocrop_get_parameters: "
 	"autodetect=%d  autodetect_rate=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
-        "stabilize=%d  use_driver_crop=%d\n",
+        "stabilize=%d  stabilize_time=%d  use_driver_crop=%d\n",
 	this->autodetect, this->autodetect_rate,
         this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
 	this->soft_start, this->soft_start_step,
-        this->stabilize,
+        this->stabilize, this->stabilize_time,
         this->always_use_driver_crop);
 
   return 1;
@@ -1586,6 +1592,7 @@ static char *autocrop_get_help(void) {
            "Parameters\n"
            "  enable_autodetect:          Enable automatic letterbox detection\n"
            "  autodetect_rate:            Rate of automatic letterbox detection\n"
+           "  stabilize_time:             Number of frames with equal bars before cropping value changes\n"
            "  enable_subs_detect:         Enable automatic subtitle detection inside bottom bar\n"
            "  subs_detect_lifetime:       Lifetime of automatic subtitle detection\n"
            "  subs_detect_stabilize_time: Stabilize time of automatic subtitle detection\n"
@@ -1655,9 +1662,9 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
 #else
       xine_list_append_content(this->post_plugin.input, input_param);
 #endif
-      this->cropping_active = 0;
       this->autodetect  = 1;
       this->autodetect_rate = DEFAULT_AUTODETECT_RATE;
+      this->stabilize_time = DEFAULT_STABILIZE_TIME;
       this->subs_detect = 1;
       this->subs_detect_lifetime = DEFAULT_SUBS_DETECT_LIFETIME;
       this->subs_detect_stabilize_time = DEFAULT_SUBS_DETECT_STABILIZE_TIME;
