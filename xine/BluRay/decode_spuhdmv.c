@@ -850,7 +850,7 @@ static void decode_segment(spuhdmv_decoder_t *this)
   XINE_HDMV_TRACE("*** new segment, pts %010ld: 0x%02x (%8d bytes)",
                   this->pts, this->buf->segment_type, this->buf->segment_len);
 
-  switch (this->buf->segment_type) {
+  switch (segbuf_segment_type(this->buf)) {
   case SEGTYPE_PALETTE:
     XINE_HDMV_TRACE("  segment: PALETTE\n");
     decode_palette(this);
