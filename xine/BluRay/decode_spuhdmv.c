@@ -45,10 +45,10 @@
 # include <xine/video_overlay.h>
 #endif
 
-#define TRACE(x...) printf(x)
-/*#define TRACE(x...) */
-#define ERROR(x...) fprintf(stderr, "spuhdmv: " x)
-/*#define ERROR(x...) lprintf(x) */
+#define XINE_HDMV_TRACE(x...) printf(x)
+/*#define XINE_HDMV_TRACE(x...) */
+#define XINE_HDMV_ERROR(x...) fprintf(stderr, "spuhdmv: " x)
+/*#define XINE_HDMV_ERROR(x...) lprintf(x) */
 
 #ifndef EXPORTED
 #  define EXPORTED __attribute__((visibility("default")))
@@ -81,7 +81,7 @@ struct subtitle_object_s {
   uint16_t    width, height;
 
   rle_elem_t *rle;
-  uint        num_rle;
+  unsigned int num_rle;
   size_t      data_size;
 
 #if 0
@@ -158,7 +158,7 @@ struct presentation_segment_s {
 
 #define LIST_REPLACE(list, obj, FREE_FUNC)      \
   do {						\
-    uint id = obj->id;				\
+    unsigned int id = obj->id;			\
 						\
     /* insert to list */			\
     obj->next = list;				\
@@ -260,7 +260,7 @@ static void segbuf_parse_segment_header(segment_buffer_t *buf)
     if ( buf->segment_type < 0x14 ||
 	 ( buf->segment_type > 0x18 &&
 	   buf->segment_type != 0x80)) {
-      ERROR("unknown segment type, resetting\n");
+      XINE_HDMV_ERROR("unknown segment type, resetting\n");
       segbuf_reset(buf);
     }
   } else {
@@ -299,10 +299,10 @@ static void segbuf_skip_segment(segment_buffer_t *buf)
 
     segbuf_parse_segment_header(buf);
 
-    TRACE("  skip_segment: %d bytes left\n", (uint)buf->len);
+    XINE_HDMV_TRACE("  skip_segment: %zd bytes left\n", buf->len);
   } else {
-    ERROR("  skip_segment: ERROR - %d bytes queued, %d required\n",
-          (uint)buf->len, buf->segment_len);
+    XINE_HDMV_ERROR("  skip_segment: ERROR - %zd bytes queued, %d required\n",
+                    buf->len, buf->segment_len);
     segbuf_reset (buf);
   }
 }
@@ -327,7 +327,7 @@ static uint8_t segbuf_get_u8(segment_buffer_t *buf)
 {
   if (!(buf->error = ++buf->segment_data > buf->segment_end))
     return buf->segment_data[-1];
-  ERROR("segbuf_get_u8: read failed (end of segment reached) !");
+  XINE_HDMV_ERROR("segbuf_get_u8: read failed (end of segment reached) !");
   return 0;
 }
 
@@ -349,7 +349,7 @@ static uint8_t *segbuf_get_string(segment_buffer_t *buf, size_t len)
     if (buf->segment_data <= buf->segment_end)
       return val;
   }
-  ERROR("segbuf_get_string(%d): read failed (end of segment reached) !", (int)len);
+  XINE_HDMV_ERROR("segbuf_get_string(%zd): read failed (end of segment reached) !", len);
   buf->error = 1;
   return NULL;
 }
@@ -371,12 +371,12 @@ static subtitle_clut_t *segbuf_decode_palette(segment_buffer_t *buf)
     return NULL;
 
   if (len % 5) {
-    ERROR("  decode_palette: segment size error (%d ; expected %d for %d entries)\n",
-	  (uint)len, (uint)(5 * entries), (uint)entries);
+    XINE_HDMV_ERROR("  decode_palette: segment size error (%zd ; expected %zd for %zd entries)\n",
+                    len, (5 * entries), entries);
     return NULL;
   }
-  TRACE("decode_palette: %d items (id %d, version %d)\n",
-	(uint)entries, palette_id, palette_version_number);
+  XINE_HDMV_TRACE("decode_palette: %zd items (id %d, version %d)\n",
+                  entries, palette_id, palette_version_number);
 
   /* convert to xine-lib clut */
   subtitle_clut_t *clut = calloc(1, sizeof(subtitle_clut_t));
@@ -465,8 +465,8 @@ static subtitle_object_t *segbuf_decode_object(segment_buffer_t *buf)
   uint8_t  version   = segbuf_get_u8 (buf);
   uint8_t  seq_desc  = segbuf_get_u8 (buf);
 
-  TRACE("  decode_object: object_id %d, version %d, seq 0x%x\n",
-        object_id, version, seq_desc);
+  XINE_HDMV_TRACE("  decode_object: object_id %d, version %d, seq 0x%x\n",
+                  object_id, version, seq_desc);
 
   //LIST_FIND();
   subtitle_object_t *obj = calloc(1, sizeof(subtitle_object_t));
@@ -478,7 +478,7 @@ static subtitle_object_t *segbuf_decode_object(segment_buffer_t *buf)
     obj->width    = segbuf_get_u16(buf);
     obj->height   = segbuf_get_u16(buf);
 
-    TRACE("    object length %d bytes, size %dx%d\n", data_len, obj->width, obj->height);
+    XINE_HDMV_TRACE("    object length %d bytes, size %dx%d\n", data_len, obj->width, obj->height);
 
     segbuf_decode_rle (buf, obj);
 
@@ -488,7 +488,7 @@ static subtitle_object_t *segbuf_decode_object(segment_buffer_t *buf)
     }
 
   } else {
-    ERROR("    TODO: APPEND RLE, length %d bytes\n", buf->segment_len - 4);
+    XINE_HDMV_ERROR("    TODO: APPEND RLE, length %d bytes\n", buf->segment_len - 4);
     /* TODO */
     free_subtitle_object(obj);
     return NULL;
@@ -508,8 +508,8 @@ static window_def_t *segbuf_decode_window_definition(segment_buffer_t *buf)
   wnd->width  = segbuf_get_u16 (buf);
   wnd->height = segbuf_get_u16 (buf);
 
-  TRACE("  window: [%02x %d]  %d,%d %dx%d\n", a,
-        wnd->id, wnd->xpos, wnd->ypos, wnd->width, wnd->height);
+  XINE_HDMV_TRACE("  window: [%02x %d]  %d,%d %dx%d\n", a,
+                  wnd->id, wnd->xpos, wnd->ypos, wnd->width, wnd->height);
 
   if (buf->error) {
     free(wnd);
@@ -525,7 +525,7 @@ static int segbuf_decode_video_descriptor(segment_buffer_t *buf)
   uint16_t height     = segbuf_get_u16(buf);
   uint8_t  frame_rate = segbuf_get_u8 (buf);
 
-  TRACE("  video_descriptor: %dx%d fps %d\n", width, height, frame_rate);
+  XINE_HDMV_TRACE("  video_descriptor: %dx%d fps %d\n", width, height, frame_rate);
   return buf->error;
 }
 
@@ -534,7 +534,7 @@ static int segbuf_decode_composition_descriptor(segment_buffer_t *buf, compositi
   descr->number = segbuf_get_u16(buf);
   descr->state  = segbuf_get_u8 (buf);
 
-  TRACE("  composition_descriptor: number %d, state %d\n", descr->number, descr->state);
+  XINE_HDMV_TRACE("  composition_descriptor: number %d, state %d\n", descr->number, descr->state);
   return buf->error;
 }
 
@@ -563,9 +563,9 @@ static composition_object_t *segbuf_decode_composition_object(segment_buffer_t *
     return NULL;
   }
 
-  TRACE("  composition_object: id: %d, win: %d, position %d,%d crop %d forced %d\n",
-        cobj->object_id_ref, cobj->window_id_ref, cobj->xpos, cobj->ypos,
-        cobj->cropped_flag, cobj->forced_flag);
+  XINE_HDMV_TRACE("  composition_object: id: %d, win: %d, position %d,%d crop %d forced %d\n",
+                  cobj->object_id_ref, cobj->window_id_ref, cobj->xpos, cobj->ypos,
+                  cobj->cropped_flag, cobj->forced_flag);
 
   return cobj;
 }
@@ -582,8 +582,8 @@ static presentation_segment_t *segbuf_decode_presentation_segment(segment_buffer
   seg->palette_id_ref       = segbuf_get_u8 (buf);
   seg->object_number        = segbuf_get_u8 (buf);
 
-  TRACE("  presentation_segment: object_number %d, palette %d\n",
-        seg->object_number, seg->palette_id_ref);
+  XINE_HDMV_TRACE("  presentation_segment: object_number %d, palette %d\n",
+                  seg->object_number, seg->palette_id_ref);
 
   for (index = 0; index < seg->object_number; index++) {
     composition_object_t *cobj = segbuf_decode_composition_object (buf);
@@ -689,7 +689,7 @@ static int decode_presentation_segment(spuhdmv_decoder_t *this)
   return 0;
 }
 
-static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uint palette_id_ref,
+static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, unsigned int palette_id_ref,
 			int overlay_index, int64_t pts, int force_update)
 {
   video_overlay_manager_t *ovl_manager = this->stream->video_out->get_overlay_manager(this->stream->video_out);
@@ -702,7 +702,7 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   while (clut && clut->id != palette_id_ref)
     clut = clut->next;
   if (!clut) {
-    TRACE("  show_overlay: clut %d not found !\n", palette_id_ref);
+    XINE_HDMV_TRACE("  show_overlay: clut %d not found !\n", palette_id_ref);
     return -1;
   }
 
@@ -711,7 +711,7 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   while (obj && obj->id != cobj->object_id_ref)
     obj = obj->next;
   if (!obj) {
-    TRACE("  show_overlay: object %d not found !\n", cobj->object_id_ref);
+    XINE_HDMV_TRACE("  show_overlay: object %d not found !\n", cobj->object_id_ref);
     return -1;
   }
 
@@ -720,7 +720,7 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   while (wnd && wnd->id != cobj->window_id_ref)
     wnd = wnd->next;
   if (!wnd) {
-    TRACE("  show_overlay: window %d not found !\n", cobj->window_id_ref);
+    XINE_HDMV_TRACE("  show_overlay: window %d not found !\n", cobj->window_id_ref);
     return -1;
   }
 
@@ -753,8 +753,8 @@ static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, uin
   overlay.hili_left   = -1;
   overlay.hili_right  = -1;
 
-  TRACE("    -> overlay: %d,%d %dx%d\n",
-        overlay.x, overlay.y, overlay.width, overlay.height);
+  XINE_HDMV_TRACE("    -> overlay: %d,%d %dx%d\n",
+                  overlay.x, overlay.y, overlay.width, overlay.height);
 
 
   /* set timings */
@@ -788,7 +788,7 @@ static void hide_overlays(spuhdmv_decoder_t *this, int64_t pts)
   int i = 0;
 
   while (this->overlay_handles[i] >= 0) {
-    TRACE("    -> HIDE %d\n", i);
+    XINE_HDMV_TRACE("    -> HIDE %d\n", i);
 
     video_overlay_manager_t *ovl_manager = this->stream->video_out->get_overlay_manager(this->stream->video_out);
     metronom_t              *metronom    = this->stream->metronom;
@@ -827,7 +827,7 @@ static void update_overlays(spuhdmv_decoder_t *this)
 
       for (i = 0; i < pseg->object_number; i++) {
         if (!cobj) {
-          ERROR("show_overlays: composition object %d missing !\n", i);
+          XINE_HDMV_ERROR("show_overlays: composition object %d missing !\n", i);
         } else {
           show_overlay(this, cobj, pseg->palette_id_ref, i, pseg->pts, !pseg->shown);
           cobj = cobj->next;
@@ -851,40 +851,40 @@ static void free_objs(spuhdmv_decoder_t *this)
 
 static void decode_segment(spuhdmv_decoder_t *this)
 {
-  TRACE("*** new segment, pts %010ld: 0x%02x (%8d bytes)",
-	 this->pts, (uint)this->buf->segment_type, (uint)this->buf->segment_len);
+  XINE_HDMV_TRACE("*** new segment, pts %010ld: 0x%02x (%8d bytes)",
+                  this->pts, this->buf->segment_type, this->buf->segment_len);
 
   switch (this->buf->segment_type) {
   case 0x14:
-    TRACE("  segment: PALETTE\n");
+    XINE_HDMV_TRACE("  segment: PALETTE\n");
     decode_palette(this);
     break;
   case 0x15:
-    TRACE("  segment: OBJECT\n");
+    XINE_HDMV_TRACE("  segment: OBJECT\n");
     decode_object(this);
     break;
   case 0x16:
-    TRACE("  segment: PRESENTATION SEGMENT\n");
+    XINE_HDMV_TRACE("  segment: PRESENTATION SEGMENT\n");
     decode_presentation_segment(this);
     break;
   case 0x17:
-    TRACE("  segment: WINDOW DEFINITION\n");
+    XINE_HDMV_TRACE("  segment: WINDOW DEFINITION\n");
     decode_window_definition(this);
     break;
   case 0x18:
-    TRACE("  segment: INTERACTIVE\n");
+    XINE_HDMV_TRACE("  segment: INTERACTIVE\n");
     break;
   case 0x80:
-    TRACE("  segment: END OF DISPLAY\n");
+    XINE_HDMV_TRACE("  segment: END OF DISPLAY\n");
     /* drop all cached objects */
     free_objs(this);
     break;
   default:
-    ERROR("  segment type 0x%x unknown, skipping\n", this->buf->segment_type);
+    XINE_HDMV_ERROR("  segment type 0x%x unknown, skipping\n", segbuf_segment_type(this->buf));
     break;
   }
   if (this->buf->error) {
-    ERROR("*** DECODE ERROR ***\n");
+    XINE_HDMV_ERROR("*** DECODE ERROR ***\n");
   }
 
   update_overlays (this);
