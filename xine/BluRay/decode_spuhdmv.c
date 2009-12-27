@@ -58,6 +58,15 @@
 #  define BUF_SPU_HDMV            0x04080000
 #endif
 
+enum {
+  SEGTYPE_PALETTE              = 0x14,
+  SEGTYPE_OBJECT               = 0x15,
+  SEGTYPE_PRESENTATION_SEGMENT = 0x16,
+  SEGTYPE_WINDOW_DEFINITION    = 0x17,
+  SEGTYPE_INTERACTIVE          = 0x18,
+  SEGTYPE_END_OF_DISPLAY       = 0x80,
+} eSegmentType;
+
 /*
  * cached palette (xine-lib format)
  */
@@ -842,26 +851,26 @@ static void decode_segment(spuhdmv_decoder_t *this)
                   this->pts, this->buf->segment_type, this->buf->segment_len);
 
   switch (this->buf->segment_type) {
-  case 0x14:
+  case SEGTYPE_PALETTE:
     XINE_HDMV_TRACE("  segment: PALETTE\n");
     decode_palette(this);
     break;
-  case 0x15:
+  case SEGTYPE_OBJECT:
     XINE_HDMV_TRACE("  segment: OBJECT\n");
     decode_object(this);
     break;
-  case 0x16:
+  case SEGTYPE_PRESENTATION_SEGMENT:
     XINE_HDMV_TRACE("  segment: PRESENTATION SEGMENT\n");
     decode_presentation_segment(this);
     break;
-  case 0x17:
+  case SEGTYPE_WINDOW_DEFINITION:
     XINE_HDMV_TRACE("  segment: WINDOW DEFINITION\n");
     decode_window_definition(this);
     break;
-  case 0x18:
+  case SEGTYPE_INTERACTIVE:
     XINE_HDMV_TRACE("  segment: INTERACTIVE\n");
     break;
-  case 0x80:
+  case SEGTYPE_END_OF_DISPLAY:
     XINE_HDMV_TRACE("  segment: END OF DISPLAY\n");
     /* drop all cached objects */
     free_objs(this);
