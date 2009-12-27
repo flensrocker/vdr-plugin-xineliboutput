@@ -341,19 +341,6 @@ static uint32_t segbuf_get_u24(segment_buffer_t *buf)
   return (segbuf_get_u8(buf) << 16) | (segbuf_get_u8(buf) << 8) | segbuf_get_u8(buf);
 }
 
-static uint8_t *segbuf_get_string(segment_buffer_t *buf, size_t len)
-{
-  if (len > 0) {
-    uint8_t *val = buf->segment_data;
-    buf->segment_data += len;
-    if (buf->segment_data <= buf->segment_end)
-      return val;
-  }
-  XINE_HDMV_ERROR("segbuf_get_string(%zd): read failed (end of segment reached) !", len);
-  buf->error = 1;
-  return NULL;
-}
-
 /*
  * decode segments
  */
