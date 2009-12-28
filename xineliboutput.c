@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.40 2009-10-12 18:12:09 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.41 2009-12-28 11:24:29 phintuka Exp $
  *
  */
 
@@ -304,6 +304,8 @@ const char **cPluginXinelibOutput::SVDRPHelpPages(void)
     "    Play/show image file.",
     "QMSC <file>\n"
     "    Queue music file to playlist.",
+    "LFRO <frontend>\n"
+    "    Start/stop local frontend. <frontend> can be none, sxfe or fbfe.",
     NULL
     };
   return HelpPages;
@@ -361,6 +363,17 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
       return cString("Queueing music file");
     } else {
       ReplyCode = 550; // Requested action not taken
+    }
+  }
+
+  else if(strcasecmp(Command, "LFRO") == 0) {
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      Service("StartFrontend-1.0", (void*)Option);
+      return cString::sprintf("Local frontend: %s", xc.local_frontend);
+    } else {
+      ReplyCode = 550; // Requested action not taken
+      return cString("Local frontend name missing");
     }
   }
 
