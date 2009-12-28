@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.22 2009-10-31 20:26:00 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.23 2009-12-28 12:06:00 phintuka Exp $
  *
  */
 /*
@@ -229,17 +229,17 @@ static void *lirc_receiver_thread(void *fe_gen)
         alarm(0);
 
       }
-      else if (repeat) { /* the last one was a repeat, so let's generate a release */
-        if (elapsed(LastTime) >= REPEATTIMEOUT) {
-          alarm(3);
-          fe->send_input_event(fe, "LIRC", LastKeyName, 0, 1);
-          alarm(0);
-          repeat = 0;
-          *LastKeyName = 0;
-          timeout = -1;
-        }
-      }
 
+    }
+    if (repeat && (!ready || ret < MIN_LIRCD_CMD_LEN)) { /* the last one was a repeat, so let's generate a release */
+      if (elapsed(LastTime) >= REPEATTIMEOUT) {
+        alarm(3);
+        fe->send_input_event(fe, "LIRC", LastKeyName, 0, 1);
+        alarm(0);
+        repeat = 0;
+        *LastKeyName = 0;
+        timeout = -1;
+      }
     }
   }
 
