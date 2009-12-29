@@ -344,9 +344,8 @@ static const char* bluray_plugin_get_mrl (input_plugin_t *this_gen)
 static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data, int data_type)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
-  int   channel = *((int *)data);
 
-  if (!this || !this->stream)
+  if (!this || !this->stream || !data)
     return INPUT_OPTIONAL_UNSUPPORTED;
 
   switch (data_type) {
@@ -365,7 +364,8 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      */
     case INPUT_OPTIONAL_DATA_AUDIOLANG:
       if (this->nav_title) {
-        CLPI_PROG *prog = &this->nav_title->clip_list.clip->cl->program.progs[0];
+        int        channel = *((int *)data);
+        CLPI_PROG *prog    = &this->nav_title->clip_list.clip->cl->program.progs[0];
         int i, n = 0;
         for (i=0 ; i < prog->num_streams; i++)
           if (prog->streams[i].pid >= 0x1100 && prog->streams[i].pid < 0x1200) {
@@ -389,7 +389,8 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      */
     case INPUT_OPTIONAL_DATA_SPULANG:
       if (this->nav_title) {
-        CLPI_PROG *prog = &this->nav_title->clip_list.clip->cl->program.progs[0];
+        int        channel = *((int *)data);
+        CLPI_PROG *prog    = &this->nav_title->clip_list.clip->cl->program.progs[0];
         int i, n = 0;
         for (i=0 ; i < prog->num_streams; i++)
           if (prog->streams[i].pid         >= 0x1200 && prog->streams[i].pid         <  0x1300 &&
