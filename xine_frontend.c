@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.103 2009-10-08 19:52:20 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.104 2009-12-29 13:48:48 phintuka Exp $
  *
  */
 
@@ -1213,14 +1213,14 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
 
   if(!this || this->playback_finished)
     return FE_XINE_ERROR;
-  if(this->terminate_key_pressed)
+  if (this->terminate_key_pressed)
     return FE_XINE_EXIT;
-  
-  if(slave_stream) {
-    if(!this->slave_stream || this->slave_playback_finished)
+
+  if (slave_stream) {
+    if (!this->slave_stream || this->slave_playback_finished)
       return FE_XINE_EXIT;
   }
-  
+
   return FE_XINE_RUNNING;
 }
 
