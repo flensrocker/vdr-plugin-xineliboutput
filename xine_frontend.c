@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.105 2009-12-29 13:56:14 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.106 2009-12-29 14:08:11 phintuka Exp $
  *
  */
 
@@ -90,6 +90,19 @@ static int guess_cpu_count(void)
     LOGDBG("Detected single CPU. Multithreaded decoding and post processing disabled.");
 
   return cores;
+}
+
+static void shutdown_system(char *cmd, int user_requested)
+{
+  const char *reason = user_requested ? "User requested system shutdown" : "Inactivity timer elapsed";
+
+  if (cmd) {
+    LOGMSG("%s. Executing '%s'", reason, cmd);
+    if (-1 == system(cmd))
+      LOGERR("Can't execute %s", cmd);
+  } else {
+    LOGMSG("%s, power off comand undefined!", reason);
+  }
 }
 
 /*
@@ -744,6 +757,18 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   return 1;
 }
 
+static void fe_shutdown_init(frontend_t *this_gen, const char *cmd, int timeout)
+{
+  fe_t *this = (fe_t*)this_gen;
+
+  free(this->shutdown_cmd);
+
+  this->shutdown_cmd     = cmd ? strdup(cmd) : NULL;
+  this->shutdown_timeout = timeout;
+
+  this->shutdown_time = (timeout <= 0) ? (time_t)-1 : time(NULL) + timeout;
+}
+
 /*
  * fe_xine_open
  *
@@ -1203,6 +1228,7 @@ static void fe_free(frontend_t *this_gen)
     fe_t *this = (fe_t*)this_gen;
     this->fe.fe_display_close(this_gen);
     free(this->configfile);
+    free(this->shutdown_cmd);
     free(this);
   }
 }
@@ -1221,6 +1247,14 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
   if (slave_stream) {
     if (!this->slave_stream || this->slave_playback_finished)
       return FE_XINE_EXIT;
+  }
+
+  /* check inactivity timer */
+  if (this->shutdown_timeout > 0) {
+    if (this->shutdown_time < time(NULL)) {
+      shutdown_system(this->shutdown_cmd, 0);
+      return FE_XINE_EXIT;
+    }
   }
 
   return FE_XINE_RUNNING;
@@ -1273,6 +1307,10 @@ static int fe_send_input_event(frontend_t *this_gen, const char *map,
 
   LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
+
+  /* reset inactivity timer */
+  if (this->shutdown_timeout > 0)
+    this->shutdown_time = time(NULL) + this->shutdown_timeout;
 
   /* local mode: --> vdr callback */
   if(this->keypress) {
@@ -1330,6 +1368,9 @@ static int fe_send_event(frontend_t *this_gen, const char *data)
 
   } else if(!strncasecmp(data, "DEINTERLACE ", 12)) {
     xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, atoi(data+12) ? 1 : 0);
+
+  } else if (!strcmp(data, "POWER_OFF")) {
+    shutdown_system(this->shutdown_cmd, 1);
 
   } else {
 
@@ -1944,6 +1985,8 @@ void init_fe(fe_t *fe)
   fe->fe.xine_stop        = fe_xine_stop;
   fe->fe.xine_close       = fe_xine_close;
   fe->fe.xine_exit        = fe_xine_exit;
+
+  fe->fe.shutdown_init    = fe_shutdown_init;
 
   fe->fe.fe_free          = fe_free;
 
