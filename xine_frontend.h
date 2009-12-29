@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.19 2009-05-31 16:51:25 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.20 2009-12-29 13:45:54 phintuka Exp $
  *
  */
 
@@ -91,6 +91,8 @@ struct frontend_s {
   int  (*xine_stop)(frontend_t*);
   void (*xine_close)(frontend_t*);
   void (*xine_exit)(frontend_t*);
+
+  void (*shutdown_init)(frontend_t*, const char *cmd, int timeout);
 
   /* Execution control */
   int  (*fe_run)(frontend_t*);

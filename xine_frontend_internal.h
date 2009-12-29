@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.5 2008-11-14 23:31:37 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.6 2009-12-29 13:45:54 phintuka Exp $
  *
  */
 
@@ -82,6 +82,9 @@ typedef struct fe_s {
   uint8_t     playback_finished : 1;
   uint8_t     slave_playback_finished : 1;
 
+  char       *shutdown_cmd;
+  int         shutdown_timeout;
+  time_t      shutdown_time;
 } fe_t;
 
 /* setup function pointers */
