@@ -69,7 +69,7 @@
 # define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
 #ifndef MAX
-# define MAX(a,b) ((a)<(b)?(a):(b))
+# define MAX(a,b) ((a)>(b)?(a):(b))
 #endif
 
 #define ALIGNED_UNIT_SIZE 6144
