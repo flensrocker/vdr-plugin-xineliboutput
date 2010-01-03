@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.83 2010-01-03 10:15:35 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.84 2010-01-03 11:52:22 phintuka Exp $
  *
  */
 
@@ -482,10 +482,11 @@ int main(int argc, char *argv[])
   char *mrl = NULL;
   char *video_driver = NULL;
   char *audio_driver = NULL;
-  char *audio_device = NULL;
-  char *video_port = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
+  char *p;
+  const char *audio_device = NULL;
+  const char *video_port = NULL;
   const char *aspect_controller = NULL;
   const char *tty = NULL;
   const char *exec_name = argv[0];
@@ -517,17 +518,19 @@ int main(int argc, char *argv[])
               list_xine_plugins(NULL, SysLogLevel>2);
               exit(0);
     case 'A': audio_driver = strdup(optarg);
-              audio_device = strchr(audio_driver, ':');
-              if (audio_device)
-                *(audio_device++) = 0;
+              if (NULL != (p = strchr(audio_driver, ':'))) {
+                *p = 0;
+                audio_device = p + 1;
+              }
               PRINTF("Audio driver: %s\n", audio_driver);
               if (audio_device)
                 PRINTF("Audio device: %s\n", audio_device);
               break;
     case 'V': video_driver = strdup(optarg);
-              video_port   = strchr(video_driver, ':');
-              if (video_port)
-                *(video_port++) = 0;
+              if (NULL != (p = strchr(video_driver, ':'))) {
+                *p = 0;
+                video_port = p + 1;
+              }
               PRINTF("Video driver: %s\n", video_driver);
               if (video_port)
                 PRINTF("Video port: %s\n", video_port);
@@ -535,7 +538,7 @@ int main(int argc, char *argv[])
 #ifndef IS_FBFE
     case 'W': window_id = atoi(optarg);
               break;
-    case 'd': video_port = strdup(optarg);
+    case 'd': video_port = optarg;
               break;
     case 'x': noxkbd = 1;
               break;
