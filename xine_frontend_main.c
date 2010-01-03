@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.81 2010-01-03 09:54:39 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.82 2010-01-03 10:01:42 phintuka Exp $
  *
  */
 
@@ -412,6 +412,8 @@ static const char help_str[] =
     "   --noxkbd                      Disable X11 keyboard input\n"
 #endif
     "   --hotkeys                     Enable frontend GUI hotkeys\n"
+    "   --shutdown=MIN[:CMD]          Shutdown after MIN minutes of inactivity\n"
+    "                                 USe CMD to perform shutdown (default: /sbin/shutdown)\n"
     "   --terminal=dev                Controlling tty"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
@@ -424,7 +426,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:p:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -444,6 +446,7 @@ static const struct option long_options[] = {
   { "lirc",       optional_argument, NULL, 'L' },
   { "config",     required_argument, NULL, 'C' },
   { "terminal",   required_argument, NULL, 'T' },
+  { "shutdown",   required_argument, NULL, 'p' },
 
   { "verbose", no_argument,  NULL, 'v' },
   { "silent",  no_argument,  NULL, 's' },
@@ -475,6 +478,7 @@ int main(int argc, char *argv[])
   int xmajor, xminor, xsub;
   int c;
   int xine_finished = FE_XINE_ERROR;
+  int inactivity_timer = 0;
   char *mrl = NULL;
   char *video_driver = NULL;
   char *audio_driver = NULL;
@@ -486,6 +490,7 @@ int main(int argc, char *argv[])
   const char *tty = NULL;
   const char *exec_name = argv[0];
   const char *config_file = NULL;
+  const char *power_off_cmd = NULL;
 
   extern const fe_creator_f fe_creator;
   frontend_t *fe = NULL;
@@ -584,6 +589,11 @@ int main(int argc, char *argv[])
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
               break;
+    case 'p': inactivity_timer = atoi(optarg);
+              power_off_cmd = strchr(optarg, ':');
+              power_off_cmd = power_off_cmd ? power_off_cmd+1 : "/sbin/shutdown";
+              PRINTF("Shutdown after %d minutes of inactivity using %s\n", inactivity_timer, power_off_cmd);
+              break;
     case 'P': if (static_post_plugins)
                 strcatrealloc(static_post_plugins, ";");
               static_post_plugins = strcatrealloc(static_post_plugins, optarg);
@@ -619,8 +629,10 @@ int main(int argc, char *argv[])
               PRINTF("GUI hotkeys enabled\n"
                      "  mapping keyboard f,F     -> fullscreen toggle\n"
                      "          keyboard d,D     -> deinterlace toggle\n"
+                     "          keyboard p,P     -> power off\n"
                      "          LIRC Deinterlace -> deinterlace toggle\n"
                      "          LIRC Fullscreen  -> fullscreen toggle\n"
+                     "          LIRC PowerOff    -> power off\n"
                      "          LIRC Quit        -> exit\n");
               break;
     case 'b': nokbd = daemon_mode = 1;
@@ -754,6 +766,9 @@ int main(int argc, char *argv[])
     list_xine_plugins(fe, SysLogLevel>2);
     fe->fe_free(fe);
     return -5;
+  }
+  if (power_off_cmd) {
+    fe->shutdown_init(fe, power_off_cmd, inactivity_timer * 60);
   }
 
   if (SysLogLevel > 2)
