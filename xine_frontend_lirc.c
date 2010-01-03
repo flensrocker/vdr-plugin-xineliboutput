@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.23 2009-12-28 12:06:00 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.24 2010-01-03 09:54:39 phintuka Exp $
  *
  */
 /*
@@ -210,6 +210,10 @@ static void *lirc_receiver_thread(void *fe_gen)
         if (gui_hotkeys) {
           if (!strcmp(KeyName, "Quit")) {
             fe->send_event(fe, "QUIT");
+            break;
+          }
+          if (!strcmp(KeyName, "PowerOff")) {
+            fe->send_event(fe, "POWER_OFF");
             break;
           }
           if (!strcmp(KeyName, "Fullscreen")) {

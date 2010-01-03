@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.116 2009-10-31 19:35:45 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.117 2010-01-03 09:54:39 phintuka Exp $
  *
  */
 
@@ -1425,6 +1425,11 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
       case XK_D:
         if (this->gui_hotkeys)
           fe_event = "TOGGLE_DEINTERLACE";
+        break;
+      case XK_p:
+      case XK_P:
+        if (this->gui_hotkeys)
+          fe_event = "POWER_OFF";
         break;
       case XK_Escape:
         if (!this->x.keypress) /* ESC exits only in remote mode */
