@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.106 2009-12-29 14:08:11 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.107 2010-01-03 21:51:49 phintuka Exp $
  *
  */
 
@@ -906,9 +906,11 @@ static void fe_post_rewire(const fe_t *this)
 
 static void fe_post_unload(const fe_t *this)
 {
-  LOGDBG("unloading post plugins");
-  vpplugin_unload_post(this->postplugins, NULL);
-  applugin_unload_post(this->postplugins, NULL);
+  if (this->postplugins) {
+    LOGDBG("unloading post plugins");
+    vpplugin_unload_post(this->postplugins, NULL);
+    applugin_unload_post(this->postplugins, NULL);
+  }
 }
 
 static void fe_post_close(const fe_t *this, const char *name, int which)
@@ -1141,6 +1143,9 @@ static int fe_xine_stop(frontend_t *this_gen)
   this->input_plugin      = NULL;
   this->playback_finished = 1;
 
+  if (!this->stream)
+    return 0;
+
   xine_stop(this->stream);
 
   fe_post_unwire(this);
@@ -1160,6 +1165,9 @@ static void fe_xine_close(frontend_t *this_gen)
       this->input_plugin->f.xine_input_event = NULL;
       this->input_plugin->f.fe_control       = NULL;
     }
+
+    if (!this->stream)
+      return;
 
     fe_xine_stop(this_gen);
 
