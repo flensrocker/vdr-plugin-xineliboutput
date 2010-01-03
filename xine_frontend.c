@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.107 2010-01-03 21:51:49 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.108 2010-01-03 21:56:10 phintuka Exp $
  *
  */
 
@@ -1202,9 +1202,15 @@ static void fe_xine_exit(frontend_t *this_gen)
       xine_dispose(this->stream);
     this->stream = NULL;
 
-    if(this->postplugins->pip_stream) 
-      xine_dispose(this->postplugins->pip_stream);
-    this->postplugins->pip_stream = NULL;
+    if (this->postplugins) {
+      if (this->postplugins->pip_stream)
+        xine_dispose(this->postplugins->pip_stream);
+      this->postplugins->pip_stream = NULL;
+
+      free(this->postplugins->static_post_plugins);
+    }
+    free(this->postplugins);
+    this->postplugins = NULL;
 
     if(this->slave_stream) 
       xine_dispose(this->slave_stream);
@@ -1219,11 +1225,6 @@ static void fe_xine_exit(frontend_t *this_gen)
     if(this->video_port)
       xine_close_video_driver(this->xine, this->video_port);
     this->video_port = NULL;
-
-    if(this->postplugins->static_post_plugins)
-      free(this->postplugins->static_post_plugins);
-    free(this->postplugins);
-    this->postplugins = NULL;
 
     xine_exit(this->xine);
     this->xine = NULL;
