@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.82 2010-01-03 10:01:42 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.83 2010-01-03 10:15:35 phintuka Exp $
  *
  */
 
@@ -486,7 +486,7 @@ int main(int argc, char *argv[])
   char *video_port = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
-  char *aspect_controller = NULL;
+  const char *aspect_controller = NULL;
   const char *tty = NULL;
   const char *exec_name = argv[0];
   const char *config_file = NULL;
@@ -549,13 +549,12 @@ int main(int argc, char *argv[])
               if (!strncmp(optarg, "16:10", 5))
                 aspect = 4;
               if (aspect == 0 && optarg[4] == ':')
-                aspect_controller = strdup(optarg+5);
+                aspect_controller = optarg + 5;
               PRINTF("Aspect ratio: %s\n",
                      aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
                      aspect==4?"16:10":"Default");
               if (aspect_controller)
-                PRINTF("Using %s to switch aspect ratio\n",
-                       aspect_controller);
+                PRINTF("Using %s to switch aspect ratio\n", aspect_controller);
               break;
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
@@ -858,7 +857,6 @@ int main(int argc, char *argv[])
   free(mrl);
   free(audio_driver);
   free(video_driver);
-  free(aspect_controller);
   free(lirc_dev);
 
   return xine_finished==FE_XINE_EXIT ? 0 : 1;
