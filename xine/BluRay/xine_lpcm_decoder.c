@@ -275,11 +275,11 @@ static audio_decoder_t *open_plugin (audio_decoder_class_t *class_gen, xine_stre
 }
 
 static char *get_identifier (audio_decoder_class_t *this) {
-  return "Linear PCM";
+  return "Linear PCM (BluRay)";
 }
 
 static char *get_description (audio_decoder_class_t *this) {
-  return "Linear PCM audio decoder plugin";
+  return "Linear PCM audio decoder plugin (BluRay)";
 }
 
 static void dispose_class (audio_decoder_class_t *this) {
@@ -306,11 +306,11 @@ static uint32_t audio_types[] = {
 
 static const decoder_info_t dec_info_audio = {
   audio_types,         /* supported types */
-  1                    /* priority        */
+  10                   /* priority        */
 };
 
 const plugin_info_t xine_plugin_info[] EXPORTED = {
   /* type, API, "name", version, special_info, init_function */
-  { PLUGIN_AUDIO_DECODER, 15, "pcm", XINE_VERSION_CODE, &dec_info_audio, init_plugin },
+  { PLUGIN_AUDIO_DECODER, 15, "pcm_bluray", XINE_VERSION_CODE, &dec_info_audio, init_plugin },
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
