@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.108 2010-01-03 21:56:10 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.109 2010-01-04 07:58:40 phintuka Exp $
  *
  */
 
@@ -652,7 +652,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   if(!this->video_port) {
     LOGMSG("fe_xine_init: xine_open_video_driver(\"%s\") failed",
 	   video_driver?video_driver:"(NULL)"); 
-    xine_exit(this->xine);
+    this->fe.xine_exit(this_gen);
     return 0;
   }
 
@@ -695,7 +695,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(!this->stream) {
     LOGMSG("fe_xine_init: xine_stream_new failed"); 
-    xine_exit(this->xine);
+    this->fe.xine_exit(this_gen);
     return 0;
   }
 
@@ -857,6 +857,9 @@ static void init_dummy_ports(fe_t *this, int on)
 
 static void fe_post_unwire(fe_t *this)
 {
+  if (!this || !this->stream)
+    return;
+
   xine_post_out_t  *vo_source = xine_get_video_source(this->stream);
   xine_post_out_t  *ao_source = xine_get_audio_source(this->stream);
 
