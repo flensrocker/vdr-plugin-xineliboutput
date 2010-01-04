@@ -39,13 +39,23 @@
 #include <fcntl.h>
 #include <netinet/in.h> /* ntohs */
 
+#ifdef HAVE_CONFIG_H
 #include "xine_internal.h"
 #include "audio_out.h"
 #include "buffer.h"
+#else
+#include <xine/xine_internal.h>
+#include <xine/audio_out.h>
+#include <xine/buffer.h>
+#endif
 
 #ifdef WIN32
 #include <winsock.h>
 /*#include <Winsock2.h>*/ /* htons */
+#endif
+
+#ifndef EXPORTED
+#  define EXPORTED __attribute__((visibility("default")))
 #endif
 
 typedef struct {
