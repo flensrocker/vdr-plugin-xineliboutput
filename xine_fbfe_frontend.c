@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.45 2009-05-31 16:51:26 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.46 2010-01-04 08:00:50 phintuka Exp $
  *
  */
 
@@ -36,12 +36,12 @@ typedef struct fbfe_s {
   };
 
   /* stored original handlers */
-  int (*fe_xine_init)(frontend_t *this_gen, const char *audio_driver, 
-		      const char *audio_port,
-		      const char *video_driver, 
-		      int pes_buffers,
-		      const char *static_post_plugins,
-		      const char *config_file);
+  int (*fe_xine_init)(frontend_t *this_gen, const char *audio_driver,
+                      const char *audio_port,
+                      const char *video_driver,
+                      int pes_buffers,
+                      const char *static_post_plugins,
+                      const char *config_file);
 
   /* display */
 /*char   *modeline;*/
@@ -270,12 +270,12 @@ static void fbfe_display_close(frontend_t *this_gen)
 #endif
 }
 
-static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver, 
-			  const char *audio_port,
-			  const char *video_driver, 
-			  int pes_buffers,
-			  const char *static_post_plugins,
-			  const char *config_file)
+static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
+                          const char *audio_port,
+                          const char *video_driver,
+                          int pes_buffers,
+                          const char *static_post_plugins,
+                          const char *config_file)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
@@ -283,7 +283,7 @@ static int fbfe_xine_init(frontend_t *this_gen, const char *audio_driver,
     update_DFBARGS(this->x.video_port_name);
 
   return this->fe_xine_init(this_gen, audio_driver, audio_port,
-			    video_driver, pes_buffers, static_post_plugins, config_file);
+                            video_driver, pes_buffers, static_post_plugins, config_file);
 }
 
 static frontend_t *fbfe_get_frontend(void)
