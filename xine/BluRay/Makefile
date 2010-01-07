@@ -9,6 +9,7 @@ BLURAY_INC_DIR ?= /usr/src/libbluray/src/
 #
 
 ENABLE_DEMUX_PLUGIN ?= yes
+ENABLE_PCM_PLUGIN   ?= yes
 
 ifeq ($(shell grep BLURAY $(BLURAY_INC_DIR)/bluray.h > /dev/null && echo yes), yes)
     ENABLE_INPUT_PLUGIN ?= yes
@@ -63,7 +64,7 @@ else
 endif
 
 ifeq ($(ENABLE_SPU_PLUGIN), yes)
-    XINESPUPLUGIN  = xineplug_decode_spuhdmv.so
+    XINESPUPLUGIN = xineplug_decode_spuhdmv.so
 else
     $(warning Not building HDMV SPU plugin)
 endif
@@ -74,6 +75,12 @@ else
     $(warning Not building BluRay input plugin)
 endif
 
+ifeq ($(ENABLE_PCM_PLUGIN), yes)
+    XINELPCMPLUGIN = xineplug_decode_lpcm_hdmv.so
+else
+    $(warning Not building BluRay PCM plugin)
+endif
+
 #
 # object files
 #
@@ -81,12 +88,13 @@ endif
 OBJS_XINEDMXPLUGIN   = demux_ts.o
 OBJS_XINESPUPLUGIN   = decode_spuhdmv.o
 OBJS_XINEINPUTPLUGIN = input_bluray.o
+OBJS_XINELPCMPLUGIN  = xine_lpcm_decoder.o
 
 #
 # rules
 #
 
-all: $(XINEDMXPLUGIN) $(XINESPUPLUGIN) $(XINEINPUTPLUGIN)
+all: $(XINEDMXPLUGIN) $(XINESPUPLUGIN) $(XINEINPUTPLUGIN) $(XINELPCMPLUGIN)
 
 ifeq ($(ENABLE_DEMUX_PLUGIN), yes)
 $(XINEDMXPLUGIN): $(OBJS_XINEDMXPLUGIN)
@@ -101,6 +109,11 @@ endif
 ifeq ($(ENABLE_INPUT_PLUGIN), yes)
 $(XINEINPUTPLUGIN): $(OBJS_XINEINPUTPLUGIN)
 	$(CC) $(LDFLAGS) $(LIBS_XINE) $(LIBS_BD) -o $@ $(OBJS_XINEINPUTPLUGIN)
+endif
+
+ifeq ($(ENABLE_PCM_PLUGIN), yes)
+$(XINELPCMPLUGIN): $(OBJS_XINELPCMPLUGIN)
+	$(CC) $(LDFLAGS) $(LIBS_XINE) -o $@ $(OBJS_XINELPCMPLUGIN)
 endif
 
 #
@@ -123,6 +136,10 @@ ifeq ($(ENABLE_INPUT_PLUGIN), yes)
 	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTPLUGIN)
 	@$(INSTALL) -m 0644 $(XINEINPUTPLUGIN) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTPLUGIN)
 endif
+ifeq ($(ENABLE_PCM_PLUGIN), yes)
+	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINELPCMPLUGIN)
+	@$(INSTALL) -m 0644 $(XINELPCMPLUGIN) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINELPCMPLUGIN)
+endif
 
 uninstall:
 ifeq ($(ENABLE_DEMUX_PLUGIN), yes)
@@ -136,4 +153,8 @@ endif
 ifeq ($(ENABLE_INPUT_PLUGIN), yes)
 	@echo Removing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTPLUGIN)
 	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTPLUGIN)
+endif
+ifeq ($(ENABLE_PCM_PLUGIN), yes)
+	@echo Removing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINELPCMPLUGIN)
+	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINELPCMPLUGIN)
 endif
