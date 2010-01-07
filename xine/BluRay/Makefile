@@ -12,31 +12,6 @@ ENABLE_DEMUX_PLUGIN = yes
 #endif
 
 #
-# targets
-#
-
-DESTDIR            = /
-XINEPLUGINDIR      = $(shell pkg-config libxine --variable=plugindir)
-
-ifeq ($(ENABLE_DEMUX_PLUGIN), yes)
-    XINEDMXPLUGIN  = xineplug_dmx_mpeg_ts_hdmv.so
-else
-    $(warning Not building HDMV MPEG-TS demuxer plugin)
-endif
-
-ifeq ($(ENABLE_SPU_PLUGIN), yes)
-    XINESPUPLUGIN  = xineplug_decode_spuhdmv.so
-else
-    $(warning Not building HDMV SPU plugin for xine-lib >= 1.1.17)
-endif
-
-ifeq ($(ENABLE_INPUT_PLUGIN), yes)
-    XINEINPUTPLUGIN= xineplug_inp_bluray.so
-else
-    $(warning Not building BluRay input plugin)
-endif
-
-#
 # compiler options
 #
 
@@ -59,6 +34,31 @@ LDFLAGS     += -shared -fvisibility=hidden
 
 ifeq ($(ENABLE_INPUT_PLUGIN), yes)
 LIBS_BD     ?= -L/usr/local/lib -lbluray
+endif
+
+#
+# targets
+#
+
+DESTDIR            = /
+XINEPLUGINDIR      = $(shell pkg-config libxine --variable=plugindir)
+
+ifeq ($(ENABLE_DEMUX_PLUGIN), yes)
+    XINEDMXPLUGIN  = xineplug_dmx_mpeg_ts_hdmv.so
+else
+    $(warning Not building HDMV MPEG-TS demuxer plugin)
+endif
+
+ifeq ($(ENABLE_SPU_PLUGIN), yes)
+    XINESPUPLUGIN  = xineplug_decode_spuhdmv.so
+else
+    $(warning Not building HDMV SPU plugin)
+endif
+
+ifeq ($(ENABLE_INPUT_PLUGIN), yes)
+    XINEINPUTPLUGIN= xineplug_inp_bluray.so
+else
+    $(warning Not building BluRay input plugin)
 endif
 
 #
