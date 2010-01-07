@@ -1,15 +1,28 @@
 #
+# deps
+#
+
+BLURAY_INC_DIR ?= /usr/src/libburay/trunk/libbluray/src/
+
+#
 # select plugins
 #
 
-ENABLE_INPUT_PLUGIN = yes
-ENABLE_DEMUX_PLUGIN = yes
+ENABLE_DEMUX_PLUGIN ?= yes
 
-#ifeq ($(shell pkg-config libxine --atleast-version=1.1.17 || echo "yes"), yes)
-    ENABLE_SPU_PLUGIN = yes
-#else
-#    ENABLE_SPU_PLUGIN = no
-#endif
+ifeq ($(shell grep BLURAY $(BLURAY_INC_DIR)/bluray.h > /dev/null && echo yes), yes)
+    ENABLE_INPUT_PLUGIN ?= yes
+else
+    ENABLE_INPUT_PLUGIN ?= no
+    $(warning libbluray not found)
+endif
+
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.17 || echo "yes"), yes)
+    ENABLE_SPU_PLUGIN ?= yes
+else
+    ENABLE_SPU_PLUGIN ?= no
+    $(warning SPU plugin is included in xine-lib 1.1.17+)
+endif
 
 #
 # compiler options
@@ -22,7 +35,7 @@ DESTDIR      = /
 INSTALL      = install
 
 ifeq ($(ENABLE_INPUT_PLUGIN), yes)
-CFLAGS_BD   ?= -I/usr/src/libburay/libbluray/trunk/src/
+CFLAGS_BD   ?= -I$(BLURAY_INC_DIR)
 endif
 
 #
