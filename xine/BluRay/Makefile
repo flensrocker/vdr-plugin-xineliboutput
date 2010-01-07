@@ -2,7 +2,7 @@
 # deps
 #
 
-BLURAY_INC_DIR ?= /usr/src/libburay/trunk/libbluray/src/
+BLURAY_INC_DIR ?= /usr/src/libbluray/src/
 
 #
 # select plugins
@@ -29,9 +29,9 @@ endif
 #
 
 CFLAGS      += -O2 -fPIC
+CFLAGS      += -Wall
 CFLAGS      += $(shell pkg-config libxine --cflags)
 CFLAGS      += $(CFLAGS_BD)
-DESTDIR      = /
 INSTALL      = install
 
 ifeq ($(ENABLE_INPUT_PLUGIN), yes)
@@ -53,7 +53,7 @@ endif
 # targets
 #
 
-DESTDIR            = /
+DESTDIR           ?= /
 XINEPLUGINDIR      = $(shell pkg-config libxine --variable=plugindir)
 
 ifeq ($(ENABLE_DEMUX_PLUGIN), yes)
