@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.84 2010-01-03 11:52:22 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.85 2010-01-09 23:31:42 phintuka Exp $
  *
  */
 
@@ -414,7 +414,7 @@ static const char help_str[] =
     "   --hotkeys                     Enable frontend GUI hotkeys\n"
     "   --shutdown=MIN[:CMD]          Shutdown after MIN minutes of inactivity\n"
     "                                 USe CMD to perform shutdown (default: /sbin/shutdown)\n"
-    "   --terminal=dev                Controlling tty"
+    "   --terminal=dev                Controlling tty\n"
     "   --daemon                      Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
     "   --slave                       Enable slave mode (read commands from stdin)\n"
