@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.38 2009-08-19 17:15:37 phintuka Exp $
+ * $Id: osd.c,v 1.39 2010-01-10 08:38:53 rofafor Exp $
  *
  */
 
@@ -19,6 +19,10 @@
 #include "tools/rle.h"
 
 #include "osd.h"
+
+#ifndef OSD_LEVEL_TTXTSUBS
+#define OSD_LEVEL_TTXTSUBS 20 // from ttxtsubs plugin
+#endif
 
 //#define LIMIT_OSD_REFRESH_RATE
 
@@ -366,11 +370,16 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
 
 #if VDRVERSNUM >= 10708
 
-  double Aspect;
-  int    W, H;
-  m_Device->GetOsdSize(W, H, Aspect);
-  m_ExtentWidth  = W;
-  m_ExtentHeight = H;
+  if(xc.osd_scaling && ((m_Layer==OSD_LEVEL_SUBTITLES) || (m_Layer==OSD_LEVEL_TTXTSUBS))) {
+    m_ExtentWidth  = 720;
+    m_ExtentHeight = 576;
+  } else {
+    double Aspect;
+    int    W, H;
+    m_Device->GetOsdSize(W, H, Aspect);
+    m_ExtentWidth  = W;
+    m_ExtentHeight = H;
+  }
 
 #else
 
@@ -439,9 +448,16 @@ void cXinelibOsd::Flush(void)
   if(!m_IsVisible)
     return;
 
-  int SendDone = 0;
+  int SendDone = 0, XOffset = 0, YOffset = 0;
+  if(!xc.osd_scaling && ((m_Layer==OSD_LEVEL_SUBTITLES) || (m_Layer==OSD_LEVEL_TTXTSUBS))) {
+    double Aspect;
+    int    W, H;
+    m_Device->GetOsdSize(W, H, Aspect);
+    XOffset = (H - 576) > 0 ? (H - 576) : 0;
+    YOffset = ((W - 720) / 2) ? ((W - 720) / 2) : 0;
+  }
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
-    int x1 = 0, y1 = 0, x2 = Bitmap->Width()-1, y2 = Bitmap->Height()-1;
+    int x1 = XOffset, y1 = YOffset, x2 = x1+Bitmap->Width()-1, y2 = y1+Bitmap->Height()-1;
     if (m_Refresh || Bitmap->Dirty(x1, y1, x2, y2)) {
 
       /* XXX what if only palette has been changed ? */
