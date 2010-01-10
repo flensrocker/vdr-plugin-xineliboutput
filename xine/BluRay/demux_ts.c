@@ -498,6 +498,40 @@ static void demux_send_special_spu_buf( demux_ts_t *this, uint32_t spu_type, int
   this->video_fifo->put( this->video_fifo, buf );
 }
 
+static void demux_send_special_audio_buf( demux_ts_t *this, uint16_t stream_type, int audio_channel )
+{
+  uint32_t type = 0;
+
+  switch(stream_type) {
+  case ISO_11172_AUDIO:
+  case ISO_13818_AUDIO:        type = BUF_AUDIO_MPEG;    break;
+  case ISO_13818_PART7_AUDIO:
+  case ISO_14496_PART3_AUDIO:  type = BUF_AUDIO_AAC;     break;
+  default:
+  case STREAM_AUDIO_AC3:       type = BUF_AUDIO_A52;     break;
+  }
+
+  if (this->hdmv > 0) {
+    switch(stream_type) {
+    case HDMV_AUDIO_80_PCM:    type = BUF_AUDIO_LPCM_BE; break;
+    case HDMV_AUDIO_83_TRUEHD:
+    case STREAM_AUDIO_AC3:     type = BUF_AUDIO_A52;     break;
+    case HDMV_AUDIO_82_DTS:
+    case HDMV_AUDIO_85_DTS_HRA:
+    case HDMV_AUDIO_86_DTS_HD_MA: type = BUF_AUDIO_DTS;  break;
+    }
+  }
+
+  if (type && this->audio_fifo) {
+    buf_element_t *buf = this->audio_fifo->buffer_pool_alloc( this->audio_fifo );
+    buf->type          = type | audio_channel;
+    buf->decoder_flags = BUF_FLAG_PREVIEW;
+    buf->content       = buf->mem;
+    buf->size          = 0;
+    this->audio_fifo->put( this->audio_fifo, buf );
+  }
+}
+
 /*
  * demux_ts_update_spu_channel
  *
@@ -1425,6 +1459,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
             this->media[this->media_num].type = this->audio_tracks_count;
             demux_ts_get_lang_desc(this, this->audio_tracks[this->audio_tracks_count].lang,
 			       stream + 5, stream_info_length);
+            demux_send_special_audio_buf(this, stream[0], this->audio_tracks_count);
             this->audio_tracks_count++;
         }
       }
@@ -1465,6 +1500,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
           this->media[this->media_num].type = this->audio_tracks_count;
           demux_ts_get_lang_desc(this, this->audio_tracks[this->audio_tracks_count].lang,
                                  stream + 5, stream_info_length);
+          demux_send_special_audio_buf(this, STREAM_AUDIO_AC3, this->audio_tracks_count);
           this->audio_tracks_count++;
           break;
           }
@@ -1590,6 +1626,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
                 this->media[this->media_num].type = this->audio_tracks_count;
                 demux_ts_get_lang_desc(this, this->audio_tracks[this->audio_tracks_count].lang,
                                        stream + 5, stream_info_length);
+                demux_send_special_audio_buf(this, stream[0], this->audio_tracks_count);
                 this->audio_tracks_count++;
                 break;
             }
