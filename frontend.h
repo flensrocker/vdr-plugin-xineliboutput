@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.32 2010-01-16 20:11:19 phintuka Exp $
+ * $Id: frontend.h,v 1.33 2010-01-16 20:55:05 phintuka Exp $
  *
  */
 
@@ -51,6 +51,9 @@ class cXinelibThread : public cThread, public cListObject
     void SetSubtitleTrack(eTrackType Track);
 
     virtual void TrickSpeed(int Speed, bool Backwards);
+
+    // Sync(): wait until all pending control messages have been processed by the client
+    virtual void Sync(void) { return Xine_Control("SYNC"); };
 
   protected:
     int  Xine_Control(const char *cmd, const char *p1);
