@@ -4,11 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.82 2009-09-28 12:22:14 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.83 2010-01-16 20:07:13 phintuka Exp $
  *
  */
 
 #define __STDC_FORMAT_MACROS
+#define __STDC_CONSTANT_MACROS
 #include <inttypes.h>
 
 #include <stdlib.h>
@@ -348,7 +349,7 @@ int64_t cXinelibServer::GetSTC(void)
   // check if there are any clients
   if(!HasClients()) {
     Unlock();
-    return -1ULL;
+    return INT64_C(-1);
   }
 
   // Query client(s)
@@ -359,7 +360,7 @@ int64_t cXinelibServer::GetSTC(void)
 
   if(! m_StcFuture->Wait(200)) {
     LOGMSG("cXinelibServer::GetSTC timeout (200ms)");
-    return -1ULL;
+    return INT64_C(-1);
   }
 
   //if(delay.Elapsed() > 0 && !is_Paused)
@@ -570,7 +571,6 @@ int cXinelibServer::Xine_Control(const char *cmd)
     int len = snprintf(buf, sizeof(buf), "%s\r\n", cmd);
     if(len >= (int)sizeof(buf)) {
       LOGMSG("Xine_Control: command truncated !");
-      //len = sizeof(buf);
       return 0;
     }
 
