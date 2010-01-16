@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.25 2010-01-16 20:11:19 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.26 2010-01-16 20:13:37 phintuka Exp $
  *
  */
 
@@ -27,7 +27,7 @@ class cConnState;
 
 #include "tools/cxsocket.h"
 
-class cXinelibServer : public cXinelibThread 
+class cXinelibServer : public cXinelibThread
 {
 
   public:
@@ -51,23 +51,23 @@ class cXinelibServer : public cXinelibThread
     virtual void    SetHDMode(bool On);
 
     // Image grabbing
-    virtual uchar  *GrabImage(int &Size, bool Jpeg, int Quality, 
+    virtual uchar  *GrabImage(int &Size, bool Jpeg, int Quality,
 			      int SizeX, int SizeY);
     // Playback files
     virtual int     PlayFileCtrl(const char *Cmd, int TimeoutMs=-1);
     virtual bool    EndOfStreamReached(void);
 
-    // Configuration						  
+    // Configuration
     virtual bool    Listen(int port);
 
 protected:
     // Playback control
-    virtual int     Xine_Control(const char *cmd);  
-    virtual int     Xine_Control_Sync(const char *cmd);  
+    virtual int     Xine_Control(const char *cmd);
+    virtual int     Xine_Control_Sync(const char *cmd);
 
 protected:
 
-    // Handling of messages from client(s) 
+    // Handling of messages from client(s)
 
     void Handle_Discovery_Broadcast(void);
     void Handle_ClientConnected(int fd);
