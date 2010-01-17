@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.1 2009-05-22 21:02:30 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.2 2010-01-17 23:03:26 phintuka Exp $
  *
  */
 
@@ -24,13 +24,21 @@
 static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
 {
   xvdr_metronom_t *this = (xvdr_metronom_t *)metronom;
+  uint64_t          pts = frame->pts;
 
   this->video_frames++;
 
- if (this->frame_decoded)
-   this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
+  if (this->frame_decoded)
+    this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
 
-  return this->orig_metronom->got_video_frame (this->orig_metronom, frame);
+  if (this->trickspeed < 0) {
+    frame->pts       = 0;
+    frame->duration *= (-this->trickspeed);
+  }
+
+  this->orig_metronom->got_video_frame (this->orig_metronom, frame);
+
+  frame->pts = pts;
 }
 
 static int64_t got_audio_samples(metronom_t *metronom, int64_t pts, int nsamples)
@@ -39,8 +47,8 @@ static int64_t got_audio_samples(metronom_t *metronom, int64_t pts, int nsamples
 
   this->audio_frames++;
 
- if (this->frame_decoded)
-   this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
+  if (this->frame_decoded)
+    this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
 
   return this->orig_metronom->got_audio_samples (this->orig_metronom, pts, nsamples);
 }
@@ -130,6 +138,11 @@ static void xvdr_metronom_reset_frames(xvdr_metronom_t *this)
   this->video_frames = this->audio_frames = 0;
 }
 
+static void xvdr_metronom_set_trickspeed(xvdr_metronom_t *this, int trickspeed)
+{
+  this->trickspeed = trickspeed;
+}
+
 /*
  * init
  */
@@ -141,9 +154,10 @@ xvdr_metronom_t *xvdr_metronom_init(xine_stream_t *stream)
   this->stream        = stream;
   this->orig_metronom = stream->metronom;
 
-  this->set_cb       = xvdr_metronom_set_cb;
-  this->reset_frames = xvdr_metronom_reset_frames;
-  this->dispose      = xvdr_metronom_dispose;
+  this->set_cb         = xvdr_metronom_set_cb;
+  this->reset_frames   = xvdr_metronom_reset_frames;
+  this->set_trickspeed = xvdr_metronom_set_trickspeed;
+  this->dispose        = xvdr_metronom_dispose;
 
   this->metronom.set_audio_rate    = set_audio_rate;
   this->metronom.got_video_frame   = got_video_frame;
