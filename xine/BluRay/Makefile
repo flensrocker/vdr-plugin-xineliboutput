@@ -31,6 +31,7 @@ endif
 
 CFLAGS      += -O2 -fPIC
 CFLAGS      += -Wall
+CFLAGS      += -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 CFLAGS      += $(shell pkg-config libxine --cflags)
 CFLAGS      += $(CFLAGS_BD)
 INSTALL      = install
