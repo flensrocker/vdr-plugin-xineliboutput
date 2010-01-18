@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.72 2009-11-15 11:58:12 phintuka Exp $
+ * $Id: menu.c,v 1.73 2010-01-18 22:50:23 phintuka Exp $
  *
  */
 
@@ -139,6 +139,13 @@ void cMenuBrowseFiles::Set(void)
   if(!m_CurrentDir) 
     m_CurrentDir = strdup(m_ConfigLastDir);
 
+  int RootDirLen = strlen(xc.media_root_dir);
+  if (strncmp(m_CurrentDir, xc.media_root_dir, RootDirLen)) {
+    LOGMSG("Not allowing browsing to %s (root is %s)", m_CurrentDir, xc.media_root_dir);
+    free(m_CurrentDir);
+    m_CurrentDir = strdup(xc.media_root_dir);
+  }
+
   if(m_CurrentDir[0] != '/') {
     free(m_CurrentDir);
     m_CurrentDir = strdup(VideoDirectory);
@@ -152,7 +159,8 @@ void cMenuBrowseFiles::Set(void)
   }
 
   // add link to parent folder
-  if(strlen(m_CurrentDir) > 1)
+  int CurrentDirLen = strlen(m_CurrentDir);
+  if (CurrentDirLen > 1 && CurrentDirLen > RootDirLen)
     Add(new cFileListItem("..",true));
 
   Sort();
