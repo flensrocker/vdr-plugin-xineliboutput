@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.288 2009-10-08 19:48:19 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.289 2010-01-18 20:39:36 phintuka Exp $
  *
  */
 
@@ -127,7 +127,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.288 2009-10-08 19:48:19 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.289 2010-01-18 20:39:36 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4980,7 +4980,7 @@ static int connect_control_stream(vdr_input_plugin_t *this, const char *host,
   }
   LOGMSG("Server greeting: %s", tmpbuf);
   if(!strncmp(tmpbuf, "Access denied", 13)) {
-    LOGMSG("Maybe host address is missing from server-side svdrphosts.conf ?");
+    LOGMSG("Maybe host address is missing from server-side plugins/xineliboutput/allowed_hosts.conf ?");
     close(fd_control);
     this->fd_control = saved_fd;
     return -1;
