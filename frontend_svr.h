@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.26 2010-01-16 20:13:37 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.27 2010-01-18 18:00:30 phintuka Exp $
  *
  */
 
@@ -115,6 +115,7 @@ protected:
     int  m_MasterCli;      // Master client (controls playback speed)
 
     cString m_PipesDir;
+    cString m_AllowedHostsFile;
 
     cBackgroundWriterI *m_Writer[MAXCLIENTS]; // buffered output (pipe/tcp/http)
     cConnState         *m_State[MAXCLIENTS];  // connection state (http/rtsp)

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.84 2010-01-16 20:11:19 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.85 2010-01-18 18:00:30 phintuka Exp $
  *
  */
 
@@ -47,6 +47,8 @@
 #include "device.h"
 #include "osd.h"
 
+#define ALLOWED_HOSTS_FILE "xineliboutput/allowed_hosts.conf"
+
 #define MAX_OSD_TIMEOUTS  (25*5)      /* max. rate 25 updates/s -> at least 5 seconds */
 #define LOG_OSD_BANDWIDTH (128*1024)  /* log messages if OSD bandwidth > 1 Mbit/s */
 
@@ -65,6 +67,21 @@ class cStcFuture : public cFuture<int64_t> {};
 class cReplyFuture : public cFuture<int>, public cListObject {};
 class cGrabReplyFuture : public cFuture<grab_result_t>, public cListObject {};
 class cCmdFutures : public cHash<cReplyFuture> {};
+
+class cAllowedHosts : public cSVDRPhosts {
+  public:
+    cAllowedHosts(const cString& AllowedHostsFile)
+    {
+      if (!Load(AllowedHostsFile, true, true)) {
+        LOGMSG("Invalid or missing %s. Adding 127.0.0.1 to list of allowed hosts.", *AllowedHostsFile);
+        cSVDRPhost *localhost = new cSVDRPhost;
+        if (localhost->Parse("127.0.0.1"))
+          Add(localhost);
+        else
+          delete localhost;
+      }
+    }
+};
 
 
 //----------------------------- cXinelibServer --------------------------------
@@ -125,10 +142,14 @@ cXinelibServer::cXinelibServer(int listen_port) :
   m_Futures    = new cCmdFutures;
 
   cString Base(cPlugin::ConfigDirectory());
-  if(*Base)
+  if(*Base) {
     m_PipesDir = cString::sprintf("%s/xineliboutput/pipes.%d", *Base, getpid());
-  else
+    m_AllowedHostsFile = cString::sprintf("%s/" ALLOWED_HOSTS_FILE, *Base);
+  } else {
+    LOGMSG("cXinelibServer: cPlugin::ConfigDirectory() failed !");
     m_PipesDir = cString::sprintf("/tmp/xineliboutput/pipes.%d", getpid());
+    m_AllowedHostsFile = cString::sprintf("/video/" ALLOWED_HOSTS_FILE);
+  }
 
   m_Token = 1;
 
@@ -1652,11 +1673,11 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   LOGMSG("Client %d connected: %s", cli,
          cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
 
-  bool accepted = SVDRPhosts.Acceptable(sin.sin_addr.s_addr);
-  if(!accepted) {
+  cAllowedHosts AllowedHosts(m_AllowedHostsFile);
+  if (!AllowedHosts.Acceptable(sin.sin_addr.s_addr)) {
     const char *msg = "Access denied.\r\n";
     ssize_t len = strlen(msg);
-    LOGMSG("Address not allowed to connect (svdrphosts.conf).");
+    LOGMSG("Address not allowed to connect (%s)", *m_AllowedHostsFile);
     if(write(fd, msg, len) != len)
        LOGERR("Write failed.");
     CLOSESOCKET(fd);
