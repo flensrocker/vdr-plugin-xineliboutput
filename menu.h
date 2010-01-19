@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.h,v 1.7 2008-11-01 07:23:00 phintuka Exp $
+ * $Id: menu.h,v 1.8 2010-01-19 22:45:45 phintuka Exp $
  *
  */
 
@@ -15,18 +15,16 @@
 
 #include <vdr/menuitems.h>
 
-class cMenuXinelib : public cMenuSetupPage 
+class cMenuXinelib : public cMenuSetupPage
 {
   private:
-    int field_order;
     int compression;
-    int headphone;
     int autocrop;
     int overscan;
     int novideo;
 
     // Hotkeys
-    enum {hkInit, hkSeen, hkNone} hotkey_state;
+    enum { hkInit, hkSeen, hkNone } hotkey_state;
     static time_t g_LastHotkeyTime;
     static eKeys  g_LastHotkey;
     virtual eOSState ProcessHotkey(eKeys Key);
@@ -38,9 +36,8 @@ class cMenuXinelib : public cMenuSetupPage
 
     cOsdItem *ctrl_autocrop;
     cOsdItem *ctrl_overscan;
-    cOsdItem *ctrl_headphone;
     cOsdItem *ctrl_novideo;
- 
+
   protected:
     virtual void Store(void);
 
