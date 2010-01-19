@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.36 2010-01-03 19:29:50 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.37 2010-01-19 00:09:52 phintuka Exp $
  *
  */
 
@@ -1454,6 +1454,11 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
   pthread_mutex_unlock(&this->crop_lock);
 
   if(cropping_active && crop_total>10) {
+#ifdef VO_CAP_CUSTOM_EXTENT_OVERLAY
+    /* Do not move overlay if video_out has independent video and OSD resolutions */
+    if (event->object.overlay->extent_width  <= 0 ||
+        event->object.overlay->extent_height <= 0)
+#endif
     if (event->event_type == OVERLAY_EVENT_SHOW) {
       switch (event->object.object_type) {
       case 0:
