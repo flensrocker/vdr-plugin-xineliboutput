@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menuitems.h,v 1.9 2009-08-03 12:11:35 phintuka Exp $
+ * $Id: menuitems.h,v 1.10 2010-01-19 22:06:52 phintuka Exp $
  *
  */
 
@@ -12,6 +12,33 @@
 #define __XINELIB_MENUITEMS_H_
 
 #include <vdr/menuitems.h>
+
+static inline cString Label_SubMenu(const char *Label)
+{
+  return cString::sprintf("%s >>", Label);
+}
+
+static inline cString Label_Ident(const char *Label)
+{
+  return cString::sprintf("  %s", Label);
+}
+
+static inline cString Label_Separator(const char *Label)
+{
+  return cString::sprintf("----- %s -----", Label);
+}
+
+static inline cOsdItem *SubMenuItem(const char *Label, eOSState state)
+{
+  return new cOsdItem(Label_SubMenu(Label), state);
+}
+
+static inline cOsdItem *SeparatorItem(const char *Label)
+{
+  cOsdItem *Item = new cOsdItem(Label_Separator(Label));
+  Item->SetSelectable(false);
+  return Item;
+}
 
 // --- cMenuEditTypedIntItem -------------------------------------------------
 
