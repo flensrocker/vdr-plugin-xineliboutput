@@ -43,10 +43,11 @@ Requirements
 
 WARNING
 
-  Remote (network) mode should be used only in firewalled 
+  Remote (network) mode should be used only in firewalled
   environment; it gives anyone full control to VDR !
 
-  Full access is allowed to all hosts listed in svdrphosts.conf.
+  Full access is granted to all hosts listed in allowed_hosts.conf.
+  By default only connections from localhost (127.0.0.1) are allowed.
 
   Multicast streaming can flood your internet connection and/or
   wireless LAN. If there is no router (or intelligent switch ?)
