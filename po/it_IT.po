@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-01-20 13:43+0200\n"
+"POT-Creation-Date: 2010-01-20 14:30+0200\n"
 "PO-Revision-Date: 2009-08-10 00:40+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -627,24 +627,6 @@ msgstr "Riproduzione DVD con tasti freccia"
 msgid "Media Player"
 msgstr "Lettore multimediale"
 
-msgid "Play file >>"
-msgstr "Riproduci file >>"
-
-msgid "Play music >>"
-msgstr "Riproduci musica >>"
-
-msgid "View images >>"
-msgstr "Visualizza immagini >>"
-
-msgid "Play DVD disc >>"
-msgstr "Riproduci disco DVD >>"
-
-msgid "Play audio CD >>"
-msgstr "Riproduci CD audio >>"
-
-msgid "Play BluRay disc >>"
-msgstr "Riproduci disco BluRay >>"
-
 msgid "Grayscale"
 msgstr "Scala di grigi"
 
@@ -659,6 +641,24 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+
+#~ msgid "Play file >>"
+#~ msgstr "Riproduci file >>"
+
+#~ msgid "Play music >>"
+#~ msgstr "Riproduci musica >>"
+
+#~ msgid "View images >>"
+#~ msgstr "Visualizza immagini >>"
+
+#~ msgid "Play DVD disc >>"
+#~ msgstr "Riproduci disco DVD >>"
+
+#~ msgid "Play audio CD >>"
+#~ msgstr "Riproduci CD audio >>"
+
+#~ msgid "Play BluRay disc >>"
+#~ msgstr "Riproduci disco BluRay >>"
 
 #~ msgid "Play remote DVD >>"
 #~ msgstr "Riproduci DVD remoto >>"

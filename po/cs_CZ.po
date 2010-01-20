@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-01-20 13:43+0200\n"
+"POT-Creation-Date: 2010-01-20 14:30+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -626,24 +626,6 @@ msgstr ""
 msgid "Media Player"
 msgstr "Pøehrávaè médií"
 
-msgid "Play file >>"
-msgstr "Pøehrát soubor >>"
-
-msgid "Play music >>"
-msgstr "Pøehrát hudbu >>"
-
-msgid "View images >>"
-msgstr "Prohlí¾et obrázky >>"
-
-msgid "Play DVD disc >>"
-msgstr "Pøehrát DVD >>"
-
-msgid "Play audio CD >>"
-msgstr "Pøehrát zvukové CD >>"
-
-msgid "Play BluRay disc >>"
-msgstr "Pøehrát BluRay >>"
-
 msgid "Grayscale"
 msgstr "Odstíny ¹edi"
 
@@ -658,6 +640,24 @@ msgstr "Zku¹ební obrazce"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib výstupní plugin"
+
+#~ msgid "Play file >>"
+#~ msgstr "Pøehrát soubor >>"
+
+#~ msgid "Play music >>"
+#~ msgstr "Pøehrát hudbu >>"
+
+#~ msgid "View images >>"
+#~ msgstr "Prohlí¾et obrázky >>"
+
+#~ msgid "Play DVD disc >>"
+#~ msgstr "Pøehrát DVD >>"
+
+#~ msgid "Play audio CD >>"
+#~ msgstr "Pøehrát zvukové CD >>"
+
+#~ msgid "Play BluRay disc >>"
+#~ msgstr "Pøehrát BluRay >>"
 
 #~ msgid "Play remote DVD >>"
 #~ msgstr "Pøehrát vzdálené DVD >>"

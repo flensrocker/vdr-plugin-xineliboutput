@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-01-20 13:43+0200\n"
+"POT-Creation-Date: 2010-01-20 14:30+0200\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -625,24 +625,6 @@ msgstr "允许按键控制DVD回放"
 msgid "Media Player"
 msgstr "媒体播放器"
 
-msgid "Play file >>"
-msgstr "播放文件 >>"
-
-msgid "Play music >>"
-msgstr "播放音乐 >>"
-
-msgid "View images >>"
-msgstr "浏览图像 >>"
-
-msgid "Play DVD disc >>"
-msgstr "播放DVD光盘 >>"
-
-msgid "Play audio CD >>"
-msgstr "播放音乐CD >>"
-
-msgid "Play BluRay disc >>"
-msgstr "播放BluRay光盘 >>"
-
 msgid "Grayscale"
 msgstr "灰度"
 
@@ -657,6 +639,24 @@ msgstr "测试图像"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib 视频输出插件 by NFVDR-HD"
+
+#~ msgid "Play file >>"
+#~ msgstr "播放文件 >>"
+
+#~ msgid "Play music >>"
+#~ msgstr "播放音乐 >>"
+
+#~ msgid "View images >>"
+#~ msgstr "浏览图像 >>"
+
+#~ msgid "Play DVD disc >>"
+#~ msgstr "播放DVD光盘 >>"
+
+#~ msgid "Play audio CD >>"
+#~ msgstr "播放音乐CD >>"
+
+#~ msgid "Play BluRay disc >>"
+#~ msgstr "播放BluRay光盘 >>"
 
 #~ msgid "Play remote DVD >>"
 #~ msgstr "玩遥控影碟 >>"
