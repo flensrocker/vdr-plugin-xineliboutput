@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.74 2010-01-20 12:23:23 phintuka Exp $
+ * $Id: setup_menu.c,v 1.75 2010-01-20 13:03:43 phintuka Exp $
  *
  */
 
@@ -20,6 +20,9 @@
 #include "menuitems.h"
 #include "osd.h"       // cXinelibOsdProvider::RefreshOsd()
 #include "setup_menu.h"
+
+#define indent(x) Label_Ident(x)
+#define inden2(x) Label_Ident(Label_Ident(x))
 
 
 namespace XinelibOutputSetupMenu {
@@ -203,12 +206,12 @@ void cMenuSetupAudio::Set(void)
 				AUDIO_VIS_count, 
 				xc.s_audioVisualizationNames));
   if(visualization == AUDIO_VIS_GOOM) {
-    Add(new cMenuEditTypedIntItem(tr("  Width"), tr("px"), &goom_width,
-				  320, 1920));
-    Add(new cMenuEditTypedIntItem(tr("  Height"),tr("px"), &goom_height,
-				  240, 1280));
-    Add(new cMenuEditTypedIntItem(tr("  Speed"), tr("fps"), &goom_fps,
-				  1, 100));
+    Add(new cMenuEditTypedIntItem(indent(tr("Width")), tr("px"),
+                                  &goom_width, 320, 1920));
+    Add(new cMenuEditTypedIntItem(indent(tr("Height")),tr("px"),
+                                  &goom_height, 240, 1280));
+    Add(new cMenuEditTypedIntItem(indent(tr("Speed")), tr("fps"),
+                                  &goom_fps, 1, 100));
   }
 
   if(current<1) current=1; /* first item is not selectable */
@@ -577,14 +580,14 @@ void cMenuSetupVideo::Set(void)
       new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
 			    &newconfig.autocrop));
   if(newconfig.autocrop) {
-    Add(new cMenuEditBoolItem(tr("  Autodetect letterbox"), 
+    Add(new cMenuEditBoolItem(indent(tr("Autodetect letterbox")),
 			      &newconfig.autocrop_autodetect));
-    Add(new cMenuEditBoolItem(tr("  Soft start"), 
+    Add(new cMenuEditBoolItem(indent(tr("Soft start")),
 			      &newconfig.autocrop_soft));
-    Add(new cMenuEditBoolItem(tr("  Crop to"),
+    Add(new cMenuEditBoolItem(indent(tr("Crop to")),
 			      &newconfig.autocrop_fixedsize,
 			      "4:3...20:9", "14:9/16:9"));
-    Add(new cMenuEditBoolItem(tr("  Detect subtitles"),
+    Add(new cMenuEditBoolItem(indent(tr("Detect subtitles")),
 			      &newconfig.autocrop_subs));
   }
 
@@ -594,19 +597,19 @@ void cMenuSetupVideo::Set(void)
 			    &newconfig.swscale));
   if(newconfig.swscale) {
     Add(ctrl_swscale_aspect =
-	new cMenuEditBoolItem(tr("  Change aspect ratio"), 
+	new cMenuEditBoolItem(indent(tr("Change aspect ratio")),
 			      &newconfig.swscale_change_aspect));
     Add(ctrl_swscale_resize = 
-	new cMenuEditBoolItem(tr("  Change video size"), 
+	new cMenuEditBoolItem(indent(tr("Change video size")),
 			      &newconfig.swscale_resize));
     if(newconfig.swscale_resize) {
       Add(ctrl_swscale_width =
-	  new cMenuEditIntItem( tr("  Width"), 
+	  new cMenuEditIntItem( indent(tr("Width")),
 				&newconfig.swscale_width, 360, 2000));
       Add(ctrl_swscale_height =
-	  new cMenuEditIntItem( tr("  Height"),
+	  new cMenuEditIntItem( indent(tr("Height")),
 				&newconfig.swscale_height, 288, 1200));
-      Add(new cMenuEditBoolItem(tr("  Allow downscaling"),
+      Add(new cMenuEditBoolItem(indent(tr("Allow downscaling")),
 				&newconfig.swscale_downscale));
     }
   }
@@ -619,9 +622,10 @@ void cMenuSetupVideo::Set(void)
   Add(ctrl_pp = new cMenuEditBoolItem(tr("Post processing (ffmpeg)"), 
 				      &newconfig.ffmpeg_pp));
   if(newconfig.ffmpeg_pp) {
-    Add(new cMenuEditIntItem( tr("  Quality"), 
+    Add(new cMenuEditIntItem( indent(tr("Quality")),
 			      &newconfig.ffmpeg_pp_quality, 0, 6));
-    Add(new cMenuEditStrItem( tr("  Mode"), newconfig.ffmpeg_pp_mode, 
+    Add(new cMenuEditStrItem( indent(tr("Mode")),
+                              newconfig.ffmpeg_pp_mode,
 			      255, OptionsChars));
   }
 
@@ -633,47 +637,49 @@ void cMenuSetupVideo::Set(void)
   ctrl_tvtime_method = NULL;
   if(deinterlace == DEINTERLACE_TVTIME) {
     Add(ctrl_tvtime_method =
-	new cMenuEditStraI18nItem(tr("  Method"), &tvtime.method,
-				  tvtime_methods_count, tvtime_method_name));
-    Add(new cMenuEditBoolItem(tr("  Cheap mode"), &tvtime.cheap_mode));
-    Add(new cMenuEditStraI18nItem(tr("  Pulldown"), &tvtime.pulldown,
-				  2, tvtime_pulldown_name));
-    Add(new cMenuEditStraI18nItem(tr("  Frame rate"), &tvtime.framerate,
-				  3, tvtime_framerate_name));
-    Add(new cMenuEditBoolItem(tr("  Judder Correction"), &tvtime.judder_correction));
-    Add(new cMenuEditBoolItem(tr("  Use progressive frame flag"), 
-			      &tvtime.use_progressive_frame_flag));
-    Add(new cMenuEditBoolItem(tr("  Chroma Filter"), 
-			      &tvtime.chroma_filter));
+	new cMenuEditStraI18nItem(indent(tr("Method")),
+                                  &tvtime.method, tvtime_methods_count, tvtime_method_name));
+    Add(new cMenuEditBoolItem(    indent(tr("Cheap mode")),
+                                  &tvtime.cheap_mode));
+    Add(new cMenuEditStraI18nItem(indent(tr("Pulldown")),
+                                  &tvtime.pulldown, 2, tvtime_pulldown_name));
+    Add(new cMenuEditStraI18nItem(indent(tr("Frame rate")),
+                                  &tvtime.framerate, 3, tvtime_framerate_name));
+    Add(new cMenuEditBoolItem(    indent(tr("Judder Correction")),
+                                  &tvtime.judder_correction));
+    Add(new cMenuEditBoolItem(    indent(tr("Use progressive frame flag")),
+                                  &tvtime.use_progressive_frame_flag));
+    Add(new cMenuEditBoolItem(    indent(tr("Chroma Filter")),
+                                  &tvtime.chroma_filter));
   }
 
   Add(ctrl_unsharp = new cMenuEditBoolItem(tr("Sharpen / Blur"),
                                       &newconfig.unsharp));
   if(newconfig.unsharp) {
-    Add(new cMenuEditOddIntItem( tr("  Width of the luma matrix"),
+    Add(new cMenuEditOddIntItem( indent(tr("Width of the luma matrix")),
                                  &newconfig.unsharp_luma_matrix_width, 3, 11));
-    Add(new cMenuEditOddIntItem( tr("  Height of the luma matrix"),
+    Add(new cMenuEditOddIntItem( indent(tr("Height of the luma matrix")),
                                  &newconfig.unsharp_luma_matrix_height, 3, 11));
-    Add(new cMenuEditFpIntItem( tr("  Amount of luma sharpness/blur"),
-                                &newconfig.unsharp_luma_amount, -20, 20, 1,
-                                tr("Off")));
-    Add(new cMenuEditOddIntItem( tr("  Width of the chroma matrix"),
-                              &newconfig.unsharp_chroma_matrix_width, 3, 11));
-    Add(new cMenuEditOddIntItem( tr("  Height of the chroma matrix"),
-                              &newconfig.unsharp_chroma_matrix_height, 3, 11));
-    Add(new cMenuEditFpIntItem( tr("  Amount of chroma sharpness/blur"),
-                                &newconfig.unsharp_chroma_amount, -20, 20, 1,
-                                tr("Off")));
+    Add(new cMenuEditFpIntItem(  indent(tr("Amount of luma sharpness/blur")),
+                                 &newconfig.unsharp_luma_amount, -20, 20, 1,
+                                 tr("Off")));
+    Add(new cMenuEditOddIntItem( indent(tr("Width of the chroma matrix")),
+                                 &newconfig.unsharp_chroma_matrix_width, 3, 11));
+    Add(new cMenuEditOddIntItem( indent(tr("Height of the chroma matrix")),
+                                 &newconfig.unsharp_chroma_matrix_height, 3, 11));
+    Add(new cMenuEditFpIntItem(  indent(tr("Amount of chroma sharpness/blur")),
+                                 &newconfig.unsharp_chroma_amount, -20, 20, 1,
+                                 tr("Off")));
   }
 
   Add(ctrl_denoise3d = new cMenuEditBoolItem(tr("3D Denoiser"),
                                       &newconfig.denoise3d));
   if(newconfig.denoise3d) {
-    Add(new cMenuEditFpIntItem( tr("  Spatial luma strength"),
+    Add(new cMenuEditFpIntItem( indent(tr("Spatial luma strength")),
                                 &newconfig.denoise3d_luma, 0, 100, 1));
-    Add(new cMenuEditFpIntItem( tr("  Spatial chroma strength"),
+    Add(new cMenuEditFpIntItem( indent(tr("Spatial chroma strength")),
                                 &newconfig.denoise3d_chroma, 0, 100, 1));
-    Add(new cMenuEditFpIntItem( tr("  Temporal strength"),
+    Add(new cMenuEditFpIntItem( indent(tr("Temporal strength")),
                                 &newconfig.denoise3d_time, 0, 100, 1));
   }
 
@@ -933,9 +939,9 @@ void cMenuSetupOSD::Set(void)
 	                        OSD_SIZE_count, xc.s_osdSizes));
   if (newconfig.osd_size == OSD_SIZE_custom) {
     Add(ctrl_width =
-        new cMenuEditTypedIntItem(tr("  Width"), "px",
+        new cMenuEditTypedIntItem(indent(tr("Width")), "px",
                                   &newconfig.osd_width, 480, 2048));
-    Add(new cMenuEditTypedIntItem(tr("  Height"), "px",
+    Add(new cMenuEditTypedIntItem(indent(tr("Height")), "px",
                                   &newconfig.osd_height, 576, 1200));
   }
 
@@ -946,7 +952,7 @@ void cMenuSetupOSD::Set(void)
 			    tr(xc.s_osdBlendingMethods[OSD_BLENDING_HARDWARE])));
   if(newconfig.osd_blending == OSD_BLENDING_SOFTWARE) {
     Add(ctrl_lowres =
-	new cMenuEditBoolItem(tr("  Use hardware for low-res video"),
+	new cMenuEditBoolItem(indent(tr("Use hardware for low-res video")),
 			      &newconfig.osd_blending_lowresvideo));
   }
 
@@ -1095,8 +1101,8 @@ void cMenuSetupDecoder::Set(void)
 				PES_BUFFERS_count, xc.s_bufferSize));
   if(pes_buffers_ind == PES_BUFFERS_CUSTOM)
     Add(ctrl_pes_buffers = 
-	new cMenuEditIntItem(tr("  Number of PES packets"), &newconfig.pes_buffers, 
-			     10, 10000));
+	new cMenuEditIntItem(indent(tr("Number of PES packets")),
+                             &newconfig.pes_buffers, 10, 10000));
   else
     ctrl_pes_buffers = NULL;
 
@@ -1275,10 +1281,10 @@ void cMenuSetupLocal::Set(void)
 						&newconfig.fullscreen));
     if(!newconfig.fullscreen) {
       Add(ctrl_window_width = 
-	  new cMenuEditTypedIntItem( tr("  Window width"), tr("px"), 
+	  new cMenuEditTypedIntItem( indent(tr("Window width")), tr("px"), 
 				     &newconfig.width, 1, 2048));
       Add(ctrl_window_height = 
-	  new cMenuEditTypedIntItem( tr("  Window height"), tr("px"), 
+	  new cMenuEditTypedIntItem( indent(tr("Window height")), tr("px"), 
 				     &newconfig.height, 1, 2048));
     }
   }
@@ -1465,43 +1471,43 @@ void cMenuSetupRemote::Set(void)
   ctrl_http_ctrl = NULL;
   ctrl_rtsp_ctrl = NULL;
   if(newconfig.remote_mode) {
-    Add(new cMenuEditIntItem( tr("  Listen port (TCP and broadcast)"), 
+    Add(new cMenuEditIntItem( indent(tr("Listen port (TCP and broadcast)")),
 			      &newconfig.listen_port,
 			      0, 0xffff));
-    Add(new cMenuEditStrItem( tr("  Listen address"), 
+    Add(new cMenuEditStrItem( indent(tr("Listen address")),
 			      &newconfig.remote_local_ip[0], 16, "0123456789."));
-    Add(new cMenuEditBoolItem(tr("  Remote keyboard"), 
+    Add(new cMenuEditBoolItem(indent(tr("Remote keyboard")),
 			      &newconfig.remote_keyboard));
-    Add(new cMenuEditIntItem( tr("  Max number of clients"), 
+    Add(new cMenuEditIntItem( indent(tr("Max number of clients")),
 			      &newconfig.remote_max_clients,
 			      1, MAXCLIENTS));
 
-    Add(new cMenuEditBoolItem(tr("  PIPE transport"), 
+    Add(new cMenuEditBoolItem(indent(tr("PIPE transport")),
 			      &newconfig.remote_usepipe));
-    Add(new cMenuEditBoolItem(tr("  TCP transport"), 
+    Add(new cMenuEditBoolItem(indent(tr("TCP transport")),
 			      &newconfig.remote_usetcp));
-    Add(new cMenuEditBoolItem(tr("  UDP transport"), 
+    Add(new cMenuEditBoolItem(indent(tr("UDP transport")),
 			      &newconfig.remote_useudp));
-    Add(ctrl_usertp = 
-	new cMenuEditBoolItem(tr("  RTP (multicast) transport"), 
+    Add(ctrl_usertp =
+	new cMenuEditBoolItem(indent(tr("RTP (multicast) transport")),
 			      &newconfig.remote_usertp));
     if(newconfig.remote_usertp) {
       Add(ctrl_rtp_addr =
-	  new cMenuEditStrItem( tr("    Address"), 
-			        &newconfig.remote_rtp_addr[0], 16, "0123456789."));
-      Add(new cMenuEditOddIntItem( tr("    Port"), 
-				&newconfig.remote_rtp_port, 1000, 0xfffe));
-      Add(new cMenuEditIntItem( tr("    TTL"), 
-				&newconfig.remote_rtp_ttl, 1, 10));
-      Add(new cMenuEditBoolItem(tr("    Transmit always on"), 
-				&newconfig.remote_rtp_always_on));
-      Add(new cMenuEditBoolItem(tr("    SAP announcements"), 
-				&newconfig.remote_rtp_sap));
+	  new cMenuEditStrItem(    inden2(tr("Address")),
+                                   &newconfig.remote_rtp_addr[0], 16, "0123456789."));
+      Add(new cMenuEditOddIntItem( inden2(tr("Port")),
+                                   &newconfig.remote_rtp_port, 1000, 0xfffe));
+      Add(new cMenuEditIntItem(    inden2(tr("TTL")),
+                                   &newconfig.remote_rtp_ttl, 1, 10));
+      Add(new cMenuEditBoolItem(   inden2(tr("Transmit always on")),
+                                   &newconfig.remote_rtp_always_on));
+      Add(new cMenuEditBoolItem(   inden2(tr("SAP announcements")),
+                                   &newconfig.remote_rtp_sap));
     }
-    Add(new cMenuEditBoolItem(tr("  Server announce broadcasts"), 
+    Add(new cMenuEditBoolItem(indent(tr("Server announce broadcasts")),
 			      &newconfig.remote_usebcast));
 
-    Add(new cMenuEditBoolItem(tr("  HTTP transport for media files"), 
+    Add(new cMenuEditBoolItem(indent(tr("HTTP transport for media files")),
 			      &newconfig.remote_http_files));
 
     Add(SeparatorItem(tr("Additional network services")));
