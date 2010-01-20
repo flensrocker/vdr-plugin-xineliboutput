@@ -311,18 +311,18 @@ msgid "Visualization"
 msgstr "可視化"
 
 #, fuzzy
-msgid "  Width"
+msgid "Width"
 msgstr "寬度"
 
 msgid "px"
 msgstr "px"
 
 #, fuzzy
-msgid "  Height"
+msgid "Height"
 msgstr "高度"
 
 #, fuzzy
-msgid "  Speed"
+msgid "Speed"
 msgstr "速度"
 
 msgid "fps"
@@ -350,116 +350,116 @@ msgid "Video"
 msgstr "視頻"
 
 #, fuzzy
-msgid "  Autodetect letterbox"
+msgid "Autodetect letterbox"
 msgstr "自動檢測盒子模式"
 
 #, fuzzy
-msgid "  Soft start"
+msgid "Soft start"
 msgstr "軟啟動"
 
 #, fuzzy
-msgid "  Crop to"
+msgid "Crop to"
 msgstr "剪裁"
 
 #, fuzzy
-msgid "  Detect subtitles"
+msgid "Detect subtitles"
 msgstr "檢測的字幕"
 
 msgid "Software scaling"
 msgstr "軟件縮放"
 
 #, fuzzy
-msgid "  Change aspect ratio"
+msgid "Change aspect ratio"
 msgstr "更改寬高比"
 
 #, fuzzy
-msgid "  Change video size"
+msgid "Change video size"
 msgstr "改變視頻大小"
 
 #, fuzzy
-msgid "  Allow downscaling"
+msgid "Allow downscaling"
 msgstr "允許縮小尺度"
 
 msgid "Post processing (ffmpeg)"
 msgstr "後處理（ffmpeg）"
 
 #, fuzzy
-msgid "  Quality"
-msgstr " Quality"
+msgid "Quality"
+msgstr "Quality"
 
 #, fuzzy
-msgid "  Mode"
-msgstr " Mode"
+msgid "Mode"
+msgstr "Mode"
 
 #, fuzzy
-msgid "  Method"
-msgstr " Method"
+msgid "Method"
+msgstr "Method"
 
 #, fuzzy
-msgid "  Cheap mode"
-msgstr " Cheap mode"
+msgid "Cheap mode"
+msgstr "Cheap mode"
 
 #, fuzzy
-msgid "  Pulldown"
-msgstr " Pulldown"
+msgid "Pulldown"
+msgstr "Pulldown"
 
 #, fuzzy
-msgid "  Frame rate"
-msgstr " Frame rate"
+msgid "Frame rate"
+msgstr "Frame rate"
 
 #, fuzzy
-msgid "  Judder Correction"
-msgstr " Judder Correction"
+msgid "Judder Correction"
+msgstr "Judder Correction"
 
 #, fuzzy
-msgid "  Use progressive frame flag"
-msgstr " Use progressive frame flag"
+msgid "Use progressive frame flag"
+msgstr "Use progressive frame flag"
 
 #, fuzzy
-msgid "  Chroma Filter"
-msgstr " Chroma Filter"
+msgid "Chroma Filter"
+msgstr "Chroma Filter"
 
 msgid "Sharpen / Blur"
 msgstr "銳化/模糊"
 
 #, fuzzy
-msgid "  Width of the luma matrix"
-msgstr " Width of the luma matrix"
+msgid "Width of the luma matrix"
+msgstr "Width of the luma matrix"
 
 #, fuzzy
-msgid "  Height of the luma matrix"
-msgstr " Height of the luma matrix"
+msgid "Height of the luma matrix"
+msgstr "Height of the luma matrix"
 
 #, fuzzy
-msgid "  Amount of luma sharpness/blur"
-msgstr " Amount of luma sharpness/blur"
+msgid "Amount of luma sharpness/blur"
+msgstr "Amount of luma sharpness/blur"
 
 #, fuzzy
-msgid "  Width of the chroma matrix"
-msgstr " Width of the chroma matrix"
+msgid "Width of the chroma matrix"
+msgstr "Width of the chroma matrix"
 
 #, fuzzy
-msgid "  Height of the chroma matrix"
-msgstr " Height of the chroma matrix"
+msgid "Height of the chroma matrix"
+msgstr "Height of the chroma matrix"
 
 #, fuzzy
-msgid "  Amount of chroma sharpness/blur"
-msgstr " Amount of chroma sharpness/blur"
+msgid "Amount of chroma sharpness/blur"
+msgstr "Amount of chroma sharpness/blur"
 
 msgid "3D Denoiser"
 msgstr "3D噪點去除"
 
 #, fuzzy
-msgid "  Spatial luma strength"
-msgstr " Spatial luma strength"
+msgid "Spatial luma strength"
+msgstr "Spatial luma strength"
 
 #, fuzzy
-msgid "  Spatial chroma strength"
-msgstr " Spatial luma strength"
+msgid "Spatial chroma strength"
+msgstr "Spatial luma strength"
 
 #, fuzzy
-msgid "  Temporal strength"
-msgstr " Temporal strength"
+msgid "Temporal strength"
+msgstr "Temporal strength"
 
 msgid "HUE"
 msgstr "色相"
@@ -498,7 +498,7 @@ msgid "Blending method"
 msgstr "混合方法"
 
 #, fuzzy
-msgid "  Use hardware for low-res video"
+msgid "Use hardware for low-res video"
 msgstr "低清晰度視頻使用硬"
 
 msgid "Scaling method"
@@ -526,7 +526,7 @@ msgid "Buffer size"
 msgstr "緩衝區大小"
 
 #, fuzzy
-msgid "  Number of PES packets"
+msgid "Number of PES packets"
 msgstr "PES的數據包"
 
 msgid "Local Display Frontend"
@@ -548,11 +548,11 @@ msgid "Fullscreen mode"
 msgstr "全屏模式"
 
 #, fuzzy
-msgid "  Window width"
+msgid "Window width"
 msgstr "窗口寬度"
 
 #, fuzzy
-msgid "  Window height"
+msgid "Window height"
 msgstr "窗口的高度"
 
 msgid "Window aspect"
@@ -574,35 +574,35 @@ msgid "Allow remote clients"
 msgstr "允許遠程客戶"
 
 #, fuzzy
-msgid "  Listen port (TCP and broadcast)"
+msgid "Listen port (TCP and broadcast)"
 msgstr "聽端口(TCP和廣播)"
 
 #, fuzzy
-msgid "  Listen address"
+msgid "Listen address"
 msgstr "偵聽地址"
 
 #, fuzzy
-msgid "  Remote keyboard"
+msgid "Remote keyboard"
 msgstr "遠程鍵盤"
 
 #, fuzzy
-msgid "  Max number of clients"
+msgid "Max number of clients"
 msgstr "最大數量的客戶"
 
 #, fuzzy
-msgid "  PIPE transport"
+msgid "PIPE transport"
 msgstr "PIPE傳送"
 
 #, fuzzy
-msgid "  TCP transport"
+msgid "TCP transport"
 msgstr "TCP傳送"
 
 #, fuzzy
-msgid "  UDP transport"
+msgid "UDP transport"
 msgstr "UDP傳送"
 
 #, fuzzy
-msgid "  RTP (multicast) transport"
+msgid "RTP (multicast) transport"
 msgstr "RTP (組播)傳送"
 
 #, fuzzy
@@ -626,11 +626,11 @@ msgid "    SAP announcements"
 msgstr "SAP公司公佈"
 
 #, fuzzy
-msgid "  Server announce broadcasts"
+msgid "Server announce broadcasts"
 msgstr "服務器宣布廣播"
 
 #, fuzzy
-msgid "  HTTP transport for media files"
+msgid "HTTP transport for media files"
 msgstr "HTTP傳輸媒體文件"
 
 msgid "Additional network services"

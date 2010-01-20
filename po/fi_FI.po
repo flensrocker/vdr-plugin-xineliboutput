@@ -311,17 +311,17 @@ msgstr "Miksaa kuulokkeille"
 msgid "Visualization"
 msgstr "Visualisointi"
 
-msgid "  Width"
-msgstr "  Leveys"
+msgid "Width"
+msgstr "Leveys"
 
 msgid "px"
 msgstr "px"
 
-msgid "  Height"
-msgstr "  Korkeus"
+msgid "Height"
+msgstr "Korkeus"
 
-msgid "  Speed"
-msgstr "  Nopeus"
+msgid "Speed"
+msgstr "Nopeus"
 
 msgid "fps"
 msgstr "fps"
@@ -347,92 +347,92 @@ msgstr "ylempi puolisko"
 msgid "Video"
 msgstr "Kuva"
 
-msgid "  Autodetect letterbox"
-msgstr "  Tunnista letterbox automaattisesti"
+msgid "Autodetect letterbox"
+msgstr "Tunnista letterbox automaattisesti"
 
-msgid "  Soft start"
-msgstr "  Portaittainen aloitus"
+msgid "Soft start"
+msgstr "Portaittainen aloitus"
 
-msgid "  Crop to"
-msgstr "  Leikkaa kokoon"
+msgid "Crop to"
+msgstr "Leikkaa kokoon"
 
-msgid "  Detect subtitles"
-msgstr "  Huomioi tekstitys"
+msgid "Detect subtitles"
+msgstr "Huomioi tekstitys"
 
 msgid "Software scaling"
 msgstr "Skaalaa ohjelmistolla"
 
-msgid "  Change aspect ratio"
-msgstr "  Muuta kuvasuhdetta"
+msgid "Change aspect ratio"
+msgstr "Muuta kuvasuhdetta"
 
-msgid "  Change video size"
-msgstr "  Muuta videokuvan kokoa"
+msgid "Change video size"
+msgstr "Muuta videokuvan kokoa"
 
-msgid "  Allow downscaling"
-msgstr "  Salli skaalaus pienemmäksi"
+msgid "Allow downscaling"
+msgstr "Salli skaalaus pienemmäksi"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Käytä jälkikäsittelyä (ffmpeg)"
 
-msgid "  Quality"
-msgstr "  Laatu"
+msgid "Quality"
+msgstr "Laatu"
 
-msgid "  Mode"
-msgstr "  Moodi"
+msgid "Mode"
+msgstr "Moodi"
 
-msgid "  Method"
-msgstr "  Menetelmä"
+msgid "Method"
+msgstr "Menetelmä"
 
-msgid "  Cheap mode"
-msgstr "  Käytä Cheap-moodia"
+msgid "Cheap mode"
+msgstr "Käytä Cheap-moodia"
 
-msgid "  Pulldown"
-msgstr "  Pulldown-moodi"
+msgid "Pulldown"
+msgstr "Pulldown-moodi"
 
-msgid "  Frame rate"
-msgstr "  Ruudunpäivitys"
+msgid "Frame rate"
+msgstr "Ruudunpäivitys"
 
-msgid "  Judder Correction"
-msgstr "  Käytä tärinänkorjausta"
+msgid "Judder Correction"
+msgstr "Käytä tärinänkorjausta"
 
-msgid "  Use progressive frame flag"
-msgstr "  Tunnista progressiivinen kuva"
+msgid "Use progressive frame flag"
+msgstr "Tunnista progressiivinen kuva"
 
-msgid "  Chroma Filter"
-msgstr "  Käytä Chroma-suodinta"
+msgid "Chroma Filter"
+msgstr "Käytä Chroma-suodinta"
 
 msgid "Sharpen / Blur"
 msgstr "Terävöinti / sumennus"
 
-msgid "  Width of the luma matrix"
-msgstr "  Luma-matriisin leveys"
+msgid "Width of the luma matrix"
+msgstr "Luma-matriisin leveys"
 
-msgid "  Height of the luma matrix"
-msgstr "  Luma-matriisin korkeus"
+msgid "Height of the luma matrix"
+msgstr "Luma-matriisin korkeus"
 
-msgid "  Amount of luma sharpness/blur"
-msgstr "  Luma-terävöinti/-sumennus"
+msgid "Amount of luma sharpness/blur"
+msgstr "Luma-terävöinti/-sumennus"
 
-msgid "  Width of the chroma matrix"
-msgstr "  Chroma-matriisin leveys"
+msgid "Width of the chroma matrix"
+msgstr "Chroma-matriisin leveys"
 
-msgid "  Height of the chroma matrix"
-msgstr "  Chroma-matriisin korkeus"
+msgid "Height of the chroma matrix"
+msgstr "Chroma-matriisin korkeus"
 
-msgid "  Amount of chroma sharpness/blur"
-msgstr "  Chroma-terävöinti/-sumennus"
+msgid "Amount of chroma sharpness/blur"
+msgstr "Chroma-terävöinti/-sumennus"
 
 msgid "3D Denoiser"
 msgstr "3D-kohinanpoisto"
 
-msgid "  Spatial luma strength"
-msgstr "  Luman tilavoimakkuus"
+msgid "Spatial luma strength"
+msgstr "Luman tilavoimakkuus"
 
-msgid "  Spatial chroma strength"
-msgstr "  Chroman tilavoimakkuus"
+msgid "Spatial chroma strength"
+msgstr "Chroman tilavoimakkuus"
 
-msgid "  Temporal strength"
-msgstr "  Ajallinen voimakkuus"
+msgid "Temporal strength"
+msgstr "Ajallinen voimakkuus"
 
 msgid "HUE"
 msgstr "Värisävy"
@@ -470,8 +470,8 @@ msgstr "Tarkkuus"
 msgid "Blending method"
 msgstr "Piirtotapa"
 
-msgid "  Use hardware for low-res video"
-msgstr "  Laitteisto matalaresoluutioisella videolla"
+msgid "Use hardware for low-res video"
+msgstr "Laitteisto matalaresoluutioisella videolla"
 
 msgid "Scaling method"
 msgstr "Skaalaustapa"
@@ -497,8 +497,8 @@ msgstr "Dekooderi"
 msgid "Buffer size"
 msgstr "Puskurin koko"
 
-msgid "  Number of PES packets"
-msgstr "  PES-pakettien lukumäärä"
+msgid "Number of PES packets"
+msgstr "PES-pakettien lukumäärä"
 
 msgid "Local Display Frontend"
 msgstr "Paikallinen näyttö"
@@ -518,11 +518,11 @@ msgstr "Framebuffer-laite"
 msgid "Fullscreen mode"
 msgstr "Kokoruututila"
 
-msgid "  Window width"
-msgstr "  Ikkunan leveys"
+msgid "Window width"
+msgstr "Ikkunan leveys"
 
-msgid "  Window height"
-msgstr "  Ikkunan korkeus"
+msgid "Window height"
+msgstr "Ikkunan korkeus"
 
 msgid "Window aspect"
 msgstr "Ikkunan kuvasuhde"
@@ -542,29 +542,29 @@ msgstr "Etäkäyttö"
 msgid "Allow remote clients"
 msgstr "Salli etäkäyttö"
 
-msgid "  Listen port (TCP and broadcast)"
-msgstr "  Kuuntele TCP-porttia"
+msgid "Listen port (TCP and broadcast)"
+msgstr "Kuuntele TCP-porttia"
 
-msgid "  Listen address"
-msgstr "  Kuuntele osoitteessa"
+msgid "Listen address"
+msgstr "Kuuntele osoitteessa"
 
-msgid "  Remote keyboard"
-msgstr "  Käytä etänäppäimistöä"
+msgid "Remote keyboard"
+msgstr "Käytä etänäppäimistöä"
 
-msgid "  Max number of clients"
-msgstr "  Asiakkaiden maksimimäärä"
+msgid "Max number of clients"
+msgstr "Asiakkaiden maksimimäärä"
 
-msgid "  PIPE transport"
-msgstr "  PIPE-siirto"
+msgid "PIPE transport"
+msgstr "PIPE-siirto"
 
-msgid "  TCP transport"
-msgstr "  TCP-siirto"
+msgid "TCP transport"
+msgstr "TCP-siirto"
 
-msgid "  UDP transport"
-msgstr "  UDP-siirto"
+msgid "UDP transport"
+msgstr "UDP-siirto"
 
-msgid "  RTP (multicast) transport"
-msgstr "  RTP (multicast) -siirto"
+msgid "RTP (multicast) transport"
+msgstr "RTP (multicast) -siirto"
 
 msgid "    Address"
 msgstr "    Osoite"
@@ -581,11 +581,11 @@ msgstr "    Pidä lähetys aina päällä"
 msgid "    SAP announcements"
 msgstr "    SAP-ilmoitukset"
 
-msgid "  Server announce broadcasts"
-msgstr "  Palvelimen broadcast-ilmoitukset"
+msgid "Server announce broadcasts"
+msgstr "Palvelimen broadcast-ilmoitukset"
 
-msgid "  HTTP transport for media files"
-msgstr "  HTTP -siirto mediatiedostoille"
+msgid "HTTP transport for media files"
+msgstr "HTTP -siirto mediatiedostoille"
 
 msgid "Additional network services"
 msgstr "Muut verkkopalvelut"

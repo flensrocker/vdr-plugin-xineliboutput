@@ -310,17 +310,17 @@ msgstr ""
 msgid "Visualization"
 msgstr "Visualisierung"
 
-msgid "  Width"
-msgstr "  Breite"
+msgid "Width"
+msgstr "Breite"
 
 msgid "px"
 msgstr "px"
 
-msgid "  Height"
-msgstr "  Höhe"
+msgid "Height"
+msgstr "Höhe"
 
-msgid "  Speed"
-msgstr "  Bildrate"
+msgid "Speed"
+msgstr "Bildrate"
 
 msgid "fps"
 msgstr ""
@@ -346,91 +346,91 @@ msgstr ""
 msgid "Video"
 msgstr "Video"
 
-msgid "  Autodetect letterbox"
-msgstr "  Letterbox automatisch erkennen"
+msgid "Autodetect letterbox"
+msgstr "Letterbox automatisch erkennen"
 
-msgid "  Soft start"
-msgstr "  Weich starten"
+msgid "Soft start"
+msgstr "Weich starten"
 
-msgid "  Crop to"
-msgstr "  Schneide auf"
+msgid "Crop to"
+msgstr "Schneide auf"
 
-msgid "  Detect subtitles"
-msgstr "  Erkenne Untertitel"
+msgid "Detect subtitles"
+msgstr "Erkenne Untertitel"
 
 msgid "Software scaling"
 msgstr ""
 
-msgid "  Change aspect ratio"
+msgid "Change aspect ratio"
 msgstr ""
 
-msgid "  Change video size"
+msgid "Change video size"
 msgstr ""
 
-msgid "  Allow downscaling"
-msgstr "  Verkleinern zulassen"
+msgid "Allow downscaling"
+msgstr "Verkleinern zulassen"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Nachbearbeitung (ffmpeg)"
 
-msgid "  Quality"
-msgstr "  Qualität"
+msgid "Quality"
+msgstr "Qualität"
 
-msgid "  Mode"
-msgstr "  Modus"
+msgid "Mode"
+msgstr "Modus"
 
-msgid "  Method"
-msgstr "  Methode"
+msgid "Method"
+msgstr "Methode"
 
-msgid "  Cheap mode"
-msgstr "  einfacher Modus"
+msgid "Cheap mode"
+msgstr "einfacher Modus"
 
-msgid "  Pulldown"
-msgstr "  Pulldown"
+msgid "Pulldown"
+msgstr "Pulldown"
 
-msgid "  Frame rate"
-msgstr "  Bildrate"
+msgid "Frame rate"
+msgstr "Bildrate"
 
-msgid "  Judder Correction"
-msgstr "  Ruckel-Korrektur"
+msgid "Judder Correction"
+msgstr "Ruckel-Korrektur"
 
-msgid "  Use progressive frame flag"
-msgstr "  Nutze progressive frame flag"
+msgid "Use progressive frame flag"
+msgstr "Nutze progressive frame flag"
 
-msgid "  Chroma Filter"
-msgstr "  Chrominanz-Filter"
+msgid "Chroma Filter"
+msgstr "Chrominanz-Filter"
 
 msgid "Sharpen / Blur"
 msgstr ""
 
-msgid "  Width of the luma matrix"
+msgid "Width of the luma matrix"
 msgstr ""
 
-msgid "  Height of the luma matrix"
+msgid "Height of the luma matrix"
 msgstr ""
 
-msgid "  Amount of luma sharpness/blur"
+msgid "Amount of luma sharpness/blur"
 msgstr ""
 
-msgid "  Width of the chroma matrix"
+msgid "Width of the chroma matrix"
 msgstr ""
 
-msgid "  Height of the chroma matrix"
+msgid "Height of the chroma matrix"
 msgstr ""
 
-msgid "  Amount of chroma sharpness/blur"
+msgid "Amount of chroma sharpness/blur"
 msgstr ""
 
 msgid "3D Denoiser"
 msgstr ""
 
-msgid "  Spatial luma strength"
+msgid "Spatial luma strength"
 msgstr ""
 
-msgid "  Spatial chroma strength"
+msgid "Spatial chroma strength"
 msgstr ""
 
-msgid "  Temporal strength"
+msgid "Temporal strength"
 msgstr ""
 
 msgid "HUE"
@@ -469,7 +469,7 @@ msgstr ""
 msgid "Blending method"
 msgstr ""
 
-msgid "  Use hardware for low-res video"
+msgid "Use hardware for low-res video"
 msgstr ""
 
 msgid "Scaling method"
@@ -496,8 +496,8 @@ msgstr "Dekoder"
 msgid "Buffer size"
 msgstr "Puffergröße"
 
-msgid "  Number of PES packets"
-msgstr "  Anzahl PES-Pakete"
+msgid "Number of PES packets"
+msgstr "Anzahl PES-Pakete"
 
 msgid "Local Display Frontend"
 msgstr "Lokale Bildschirmanzeige"
@@ -517,11 +517,11 @@ msgstr "Framebuffer-Device"
 msgid "Fullscreen mode"
 msgstr "Vollbild-Modus"
 
-msgid "  Window width"
-msgstr "  Fensterbreite"
+msgid "Window width"
+msgstr "Fensterbreite"
 
-msgid "  Window height"
-msgstr "  Fensterhöhe"
+msgid "Window height"
+msgstr "Fensterhöhe"
 
 msgid "Window aspect"
 msgstr "Fenster-Seitenverhältnis"
@@ -541,29 +541,29 @@ msgstr "Entfernte Clients"
 msgid "Allow remote clients"
 msgstr "Erlaube entfernte Clients"
 
-msgid "  Listen port (TCP and broadcast)"
-msgstr "  Empfangender Port (TCP und Broadcast)"
+msgid "Listen port (TCP and broadcast)"
+msgstr "Empfangender Port (TCP und Broadcast)"
 
-msgid "  Listen address"
+msgid "Listen address"
 msgstr ""
 
-msgid "  Remote keyboard"
-msgstr "  Tastaturfernsteuerung"
+msgid "Remote keyboard"
+msgstr "Tastaturfernsteuerung"
 
-msgid "  Max number of clients"
+msgid "Max number of clients"
 msgstr ""
 
-msgid "  PIPE transport"
-msgstr "  Pipe-Übertragung"
+msgid "PIPE transport"
+msgstr "Pipe-Übertragung"
 
-msgid "  TCP transport"
-msgstr "  TCP-Übertragung"
+msgid "TCP transport"
+msgstr "TCP-Übertragung"
 
-msgid "  UDP transport"
-msgstr "  UDP-Übertragung"
+msgid "UDP transport"
+msgstr "UDP-Übertragung"
 
-msgid "  RTP (multicast) transport"
-msgstr "  RTP (multicast) Übertragung"
+msgid "RTP (multicast) transport"
+msgstr "RTP (multicast) Übertragung"
 
 msgid "    Address"
 msgstr "    Multicast-Adresse"
@@ -580,11 +580,11 @@ msgstr "    Immer senden"
 msgid "    SAP announcements"
 msgstr "    SAP-Ankündigungen"
 
-msgid "  Server announce broadcasts"
-msgstr "  Server-Bekanntmachung Broadcast"
+msgid "Server announce broadcasts"
+msgstr "Server-Bekanntmachung Broadcast"
 
-msgid "  HTTP transport for media files"
-msgstr "  HTTP-Verbindung für Medien-Dateien"
+msgid "HTTP transport for media files"
+msgstr "HTTP-Verbindung für Medien-Dateien"
 
 msgid "Additional network services"
 msgstr "Zusätzliche Netzwerk-Services"
