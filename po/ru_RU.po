@@ -565,19 +565,19 @@ msgstr "UDP транспорт"
 msgid "RTP (multicast) transport"
 msgstr "RTP (широковещательный) транспорт"
 
-msgid "    Address"
+msgid "Address"
 msgstr ""
 
-msgid "    Port"
+msgid "Port"
 msgstr ""
 
-msgid "    TTL"
+msgid "TTL"
 msgstr ""
 
-msgid "    Transmit always on"
+msgid "Transmit always on"
 msgstr ""
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr ""
 
 msgid "Server announce broadcasts"

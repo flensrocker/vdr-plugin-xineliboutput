@@ -606,23 +606,23 @@ msgid "RTP (multicast) transport"
 msgstr "RTP (組播)傳送"
 
 #, fuzzy
-msgid "    Address"
+msgid "Address"
 msgstr "地址"
 
 #, fuzzy
-msgid "    Port"
+msgid "Port"
 msgstr "端口"
 
 #, fuzzy
-msgid "    TTL"
+msgid "TTL"
 msgstr "TTL"
 
 #, fuzzy
-msgid "    Transmit always on"
+msgid "Transmit always on"
 msgstr "傳送永遠在線"
 
 #, fuzzy
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr "SAP公司公佈"
 
 #, fuzzy

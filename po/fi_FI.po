@@ -566,20 +566,20 @@ msgstr "UDP-siirto"
 msgid "RTP (multicast) transport"
 msgstr "RTP (multicast) -siirto"
 
-msgid "    Address"
-msgstr "    Osoite"
+msgid "Address"
+msgstr "Osoite"
 
-msgid "    Port"
-msgstr "    Portti"
+msgid "Port"
+msgstr "Portti"
 
-msgid "    TTL"
-msgstr "    TTL-aika"
+msgid "TTL"
+msgstr "TTL-aika"
 
-msgid "    Transmit always on"
-msgstr "    Pidä lähetys aina päällä"
+msgid "Transmit always on"
+msgstr "Pidä lähetys aina päällä"
 
-msgid "    SAP announcements"
-msgstr "    SAP-ilmoitukset"
+msgid "SAP announcements"
+msgstr "SAP-ilmoitukset"
 
 msgid "Server announce broadcasts"
 msgstr "Palvelimen broadcast-ilmoitukset"

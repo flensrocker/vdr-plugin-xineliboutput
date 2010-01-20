@@ -565,20 +565,20 @@ msgstr "UDP-Übertragung"
 msgid "RTP (multicast) transport"
 msgstr "RTP (multicast) Übertragung"
 
-msgid "    Address"
-msgstr "    Multicast-Adresse"
+msgid "Address"
+msgstr "Multicast-Adresse"
 
-msgid "    Port"
-msgstr "    Multicast-Port"
+msgid "Port"
+msgstr "Multicast-Port"
 
-msgid "    TTL"
-msgstr "    Multicast-TTL"
+msgid "TTL"
+msgstr "Multicast-TTL"
 
-msgid "    Transmit always on"
-msgstr "    Immer senden"
+msgid "Transmit always on"
+msgstr "Immer senden"
 
-msgid "    SAP announcements"
-msgstr "    SAP-Ankündigungen"
+msgid "SAP announcements"
+msgstr "SAP-Ankündigungen"
 
 msgid "Server announce broadcasts"
 msgstr "Server-Bekanntmachung Broadcast"

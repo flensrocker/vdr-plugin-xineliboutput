@@ -567,20 +567,20 @@ msgstr "Protocollo UDP"
 msgid "RTP (multicast) transport"
 msgstr "Protocollo RTP (multicast)"
 
-msgid "    Address"
-msgstr "    Indirizzo"
+msgid "Address"
+msgstr "Indirizzo"
 
-msgid "    Port"
-msgstr "    Porta"
+msgid "Port"
+msgstr "Porta"
 
-msgid "    TTL"
-msgstr "    TTL"
+msgid "TTL"
+msgstr "TTL"
 
-msgid "    Transmit always on"
-msgstr "    Trasmetti sempre"
+msgid "Transmit always on"
+msgstr "Trasmetti sempre"
 
-msgid "    SAP announcements"
-msgstr "    Annunci SAP"
+msgid "SAP announcements"
+msgstr "Annunci SAP"
 
 msgid "Server announce broadcasts"
 msgstr "Annuncio trasmissioni dal server"

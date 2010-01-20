@@ -565,19 +565,19 @@ msgstr "UDP 传送"
 msgid "RTP (multicast) transport"
 msgstr "RTP (组播) 传送"
 
-msgid "    Address"
+msgid "Address"
 msgstr "地址"
 
-msgid "    Port"
+msgid "Port"
 msgstr "端口"
 
-msgid "    TTL"
+msgid "TTL"
 msgstr "TTL"
 
-msgid "    Transmit always on"
+msgid "Transmit always on"
 msgstr "传送永远在线"
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr "SAP公司公布"
 
 msgid "Server announce broadcasts"

@@ -566,19 +566,19 @@ msgstr "UDP transport"
 msgid "RTP (multicast) transport"
 msgstr "RTP (multicast) transport"
 
-msgid "    Address"
-msgstr "    Adresa"
+msgid "Address"
+msgstr "Adresa"
 
-msgid "    Port"
-msgstr "    Port"
+msgid "Port"
+msgstr "Port"
 
-msgid "    TTL"
+msgid "TTL"
 msgstr ""
 
-msgid "    Transmit always on"
-msgstr "    Pøenos stále zapnut"
+msgid "Transmit always on"
+msgstr "Pøenos stále zapnut"
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr ""
 
 msgid "Server announce broadcasts"
