@@ -532,9 +532,6 @@ msgstr "Масштабировать в размер окна"
 msgid "Interlaced Field Order"
 msgstr "Черезстрочный порядок полей"
 
-msgid "Port"
-msgstr "Порт"
-
 msgid "Remote Clients"
 msgstr "Удаленные клиенты"
 
@@ -569,7 +566,7 @@ msgid "Address"
 msgstr ""
 
 msgid "Port"
-msgstr ""
+msgstr "Порт"
 
 msgid "TTL"
 msgstr ""

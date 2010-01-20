@@ -533,9 +533,6 @@ msgstr "©kálovat do velikosti okna"
 msgid "Interlaced Field Order"
 msgstr "Poøadí pùlsnímkù"
 
-msgid "Port"
-msgstr "Port"
-
 msgid "Remote Clients"
 msgstr "Vzdálení klienti"
 

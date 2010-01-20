@@ -533,9 +533,6 @@ msgstr "Skaalaa ikkunan kokoiseksi"
 msgid "Interlaced Field Order"
 msgstr "Lomitettujen kenttien järjestys"
 
-msgid "Port"
-msgstr "Portti"
-
 msgid "Remote Clients"
 msgstr "Etäkäyttö"
 

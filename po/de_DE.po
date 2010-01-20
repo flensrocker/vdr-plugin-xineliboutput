@@ -532,9 +532,6 @@ msgstr "Skaliere auf Fenster-Größe"
 msgid "Interlaced Field Order"
 msgstr "Interlaced Halbbild-Reihenfolge"
 
-msgid "Port"
-msgstr "Port"
-
 msgid "Remote Clients"
 msgstr "Entfernte Clients"
 

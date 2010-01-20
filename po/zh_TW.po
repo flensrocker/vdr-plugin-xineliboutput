@@ -610,10 +610,6 @@ msgid "Address"
 msgstr "地址"
 
 #, fuzzy
-msgid "Port"
-msgstr "端口"
-
-#, fuzzy
 msgid "TTL"
 msgstr "TTL"
 

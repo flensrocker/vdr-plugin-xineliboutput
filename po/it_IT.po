@@ -534,9 +534,6 @@ msgstr "Scala a dimensione finestra"
 msgid "Interlaced Field Order"
 msgstr "Ordine campo interlacciato"
 
-msgid "Port"
-msgstr "Porta"
-
 msgid "Remote Clients"
 msgstr "Client remoti"
 
