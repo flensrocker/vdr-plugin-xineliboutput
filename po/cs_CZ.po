@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-08-07 15:14+0300\n"
+"POT-Creation-Date: 2010-01-20 13:43+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -223,26 +223,17 @@ msgstr "Fronta"
 msgid "Media"
 msgstr "Média"
 
-msgid "Play file >>"
-msgstr "Pøehrát soubor >>"
+msgid "View images"
+msgstr "Prohlí¾et obrázky"
 
-msgid "Play music >>"
-msgstr "Pøehrát hudbu >>"
+msgid "Play DVD disc"
+msgstr "Pøehrát DVD"
 
-msgid "View images >>"
-msgstr "Prohlí¾et obrázky >>"
+msgid "Play BluRay disc"
+msgstr "Pøehrát BluRay"
 
-msgid "Play remote DVD >>"
-msgstr "Pøehrát vzdálené DVD >>"
-
-msgid "Play DVD disc >>"
-msgstr "Pøehrát DVD >>"
-
-msgid "Play remote CD >>"
-msgstr "Pøehrát vzdálené CD >>"
-
-msgid "Play audio CD >>"
-msgstr "Pøehrát zvukové CD >>"
+msgid "Play audio CD"
+msgstr "Pøehrát zvukové CD"
 
 msgid "Video settings"
 msgstr "Nastavení obrazu"
@@ -256,20 +247,14 @@ msgstr "Oøíznout letterbox 4:3 na 16:9"
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (oøez okrajù obrazu)"
 
-msgid "Interlaced Field Order"
-msgstr "Poøadí pùlsnímkù"
-
 msgid "Audio settings"
 msgstr "Nastavení zvuku"
-
-msgid "Headphone audio mode"
-msgstr ""
 
 msgid "Audio Compression"
 msgstr ""
 
-msgid "Audio equalizer >>"
-msgstr "Korekce zvuku (ekvalizér) >>"
+msgid "Audio equalizer"
+msgstr "Korekce zvuku (ekvalizér)"
 
 msgid "Local Frontend"
 msgstr "Lokální rozhraní"
@@ -545,6 +530,9 @@ msgstr "Pomìr stran okna"
 msgid "Scale to window size"
 msgstr "©kálovat do velikosti okna"
 
+msgid "Interlaced Field Order"
+msgstr "Poøadí pùlsnímkù"
+
 msgid "Port"
 msgstr "Port"
 
@@ -635,6 +623,27 @@ msgstr "Uchovávat metainfo"
 msgid "Arrow keys control DVD playback"
 msgstr ""
 
+msgid "Media Player"
+msgstr "Pøehrávaè médií"
+
+msgid "Play file >>"
+msgstr "Pøehrát soubor >>"
+
+msgid "Play music >>"
+msgstr "Pøehrát hudbu >>"
+
+msgid "View images >>"
+msgstr "Prohlí¾et obrázky >>"
+
+msgid "Play DVD disc >>"
+msgstr "Pøehrát DVD >>"
+
+msgid "Play audio CD >>"
+msgstr "Pøehrát zvukové CD >>"
+
+msgid "Play BluRay disc >>"
+msgstr "Pøehrát BluRay >>"
+
 msgid "Grayscale"
 msgstr "Odstíny ¹edi"
 
@@ -644,11 +653,17 @@ msgstr "Rastr"
 msgid "OSD"
 msgstr "OSD"
 
-msgid "Media Player"
-msgstr "Pøehrávaè médií"
-
 msgid "Test Images"
 msgstr "Zku¹ební obrazce"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib výstupní plugin"
+
+#~ msgid "Play remote DVD >>"
+#~ msgstr "Pøehrát vzdálené DVD >>"
+
+#~ msgid "Play remote CD >>"
+#~ msgstr "Pøehrát vzdálené CD >>"
+
+#~ msgid "Audio equalizer >>"
+#~ msgstr "Korekce zvuku (ekvalizér) >>"

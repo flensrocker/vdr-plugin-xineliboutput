@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-08-07 15:14+0300\n"
+"POT-Creation-Date: 2010-01-20 13:43+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -223,26 +223,17 @@ msgstr "Soittolistalle"
 msgid "Media"
 msgstr "Media"
 
-msgid "Play file >>"
-msgstr "Toista tiedosto >>"
+msgid "View images"
+msgstr "Katsele kuvia"
 
-msgid "Play music >>"
-msgstr "Toista musiikkia >>"
+msgid "Play DVD disc"
+msgstr "Toista DVD-levy"
 
-msgid "View images >>"
-msgstr "Katsele kuvia >>"
+msgid "Play BluRay disc"
+msgstr "Toista BluRay-levy"
 
-msgid "Play remote DVD >>"
-msgstr "Toista DVD-levy etäkoneesta >>"
-
-msgid "Play DVD disc >>"
-msgstr "Toista DVD-levy >>"
-
-msgid "Play remote CD >>"
-msgstr "Toista CD-levy etäkoneesta >>"
-
-msgid "Play audio CD >>"
-msgstr "Toista CD-levy >>"
+msgid "Play audio CD"
+msgstr "Toista CD-levy"
 
 msgid "Video settings"
 msgstr "Videoasetukset"
@@ -256,20 +247,14 @@ msgstr "Leikkaa 4:3-letterbox 16:9:ksi"
 msgid "Overscan (crop image borders)"
 msgstr "Leikkaa kuvan reunoja (overscan)"
 
-msgid "Interlaced Field Order"
-msgstr "Lomitettujen kenttien järjestys"
-
 msgid "Audio settings"
 msgstr "Ääniasetukset"
-
-msgid "Headphone audio mode"
-msgstr "Kuulokkeiden äänimoodi"
 
 msgid "Audio Compression"
 msgstr "Voimista hiljaisia ääniä"
 
-msgid "Audio equalizer >>"
-msgstr "Taajuuskorjain >>"
+msgid "Audio equalizer"
+msgstr "Taajuuskorjain"
 
 msgid "Local Frontend"
 msgstr "Paikallinen näyttö"
@@ -545,6 +530,9 @@ msgstr "Ikkunan kuvasuhde"
 msgid "Scale to window size"
 msgstr "Skaalaa ikkunan kokoiseksi"
 
+msgid "Interlaced Field Order"
+msgstr "Lomitettujen kenttien järjestys"
+
 msgid "Port"
 msgstr "Portti"
 
@@ -635,6 +623,27 @@ msgstr "Tallenna metatieto"
 msgid "Arrow keys control DVD playback"
 msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
 
+msgid "Media Player"
+msgstr "Mediasoitin"
+
+msgid "Play file >>"
+msgstr "Toista tiedosto >>"
+
+msgid "Play music >>"
+msgstr "Toista musiikkia >>"
+
+msgid "View images >>"
+msgstr "Katsele kuvia >>"
+
+msgid "Play DVD disc >>"
+msgstr "Toista DVD-levy >>"
+
+msgid "Play audio CD >>"
+msgstr "Toista CD-levy >>"
+
+msgid "Play BluRay disc >>"
+msgstr "Toista BluRay-levy >>"
+
 msgid "Grayscale"
 msgstr "Harmaasävy"
 
@@ -644,11 +653,20 @@ msgstr "Bittikartta"
 msgid "OSD"
 msgstr "Kuvaruutunäyttö"
 
-msgid "Media Player"
-msgstr "Mediasoitin"
-
 msgid "Test Images"
 msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
+
+#~ msgid "Play remote DVD >>"
+#~ msgstr "Toista DVD-levy etäkoneesta >>"
+
+#~ msgid "Play remote CD >>"
+#~ msgstr "Toista CD-levy etäkoneesta >>"
+
+#~ msgid "Headphone audio mode"
+#~ msgstr "Kuulokkeiden äänimoodi"
+
+#~ msgid "Audio equalizer >>"
+#~ msgstr "Taajuuskorjain >>"

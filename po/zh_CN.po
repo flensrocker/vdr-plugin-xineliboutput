@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-09-21 03:00+0800\n"
+"POT-Creation-Date: 2010-01-20 13:43+0200\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -222,26 +222,17 @@ msgstr "按钮$队列"
 msgid "Media"
 msgstr "媒体"
 
-msgid "Play file >>"
-msgstr "播放文件 >>"
+msgid "View images"
+msgstr "浏览图像"
 
-msgid "Play music >>"
-msgstr "播放音乐 >>"
+msgid "Play DVD disc"
+msgstr "播放DVD光盘"
 
-msgid "View images >>"
-msgstr "浏览图像 >>"
+msgid "Play BluRay disc"
+msgstr "播放BluRay光盘 >>"
 
-msgid "Play remote DVD >>"
-msgstr "玩遥控影碟 >>"
-
-msgid "Play DVD disc >>"
-msgstr "播放DVD光盘 >>"
-
-msgid "Play remote CD >>"
-msgstr "播放远程光盘 >>"
-
-msgid "Play audio CD >>"
-msgstr "播放音乐CD >>"
+msgid "Play audio CD"
+msgstr "播放音乐CD"
 
 msgid "Video settings"
 msgstr "视频设置"
@@ -255,20 +246,14 @@ msgstr "选择4:3或者16:9"
 msgid "Overscan (crop image borders)"
 msgstr "过扫描(去掉图像边框)"
 
-msgid "Interlaced Field Order"
-msgstr "隔行场令"
-
 msgid "Audio settings"
 msgstr "音频设置"
-
-msgid "Headphone audio mode"
-msgstr "耳机音频模式"
 
 msgid "Audio Compression"
 msgstr "音频压缩"
 
-msgid "Audio equalizer >>"
-msgstr "音频均衡器 >>"
+msgid "Audio equalizer"
+msgstr "音频均衡器"
 
 msgid "Local Frontend"
 msgstr "本地前端"
@@ -544,6 +529,9 @@ msgstr "窗口缩放"
 msgid "Scale to window size"
 msgstr "缩放到窗口大小"
 
+msgid "Interlaced Field Order"
+msgstr "隔行场令"
+
 msgid "Port"
 msgstr "端口"
 
@@ -634,6 +622,27 @@ msgstr "缓存信息"
 msgid "Arrow keys control DVD playback"
 msgstr "允许按键控制DVD回放"
 
+msgid "Media Player"
+msgstr "媒体播放器"
+
+msgid "Play file >>"
+msgstr "播放文件 >>"
+
+msgid "Play music >>"
+msgstr "播放音乐 >>"
+
+msgid "View images >>"
+msgstr "浏览图像 >>"
+
+msgid "Play DVD disc >>"
+msgstr "播放DVD光盘 >>"
+
+msgid "Play audio CD >>"
+msgstr "播放音乐CD >>"
+
+msgid "Play BluRay disc >>"
+msgstr "播放BluRay光盘 >>"
+
 msgid "Grayscale"
 msgstr "灰度"
 
@@ -643,12 +652,20 @@ msgstr "位图"
 msgid "OSD"
 msgstr "菜单"
 
-msgid "Media Player"
-msgstr "媒体播放器"
-
 msgid "Test Images"
 msgstr "测试图像"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib 视频输出插件 by NFVDR-HD"
 
+#~ msgid "Play remote DVD >>"
+#~ msgstr "玩遥控影碟 >>"
+
+#~ msgid "Play remote CD >>"
+#~ msgstr "播放远程光盘 >>"
+
+#~ msgid "Headphone audio mode"
+#~ msgstr "耳机音频模式"
+
+#~ msgid "Audio equalizer >>"
+#~ msgstr "音频均衡器 >>"

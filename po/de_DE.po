@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-08-07 15:14+0300\n"
+"POT-Creation-Date: 2010-01-20 13:43+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -222,26 +222,17 @@ msgstr "Warteschlange"
 msgid "Media"
 msgstr "Medien"
 
-msgid "Play file >>"
-msgstr "Datei abspielen >>"
+msgid "View images"
+msgstr "Bilder ansehen"
 
-msgid "Play music >>"
-msgstr "Musik abspielen >>"
+msgid "Play DVD disc"
+msgstr "DVD abspielen"
 
-msgid "View images >>"
-msgstr "Bilder ansehen >>"
+msgid "Play BluRay disc"
+msgstr "BluRay abspielen"
 
-msgid "Play remote DVD >>"
-msgstr "Entfernte DVD abspielen >>"
-
-msgid "Play DVD disc >>"
-msgstr "DVD abspielen >>"
-
-msgid "Play remote CD >>"
-msgstr "Entfernte CD abspielen >>"
-
-msgid "Play audio CD >>"
-msgstr "Musik-CD abspielen >>"
+msgid "Play audio CD"
+msgstr "Musik-CD abspielen"
 
 msgid "Video settings"
 msgstr "Video-Einstellungen"
@@ -255,20 +246,14 @@ msgstr "Schneide letterbox 4:3 zu 16:9"
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (Bildränder abschneiden)"
 
-msgid "Interlaced Field Order"
-msgstr "Interlaced Halbbild-Reihenfolge"
-
 msgid "Audio settings"
 msgstr "Audio-Einstellungen"
-
-msgid "Headphone audio mode"
-msgstr ""
 
 msgid "Audio Compression"
 msgstr "Audio-Komprimierung"
 
-msgid "Audio equalizer >>"
-msgstr "Audio-Equalizer >>"
+msgid "Audio equalizer"
+msgstr "Audio Equalizer"
 
 msgid "Local Frontend"
 msgstr "Lokale Anzeige"
@@ -544,6 +529,9 @@ msgstr "Fenster-Seitenverhältnis"
 msgid "Scale to window size"
 msgstr "Skaliere auf Fenster-Größe"
 
+msgid "Interlaced Field Order"
+msgstr "Interlaced Halbbild-Reihenfolge"
+
 msgid "Port"
 msgstr "Port"
 
@@ -634,6 +622,27 @@ msgstr ""
 msgid "Arrow keys control DVD playback"
 msgstr ""
 
+msgid "Media Player"
+msgstr "Medien..."
+
+msgid "Play file >>"
+msgstr "Datei abspielen >>"
+
+msgid "Play music >>"
+msgstr "Musik abspielen >>"
+
+msgid "View images >>"
+msgstr "Bilder ansehen >>"
+
+msgid "Play DVD disc >>"
+msgstr "DVD abspielen >>"
+
+msgid "Play audio CD >>"
+msgstr "Musik-CD abspielen >>"
+
+msgid "Play BluRay disc >>"
+msgstr "BluRay abspielen >>"
+
 msgid "Grayscale"
 msgstr "Graustufen"
 
@@ -643,11 +652,17 @@ msgstr "Bitmap"
 msgid "OSD"
 msgstr ""
 
-msgid "Media Player"
-msgstr "Medien..."
-
 msgid "Test Images"
 msgstr "Testbilder"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib Ausgabe-Plugin"
+
+#~ msgid "Play remote DVD >>"
+#~ msgstr "Entfernte DVD abspielen >>"
+
+#~ msgid "Play remote CD >>"
+#~ msgstr "Entfernte CD abspielen >>"
+
+#~ msgid "Audio equalizer >>"
+#~ msgstr "Audio-Equalizer >>"

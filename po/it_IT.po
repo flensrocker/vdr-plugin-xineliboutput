@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-08-07 15:14+0300\n"
+"POT-Creation-Date: 2010-01-20 13:43+0200\n"
 "PO-Revision-Date: 2009-08-10 00:40+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -224,26 +224,17 @@ msgstr "Coda"
 msgid "Media"
 msgstr "Media"
 
-msgid "Play file >>"
-msgstr "Riproduci file >>"
+msgid "View images"
+msgstr "Visualizza immagini"
 
-msgid "Play music >>"
-msgstr "Riproduci musica >>"
+msgid "Play DVD disc"
+msgstr "Riproduci disco DVD"
 
-msgid "View images >>"
-msgstr "Visualizza immagini >>"
+msgid "Play BluRay disc"
+msgstr "Riproduci disco BluRay"
 
-msgid "Play remote DVD >>"
-msgstr "Riproduci DVD remoto >>"
-
-msgid "Play DVD disc >>"
-msgstr "Riproduci disco DVD >>"
-
-msgid "Play remote CD >>"
-msgstr "Riproduci CD remoto >>"
-
-msgid "Play audio CD >>"
-msgstr "Riproduci CD audio >>"
+msgid "Play audio CD"
+msgstr "Riproduci CD audio"
 
 msgid "Video settings"
 msgstr "Impostazioni video"
@@ -257,20 +248,14 @@ msgstr "Ritaglia letterbox 4:3 a 16:9"
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (ritaglia bordi immagine)"
 
-msgid "Interlaced Field Order"
-msgstr "Ordine campo interlacciato"
-
 msgid "Audio settings"
 msgstr "Impostazioni audio"
-
-msgid "Headphone audio mode"
-msgstr "Modalità cuffie audio"
 
 msgid "Audio Compression"
 msgstr "Compressione audio"
 
-msgid "Audio equalizer >>"
-msgstr "Equalizzatore audio >>"
+msgid "Audio equalizer"
+msgstr "Equalizzatore audio"
 
 msgid "Local Frontend"
 msgstr "Frontend locale"
@@ -546,6 +531,9 @@ msgstr "Aspetto finestra"
 msgid "Scale to window size"
 msgstr "Scala a dimensione finestra"
 
+msgid "Interlaced Field Order"
+msgstr "Ordine campo interlacciato"
+
 msgid "Port"
 msgstr "Porta"
 
@@ -636,6 +624,27 @@ msgstr "Cache metainfo"
 msgid "Arrow keys control DVD playback"
 msgstr "Riproduzione DVD con tasti freccia"
 
+msgid "Media Player"
+msgstr "Lettore multimediale"
+
+msgid "Play file >>"
+msgstr "Riproduci file >>"
+
+msgid "Play music >>"
+msgstr "Riproduci musica >>"
+
+msgid "View images >>"
+msgstr "Visualizza immagini >>"
+
+msgid "Play DVD disc >>"
+msgstr "Riproduci disco DVD >>"
+
+msgid "Play audio CD >>"
+msgstr "Riproduci CD audio >>"
+
+msgid "Play BluRay disc >>"
+msgstr "Riproduci disco BluRay >>"
+
 msgid "Grayscale"
 msgstr "Scala di grigi"
 
@@ -645,12 +654,20 @@ msgstr "Bitmap"
 msgid "OSD"
 msgstr "OSD"
 
-msgid "Media Player"
-msgstr "Lettore multimediale"
-
 msgid "Test Images"
 msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
 
+#~ msgid "Play remote DVD >>"
+#~ msgstr "Riproduci DVD remoto >>"
+
+#~ msgid "Play remote CD >>"
+#~ msgstr "Riproduci CD remoto >>"
+
+#~ msgid "Headphone audio mode"
+#~ msgstr "Modalità cuffie audio"
+
+#~ msgid "Audio equalizer >>"
+#~ msgstr "Equalizzatore audio >>"
