@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.73 2009-10-25 13:02:33 phintuka Exp $
+ * $Id: setup_menu.c,v 1.74 2010-01-20 12:23:23 phintuka Exp $
  *
  */
 
@@ -97,17 +97,6 @@ static int INDEX_TO_CONTROL(int ind)
 }
 #endif
 
-static cOsdItem *NewTitle(const char *s)
-{
-  char str[128];
-  cOsdItem *tmp;
-  snprintf(str, sizeof(str), "----- %s -----", s);
-  str[sizeof(str)-1] = 0;
-  tmp = new cOsdItem(str);
-  tmp->SetSelectable(false);
-  return tmp;
-}
-
 //--- cMenuSetupAudio --------------------------------------------------------
 
 class cMenuSetupAudio : public cMenuSetupPage 
@@ -178,7 +167,7 @@ void cMenuSetupAudio::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Audio")));
+  Add(SeparatorItem(tr("Audio")));
 
   Add(audio_ctrl_speakers =
       new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type, 
@@ -352,7 +341,7 @@ void cMenuSetupAudioEq::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Audio Equalizer")));
+  Add(SeparatorItem(tr("Audio Equalizer")));
   for(int i=0; i<AUDIO_EQ_count; i++)
     Add(new cMenuEditTypedIntItem(config_t::s_audioEqNames[i], "%", 
 				  &newconfig.audio_equalizer[i],
@@ -578,7 +567,7 @@ void cMenuSetupVideo::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Video")));
+  Add(SeparatorItem(tr("Video")));
 
   Add(ctrl_vo_aspect_ratio =
       new cMenuEditStraI18nItem(tr("Aspect ratio"), &newconfig.vo_aspect_ratio,
@@ -935,7 +924,7 @@ void cMenuSetupOSD::Set(void)
   ctrl_alpha = NULL;
   ctrl_alpha_abs = NULL;
 
-  Add(NewTitle(tr("On-Screen Display")));
+  Add(SeparatorItem(tr("On-Screen Display")));
   Add(new cMenuEditBoolItem(tr("Hide main menu"),
 			    &newconfig.hide_main_menu));
 
@@ -1100,7 +1089,7 @@ void cMenuSetupDecoder::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Decoder")));
+  Add(SeparatorItem(tr("Decoder")));
   Add(ctrl_pes_buffers_ind = 
       new cMenuEditStraI18nItem(tr("Buffer size"), &pes_buffers_ind, 
 				PES_BUFFERS_count, xc.s_bufferSize));
@@ -1241,7 +1230,7 @@ void cMenuSetupLocal::Set(void)
   ctrl_audio_driver = NULL;
   ctrl_audio_port = NULL;
 
-  Add(NewTitle(tr("Local Frontend")));
+  Add(SeparatorItem(tr("Local Frontend")));
 
   Add(ctrl_local_fe = 
       new cMenuEditStraI18nItem(tr("Local Display Frontend"), &local_frontend,
@@ -1253,9 +1242,8 @@ void cMenuSetupLocal::Set(void)
   }
 
   if(local_frontend != FRONTEND_NONE) {
-    cString tmp = cString::sprintf("%s >>", tr("Decoder"));
-    Add(new cOsdItem(tmp, osUser1));
-    Add(NewTitle(tr("Video")));
+    Add(SubMenuItem(tr("Decoder"), osUser1));
+    Add(SeparatorItem(tr("Video")));
   }
 
   if(local_frontend == FRONTEND_X11) {
@@ -1309,7 +1297,7 @@ void cMenuSetupLocal::Set(void)
 				  xc.s_fieldOrder));
 #endif
 
-    Add(NewTitle(tr("Audio")));
+    Add(SeparatorItem(tr("Audio")));
 
     Add(ctrl_audio_driver = 
 	new cMenuEditStraI18nItem(tr("Driver"), &audio_driver, 
@@ -1467,7 +1455,7 @@ void cMenuSetupRemote::Set(void)
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
   Clear();
 
-  Add(NewTitle(tr("Remote Clients")));
+  Add(SeparatorItem(tr("Remote Clients")));
   Add(ctrl_remote_mode = new cMenuEditBoolItem(tr("Allow remote clients"), 
 					       &newconfig.remote_mode));
   ctrl_usertp = NULL;
@@ -1516,7 +1504,7 @@ void cMenuSetupRemote::Set(void)
     Add(new cMenuEditBoolItem(tr("  HTTP transport for media files"), 
 			      &newconfig.remote_http_files));
 
-    Add(NewTitle(tr("Additional network services")));
+    Add(SeparatorItem(tr("Additional network services")));
     Add(ctrl_use_http =
 	new cMenuEditBoolItem(tr("HTTP server"),
 			      &newconfig.remote_use_http));
@@ -1650,7 +1638,7 @@ void cMenuSetupMediaPlayer::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Playlist settings")));
+  Add(SeparatorItem(tr("Playlist settings")));
 
   Add(media_ctrl_playlist_tracknumber =
       new cMenuEditBoolItem(tr("Show the track number"),
@@ -1675,15 +1663,15 @@ void cMenuSetupMediaPlayer::Set(void)
   Add(new cMenuEditBoolItem(tr("Arrow keys control DVD playback"),
                             &newconfig.dvd_arrow_keys_control_playback));
 
-  Add(NewTitle(tr("Media Player")));
-  Add(new cMenuEditBitItem(tr("Play file >>"),        &newconfig.media_menu_items, MEDIA_MENU_FILES));
-  Add(new cMenuEditBitItem(tr("Play music >>"),       &newconfig.media_menu_items, MEDIA_MENU_MUSIC));
-  Add(new cMenuEditBitItem(tr("View images >>"),      &newconfig.media_menu_items, MEDIA_MENU_IMAGES));
-  Add(new cMenuEditBitItem(tr("Play DVD disc >>"),    &newconfig.media_menu_items, MEDIA_MENU_DVD));
-  Add(new cMenuEditBitItem(tr("Play audio CD >>"),    &newconfig.media_menu_items, MEDIA_MENU_CD));
-  Add(new cMenuEditBitItem(tr("Play BluRay disc >>"), &newconfig.media_menu_items, MEDIA_MENU_BLURAY));
-  Add(new cMenuEditBitItem(tr("Video settings"),      &newconfig.media_menu_items, MEDIA_MENU_VIDEO_SETUP));
-  Add(new cMenuEditBitItem(tr("Audio settings"),      &newconfig.media_menu_items, MEDIA_MENU_AUDIO_SETUP));
+  Add(SeparatorItem(tr("Media Player")));
+  Add(new cMenuEditBitItem(tr("Play file"),        &newconfig.media_menu_items, MEDIA_MENU_FILES));
+  Add(new cMenuEditBitItem(tr("Play music"),       &newconfig.media_menu_items, MEDIA_MENU_MUSIC));
+  Add(new cMenuEditBitItem(tr("View images"),      &newconfig.media_menu_items, MEDIA_MENU_IMAGES));
+  Add(new cMenuEditBitItem(tr("Play DVD disc"),    &newconfig.media_menu_items, MEDIA_MENU_DVD));
+  Add(new cMenuEditBitItem(tr("Play audio CD"),    &newconfig.media_menu_items, MEDIA_MENU_CD));
+  Add(new cMenuEditBitItem(tr("Play BluRay disc"), &newconfig.media_menu_items, MEDIA_MENU_BLURAY));
+  Add(new cMenuEditBitItem(tr("Video settings"),   &newconfig.media_menu_items, MEDIA_MENU_VIDEO_SETUP));
+  Add(new cMenuEditBitItem(tr("Audio settings"),   &newconfig.media_menu_items, MEDIA_MENU_AUDIO_SETUP));
 
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
