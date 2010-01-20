@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.75 2010-01-19 22:28:45 phintuka Exp $
+ * $Id: menu.c,v 1.76 2010-01-20 11:41:07 phintuka Exp $
  *
  */
 
@@ -128,7 +128,7 @@ cMenuBrowseFiles::~cMenuBrowseFiles()
 
 char *cMenuBrowseFiles::GetLastDir(void)
 {
-  switch(m_Mode) {
+  switch (m_Mode) {
     case ShowMusic:  return xc.browse_music_dir;
     case ShowImages: return xc.browse_images_dir;
     default:
@@ -245,7 +245,7 @@ eOSState cMenuBrowseFiles::Delete(void)
   if (!it->IsDir()) {
     if (Interface->Confirm(trVDR("Delete recording?"))) {
       cString name = cString::sprintf("%s/%s", m_CurrentDir, it->Name());
-      if(!unlink(name)) {
+      if (!unlink(name)) {
         isyslog("file %s deleted", *name);
         if (m_Mode != ShowImages) {
           name = cString::sprintf("%s.resume", *name);
@@ -422,7 +422,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
               Add(new cFileListItem(e->d_name, false));
 
             // images
-            } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
+            } else if (m_Mode == ShowImages && xc.IsImageFile(buffer)) {
               Add(new cFileListItem(e->d_name, false));
 
             // DVD image (.iso)
@@ -501,16 +501,8 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 
 //----------------------------- cMenuXinelib ---------------------------------
 
+
 #include "tools/display_message.h"
-
-static cOsdItem *NewTitle(const char *s)
-{
-  cString str = cString::sprintf("----- %s -----", s);
-  cOsdItem *tmp = new cOsdItem(str);
-  tmp->SetSelectable(false);
-  return tmp;
-}
-
 
 extern cOsdObject *g_PendingMenuAction;
 
@@ -527,34 +519,22 @@ cMenuXinelib::cMenuXinelib()
 
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
-  Add(NewTitle(tr("Media")));
+  Add(SeparatorItem(tr("Media")));
   if (xc.media_menu_items & MEDIA_MENU_FILES)
-    Add(new cOsdItem(tr("Play file >>"), osUser1));
+    Add(SubMenuItem(tr("Play file"),        osUser1));
   if (xc.media_menu_items & MEDIA_MENU_MUSIC)
-    Add(new cOsdItem(tr("Play music >>"), osUser2));
+    Add(SubMenuItem(tr("Play music"),       osUser2));
   if (xc.media_menu_items & MEDIA_MENU_IMAGES)
-    Add(new cOsdItem(tr("View images >>"), osUser3));
-  if (xc.media_menu_items & MEDIA_MENU_DVD) {
-    if(xc.remote_mode)
-      Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
-    else
-      Add(new cOsdItem(tr("Play DVD disc >>"), osUser4));
-  }
-  if (xc.media_menu_items & MEDIA_MENU_CD) {
-    if(xc.remote_mode)
-      Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
-    else
-      Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
-  }
-  if (xc.media_menu_items & MEDIA_MENU_BLURAY) {
-    if(xc.remote_mode)
-      Add(new cOsdItem(tr("Play remote BluRay >>"), osUser5));
-    else
-      Add(new cOsdItem(tr("Play BluRay disc >>"), osUser5));
-  }
+    Add(SubMenuItem(tr("View images"),      osUser3));
+  if (xc.media_menu_items & MEDIA_MENU_DVD)
+    Add(SubMenuItem(tr("Play DVD disc"),    osUser4));
+  if (xc.media_menu_items & MEDIA_MENU_BLURAY)
+    Add(SubMenuItem(tr("Play BluRay disc"), osUser5));
+  if (xc.media_menu_items & MEDIA_MENU_CD)
+    Add(SubMenuItem(tr("Play audio CD"),    osUser6));
 
   if (xc.media_menu_items & MEDIA_MENU_VIDEO_SETUP) {
-    Add(NewTitle(tr("Video settings")));
+    Add(SeparatorItem(tr("Video settings")));
     Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"),
                                              &novideo));
     Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"),
@@ -565,10 +545,10 @@ cMenuXinelib::cMenuXinelib()
   }
 
   if (xc.media_menu_items & MEDIA_MENU_AUDIO_SETUP) {
-    Add(NewTitle(tr("Audio settings")));
+    Add(SeparatorItem(tr("Audio settings")));
     Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"), "%",
                                                         &compression, 100, 500, NULL, tr("Off")));
-    Add(new cOsdItem(tr("Audio equalizer >>"), osUser7));
+    Add(SubMenuItem(tr("Audio equalizer"), osUser7));
   }
 
   switch (xc.main_menu_mode) {
@@ -616,7 +596,7 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
   if (hotkey_state == hkInit && Key == HOTKEY_START) {
     hotkey_state = hkSeen;
     return osContinue;
-  } else if(hotkey_state == hkSeen && Key != kNone) {
+  } else if (hotkey_state == hkSeen && Key != kNone) {
     hotkey_state = hkNone;
     return ProcessHotkey(Key);
   }
