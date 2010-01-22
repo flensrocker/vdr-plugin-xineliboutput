@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: demux_xvdr_tsdata.c,v 1.1 2009-02-24 19:50:42 phintuka Exp $
+ * $Id: demux_xvdr_tsdata.c,v 1.2 2010-01-22 23:06:58 phintuka Exp $
  *
  */
 
@@ -39,6 +39,21 @@ static void ts_data_ts2es_reset(ts_data_t *ts_data)
   }
 }
 
+void ts_data_reset_audio(ts_data_t *ts_data, fifo_buffer_t *audio_fifo)
+{
+  int i;
+
+  for (i = 0; ts_data->audio[i]; i++) {
+    ts2es_dispose(ts_data->audio[i]);
+    ts_data->audio[i] = NULL;
+  }
+
+  if (audio_fifo) {
+    for (i = 0; i < ts_data->pmt.audio_tracks_count; i++)
+      ts_data->audio[i] = ts2es_init(audio_fifo, ts_data->pmt.audio_tracks[i].type, i);
+  }
+}
+
 void ts_data_ts2es_init(ts_data_t **ts_data, fifo_buffer_t *video_fifo, fifo_buffer_t *audio_fifo)
 {
   if (*ts_data)
@@ -53,12 +68,12 @@ void ts_data_ts2es_init(ts_data_t **ts_data, fifo_buffer_t *video_fifo, fifo_buf
     if (this->pmt.video_pid != INVALID_PID)
       this->video = ts2es_init(video_fifo, this->pmt.video_type, 0);
 
-    for (i=0; i < this->pmt.spu_tracks_count; i++)
+    for (i = 0; i < this->pmt.spu_tracks_count; i++)
       this->spu[i] = ts2es_init(video_fifo, STREAM_DVBSUB, i);
   }
 
   if (audio_fifo) {
-    for (i=0; i < this->pmt.audio_tracks_count; i++)
+    for (i = 0; i < this->pmt.audio_tracks_count; i++)
       this->audio[i] = ts2es_init(audio_fifo, this->pmt.audio_tracks[i].type, i);
   }
 }
