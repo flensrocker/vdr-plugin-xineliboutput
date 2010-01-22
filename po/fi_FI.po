@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-01-20 14:30+0200\n"
+"POT-Creation-Date: 2010-01-21 23:15+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -533,6 +533,9 @@ msgstr "Skaalaa ikkunan kokoiseksi"
 msgid "Interlaced Field Order"
 msgstr "Lomitettujen kenttien järjestys"
 
+msgid "Port"
+msgstr "Portti"
+
 msgid "Remote Clients"
 msgstr "Etäkäyttö"
 
@@ -565,9 +568,6 @@ msgstr "RTP (multicast) -siirto"
 
 msgid "Address"
 msgstr "Osoite"
-
-msgid "Port"
-msgstr "Portti"
 
 msgid "TTL"
 msgstr "TTL-aika"
