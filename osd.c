@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.39 2010-01-10 08:38:53 rofafor Exp $
+ * $Id: osd.c,v 1.40 2010-01-24 14:53:50 rofafor Exp $
  *
  */
 
@@ -453,11 +453,11 @@ void cXinelibOsd::Flush(void)
     double Aspect;
     int    W, H;
     m_Device->GetOsdSize(W, H, Aspect);
-    XOffset = (H - 576) > 0 ? (H - 576) : 0;
-    YOffset = ((W - 720) / 2) ? ((W - 720) / 2) : 0;
+    YOffset = (H - 576) > 0 ? (H - 576) : 0;
+    XOffset = ((W - 720) / 2) ? ((W - 720) / 2) : 0;
   }
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
-    int x1 = XOffset, y1 = YOffset, x2 = x1+Bitmap->Width()-1, y2 = y1+Bitmap->Height()-1;
+    int x1 = 0, y1 = 0, x2 = x1+Bitmap->Width()-1, y2 = y1+Bitmap->Height()-1;
     if (m_Refresh || Bitmap->Dirty(x1, y1, x2, y2)) {
 
       /* XXX what if only palette has been changed ? */
@@ -466,7 +466,7 @@ void cXinelibOsd::Flush(void)
       if (Colors) {
 	osd_rect_t DirtyArea = {x1:x1, y1:y1, x2:x2, y2:y2};
 	CmdRle(i,
-	       Left() + Bitmap->X0(), Top() + Bitmap->Y0(),
+	       Left() + Bitmap->X0() + XOffset, Top() + Bitmap->Y0() + YOffset,
 	       Bitmap->Width(), Bitmap->Height(),
 	       (unsigned char *)Bitmap->Data(0,0),
 	       NumColors, (unsigned int *)Colors,
