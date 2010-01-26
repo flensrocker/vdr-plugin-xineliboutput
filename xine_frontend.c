@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.109 2010-01-04 07:58:40 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.110 2010-01-26 11:38:42 phintuka Exp $
  *
  */
 
@@ -36,6 +36,7 @@
 #include "xine/vo_post.h"
 #include "xine/vo_osdscaler.h"
 #include "xine/vo_osdreorder.h"
+#include "xine/vo_lastpts.h"
 
 #undef  MIN
 #define MIN(a,b) ( (a) < (b) ? (a) : (b))
@@ -55,6 +56,12 @@ static void intercept_video_driver(xine_video_port_t *video_port)
   if (! wire_video_driver(video_port, osdreorder)) {
     LOGMSG("wire_video_driver() for osdreorder failed");
     osdreorder->dispose(osdreorder);
+  }
+
+  vo_driver_t *lastpts = vo_lastpts_init();
+  if (! wire_video_driver(video_port, lastpts)) {
+    LOGMSG("wire_video_driver() for vo_lastpts failed");
+    lastpts->dispose(lastpts);
   }
 }
 
