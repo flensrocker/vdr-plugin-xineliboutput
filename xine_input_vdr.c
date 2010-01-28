@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.289 2010-01-18 20:39:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.290 2010-01-28 11:44:38 phintuka Exp $
  *
  */
 
@@ -62,6 +62,7 @@
 
 #include "xine/adjustable_scr.h"
 #include "xine/osd_manager.h"
+#include "xine/xvdr_metronom.h"
 
 #include "xine_input_vdr.h"
 #include "xine_input_vdr_net.h"
@@ -127,7 +128,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.289 2010-01-18 20:39:36 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.290 2010-01-28 11:44:38 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -312,6 +313,9 @@ typedef struct vdr_input_plugin_s {
   uint8_t             dvd_menu : 1;
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
+
+  /* metronom */
+  xvdr_metronom_t    *metronom;
 
   /* SCR */
   adjustable_scr_t   *scr;
@@ -1935,7 +1939,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
   return 0;
 }
 
-static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
+static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
 {
 /*  speed:
       <0 - show each abs(n)'th frame (drop other frames)
@@ -1954,6 +1958,8 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
     pthread_mutex_unlock(&this->lock);
     return -2;
   }
+
+  this->metronom->set_trickspeed(this->metronom, backwards ? speed : 0);
 
   if(speed > 1 || speed < -1) {
     reset_scr_tuning(this, -1);
@@ -1979,6 +1985,11 @@ static int  set_playback_speed(vdr_input_plugin_t *this, int speed)
 
   pthread_mutex_unlock(&this->lock);
   return 0;
+}
+
+static int reset_trick_speed(vdr_input_plugin_t *this)
+{
+  return set_trick_speed(this, 1, 0);
 }
 
 static void send_meta_info(vdr_input_plugin_t *this)
@@ -2263,10 +2274,10 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       xine_usec_sleep(50*1000);
 
       /* keep our own demux happy while playing another stream */
-      set_playback_speed(this, 1);
+      reset_trick_speed(this);
       this->live_mode = 1;
       set_live_mode(this, 0);
-      set_playback_speed(this, 1);
+      reset_trick_speed(this);
       reset_scr_tuning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
       this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
 					       METRONOM_PREBUFFER, 90000);
@@ -2902,7 +2913,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "TRICKSPEED ", 11)) {
     err = (1 == sscanf(cmd+11, "%d", &tmp32)) ? 
-      set_playback_speed(this, tmp32) : 
+      set_trick_speed(this, tmp32, !!strstr(cmd+13, "Back")) :
       CONTROL_PARAM_ERROR;    
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
@@ -4512,7 +4523,7 @@ static void handle_disconnect(vdr_input_plugin_t *this)
 
   flush_all_fifos (this, 0);
 
-  set_playback_speed(this, 1);
+  reset_trick_speed(this);
   this->live_mode = 0;
   reset_scr_tuning(this, XINE_FINE_SPEED_NORMAL);
   this->stream->emergency_brake = 1;
@@ -4798,6 +4809,10 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   if (this->scr)
     this->scr->dispose(this->scr);
 
+  /* metronom */
+  if (this->metronom)
+    this->metronom->dispose(this->metronom);
+
   free (this->mrl);
 
   if(this->udp_data)
@@ -4862,6 +4877,9 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   this->scr_tuning = SCR_TUNING_OFF;
   this->curpos = 0;
+
+  /* replace stream metronom */
+  this->metronom = xvdr_metronom_init(this->stream);
 
   /* buffer */
   this->block_buffer = fifo_buffer_new(this->stream, 4, 0x10000+64); /* dummy buf to be used before first read and for big PES frames */
