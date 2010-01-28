@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.290 2010-01-28 11:44:38 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.291 2010-01-28 11:50:07 phintuka Exp $
  *
  */
 
@@ -128,7 +128,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.290 2010-01-28 11:44:38 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.291 2010-01-28 11:50:07 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1817,7 +1817,7 @@ static int set_deinterlace_method(vdr_input_plugin_t *this, const char *method_n
   this->class->xine->config->update_num(this->class->xine->config,
 					"video.output.xv_deinterlace_method",
 					method >= 0 ? method : 0);
-  xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, method ? 1 : 0);
+  xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, !!method);
   
   return 0;
 }
@@ -2949,13 +2949,13 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "MASTER ", 7)) {
     if(1 == sscanf(cmd+7, "%d", &tmp32))
-      this->fixed_scr = tmp32 ? 1 : 0;
+      this->fixed_scr = !!tmp32;
     else
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "VOLUME ", 7)) {
     if(1 == sscanf(cmd+7, "%d", &tmp32)) {
-      int sw = strstr(cmd, "SW") ? 1 : 0;
+      int sw = !!strstr(cmd, "SW");
       if(!sw) {
 	xine_set_param(stream, XINE_PARAM_AUDIO_VOLUME, tmp32);
 	xine_set_param(stream, XINE_PARAM_AUDIO_MUTE, tmp32<=0 ? 1 : 0);
@@ -3005,7 +3005,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
   } else if(!strncasecmp(cmd, "AUDIOSTREAM ", 12)) {
     if(!this->slave_stream) {
 #if 0
-      int ac3 = strncmp(cmd+12, "AC3", 3) ? 0 : 1;
+      int ac3 = !strncmp(cmd+12, "AC3", 3);
       if(1 == sscanf(cmd+12 + 4*ac3, "%d", &tmp32)) {
 	pthread_mutex_lock(&this->lock);
 	this->audio_stream_id = tmp32;
@@ -3027,7 +3027,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     int old_ch  = _x_get_spu_channel(stream);
     int max_ch  = xine_get_stream_info(stream, XINE_STREAM_INFO_MAX_SPU_CHANNEL);
     int ch      = old_ch;
-    int ch_auto = strstr(cmd+10, "auto") ? 1 : 0;
+    int ch_auto = !!strstr(cmd+10, "auto");
     int is_dvd  = 0;
 
     if (this->slave_stream && this->slave_stream->input_plugin) {
@@ -4708,7 +4708,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   this->control_running = 0;
 
-  local = this->funcs.push_input_write ? 1 : 0;
+  local = !!this->funcs.push_input_write;
   memset(&this->funcs, 0, sizeof(this->funcs));
 
   /* shutdown sockets */
