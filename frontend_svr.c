@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.85 2010-01-18 18:00:30 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.86 2010-01-29 13:54:55 phintuka Exp $
  *
  */
 
@@ -54,6 +54,8 @@
 
 #define PLAYFILE_CTRL_TIMEOUT   300   /* ms */
 #define PLAYFILE_TIMEOUT      20000   /* ms */
+#define REMOTE_FLUSH_TIMEOUT   1000   /* ms */
+#define REMOTE_SYNC_TIMEOUT    1000   /* ms */
 
 #undef  MIN
 #define MIN(a,b) ( (a) < (b) ? (a) : (b))
@@ -577,7 +579,7 @@ bool cXinelibServer::Flush(int TimeoutMs)
   if(result) {
     cString tmp = cString::sprintf("FLUSH %d %" PRIu64 " %d",
                                    TimeoutMs, m_StreamPos, m_Frames);
-    result = (PlayFileCtrl(tmp)) <= 0 && result;
+    result = (Xine_Control_Result(tmp, REMOTE_FLUSH_TIMEOUT)) <= 0;
   }
 
   return result;
@@ -644,6 +646,16 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
   return 1;
 }
 
+/*
+ * Sync()
+ *
+ * Wait until all control messages have been processed by the client
+ */
+void cXinelibServer::Sync(void)
+{
+  Xine_Control_Result("SYNC", REMOTE_SYNC_TIMEOUT);
+}
+
 void cXinelibServer::TrickSpeed(int Speed, bool Backwards)
 {
   if(Speed == 0) {
@@ -678,6 +690,53 @@ int cXinelibServer::AllocToken(void)
   return m_Token;
 }
 
+/*
+ * Xine_Control_Result()
+ *
+ * Post control message to client and wait for result (synchronous RPC).
+ */
+int cXinelibServer::Xine_Control_Result(const char *Cmd, uint TimeoutMs)
+{
+  if (TimeoutMs > 20000) {
+    LOGMSG("Xine_Control_Result(): very long tomeout (%d sec) !", TimeoutMs/1000);
+    TimeoutMs = 20000;
+  }
+
+  Lock();
+
+  /* Get token, send it to client and set future for it */
+  int          token = AllocToken();
+  cReplyFuture future;
+  m_Futures->Add(&future, token);
+
+  /* Send actual command */
+  Xine_Control(Cmd);
+
+  Unlock();
+
+  /* When server thread get REPLY %d %d (first %d == token, second returned value)
+   * it sets corresponding future (by token; if found) in list
+   * and removes it from list.
+   */
+
+#ifdef XINELIBOUTPUT_DEBUG
+  int64_t t = cTimeMs::Now();
+#endif
+
+  future.Wait(TimeoutMs);
+
+  Lock();
+  m_Futures->Del(&future, token);
+  Unlock();
+
+  if (!future.IsReady()) {
+    LOGMSG("cXinelibServer::Xine_Control_Result: Timeout (%s, %d ms) %d", Cmd, TimeoutMs, token);
+    return -1;
+  }
+
+  return future.Value();
+}
+
 bool cXinelibServer::HasClients(void)
 {
   LOCK_THREAD;
@@ -698,58 +757,23 @@ int cXinelibServer::PlayFileCtrl(const char *Cmd, int TimeoutMs)
     return -1;
   }
 
-  bool bPlayfile = false /*, bGet = false, bFlush = false*/;
-  if((!strncmp(Cmd, "FLUSH", 5)    /*&& (bFlush=true)*/) ||
-     (!strncmp(Cmd, "PLAYFILE", 8) && (bPlayfile=true)) ||
-     (!strncmp(Cmd, "GET", 3)      /*&& (bGet=true)*/)) {  // GETPOS, GETLENGTH, ...
-
-    Lock();
-
-    /* Get token, send it to client and set future for it */
-    int token = AllocToken();
-    cReplyFuture future;
-    m_Futures->Add(&future, token);
-
-    /* Send actual command */
-    cXinelibThread::PlayFileCtrl(Cmd);
-
-    Unlock();
-
-    /* When server thread get REPLY %d %d (first %d == token, second returned value)
-     * it sets corresponding future (by token; if found) in list
-     * and removes it from list.
-     */
-
-#ifdef XINELIBOUTPUT_DEBUG
-    int64_t t = cTimeMs::Now();
-#endif
+  int  result;
+  bool bPlayfile = false;
+  if((!strncmp(Cmd, "PLAYFILE", 8) && (bPlayfile=true)) ||
+     (!strncmp(Cmd, "GET", 3)                         )) {  // GETPOS, GETLENGTH, ...
 
     if(TimeoutMs < 0)
       TimeoutMs = bPlayfile ? PLAYFILE_TIMEOUT : PLAYFILE_CTRL_TIMEOUT;
 
-    future.Wait(TimeoutMs);
+    result = Xine_Control_Result(Cmd, TimeoutMs);
 
-    Lock();
-    m_Futures->Del(&future, token);
-    Unlock();
-
-    if(!future.IsReady()) {
-      LOGMSG("cXinelibServer::PlayFileCtrl: Timeout (%s , %d ms) %d", Cmd, TimeoutMs, token);
-      return -1;
-    }
-
-    TRACE("cXinelibServer::PlayFileCtrl("<<Cmd<<"): result=" << future.Value()
-          << " delay: " << (int)(cTimeMs::Now()-t) << "ms");
-
-    if(bPlayfile)
-      m_bEndOfStreamReached = false;
-
-    return future.Value();
+  } else {
+    result = cXinelibThread::PlayFileCtrl(Cmd);
   }
 
-  bool result = cXinelibThread::PlayFileCtrl(Cmd);
   if(!*m_FileName)
     cHttpStreamer::CloseAll();
+
   return result;
 }
 

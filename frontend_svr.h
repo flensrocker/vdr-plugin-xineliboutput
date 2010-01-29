@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.27 2010-01-18 18:00:30 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.28 2010-01-29 13:54:54 phintuka Exp $
  *
  */
 
@@ -64,6 +64,9 @@ protected:
     // Playback control
     virtual int     Xine_Control(const char *cmd);
     virtual int     Xine_Control_Sync(const char *cmd);
+
+    virtual int     Xine_Control_Result(const char *cmd, uint TimeoutMs);
+    virtual void    Sync(void);
 
 protected:
 
