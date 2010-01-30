@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.87 2010-01-30 10:48:31 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.88 2010-01-30 10:50:36 phintuka Exp $
  *
  */
 
@@ -565,6 +565,9 @@ int cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
 
 bool cXinelibServer::Flush(int TimeoutMs)
 {
+  if (!HasClients())
+    return true;
+
   int  result = true;
 
   if(m_Scheduler)
@@ -708,6 +711,10 @@ int cXinelibServer::AllocToken(void)
  */
 int cXinelibServer::Xine_Control_Result(const char *Cmd, uint TimeoutMs)
 {
+  if(!HasClients()) {
+    return -1;
+  }
+
   if (TimeoutMs > 20000) {
     LOGMSG("Xine_Control_Result(): very long tomeout (%d sec) !", TimeoutMs/1000);
     TimeoutMs = 20000;
