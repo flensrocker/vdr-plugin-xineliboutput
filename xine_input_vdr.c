@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.292 2010-01-30 10:56:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.293 2010-01-30 19:38:26 phintuka Exp $
  *
  */
 
@@ -128,7 +128,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.292 2010-01-30 10:56:36 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.293 2010-01-30 19:38:26 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3075,9 +3075,15 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       printf_control(this, "RESULT %d 1\r\n", this->token);
 
   } else if(!strncasecmp(cmd, "GETSTC", 6)) {
-    int64_t pts = xine_get_current_vpts(stream) -
-                  stream->metronom->get_option(stream->metronom, 
-					       METRONOM_VPTS_OFFSET);
+    int64_t pts = -1;
+    if (this->still_mode || this->is_trickspeed) {
+      pts = stream->metronom->get_option(stream->metronom, XVDR_METRONOM_LAST_VO_PTS);
+    }
+    if (pts <= 0) {
+      pts = xine_get_current_vpts(stream) -
+            stream->metronom->get_option(stream->metronom, METRONOM_VPTS_OFFSET);
+    }
+
     if(this->fd_control >= 0) {
       printf_control(this, "STC %" PRId64 "\r\n", pts);
     } else {
