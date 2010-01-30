@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.86 2010-01-29 13:54:55 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.87 2010-01-30 10:48:31 phintuka Exp $
  *
  */
 
@@ -56,6 +56,7 @@
 #define PLAYFILE_TIMEOUT      20000   /* ms */
 #define REMOTE_FLUSH_TIMEOUT   1000   /* ms */
 #define REMOTE_SYNC_TIMEOUT    1000   /* ms */
+#define REMOTE_STC_TIMEOUT      300   /* ms */
 
 #undef  MIN
 #define MIN(a,b) ( (a) < (b) ? (a) : (b))
@@ -381,8 +382,8 @@ int64_t cXinelibServer::GetSTC(void)
 
   Unlock();
 
-  if(! m_StcFuture->Wait(200)) {
-    LOGMSG("cXinelibServer::GetSTC timeout (200ms)");
+  if (!m_StcFuture->Wait(REMOTE_STC_TIMEOUT)) {
+    LOGMSG("cXinelibServer::GetSTC timeout");
     return INT64_C(-1);
   }
 
@@ -585,6 +586,11 @@ bool cXinelibServer::Flush(int TimeoutMs)
   return result;
 }
 
+/*
+ * Xine_Control()
+ *
+ * Post control message to client (async RPC)
+ */
 int cXinelibServer::Xine_Control(const char *cmd)
 {
   TRACEF("cXinelibServer::Xine_Control");
@@ -610,6 +616,11 @@ int cXinelibServer::Xine_Control(const char *cmd)
   return 1;
 }
 
+/*
+ * Xine_Control_Sync()
+ *
+ * Post control message to client (message is transported in data stream)
+ */
 int cXinelibServer::Xine_Control_Sync(const char *cmd)
 {
   TRACEF("cXinelibServer::Xine_Control_Sync");
