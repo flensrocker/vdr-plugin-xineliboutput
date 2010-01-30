@@ -4,13 +4,17 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_lastpts.c,v 1.1 2010-01-26 11:36:21 phintuka Exp $
+ * $Id: vo_lastpts.c,v 1.2 2010-01-30 19:26:16 phintuka Exp $
  *
  */
 
 #include <stdlib.h>
 
+#include <xine/xine_internal.h>
 #include <xine/video_out.h>
+#include <xine/metronom.h>
+
+#include "xvdr_metronom.h"
 
 #include "vo_hook.h"
 
@@ -19,16 +23,7 @@
  */
 typedef struct {
   vo_driver_hook_t h;
-
-  /* PTS of last displayed video frame */
-  int64_t last_pts;
-
 } lastpts_hook_t;
-
-
-/* next symbol is dynamically linked from input plugin */
-int64_t vo_last_video_pts __attribute__((visibility("default"))) = INT64_C(-1);
-
 
 /*
  * interface
@@ -42,8 +37,9 @@ static void lastpts_display_frame(vo_driver_t *self, vo_frame_t *vo_img)
 {
   lastpts_hook_t *this = (lastpts_hook_t*)self;
 
-  if (vo_img->pts > 0)
-    vo_last_video_pts = vo_img->pts;
+  if (vo_img->stream) {
+    vo_img->stream->metronom->set_option(vo_img->stream->metronom, XVDR_METRONOM_LAST_VO_PTS, vo_img->pts);
+  }
 
   this->h.orig_driver->display_frame(this->h.orig_driver, vo_img);
 }

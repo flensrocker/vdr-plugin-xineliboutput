@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.3 2010-01-26 11:46:33 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.4 2010-01-30 19:26:15 phintuka Exp $
  *
  */
 
@@ -84,12 +84,24 @@ static void set_audio_rate(metronom_t *metronom, int64_t pts_per_smpls)
 static void set_option(metronom_t *metronom, int option, int64_t value)
 {
   xvdr_metronom_t *this = (xvdr_metronom_t *)metronom;
+
+  if (option == XVDR_METRONOM_LAST_VO_PTS) {
+    if (value > 0)
+      this->last_vo_pts = value;
+    return;
+  }
+
   this->orig_metronom->set_option(this->orig_metronom, option, value);
 }
 
 static int64_t get_option(metronom_t *metronom, int option)
 {
   xvdr_metronom_t *this = (xvdr_metronom_t *)metronom;
+
+  if (option == XVDR_METRONOM_LAST_VO_PTS) {
+    return this->last_vo_pts;
+  }
+
   return this->orig_metronom->get_option(this->orig_metronom, option);
 }
 

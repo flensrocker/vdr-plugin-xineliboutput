@@ -4,12 +4,16 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.2 2010-01-17 23:03:25 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.3 2010-01-30 19:26:16 phintuka Exp $
  *
  */
 
 #ifndef XVDR_METRONOM_H
 #define XVDR_METRONOM_H
+
+
+#define XVDR_METRONOM_LAST_VO_PTS  0x1001
+
 
 typedef struct xvdr_metronom_s xvdr_metronom_t;
 
@@ -42,8 +46,8 @@ struct xvdr_metronom_s {
   void *handle;
   void (*frame_decoded)(void *handle, uint video_count, uint audio_count);
 
-  /* current trick speed */
-  int             trickspeed;
+  int     trickspeed;    /* current trick speed */
+  int64_t last_vo_pts;   /* last displayed video frame PTS */
 #endif
 };
 
