@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.291 2010-01-28 11:50:07 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.292 2010-01-30 10:56:36 phintuka Exp $
  *
  */
 
@@ -128,7 +128,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.291 2010-01-28 11:50:07 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.292 2010-01-30 10:56:36 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3070,9 +3070,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     else
       err = CONTROL_PARAM_ERROR;
 
-  } else if(!strncasecmp(cmd, "SYNC ", 5)) {
+  } else if(!strncasecmp(cmd, "SYNC", 4)) {
     if(this->fd_control >= 0)
-      write_control(this, cmd);
+      printf_control(this, "RESULT %d 1\r\n", this->token);
 
   } else if(!strncasecmp(cmd, "GETSTC", 6)) {
     int64_t pts = xine_get_current_vpts(stream) -
