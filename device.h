@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.49 2009-08-01 19:50:36 phintuka Exp $
+ * $Id: device.h,v 1.50 2010-02-01 12:20:01 phintuka Exp $
  *
  */
 
@@ -232,6 +232,9 @@ class cXinelibDevice : public cDevice
 
     int PlayAny(const uchar *Data, int Length);
     int PlayTrickSpeed(const uchar *buf, int length);
+
+    bool AcceptVideoPacket(const uchar *Data, int Length);
+    bool AcceptAudioPacket(const uchar *Data, int Length);
 
   protected:
 

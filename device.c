@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.90 2009-08-19 17:08:08 phintuka Exp $
+ * $Id: device.c,v 1.91 2010-02-01 12:20:01 phintuka Exp $
  *
  */
 
@@ -1178,21 +1178,82 @@ int cXinelibDevice::PlayTsSubtitle(const uchar *Data, int Length)
 
 int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
 {
+  if (!AcceptAudioPacket(Data, Length))
+    return Length;
+
   return PlayTsAny(Data, Length);
 }
 
 int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
+  if (!AcceptVideoPacket(Data, Length))
+    return Length;
+
+  if (m_StreamStart) {
+    //if (ts_get_video_size(Data, Length, m_VideoSize, m_h264 ? 1:0)) {
+      m_StreamStart = false;
+      //LOGDBG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);
+      //ForEach(m_clients, &cXinelibThread::SetHDMode, (m_VideoSize->width > 800));
+    //}
+  }
+
   return PlayTsAny(Data, Length);
 }
 #endif // VDRVERSNUM >= 10701
+
+bool cXinelibDevice::AcceptVideoPacket(const uchar *Data, int Length)
+{
+  if (!Data || Length < 6)
+    return false;
+
+  if (m_PlayMode == pmAudioOnlyBlack)
+    return false;
+
+  if (m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly))
+    return false;
+
+  if (m_RadioStream) {
+    m_RadioStream = false;
+    m_AudioCount  = 0;
+    ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+  }
+
+  return true;
+}
+
+bool cXinelibDevice::AcceptAudioPacket(const uchar *Data, int Length)
+{
+  if (!Data || Length < 6)
+    return false;
+
+  if (m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmAudioOnly))
+    return false;
+
+  // strip audio in trick speed modes and when displaying still images
+  if (m_SkipAudio)
+    return false;
+  if (m_TrickSpeedMode & trs_NoAudio)
+    return false;
+
+  if (m_RadioStream) {
+    if (m_AudioCount > 0) {
+      m_AudioCount--;
+      if (m_AudioCount <= 0) {
+	LOGDBG("PlayAudio detected radio stream");
+	ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+      }
+    }
+  }
+
+  return true;
+}
 
 int cXinelibDevice::PlayVideo(const uchar *buf, int length) 
 {
   TRACEF("cXinelibDevice::PlayVideo");
   TRACK_TIME(100);
 
-  if(m_PlayMode == pmAudioOnlyBlack)
+  if (!AcceptVideoPacket(buf, length))
     return length;
 
   if (!DATA_IS_PES(buf)) {
@@ -1200,22 +1261,7 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
     return length;
   }
 
-  if(m_RadioStream) {
-    m_RadioStream = false;
-    m_AudioCount  = 0;
-    ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
-  }
-
   if(m_StreamStart) {
-#ifdef START_IFRAME
-    // Start with I-frame if stream has video
-    // wait for first I-frame
-    if (pes_get_picture_type(buf, length) == I_FRAME) {
-      m_StreamStart = false;
-    } else {
-      return length;
-    }
-#endif
 
     if (!m_h264 && pes_is_frame_h264(buf, length)) {
       LOGMSG("cXinelibDevice::PlayVideo: Detected H.264 video");
@@ -1235,9 +1281,6 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
       m_statusMonitor->IFrame();
   }
 #endif
-
-  if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmVideoOnly))
-    return length;
 
   return PlayAny(buf, length);
 }
@@ -1321,34 +1364,7 @@ int cXinelibDevice::PlayAudio(const uchar *buf, int length, uchar Id)
   TRACEF("cXinelibDevice::PlayAudio");
   TRACK_TIME(100);
 
-  if(!buf || length < 6)
-    return length;
-
-#ifdef SKIP_AC3_AUDIO
-    // skip AC3 audio
-  if(((unsigned char *)buf)[3] == PRIVATE_STREAM1) {
-    TRACE("cXinelibDevice::PlayVideo: PRIVATE_STREAM1 discarded");
-    return length;
-  }
-#endif
-
-  // strip audio in trick speed modes and when displaying still images
-  if(m_SkipAudio /*|| m_TrickSpeed > 0*/)
-    return length;
-  if(m_TrickSpeedMode & trs_NoAudio)
-    return length;
-
-  if(m_RadioStream) {
-    if(m_AudioCount) {
-      m_AudioCount--;
-      if(!m_AudioCount) {
-	LOGDBG("PlayAudio detected radio stream");
-	ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
-      }
-    }
-  }
-
-  if(m_PlayingFile && (m_PlayingFile == pmAudioVideo || m_PlayingFile == pmAudioOnly))
+  if (!AcceptAudioPacket(buf, length))
     return length;
 
   return PlayAny(buf, length);
