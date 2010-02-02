@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.15 2010-02-02 22:56:18 phintuka Exp $
+ * $Id: ts.c,v 1.16 2010-02-02 23:00:00 phintuka Exp $
  *
  */
 
@@ -529,12 +529,12 @@ struct ts_state_s {
 
   uint8_t  inside_pes; /* Scanning ES (PES start code seen and skipped) */
 
-  uint32_t buf_len;    /* bytes queued */
-  uint32_t buf_size;   /* buffer size */
+  size_t   buf_len;    /* bytes queued */
+  size_t   buf_size;   /* buffer size */
   uint8_t  buf[0];     /* payload: partial PES / video stream header etc. */
 };
 
-ts_state_t *ts_state_init(int buffer_size)
+ts_state_t *ts_state_init(size_t buffer_size)
 {
   if (buffer_size < 8 * TS_SIZE)
     buffer_size = 8 * TS_SIZE;
@@ -546,7 +546,7 @@ ts_state_t *ts_state_init(int buffer_size)
 
 void ts_state_reset(ts_state_t *ts)
 {
-  int buf_size = ts->buf_size;
+  size_t buf_size = ts->buf_size;
   memset(ts, 0, sizeof(ts_state_t));
   ts->buf_size = buf_size;
 }
@@ -563,7 +563,7 @@ void ts_state_dispose(ts_state_t *ts)
  *  - PUSI resets the buffer
  *  - all data before first PUSI is discarded
  */
-static int ts_add_payload(ts_state_t *ts, const uint8_t *data)
+static size_t ts_add_payload(ts_state_t *ts, const uint8_t *data)
 {
   /* start from PUSI */
   if (!ts->pusi_seen) {
@@ -579,7 +579,7 @@ static int ts_add_payload(ts_state_t *ts, const uint8_t *data)
     memmove(ts->buf, ts->buf+TS_SIZE, ts->buf_len);
   }
 
-  int len = ts_PAYLOAD_SIZE(data);
+  size_t len = ts_PAYLOAD_SIZE(data);
   if (len > 0) {
     memcpy(ts->buf + ts->buf_len, ts_GET_PAYLOAD(data), len);
     ts->buf_len += len;
@@ -591,7 +591,7 @@ static int ts_add_payload(ts_state_t *ts, const uint8_t *data)
 /*
  * ts_skip_payload()
  */
-static void ts_skip_payload(ts_state_t *ts, unsigned int n)
+static void ts_skip_payload(ts_state_t *ts, size_t n)
 {
   if (n < ts->buf_len) {
     ts->buf_len -= n;
@@ -607,11 +607,11 @@ static void ts_skip_payload(ts_state_t *ts, unsigned int n)
  * - discard all data until startcode (00 00 01) is found
  * - returns number of bytes left
  */
-static int ts_scan_startcode(ts_state_t *ts)
+static size_t ts_scan_startcode(ts_state_t *ts)
 {
   if (ts->buf_len > 2) {
     /* scan for PES or MPEG 00 00 01 */
-    unsigned int i = 0, n = ts->buf_len - 2;
+    size_t i = 0, n = ts->buf_len - 2;
     while (i < n) {
       if (ts->buf[i+2] != 1)
         i += 3;
@@ -650,7 +650,7 @@ static int ts_get_pes(ts_state_t *ts, const uint8_t *data)
 int64_t ts_get_pts(ts_state_t *ts, const uint8_t *data)
 {
   int64_t pts = NO_PTS;
-  int     cnt = ts_get_pes(ts, data);
+  size_t  cnt = ts_get_pes(ts, data);
 
   if (cnt > 14) {
     pts = pes_get_pts(ts->buf, ts->buf_len);
