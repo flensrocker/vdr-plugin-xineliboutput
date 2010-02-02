@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.h,v 1.6 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: mpeg.h,v 1.7 2010-02-02 22:41:38 phintuka Exp $
  *
  */
 
@@ -19,6 +19,14 @@ extern "C" {
 
 #define SC_PICTURE     0x00  /* picture atart code */
 #define SC_SEQUENCE    0xb3  /* sequence header    */
+
+#if defined(__i386__) || defined(__x86_64__)
+#  define IS_SC_PICTURE(buf)  (*(const uint32_t *)(buf) == 0x00010000U)
+#  define IS_SC_SEQUENCE(buf) (*(const uint32_t *)(buf) == 0xb3010000U)
+#else
+#  define IS_SC_PICTURE(buf)  ((buf)[0] == 0 && (buf)[1] == 0 && (buf)[2] == 1 && (buf)[3] == SC_PICTURE)
+#  define IS_SC_SEQUENCE(buf) ((buf)[0] == 0 && (buf)[1] == 0 && (buf)[2] == 1 && (buf)[3] == SC_SEQUENCE)
+#endif
 
 /* Picture types */
 #define NO_PICTURE  0
