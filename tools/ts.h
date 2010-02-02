@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.12 2009-09-09 11:51:21 phintuka Exp $
+ * $Id: ts.h,v 1.13 2010-02-02 23:08:22 phintuka Exp $
  *
  */
 
@@ -157,7 +157,7 @@ int     ts_get_pcr_n(const uint8_t *pkt, int npkt, int64_t *pcr);
 typedef struct ts_state_s ts_state_t;
 struct video_size_s;
 
-ts_state_t *ts_state_init(int buffer_size);
+ts_state_t *ts_state_init(size_t buffer_size);
 void        ts_state_reset(ts_state_t *ts);
 void        ts_state_dispose(ts_state_t *ts);
 
