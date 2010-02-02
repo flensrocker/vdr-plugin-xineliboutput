@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: h264.c,v 1.7 2009-03-31 11:33:05 phintuka Exp $
+ * $Id: h264.c,v 1.8 2010-02-02 22:45:30 phintuka Exp $
  *
  */
 
@@ -22,7 +22,6 @@
 
 #include "mpeg.h"
 #include "h264.h"
-
 
 int h264_parse_sps(const uint8_t *buf, int len, h264_sps_data_t *sps)
 {
@@ -171,7 +170,7 @@ int h264_get_picture_type(const uint8_t *buf, int len)
 {
   int i;
   for (i = 0; i < len-5; i++) {
-    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1 && buf[i + 3] == NAL_AUD) {
+    if (IS_NAL_AUD(buf + i)) {
       uint8_t type = (buf[i + 4] >> 5);
       switch (type) {
         case 0: case 3: case 5: return I_FRAME;
@@ -189,8 +188,12 @@ int h264_get_video_size(const uint8_t *buf, int len, video_size_t *size)
   int i;
 
   /* H.264 detection, search for NAL AUD */
-  if (!IS_NAL_AUD(buf))
-    return 0;
+  while (!IS_NAL_AUD(buf)) {
+    if (len < 6)
+      return 0;
+    buf++;
+    len--;
+  }
 
   /* if I-frame, search for NAL SPS */
   if (h264_get_picture_type(buf, len) != I_FRAME)
