@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.18 2010-02-02 23:21:55 phintuka Exp $
+ * $Id: ts.c,v 1.19 2010-02-02 23:49:33 phintuka Exp $
  *
  */
 
@@ -685,7 +685,52 @@ int ts_get_picture_type(ts_state_t *ts, const uint8_t *data, int h264)
  * ts_get_video_size()
  */
 
+#include "h264.h"
+#include "mpeg.h"
+
 int ts_get_video_size(ts_state_t *ts, const uint8_t *data, video_size_t *size, int h264)
 {
+  /* Accumulate data. Skip all data until start code. */
+  if (ts_get_pes(ts, data) < 9)
+    return 0;
+
+  /* start scanning PES payload */
+  if (!ts->inside_pes) {
+
+    /* Skip PES header */
+    ts_skip_payload(ts, PES_HEADER_LEN(ts->buf));
+    ts->inside_pes = 1;
+  }
+
+  /* scan for start code */
+
+  while (ts->buf_len > 9) {
+    uint8_t *buf = ts->buf;
+
+    /* MPEG2 sequence start code */
+    if (h264 != 1 && IS_SC_SEQUENCE(buf)) {
+      if (mpeg2_get_video_size(ts->buf, ts->buf_len, size)) {
+        ts_state_reset(ts);
+        return 1;
+      }
+      if (ts->buf_len < ts->buf_size - TS_SIZE)
+        return 0;
+    }
+
+    /* H.264 NAL AUD */
+    if (h264 != 0 && IS_NAL_AUD(buf)) {
+      if (h264_get_video_size(ts->buf, ts->buf_len, size)) {
+        ts_state_reset(ts);
+        return 1;
+      }
+      if (ts->buf_len < ts->buf_size - TS_SIZE)
+        return 0;
+    }
+
+    /* find next start code */
+    ts_skip_payload(ts, 4);
+    ts_scan_startcode(ts);
+  }
+
   return 0;
 }
