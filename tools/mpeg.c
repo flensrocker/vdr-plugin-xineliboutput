@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.c,v 1.3 2009-02-16 16:03:18 phintuka Exp $
+ * $Id: mpeg.c,v 1.4 2010-02-02 22:42:09 phintuka Exp $
  *
  */
 
@@ -24,14 +24,10 @@ const char * const picture_type_str[] = {
 int mpeg2_get_picture_type(const uint8_t *buf, int len)
 {
   int i;
-  for (i = 0; i < len-5; i++) {
-    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1) {
-      switch (buf[i + 3]) {
-        case SC_PICTURE:
-	  return (buf[i + 5] >> 3) & 0x07;
-      }
-    }
-  }
+  for (i = 0; i < len-5; i++)
+    if (IS_SC_PICTURE(buf + i))
+      return (buf[i + 5] >> 3) & 0x07;
+
   return NO_PICTURE;
 }
 
@@ -39,8 +35,7 @@ int mpeg2_get_video_size(const uint8_t *buf, int len, video_size_t *size)
 {
   int i;
   for (i = 0; i < len-6; i++) {
-    if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1) {
-      if (buf[i + 3] == SC_SEQUENCE) {
+    if (IS_SC_SEQUENCE(buf + i)) {
 	static const mpeg_rational_t mpeg2_aspect[16] = {
 	  {0,1}, {1,1}, {4,3}, {16,9}, {221,100},
 	  {0,1}, {0,1}, {0,1}, { 0,1}, {  0,1},
@@ -60,7 +55,6 @@ int mpeg2_get_video_size(const uint8_t *buf, int len, video_size_t *size)
 
 	return 1;
       }
-    }
   }
   return 0;
 }
