@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.16 2010-02-02 23:00:00 phintuka Exp $
+ * $Id: ts.c,v 1.17 2010-02-02 23:01:53 phintuka Exp $
  *
  */
 
@@ -538,17 +538,26 @@ ts_state_t *ts_state_init(size_t buffer_size)
 {
   if (buffer_size < 8 * TS_SIZE)
     buffer_size = 8 * TS_SIZE;
+  if (buffer_size > 4*1024*1024) {
+    LOGMSG("ERROR: ts_state_init(%zd)", buffer_size);
+    buffer_size = 4*1024*1024;
+  }
 
   ts_state_t *ts = (ts_state_t*)calloc(1, sizeof(ts_state_t) + buffer_size);
-  ts->buf_size = buffer_size;
+  if (ts) {
+    ts->buf_size = buffer_size;
+  }
+
   return ts;
 }
 
 void ts_state_reset(ts_state_t *ts)
 {
-  size_t buf_size = ts->buf_size;
-  memset(ts, 0, sizeof(ts_state_t));
-  ts->buf_size = buf_size;
+  if (ts) {
+    size_t buf_size = ts->buf_size;
+    memset(ts, 0, sizeof(ts_state_t));
+    ts->buf_size = buf_size;
+  }
 }
 
 void ts_state_dispose(ts_state_t *ts)
@@ -574,7 +583,7 @@ static size_t ts_add_payload(ts_state_t *ts, const uint8_t *data)
   }
 
   if (ts->buf_len >= ts->buf_size - TS_SIZE) {
-    LOGMSG("ts_add_payload: buffer full");
+    LOGDBG("ts_add_payload: buffer full");
     ts->buf_len -= TS_SIZE;
     memmove(ts->buf, ts->buf+TS_SIZE, ts->buf_len);
   }
