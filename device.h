@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.50 2010-02-01 12:20:01 phintuka Exp $
+ * $Id: device.h,v 1.51 2010-02-03 00:13:10 phintuka Exp $
  *
  */
 
@@ -21,6 +21,7 @@ class cChannel;
 class cFunctor;
 
 struct video_size_s;
+struct ts_state_s;
 
 typedef enum {
   miTitle        = 0,
@@ -32,8 +33,8 @@ typedef enum {
   mi_Count       = 6
 } eMetainfoType;
 
-# define ttXSubtitleNone  (-2)
-# define ttXSubtitleAuto  (-1)
+#define ttXSubtitleNone  (-2)
+#define ttXSubtitleAuto  (-1)
 
 #define MAX_METAINFO_LEN 63
 
@@ -116,6 +117,7 @@ class cXinelibDevice : public cDevice
     virtual eVideoSystem GetVideoSystem(void);
 
     struct video_size_s *m_VideoSize;
+    struct ts_state_s   *m_tssVideoSize;
 #if VDRVERSNUM >= 10708
     virtual void GetVideoSize(int &Width, int &Height, double &VideoAspect);
 #endif
