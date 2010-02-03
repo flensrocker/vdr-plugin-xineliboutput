@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.93 2010-02-03 11:44:05 phintuka Exp $
+ * $Id: device.c,v 1.94 2010-02-03 14:07:09 phintuka Exp $
  *
  */
 
@@ -1348,20 +1348,25 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
       /*cDevice::*/PlayPes(Data, Length, m_SkipAudio);
 #if VDRVERSNUM >= 10701
     } else if(isTs) {
-      /*cDevice::*/PlayTs(Data, Length, m_SkipAudio);
+      int written = 0, total = (Length/TS_SIZE)*TS_SIZE;
+      while (written < total) {
+        int n = PlayTs(Data+written, Length-written, m_SkipAudio);
+        if (n > 0)
+          written += n;
+        else
+          cCondWait::SleepMs(5);
+      }
 #endif
     } else {
-      ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES, 
-	      Data, Length, VIDEO_STREAM,
-	      &mand<bool>, true);
+      ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
+              Data, Length, VIDEO_STREAM, isH264,
+              &mand<bool>, true);
     }
 
-  if(!isH264) {
-    // creates empty video PES with pseudo-pts
-    ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
-	    Data, 0, VIDEO_STREAM,
-	    &mand<bool>, true);
-  }
+  // creates empty video PES with pseudo-pts
+  ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
+          Data, 0, VIDEO_STREAM, isH264,
+          &mand<bool>, true);
 
   TsBufferFlush();
 
