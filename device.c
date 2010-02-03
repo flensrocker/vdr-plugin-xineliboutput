@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.92 2010-02-03 00:13:10 phintuka Exp $
+ * $Id: device.c,v 1.93 2010-02-03 11:44:05 phintuka Exp $
  *
  */
 
@@ -202,9 +202,11 @@ cXinelibDevice::cXinelibDevice()
 
   m_liveMode    = true;
   m_TrickSpeed  = -1;
-  m_TrickSpeedPts = 0;
   m_TrickSpeedMode = 0;
+#if VDRVERSNUM < 10705
+  m_TrickSpeedPts = 0;
   m_TrickSpeedDelay = 0;
+#endif
   m_SkipAudio   = false;
   m_PlayingFile = pmNone;
   m_StreamStart = true;
@@ -681,9 +683,11 @@ void cXinelibDevice::TrickSpeed(int Speed)
     int RealSpeed = abs(Speed);
     LOGTRICKSPEED("TrickSpeed changed from %d to %d [%d]", m_TrickSpeed, Speed, RealSpeed);
 
-    m_TrickSpeedPts = 0;
     m_TrickSpeed = Speed;
+#if VDRVERSNUM < 10705
+    m_TrickSpeedPts = 0;
     m_TrickSpeedDelay = 0;
+#endif
 
     //  Possible transitions:
     //     fast <-> play
@@ -905,9 +909,7 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
 
 int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length) 
 {
-#if VDRVERSNUM >= 10705
-  return 0;
-#endif
+#if VDRVERSNUM < 10705
   if(abs(m_TrickSpeed) > 1 && (m_TrickSpeedMode & trs_I_frames)) {
     uint8_t PictureType = pes_get_picture_type(buf, length);
 #ifdef LOG_TRICKSPEED
@@ -1017,6 +1019,8 @@ int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length)
     }
   }
 #endif
+
+#endif /* VDRVERSNUM < 10705 */
 
   return 0;
 }
@@ -1361,8 +1365,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 
   TsBufferFlush();
 
-  ForEach(m_clients, &cXinelibThread::Flush, 60, 
-	  &mand<bool>, true);
+  ForEach(m_clients, &cXinelibThread::Flush, 60, &mand<bool>, true);
 
   m_TrickSpeed = 0;
   m_SkipAudio = 0;
@@ -1406,12 +1409,14 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
     return true;
   }
 
+#if VDRVERSNUM < 10705
   if(m_TrickSpeed > 1 && m_TrickSpeedDelay > 20) {
     LOGTRICKSPEED("    Poll: m_TrickSpeedDelay=%d.", m_TrickSpeedDelay);
     cCondWait::SleepMs(20);
     m_TrickSpeedDelay -= 20;
     return false;
   }
+#endif
 
   if(m_FreeBufs < 1) {
     int result = DEFAULT_POLL_SIZE;

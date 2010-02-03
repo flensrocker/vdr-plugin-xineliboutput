@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.51 2010-02-03 00:13:10 phintuka Exp $
+ * $Id: device.h,v 1.52 2010-02-03 11:44:05 phintuka Exp $
  *
  */
 
@@ -93,9 +93,11 @@ class cXinelibDevice : public cDevice
   private:
     ePlayMode m_PlayMode;
     int       m_TrickSpeed;
-    int64_t   m_TrickSpeedPts;
     int       m_TrickSpeedMode;
+#if VDRVERSNUM < 10705
+    int64_t   m_TrickSpeedPts;
     int       m_TrickSpeedDelay;
+#endif
 
   public:
     virtual bool SetPlayMode(ePlayMode PlayMode);
