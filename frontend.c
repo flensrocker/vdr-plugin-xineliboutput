@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.77 2010-01-16 20:11:19 phintuka Exp $
+ * $Id: frontend.c,v 1.78 2010-02-03 14:01:42 phintuka Exp $
  *
  */
 
@@ -490,18 +490,17 @@ int cXinelibThread::Play_Mpeg1_PES(const uchar *data1, int len)
 
 // Pack elementary MPEG stream to PES
 
-bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
+bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID, bool h264)
 {
   static uchar hdr_vid[] = {0x00,0x00,0x01,0xe0, 0x00,0x00,0x80,0x00,0x00}; /* mpeg2 */
   static uchar hdr_pts[] = {0x00,0x00,0x01,0xe0, 0x00,0x08,0x80,0x80,
                             0x05,0x00,0x00,0x00, 0x00,0x00}; /* mpeg2 */
   static uchar seq_end[] = {0x00,0x00,0x01,0xe0, 0x00,0x07,0x80,0x00,
 			    0x00,
-			    0x00,0x00,0x01,0xB7}; /* mpeg2 */
+			    0x00,0x00,0x01,SC_SEQUENCE_END}; /* mpeg2 */
   int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
   uchar *frame = new uchar[PES_CHUNK_SIZE+32];
   cPoller p;
-  bool h264 = IS_NAL_AUD(data);
 
   hdr_pts[3] = (uchar)streamID;
   Poll(p, 100);
@@ -532,7 +531,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   // append sequence end code to video 
   if((streamID & 0xF0) == 0xE0) { 
     seq_end[3] = (uchar)streamID;
-    seq_end[12] = h264 ? NAL_END_SEQ : 0xB7;
+    seq_end[12] = h264 ? NAL_END_SEQ : SC_SEQUENCE_END;
     Poll(p, 100);
     Play_PES(seq_end, sizeof(seq_end));
   }

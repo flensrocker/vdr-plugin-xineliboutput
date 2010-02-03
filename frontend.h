@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.35 2010-02-02 07:24:40 phintuka Exp $
+ * $Id: frontend.h,v 1.36 2010-02-03 14:01:42 phintuka Exp $
  *
  */
 
@@ -80,7 +80,7 @@ class cXinelibThread : public cThread, public cListObject
 
     // Stream type conversions
     int     Play_Mpeg1_PES(const uchar *data, int len);
-    bool    Play_Mpeg2_ES(const uchar *data, int len, int streamID);
+    bool    Play_Mpeg2_ES(const uchar *data, int len, int streamID, bool h264 = false);
 
     // Built-in still images
     bool BlankDisplay(void);
