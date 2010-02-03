@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.110 2010-01-26 11:38:42 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.111 2010-02-03 14:45:03 phintuka Exp $
  *
  */
 
@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #ifdef HAVE_LIBJPEG
 # ifdef boolean
@@ -110,6 +112,30 @@ static void shutdown_system(char *cmd, int user_requested)
   } else {
     LOGMSG("%s, power off comand undefined!", reason);
   }
+}
+
+static void make_dirs(const char *file)
+{
+  struct stat st;
+  char *s = strdup(file);
+  char *p = s;
+
+  if (*p == '/') {
+    p++;
+    while ((p = strchr(p, '/')) != NULL) {
+      *p = 0;
+      if (stat(s, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        if (mkdir(s, ACCESSPERMS) == -1) {
+          LOGERR("Can't create %s", s);
+          break;
+        }
+        LOGDBG("Created directory %s", s);
+      }
+      *p++ = '/';
+    }
+  }
+
+  free(s);
 }
 
 /*
@@ -603,6 +629,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 	      "/.xine/config_xineliboutput") < 0)
     return 0;
 
+  make_dirs(this->configfile);
   xine_config_load (this->xine, this->configfile);
 
   x_reg_num ("engine.buffers.video_num_buffers",
