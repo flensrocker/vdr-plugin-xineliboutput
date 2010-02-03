@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.19 2010-02-02 23:49:33 phintuka Exp $
+ * $Id: ts.c,v 1.20 2010-02-03 10:09:35 phintuka Exp $
  *
  */
 
@@ -700,6 +700,9 @@ int ts_get_video_size(ts_state_t *ts, const uint8_t *data, video_size_t *size, i
     /* Skip PES header */
     ts_skip_payload(ts, PES_HEADER_LEN(ts->buf));
     ts->inside_pes = 1;
+
+    /* move to first ES header */
+    ts_scan_startcode(ts);
   }
 
   /* scan for start code */
