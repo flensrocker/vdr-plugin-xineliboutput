@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.24 2009-10-31 19:59:50 phintuka Exp $
+ * $Id: playlist.c,v 1.25 2010-02-03 11:23:11 phintuka Exp $
  *
  */
 
@@ -917,6 +917,56 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
   return Result;
 }
 
+static cString EscapeString(const char *s)
+{
+  static const uint8_t hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+  const uint8_t *fn = (const uint8_t*)s;
+  int size = strlen(s) + 16;
+  char *buf = (char *)malloc(size);
+  int i = 0;
+  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
+
+  while (*fn) {
+    if(size-7 < i)
+      buf = (char *)realloc(buf, (size=size+16));
+    switch (*fn) {
+    case 1 ... ' ':
+    case 127 ... 255:
+    case '#':
+    case '%':
+    case '?':
+    case ':':
+    case ';':
+    case '\'':
+    case '\"':
+    case '(':
+    case ')':
+      buf[i++] = '%';
+      buf[i++] = hex[(*fn & 0xf0)>>4];
+      buf[i++] = hex[(*fn & 0x0f)];
+      break;
+    default:
+      buf[i++] = *fn;
+      break;
+    }
+    fn++;
+  }
+
+  buf[i] = 0;
+  LOGVERBOSE("    --> '%s'", buf);
+  return cString(buf, true);
+}
+
+cString cPlaylist::BuildMrl(const char *proto, const char *s1, const char *s2, const char *s3, const char *s4)
+{
+  return cString::sprintf("%s:%s%s%s%s",
+                          proto,
+                          s1 ? *EscapeString(s1) : "",
+                          s2 ? *EscapeString(s2) : "",
+                          s3 ? *EscapeString(s3) : "",
+                          s4 ? *EscapeString(s4) : "");
+}
+
 cString cPlaylist::EscapeMrl(const char *mrl)
 {
   static const uint8_t hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
@@ -924,7 +974,7 @@ cString cPlaylist::EscapeMrl(const char *mrl)
   int size = strlen(mrl) + 16;
   char *buf = (char *)malloc(size);
   int i = 0, found = 0;
-  LOGDBG("cPlaylist::EscapeMrl('%s')", fn);
+  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
 
   // Wait for first '/' (do not escape mrl start dvd:/, http://a@b/, ...)
   if (*fn == '/')
@@ -974,13 +1024,12 @@ cString cPlaylist::EscapeMrl(const char *mrl)
   }
 
   buf[i] = 0;
-  LOGDBG("    --> '%s'", buf);
+  LOGVERBOSE("    --> '%s'", buf);
   return cString(buf, true);
 }
 
 cString cPlaylist::GetEntry(cPlaylistItem *i, bool isPlaylist, bool isCurrent)
 {
-
   cString Entry = "";
   if ((*i->Artist && xc.playlist_artist) || (*i->Album && xc.playlist_album)) {
       Entry = cString::sprintf("%s%s%s%s%s%s(%s%s%s)",

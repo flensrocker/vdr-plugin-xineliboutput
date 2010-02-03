@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.h,v 1.10 2009-10-31 19:59:50 phintuka Exp $
+ * $Id: playlist.h,v 1.11 2010-02-03 11:23:11 phintuka Exp $
  *
  */
 
@@ -124,7 +124,10 @@ class cPlaylist : protected cList<cPlaylistItem>
   cPlaylistItem *Next(void);
   cPlaylistItem *Prev(void);
 
+  static cString BuildMrl(const char *proto, const char *s1,
+                          const char *s2 = NULL, const char *s3 = NULL, const char *s4 = NULL);
   static cString EscapeMrl(const char *name);
+
   static cString GetEntry(cPlaylistItem *i, bool isPlaylist = false, bool isCurrent = false);
 };
 
