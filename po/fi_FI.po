@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.2\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:49+0300\n"
+"POT-Creation-Date: 2010-02-06 23:45+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -153,6 +153,21 @@ msgstr "lähin"
 
 msgid "bilinear"
 msgstr "bilineaarinen"
+
+msgid "none"
+msgstr "ei"
+
+msgid "nonref"
+msgstr "ei referoituja"
+
+msgid "bidir"
+msgstr "vain B-ruudut"
+
+msgid "nonkey"
+msgstr "ei avainruutuja"
+
+msgid "all"
+msgstr "kaikki"
 
 msgid "Frontend initialization failed"
 msgstr "Näyttölaitteen alustus epäonnistui"
@@ -340,9 +355,6 @@ msgstr "Taajuuskorjain"
 
 msgid "Use Video-Out Driver"
 msgstr "videoajuri"
-
-msgid "none"
-msgstr "ei"
 
 msgid "vector"
 msgstr "vektoroitu"
@@ -631,15 +643,3 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
-
-#~ msgid "nonref"
-#~ msgstr "ei referoituja"
-
-#~ msgid "bidir"
-#~ msgstr "vain B-ruudut"
-
-#~ msgid "nonkey"
-#~ msgstr "ei avainruutuja"
-
-#~ msgid "all"
-#~ msgstr "kaikki"

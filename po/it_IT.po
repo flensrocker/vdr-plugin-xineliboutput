@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:41+0300\n"
+"POT-Creation-Date: 2010-02-06 23:45+0200\n"
 "PO-Revision-Date: 2009-02-08 20:09+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -154,6 +154,21 @@ msgstr "più vicino"
 
 msgid "bilinear"
 msgstr "bilineare"
+
+msgid "none"
+msgstr "nessuno"
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
+msgstr ""
 
 msgid "Frontend initialization failed"
 msgstr "Inizializzazione frontend fallita"
@@ -341,9 +356,6 @@ msgstr "Equalizzatore audio"
 
 msgid "Use Video-Out Driver"
 msgstr "Utilizza driver uscita video"
-
-msgid "none"
-msgstr "nessuno"
 
 msgid "vector"
 msgstr "vettoriale"
@@ -632,4 +644,3 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
-

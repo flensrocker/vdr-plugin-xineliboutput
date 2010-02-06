@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2008-10-18 13:41+0300\n"
+"POT-Creation-Date: 2010-02-06 23:45+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -152,6 +152,21 @@ msgid "nearest"
 msgstr ""
 
 msgid "bilinear"
+msgstr ""
+
+msgid "none"
+msgstr ""
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
 msgstr ""
 
 msgid "Frontend initialization failed"
@@ -339,9 +354,6 @@ msgid "Audio Equalizer"
 msgstr "Korekce zvuku"
 
 msgid "Use Video-Out Driver"
-msgstr ""
-
-msgid "none"
 msgstr ""
 
 msgid "vector"
