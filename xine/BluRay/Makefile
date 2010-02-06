@@ -9,7 +9,6 @@ BLURAY_INC_DIR ?= /usr/src/libbluray/src/
 #
 
 ENABLE_DEMUX_PLUGIN ?= yes
-ENABLE_PCM_PLUGIN   ?= yes
 
 ifeq ($(shell grep BLURAY $(BLURAY_INC_DIR)/bluray.h > /dev/null && echo yes), yes)
     ENABLE_INPUT_PLUGIN ?= yes
@@ -23,6 +22,13 @@ ifeq ($(shell pkg-config libxine --atleast-version=1.1.17 || echo "yes"), yes)
 else
     ENABLE_SPU_PLUGIN ?= no
     $(warning SPU plugin is included in xine-lib 1.1.17+)
+endif
+
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.17.1 || echo "yes"), yes)
+    ENABLE_PCM_PLUGIN ?= yes
+else
+    ENABLE_PCM_PLUGIN ?= no
+    $(warning PCM plugin is included in xine-lib 1.1.17.1+)
 endif
 
 #
