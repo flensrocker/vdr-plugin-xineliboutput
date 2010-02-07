@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.34.2.2 2009-06-06 13:27:41 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.34.2.2.2.1 2010-02-07 00:11:35 phintuka Exp $
  *
  */
 
@@ -823,7 +823,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 
   struct {
     stream_udp_header_t hdr;
-    char                mem[64-sizeof(stream_udp_header_t)];
+    char                payload[64-sizeof(stream_udp_header_t)];
   } udp_ctrl = {{(uint64_t)INT64_C(-1), (uint16_t)-1}, {0}};
 
   // Handle buffer wrap
@@ -836,9 +836,9 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
     LOGDBG("cUdpScheduler::ReSend: requested range too large (%d-%d)",
 	   Seq1, Seq2);
 
-    sprintf((char*)udp_ctrl.hdr.payload,
-	    "UDP MISSING %d-%d %" PRIu64,
-	    Seq1, (Seq2 & UDP_BUFFER_MASK), Pos);
+    snprintf(udp_ctrl.payload, sizeof(udp_ctrl.payload),
+             "UDP MISSING %d-%d %" PRIu64,
+             Seq1, (Seq2 & UDP_BUFFER_MASK), Pos);
     send(fd, &udp_ctrl, sizeof(udp_ctrl), 0);
     return;
   }
@@ -887,9 +887,9 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
 	break;
     }
 
-    sprintf((char*)udp_ctrl.hdr.payload,
-	    "UDP MISSING %d-%d %" PRIu64,
-	    Seq0, (Seq1 & UDP_BUFFER_MASK), Pos);
+    snprintf(udp_ctrl.payload, sizeof(udp_ctrl.payload),
+             "UDP MISSING %d-%d %" PRIu64,
+             Seq0, (Seq1 & UDP_BUFFER_MASK), Pos);
 
     send(fd, &udp_ctrl, sizeof(udp_ctrl), 0);
   }
