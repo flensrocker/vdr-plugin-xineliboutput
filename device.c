@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.94 2010-02-03 14:07:09 phintuka Exp $
+ * $Id: device.c,v 1.95 2010-02-07 22:43:01 rofafor Exp $
  *
  */
 
@@ -800,6 +800,7 @@ void cXinelibDevice::Play(void)
   
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   TrickSpeed(-1);
+  cDevice::Play();
 }
 
 void cXinelibDevice::Freeze(void) 
@@ -808,6 +809,7 @@ void cXinelibDevice::Freeze(void)
 
   TsBufferFlush();
   TrickSpeed(0);
+  cDevice::Freeze();
 }
 
 int64_t cXinelibDevice::GetSTC(void)
