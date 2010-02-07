@@ -1,11 +1,17 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-2009-06-06: Version 1.0.5  (branch-1_0_x)
+2010-02-07: Version 1.0.5  (branch-1_0_5)
 Backported bugfixes from CVS trunk:
-- Fixed compilation with gcc-4.4.0
+- Fixed compilation with gcc-4.4.0 and recent glibc
 - Fixed memory leaks
 - Fixed setting focus in vdr-sxfe fullscreen mode
+- Fixed sending complex OSDs
+- Fixed image player when playing non-local mrls (Thanks to Rolf Ahrenberg)
+- Changed the default grab quality to match VDR's documentation (Thanks to Rolf Ahrenberg)
+Features:
+- Added preliminary SVDRP interface (Thanks to Rolf Ahrenberg)
+- Added StartFrontend-1.0 service (Thanks to durchflieger)
 
 2009-02-12: Version 1.0.4  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
