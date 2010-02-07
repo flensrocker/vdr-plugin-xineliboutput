@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.3 2009-02-12 13:03:50 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.3.2.1 2010-02-07 00:48:11 phintuka Exp $
  *
  */
 
@@ -1531,9 +1531,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   LOGDBG("fe_grab: grabbing %s %d %dx%d", 
 	 jpeg ? "JPEG" : "PNM", quality, width, height);
 
-  if (quality < 0)
-    quality = 0;
-  else if(quality > 100)
+  if ((quality < 0) || (quality > 100))
     quality = 100;
 
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
