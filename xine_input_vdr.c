@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.293 2010-01-30 19:38:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.294 2010-02-09 09:27:45 phintuka Exp $
  *
  */
 
@@ -128,7 +128,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.293 2010-01-30 19:38:26 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.294 2010-02-09 09:27:45 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1391,56 +1391,45 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
 
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
-  int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
-  double dratio;
-
-  if(!this || !this->stream)
+  if(!this || !this->stream || !this->stream->video_out)
     return;
-
-  if(ratio > 13300 && ratio < 13400) dratio = 4.0/3.0;
-  else if(ratio > 17700 && ratio < 17800) dratio = 16.0/9.0;
-  else if(ratio > 21000 && ratio < 22000) dratio = 2.11/1.0;
-  else dratio = ((double)ratio)/10000.0;
-
-  if(this->stream && this->stream->video_out) {
-
-    vo_frame_t *img    = NULL;
-    int         width  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
-    int         height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
-
-    if (width >= 360 && height >= 288 && width <= 1920 && height <= 1200) {
-      this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
-      img = this->stream->video_out->get_frame (this->stream->video_out,
-						width, height,
-						dratio, XINE_IMGFMT_YV12, 
-						VO_BOTH_FIELDS);
-      this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
-    } else {
-      LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
-    }
-
-    if(img) {
-      if(img->format == XINE_IMGFMT_YV12 && img->base[0] && img->base[1] && img->base[2]) {
-	if(img->pitches[0] < width)
-	  width = img->pitches[0];
-	if(img->width < width)
-	  width = img->width;
-	if(img->height < height)
-	  height = img->height;
-	memset( img->base[0], 0x00, width * height);
-	memset( img->base[1], 0x80, width * height / 4 );
-	memset( img->base[2], 0x80, width * height / 4 );
-	img->duration  = 3600;
-	img->pts       = 3600;
-	img->bad_frame = 0;
-	img->draw(img, this->stream);
-      }
-      img->free(img);
-    }
-  }
 
   this->still_mode = 0;
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
+
+  vo_frame_t *img    = NULL;
+  int         width  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
+  int         height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
+  int         ratio  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
+  double      dratio;
+
+  if      (ratio > 13300 && ratio < 13400) dratio = 4.0  / 3.0;
+  else if (ratio > 17700 && ratio < 17800) dratio = 16.0 / 9.0;
+  else if (ratio > 21000 && ratio < 22000) dratio = 2.11 / 1.0;
+  else                                     dratio = ((double)ratio) / 10000.0;
+
+  if (width >= 360 && height >= 288 && width <= 1920 && height <= 1200) {
+    this->class->xine->port_ticket->acquire (this->class->xine->port_ticket, 1);
+    img = this->stream->video_out->get_frame (this->stream->video_out,
+                                              width, height, dratio,
+                                              XINE_IMGFMT_YV12, VO_BOTH_FIELDS);
+    this->class->xine->port_ticket->release (this->class->xine->port_ticket, 1);
+  } else {
+    LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
+  }
+
+  if (img) {
+    if (img->format == XINE_IMGFMT_YV12 && img->base[0] && img->base[1] && img->base[2]) {
+      memset(img->base[0], 0x00, img->pitches[0] * img->height);
+      memset(img->base[1], 0x80, img->pitches[1] * img->height / 2);
+      memset(img->base[2], 0x80, img->pitches[2] * img->height / 2);
+      img->duration  = 3600;
+      img->pts       = 3600;
+      img->bad_frame = 0;
+      img->draw(img, this->stream);
+    }
+    img->free(img);
+  }
 }
 
 static void queue_nosignal(vdr_input_plugin_t *this)
