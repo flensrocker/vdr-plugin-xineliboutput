@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.294 2010-02-09 09:27:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.295 2010-02-09 09:45:52 phintuka Exp $
  *
  */
 
@@ -128,7 +128,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.294 2010-02-09 09:27:45 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.295 2010-02-09 09:45:52 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1389,13 +1389,22 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
   }
 }
 
+static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
+{
+  if (still_mode || this->still_mode)
+    this->stream_start = 1;
+
+  this->still_mode = !!still_mode;
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
+
+  if (this->still_mode)
+    reset_scr_tuning(this, this->speed_before_pause);
+}
+
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
   if(!this || !this->stream || !this->stream->video_out)
     return;
-
-  this->still_mode = 0;
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
 
   vo_frame_t *img    = NULL;
   int         width  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
@@ -1407,6 +1416,8 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
   else if (ratio > 17700 && ratio < 17800) dratio = 16.0 / 9.0;
   else if (ratio > 21000 && ratio < 22000) dratio = 2.11 / 1.0;
   else                                     dratio = ((double)ratio) / 10000.0;
+
+  set_still_mode(this, 0);
 
   if (width >= 360 && height >= 288 && width <= 1920 && height <= 1200) {
     this->class->xine->port_ticket->acquire (this->class->xine->port_ticket, 1);
@@ -1919,8 +1930,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
     reset_scr_tuning(this, this->speed_before_pause=XINE_FINE_SPEED_NORMAL);
   }
 
-  this->still_mode = 0;
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
+  set_still_mode(this, 0);
 
   pthread_mutex_unlock(&this->lock);
 
@@ -2909,11 +2919,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     pthread_mutex_lock(&this->lock);
     /*if(this->fd_control >= 0) {*/
       if(1 == sscanf(cmd+6, "%d", &tmp32)) {
-	this->still_mode = tmp32;
-	if(this->still_mode)
-	  reset_scr_tuning(this, this->speed_before_pause);
-	_x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
-	this->stream_start = 1;
+	set_still_mode(this, tmp32);
       } else
 	err = CONTROL_PARAM_ERROR;
     /*}*/
