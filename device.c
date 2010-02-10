@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.95 2010-02-07 22:43:01 rofafor Exp $
+ * $Id: device.c,v 1.96 2010-02-10 18:44:06 phintuka Exp $
  *
  */
 
@@ -671,9 +671,13 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
 // m_TrickSpeedMode flags
 #define trs_IPB_frames 0x01  // stream has all frame types
 #define trs_I_frames   0x02  // stream has only I-frames
-#define trs_PTS_recalc 0x04  // PTS must be re-calculated
 #define trs_NoAudio    0x08  // no audio in trick speed mode
-#define trs_PTS_check  0x80  // detect in PlayVideo if PTS must be recalculated
+#if VDRVERSNUM < 10705
+#define trs_PTS_recalc 0x10  // PTS must be re-calculated
+#define trs_PTS_check  0x20  // detect in PlayVideo if PTS must be recalculated
+#else
+#define trs_Backward   0x40  // palying backwards -- same as regen pts ???
+#endif
 
 void cXinelibDevice::TrickSpeed(int Speed) 
 {
@@ -718,31 +722,55 @@ void cXinelibDevice::TrickSpeed(int Speed)
       //  ForEach(m_clients, &cXinelibThread::Clear);
       //}
 
+#if VDRVERSNUM < 10705
       // only I-frames, backwards, pts must be re-generated
       m_TrickSpeedMode = trs_I_frames | trs_PTS_recalc | trs_NoAudio;
 
       // change decoder and UDP/RTP scheduler clock rates
       ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed);
+#else
+      m_TrickSpeedMode = trs_I_frames | trs_Backward | trs_NoAudio;
+      ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed, true);
+#endif
     }
 
     else if(Speed == 6 || Speed == 3 || Speed == 1) {
       RealSpeed = 12/Speed;
       LOGTRICKSPEED("    Fast (%dx speed), direction unknown", RealSpeed);
 
+      if (m_StreamStart) {
+        LOGTRICKSPEED("    Fast (%dx speed), STREAM START --> BACKWARDS", RealSpeed);
+      }
+
       if(RealSpeed > xc.max_trickspeed) {
 	RealSpeed = xc.max_trickspeed;
 	LOGTRICKSPEED("    Trick speed limited to %dx speed", RealSpeed);
       }
 
+#if VDRVERSNUM < 10705
       /* only I-frames, backwards, pts must be re-generated if playing backwards */
       m_TrickSpeedMode |= trs_PTS_check;
 
       /* backward/forward state is unknown until first PTS is seen 
 	 so, clear() must be done in PlayVideo. */
       /* previous trick speed state is not overwritten yet ... ! */
-      
+
       // change decoder and UDP/RTP scheduler clock rates
       ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed);
+#else
+      if (m_StreamStart || (m_TrickSpeedMode & trs_Backward)) {
+        m_TrickSpeedMode |= trs_I_frames | trs_Backward | trs_NoAudio;
+
+        ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed, true);
+        ForEach(m_clients, &cXinelibThread::Sync);
+
+      } else {
+
+        m_TrickSpeedMode |= trs_IPB_frames;
+
+        ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed);
+      }
+#endif
     }
 
     else if(Speed==-1 || Speed == 0) {
@@ -765,13 +793,16 @@ void cXinelibDevice::TrickSpeed(int Speed)
       //  LOGMSG("    -> Clear");
       //  ForEach(m_clients, &cXinelibThread::Clear);
       //}
+
       m_TrickSpeedMode = 0;
-    } 
+    }
 
     else {
       LOGTRICKSPEED("    Unknown trickspeed %d !", Speed);
+
       m_TrickSpeedMode = 0;
       m_TrickSpeed = -1;
+
       ForEach(m_clients, &cXinelibThread::TrickSpeed, -1);
     }
   }
