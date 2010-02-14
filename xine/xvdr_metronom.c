@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.4 2010-01-30 19:26:15 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.5 2010-02-14 13:40:23 phintuka Exp $
  *
  */
 
@@ -30,6 +30,11 @@ static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
 
   if (this->frame_decoded)
     this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
+
+  if (this->still_mode) {
+    LOGMSG("Still frame, type %d", frame->picture_coding_type);
+    frame->pts       = 0;
+  }
 
   if (this->trickspeed) {
     frame->pts       = 0;
@@ -155,6 +160,11 @@ static void xvdr_metronom_set_trickspeed(xvdr_metronom_t *this, int trickspeed)
   this->trickspeed = trickspeed;
 }
 
+static void xvdr_metronom_set_still_mode(xvdr_metronom_t *this, int still_mode)
+{
+  this->still_mode = still_mode;
+}
+
 /*
  * init
  */
@@ -169,6 +179,7 @@ xvdr_metronom_t *xvdr_metronom_init(xine_stream_t *stream)
   this->set_cb         = xvdr_metronom_set_cb;
   this->reset_frames   = xvdr_metronom_reset_frames;
   this->set_trickspeed = xvdr_metronom_set_trickspeed;
+  this->set_still_mode = xvdr_metronom_set_still_mode;
   this->dispose        = xvdr_metronom_dispose;
 
   this->metronom.set_audio_rate    = set_audio_rate;
