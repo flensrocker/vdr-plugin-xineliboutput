@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.111 2010-02-03 14:45:03 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.112 2010-02-14 12:53:06 phintuka Exp $
  *
  */
 
@@ -1331,14 +1331,14 @@ static int xine_osd_command(frontend_t *this_gen, struct osd_command_s *cmd) {
   return this->input_plugin->f.push_input_osd(this->input_plugin, cmd);
 }
 
-static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len)
+static int xine_queue_pes_packet(frontend_t *this_gen, int stream, uint64_t pos, const char *data, int len)
 {
   fe_t *this = (fe_t*)this_gen;
 
   if(!find_input_plugin(this))
     return 0/*-1*/;
 
-  return this->input_plugin->f.push_input_write(this->input_plugin, data, len);
+  return this->input_plugin->f.push_input_write(this->input_plugin, stream, pos, data, len);
 }
 
 /*

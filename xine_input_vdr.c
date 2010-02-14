@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.295 2010-02-09 09:45:52 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.296 2010-02-14 12:53:06 phintuka Exp $
  *
  */
 
@@ -118,6 +118,12 @@
 #define CONTROL_BUF_BLANK (CONTROL_BUF_BASE|0x00010000) /* 0x0f010000 */
 #define CONTROL_BUF_CLEAR (CONTROL_BUF_BASE|0x00020000) /* 0x0f020000 */
 #define BUF_NETWORK_BLOCK (BUF_DEMUX_BLOCK |0x00010000) /* 0x05010000 */
+#define BUF_LOCAL_BLOCK   (BUF_DEMUX_BLOCK |0x00020000) /* 0x05020000 */
+
+typedef struct {
+  uint64_t pos;
+  uint8_t  payload[0];
+} stream_local_header_t;
 
 #define SPU_CHANNEL_NONE   (-2)
 #define SPU_CHANNEL_AUTO   (-1)
@@ -128,7 +134,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.295 2010-02-09 09:45:52 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.296 2010-02-14 12:53:06 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1331,7 +1337,8 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   if(!buf)
     buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
 
-  if(buf) {
+  /* set up defaults */
+  if (buf) {
     buf->content = buf->mem;
     buf->size = 0;
     buf->type = BUF_DEMUX_BLOCK;
@@ -1364,6 +1371,17 @@ static buf_element_t *get_buf_element_timed(vdr_input_plugin_t *this, int size, 
 
 static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
 {
+  if (buf->type == BUF_LOCAL_BLOCK) {
+    stream_local_header_t *header = (stream_local_header_t *)buf->content;
+    this->curpos  = header->pos;
+
+    buf->content += sizeof(stream_local_header_t);
+    buf->size    -= sizeof(stream_local_header_t);
+    buf->type     = BUF_DEMUX_BLOCK;
+
+    return;
+  }
+
   if (buf->type == BUF_NETWORK_BLOCK) {
     if (this->udp || this->rtp) {
       stream_udp_header_t *header = (stream_udp_header_t *)buf->content;
@@ -4260,7 +4278,7 @@ static buf_element_t *vdr_plugin_read_block_udp(vdr_input_plugin_t *this)
 }
 
 #ifdef TEST_PIP
-static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int len)
+static int write_slave_stream(vdr_input_plugin_t *this, int stream, const char *data, int len)
 {
   fifo_input_plugin_t *slave;
   buf_element_t *buf;
@@ -4309,7 +4327,7 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
 }
 #endif
 
-static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, int len)
+static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, int stream, uint64_t pos, const char *data, int len)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   buf_element_t      *buf = NULL;
@@ -4318,11 +4336,11 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
     return len;
 
 #ifdef TEST_PIP
-  /* some (older?) VDR recordings have video PID != 0xE0 ... */
-
-  /* slave (PES) */
-  if(!buf[0] && ((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) 
-    return write_slave_stream(this, data, len);
+  if (stream)
+    return write_slave_stream(this, stream, data, len);
+#else
+  if (stream)
+    return len;
 #endif
 
   TRACE("vdr_plugin_write (%d bytes)", len); 
@@ -4351,8 +4369,13 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
     return len;
   }
 
-  buf->size = len;
-  xine_fast_memcpy(buf->content, data, len);
+  stream_local_header_t *hdr = (stream_local_header_t*)buf->content;
+  hdr->pos = pos;
+
+  buf->type = BUF_LOCAL_BLOCK;
+  buf->size = len + sizeof(stream_local_header_t);
+  xine_fast_memcpy(buf->content + sizeof(stream_local_header_t), data, len);
+
   this->block_buffer->put(this->block_buffer, buf);
 
   VDR_ENTRY_UNLOCK();
@@ -4445,6 +4468,7 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
 
   /* demuxed video, control messages, ... go directly to demuxer */
   if (buf->type != BUF_NETWORK_BLOCK &&
+      buf->type != BUF_LOCAL_BLOCK &&
       buf->type != BUF_DEMUX_BLOCK)
     return buf;
 

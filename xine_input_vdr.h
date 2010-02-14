@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.h,v 1.10 2009-02-25 14:34:24 phintuka Exp $
+ * $Id: xine_input_vdr.h,v 1.11 2010-02-14 12:53:06 phintuka Exp $
  *
  */
 
@@ -26,7 +26,7 @@ struct frontend_s;
 
 typedef struct vdr_input_plugin_funcs_s {
   /* VDR --> input plugin (only local mode) */
-  int  (*push_input_write)  (struct vdr_input_plugin_if_s *, const char *, int);
+  int  (*push_input_write)  (struct vdr_input_plugin_if_s *, int, uint64_t, const char *, int);
   int  (*push_input_control)(struct vdr_input_plugin_if_s *, const char *);
   int  (*push_input_osd)    (struct vdr_input_plugin_if_s *, struct osd_command_s *);
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.20 2009-12-29 13:45:54 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.21 2010-02-14 12:53:06 phintuka Exp $
  *
  */
 
@@ -104,7 +104,7 @@ struct frontend_s {
   /* Data transfer VDR -> frontend/xine */
   int  (*xine_osd_command)(frontend_t*, struct osd_command_s *cmd);
   int  (*xine_control)(frontend_t*, const char *cmd);
-  int  (*xine_queue_pes_packet)(frontend_t*, const char *data, int len);
+  int  (*xine_queue_pes_packet)(frontend_t*, int stream, uint64_t pos, const char *data, int len);
 
   char *(*grab)(frontend_t*, int *size, int jpeg, int quality,
                 int width, int height);
