@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.12 2009-07-22 11:29:28 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.13 2010-02-14 12:41:50 phintuka Exp $
  *
  */
 
@@ -68,14 +68,14 @@
 extern "C" {
 #endif
 
-
 /*
  * TCP / PIPE
  */
 
-typedef struct stream_tcp_header {
+typedef struct {
   uint64_t pos;  /* stream position of first byte */
   uint32_t len;  /* length of following PES packet */
+  uint8_t  stream;
 
   uint8_t  payload[0];
 
@@ -88,12 +88,13 @@ typedef struct stream_tcp_header {
  * UDP
  */
 
-typedef struct stream_udp_header {
+typedef struct {
   uint64_t pos; /* stream position of first byte */
                 /* -1ULL and first bytes of frame != 00 00 01 */
                 /* --> embedded control stream data */
   uint16_t seq; /* packet sequence number
 		   (for re-ordering and detecting missing packets) */
+  uint8_t  stream;
 
   uint8_t  payload[0];
 
@@ -109,7 +110,7 @@ typedef struct stream_udp_header {
  */
 
 /* xineliboutput RTP header extension */
-typedef struct stream_rtp_header_ext_x {
+typedef struct {
 
   stream_rtp_header_ext_t hdr;
 
@@ -120,15 +121,16 @@ typedef struct stream_rtp_header_ext_x {
     union {
 
       struct {
-	uint16_t            padding0; /* must be padded to full DWORDs */
+        uint8_t             padding0; /* must be padded to full DWORDs */
 	stream_udp_header_t udphdr;
       } PACKED;
 
       struct {
-	uint16_t padding1;  /* must be padded to full DWORDs */
+        uint8_t  padding1;  /* must be padded to full DWORDs */
 
 	uint64_t pos;
 	uint16_t seq;
+        uint8_t  stream;
       } PACKED;
 
     } PACKED;
