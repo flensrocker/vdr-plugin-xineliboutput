@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.13 2010-02-14 12:41:50 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.14 2010-02-14 12:42:46 phintuka Exp $
  *
  */
 
@@ -93,7 +93,7 @@ typedef struct {
                 /* -1ULL and first bytes of frame != 00 00 01 */
                 /* --> embedded control stream data */
   uint16_t seq; /* packet sequence number
-		   (for re-ordering and detecting missing packets) */
+                   (for re-ordering and detecting missing packets) */
   uint8_t  stream;
 
   uint8_t  payload[0];
@@ -122,14 +122,14 @@ typedef struct {
 
       struct {
         uint8_t             padding0; /* must be padded to full DWORDs */
-	stream_udp_header_t udphdr;
+        stream_udp_header_t udphdr;
       } PACKED;
 
       struct {
         uint8_t  padding1;  /* must be padded to full DWORDs */
 
-	uint64_t pos;
-	uint16_t seq;
+        uint64_t pos;
+        uint16_t seq;
         uint8_t  stream;
       } PACKED;
 
