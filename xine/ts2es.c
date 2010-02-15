@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.5 2009-08-25 10:09:20 phintuka Exp $
+ * $Id: ts2es.c,v 1.6 2010-02-15 11:39:31 phintuka Exp $
  *
  */
 
@@ -31,7 +31,6 @@ struct ts2es_s {
   int            pes_start;
   int            first_pusi_seen;
   int            video;
-  int64_t        pts;
 };
 
 
@@ -49,10 +48,8 @@ static void ts2es_parse_pes(ts2es_t *this)
 
   /* parse PTS */
   this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
-  if(this->buf->pts >= 0)
-    this->pts = this->buf->pts;
-  else
-    this->pts = 0;
+  if (this->buf->pts <= 0)
+    this->buf->pts = 0;
 
   /* strip PES header */
   this->buf->content += hdr_len;
@@ -95,7 +92,7 @@ static void ts2es_parse_pes(ts2es_t *this)
       /* PCM, strip substream header */
       int pcm_offset;
       for (pcm_offset=0; ++pcm_offset < this->buf->size-1 ; ) {
-        if (this->buf->content[pcm_offset] == 0x01 && 
+        if (this->buf->content[pcm_offset]   == 0x01 &&
             this->buf->content[pcm_offset+1] == 0x80 ) { /* START */
           pcm_offset += 2;
           break;
@@ -145,7 +142,6 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
     if (this->buf) {
 
       this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
-      this->buf->pts = this->pts;
 
       result = this->buf;
       this->buf = NULL;
@@ -191,8 +187,6 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
   if ((this->video && this->buf->size >= 2048+64-TS_SIZE) ||
       this->buf->size >= this->buf->max_size-TS_SIZE) {
 
-    this->buf->pts = this->pts;
-
     result = this->buf;
     this->buf = NULL;
   }
@@ -205,7 +199,6 @@ void ts2es_flush(ts2es_t *this)
   if (this->buf) {
 
     this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
-    this->buf->pts = this->pts;
 
     this->fifo->put (this->fifo, this->buf);
     this->buf = NULL;
