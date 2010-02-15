@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: demux_xvdr_tsdata.c,v 1.2 2010-01-22 23:06:58 phintuka Exp $
+ * $Id: demux_xvdr_tsdata.c,v 1.3 2010-02-15 11:28:02 phintuka Exp $
  *
  */
 
@@ -41,16 +41,19 @@ static void ts_data_ts2es_reset(ts_data_t *ts_data)
 
 void ts_data_reset_audio(ts_data_t *ts_data, fifo_buffer_t *audio_fifo)
 {
-  int i;
+  if (ts_data) {
 
-  for (i = 0; ts_data->audio[i]; i++) {
-    ts2es_dispose(ts_data->audio[i]);
-    ts_data->audio[i] = NULL;
-  }
+    int i;
 
-  if (audio_fifo) {
-    for (i = 0; i < ts_data->pmt.audio_tracks_count; i++)
-      ts_data->audio[i] = ts2es_init(audio_fifo, ts_data->pmt.audio_tracks[i].type, i);
+    for (i = 0; ts_data->audio[i]; i++) {
+      ts2es_dispose(ts_data->audio[i]);
+      ts_data->audio[i] = NULL;
+    }
+
+    if (audio_fifo) {
+      for (i = 0; i < ts_data->pmt.audio_tracks_count; i++)
+        ts_data->audio[i] = ts2es_init(audio_fifo, ts_data->pmt.audio_tracks[i].type, i);
+    }
   }
 }
 
@@ -81,6 +84,7 @@ void ts_data_ts2es_init(ts_data_t **ts_data, fifo_buffer_t *video_fifo, fifo_buf
 void ts_data_flush(ts_data_t *ts_data)
 {
   if (ts_data) {
+
     int i;
 
     if (ts_data->video)
