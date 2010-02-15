@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.96 2010-02-10 18:44:06 phintuka Exp $
+ * $Id: device.c,v 1.97 2010-02-15 06:39:25 phintuka Exp $
  *
  */
 
@@ -191,9 +191,6 @@ cXinelibDevice::cXinelibDevice()
     m_clients.Add(m_local = new cXinelibLocal(xc.local_frontend));
   if(xc.remote_mode && xc.listen_port>0)
     m_clients.Add(m_server = new cXinelibServer(xc.listen_port));
-
-  m_ac3Present  = false;
-  m_spuPresent  = false;
 
   memset(m_MetaInfo, 0, sizeof(m_MetaInfo));
     
@@ -595,7 +592,6 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
   m_TrickSpeed = -1;
   m_SkipAudio  = false;
   m_AudioCount = 0;
-  m_spuPresent = false;
 
   Clear();
   ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
@@ -641,9 +637,6 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
       TRACE("cXinelibDevice::SetPlayMode this should be avoided"); break;
   }
 #endif
-
-  m_ac3Present = false;
-  m_spuPresent = false;
 
   m_PlayMode = PlayMode;
 

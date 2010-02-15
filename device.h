@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.52 2010-02-03 11:44:05 phintuka Exp $
+ * $Id: device.h,v 1.53 2010-02-15 06:39:25 phintuka Exp $
  *
  */
 
@@ -225,8 +225,6 @@ class cXinelibDevice : public cDevice
   // Stream data
 
   private:
-    bool m_ac3Present;
-    bool m_spuPresent;
     bool m_RadioStream;
     int  m_AudioCount;
     bool m_SkipAudio;
