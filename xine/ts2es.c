@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.6 2010-02-15 11:39:31 phintuka Exp $
+ * $Id: ts2es.c,v 1.7 2010-02-16 12:38:43 phintuka Exp $
  *
  */
 
@@ -50,6 +50,13 @@ static void ts2es_parse_pes(ts2es_t *this)
   this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
   if (this->buf->pts <= 0)
     this->buf->pts = 0;
+
+  /* parse DTS */
+  if (this->video && this->buf->pts > 0) {
+    int64_t dts = pes_get_dts(this->buf->content, this->buf->size);
+    if (dts > 0)
+      this->buf->decoder_info[0] = this->buf->pts - dts;
+  }
 
   /* strip PES header */
   this->buf->content += hdr_len;
@@ -166,7 +173,6 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
     }
 
     this->buf->type = this->xine_buf_type;
-    this->buf->decoder_info[0] = 1;
   }
 
   /* strip ts header */
