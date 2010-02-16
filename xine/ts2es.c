@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.7 2010-02-16 12:38:43 phintuka Exp $
+ * $Id: ts2es.c,v 1.8 2010-02-16 12:40:16 phintuka Exp $
  *
  */
 
@@ -31,15 +31,18 @@ struct ts2es_s {
   int            pes_start;
   int            first_pusi_seen;
   int            video;
+  int            pes_error;
 };
 
 
 static void ts2es_parse_pes(ts2es_t *this)
 {
   if (!DATA_IS_PES(this->buf->content)) {
-    LOGMSG("ts2es: payload not PES ?");
+    LOGDBG("ts2es: payload not PES ?");
+    this->pes_error = 1;
     return;
   }
+  this->pes_error = 0;
 
   /* parse PES header */
   uint    hdr_len = PES_HEADER_LEN(this->buf->content);
@@ -139,6 +142,16 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
   }
   if (!ts_HAS_PAYLOAD(data)) {
     LOGDBG("ts2es: no payload, size %d", bytes);
+    return NULL;
+  }
+
+  /* drop broken PES packets */
+  if (this->pes_error && !pusi) {
+    if (this->buf) {
+      LOGDBG("ts2es: dropping broken PES packet");
+      this->buf->free_buffer(this->buf);
+      this->buf = NULL;
+    }
     return NULL;
   }
 
