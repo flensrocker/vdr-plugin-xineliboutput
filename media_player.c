@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.72 2010-02-18 07:42:27 phintuka Exp $
+ * $Id: media_player.c,v 1.73 2010-02-18 18:34:11 phintuka Exp $
  *
  */
 
@@ -230,22 +230,11 @@ void cXinelibPlayer::Activate(bool On)
 	pos = 0;
       close(fd);
     }
-    // escape file name and join subtitle file
-    // Maybe mrls from playlist files should not be escaped ?
-    // (those may contain #subtitle, #volnorm etc. directives)
-    cString mrl;
-    if(*m_SubFile)
-      mrl = cString::sprintf("%s%s#subtitle:%s%s",
-			     m_File[0] == '/' ? "file:" : "",
-			     *cPlaylist::EscapeMrl(m_File), 
-			     m_SubFile[0] == '/' ? "file:" : "",
-			     *cPlaylist::EscapeMrl(m_SubFile));
-    else if((*m_File)[0] == '/')
-      mrl = cString::sprintf("%s%s",
-			     m_File[0] == '/' ? "file:" : "",
-			     *cPlaylist::EscapeMrl(m_File));
-    else
-      mrl = cPlaylist::EscapeMrl(m_File);
+    // escape raw file names and join subtitle file to the mrl
+    cString mrl = m_File[0] == '/' ? cPlaylist::BuildMrl("file", m_File) : m_File;
+    if (*m_SubFile)
+      mrl = cString::sprintf("%s#subtitle:%s", *mrl,
+                             m_SubFile[0] == '/' ? *cPlaylist::BuildMrl("file", m_SubFile) : *m_SubFile);
 
     // Start replay
     UpdateNumTracks();
@@ -1128,10 +1117,10 @@ cXinelibImagePlayer::~cXinelibImagePlayer()
 
 bool cXinelibImagePlayer::Play(void)
 {
-  if ((*m_Mrl)[0] == '/')
-    m_Mrl = cString::sprintf("file:%s", *cPlaylist::EscapeMrl(m_Mrl));
+  if (m_Mrl[0] == '/')
+    m_Mrl = cPlaylist::BuildMrl("file", m_Mrl);
 
-  return m_Dev->PlayFile(m_Mrl, 0, true);
+  return ! (m_Error = !m_Dev->PlayFile(m_Mrl, 0, true));
 }
 
 void cXinelibImagePlayer::Activate(bool On)
