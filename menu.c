@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.76 2010-01-20 11:41:07 phintuka Exp $
+ * $Id: menu.c,v 1.77 2010-02-18 21:36:36 phintuka Exp $
  *
  */
 
@@ -24,6 +24,7 @@
 #include "menu.h"
 #include "menuitems.h"
 #include "tools/metainfo_menu.h"
+#include "tools/playlist.h"
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
@@ -282,14 +283,14 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
     if (!ForceOpen && GetCurrent()->IsDvd()) {
       /* play dvd */
-      cString f = cString::sprintf("dvd:%s/%s", m_CurrentDir, GetCurrent()->Name());
+      cString f = cPlaylist::BuildMrl("dvd", m_CurrentDir, "/", GetCurrent()->Name());
       cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl(f));
       return osEnd;
     }
     if (!ForceOpen && GetCurrent()->IsBluRay()) {
       /* play BluRay disc/image */
-      cString f = cString::sprintf("bluray:%s/%s/", m_CurrentDir, GetCurrent()->Name());
+      cString f = cPlaylist::BuildMrl("bluray", m_CurrentDir, "/", GetCurrent()->Name());
       cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl(f));
       return osEnd;
@@ -332,13 +333,9 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
   /* regular file */
   } else {
-    cString f = cString::sprintf("%s%s/%s",
-                                 GetCurrent()->IsDvd() ? "dvd:" : "",
-                                 m_CurrentDir, GetCurrent()->Name());
-    if (GetCurrent()->IsDvd())
-      strn0cpy(m_ConfigLastDir, m_CurrentDir, sizeof(xc.browse_files_dir));
-    else
-      strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
+    cString f = cString::sprintf("%s/%s", m_CurrentDir, GetCurrent()->Name());
+
+    strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
     StoreConfig();
 
     if (m_Mode != ShowImages) {
@@ -353,7 +350,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
         if (Rewind)
           unlink(cString::sprintf("%s.resume", *f));
         cControl::Launch(GetCurrent()->IsDvd()
-                         ? new cXinelibDvdPlayerControl(f)
+                         ? new cXinelibDvdPlayerControl(cPlaylist::BuildMrl("dvd", f))
                          : new cXinelibPlayerControl(m_Mode, f, GetCurrent()->SubFile()));
       }
       if (Queue)
