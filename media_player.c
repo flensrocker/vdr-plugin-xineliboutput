@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.71 2009-10-25 23:41:28 phintuka Exp $
+ * $Id: media_player.c,v 1.72 2010-02-18 07:42:27 phintuka Exp $
  *
  */
 
@@ -869,14 +869,14 @@ class cDvdMenu : public cOsdMenu {
     cDvdMenu(cXinelibPlayer *Player);
 };
 
-cDvdMenu::cDvdMenu(cXinelibPlayer *Player) : cOsdMenu("DVD Menu"), m_Player(Player)
+cDvdMenu::cDvdMenu(cXinelibPlayer *Player) : cOsdMenu(tr("DVD Menu")), m_Player(Player)
 {
-  Add(new cOsdItem("Exit DVD menu",  osUser1));
-  Add(new cOsdItem("DVD Root menu",  osUser2));
-  Add(new cOsdItem("DVD Title menu", osUser3));
-  Add(new cOsdItem("DVD SPU menu",   osUser4));
-  Add(new cOsdItem("DVD Audio menu", osUser5));
-  Add(new cOsdItem("Close menu",     osEnd));
+  Add(new cOsdItem(tr("Exit DVD menu"),  osUser1));
+  Add(new cOsdItem(tr("DVD Root menu"),  osUser2));
+  Add(new cOsdItem(tr("DVD Title menu"), osUser3));
+  Add(new cOsdItem(tr("DVD SPU menu"),   osUser4));
+  Add(new cOsdItem(tr("DVD Audio menu"), osUser5));
+  Add(new cOsdItem(tr("Close menu"),     osEnd));
   Display();
 }
 
