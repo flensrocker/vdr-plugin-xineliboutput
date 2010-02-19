@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.298 2010-02-19 14:12:29 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.299 2010-02-19 20:55:07 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.298 2010-02-19 14:12:29 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.299 2010-02-19 20:55:07 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1409,8 +1409,9 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
 
 static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
 {
-  if (still_mode || this->still_mode)
-    this->stream_start = 1;
+  pthread_mutex_lock (&this->stream->first_frame_lock);
+  this->stream->first_frame_flag = 2;
+  pthread_mutex_unlock (&this->stream->first_frame_lock);
 
   this->still_mode = !!still_mode;
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
