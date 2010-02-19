@@ -38,6 +38,7 @@
 
 #include "ts2es.h"
 #include "demux_xvdr_tsdata.h"
+#include "xvdr_metronom.h"
 
 /*
  * features
@@ -175,6 +176,16 @@ static void check_newpts(demux_xvdr_t *this, buf_element_t *buf, int video )
   pts_wrap_workaround(this, buf, video);
 
   if (buf->pts) {
+
+    if (video) {
+      int still_mode  = (int)this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_STILL_MODE);
+      int trick_speed = (int)this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_TRICK_SPEED);
+      if (still_mode > 0 || trick_speed > 0) {
+        LOGMSG("Skipping new pts %"PRId64" (still=%d trickspeed=%d)", buf->pts, still_mode, trick_speed);
+        return;
+      }
+    }
+
     int64_t diff = buf->pts - this->last_pts[video];
 
     if (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD)) {
