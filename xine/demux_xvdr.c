@@ -218,7 +218,7 @@ static void post_sequence_end(fifo_buffer_t *fifo, uint32_t video_type)
     buf->content[0] = 0x00;
     buf->content[1] = 0x00;
     buf->content[2] = 0x01;
-    buf->content[3] = (video_type == BUF_VIDEO_H264) ? NAL_END_SEQ : 0xB7;
+    buf->content[3] = (video_type == BUF_VIDEO_H264) ? NAL_END_SEQ : SC_SEQUENCE_END;
     fifo->put(fifo, buf);
   }
 }
@@ -945,7 +945,7 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
 
   p += result;
 
-  if (this->video_type == 0) {
+  if (this->video_type == 0 && buf->size >= 4) {
     this->video_type = detect_h264(p);
   }
 
@@ -971,19 +971,19 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
   }
 
   /* H.264 */
-  else if (this->video_type == BUF_VIDEO_H264) {
+  else if (this->video_type == BUF_VIDEO_H264 &&
+           buf->size        >= 4) {
+
     /* Access Unit Delimiter */
     if (IS_NAL_AUD(p))
       post_frame_end (this, buf);
 
     /* Check for end of still image.
        VDR ensures that H.264 still images end with an end of sequence NAL unit */
-    if (buf->size > 4) {
-      uint8_t *end = buf->content + buf->size;
-      if (IS_NAL_END_SEQ(end-4)) {
-        LOGMSG("post_frame_h264: Still frame ? (frame ends with end of sequence NAL unit)");
-        buf->decoder_flags |= BUF_FLAG_FRAME_END;
-      }
+    uint8_t *end = buf->content + buf->size;
+    if (IS_NAL_END_SEQ(end-4)) {
+      LOGMSG("post_frame_h264: Still frame ? (frame ends with end of sequence NAL unit)");
+      buf->decoder_flags |= BUF_FLAG_FRAME_END;
     }
   }
 
@@ -1218,7 +1218,7 @@ void *demux_xvdr_init_class (xine_t *xine, void *data)
   this->demux_class.description     = N_("XVDR demux plugin");
   this->demux_class.identifier      = MRL_ID;
   this->demux_class.mimetypes       = NULL;
-  this->demux_class.extensions      = 
+  this->demux_class.extensions      =
     MRL_ID":/ "
     MRL_ID"+pipe:/ "
     MRL_ID"+tcp:/ "
