@@ -428,6 +428,11 @@ static void demux_xvdr_parse_pes (demux_xvdr_t *this, buf_element_t *buf)
 
   this->stream_id  = p[3];
 
+  if (this->ts_data) {
+    ts_data_flush(this->ts_data);
+    ts_data_dispose(&this->ts_data);
+  }
+
   if (IS_VIDEO_PACKET(p)) {
     result = parse_video_stream(this, p, buf);
   } else if (IS_MPEG_AUDIO_PACKET(p)) {
