@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.13 2009-06-02 14:17:05 phintuka Exp $
+ * $Id: osd_manager.c,v 1.14 2010-02-20 22:06:46 phintuka Exp $
  *
  */
 
@@ -247,10 +247,8 @@ static int exec_osd_size(osd_manager_impl_t *this, osd_command_t *cmd)
   acquire_ticket(this);
 
   xine_video_port_t *video_out = this->stream->video_out;
-  this->vo_scaling = 0;
-  if (video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING) {
-    this->vo_scaling = 1;
-  }
+
+  this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING);
 
   return CONTROL_OK;
 }
@@ -336,7 +334,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   osd_data_t              *osd         = &this->osd[cmd->wnd];
   int use_unscaled       = 0;
   int rle_scaled         = 0;
-  int unscaled_supported = 1;
+  int unscaled_supported;
   int handle             = osd->handle;
 
   if (!ovl_manager)
@@ -362,10 +360,11 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 
   /* check for unscaled OSD capability and request */
   xine_video_port_t *video_out = this->stream->video_out;
-  if (! (video_out->get_capabilities(video_out) & VO_CAP_UNSCALED_OVERLAY))
-    unscaled_supported = 0;
-  else if (cmd->flags & OSDFLAG_UNSCALED)
-    use_unscaled = 1;
+  unscaled_supported = !!(video_out->get_capabilities(video_out) & VO_CAP_UNSCALED_OVERLAY);
+  if (unscaled_supported) {
+    if (cmd->flags & OSDFLAG_UNSCALED)
+      use_unscaled = 1;
+  }
 
   /* store osd for later rescaling (done if video size changes) */
 
@@ -385,10 +384,9 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   }
 
   /* request OSD scaling from video_out layer */
-  this->vo_scaling = 0;
-  if (video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING) {
+  this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING);
+  if (this->vo_scaling) {
     video_out->set_property(video_out, VO_PROP_OSD_SCALING, cmd->scaling ? 1 : 0);
-    this->vo_scaling = 1;
   }
 
   /* if video size differs from expected (VDR osd is designed for 720x576),
