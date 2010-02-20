@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.14 2010-02-20 22:06:46 phintuka Exp $
+ * $Id: osd_manager.c,v 1.15 2010-02-20 22:28:16 phintuka Exp $
  *
  */
 
@@ -52,6 +52,8 @@ typedef struct osd_manager_impl_s {
 
   uint16_t         video_width;
   uint16_t         video_height;
+  uint16_t         win_width;
+  uint16_t         win_height;
   uint8_t          vo_scaling;
 
   osd_data_t       osd[MAX_OSD_OBJECT];
@@ -364,6 +366,10 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   if (unscaled_supported) {
     if (cmd->flags & OSDFLAG_UNSCALED)
       use_unscaled = 1;
+    if (cmd->flags & (OSDFLAG_UNSCALED | OSDFLAG_UNSCALED_LOWRES)) {
+      this->win_width  = video_out->get_property(video_out, VO_PROP_WINDOW_WIDTH);
+      this->win_height = video_out->get_property(video_out, VO_PROP_WINDOW_HEIGHT);
+    }
   }
 
   /* store osd for later rescaling (done if video size changes) */
@@ -417,12 +423,9 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
 
   /* Scale unscaled OSD ? */
   if (!this->vo_scaling && use_unscaled && cmd->scaling > 0) {
-    int win_width  = video_out->get_property(video_out, VO_PROP_WINDOW_WIDTH);
-    int win_height = video_out->get_property(video_out, VO_PROP_WINDOW_HEIGHT);
-
-    if (win_width >= 360 && win_height >= 288) {
-      if (win_width != osd->extent_width || win_height != osd->extent_height) {
-        osdcmd_scale(this, cmd, osd, win_width, win_height);
+    if (this->win_width >= 360 && this->win_height >= 288) {
+      if (this->win_width != osd->extent_width || this->win_height != osd->extent_height) {
+        osdcmd_scale(this, cmd, osd, this->win_width, this->win_height);
         rle_scaled = 1;
       }
     }
