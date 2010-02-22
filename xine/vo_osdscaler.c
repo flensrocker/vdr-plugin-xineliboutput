@@ -4,13 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.5 2010-01-17 21:04:26 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.6 2010-02-22 12:50:20 phintuka Exp $
  *
  */
 
 #include <stdlib.h>
 
 #include <xine/video_out.h>
+#include <xine/xine_internal.h>
 #ifdef SWBLEND
 # include <xine/alphablend.h>
 #endif
@@ -218,9 +219,16 @@ static void osdscaler_overlay_begin (vo_driver_t *self, vo_frame_t *frame, int c
 
 static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overlay_t *overlay)
 {
+  int extent_width, extent_height;
+
   this->x_move = this->y_move = 0;
 
   if (!this->enable)
+    return 0;
+
+  if (!overlay->rle)
+    return 0;
+  if (!frame->stream || frame->stream == XINE_ANON_STREAM)
     return 0;
 
   /* check for VDR OSD */
@@ -231,8 +239,8 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
 
   /* VDR input plugin stores some control data in hili clut area */
   vdr_osd_extradata_t *data = (vdr_osd_extradata_t *)overlay->hili_color;
-  int extent_width  = data->extent_width;
-  int extent_height = data->extent_height;
+  extent_width  = data->extent_width;
+  extent_height = data->extent_height;
 
   if (!data->scaling)
     return 0;
@@ -249,6 +257,11 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
   overlay->extent_height  = 0;
 # endif
 #endif
+
+  if (extent_width < 128 || extent_height < 128) {
+    LOGOSD("overlay: invalid extent size %dx%d", extent_width, extent_height);
+    return 0;
+  }
 
   /* detect output size */
   if (overlay->unscaled && this->unscaled_supported) {
