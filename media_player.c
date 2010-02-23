@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.73 2010-02-18 18:34:11 phintuka Exp $
+ * $Id: media_player.c,v 1.74 2010-02-23 12:18:47 phintuka Exp $
  *
  */
 
@@ -1000,9 +1000,14 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 		     Show();
 		   }
 		   break;
-      case kBack:  xc.main_menu_mode = m_Mode;
-	           Hide(); 
-		   Close(); 
+      case kBack:  if (config_t::IsDvdImage(m_Player->File())) {
+                     xc.main_menu_mode = m_Mode;
+                   } else {
+                     xc.main_menu_mode = ShowMenu;
+                   }
+                   Hide();
+		   Close();
+                   BackToMenu();
 		   return osEnd;
       default:     break;
     }
