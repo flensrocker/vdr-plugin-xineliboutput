@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.27 2010-02-23 22:28:52 phintuka Exp $
+ * $Id: playlist.c,v 1.28 2010-02-23 22:35:54 phintuka Exp $
  *
  */
 
@@ -154,7 +154,7 @@ static int extractor_callback_id3(void *priv,
         Item->Album = data;
         break;
       case EXTRACTOR_METATYPE_TRACK_NUMBER:
-        Item->Tracknumber = strlen(data) == 1 ? cString::sprintf("0%s", data) : data;
+        Item->Tracknumber = strlen(data) == 1 ? *cString::sprintf("0%s", data) : data;
         break;
       default:
         break;
