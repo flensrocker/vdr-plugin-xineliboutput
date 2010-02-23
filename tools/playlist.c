@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.26 2010-02-23 18:30:07 phintuka Exp $
+ * $Id: playlist.c,v 1.27 2010-02-23 22:28:52 phintuka Exp $
  *
  */
 
@@ -133,7 +133,7 @@ static const char *shell_escape(char *buf, int buflen, const cString& src, char 
 #endif
 
 #if defined(HAVE_LIBEXTRACTOR) && EXTRACTOR_VERSION >= 0x00060000
-static int extractor_callback_id3(void *Item,
+static int extractor_callback_id3(void *priv,
                                   const char *plugin_name,
                                   enum EXTRACTOR_MetaType type,
                                   enum EXTRACTOR_MetaFormat format,
@@ -142,18 +142,19 @@ static int extractor_callback_id3(void *Item,
                                   size_t data_len)
 {
   if (format == EXTRACTOR_METAFORMAT_UTF8) {
+    cPlaylistItem *Item = (cPlaylistItem *)priv;
     switch (type) {
       case EXTRACTOR_METATYPE_TITLE:
-        ((cPlaylistItem*)Item)->Title = strdup(data);
+        Item->Title = data;
         break;
       case EXTRACTOR_METATYPE_ARTIST:
-        ((cPlaylistItem*)Item)->Artist = strdup(data);
+        Item->Artist = data;
         break;
       case EXTRACTOR_METATYPE_ALBUM:
-      ((cPlaylistItem*)Item)->Album = strdup(data);
+        Item->Album = data;
         break;
       case EXTRACTOR_METATYPE_TRACK_NUMBER:
-        ((cPlaylistItem*)Item)->Tracknumber = cString::sprintf("%s%s", strlen(data) == 1 ? "0" : "", data);
+        Item->Tracknumber = strlen(data) == 1 ? cString::sprintf("0%s", data) : data;
         break;
       default:
         break;
