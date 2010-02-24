@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.78 2010-02-03 14:01:42 phintuka Exp $
+ * $Id: frontend.c,v 1.79 2010-02-24 14:22:09 phintuka Exp $
  *
  */
 
@@ -313,12 +313,14 @@ void cXinelibThread::SetNoVideo(bool bVal)
 
   Xine_Control("NOVIDEO", m_bNoVideo ? 1 : 0);
 
-  char *opts = NULL;
-  if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
-    opts = xc.audio_vis_goom_opts;
-
   if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
+
+    char *opts = NULL;
+    if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+      opts = xc.audio_vis_goom_opts;
+
     ConfigurePostprocessing(xc.audio_visualization, true, opts);
+
   } else {
     ConfigurePostprocessing("AudioVisualization", false, NULL);
   }
