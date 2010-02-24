@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.79 2010-02-24 14:22:09 phintuka Exp $
+ * $Id: frontend.c,v 1.80 2010-02-24 14:23:21 phintuka Exp $
  *
  */
 
@@ -775,6 +775,8 @@ void cXinelibThread::Configure(void)
     Xine_Control(cString::sprintf("SCR %s %d", 
 				  xc.live_mode_sync ? "Sync"    : "NoSync",
 				  xc.scr_tuning     ? xc.scr_hz : 90000));
+
+    Xine_Control("CONFIG END");
 }
 
 int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method, 
