@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.299 2010-02-19 20:55:07 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.300 2010-02-24 15:45:56 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.299 2010-02-19 20:55:07 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.300 2010-02-24 15:45:56 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -319,6 +319,7 @@ typedef struct vdr_input_plugin_s {
   uint8_t             dvd_menu : 1;
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
+  uint8_t             config_ok : 1;
 
   /* metronom */
   xvdr_metronom_t    *metronom;
@@ -3235,6 +3236,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     else
       err = CONTROL_PARAM_ERROR;
 
+  } else if(!strncasecmp(cmd, "CONFIG END", 10)) {
+    this->config_ok = 1;
+
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     handle_control_grab(this, cmd);
 
@@ -4608,12 +4612,14 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   TRACE("vdr_plugin_read_block");
 
-  if (this->slave_stream) {
-    xine_usec_sleep(50*1000);
-    if (this->slave_stream) {
-      errno = EAGAIN;
-      return NULL;
+  if (this->slave_stream || !this->config_ok) {
+    if (!this->config_ok) {
+      LOGDBG("read_block waiting for configuration data");
+      xine_usec_sleep(100*1000);
     }
+    xine_usec_sleep(50*1000);
+    errno = EAGAIN;
+    return NULL;
   }
 
   do {
