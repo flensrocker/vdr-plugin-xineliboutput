@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.304 2010-02-27 11:27:29 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.305 2010-02-27 11:55:14 phintuka Exp $
  *
  */
 
@@ -86,9 +86,7 @@
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 #define HD_BUF_NUM_BUFS         (2500)  /* 2k payload * 2500 = 5MB */
 #define HD_BUF_ELEM_SIZE        (2048+64)
-#define HD_BUF_RESERVED_BUFS    2
-
-#define RADIO_MAX_BUFFERS  10
+#define RADIO_MAX_BUFFERS       10
 
 #define SLAVE_VIDEO_FIFO_SIZE 1000
 
@@ -136,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.304 2010-02-27 11:27:29 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.305 2010-02-27 11:55:14 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -371,8 +369,8 @@ typedef struct vdr_input_plugin_s {
   uint64_t            guard_index;   /* data before this offset will not be discarded */
   uint                guard_frame;
   uint64_t            curpos;        /* current position (demux side) */
-  uint                curframe;      
-  int                 max_buffers;   /* max no. of non-demuxed buffers */
+  uint                curframe;
+  uint                reserved_buffers;
 
   /* saved video properties */
   uint8_t video_properties_saved;
@@ -596,7 +594,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   /*
    * Grab current buffer usage 
    */
-  int num_used = this->buffer_pool->size(this->buffer_pool) + 
+  int num_used = this->buffer_pool->size(this->buffer_pool) +
                  this->block_buffer->size(this->block_buffer);
   int num_free = this->buffer_pool->num_free(this->buffer_pool);
   int scr_tuning = this->scr_tuning;
@@ -606,7 +604,10 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     num_free += this->hd_buffer->num_free(this->hd_buffer);
   if (this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
-  num_free -= (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
+  num_free -= this->reserved_buffers;
+
+  if (num_free < 0)
+    num_free = 0;
 
   log_buffer_fill(this, num_used, num_free, num_vbufs);
 
@@ -1314,7 +1315,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
   /* HD buffer */
   if (this->hd_stream && size <= HD_BUF_ELEM_SIZE) {
-    if (this->hd_buffer->buffer_pool_num_free > HD_BUF_RESERVED_BUFS)
+    if (this->hd_buffer->buffer_pool_num_free > this->reserved_buffers)
       buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
     if (!force && !buf)
       return NULL;
@@ -1322,8 +1323,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
   /* limit max. buffered data */
   if(!force && !buf) {
-    int buffer_limit = this->buffer_pool->buffer_pool_capacity - this->max_buffers;
-    if (this->buffer_pool->buffer_pool_num_free < buffer_limit)
+    if (this->buffer_pool->buffer_pool_num_free < this->reserved_buffers)
       return NULL;
   }
 
@@ -1917,6 +1917,48 @@ static int set_video_properties(vdr_input_plugin_t *this,
   return 0;
 }
 
+/*
+ * set_buffer_limits()
+ *
+ * Set buffer usage limits depending on stream type.
+ * - caller must hold this->lock !
+ */
+static void set_buffer_limits(vdr_input_plugin_t *this)
+{
+  int capacity = (this->hd_stream ? this->hd_buffer : this->buffer_pool)->buffer_pool_capacity;
+  int max_buffers;
+
+  if (this->no_video) {
+
+    /* radio channel / recording. Limit buffers to 10 */
+    max_buffers = RADIO_MAX_BUFFERS;
+
+  } else {
+
+    max_buffers = capacity;
+
+    /* replay in local mode --> Limit buffers to 75% */
+    if (!this->live_mode && this->fd_control < 0) {
+      max_buffers -= (capacity >> 2);
+    }
+
+    /* always reserve few buffers for control messages and TS demuxer */
+    max_buffers -= 10;
+  }
+
+  this->reserved_buffers = capacity - max_buffers;
+
+  /* sanity checks */
+  if (capacity < max_buffers) {
+    LOGMSG("set_buffer_limits(): internal error: max=%d, capacity=%d", max_buffers, capacity);
+    this->reserved_buffers = 10;
+  }
+  if (this->reserved_buffers < 2) {
+    LOGMSG("set_buffer_limits(): internal error: reserved=%d", this->reserved_buffers);
+    this->reserved_buffers = 2;
+  }
+}
+
 static int set_live_mode(vdr_input_plugin_t *this, int onoff)
 {
   pthread_mutex_lock(&this->lock);
@@ -1938,14 +1980,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
 
   }
 
-  /* set buffer usage limits */
-  this->max_buffers = this->buffer_pool->buffer_pool_capacity;
-  if(this->live_mode && this->fd_control < 0) 
-    this->max_buffers >>= 1;
-  this->max_buffers -= 10;
-
-  if(this->no_video)
-    this->max_buffers = RADIO_MAX_BUFFERS;
+  set_buffer_limits(this);
 
   /* SCR tuning */
   if(this->live_mode) {
@@ -2589,8 +2624,7 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 {
   struct timespec abstime;
   fifo_buffer_t  *fifo          = this->hd_stream ? this->hd_buffer : this->buffer_pool;
-  int             reserved_bufs = this->hd_stream ? HD_BUF_RESERVED_BUFS :
-                                  (fifo->buffer_pool_capacity - this->max_buffers);
+  int             reserved_bufs = this->reserved_buffers;
   int             result        = 0;
 
   /* Caller must have locked this->vdr_entry_lock ! */
@@ -2900,6 +2934,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       } else {
 	this->hd_stream = 0;
       }
+      set_buffer_limits(this);
       pthread_mutex_unlock(&this->lock);
     }
 
@@ -2908,14 +2943,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       pthread_mutex_lock(&this->lock);
 
       this->no_video = tmp32;
-      if(this->no_video) {
-        this->max_buffers = RADIO_MAX_BUFFERS;
-      } else {
-        this->max_buffers = this->buffer_pool->buffer_pool_capacity;
-        if(!this->live_mode && this->fd_control < 0) 
-	  this->max_buffers >>= 1;
-        this->max_buffers -= 10;
-      }
+      set_buffer_limits(this);
 
       if (tmp32)
         this->metronom->unwire(this->metronom);
@@ -4917,6 +4945,8 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   this->buffer_pool = this->stream->video_fifo;
 
+  this->reserved_buffers = this->buffer_pool->buffer_pool_capacity - RADIO_MAX_BUFFERS;
+
   /* enable resample method */
   xine->config->update_num(xine->config, "audio.synchronization.av_sync_method", 1);
 
@@ -5615,7 +5645,6 @@ static input_plugin_t *vdr_class_get_instance (input_class_t *class_gen,
   this->fd_control   = -1;
 
   this->stream_start = 1;
-  this->max_buffers  = 10;
   this->autoplay_size = -1;
 
   local_mode         = ( (!strncasecmp(mrl, MRL_ID "://", MRL_ID_LEN+3)) && 
