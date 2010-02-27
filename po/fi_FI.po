@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-01-21 23:15+0200\n"
+"POT-Creation-Date: 2010-02-18 20:34+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -201,6 +201,27 @@ msgstr "Satunnaistoisto"
 
 msgid "Normal play"
 msgstr "Normaali toisto"
+
+msgid "DVD Menu"
+msgstr "DVD-valikot"
+
+msgid "Exit DVD menu"
+msgstr "Sulje DVD:n valikko"
+
+msgid "DVD Root menu"
+msgstr "DVD:n päävalikko"
+
+msgid "DVD Title menu"
+msgstr "DVD:n ohjelmavalikko"
+
+msgid "DVD SPU menu"
+msgstr "DVD:n tekstitysvalikko"
+
+msgid "DVD Audio menu"
+msgstr "DVD:n äänivalikko"
+
+msgid "Close menu"
+msgstr "Sulje valikko"
 
 msgid "Delete image ?"
 msgstr "Poistetaanko kuva ?"
