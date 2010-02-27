@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.1.0\n"
-"Report-Msgid-Bugs-To: <artlov@gmail.com>\n"
-"POT-Creation-Date: 2010-02-18 14:09+0200\n"
+"Project-Id-Version: Xineliboutput 1.0.6\n"
+"Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
+"POT-Creation-Date: 2010-02-27 22:52+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Arthur Konovalov\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -201,27 +201,6 @@ msgstr "Juhuesitus"
 msgid "Normal play"
 msgstr "Normaalne esitus"
 
-msgid "DVD Menu"
-msgstr "DVD menüü"
-
-msgid "Exit DVD menu"
-msgstr "Väljumine DVD menüüst"
-
-msgid "DVD Root menu"
-msgstr "DVD juurmenüü"
-
-msgid "DVD Title menu"
-msgstr "DVD peamemüü"
-
-msgid "DVD SPU menu"
-msgstr "DVD SPU menüü"
-
-msgid "DVD Audio menu"
-msgstr "DVD audio menüü"
-
-msgid "Close menu"
-msgstr "Menüü sulgemine"
-
 msgid "Delete image ?"
 msgstr "Kustutada pilt ?"
 
@@ -240,20 +219,35 @@ msgstr "Faili esitamine"
 msgid "Button$Queue"
 msgstr "Esitusnimekiri"
 
+msgid "Subtitles"
+msgstr "Subtiitrite"
+
 msgid "Media"
 msgstr "Meedia"
 
-msgid "View images"
-msgstr "Piltide kuvamine"
+msgid "Play file >>"
+msgstr "Faili mängimine >>"
 
-msgid "Play DVD disc"
-msgstr "DVD plaadi esitamine"
+msgid "Play music >>"
+msgstr "Muusika mängimine >>"
 
-msgid "Play BluRay disc"
-msgstr "BluRay plaadi esitamine"
+msgid "View images >>"
+msgstr "Piltide vaatamine >>"
 
-msgid "Play audio CD"
-msgstr "CD plaadi esitamine"
+msgid "Play remote DVD >>"
+msgstr "Kaug-DVD mängimine >>"
+
+msgid "Play DVD disc >>"
+msgstr "DVD mängimine >>"
+
+msgid "Play remote CD >>"
+msgstr "Kaug-CD mängimine >>"
+
+msgid "Play audio CD >>"
+msgstr "CD mängimine >>"
+
+msgid "Select subtitle track >>"
+msgstr ""
 
 msgid "Video settings"
 msgstr "Videoseaded"
@@ -267,14 +261,23 @@ msgstr "4:3-letterbox 16:9:ks kärpimine"
 msgid "Overscan (crop image borders)"
 msgstr "Pildiservade kärpimine (overscan)"
 
+msgid "Interlaced Field Order"
+msgstr "Ridade järjestus"
+
 msgid "Audio settings"
 msgstr "Heliseaded"
+
+msgid "Headphone audio mode"
+msgstr "Kuulari helimudel"
 
 msgid "Audio Compression"
 msgstr "Heli kompresseerimine"
 
-msgid "Audio equalizer"
-msgstr "Ekvalaiser"
+msgid "Audio equalizer >>"
+msgstr "Heli ekvalaiser >>"
+
+msgid "No subtitles available!"
+msgstr ""
 
 msgid "Local Frontend"
 msgstr "Lokaalne liides"
@@ -331,17 +334,17 @@ msgstr "Miksimine kuularitesse"
 msgid "Visualization"
 msgstr "Visualiseerimine"
 
-msgid "Width"
-msgstr "Laius"
+msgid "  Width"
+msgstr "  Laius"
 
 msgid "px"
 msgstr "px"
 
-msgid "Height"
-msgstr "Kõrgus"
+msgid "  Height"
+msgstr "  Kõrgus"
 
-msgid "Speed"
-msgstr "Kiirus"
+msgid "  Speed"
+msgstr "  Kiirus"
 
 msgid "fps"
 msgstr "fps"
@@ -367,92 +370,92 @@ msgstr "pool (alumine)"
 msgid "Video"
 msgstr "Video"
 
-msgid "Autodetect letterbox"
-msgstr "Letterbox autotuvastamine"
+msgid "  Autodetect letterbox"
+msgstr "  Letterbox autotuvastamine"
 
-msgid "Soft start"
-msgstr "Pehme start"
+msgid "  Soft start"
+msgstr "  Pehme start"
 
-msgid "Crop to"
-msgstr "Kärpimine"
+msgid "  Crop to"
+msgstr "  Kärpimine"
 
-msgid "Detect subtitles"
-msgstr "Subtiitrite tuvastamine"
+msgid "  Detect subtitles"
+msgstr "  Subtiitrite tuvastamine"
 
 msgid "Software scaling"
 msgstr "Tarkvaraline skaleerimine"
 
-msgid "Change aspect ratio"
-msgstr "Külgsuhte muutmine"
+msgid "  Change aspect ratio"
+msgstr "  Külgsuhte muutmine"
 
-msgid "Change video size"
-msgstr "Videosuuruse muutmine"
+msgid "  Change video size"
+msgstr "  Videosuuruse muutmine"
 
-msgid "Allow downscaling"
-msgstr "Allaskaleerimise lubamine"
+msgid "  Allow downscaling"
+msgstr "  Allaskaleerimise lubamine"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Järeltöötlus (ffmpeg)"
 
-msgid "Quality"
-msgstr "Kvaliteet"
+msgid "  Quality"
+msgstr "  Kvaliteet"
 
-msgid "Mode"
-msgstr "Mudel"
+msgid "  Mode"
+msgstr "  Mudel"
 
-msgid "Method"
-msgstr "Meetod"
+msgid "  Method"
+msgstr "  Meetod"
 
-msgid "Cheap mode"
-msgstr "Cheap-mudel"
+msgid "  Cheap mode"
+msgstr "  Cheap-mudel"
 
-msgid "Pulldown"
-msgstr "Pulldown"
+msgid "  Pulldown"
+msgstr "  Pulldown"
 
-msgid "Frame rate"
-msgstr "Kaadrisagedus"
+msgid "  Frame rate"
+msgstr "  Kaadrisagedus"
 
-msgid "Judder Correction"
-msgstr "Vibratsiooni korrektsioon"
+msgid "  Judder Correction"
+msgstr "  Vibratsiooni korrektsioon"
 
-msgid "Use progressive frame flag"
-msgstr "Progressiivpildi kasutamine"
+msgid "  Use progressive frame flag"
+msgstr "  Progressiivpildi kasutamine"
 
-msgid "Chroma Filter"
-msgstr "Chroma-filter"
+msgid "  Chroma Filter"
+msgstr "  Chroma-filter"
 
 msgid "Sharpen / Blur"
 msgstr "Teravus / hägustus"
 
-msgid "Width of the luma matrix"
-msgstr "Luma-maatiksi laius"
+msgid "  Width of the luma matrix"
+msgstr "  Luma-maatiksi laius"
 
-msgid "Height of the luma matrix"
-msgstr "Luma-maatriksi kõrgus"
+msgid "  Height of the luma matrix"
+msgstr "  Luma-maatriksi kõrgus"
 
-msgid "Amount of luma sharpness/blur"
-msgstr "Luma-teravus/-hägusus"
+msgid "  Amount of luma sharpness/blur"
+msgstr "  Luma-teravus/-hägusus"
 
-msgid "Width of the chroma matrix"
-msgstr "Chroma-maatriksi laius"
+msgid "  Width of the chroma matrix"
+msgstr "  Chroma-maatriksi laius"
 
-msgid "Height of the chroma matrix"
-msgstr "Chroma-maatriksi kõrgus"
+msgid "  Height of the chroma matrix"
+msgstr "  Chroma-maatriksi kõrgus"
 
-msgid "Amount of chroma sharpness/blur"
-msgstr "Chroma-teravus/-hägusus"
+msgid "  Amount of chroma sharpness/blur"
+msgstr "  Chroma-teravus/-hägusus"
 
 msgid "3D Denoiser"
 msgstr "3D-mürasummutus"
 
-msgid "Spatial luma strength"
-msgstr "Ruumilise luma tugevus"
+msgid "  Spatial luma strength"
+msgstr "  Ruumilise luma tugevus"
 
-msgid "Spatial chroma strength"
-msgstr "Ruumilise chroma tugevus"
+msgid "  Spatial chroma strength"
+msgstr "  Ruumilise chroma tugevus"
 
-msgid "Temporal strength"
-msgstr "Ajaline tugevus"
+msgid "  Temporal strength"
+msgstr "  Ajaline tugevus"
 
 msgid "HUE"
 msgstr "Värvus"
@@ -484,14 +487,11 @@ msgstr "Ekraanimenüü"
 msgid "Hide main menu"
 msgstr "Peitmine peamenüü valikus"
 
-msgid "Resolution"
-msgstr "Resolutsioon"
-
 msgid "Blending method"
 msgstr "Segunemise meetod"
 
-msgid "Use hardware for low-res video"
-msgstr "Riistvara kasutus madalresol. videol"
+msgid "  Use hardware for low-res video"
+msgstr "  Riistvara kasutus madalresol. videol"
 
 msgid "Scaling method"
 msgstr "Skaleerimise meetod"
@@ -517,8 +517,8 @@ msgstr "Dekooder"
 msgid "Buffer size"
 msgstr "Puhvri suurus"
 
-msgid "Number of PES packets"
-msgstr "PES-pakettide määr"
+msgid "  Number of PES packets"
+msgstr "  PES-pakettide määr"
 
 msgid "Local Display Frontend"
 msgstr "Lokaalne ekraaniliides"
@@ -538,20 +538,17 @@ msgstr "Framebuffer-seade"
 msgid "Fullscreen mode"
 msgstr "Täisekraan"
 
-msgid "Window width"
-msgstr "Akna laius"
+msgid "  Window width"
+msgstr "  Akna laius"
 
-msgid "Window height"
-msgstr "Akna kõrgus"
+msgid "  Window height"
+msgstr "  Akna kõrgus"
 
 msgid "Window aspect"
 msgstr "Akna külgsuhe"
 
 msgid "Scale to window size"
 msgstr "Akna skaleeritud suurus"
-
-msgid "Interlaced Field Order"
-msgstr "Ridade järjestus"
 
 msgid "Port"
 msgstr "Port"
@@ -562,47 +559,50 @@ msgstr "Kaugkliendid"
 msgid "Allow remote clients"
 msgstr "Kaugklientide lubamine"
 
-msgid "Listen port (TCP and broadcast)"
-msgstr "TCP-port"
+msgid "  Listen port (TCP and broadcast)"
+msgstr "  TCP-port"
 
-msgid "Listen address"
-msgstr "Aadress"
+msgid "  Listen address"
+msgstr "  Aadress"
 
-msgid "Remote keyboard"
-msgstr "Kaugklahvistik"
+msgid "  Remote keyboard"
+msgstr "  Kaugklahvistik"
 
-msgid "Max number of clients"
-msgstr "Klientide max hulk"
+msgid "  Max number of clients"
+msgstr "  Klientide max hulk"
 
-msgid "PIPE transport"
-msgstr "PIPE-transport"
+msgid "  PIPE transport"
+msgstr "  PIPE-transport"
 
-msgid "TCP transport"
-msgstr "TCP-transport"
+msgid "  TCP transport"
+msgstr "  TCP-transport"
 
-msgid "UDP transport"
-msgstr "UDP-transport"
+msgid "  UDP transport"
+msgstr "  UDP-transport"
 
-msgid "RTP (multicast) transport"
-msgstr "RTP (multicast) -transport"
+msgid "  RTP (multicast) transport"
+msgstr "  RTP (multicast) -transport"
 
-msgid "Address"
-msgstr "Aadress"
+msgid "    Address"
+msgstr "    Aadress"
 
-msgid "TTL"
-msgstr "TTL"
+msgid "    Port"
+msgstr "    Port"
 
-msgid "Transmit always on"
-msgstr "Edastus alati sees"
+msgid "    TTL"
+msgstr "    TTL"
 
-msgid "SAP announcements"
-msgstr "SAP-teadustused"
+msgid "    Transmit always on"
+msgstr "    Edastus alati sees"
 
-msgid "Server announce broadcasts"
-msgstr "Severi broadcast-teadustused"
+msgid "    SAP announcements"
+msgstr "    SAP-teadustused"
 
-msgid "HTTP transport for media files"
-msgstr "Meediafailide HTTP-transport"
+msgid "  Server announce broadcasts"
+msgstr "  Severi broadcast-teadustused"
+
+msgid "  HTTP transport for media files"
+msgstr "  Meediafailide HTTP-transport"
 
 msgid "Additional network services"
 msgstr "Muud võrguteenused"
@@ -643,6 +643,9 @@ msgstr "Noolte kasutamine DVD juhtimisel"
 msgid "Media Player"
 msgstr "Meediapleier"
 
+msgid "Play BluRay disc >>"
+msgstr "BluRay mängimine >>"
+
 msgid "Grayscale"
 msgstr "Halltoonid"
 
@@ -658,32 +661,41 @@ msgstr "Testipildid"
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib kuvar"
 
-#~ msgid "Play file >>"
-#~ msgstr "Faili mängimine >>"
+#~ msgid "DVD Menu"
+#~ msgstr "DVD menüü"
 
-#~ msgid "Play music >>"
-#~ msgstr "Muusika mängimine >>"
+#~ msgid "Exit DVD menu"
+#~ msgstr "Väljumine DVD menüüst"
 
-#~ msgid "View images >>"
-#~ msgstr "Piltide vaatamine >>"
+#~ msgid "DVD Root menu"
+#~ msgstr "DVD juurmenüü"
 
-#~ msgid "Play DVD disc >>"
-#~ msgstr "DVD mängimine >>"
+#~ msgid "DVD Title menu"
+#~ msgstr "DVD peamemüü"
 
-#~ msgid "Play audio CD >>"
-#~ msgstr "CD mängimine >>"
+#~ msgid "DVD SPU menu"
+#~ msgstr "DVD SPU menüü"
 
-#~ msgid "Play BluRay disc >>"
-#~ msgstr "BluRay mängimine >>"
+#~ msgid "DVD Audio menu"
+#~ msgstr "DVD audio menüü"
 
-#~ msgid "Play remote DVD >>"
-#~ msgstr "Kaug-DVD mängimine >>"
+#~ msgid "Close menu"
+#~ msgstr "Menüü sulgemine"
 
-#~ msgid "Play remote CD >>"
-#~ msgstr "Kaug-CD mängimine >>"
+#~ msgid "View images"
+#~ msgstr "Piltide kuvamine"
 
-#~ msgid "Headphone audio mode"
-#~ msgstr "Kuulari helimudel"
+#~ msgid "Play DVD disc"
+#~ msgstr "DVD plaadi esitamine"
 
-#~ msgid "Audio equalizer >>"
-#~ msgstr "Heli ekvalaiser >>"
+#~ msgid "Play BluRay disc"
+#~ msgstr "BluRay plaadi esitamine"
+
+#~ msgid "Play audio CD"
+#~ msgstr "CD plaadi esitamine"
+
+#~ msgid "Audio equalizer"
+#~ msgstr "Ekvalaiser"
+
+#~ msgid "Resolution"
+#~ msgstr "Resolutsioon"
