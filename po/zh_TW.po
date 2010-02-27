@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.5\n"
+"Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-09-25 16:04+0300\n"
+"POT-Creation-Date: 2010-02-15 21:20+0200\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -687,6 +687,12 @@ msgstr "緩存信息"
 msgid "Arrow keys control DVD playback"
 msgstr "允許按鍵控制DVD回放"
 
+msgid "Media Player"
+msgstr "媒體播放器"
+
+msgid "Play BluRay disc >>"
+msgstr "播放BluRay光盤>>"
+
 msgid "Grayscale"
 msgstr "灰度"
 
@@ -695,9 +701,6 @@ msgstr "位圖"
 
 msgid "OSD"
 msgstr "菜單"
-
-msgid "Media Player"
-msgstr "媒體播放器"
 
 msgid "Test Images"
 msgstr "測試圖像"

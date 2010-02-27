@@ -4,9 +4,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.5\n"
+"Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-09-25 16:04+0300\n"
+"POT-Creation-Date: 2010-02-15 21:20+0200\n"
 "PO-Revision-Date: 2009-02-08 20:09+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -642,6 +642,12 @@ msgstr "Cache metainfo"
 msgid "Arrow keys control DVD playback"
 msgstr "Riproduzione DVD con tasti freccia"
 
+msgid "Media Player"
+msgstr "Lettore multimediale"
+
+msgid "Play BluRay disc >>"
+msgstr "Riproduci disco BluRay >>"
+
 msgid "Grayscale"
 msgstr "Scala di grigi"
 
@@ -650,9 +656,6 @@ msgstr "Bitmap"
 
 msgid "OSD"
 msgstr "OSD"
-
-msgid "Media Player"
-msgstr "Lettore multimediale"
 
 msgid "Test Images"
 msgstr "Prova immagini"
