@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.301 2010-02-27 06:50:48 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.302 2010-02-27 10:52:28 phintuka Exp $
  *
  */
 
@@ -78,8 +78,10 @@
 /*#define LOG_OSD*/
 /*#define LOG_CMD*/
 /*#define LOG_SCR*/
+/*#define LOG_SCR_BUF_LEVEL_METER*/
 /*#define LOG_TRACE*/
 /*#define LOG_GRAPH*/
+/*#define DEBUG_LOCKING*/
 
 #define METRONOM_PREBUFFER_VAL  (4 * 90000 / 25 )
 #define HD_BUF_NUM_BUFS         (2500)  /* 2k payload * 2500 = 5MB */
@@ -134,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.301 2010-02-27 06:50:48 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.302 2010-02-27 10:52:28 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -189,8 +191,10 @@ static void SetupLogLevel(void)
 
 #ifdef LOG_SCR
 #  define LOGSCR(x...) LOGMSG("SCR: " x)
+#  define LOGSCR_VERBOSE(x...) LOGVERBOSE("SCR: " x)
 #else
 #  define LOGSCR(x...)
+#  define LOGSCR_VERBOSE(x...)
 #endif
 #ifdef LOG_OSD
 #  define LOGOSD(x...) LOGMSG("OSD: " x)
@@ -216,7 +220,6 @@ static void SetupLogLevel(void)
 #endif
 
 
-/*#define DEBUG_LOCKING*/
 #ifdef DEBUG_LOCKING
 # include "tools/debug_mutex.h"
 #endif
@@ -514,7 +517,7 @@ static inline const char *scr_tuning_str(int value)
 #endif
 
 #ifdef LOG_SCR
-static void log_buffer_fill(vdr_input_plugin_t *this)
+static void log_buffer_fill(vdr_input_plugin_t *this, int num_used, int num_free, int num_vid)
 {
   /*
    * Trace current buffer and tuning status
@@ -522,14 +525,21 @@ static void log_buffer_fill(vdr_input_plugin_t *this)
   static int cnt = 0;
 
   if ( ! ((cnt++) % 2500) ||
-       (this->scr_tuning == SCR_TUNING_PAUSED && !(cnt%10)) ||
+       (this->scr_tuning == SCR_TUNING_PAUSED && !(cnt%20)) ||
        (this->no_video                        && !(cnt%50))) {
-    LOGSCR("Buffer %2d%% (%3d/%3d) %s",
+    LOGSCR("Buffer %2d%% (%3d/%3d) %12s frames %d",
            100 * num_used / (num_used + num_free),
            num_used, num_used + num_free,
-           scr_tuning_str(this->scr_tuning));
+           scr_tuning_str(this->scr_tuning),
+           num_vid);
   }
-
+#ifdef LOG_SCR_BUF_LEVEL_METER
+  printf("Buffer %2d%% (%3d/%3d) %20s frames: %3d     \r",
+         100 * num_used / (num_used + num_free),
+         num_used, num_used + num_free,
+         scr_tuning_str(this->scr_tuning),
+         num_vid);
+#endif
   if (this->scr_tuning == SCR_TUNING_PAUSED) {
     if (_x_get_fine_speed(this->stream) != XINE_SPEED_PAUSE) {
       LOGMSG("ERROR: SCR PAUSED ; speed=%d bool=%d",
@@ -540,7 +550,7 @@ static void log_buffer_fill(vdr_input_plugin_t *this)
   }
 }
 #else
-#  define log_buffer_fill(this)
+#  define log_buffer_fill(this,used,free,num_vid)
 #endif
 
 static void scr_tuning_set_paused(vdr_input_plugin_t *this)
@@ -598,7 +608,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
   num_free -= (this->buffer_pool->buffer_pool_capacity - this->max_buffers);
 
-  log_buffer_fill(this);
+  log_buffer_fill(this, num_used, num_free, num_vbufs);
 
   /*
    * SCR -> PAUSE
@@ -608,11 +618,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
       scr_tuning != SCR_TUNING_PAUSED && 
       !this->no_video && !this->still_mode && !this->is_trickspeed) {
 #if 0
-    this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 0);
-    num_vbufs = this->stream->video_out->get_property(this->stream->video_out, 
-						      VO_PROP_BUFS_IN_FIFO);
-    this->class->xine->port_ticket->release(this->class->xine->port_ticket, 0);
-    if(num_vbufs < 3) {
+    if (num_vbufs < 3) {
       LOGSCR("SCR paused by adjust_speed (vbufs=%d)", num_vbufs);
 #endif
       scr_tuning_set_paused(this);
@@ -678,9 +684,9 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
         scr_tuning = SCR_TUNING_OFF;
 
     } else if(this->no_video) {  /* radio stream ? */
-      if( num_used >= (RADIO_MAX_BUFFERS-1))
+      if( num_used >= RADIO_MAX_BUFFERS - 1)
         scr_tuning = +1; /* play faster */
-      else if( num_used <= (RADIO_MAX_BUFFERS/3))
+      else if( num_used <= RADIO_MAX_BUFFERS / 3)
         scr_tuning = -1; /* play slower */
       else
         scr_tuning = SCR_TUNING_OFF;
@@ -2770,14 +2776,14 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   VDR_ENTRY_LOCK(CONTROL_DISCONNECTED);
 
-  LOGCMD("vdr_plugin_parse_control: %s", cmd); 
+  LOGCMD("vdr_plugin_parse_control(): %s", cmd);
 
   if( !memcmp(cmd, str_poll, 4) ||
       !strncasecmp(cmd, "POLL ", 5)) {
     tmp32 = atoi(cmd+5);
     if(tmp32 >= 0 && tmp32 < 1000) {
       if(this->fd_control >= 0) {
-	printf_control(this, "POLL %d\r\n", vdr_plugin_poll(this, tmp32));
+        printf_control(this, "POLL %d\r\n", vdr_plugin_poll(this, tmp32));
       } else {
 	err = vdr_plugin_poll(this, tmp32);
       }
@@ -3250,11 +3256,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     /* #warning should be delayed and executed in read_block */
 
   } else {
-    LOGMSG("unknown control %s", cmd);
+    LOGMSG("vdr_plugin_parse_control(): unknown control %s", cmd);
     err = CONTROL_UNKNOWN;
   }
 
-  LOGCMD("vdr_plugin_parse_control: DONE (%d): %s", err, cmd);
+  LOGCMD("vdr_plugin_parse_control(): DONE (%d): %s", err, cmd);
 
   VDR_ENTRY_UNLOCK();
 
@@ -3661,6 +3667,11 @@ static int wait_stream_sync(vdr_input_plugin_t *this)
     struct timespec abstime;
     create_timeout_time(&abstime, 10);
     pthread_cond_timedwait(&this->engine_flushed, &this->lock, &abstime);
+  }
+
+  if (this->discard_index != this->curpos) {
+    LOGMSG("wait_stream_sync: discard_index %"PRIu64" != curpos %"PRIu64" ! (diff %"PRId64")",
+           this->discard_index, this->curpos, (int64_t)(this->discard_index - this->curpos));
   }
 
   mutex_unlock_cancellable(&this->lock);
@@ -4444,11 +4455,10 @@ static uint8_t update_frames(vdr_input_plugin_t *this, const uint8_t *data, int 
 
   if (!this->I_frames)
     this->P_frames = this->B_frames = 0;
-
   switch (type) {
-    case I_FRAME: this->I_frames++; LOGSCR("I"); break;
-    case P_FRAME: this->P_frames++; LOGSCR("P"); break;
-    case B_FRAME: this->B_frames++; LOGSCR("B"); break;
+    case I_FRAME: this->I_frames++; LOGSCR_VERBOSE("I"); break;
+    case P_FRAME: this->P_frames++; LOGSCR_VERBOSE("P"); break;
+    case B_FRAME: this->B_frames++; LOGSCR_VERBOSE("B"); break;
     default: break;
   }
   return type;
@@ -4533,8 +4543,8 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
 static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int need_pause)
 {
 #ifdef TEST_SCR_PAUSE
-      if(need_pause)
-	scr_tuning_set_paused(this);
+  if(need_pause)
+    scr_tuning_set_paused(this);
 #endif
 
   if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
