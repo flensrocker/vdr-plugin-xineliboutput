@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.300 2010-02-24 15:45:56 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.301 2010-02-27 06:50:48 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.300 2010-02-24 15:45:56 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.301 2010-02-27 06:50:48 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4532,13 +4532,13 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
  */
 static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int need_pause)
 {
-  if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
-    return;
-
 #ifdef TEST_SCR_PAUSE
       if(need_pause)
 	scr_tuning_set_paused(this);
 #endif
+
+  if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
+    return;
 
   /* generated still images start with empty video PES, PTS = 0.
      Reset metronom pts so images will be displayed */
