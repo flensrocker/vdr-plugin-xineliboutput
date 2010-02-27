@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.303 2010-02-27 11:22:10 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.304 2010-02-27 11:27:29 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.303 2010-02-27 11:22:10 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.304 2010-02-27 11:27:29 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1977,15 +1977,19 @@ static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
         * no audio
       1 - normal
 */
-  pthread_mutex_lock(&this->lock);
-  this->is_paused = 0;
-  if(speed == 0) {
-    this->is_paused = 1;
-  } else if(speed>64 || speed<-64) {
-    pthread_mutex_unlock(&this->lock);
-    return -2;
-  }
 
+  if (speed > 64 || speed < -64)
+    return -2;
+
+  pthread_mutex_lock(&this->lock);
+
+  this->is_paused = !!(speed == 0);
+
+  if (!this->is_paused)
+    set_still_mode(this, 0);
+
+  if (this->slave_stream)
+    backwards = 0;
   this->metronom->set_trickspeed(this->metronom, backwards ? speed : 0);
 
   if(speed > 1 || speed < -1) {
