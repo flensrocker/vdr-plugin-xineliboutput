@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.97 2010-02-15 06:39:25 phintuka Exp $
+ * $Id: device.c,v 1.98 2010-02-27 16:32:24 phintuka Exp $
  *
  */
 
@@ -1382,6 +1382,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
         else
           cCondWait::SleepMs(5);
       }
+      TsBufferFlush();
 #endif
     } else {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
@@ -1389,12 +1390,12 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
               &mand<bool>, true);
     }
 
+  TsBufferFlush();
+
   // creates empty video PES with pseudo-pts
   ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
           Data, 0, VIDEO_STREAM, isH264,
           &mand<bool>, true);
-
-  TsBufferFlush();
 
   ForEach(m_clients, &cXinelibThread::Flush, 60, &mand<bool>, true);
 
