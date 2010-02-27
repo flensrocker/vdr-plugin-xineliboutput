@@ -4,9 +4,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.5\n"
+"Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-06-09 14:45+0300\n"
+"POT-Creation-Date: 2010-02-15 21:20+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -641,6 +641,12 @@ msgstr "Uchovávat metainfo"
 msgid "Arrow keys control DVD playback"
 msgstr ""
 
+msgid "Media Player"
+msgstr "Pøehrávaè médií"
+
+msgid "Play BluRay disc >>"
+msgstr "Pøehrát BluRay >>"
+
 msgid "Grayscale"
 msgstr "Odstíny ¹edi"
 
@@ -649,9 +655,6 @@ msgstr "Rastr"
 
 msgid "OSD"
 msgstr "OSD"
-
-msgid "Media Player"
-msgstr "Pøehrávaè médií"
 
 msgid "Test Images"
 msgstr "Zku¹ební obrazce"

@@ -6,9 +6,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.5\n"
+"Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-06-09 14:45+0300\n"
+"POT-Creation-Date: 2010-02-15 21:20+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -641,6 +641,12 @@ msgstr "Tallenna metatieto"
 msgid "Arrow keys control DVD playback"
 msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
 
+msgid "Media Player"
+msgstr "Mediasoitin"
+
+msgid "Play BluRay disc >>"
+msgstr "Toista BluRay-levy >>"
+
 msgid "Grayscale"
 msgstr "Harmaasävy"
 
@@ -649,9 +655,6 @@ msgstr "Bittikartta"
 
 msgid "OSD"
 msgstr "Kuvaruutunäyttö"
-
-msgid "Media Player"
-msgstr "Mediasoitin"
 
 msgid "Test Images"
 msgstr "Testikuvat"

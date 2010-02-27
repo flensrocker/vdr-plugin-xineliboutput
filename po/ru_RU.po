@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Xineliboutput 1.0.5\n"
+"Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2009-06-09 14:45+0300\n"
+"POT-Creation-Date: 2010-02-15 21:20+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Vladimir Monchenko\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -640,6 +640,12 @@ msgstr ""
 msgid "Arrow keys control DVD playback"
 msgstr ""
 
+msgid "Media Player"
+msgstr "Xine-lib"
+
+msgid "Play BluRay disc >>"
+msgstr ""
+
 msgid "Grayscale"
 msgstr "Оттенки серого"
 
@@ -648,9 +654,6 @@ msgstr "Битовая карта"
 
 msgid "OSD"
 msgstr ""
-
-msgid "Media Player"
-msgstr "Xine-lib"
 
 msgid "Test Images"
 msgstr "Тестовые изображения"
