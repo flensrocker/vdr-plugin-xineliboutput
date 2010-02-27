@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-01-21 23:15+0200\n"
+"POT-Creation-Date: 2010-02-18 20:34+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -201,6 +201,27 @@ msgstr "Náhodné pøehrávání"
 
 msgid "Normal play"
 msgstr "Normální pøehrávání"
+
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
 
 msgid "Delete image ?"
 msgstr "Smazat obrázek ?"
