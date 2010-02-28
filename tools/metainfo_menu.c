@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: metainfo_menu.c,v 1.5.2.1 2009-09-13 12:17:53 phintuka Exp $
+ * $Id: metainfo_menu.c,v 1.5.2.2 2010-02-28 09:44:45 phintuka Exp $
  *
  */
 
@@ -19,6 +19,10 @@
 
 #include "metainfo_menu.h"
 
+#if defined(HAVE_LIBEXTRACTOR) && EXTRACTOR_VERSION >= 0x00060000
+#  undef HAVE_LIBEXTRACTOR
+#  warning metainfo menu: libextractor 0.6.0 API not supported
+#endif
 
 //
 // cMetainfoMenu
