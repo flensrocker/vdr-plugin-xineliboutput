@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.98 2010-02-27 16:32:24 phintuka Exp $
+ * $Id: device.c,v 1.99 2010-02-28 07:21:38 phintuka Exp $
  *
  */
 
@@ -1360,8 +1360,9 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   ForEach(m_clients, &cXinelibThread::Clear);
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
+  ForEach(m_clients, &cXinelibThread::ResumeOutput);
   ForEach(m_clients, &cXinelibThread::SetStillMode, true);
-  ForEach(m_clients, &cXinelibThread::TrickSpeed, 1);
+  ForEach(m_clients, &cXinelibThread::Sync);
 
   m_TrickSpeed = -1; // to make Poll work ...
   m_SkipAudio = 1;   // enables audio and pts stripping
