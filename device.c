@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.100 2010-02-28 07:52:10 phintuka Exp $
+ * $Id: device.c,v 1.101 2010-02-28 07:54:29 phintuka Exp $
  *
  */
 
@@ -214,7 +214,6 @@ cXinelibDevice::cXinelibDevice()
   m_RadioStream = false;
   m_AudioCount  = 0;
   m_FreeBufs = 0;
-  m_h264 = false;
 
   m_VideoSize = (video_size_t*)calloc(1, sizeof(video_size_t));
   m_tssVideoSize = NULL;
@@ -809,7 +808,6 @@ void cXinelibDevice::Clear(void)
   TsBufferClear();
 
   m_StreamStart = true;
-  m_h264 = false;
   m_FreeBufs = 0;
   TrickSpeed(-1);
   ForEach(m_clients, &cXinelibThread::Clear);
@@ -1288,13 +1286,12 @@ int cXinelibDevice::PlayVideo(const uchar *buf, int length)
   }
 
   if(m_StreamStart) {
-
-    if (!m_h264 && pes_is_frame_h264(buf, length)) {
+    bool h264 = pes_is_frame_h264(buf, length);
+    if (h264) {
       LOGMSG("cXinelibDevice::PlayVideo: Detected H.264 video");
-      m_h264 = true;
     }
 
-    if (pes_get_video_size(buf, length, m_VideoSize, m_h264 ? 1:0)) {
+    if (pes_get_video_size(buf, length, m_VideoSize, h264)) {
       m_StreamStart = false;
       LOGDBG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);
       ForEach(m_clients, &cXinelibThread::SetHDMode, (m_VideoSize->width > 800));
