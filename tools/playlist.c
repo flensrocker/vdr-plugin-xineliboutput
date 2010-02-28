@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.17.2.7 2009-11-16 11:30:09 phintuka Exp $
+ * $Id: playlist.c,v 1.17.2.8 2010-02-28 09:42:34 phintuka Exp $
  *
  */
 
@@ -130,6 +130,39 @@ static const char *shell_escape(char *buf, int buflen, const cString& src, char 
 }
 #endif
 
+#if defined(HAVE_LIBEXTRACTOR) && EXTRACTOR_VERSION >= 0x00060000
+static int extractor_callback_id3(void *priv,
+                                  const char *plugin_name,
+                                  enum EXTRACTOR_MetaType type,
+                                  enum EXTRACTOR_MetaFormat format,
+                                  const char *data_mime_type,
+                                  const char *data,
+                                  size_t data_len)
+{
+  if (format == EXTRACTOR_METAFORMAT_UTF8) {
+    cPlaylistItem *Item = (cPlaylistItem *)priv;
+    switch (type) {
+      case EXTRACTOR_METATYPE_TITLE:
+        Item->Title = data;
+        break;
+      case EXTRACTOR_METATYPE_ARTIST:
+        Item->Artist = data;
+        break;
+      case EXTRACTOR_METATYPE_ALBUM:
+        Item->Album = data;
+        break;
+      case EXTRACTOR_METATYPE_TRACK_NUMBER:
+        Item->Tracknumber = strlen(data) == 1 ? *cString::sprintf("0%s", data) : data;
+        break;
+      default:
+        break;
+    }
+  }
+  return 0;
+}
+#endif // defined(HAVE_LIBEXTRACTOR) && EXTRACTOR_VERSION >= 0x00060000
+
+
 class cID3Scanner : public cThread 
 {
  public:
@@ -167,6 +200,12 @@ class cID3Scanner : public cThread
       if(xc.IsAudioFile(Item->Filename)) {
         LOGDBG("Scanning metainfo for file %s", *Item->Filename);
 #ifdef HAVE_LIBEXTRACTOR
+#  if EXTRACTOR_VERSION >= 0x00060000
+	EXTRACTOR_PluginList * plugins;
+	plugins = EXTRACTOR_plugin_add_defaults(EXTRACTOR_OPTION_DEFAULT_POLICY);
+	EXTRACTOR_extract(plugins, *Item->Filename, NULL, 0, (EXTRACTOR_MetaDataProcessor)&extractor_callback_id3, Item);
+	EXTRACTOR_plugin_remove_all(plugins); /* unload plugins */
+#  else // EXTRACTOR_VERSION >= 0x00060000
         EXTRACTOR_ExtractorList * plugins;
         EXTRACTOR_KeywordList   * md_list;
         plugins = EXTRACTOR_loadDefaultLibraries();
@@ -187,7 +226,8 @@ class cID3Scanner : public cThread
          }
         EXTRACTOR_freeKeywords(md_list);
         EXTRACTOR_removeAll(plugins); /* unload plugins */
-#else
+#  endif // EXTRACTOR_VERSION >= 0x00060000
+#else // HAVE_LIBEXTRACTOR
         char buf[4096];
         cString Cmd = "";
         if(!strcasecmp((Item->Filename) + strlen(Item->Filename) - 5, ".flac"))
@@ -222,7 +262,7 @@ class cID3Scanner : public cThread
               Item->Tracknumber = cString::sprintf("%s%s", strlen(pt) == 13 ? "0" : "", (pt+12));
           }
         }
-#endif
+#endif // HAVE_LIBEXTRACTOR
       }
     }
     LOGDBG("ID3Scanner Done.");
@@ -915,6 +955,56 @@ bool cPlaylist::Read(const char *PlaylistFile, bool Recursive)
   return Result;
 }
 
+static cString EscapeString(const char *s)
+{
+  static const uint8_t hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+  const uint8_t *fn = (const uint8_t*)s;
+  int size = strlen(s) + 16;
+  char *buf = (char *)malloc(size);
+  int i = 0;
+  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
+
+  while (*fn) {
+    if(size-7 < i)
+      buf = (char *)realloc(buf, (size=size+16));
+    switch (*fn) {
+    case 1 ... ' ':
+    case 127 ... 255:
+    case '#':
+    case '%':
+    case '?':
+    case ':':
+    case ';':
+    case '\'':
+    case '\"':
+    case '(':
+    case ')':
+      buf[i++] = '%';
+      buf[i++] = hex[(*fn & 0xf0)>>4];
+      buf[i++] = hex[(*fn & 0x0f)];
+      break;
+    default:
+      buf[i++] = *fn;
+      break;
+    }
+    fn++;
+  }
+
+  buf[i] = 0;
+  LOGVERBOSE("    --> '%s'", buf);
+  return cString(buf, true);
+}
+
+cString cPlaylist::BuildMrl(const char *proto, const char *s1, const char *s2, const char *s3, const char *s4)
+{
+  return cString::sprintf("%s:%s%s%s%s",
+                          proto,
+                          s1 ? *EscapeString(s1) : "",
+                          s2 ? *EscapeString(s2) : "",
+                          s3 ? *EscapeString(s3) : "",
+                          s4 ? *EscapeString(s4) : "");
+}
+
 cString cPlaylist::EscapeMrl(const char *mrl)
 {
   static const uint8_t hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
@@ -922,7 +1012,7 @@ cString cPlaylist::EscapeMrl(const char *mrl)
   int size = strlen(mrl) + 16;
   char *buf = (char *)malloc(size);
   int i = 0, found = 0;
-  LOGDBG("cPlaylist::EscapeMrl('%s')", fn);
+  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
 
   // Wait for first '/' (do not escape mrl start dvd:/, http://a@b/, ...)
   if (*fn == '/')
@@ -972,13 +1062,12 @@ cString cPlaylist::EscapeMrl(const char *mrl)
   }
 
   buf[i] = 0;
-  LOGDBG("    --> '%s'", buf);
+  LOGVERBOSE("    --> '%s'", buf);
   return cString(buf, true);
 }
 
 cString cPlaylist::GetEntry(cPlaylistItem *i, bool isPlaylist, bool isCurrent)
 {
-
   cString Entry = "";
   if ((*i->Artist && xc.playlist_artist) || (*i->Album && xc.playlist_album)) {
       Entry = cString::sprintf("%s%s%s%s%s%s(%s%s%s)",
