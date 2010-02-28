@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.99 2010-02-28 07:21:38 phintuka Exp $
+ * $Id: device.c,v 1.100 2010-02-28 07:52:10 phintuka Exp $
  *
  */
 
@@ -45,6 +45,10 @@
 #define STILLPICTURE_REPEAT_COUNT 3
 #define LOCAL_INIT_TIMEOUT        20  // seconds
 #define SERVER_INIT_TIMEOUT       5   // seconds
+
+#if (VDRVERSNUM > 10700) && (VDRVERSNUM < 10711)
+# error VDR versions 1.7.1 ... 1.7.10 are not supported !
+#endif
 
 #ifdef LOG_TRICKSPEED
 #  define LOGTRICKSPEED(x...) LOGMSG("trs: " x)
@@ -575,10 +579,6 @@ void cXinelibDevice::SetTvMode(cChannel *Channel)
 {
   TRACEF("cXinelibDevice::SetTvMode");
   TRACK_TIME(250);
-
-#if VDRVERSNUM >= 10701
-  m_PatPmtParser.Reset();
-#endif
 
   m_RadioStream = false;
   if (Channel && !Channel->Vpid() && (Channel->Apid(0) || Channel->Apid(1)))
@@ -1119,47 +1119,33 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
  */
 int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
 {
-  if (Length > TS_SIZE) Length = TS_SIZE;
-
-  if (Length == TS_SIZE && TsHasPayload(Data)) {
-    int PayloadOffset = TsPayloadOffset(Data);
-    if (PayloadOffset < Length) {
-      int Pid = TsPid(Data);
-      if (Pid == 0) {
-#if VDRVERSNUM >= 10708
-        m_PatPmtParser.Reset();
-#endif
-#if VDRVERSNUM >= 10704
-        m_PatPmtParser.ParsePat(Data, Length);
-#else
-        m_PatPmtParser.ParsePat(Data + PayloadOffset, Length - PayloadOffset);
-#endif
-        //LOGDBG("Got PAT: PMT pid = %d", m_PatPmtParser.PmtPid());
-        if (m_server)
-          m_server->SetHeader(Data, Length, true);
-        PlayTsAny(Data, Length);
-      } else if (Pid == m_PatPmtParser.PmtPid()) {
-#if VDRVERSNUM >= 10704
-        m_PatPmtParser.ParsePmt(Data, Length);
-#else
-        m_PatPmtParser.ParsePmt(Data + PayloadOffset, Length - PayloadOffset);
-#endif
-        m_h264 = (m_PatPmtParser.Vtype() == 0x1b); /* ISO_14496_PART10_VIDEO */
-        //LOGDBG("Got PMT packet, h264 = %d", m_h264?1:0);
-        if (m_server)
-          m_server->SetHeader(Data, Length);
-#ifndef NO_HACKS
-        ForEach(m_clients, &cXinelibThread::SetHDMode, m_h264);
-#endif
-        PlayTsAny(Data, Length);
-        TsBufferFlush();
-      }
-    }
-  } else if (!Data) {
+  if (!Data || Length < TS_SIZE) {
     TsBufferFlush();
+    return cDevice::PlayTs(Data, Length, VideoOnly);
   }
 
-  return cDevice::PlayTs(Data, Length, VideoOnly);
+  /* Play single TS pack */
+  int Result = cDevice::PlayTs(Data, TS_SIZE, VideoOnly);
+  if (Result != TS_SIZE)
+    return Result;
+
+  /* Grab PAT and PMT */
+  if (TsHasPayload(Data) && TsPayloadOffset(Data) < TS_SIZE) {
+
+    int Pid = TsPid(Data);
+    if (Pid == 0 || Pid == PatPmtParser()->PmtPid()) {
+
+      if (m_server)
+        m_server->SetHeader(Data, Result, Pid == 0);
+
+      if (PlayTsAny(Data, Result) != Result)
+        LOGMSG("Lost PAT/PMT fragment !");
+
+      TsBufferFlush();
+    }
+  }
+
+  return Result;
 }
 
 int cXinelibDevice::TsBufferFlush(void)
@@ -1221,11 +1207,12 @@ int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
   if (!AcceptVideoPacket(Data, Length))
     return Length;
 
-  if (m_StreamStart /*&& TS_PID(Data) == m_PatPmtParser.VPid()*/) {
+  if (m_StreamStart && ts_PID(Data) == PatPmtParser()->Vpid()) {
     if (!m_tssVideoSize)
       m_tssVideoSize = ts_state_init(4096);
 
-    if (ts_get_video_size(m_tssVideoSize, Data, m_VideoSize, m_h264 ? 1:0)) {
+    if (ts_get_video_size(m_tssVideoSize, Data, m_VideoSize,
+                          (PatPmtParser()->Vtype() == ISO_14496_PART10_VIDEO))) {
 
       m_StreamStart = false;
       LOGMSG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);

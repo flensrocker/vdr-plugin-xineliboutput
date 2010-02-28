@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.53 2010-02-15 06:39:25 phintuka Exp $
+ * $Id: device.h,v 1.54 2010-02-28 07:52:10 phintuka Exp $
  *
  */
 
@@ -249,8 +249,6 @@ class cXinelibDevice : public cDevice
     virtual int  PlaySubtitle(const uchar *Data, int Length);
 
 #if VDRVERSNUM >= 10701
-    cPatPmtParser m_PatPmtParser;
-
     /* join multiple TS packets to xineliboutput transport packet */
     uint8_t       m_TsBuf[4096];
     uint          m_TsBufSize;
