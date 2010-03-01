@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.112 2010-02-14 12:53:06 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.113 2010-03-01 07:13:30 phintuka Exp $
  *
  */
 
@@ -629,6 +629,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 	      "/.xine/config_xineliboutput") < 0)
     return 0;
 
+  LOGDBG("Using xine-lib config file %s", this->configfile);
   make_dirs(this->configfile);
   xine_config_load (this->xine, this->configfile);
 
