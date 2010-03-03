@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.80 2010-02-24 14:23:21 phintuka Exp $
+ * $Id: frontend.c,v 1.81 2010-03-03 16:34:44 phintuka Exp $
  *
  */
 
@@ -229,6 +229,7 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_Volume = 255;
   m_bReady = false;
   m_bNoVideo = true;
+  m_bHDMode = false;
   m_bLiveMode = true; /* can't be replaying when there is no output device */
   m_StreamPos = 0;
   m_LastClearPos = 0;
@@ -775,6 +776,7 @@ void cXinelibThread::Configure(void)
     Xine_Control(cString::sprintf("SCR %s %d", 
 				  xc.live_mode_sync ? "Sync"    : "NoSync",
 				  xc.scr_tuning     ? xc.scr_hz : 90000));
+    Xine_Control("HDMODE", m_bHDMode);
 
     Xine_Control("CONFIG END");
 }

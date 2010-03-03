@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.36 2010-02-03 14:01:42 phintuka Exp $
+ * $Id: frontend.h,v 1.37 2010-03-03 16:34:44 phintuka Exp $
  *
  */
 
@@ -75,7 +75,7 @@ class cXinelibThread : public cThread, public cListObject
     virtual int     Play_PES(const uchar *buf, int len);
     virtual void    OsdCmd(void *cmd) = 0;
     virtual int64_t GetSTC(void) { return -1; }
-    virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE",On?1:0); };
+    virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE", m_bHDMode = On); };
     virtual void    SetHeader(const uchar *data, int length, bool reset = false) {};
 
     // Stream type conversions
@@ -136,6 +136,7 @@ class cXinelibThread : public cThread, public cListObject
     bool m_bReady;
     bool m_bNoVideo;
     bool m_bLiveMode;
+    bool m_bHDMode;
     bool m_bEndOfStreamReached;
     bool m_bPlayingFile;
     int  m_Volume;
