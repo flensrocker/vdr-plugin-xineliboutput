@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.41 2010-03-07 14:28:55 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.42 2010-03-07 14:57:59 phintuka Exp $
  *
  */
 
@@ -131,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.41 2010-03-07 14:28:55 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.42 2010-03-07 14:57:59 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5532,17 +5532,19 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
   /* Update stream position and remove network headers */
   strip_network_headers(this, buf);
 
-  /* Update stream position */
-  this->curpos += buf->size;
-  this->curframe ++;
-
   /* Handle discard */
   if (this->discard_index > this->curpos && this->guard_index < this->curpos) {
     this->last_delivered_vid_pts = INT64_C(-1);
+    this->curpos += buf->size;
+    this->curframe ++;
     pthread_mutex_unlock(&this->lock);
     buf->free_buffer(buf);
     return NULL;
   }
+
+  /* Update stream position */
+  this->curpos += buf->size;
+  this->curframe ++;
 
   /* ignore UDP/RTP "idle" padding */
   if (!DATA_IS_TS(buf->content) && IS_PADDING_PACKET(buf->content)) {
