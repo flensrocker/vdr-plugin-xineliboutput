@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.40 2009-11-15 12:35:53 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.41 2010-03-07 14:28:55 phintuka Exp $
  *
  */
 
@@ -131,7 +131,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.40 2009-11-15 12:35:53 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.41 2010-03-07 14:28:55 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1722,65 +1722,78 @@ static void post_sequence_end(fifo_buffer_t *fifo, uint32_t video_type)
   }
 }
 
+static void wait_fifos_empty(xine_stream_t *stream, int timeout_ms)
+{
+  int V, A;
+
+  do {
+    V = stream->video_fifo->size(stream->video_fifo);
+    A = stream->audio_fifo->size(stream->audio_fifo);
+    LOGVERBOSE("wait_fifos_empty: video %d, audio %d", V, A);
+
+    if (V <= 0 && A <= 0)
+      return;
+
+    xine_usec_sleep(5*1000);
+    timeout_ms -= 5;
+
+  } while (timeout_ms > 0);
+
+  LOGMSG("wait_fifos_empty: timeout! video=%d audio=%d", V, A);
+}
+
+/*
+ * generated images
+ */
+
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
-  int ratio = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
-  double dratio;
-
-  if(!this || !this->stream)
+  if(!this || !this->stream || !this->stream->video_out)
     return;
 
-  if(ratio > 13300 && ratio < 13400) dratio = 4.0/3.0;
-  else if(ratio > 17700 && ratio < 17800) dratio = 16.0/9.0;
-  else if(ratio > 21000 && ratio < 22000) dratio = 2.11/1.0;
-  else dratio = ((double)ratio)/10000.0;
+  vo_frame_t *img    = NULL;
+  int         width  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_WIDTH);
+  int         height = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_HEIGHT);
+  int         ratio  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
+  double      dratio;
 
-  if(this->stream && this->stream->video_out) {
-    /* our video size is size _after_ cropping, so generate 
-       larger image if cropping is active. This will result 
-       in right sized image after cropping ...*/
-    vo_frame_t *img    = NULL;
-    int         width  = this->video_width;
-    int         height = this->video_height;
-
-    width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_LEFT);
-    width  += xine_get_param(this->stream, XINE_PARAM_VO_CROP_RIGHT);
-    height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_TOP);
-    height += xine_get_param(this->stream, XINE_PARAM_VO_CROP_BOTTOM);
-
-    if (width >= 360 && height >= 288 && width <= 1920 && height <= 1200) {
-      this->class->xine->port_ticket->acquire(this->class->xine->port_ticket, 1);
-      img = this->stream->video_out->get_frame (this->stream->video_out,
-						width, height,
-						dratio, XINE_IMGFMT_YV12, 
-						VO_BOTH_FIELDS);
-      this->class->xine->port_ticket->release(this->class->xine->port_ticket, 1);
-    } else {
-      LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
-    }
-
-    if(img) {
-      if(img->format == XINE_IMGFMT_YV12 && img->base[0] && img->base[1] && img->base[2]) {
-	if(img->pitches[0] < width)
-	  width = img->pitches[0];
-	if(img->width < width)
-	  width = img->width;
-	if(img->height < height)
-	  height = img->height;
-	memset( img->base[0], 0x00, width * height);
-	memset( img->base[1], 0x80, width * height / 4 );
-	memset( img->base[2], 0x80, width * height / 4 );
-	img->duration  = 3600;
-	img->pts       = 3600;
-	img->bad_frame = 0;
-	img->draw(img, this->stream);
-      }
-      img->free(img);
-    }
+  if (width < 360 || height < 288 || width > 1920 || height > 1200) {
+    LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
+    return;
   }
+
+  if      (ratio > 13300 && ratio < 13400) dratio = 4.0  / 3.0;
+  else if (ratio > 17700 && ratio < 17800) dratio = 16.0 / 9.0;
+  else if (ratio > 21000 && ratio < 22000) dratio = 2.11 / 1.0;
+  else                                     dratio = ((double)ratio) / 10000.0;
 
   this->still_mode = 0;
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode);
+  reset_scr_tuning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
+  _x_demux_control_newpts(this->stream, 0, BUF_FLAG_SEEK);
+
+  this->class->xine->port_ticket->acquire (this->class->xine->port_ticket, 1);
+  img = this->stream->video_out->get_frame (this->stream->video_out,
+                                            width, height, dratio,
+                                            XINE_IMGFMT_YV12, VO_BOTH_FIELDS);
+  this->class->xine->port_ticket->release (this->class->xine->port_ticket, 1);
+
+  if (img) {
+    if (img->format == XINE_IMGFMT_YV12 && img->base[0] && img->base[1] && img->base[2]) {
+      memset(img->base[0], 0x00, img->pitches[0] * img->height);
+      memset(img->base[1], 0x80, img->pitches[1] * img->height / 2);
+      memset(img->base[2], 0x80, img->pitches[2] * img->height / 2);
+      img->duration  = 0;
+      img->pts       = 0;
+      img->bad_frame = 0;
+
+      wait_fifos_empty(this->stream, 100);
+      this->stream->metronom->set_option(this->stream->metronom, METRONOM_PREBUFFER, 2000);
+      img->draw(img, this->stream);
+      this->stream->metronom->set_option(this->stream->metronom, METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
+    }
+    img->free(img);
+  }
 }
 
 static void queue_nosignal(vdr_input_plugin_t *this)
