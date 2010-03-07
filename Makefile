@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.87 2010-01-26 11:38:10 phintuka Exp $
+# $Id: Makefile,v 1.88 2010-03-07 17:27:14 rofafor Exp $
 #
 
 # The official name of this plugin.
@@ -74,6 +74,7 @@ VDRINCDIR ?= $(VDRDIR)/include
 ### Allow user defined options to overwrite defaults:
 ###
 
+-include $(VDRDIR)/Make.global
 -include $(VDRDIR)/Make.config
 -include Make.config
 
