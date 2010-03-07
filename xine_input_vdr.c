@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.305 2010-02-27 11:55:14 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.306 2010-03-07 13:52:26 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.305 2010-02-27 11:55:14 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.306 2010-03-07 13:52:26 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1429,6 +1429,10 @@ static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
   this->metronom->set_still_mode(this->metronom, still_mode);
 }
 
+/*
+ * generated images
+ */
+
 static void queue_blank_yv12(vdr_input_plugin_t *this)
 {
   if(!this || !this->stream || !this->stream->video_out)
@@ -1440,6 +1444,11 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
   int         ratio  = _x_stream_info_get(this->stream, XINE_STREAM_INFO_VIDEO_RATIO);
   double      dratio;
 
+  if (width < 360 || height < 288 || width > 1920 || height > 1200) {
+    LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
+    return;
+  }
+
   if      (ratio > 13300 && ratio < 13400) dratio = 4.0  / 3.0;
   else if (ratio > 17700 && ratio < 17800) dratio = 16.0 / 9.0;
   else if (ratio > 21000 && ratio < 22000) dratio = 2.11 / 1.0;
@@ -1447,15 +1456,11 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
 
   set_still_mode(this, 0);
 
-  if (width >= 360 && height >= 288 && width <= 1920 && height <= 1200) {
-    this->class->xine->port_ticket->acquire (this->class->xine->port_ticket, 1);
-    img = this->stream->video_out->get_frame (this->stream->video_out,
-                                              width, height, dratio,
-                                              XINE_IMGFMT_YV12, VO_BOTH_FIELDS);
-    this->class->xine->port_ticket->release (this->class->xine->port_ticket, 1);
-  } else {
-    LOGMSG("queue_blank_yv12: invalid dimensions %dx%d in stream_info !", width, height);
-  }
+  this->class->xine->port_ticket->acquire (this->class->xine->port_ticket, 1);
+  img = this->stream->video_out->get_frame (this->stream->video_out,
+                                            width, height, dratio,
+                                            XINE_IMGFMT_YV12, VO_BOTH_FIELDS);
+  this->class->xine->port_ticket->release (this->class->xine->port_ticket, 1);
 
   if (img) {
     if (img->format == XINE_IMGFMT_YV12 && img->base[0] && img->base[1] && img->base[2]) {
@@ -1465,6 +1470,7 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
       img->duration  = 3600;
       img->pts       = 3600;
       img->bad_frame = 0;
+
       img->draw(img, this->stream);
     }
     img->free(img);
