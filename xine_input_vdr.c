@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.306 2010-03-07 13:52:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.307 2010-03-07 13:56:10 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.306 2010-03-07 13:52:26 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.307 2010-03-07 13:56:10 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1429,6 +1429,26 @@ static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
   this->metronom->set_still_mode(this->metronom, still_mode);
 }
 
+static void wait_fifos_empty(xine_stream_t *stream, int timeout_ms)
+{
+  int V, A;
+
+  do {
+    V = stream->video_fifo->size(stream->video_fifo);
+    A = stream->audio_fifo->size(stream->audio_fifo);
+    LOGVERBOSE("wait_fifos_empty: video %d, audio %d", V, A);
+
+    if (V <= 0 && A <= 0)
+      return;
+
+    xine_usec_sleep(5*1000);
+    timeout_ms -= 5;
+
+  } while (timeout_ms > 0);
+
+  LOGMSG("wait_fifos_empty: timeout! video=%d audio=%d", V, A);
+}
+
 /*
  * generated images
  */
@@ -1455,6 +1475,9 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
   else                                     dratio = ((double)ratio) / 10000.0;
 
   set_still_mode(this, 0);
+  reset_scr_tuning(this, this->speed_before_pause = XINE_FINE_SPEED_NORMAL);
+  _x_demux_control_newpts(this->stream, 0, BUF_FLAG_SEEK);
+
 
   this->class->xine->port_ticket->acquire (this->class->xine->port_ticket, 1);
   img = this->stream->video_out->get_frame (this->stream->video_out,
@@ -1467,11 +1490,14 @@ static void queue_blank_yv12(vdr_input_plugin_t *this)
       memset(img->base[0], 0x00, img->pitches[0] * img->height);
       memset(img->base[1], 0x80, img->pitches[1] * img->height / 2);
       memset(img->base[2], 0x80, img->pitches[2] * img->height / 2);
-      img->duration  = 3600;
-      img->pts       = 3600;
+      img->duration  = 0;
+      img->pts       = 0;
       img->bad_frame = 0;
 
+      wait_fifos_empty(this->stream, 100);
+      this->stream->metronom->set_option(this->stream->metronom, METRONOM_PREBUFFER, 2000);
       img->draw(img, this->stream);
+      this->stream->metronom->set_option(this->stream->metronom, METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
     }
     img->free(img);
   }
