@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.87 2009-11-16 11:16:16 phintuka Exp $
+ * $Id: config.c,v 1.88 2010-03-10 21:17:44 phintuka Exp $
  *
  */
 
@@ -414,25 +414,18 @@ bool config_t::IsDvdImage(const char *fname)
 bool config_t::IsDvdFolder(const char *fname)
 {
   struct stat st;
-  cString buf, folder;
 
-  buf = cString::sprintf("%s/VIDEO_TS/", fname);
-  if (stat(buf, &st) == 0) {
-    folder = buf;
-  } else {
-    buf = cString::sprintf("%s/video_ts/", fname);
-    if (stat(buf, &st) == 0)
-      folder = buf;
-    else
+  cString folder = cString::sprintf("%s/VIDEO_TS/", fname);
+  if (stat(folder, &st) != 0) {
+    folder = cString::sprintf("%s/video_ts/", fname);
+    if (stat(folder, &st) != 0)
       return false;
   }
 
-  buf = cString::sprintf("%s/video_ts.ifo", *folder);
-  if (stat(buf, &st) == 0)
+  if (stat(cString::sprintf("%s/video_ts.ifo", *folder), &st) == 0)
     return true;
 
-  buf = cString::sprintf("%s/VIDEO_TS.IFO", *folder);
-  if (stat(buf, &st) == 0)
+  if (stat(cString::sprintf("%s/VIDEO_TS.IFO", *folder), &st) == 0)
     return true;
 
   return false;
@@ -441,29 +434,21 @@ bool config_t::IsDvdFolder(const char *fname)
 bool config_t::IsBluRayFolder(const char *fname)
 {
   struct stat st;
-  cString buf, folder;
 
-  buf = cString::sprintf("%s/BDMV/", fname);
-  if (stat(buf, &st) == 0) {
-    folder = buf;
-  } else {
-    buf = cString::sprintf("%s/bdmv/", fname);
-    if (stat(buf, &st) == 0)
-      folder = buf;
-    else
+  cString folder = cString::sprintf("%s/BDMV/", fname);
+  if (stat(folder, &st) != 0) {
+    folder = cString::sprintf("%s/bdmv/", fname);
+    if (stat(folder, &st) != 0)
       return false;
   }
 
-  buf = cString::sprintf("%s/MovieObject.bdmv", *folder);
-  if (stat(buf, &st) == 0)
+  if (stat(cString::sprintf("%s/MovieObject.bdmv", *folder), &st) == 0)
     return true;
 
-  buf = cString::sprintf("%s/movieobject.bdmv", *folder);
-  if (stat(buf, &st) == 0)
+  if (stat(cString::sprintf("%s/movieobject.bdmv", *folder), &st) == 0)
     return true;
 
-  buf = cString::sprintf("%s/MOVIEOBJECT.BDMV", *folder);
-  if (stat(buf, &st) == 0)
+  if (stat(cString::sprintf("%s/MOVIEOBJECT.BDMV", *folder), &st) == 0)
     return true;
 
   return false;
