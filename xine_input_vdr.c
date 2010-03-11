@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.308 2010-03-11 22:01:11 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.309 2010-03-11 22:27:18 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.308 2010-03-11 22:01:11 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.309 2010-03-11 22:27:18 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1304,6 +1304,26 @@ static void flush_all_fifos (vdr_input_plugin_t *this, int full)
     this->hd_buffer->clear(this->hd_buffer);
 }
 
+static void wait_fifos_empty(xine_stream_t *stream, int timeout_ms)
+{
+  int V, A;
+
+  do {
+    V = stream->video_fifo->size(stream->video_fifo);
+    A = stream->audio_fifo->size(stream->audio_fifo);
+    LOGVERBOSE("wait_fifos_empty: video %d, audio %d", V, A);
+
+    if (V <= 0 && A <= 0)
+      return;
+
+    xine_usec_sleep(5*1000);
+    timeout_ms -= 5;
+
+  } while (timeout_ms > 0);
+
+  LOGMSG("wait_fifos_empty: timeout! video=%d audio=%d", V, A);
+}
+
 static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int force)
 {
   buf_element_t *buf = NULL;
@@ -1409,6 +1429,55 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
   }
 }
 
+/*
+ * set_buffer_limits()
+ *
+ * Set buffer usage limits depending on stream type.
+ * - caller must hold this->lock !
+ */
+static void set_buffer_limits(vdr_input_plugin_t *this)
+{
+  int capacity = (this->hd_stream ? this->hd_buffer : this->buffer_pool)->buffer_pool_capacity;
+  int max_buffers;
+
+  if (this->no_video) {
+
+    /* radio channel / recording. Limit buffers to 10 */
+    max_buffers = RADIO_MAX_BUFFERS;
+
+  } else {
+
+    max_buffers = capacity;
+
+    /* replay in local mode --> Limit buffers to 75% */
+    if (!this->live_mode && this->fd_control < 0) {
+      max_buffers -= (capacity >> 2);
+    }
+
+    /* always reserve few buffers for control messages and TS demuxer */
+    max_buffers -= 10;
+  }
+
+  this->reserved_buffers = capacity - max_buffers;
+
+  /* sanity checks */
+  if (capacity < max_buffers) {
+    LOGMSG("set_buffer_limits(): internal error: max=%d, capacity=%d", max_buffers, capacity);
+    this->reserved_buffers = 10;
+  }
+  if (this->reserved_buffers < 2) {
+    LOGMSG("set_buffer_limits(): internal error: reserved=%d", this->reserved_buffers);
+    this->reserved_buffers = 2;
+  }
+}
+
+/***************************** INTERNAL **********************************/
+
+/*
+ * set_still_mode()
+ *
+ * Set/reset still image mode
+ */
 static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
 {
   pthread_mutex_lock (&this->stream->first_frame_lock);
@@ -1424,24 +1493,112 @@ static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
   this->metronom->set_still_mode(this->metronom, still_mode);
 }
 
-static void wait_fifos_empty(xine_stream_t *stream, int timeout_ms)
+/*
+ * set_live_mode()
+ *
+ * Set/reset live TV mode
+ */
+static int set_live_mode(vdr_input_plugin_t *this, int onoff)
 {
-  int V, A;
+  pthread_mutex_lock(&this->lock);
 
-  do {
-    V = stream->video_fifo->size(stream->video_fifo);
-    A = stream->audio_fifo->size(stream->audio_fifo);
-    LOGVERBOSE("wait_fifos_empty: video %d, audio %d", V, A);
+  if (this->live_mode != onoff) {
+    config_values_t *config = this->class->xine->config;
+    this->live_mode = onoff;
 
-    if (V <= 0 && A <= 0)
-      return;
+    this->stream->metronom->set_option(this->stream->metronom,
+                                       METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
 
-    xine_usec_sleep(5*1000);
-    timeout_ms -= 5;
+    if (this->live_mode || (this->fd_control >= 0 && !this->slave_stream))
+      config->update_num(config, "audio.synchronization.av_sync_method", 1);
+#if 0
+    /* does not work after playing music files (?) */
+    else
+      config->update_num(config, "audio.synchronization.av_sync_method", 0);
+#endif
+  }
 
-  } while (timeout_ms > 0);
+  set_buffer_limits(this);
 
-  LOGMSG("wait_fifos_empty: timeout! video=%d audio=%d", V, A);
+  set_still_mode(this, 0);
+
+  /* SCR tuning */
+  if (this->live_mode) {
+#ifndef TEST_SCR_PAUSE
+    LOGSCR("pause scr tuning by set_live_mode");
+    scr_tuning_set_paused(this);
+#endif
+  } else {
+    LOGSCR("reset scr tuning by set_live_mode");
+    reset_scr_tuning(this);
+  }
+
+  pthread_mutex_unlock(&this->lock);
+
+  signal_buffer_pool_not_empty(this);
+  return 0;
+}
+
+/*
+ * set_trick_speed()
+ *
+ * Set replay speed
+ */
+static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
+{
+/*  speed:
+      <0 - show each abs(n)'th frame (drop other frames)
+        * no audio
+      0 - paused
+        * audio back if mute != 0
+      >0 - show each frame n times
+        * no audio
+      1 - normal
+*/
+
+  if (speed > 64 || speed < -64)
+    return -2;
+
+  pthread_mutex_lock(&this->lock);
+
+  this->is_paused = !!(speed == 0);
+
+  if (!this->is_paused)
+    set_still_mode(this, 0);
+
+  if (this->slave_stream)
+    backwards = 0;
+  this->metronom->set_trickspeed(this->metronom, backwards ? speed : 0);
+
+  if (speed > 1 || speed < -1) {
+    reset_scr_tuning(this);
+    this->is_trickspeed = 1;
+  } else {
+    this->is_trickspeed = 0;
+  }
+
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode || speed==0);
+
+  if (speed > 0)
+    speed = XINE_FINE_SPEED_NORMAL / speed;
+  else
+    speed = XINE_FINE_SPEED_NORMAL * (-speed);
+
+  if (this->scr_tuning != SCR_TUNING_PAUSED &&
+      _x_get_fine_speed(this->stream) != speed) {
+    _x_set_fine_speed (this->stream, speed);
+  }
+
+  if (this->slave_stream)
+    _x_set_fine_speed (this->slave_stream, speed);
+
+  pthread_mutex_unlock(&this->lock);
+  return 0;
+}
+
+static int reset_trick_speed(vdr_input_plugin_t *this)
+{
+  return set_trick_speed(this, 1, 0);
 }
 
 /*
@@ -1942,147 +2099,6 @@ static int set_video_properties(vdr_input_plugin_t *this,
 
   pthread_mutex_unlock(&this->lock);
   return 0;
-}
-
-/*
- * set_buffer_limits()
- *
- * Set buffer usage limits depending on stream type.
- * - caller must hold this->lock !
- */
-static void set_buffer_limits(vdr_input_plugin_t *this)
-{
-  int capacity = (this->hd_stream ? this->hd_buffer : this->buffer_pool)->buffer_pool_capacity;
-  int max_buffers;
-
-  if (this->no_video) {
-
-    /* radio channel / recording. Limit buffers to 10 */
-    max_buffers = RADIO_MAX_BUFFERS;
-
-  } else {
-
-    max_buffers = capacity;
-
-    /* replay in local mode --> Limit buffers to 75% */
-    if (!this->live_mode && this->fd_control < 0) {
-      max_buffers -= (capacity >> 2);
-    }
-
-    /* always reserve few buffers for control messages and TS demuxer */
-    max_buffers -= 10;
-  }
-
-  this->reserved_buffers = capacity - max_buffers;
-
-  /* sanity checks */
-  if (capacity < max_buffers) {
-    LOGMSG("set_buffer_limits(): internal error: max=%d, capacity=%d", max_buffers, capacity);
-    this->reserved_buffers = 10;
-  }
-  if (this->reserved_buffers < 2) {
-    LOGMSG("set_buffer_limits(): internal error: reserved=%d", this->reserved_buffers);
-    this->reserved_buffers = 2;
-  }
-}
-
-static int set_live_mode(vdr_input_plugin_t *this, int onoff)
-{
-  pthread_mutex_lock(&this->lock);
-
-  if(this->live_mode != onoff) {
-    config_values_t *config = this->class->xine->config;
-    this->live_mode = onoff;
-
-    this->stream->metronom->set_option(this->stream->metronom, 
-				       METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
-
-    if(this->live_mode || (this->fd_control >= 0 && !this->slave_stream)) 
-      config->update_num(config, "audio.synchronization.av_sync_method", 1);
-#if 0
-    /* does not work after playing music files (?) */
-    else 
-      config->update_num(config, "audio.synchronization.av_sync_method", 0);
-#endif
-
-  }
-
-  set_buffer_limits(this);
-
-  /* SCR tuning */
-  if(this->live_mode) {
-#ifndef TEST_SCR_PAUSE
-    LOGSCR("pause scr tuning by set_live_mode");
-    scr_tuning_set_paused(this);
-#endif
-  } else {
-    LOGSCR("reset scr tuning by set_live_mode");
-    reset_scr_tuning(this);
-  }
-
-  set_still_mode(this, 0);
-
-  pthread_mutex_unlock(&this->lock);
-
-  signal_buffer_pool_not_empty(this);
-  return 0;
-}
-
-static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
-{
-/*  speed:
-      <0 - show each abs(n)'th frame (drop other frames)
-        * no audio
-      0 - paused
-        * audio back if mute != 0
-      >0 - show each frame n times
-        * no audio
-      1 - normal
-*/
-
-  if (speed > 64 || speed < -64)
-    return -2;
-
-  pthread_mutex_lock(&this->lock);
-
-  this->is_paused = !!(speed == 0);
-
-  if (!this->is_paused)
-    set_still_mode(this, 0);
-
-  if (this->slave_stream)
-    backwards = 0;
-  this->metronom->set_trickspeed(this->metronom, backwards ? speed : 0);
-
-  if(speed > 1 || speed < -1) {
-    reset_scr_tuning(this);
-    this->is_trickspeed = 1;
-  } else {
-    this->is_trickspeed = 0;
-  }
-
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_VIDEO_HAS_STILL, this->still_mode || speed==0);
-
-  if(speed>0)
-    speed = XINE_FINE_SPEED_NORMAL/speed;
-  else
-    speed = XINE_FINE_SPEED_NORMAL*(-speed);
-
-  if(this->scr_tuning != SCR_TUNING_PAUSED && 
-     _x_get_fine_speed(this->stream) != speed) {
-    _x_set_fine_speed (this->stream, speed);
-  }
-
-  if(this->slave_stream) 
-    _x_set_fine_speed (this->slave_stream, speed);
-
-  pthread_mutex_unlock(&this->lock);
-  return 0;
-}
-
-static int reset_trick_speed(vdr_input_plugin_t *this)
-{
-  return set_trick_speed(this, 1, 0);
 }
 
 static void send_meta_info(vdr_input_plugin_t *this)
