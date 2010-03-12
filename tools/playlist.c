@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.28 2010-02-23 22:35:54 phintuka Exp $
+ * $Id: playlist.c,v 1.29 2010-03-12 22:47:28 phintuka Exp $
  *
  */
 
@@ -1005,67 +1005,6 @@ cString cPlaylist::BuildMrl(const char *proto, const char *s1, const char *s2, c
                           s2 ? *EscapeString(s2) : "",
                           s3 ? *EscapeString(s3) : "",
                           s4 ? *EscapeString(s4) : "");
-}
-
-cString cPlaylist::EscapeMrl(const char *mrl)
-{
-  static const uint8_t hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
-  const uint8_t *fn = (const uint8_t*)mrl;
-  int size = strlen(mrl) + 16;
-  char *buf = (char *)malloc(size);
-  int i = 0, found = 0;
-  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
-
-  // Wait for first '/' (do not escape mrl start dvd:/, http://a@b/, ...)
-  if (*fn == '/')
-    found = 3;
-
-  while (*fn) {
-    if(size-7 < i)
-      buf = (char *)realloc(buf, (size=size+16));
-    switch (*fn) {
-    case 1 ... ' ':
-    case 127 ... 255:
-    case '#':
-    case '%':
-    case ':':
-    case ';':
-    case '\'':
-    case '\"':
-    case '(':
-    case ')':
-      if (found > 2) {
-	buf[i++] = '%';
-	buf[i++] = hex[(*fn & 0xf0)>>4];
-	buf[i++] = hex[(*fn & 0x0f)];
-	break;
-      }
-    default:
-      // file:/... -> only one '/' before escaping
-      // http://.../ --> three '/' before escaping
-      if(!found && (fn[0] == ':' && fn[1] == '/')) {
-	if(fn[2] == '/') {
-	  // ex. http://user:pass@host/... --> wait for third '/'
-	  buf[i++] = *fn++;
-	  buf[i++] = *fn++;
-	  found += 2;
-	} else {
-	  //  ex. file:/local_file
-	  buf[i++] = *fn++;
-	  found += 3;
-	}
-      } else if(*fn == '/') {
-	found++;
-      }
-      buf[i++] = *fn;
-      break;
-    }
-    fn++;
-  }
-
-  buf[i] = 0;
-  LOGVERBOSE("    --> '%s'", buf);
-  return cString(buf, true);
 }
 
 cString cPlaylist::GetEntry(cPlaylistItem *i, bool isPlaylist, bool isCurrent)
