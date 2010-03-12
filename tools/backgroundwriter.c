@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.19 2010-03-12 22:40:17 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.20 2010-03-12 22:42:02 phintuka Exp $
  *
  */
 
@@ -153,7 +153,8 @@ void cTcpWriter::Action(void)
 
   while (Running()) {
 
-    if(Poller.Poll(100)) {
+    if (!Poller.Poll(100))
+      continue;
 
       if (CorkReq && m_RingBuffer.Available() <= 0) {
         // Force TCP packet to avoid delaying control messages
@@ -166,15 +167,18 @@ void cTcpWriter::Action(void)
       int      n;
       uchar   *Data = m_RingBuffer.Get(Count);
 
-      if(Data && Count > 0) {
+    if (!Data || Count <= 0)
+      continue;
 
         Lock(); // uint64_t m_DiscardStart can not be read atomically (IA32)
         StartPos = m_DiscardEnd;
         Unlock();
 
+    // Next frame ?
+    if (NextHeaderPos == GetPos) {
+
         // Discard data ?
         if(StartPos > GetPos) {
-          if(NextHeaderPos == GetPos) {
             // we're at frame boundary
             // drop only data packets, not control messages
             uint8_t *pkt = TCP_PAYLOAD(Data);
@@ -200,10 +204,9 @@ void cTcpWriter::Action(void)
               }
             }
           }
-        }
 
-        // Next frame ?
-        if(GetPos == NextHeaderPos) {
+      // Next frame
+
           if(Count < (int)sizeof(stream_tcp_header_t))
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
 
@@ -222,34 +225,30 @@ void cTcpWriter::Action(void)
             CorkReq = true;
 
         } else {
+      // end of prev frame
           Count = min(Count, (int)(NextHeaderPos-GetPos));
         }
 
         errno = 0;
         n = write(m_fd, Data, Count);
 
+    if (n <= 0) {
+
         if(n == 0) {
           LOGERR("cBackgroundWriter: Client disconnected data stream ?");
           break;
+      }
 
-        } else if(n < 0) {
-
-          if (errno == EINTR || errno == EWOULDBLOCK) {
-            TRACE("cBackgroundWriter: EINTR while writing to file handle "
-                  <<m_fd<<" - retrying");
+      if (errno == EINTR || errno == EWOULDBLOCK)
             continue;
 
-          } else {
             LOGERR("cBackgroundWriter: TCP write error");
             break;
           }
-        }
 
         GetPos += n;
         m_RingBuffer.Del(n);
       }
-    }
-  }
 
   m_RingBuffer.Clear();
 }
@@ -318,22 +317,26 @@ void cRawWriter::Action(void)
 
   while (Running()) {
 
-    if(Poller.Poll(100)) {
+    if (!Poller.Poll(100))
+      continue;
 
       uint64_t StartPos;
       int      Count = 0;
       int      n;
       uchar   *Data = m_RingBuffer.Get(Count);
 
-      if(Data && Count > 0) {
+    if (!Data || Count <= 0)
+      continue;
 
         Lock(); // uint64_t m_DiscardStart can not be read atomically (IA32)
         StartPos = m_DiscardEnd;
         Unlock();
 
+    // Next frame ?
+    if (NextHeaderPos == GetPos) {
+
         // Discard data ?
         if(StartPos > GetPos) {
-          if(NextHeaderPos == GetPos) {
             // we're at frame boundary
             Count = min(Count, (int)(StartPos - GetPos));
 
@@ -342,10 +345,9 @@ void cRawWriter::Action(void)
             NextHeaderPos = GetPos;
             continue;
           }
-        }
 
-        // Next frame ?
-        if(GetPos == NextHeaderPos) {
+      // Next frame
+
           if(Count < 6)
             LOGMSG("cBackgroundWriter @NextHeaderPos: Count < header size !");
 
@@ -357,35 +359,31 @@ void cRawWriter::Action(void)
           else
             Count = packlen;
           NextHeaderPos = GetPos + packlen;
+
         } else {
+      // end of prev frame
           Count = min(Count, (int)(NextHeaderPos-GetPos));
         }
 
         errno = 0;
         n = write(m_fd, Data, Count);
 
+    if (n <= 0) {
         if(n == 0) {
           LOGERR("cBackgroundWriter: Client disconnected data stream ?");
           break;
+      }
 
-        } else if(n < 0) {
-
-          if (errno == EINTR || errno == EWOULDBLOCK) {
-            TRACE("cBackgroundWriter: EINTR while writing to file handle "
-                  <<m_fd<<" - retrying");
+      if (errno == EINTR || errno == EWOULDBLOCK)
             continue;
 
-          } else {
             LOGERR("cBackgroundWriter: TCP write error");
             break;
           }
-        }
 
         GetPos += n;
         m_RingBuffer.Del(n);
       }
-    }
-  }
 
   m_RingBuffer.Clear();
 }
