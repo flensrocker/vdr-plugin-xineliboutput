@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.18 2009-07-24 18:11:20 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.19 2010-03-12 22:40:17 phintuka Exp $
  *
  */
 
@@ -260,6 +260,7 @@ int cTcpWriter::Put(uint64_t StreamPos,
   stream_tcp_header_t header;
   header.pos = htonull(StreamPos);
   header.len = htonl(DataCount);
+  header.stream = 0;
   return Put((uchar*)&header, sizeof(header), Data, DataCount);
 }
 
