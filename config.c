@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.88 2010-03-10 21:17:44 phintuka Exp $
+ * $Id: config.c,v 1.89 2010-03-12 23:00:26 phintuka Exp $
  *
  */
 
@@ -567,6 +567,7 @@ config_t::config_t() {
   osd_height_auto      = 0;
   osd_mixer            = OSD_MIXER_FULL;
   osd_scaling          = OSD_SCALING_NEAREST;
+  osd_spu_scaling      = OSD_SCALING_NEAREST;
   hud_osd              = 0;
 
   osd_blending             = OSD_BLENDING_SOFTWARE;
@@ -811,6 +812,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.Height"))         osd_height = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.ScalingSPU"))     osd_spu_scaling = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Blending"))       osd_blending = atoi(Value);
   else if (!strcasecmp(Name, "OSD.BlendingLowRes")) osd_blending_lowresvideo = atoi(Value);
 #if 1

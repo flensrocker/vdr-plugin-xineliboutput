@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.40 2010-01-24 14:53:50 rofafor Exp $
+ * $Id: osd.c,v 1.41 2010-03-12 23:00:27 phintuka Exp $
  *
  */
 
@@ -291,6 +291,8 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     osdcmd.colors  = Colors;
     osdcmd.palette = clut;
     osdcmd.scaling = xc.osd_scaling;
+    if (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)
+      osdcmd.scaling = xc.osd_spu_scaling;
 
     if (DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
@@ -370,7 +372,7 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
 
 #if VDRVERSNUM >= 10708
 
-  if(xc.osd_scaling && ((m_Layer==OSD_LEVEL_SUBTITLES) || (m_Layer==OSD_LEVEL_TTXTSUBS))) {
+  if (xc.osd_spu_scaling && (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)) {
     m_ExtentWidth  = 720;
     m_ExtentHeight = 576;
   } else {
@@ -449,7 +451,7 @@ void cXinelibOsd::Flush(void)
     return;
 
   int SendDone = 0, XOffset = 0, YOffset = 0;
-  if(!xc.osd_scaling && ((m_Layer==OSD_LEVEL_SUBTITLES) || (m_Layer==OSD_LEVEL_TTXTSUBS))) {
+  if (!xc.osd_spu_scaling && (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)) {
     double Aspect;
     int    W, H;
     m_Device->GetOsdSize(W, H, Aspect);
