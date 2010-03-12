@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-02-18 20:34+0200\n"
+"POT-Creation-Date: 2010-03-11 23:58+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -495,6 +495,9 @@ msgid "Use hardware for low-res video"
 msgstr ""
 
 msgid "Scaling method"
+msgstr ""
+
+msgid "Scale subtitles"
 msgstr ""
 
 msgid "Show all layers"
