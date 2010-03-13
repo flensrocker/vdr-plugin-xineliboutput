@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.h,v 1.6 2009-07-24 05:24:22 phintuka Exp $
+ * $Id: backgroundwriter.h,v 1.7 2010-03-13 12:20:05 phintuka Exp $
  *
  */
 
@@ -49,8 +49,8 @@ class cBackgroundWriterI : public cThread
     // Error:       0       (write error ; socket disconnected)
     // Buffer full: -Count  (no bytes will be pushed to queue)
     //
-    virtual int Put(uint64_t StreamPos, const uchar *Data, int DataCount) = 0;
-   
+    virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount) = 0;
+
     int  Free(void);           // Return largest possible Put size
     void Clear(void);          // Drop all data (only complete frames) from buffer
     bool Flush(int TimeoutMs); // Flush buffer (wait for data to be sent)
@@ -74,7 +74,7 @@ class cTcpWriter : public cBackgroundWriterI
     cTcpWriter(int fd, int Size = KILOBYTE(512));
     virtual ~cTcpWriter() {};
 
-    virtual int Put(uint64_t StreamPos, const uchar *Data, int DataCount);
+    virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount);
 };
 
 
@@ -92,7 +92,7 @@ class cRawWriter : public cBackgroundWriterI
     cRawWriter(int fd, int Size = KILOBYTE(512));
     virtual ~cRawWriter() {};
 
-    virtual int Put(uint64_t StreamPos, const uchar *Data, int DataCount);
+    virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount);
 };
 
 
@@ -109,7 +109,7 @@ class cTsWriter : public cBackgroundWriterI
     cTsWriter(int fd, int Size = KILOBYTE(512));
     virtual ~cTsWriter() {};
 
-    virtual int Put(uint64_t StreamPos, const uchar *Data, int DataCount);
+    virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount);
 };
 
 
@@ -130,7 +130,7 @@ class cRtspMuxWriter : public cBackgroundWriterI
     cRtspMuxWriter(int fd, int Size = KILOBYTE(512));
     virtual ~cRtspMuxWriter() {};
 
-    virtual int Put(uint64_t StreamPos, const uchar *Data, int DataCount);
+    virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount);
 };
 
 
@@ -154,7 +154,7 @@ class cRtspRemuxWriter : public cBackgroundWriterI
     cRtspRemuxWriter(int fd, int Size = KILOBYTE(512));
     virtual ~cRtspRemuxWriter() {};
 
-    virtual int Put(uint64_t StreamPos, const uchar *Data, int DataCount);
+    virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount);
 };
 
 

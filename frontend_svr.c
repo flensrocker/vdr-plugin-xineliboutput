@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.89 2010-03-13 12:04:29 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.90 2010-03-13 12:20:06 phintuka Exp $
  *
  */
 
@@ -434,7 +434,7 @@ int cXinelibServer::Play(const uchar *data, int len, eStreamId StreamId)
 
         } else if(m_Writer[i]) {
 
-          int result = m_Writer[i]->Put(m_StreamPos, data, len);
+          int result = m_Writer[i]->Put(StreamId, m_StreamPos, data, len);
           if(!result) {
             LOGMSG("cXinelibServer::Play Write/Queue error (TCP/PIPE)");
             CloseConnection(i);
@@ -646,7 +646,7 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
           if(m_bUdp[i])
             UdpClients++;
           else if(m_Writer[i])
-            m_Writer[i]->Put((uint64_t)(-1ULL), (const uchar*)buf, len);
+            m_Writer[i]->Put(sidControl, (-1ULL), (const uchar*)buf, len);
         }
       }
 
@@ -991,7 +991,7 @@ void cXinelibServer::Handle_Control_PIPE(int cli, const char *arg)
   m_Writer[cli] = new cTcpWriter(fd);
 
   if (m_Header)
-    m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
+    m_Writer[cli]->Put(sidVdr, 0, m_Header, m_HeaderLength);
 
   fd_data[cli] = fd;
 }
@@ -1064,7 +1064,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
   m_Writer[cli] = new cTcpWriter(fd_data[cli]);
 
   if (m_Header)
-    m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
+    m_Writer[cli]->Put(sidVdr, 0, m_Header, m_HeaderLength);
 
   /* not anymore control connection, so dec primary device reference counter */
   cXinelibDevice::Instance().ForcePrimaryDevice(false);
@@ -1339,7 +1339,7 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
       m_Writer[cli] = new cRawWriter(fd_control[cli].handle(), KILOBYTE(1024));
 
       if (m_Header)
-        m_Writer[cli]->Put(0, m_Header, m_HeaderLength);
+        m_Writer[cli]->Put(sidVdr, 0, m_Header, m_HeaderLength);
 
       DELETENULL(m_State[cli]);
       return;

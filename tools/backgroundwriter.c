@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.21 2010-03-12 22:43:18 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.22 2010-03-13 12:20:05 phintuka Exp $
  *
  */
 
@@ -181,13 +181,12 @@ void cTcpWriter::Action(void)
       if (StartPos > GetPos) {
         // we're at frame boundary
         // drop only data packets, not control messages
-        uint8_t *pkt = TCP_PAYLOAD(Data);
-        if (DATA_IS_PES(pkt) || DATA_IS_TS(pkt)) {
+        stream_tcp_header_t *header = (stream_tcp_header_t*)Data;
+        if (eStreamId(header->stream) == sidVdr) {
           Count = min(Count, (int)(StartPos - GetPos));
 
           // size of next (complete) packet.
           // drop only one packet at time.
-          stream_tcp_header_t *header = (stream_tcp_header_t*)Data;
           int pkt_len = ntohl(header->len) + sizeof(stream_tcp_header_t);
           if (Count >= pkt_len) {
             // drop only complete packets.
@@ -220,8 +219,7 @@ void cTcpWriter::Action(void)
       NextHeaderPos = GetPos + pkt_len;
 
       // check for control message
-      uint8_t *pkt = TCP_PAYLOAD(Data);
-      if (!DATA_IS_PES(pkt) && !DATA_IS_TS(pkt))
+      if (eStreamId(header->stream) == sidControl)
         CorkReq = true;
 
     } else {
@@ -253,13 +251,13 @@ void cTcpWriter::Action(void)
   m_RingBuffer.Clear();
 }
 
-int cTcpWriter::Put(uint64_t StreamPos,
+int cTcpWriter::Put(eStreamId StreamId, uint64_t StreamPos,
                     const uchar *Data, int DataCount)
 {
   stream_tcp_header_t header;
   header.pos = htonull(StreamPos);
   header.len = htonl(DataCount);
-  header.stream = 0;
+  header.stream = (uint8_t)StreamId;
   return Put((uchar*)&header, sizeof(header), Data, DataCount);
 }
 
@@ -388,10 +386,10 @@ void cRawWriter::Action(void)
   m_RingBuffer.Clear();
 }
 
-int cRawWriter::Put(uint64_t StreamPos,
+int cRawWriter::Put(eStreamId StreamId, uint64_t StreamPos,
                     const uchar *Data, int DataCount)
 {
-  if (Running()) {
+  if (Running() && StreamId == sidVdr) {
 
     // Serialize Put access to keep Data and Header together
     LOCK_THREAD;
@@ -438,7 +436,7 @@ void cTsWriter::Action(void)
 {
 }
 
-int cTsWriter::Put(uint64_t StreamPos, const uchar *Data, int DataCount)
+int cTsWriter::Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount)
 {
   return 0;
 }
@@ -463,7 +461,7 @@ void cRtspMuxWriter::Action(void)
 {
 }
 
-int cRtspMuxWriter::Put(uint64_t StreamPos, const uchar *Data, int DataCount)
+int cRtspMuxWriter::Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount)
 {
   return 0;
 }
@@ -491,7 +489,7 @@ void cRtspRemuxWriter::Action(void)
 {
 }
 
-int cRtspRemuxWriter::Put(uint64_t StreamPos, const uchar *Data, int DataCount)
+int cRtspRemuxWriter::Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount)
 {
   return 0;
 }
