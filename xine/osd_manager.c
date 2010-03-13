@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.16 2010-02-20 22:29:41 phintuka Exp $
+ * $Id: osd_manager.c,v 1.17 2010-03-13 23:47:18 phintuka Exp $
  *
  */
 
@@ -39,6 +39,11 @@ typedef struct {
 
   uint16_t      extent_width;  /* output size this OSD was designed for */
   uint16_t      extent_height;
+
+  uint16_t      video_window_x;
+  uint16_t      video_window_y;
+  uint16_t      video_window_w;
+  uint16_t      video_window_h;
 
   int64_t       last_changed_vpts;
 } osd_data_t;
@@ -246,11 +251,33 @@ static int exec_osd_size(osd_manager_impl_t *this, osd_command_t *cmd)
   osd->extent_width  = cmd->w;
   osd->extent_height = cmd->h;
 
+  osd->video_window_x = 0;
+  osd->video_window_y = 0;
+  osd->video_window_w = 0;
+  osd->video_window_h = 0;
+
   acquire_ticket(this);
 
   xine_video_port_t *video_out = this->stream->video_out;
 
   this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING);
+
+  return CONTROL_OK;
+}
+
+/*
+ * exec_osd_video_window()
+ *
+ * - set video window inside OSD
+ */
+static int exec_osd_video_window(osd_manager_impl_t *this, osd_command_t *cmd)
+{
+  osd_data_t *osd = &this->osd[cmd->wnd];
+
+  osd->video_window_x = cmd->x;
+  osd->video_window_y = cmd->y;
+  osd->video_window_w = cmd->w;
+  osd->video_window_h = cmd->h;
 
   return CONTROL_OK;
 }
@@ -453,6 +480,12 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
     ov_overlay.extent_height  = osd->extent_height;
   }
 #endif
+#ifdef VO_CAP_VIDEO_WINDOW_OVERLAY
+  ov_overlay.video_window_x      = osd->video_window_x ?: -1;
+  ov_overlay.video_window_y      = osd->video_window_y ?: -1;
+  ov_overlay.video_window_width  = osd->video_window_w ?: -1;
+  ov_overlay.video_window_height = osd->video_window_h ?: -1;
+#endif
 
   /* if no scaling was required, we may still need to re-center OSD */
   if (!this->vo_scaling && !rle_scaled) {
@@ -581,6 +614,7 @@ static int exec_osd_command_internal(osd_manager_impl_t *this, struct osd_comman
   case OSD_Flush:      return exec_osd_flush(this, cmd);
   case OSD_Set_RLE:    return exec_osd_set_rle(this, cmd);
   case OSD_Close:      return exec_osd_close(this, cmd);
+  case OSD_VideoWindow:return exec_osd_video_window(this, cmd);
   case OSD_Set_YUV:
     /* TODO */
     LOGMSG("OSD_Set_YUV not implemented !");
