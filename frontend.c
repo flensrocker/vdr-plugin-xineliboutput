@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.82 2010-03-13 12:04:29 phintuka Exp $
+ * $Id: frontend.c,v 1.83 2010-03-13 12:06:25 phintuka Exp $
  *
  */
 
@@ -399,11 +399,12 @@ int cXinelibThread::Poll(cPoller& Poller, int TimeoutMs)
 
 int cXinelibThread::Play(const uchar *data, int len, eStreamId StreamId)
 {
-  Lock();
-  m_StreamPos += len;
-  m_Frames++;
-  /*m_bEndOfStreamReached = false;*/
-  Unlock();
+  if (StreamId == sidVdr) {
+    Lock();
+    m_StreamPos += len;
+    m_Frames++;
+    Unlock();
+  }
   return len;
 }
 
