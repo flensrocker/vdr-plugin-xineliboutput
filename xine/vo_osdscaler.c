@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.6 2010-02-22 12:50:20 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.7 2010-03-13 22:31:12 phintuka Exp $
  *
  */
 
@@ -228,12 +228,14 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
 
   if (!overlay->rle)
     return 0;
-  if (!frame->stream || frame->stream == XINE_ANON_STREAM)
-    return 0;
 
   /* check for VDR OSD */
   if (overlay->hili_rgb_clut != VDR_OSD_MAGIC /* not from vdr */) {
     LOGOSD("overlay: source not VDR");
+
+    if (!frame->stream || frame->stream == XINE_ANON_STREAM)
+      return 0;
+
     return 0;
   }
 
@@ -259,7 +261,7 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
 #endif
 
   if (extent_width < 128 || extent_height < 128) {
-    LOGOSD("overlay: invalid extent size %dx%d", extent_width, extent_height);
+    LOGMSG("VDR overlay: invalid extent size %dx%d", extent_width, extent_height);
     return 0;
   }
 
