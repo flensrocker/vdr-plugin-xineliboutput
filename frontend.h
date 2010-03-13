@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.37 2010-03-03 16:34:44 phintuka Exp $
+ * $Id: frontend.h,v 1.38 2010-03-13 12:04:29 phintuka Exp $
  *
  */
 
@@ -14,6 +14,8 @@
 #include <vdr/tools.h>
 #include <vdr/thread.h>
 #include <vdr/device.h> // ePlayMode
+
+#include "xine_input_vdr_net.h" // eStreamId
 
 class cStatus;
 
@@ -72,7 +74,7 @@ class cXinelibThread : public cThread, public cListObject
     virtual int     Poll(cPoller &Poller, int TimeoutMs);
     virtual bool    Flush(int TimeoutMs);
     virtual void    Clear(void);
-    virtual int     Play_PES(const uchar *buf, int len);
+    virtual int     Play(const uchar *buf, int len, eStreamId StreamId = sidVdr);
     virtual void    OsdCmd(void *cmd) = 0;
     virtual int64_t GetSTC(void) { return -1; }
     virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE", m_bHDMode = On); };

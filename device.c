@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.101 2010-02-28 07:54:29 phintuka Exp $
+ * $Id: device.c,v 1.102 2010-03-13 12:04:29 phintuka Exp $
  *
  */
 
@@ -1099,11 +1099,11 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
 
   if(m_local) {
     length = (isMpeg1 ? m_local->Play_Mpeg1_PES(buf,length) : 
-	                m_local->Play_PES(buf,length));
+                        m_local->Play(buf, length));
   } 
   if(m_server && length > 0) {
     int length2 = isMpeg1 ? m_server->Play_Mpeg1_PES(buf, length) : 
-                            m_server->Play_PES(buf, length);   
+                            m_server->Play(buf, length);
     if(!m_local)
       return length2;
   }

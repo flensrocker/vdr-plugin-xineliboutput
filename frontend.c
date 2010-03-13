@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.81 2010-03-03 16:34:44 phintuka Exp $
+ * $Id: frontend.c,v 1.82 2010-03-13 12:04:29 phintuka Exp $
  *
  */
 
@@ -397,7 +397,7 @@ int cXinelibThread::Poll(cPoller& Poller, int TimeoutMs)
 // Data transfer
 //
 
-int cXinelibThread::Play_PES(const uchar *data, int len)
+int cXinelibThread::Play(const uchar *data, int len, eStreamId StreamId)
 {
   Lock();
   m_StreamPos += len;
@@ -482,7 +482,7 @@ int cXinelibThread::Play_Mpeg1_PES(const uchar *data1, int len)
       while(!Poll(p,100) && loops++ < 10) {
 	LOGDBG("Play_Mpeg1_PES: poll failed");
       }
-      r = Play_PES(data2,newlen+6);
+      r = Play(data2, newlen + 6);
     } 
   
     delete data2;
@@ -507,7 +507,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID, boo
 
   hdr_pts[3] = (uchar)streamID;
   Poll(p, 100);
-  Play_PES(hdr_pts, sizeof(hdr_pts));
+  Play(hdr_pts, sizeof(hdr_pts));
 
   hdr_vid[3] = (uchar)streamID;
   while(todo) {
@@ -525,7 +525,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID, boo
 
     Poll(p, 100);
 
-    if(blocklen+hdrlen != Play_PES(frame,blocklen+hdrlen)) {      
+    if (blocklen + hdrlen != Play(frame, blocklen + hdrlen)) {
       delete frame;
       return false;
     }
@@ -536,7 +536,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID, boo
     seq_end[3] = (uchar)streamID;
     seq_end[12] = h264 ? NAL_END_SEQ : SC_SEQUENCE_END;
     Poll(p, 100);
-    Play_PES(seq_end, sizeof(seq_end));
+    Play(seq_end, sizeof(seq_end));
   }
 
   delete[] frame;

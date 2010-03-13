@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.7 2009-08-18 12:36:56 phintuka Exp $
+ * $Id: frontend_local.h,v 1.8 2010-03-13 12:04:29 phintuka Exp $
  *
  */
 
@@ -32,7 +32,7 @@ class cXinelibLocal : public cXinelibThread
   public:
 
     // Data transfer
-    virtual int     Play_PES(const uchar *buf, int len);
+    virtual int     Play(const uchar *buf, int len, eStreamId StreamId = sidVdr);
     virtual void    OsdCmd(void *cmd);
     virtual int64_t GetSTC();
 

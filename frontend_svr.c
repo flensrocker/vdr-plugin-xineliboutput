@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.88 2010-01-30 10:50:36 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.89 2010-03-13 12:04:29 phintuka Exp $
  *
  */
 
@@ -417,7 +417,7 @@ void cXinelibServer::SetHeader(const uchar *Data, int Length, bool Reset)
   }
 }
 
-int cXinelibServer::Play_PES(const uchar *data, int len)
+int cXinelibServer::Play(const uchar *data, int len, eStreamId StreamId)
 {
   int TcpClients = 0, UdpClients = 0, RtpClients = 0;
 
@@ -436,10 +436,10 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
 
           int result = m_Writer[i]->Put(m_StreamPos, data, len);
           if(!result) {
-            LOGMSG("cXinelibServer::Play_PES Write/Queue error (TCP/PIPE)");
+            LOGMSG("cXinelibServer::Play Write/Queue error (TCP/PIPE)");
             CloseConnection(i);
           } else if(result<0) {
-            LOGMSG("cXinelibServer::Play_PES Buffer overflow (TCP/PIPE)");
+            LOGMSG("cXinelibServer::Play Buffer overflow (TCP/PIPE)");
             if(m_ConnType[i] == ctHttp)
               m_Writer[i]->Clear();
           }
@@ -454,10 +454,10 @@ int cXinelibServer::Play_PES(const uchar *data, int len)
 
   if(UdpClients || RtpClients)
     if(! m_Scheduler->Queue(m_StreamPos, data, len))
-      LOGMSG("cXinelibServer::Play_PES Buffer overflow (UDP/RTP)");
+      LOGMSG("cXinelibServer::Play Buffer overflow (UDP/RTP)");
 
   if(TcpClients || UdpClients || RtpClients)
-    cXinelibThread::Play_PES(data, len);
+    cXinelibThread::Play(data, len, StreamId);
 
   return len;
 }
