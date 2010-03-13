@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.41 2010-03-12 23:00:27 phintuka Exp $
+ * $Id: osd.c,v 1.42 2010-03-13 23:40:57 phintuka Exp $
  *
  */
 
@@ -97,6 +97,7 @@ class cXinelibOsd : public cOsd, public cListObject
 
     void CloseWindows(void);
     void CmdSize(int Width, int Height);
+    void CmdVideoWindow(int X, int Y, int W, int H);
     void CmdRle(int Wnd, int X0, int Y0,
 		int W, int H, unsigned char *Data,
 		int Colors, unsigned int *Palette, 
@@ -196,6 +197,26 @@ void cXinelibOsd::CmdSize(int Width, int Height)
       osdcmd.wnd = m_WindowHandles[Wnd];
       osdcmd.w   = Width;
       osdcmd.h   = Height;
+
+      m_Device->OsdCmd((void*)&osdcmd);
+    }
+  }
+}
+
+void cXinelibOsd::CmdVideoWindow(int X, int Y, int W, int H)
+{
+  TRACEF("cXinelibOsd::CmdVideoWindow");
+
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
+
+    for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
+      osdcmd.cmd = OSD_VideoWindow;
+      osdcmd.wnd = m_WindowHandles[Wnd];
+      osdcmd.x   = X;
+      osdcmd.y   = Y;
+      osdcmd.w   = W;
+      osdcmd.h   = H;
 
       m_Device->OsdCmd((void*)&osdcmd);
     }
@@ -451,6 +472,7 @@ void cXinelibOsd::Flush(void)
     return;
 
   int SendDone = 0, XOffset = 0, YOffset = 0;
+
   if (!xc.osd_spu_scaling && (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)) {
     double Aspect;
     int    W, H;
@@ -458,6 +480,12 @@ void cXinelibOsd::Flush(void)
     YOffset = (H - 576) > 0 ? (H - 576) : 0;
     XOffset = ((W - 720) / 2) ? ((W - 720) / 2) : 0;
   }
+
+#ifdef YAEPGHDVERSNUM
+  if (vidWin.bpp)
+    SetVideoWindow(vidWin.x1, vidWin.y1, vidWin.x2, vidWin.y2);
+#endif
+
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
     int x1 = 0, y1 = 0, x2 = x1+Bitmap->Width()-1, y2 = y1+Bitmap->Height()-1;
     if (m_Refresh || Bitmap->Dirty(x1, y1, x2, y2)) {
