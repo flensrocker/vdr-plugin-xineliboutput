@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.14 2010-02-14 12:42:46 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.15 2010-03-13 11:33:36 phintuka Exp $
  *
  */
 
@@ -59,6 +59,21 @@
            (uint64_t) htonl((uint32_t)(val)) << 32)
 #endif
 
+
+/*
+ * Substreams
+ */
+
+enum eStreamId {
+  sidVdr      = 0,    /* VDR primary video/audio (MPEG-PES or MPEG-TS) */
+
+  sidPipFirst = 1,    /* VDR PIP video, first (MPEG-TS PAT+PMT+video) */
+  sidPipLast  = 17,
+
+  sidPadding  = 0xfd, /* UDP/RTP padding */
+  sidOsd      = 0xfe, /* OSD */
+  sidControl  = 0xff, /* control messages */
+};
 
 /*
  * Network packet headers
