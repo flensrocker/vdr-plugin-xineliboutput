@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.14 2008-12-19 15:08:19 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.15 2010-03-13 23:32:24 phintuka Exp $
  *
  */
 
@@ -31,7 +31,8 @@ typedef enum  {
   OSD_Close       = 5,    /* Close OSD window */
   OSD_Set_YUV     = 6,    /* Create/update OSD window. Data is in YUV420 format. */
   OSD_Commit      = 7,    /* All OSD areas have been updated, commit changes to display */
-  OSD_Flush       = 8     /* Flush all pending OSD operations immediately */
+  OSD_Flush       = 8,    /* Flush all pending OSD operations immediately */
+  OSD_VideoWindow = 9,    /* Set video window inside OSD */
 } osd_command_id_t;
 
 #define OSDFLAG_YUV_CLUT        0x01 /* palette is in YUV format */
