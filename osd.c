@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.42 2010-03-13 23:40:57 phintuka Exp $
+ * $Id: osd.c,v 1.43 2010-03-14 18:46:12 rofafor Exp $
  *
  */
 
@@ -483,7 +483,7 @@ void cXinelibOsd::Flush(void)
 
 #ifdef YAEPGHDVERSNUM
   if (vidWin.bpp)
-    SetVideoWindow(vidWin.x1, vidWin.y1, vidWin.x2, vidWin.y2);
+    CmdVideoWindow(vidWin.x1, vidWin.y1, vidWin.Width(), vidWin.Height());
 #endif
 
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
