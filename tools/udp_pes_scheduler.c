@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.52 2009-08-19 12:19:43 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.53 2010-03-14 11:50:50 phintuka Exp $
  *
  */
 
@@ -430,18 +430,18 @@ void cUdpScheduler::SetScrSpeed(const int Speed)
   m_RtpScr.SetScrSpeed(Speed);
 }
 
-bool cUdpScheduler::Queue(uint64_t StreamPos, const uchar *Data, int Length) 
+bool cUdpScheduler::Queue(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int Length)
 {
   cMutexLock ml(&m_Lock);
 
-  if(m_Handles[0] < 0) 
+  if(m_Handles[0] < 0)
     return true;
 
   uint limit = m_Master ? MAX_QUEUE_SIZE : MAX_LIVE_QUEUE_SIZE;
   if(m_QueuePending >= limit)
     return false;
 
-  m_BackLog->MakeFrame(StreamPos, Data, Length); 
+  m_BackLog->MakeFrame(StreamId, StreamPos, Data, Length);
   m_QueuePending++;
 
   m_Cond.Broadcast();
@@ -473,9 +473,9 @@ void cUdpScheduler::QueuePaddingInternal(void)
   if (Frame) {
     int      PrevLen = m_BackLog->PayloadSize(PrevSeq);
     uint64_t Pos     = ntohll(Frame->hdr_ext.pos) + PrevLen - 8;
-    m_BackLog->MakeFrame(Pos, Padding, 8);
+    m_BackLog->MakeFrame(sidPadding, Pos, Padding, 8);
   } else
-    m_BackLog->MakeFrame(0, Padding, 8);
+    m_BackLog->MakeFrame(sidPadding, 0, Padding, 8);
 
   m_QueuePending++;
 }
@@ -778,7 +778,7 @@ void cUdpScheduler::Action(void)
     m_Lock.Unlock();
 
     // Schedule frame
-    if(m_Master)
+    if(m_Master && eStreamId(frame->hdr_ext.stream) == sidVdr)
       Schedule(frame->payload, PayloadSize);
 
     // Need some bandwidth limit for ex. sequence of still frames when

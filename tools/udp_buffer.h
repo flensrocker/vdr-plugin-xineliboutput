@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_buffer.h,v 1.6 2009-03-24 19:35:23 phintuka Exp $
+ * $Id: udp_buffer.h,v 1.7 2010-03-14 11:50:50 phintuka Exp $
  *
  */
 
@@ -85,8 +85,8 @@ class cUdpBackLog
       return m_UdpBuffer[BufIndex] ? m_PayloadSize[BufIndex] : 0;
     }
 
-    stream_rtp_header_impl_t *MakeFrame(uint64_t StreamPos, 
-					const uchar *Data, int DataLen)
+    stream_rtp_header_impl_t *MakeFrame(eStreamId StreamId, uint64_t StreamPos,
+                                        const uchar *Data, int DataLen)
     {
       int UdpPacketLen = DataLen + sizeof(stream_rtp_header_impl_t);
       int BufIndex = m_SeqNo & UDP_BUFFER_MASK;
@@ -130,6 +130,7 @@ class cUdpBackLog
       // UDP header
       header->hdr_ext.pos = htonull(StreamPos);
       header->hdr_ext.seq = htons(m_SeqNo);
+      header->hdr_ext.stream = (uint8_t)StreamId;
 
       header->hdr_ext.padding1 = 0;
 

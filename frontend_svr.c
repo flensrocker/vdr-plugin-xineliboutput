@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.90 2010-03-13 12:20:06 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.91 2010-03-14 11:50:51 phintuka Exp $
  *
  */
 
@@ -453,7 +453,7 @@ int cXinelibServer::Play(const uchar *data, int len, eStreamId StreamId)
   RtpClients = (m_iMulticastMask || xc.remote_rtp_always_on);
 
   if(UdpClients || RtpClients)
-    if(! m_Scheduler->Queue(m_StreamPos, data, len))
+    if(! m_Scheduler->Queue(StreamId, m_StreamPos, data, len))
       LOGMSG("cXinelibServer::Play Buffer overflow (UDP/RTP)");
 
   if(TcpClients || UdpClients || RtpClients)
@@ -653,7 +653,7 @@ int cXinelibServer::Xine_Control_Sync(const char *cmd)
     RtpClients = (m_iMulticastMask || xc.remote_rtp_always_on);
 
     if(UdpClients || RtpClients)
-      if(! m_Scheduler->Queue((uint64_t)(-1ULL), (const uchar*)buf, len))
+      if(! m_Scheduler->Queue(sidControl, (uint64_t)(-1ULL), (const uchar*)buf, len))
         LOGMSG("cXinelibServer::Xine_Control_Sync overflow (UDP/RTP)");
   }
 
@@ -1094,7 +1094,7 @@ void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
   // Client uses first received UDP/RTP packet to test connection.
   m_Scheduler->QueuePadding();
   if (m_Header)
-    m_Scheduler->Queue(0, m_Header, m_HeaderLength);
+    m_Scheduler->Queue(sidVdr, 0, m_Header, m_HeaderLength);
 }
 
 void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
@@ -1125,7 +1125,7 @@ void cXinelibServer::Handle_Control_UDP(int cli, const char *arg)
   // Client uses first received UDP/RTP packet to test connection.
   m_Scheduler->QueuePadding();
   if (m_Header)
-    m_Scheduler->Queue(0, m_Header, m_HeaderLength);
+    m_Scheduler->Queue(sidVdr, 0, m_Header, m_HeaderLength);
 }
 
 void cXinelibServer::Handle_Control_KEY(int cli, const char *arg)
