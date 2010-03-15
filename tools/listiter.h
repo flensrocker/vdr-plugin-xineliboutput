@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: listiter.h,v 1.2 2010-02-03 13:58:05 phintuka Exp $
+ * $Id: listiter.h,v 1.3 2010-03-15 14:13:43 phintuka Exp $
  *
  */
 
@@ -33,6 +33,13 @@ void ForEach(LIST& List, void (ITEM::*f)(ARG1,ARG2), ARG1 arg1, ARG2 arg2)
 {
   for(ITEM *it = List.First(); it; it = List.Next(it))
     (*it.*f)(arg1,arg2);
+}
+
+template <class LIST,class ITEM, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5>
+  void ForEach(LIST& List, void (ITEM::*f)(ARG1,ARG2,ARG3,ARG4,ARG5), ARG1 arg1, ARG2 arg2, ARG3 arg3, ARG4 arg4, ARG5 arg5)
+{
+  for(ITEM *it = List.First(); it; it = List.Next(it))
+    (*it.*f)(arg1,arg2,arg3,arg4,arg5);
 }
 
 template <class LIST,class ITEM, class ARG1, class RESULT>
