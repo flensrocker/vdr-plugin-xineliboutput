@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.104 2010-03-15 12:26:53 phintuka Exp $
+ * $Id: device.c,v 1.105 2010-03-15 12:40:30 phintuka Exp $
  *
  */
 
@@ -1151,7 +1151,7 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
  * TS buffer
  */
 
-#define TS_BUFFER_LOCK cSectionLock(m_TsBufLock)
+#define TS_BUFFER_LOCK cSectionLock SectionLock(m_TsBufLock)
 
 int cXinelibDevice::TsBufferFlush(void)
 {
