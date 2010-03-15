@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.103 2010-03-15 11:43:26 phintuka Exp $
+ * $Id: device.c,v 1.104 2010-03-15 12:26:53 phintuka Exp $
  *
  */
 
@@ -36,6 +36,7 @@
 #include "tools/pes.h"
 #include "tools/ts.h"
 #include "tools/functor.h"
+#include "tools/section_lock.h"
 
 #include "frontend_local.h"
 #include "frontend_svr.h"
@@ -1146,8 +1147,16 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
   return Result;
 }
 
+/*
+ * TS buffer
+ */
+
+#define TS_BUFFER_LOCK cSectionLock(m_TsBufLock)
+
 int cXinelibDevice::TsBufferFlush(void)
 {
+  TS_BUFFER_LOCK;
+
   if (m_TsBufSize) {
     int n;
     if ((n = PlayAny(m_TsBuf, m_TsBufSize)) == (int)m_TsBufSize) {
@@ -1161,12 +1170,20 @@ int cXinelibDevice::TsBufferFlush(void)
   return 0;
 }
 
+void cXinelibDevice::TsBufferClear(void)
+{
+  TS_BUFFER_LOCK;
+  m_TsBufSize = 0;
+}
+
 int cXinelibDevice::PlayTsAny(const uchar *buf, int length)
 {
   if (!DATA_IS_TS(buf))
     LOGMSG("PlayTsAny(): TS SYNC byte missing !");
   if (length != TS_SIZE)
     LOGMSG("PlayTsAny(): length == %d !", length);
+
+  TS_BUFFER_LOCK;
 
   // cache full ? try to flush it
   if (m_TsBufSize >= 2048)
