@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.102 2010-03-13 12:04:29 phintuka Exp $
+ * $Id: device.c,v 1.103 2010-03-15 11:43:26 phintuka Exp $
  *
  */
 
@@ -1695,6 +1695,62 @@ void  cXinelibDevice::SetMetaInfo(eMetainfoType Type, const char *Value)
     strn0cpy(m_MetaInfo[Type], Value, MAX_METAINFO_LEN);
   } else {
     LOGMSG("cXinelibDevice::SetMetaInfo: unknown metainfo type");
+  }
+}
+
+//
+// Picture-In-Picture
+//
+
+int cXinelibDevice::Pip_Open(void)
+{
+  for (int i = 0; i < MAX_NUM_PIP; i++)
+    if (!m_PipPid[i]) {
+      m_PipPid[i] = i;
+      ForEach(m_clients, &cXinelibThread::Pip_Config, i, -1, -1, -1, -1);
+      return i;
+    }
+  return -1;
+}
+
+void cXinelibDevice::Pip_Config(int Index, int X, int Y, int W, int H)
+{
+  if (Index >= 0 && Index < MAX_NUM_PIP) {
+    if (m_PipPid[Index]) {
+      ForEach(m_clients, &cXinelibThread::Pip_Config, Index, X, Y, W, H);
+    }
+  }
+}
+
+int  cXinelibDevice::Pip_Play(int Index, uint8_t *Data, int Length)
+{
+  if (Index >= 0 && Index < MAX_NUM_PIP) {
+    if (m_PipPid[Index] && Data && Length > 0) {
+
+      int len = Length;
+
+      if (m_local)
+        len = m_local->Play(Data, len, eStreamId(sidPipFirst + Index));
+
+      if (m_server) {
+        int len2 = m_server->Play(Data, len, eStreamId(sidPipFirst + Index));
+        if (!m_local)
+          return len2;
+      }
+
+      return len;
+    }
+  }
+  return Length;
+}
+
+void cXinelibDevice::Pip_Close(int Index)
+{
+  if (Index >= 0 && Index < MAX_NUM_PIP) {
+    if (m_PipPid[Index]) {
+      ForEach(m_clients, &cXinelibThread::Pip_Close, Index);
+      m_PipPid[Index] = 0;
+    }
   }
 }
 

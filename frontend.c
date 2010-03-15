@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.84 2010-03-13 12:07:46 phintuka Exp $
+ * $Id: frontend.c,v 1.85 2010-03-15 11:43:26 phintuka Exp $
  *
  */
 
@@ -343,6 +343,16 @@ void cXinelibThread::SetSubtitleTrack(eTrackType Track)
 				 Track==ttNone ? ttXSubtitleNone  : (Track - ttSubtitleFirst), 
 				 m_SpuLangAuto ? " auto" : "");
   Xine_Control(buf);
+}
+
+void cXinelibThread::Pip_Config(int Index, int X, int Y, int W, int H)
+{
+  Xine_Control(cString::sprintf("PIP %d %d %d %d %d", Index, X, Y, W, H));
+}
+
+void cXinelibThread::Pip_Close(int Index)
+{
+  Xine_Control(cString::sprintf("PIP %d Close", Index));
 }
 
 void cXinelibThread::Clear(void)
