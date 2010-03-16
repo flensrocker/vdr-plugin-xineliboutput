@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.310 2010-03-11 22:56:57 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.311 2010-03-16 11:57:40 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.310 2010-03-11 22:56:57 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.311 2010-03-16 11:57:40 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3028,7 +3028,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "TRICKSPEED ", 11)) {
     err = (1 == sscanf(cmd+11, "%d", &tmp32)) ? 
-      set_trick_speed(this, tmp32, !!strstr(cmd+13, "Back")) :
+      set_trick_speed(this, tmp32, !!strstr(cmd+11, "Back")) :
       CONTROL_PARAM_ERROR;    
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
