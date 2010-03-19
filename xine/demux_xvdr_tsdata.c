@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: demux_xvdr_tsdata.c,v 1.3 2010-02-15 11:28:02 phintuka Exp $
+ * $Id: demux_xvdr_tsdata.c,v 1.4 2010-03-19 21:44:27 phintuka Exp $
  *
  */
 
@@ -39,20 +39,23 @@ static void ts_data_ts2es_reset(ts_data_t *ts_data)
   }
 }
 
-void ts_data_reset_audio(ts_data_t *ts_data, fifo_buffer_t *audio_fifo)
+void ts_data_reset_audio(ts_data_t *ts_data, fifo_buffer_t *audio_fifo, int keep_channel)
 {
   if (ts_data) {
 
     int i;
 
     for (i = 0; ts_data->audio[i]; i++) {
-      ts2es_dispose(ts_data->audio[i]);
-      ts_data->audio[i] = NULL;
+      if (i != keep_channel) {
+        ts2es_dispose(ts_data->audio[i]);
+        ts_data->audio[i] = NULL;
+      }
     }
 
     if (audio_fifo) {
       for (i = 0; i < ts_data->pmt.audio_tracks_count; i++)
-        ts_data->audio[i] = ts2es_init(audio_fifo, ts_data->pmt.audio_tracks[i].type, i);
+        if (!ts_data->audio[i])
+          ts_data->audio[i] = ts2es_init(audio_fifo, ts_data->pmt.audio_tracks[i].type, i);
     }
   }
 }
