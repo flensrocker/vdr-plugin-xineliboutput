@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.8 2010-03-21 09:54:21 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.9 2010-03-21 10:26:47 phintuka Exp $
  *
  */
 
@@ -174,17 +174,27 @@ static void xvdr_metronom_set_still_mode(xvdr_metronom_t *this, int still_mode)
 
 static void xvdr_metronom_wire(xvdr_metronom_t *this)
 {
+  if (!this->stream) {
+    LOGMSG("xvdr_metronom_wire(): stream == NULL !");
+    return;
+  }
+  if (!this->stream->metronom) {
+    LOGMSG("xvdr_metronom_wire(): stream->metronom == NULL !");
+    return;
+  }
+
   if (!this->wired) {
     this->wired = 1;
 
     /* attach to stream */
+    this->orig_metronom = this->stream->metronom;
     this->stream->metronom = &this->metronom;
   }
 }
 
 static void xvdr_metronom_unwire(xvdr_metronom_t *this)
 {
-  if (this->wired) {
+  if (this->stream && this->wired) {
     this->wired = 0;
 
     /* detach from stream */
