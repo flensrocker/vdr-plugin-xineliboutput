@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.7 2010-02-19 13:44:57 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.8 2010-03-21 09:54:21 phintuka Exp $
  *
  */
 
@@ -130,10 +130,11 @@ static void metronom_exit(metronom_t *metronom)
 
   /* un-hook */
   this->stream->metronom = this->orig_metronom;
-  this->orig_metronom = NULL;
   this->stream = NULL;
 
   this->orig_metronom->exit(this->orig_metronom);
+
+  this->orig_metronom = NULL;
 }
 
 /*
