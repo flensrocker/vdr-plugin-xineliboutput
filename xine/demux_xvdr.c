@@ -150,18 +150,34 @@ static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_
 
 static void pts_wrap_workaround(demux_xvdr_t *this, buf_element_t *buf, int video)
 {
+  /* PTS wrap workaround */
+  if (buf->pts > 0) {
+
 #ifdef LOG_PES_AV_DIFF
-  static int64_t vpts = 0, apts = 0;
-  if (video) vpts = buf->pts;
-  else apts = buf->pts;
-  if (vpts > 0 && apts > 0)
-    LOGMSG("pts diff [%d] %d", video, (int)(vpts - apts));
+    static int64_t vpts = 0, apts = 0;
+    if (video) vpts = buf->pts;
+    else apts = buf->pts;
+    if (vpts > 0 && apts > 0)
+      LOGMSG("pts diff [%d] %d", video, (int)(vpts - apts));
 #endif
 
-  /* PTS wrap workaround */
-  if (buf->pts >= 0) {
-    if (video)
+    if (video) {
+
+      /* VIDEO wrap in middle of GOP */
+      if (this->last_vpts < 14400 &&
+          this->last_vpts > 0     &&
+          buf->pts > (INT64_C(0x1ffffffff) - 14400) &&
+          !this->send_newpts) {
+        LOGMSG("VIDEO pts wrap in middle of GOP, ignoring video pts %" PRId64, buf->pts);
+        buf->pts = INT64_C(0);
+        return;
+      }
+
       this->last_vpts = buf->pts;
+      return;
+    }
+
+    /* VIDEO wrap before AUDIO wrap */
     else if (buf->pts        > INT64_C( 0x40400000 ) &&
              this->last_vpts < INT64_C( 0x40000000 ) &&
              this->last_vpts > INT64_C( 0 )) {
@@ -173,22 +189,26 @@ static void pts_wrap_workaround(demux_xvdr_t *this, buf_element_t *buf, int vide
 
 static void check_newpts(demux_xvdr_t *this, buf_element_t *buf, int video )
 {
+  if (buf->pts <= 0)
+    return;
+
+  if (video) {
+    int still_mode  = (int)this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_STILL_MODE);
+    int trick_speed = (int)this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_TRICK_SPEED);
+    if (still_mode > 0 || trick_speed > 0) {
+      LOGMSG("Skipping new pts %"PRId64" (still=%d trickspeed=%d)", buf->pts, still_mode, trick_speed);
+      return;
+    }
+  }
+
   pts_wrap_workaround(this, buf, video);
 
   if (buf->pts) {
-
-    if (video) {
-      int still_mode  = (int)this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_STILL_MODE);
-      int trick_speed = (int)this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_TRICK_SPEED);
-      if (still_mode > 0 || trick_speed > 0) {
-        LOGMSG("Skipping new pts %"PRId64" (still=%d trickspeed=%d)", buf->pts, still_mode, trick_speed);
-        return;
-      }
-    }
-
     int64_t diff = buf->pts - this->last_pts[video];
 
     if (this->send_newpts || (this->last_pts[video] && abs(diff)>WRAP_THRESHOLD)) {
+
+      LOGVERBOSE("New PTS: %"PRId64" (%s)", buf->pts, video ? "VIDEO" : "AUDIO");
 
       if (this->buf_flag_seek) {
         _x_demux_control_newpts(this->stream, buf->pts, BUF_FLAG_SEEK);
