@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.21 2010-03-16 18:58:56 rofafor Exp $
+ * $Id: ts.c,v 1.22 2010-03-23 06:20:12 rofafor Exp $
  *
  */
 
@@ -380,11 +380,11 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
         break;
       case ISO_13818_PES_PRIVATE:
         for (i = 5; i < coded_length; i += stream[i+1] + 2) {
-          if ((stream[i] == STREAM_DESCR_AC3) && (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
+          if (((stream[i] == STREAM_DESCR_AC3) || (stream[i] == STREAM_DESCR_EAC3)) && (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
             if (find_audio_track(pmt, pid) < 0) {
               LOGPMT("parse_pmt: AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
               pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
-              pmt->audio_tracks[pmt->audio_tracks_count].type = STREAM_AUDIO_AC3;
+              pmt->audio_tracks[pmt->audio_tracks_count].type = (stream[i] == STREAM_DESCR_EAC3) ? STREAM_AUDIO_EAC3 : STREAM_AUDIO_AC3;
               /* demux_ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
               /*                        stream + 5, stream_info_length); */
               pmt->audio_tracks_count++;
