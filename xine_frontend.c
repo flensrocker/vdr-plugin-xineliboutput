@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.113 2010-03-01 07:13:30 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.114 2010-03-28 05:34:45 phintuka Exp $
  *
  */
 
@@ -1744,6 +1744,7 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
       jpeg_set_defaults(&cinfo);
       jpeg_set_quality(&cinfo, quality, TRUE);
       cinfo.raw_data_in = TRUE;
+      cinfo.do_fancy_downsampling = FALSE;
 
       jpeg_set_colorspace(&cinfo, JCS_YCbCr);
       cinfo.comp_info[0].h_samp_factor =
