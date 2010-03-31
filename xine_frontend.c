@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.115 2010-03-29 09:31:40 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.116 2010-03-31 20:46:33 phintuka Exp $
  *
  */
 
@@ -1982,8 +1982,8 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   /* validate parameters */
   if ((quality < 0) || (quality > 100))
     quality = 100;
-  width  = (MAX(16, MIN(width, 1920)) + 1) & ~1; /* 16...1920, even */
-  height = (MAX(16, MIN(width, 1200)) + 1) & ~1; /* 16...1200, even */
+  width  = (MAX(16, MIN(width,  1920)) + 1) & ~1; /* 16...1920, even */
+  height = (MAX(16, MIN(height, 1200)) + 1) & ~1; /* 16...1200, even */
 
   /* get last frame */
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
