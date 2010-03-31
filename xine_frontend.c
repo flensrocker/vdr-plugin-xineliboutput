@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.15 2009-10-08 13:13:53 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.16 2010-03-31 20:50:01 phintuka Exp $
  *
  */
 
@@ -1634,6 +1634,9 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
       jpeg_set_defaults(&cinfo);
       jpeg_set_quality(&cinfo, quality, TRUE);
       cinfo.raw_data_in = TRUE;
+#if JPEG_LIB_VERSION >= 70
+      cinfo.do_fancy_downsampling = FALSE;
+#endif
 
       jpeg_set_colorspace(&cinfo, JCS_YCbCr);
       cinfo.comp_info[0].h_samp_factor =
@@ -1858,8 +1861,8 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   /* validate parameters */
   if ((quality < 0) || (quality > 100))
     quality = 100;
-  width  = (MAX(16, MIN(width, 1920)) + 1) & ~1; /* 16...1920, even */
-  height = (MAX(16, MIN(width, 1200)) + 1) & ~1; /* 16...1200, even */
+  width  = (MAX(16, MIN(width,  1920)) + 1) & ~1; /* 16...1920, even */
+  height = (MAX(16, MIN(height, 1200)) + 1) & ~1; /* 16...1200, even */
 
   /* get last frame */
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
