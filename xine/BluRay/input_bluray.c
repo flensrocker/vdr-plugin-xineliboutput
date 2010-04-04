@@ -467,7 +467,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
       char *end = strrchr(this->disc_root, '/');
       if (end && end[1])
         if (sscanf(end, "/%d.%d", &title, &chapter) < 1)
-          title = 0;
+          title = -1;
       *end = 0;
     }
 
