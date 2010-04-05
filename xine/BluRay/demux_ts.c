@@ -986,6 +986,26 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
 }
 
 
+static void fill_extra_info(demux_ts_t *this, buf_element_t *buf)
+{
+  off_t len = this->input->get_length (this->input);
+  off_t pos = this->input->get_current_pos (this->input);
+
+  if (len) {
+    buf->extra_info->input_normpos = (int)( (double) pos * 65535 / len );
+  }
+
+  if (this->input->get_current_time)
+    buf->extra_info->input_time = this->input->get_current_time(this->input);
+
+  if (this->rate) {
+    if (buf->extra_info->input_time <= 0)
+      buf->extra_info->input_time = (int)((int64_t)pos * 1000 / this->rate);
+
+    buf->extra_info->total_time = (int)((int64_t)len * 1000 / this->rate);
+  }
+}
+
 /*
  *  buffer arriving pes data
  */
@@ -1032,12 +1052,6 @@ static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
       m->buf->pts = m->pts;
       m->buf->decoder_info[0] = 1;
 
-      if( this->input->get_length (this->input) )
-        m->buf->extra_info->input_normpos = (int)( (double) this->input->get_current_pos (this->input) *
-                                         65535 / this->input->get_length (this->input) );
-      if (this->rate)
-        m->buf->extra_info->input_time = (int)((int64_t)this->input->get_current_pos (this->input)
-                                         * 1000 / (this->rate * 50));
       m->fifo->put(m->fifo, m->buf);
       m->buffered_bytes = 0;
       m->buf = NULL; /* forget about buf -- not our responsibility anymore */
@@ -1067,6 +1081,8 @@ static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
       m->corrupted_pes = 0;
       memcpy(m->buf->mem, ts+len-m->size, m->size);
       m->buffered_bytes = m->size;
+
+      fill_extra_info(this, m->buf);
     }
 
   } else if (!m->corrupted_pes) { /* no pus -- PES packet continuation */
@@ -1077,12 +1093,6 @@ static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
       m->buf->type = m->type;
       m->buf->pts = m->pts;
       m->buf->decoder_info[0] = 1;
-      if( this->input->get_length (this->input) )
-        m->buf->extra_info->input_normpos = (int)( (double) this->input->get_current_pos (this->input) *
-                                         65535 / this->input->get_length (this->input) );
-      if (this->rate)
-        m->buf->extra_info->input_time = (int)((int64_t)this->input->get_current_pos (this->input)
-                                         * 1000 / (this->rate * 50));
 
       m->fifo->put(m->fifo, m->buf);
       m->buffered_bytes = 0;
@@ -2273,7 +2283,6 @@ static int demux_ts_seek (demux_plugin_t *this_gen,
     if ((!start_pos) && (start_time)) {
       start_pos = start_time;
       start_pos *= this->rate;
-      start_pos *= 50;
     }
     this->input->seek (this->input, start_pos, SEEK_SET);
 
@@ -2312,8 +2321,7 @@ static int demux_ts_get_stream_length (demux_plugin_t *this_gen) {
   demux_ts_t*this = (demux_ts_t*)this_gen;
 
   if (this->rate)
-    return (int)((int64_t) this->input->get_length (this->input)
-                 * 1000 / (this->rate * 50));
+    return (int)((int64_t) this->input->get_length (this->input) * 1000 / this->rate);
   else
     return 0;
 }
@@ -2521,7 +2529,11 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
   this->audio_tracks_count = 0;
   this->last_pmt_crc = 0;
 
-  this->rate = 16000; /* FIXME */
+  this->rate = xine_get_stream_info(this->stream, XINE_STREAM_INFO_BITRATE);
+  if (this->rate > 0 && this->rate < 100000000 )
+    this->rate /= 8; /* bits/s -> bytes/s */
+  else
+    this->rate = 800000; /* FIXME */
 
   this->status = DEMUX_FINISHED;
 
