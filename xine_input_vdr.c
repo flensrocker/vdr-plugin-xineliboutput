@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.314 2010-04-16 09:31:36 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.315 2010-04-16 09:33:17 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.314 2010-04-16 09:31:36 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.315 2010-04-16 09:33:17 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -600,7 +600,7 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   /*int num_vbufs = 0;*/
 
   if (this->hd_stream && this->hd_buffer)
-    num_free += this->hd_buffer->num_free(this->hd_buffer);
+    num_free = this->hd_buffer->num_free(this->hd_buffer);
   if (this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
   num_free -= this->reserved_buffers;
