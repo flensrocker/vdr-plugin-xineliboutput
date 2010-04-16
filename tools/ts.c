@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.22 2010-03-23 06:20:12 rofafor Exp $
+ * $Id: ts.c,v 1.23 2010-04-16 10:35:53 phintuka Exp $
  *
  */
 
@@ -454,11 +454,12 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
   pid = ((pmt->pmt[8] << 8) | pmt->pmt[9]) & 0x1fff;
   if (pmt->pcr_pid != pid) {
 
-    if (pmt->pcr_pid == INVALID_PID)
+    if (pmt->pcr_pid == INVALID_PID) {
       LOGPMT("parse_pmt: pcr pid 0x%.4x", pid);
-    else
+      }
+    else {
       LOGPMT("parse_pmt: pcr pid changed 0x%.4x", pid);
-
+      }
     pmt->pcr_pid = pid;
   }
 
