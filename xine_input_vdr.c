@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.313 2010-04-16 09:20:41 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.314 2010-04-16 09:31:36 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.313 2010-04-16 09:20:41 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.314 2010-04-16 09:31:36 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -279,6 +279,9 @@ typedef struct vdr_input_class_s {
   int             smooth_scr_tuning;
   double          scr_tuning_step;
   int             num_buffers_hd;
+  uint            scr_treshold_sd;
+  uint            scr_treshold_hd;
+
 } vdr_input_class_t;
 
 /* input plugin */
@@ -628,20 +631,30 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 
   /* SCR -> RESUME
    *  - If SCR (playback) is currently paused due to previous buffer underflow,
-   *    revert to normal if buffer fill is > 66%
+   *    revert to normal if SCR-Treshold > SD-/HD-Treshold (configured in xine-config)
+   *    and Audio-Treshold > 0.
+   *  - SD- and HD-Streams will be handled separately to improve SCR-playback after channel switch.
+   *  - SCR-Treshold calculation based on configured SD-/HD-Buffers in xine-config.
+   *  - Audio-Treshold calculation based on fixed 500 Audio-Buffers,
+   *    to handle different data rates (DVB-S/DVB-C/DVB-T) and SD-/HD-channels with one treshold.
    */
+
   if (scr_tuning == SCR_TUNING_PAUSED) {
-    if (num_used/2 > num_free
+    uint scr_treshold = 100 * num_used / (num_used + num_free);
+    LOGSCR("SCR-Treshold %2d%%", scr_treshold);
+    uint audio_treshold = 100 * this->stream->audio_fifo->size
+                          (this->stream->audio_fifo) / (this->stream->audio_fifo->size
+                          (this->stream->audio_fifo) + 500);
+    LOGSCR("Audio-Treshold %2d%%", audio_treshold);
+    if (   (this->hd_stream  && scr_treshold > this->class->scr_treshold_hd && audio_treshold > 0)
+        || (!this->hd_stream && scr_treshold > this->class->scr_treshold_sd && audio_treshold > 0)
         || (this->no_video && num_used > 5)
         || this->still_mode
         || this->is_trickspeed
-        || ( this->I_frames > 0
-             && (this->I_frames > 2 || this->P_frames > 6 ))
-        ) {
+        || (this->I_frames > 0 && (this->I_frames > 2 || this->P_frames > 6))) {
 
       LOGSCR("SCR tuning resetted by adjust_speed, "
              "I %d B %d P %d", this->I_frames, this->B_frames, this->P_frames);
-
       this->I_frames = 0;
       reset_scr_tuning(this);
     }
@@ -5854,6 +5867,18 @@ static void *input_xvdr_init_class (xine_t *xine, void *data)
                                               "media." MRL_ID ".num_buffers_hd", HD_BUF_NUM_BUFS,
                                               _("number of buffers for HD content"),
                                               _("number of buffers for HD content"),
+                                              10, NULL, NULL);
+
+  this->scr_treshold_sd = config->register_num(config,
+                                              "media." MRL_ID ".scr_treshold_sd", 50,
+                                              _("SCR-Treshold for SD-Playback (%)"),
+                                              _("SCR-Treshold for starting SD-Playback (%)"),
+                                              10, NULL, NULL);
+
+  this->scr_treshold_hd = config->register_num(config,
+                                              "media." MRL_ID ".scr_treshold_hd", 40,
+                                              _("SCR-Treshold for HD-Playback (%)"),
+                                              _("SCR-Treshold for starting HD-Playback (%)"),
                                               10, NULL, NULL);
 
   this->input_class.get_instance       = vdr_class_get_instance;
