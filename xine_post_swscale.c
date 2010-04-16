@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.9 2008-12-13 14:24:03 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.10 2010-04-16 10:23:24 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -1300,22 +1300,8 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 /*#define POST_SLICES*/
 #include "xine/post_util.h"
 
-
-/* plugin class initialization function */
-void *warp_init_plugin(xine_t *xine, void *);
-
-/* plugin class functions */
-static post_plugin_t *open_plugin(post_class_t *class_gen, int inputs,
-				  xine_audio_port_t **audio_target,
-				  xine_video_port_t **video_target);
-
 /* plugin instance functions */
 static void        warp_dispose(post_plugin_t *this_gen);
-
-/* vo_frame functions */
-static vo_frame_t *got_frame(vo_frame_t *frame);
-static void        draw_internal(vo_frame_t *frame, vo_frame_t *new_frame);
-
 
 /* parameter functions */
 static xine_post_api_descr_t *warp_get_param_descr(void);
