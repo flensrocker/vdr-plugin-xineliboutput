@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.76 2010-03-12 23:00:26 phintuka Exp $
+ * $Id: setup_menu.c,v 1.77 2010-04-16 10:33:30 phintuka Exp $
  *
  */
 
@@ -1808,6 +1808,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;
+      default:; // all other keys - do nothing.
     }
   }
   return state;
