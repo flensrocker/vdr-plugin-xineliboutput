@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.312 2010-03-20 23:04:07 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.313 2010-04-16 09:20:41 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.312 2010-03-20 23:04:07 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.313 2010-04-16 09:20:41 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5026,6 +5026,14 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 
   if (this->class->num_buffers_hd != HD_BUF_NUM_BUFS)
     LOGMSG("Using non-default \"media." MRL_ID ".num_buffers_hd:%d\"", this->class->num_buffers_hd);
+
+  /* check stream audio fifo size and issue a warning if too small */
+  cfg_entry_t *e = this->class->xine->config->lookup_entry(this->class->xine->config,
+                                                           "engine.buffers.audio_num_buffers");
+  if (e && e->num_value < 500) {
+    LOGMSG("WARNING: xine-engine setting \"engine.buffers.audio_num_buffers\":%d is"
+           "too low for HD-playback! Please use values between 500-1000!", e->num_value);
+  }
 
   return 1;
 }
