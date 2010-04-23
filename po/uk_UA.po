@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-04-24 00:21+0300\n"
+"POT-Creation-Date: 2010-04-24 00:33+0300\n"
 "PO-Revision-Date: 2010-04-22 13:44+0200\n"
 "Last-Translator: Yarema aka Knedlyk <yupadmin@gmail.com>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
@@ -511,16 +511,14 @@ msgstr ""
 msgid "Static transparency correction"
 msgstr ""
 
-#, fuzzy
 msgid "External subtitle size"
-msgstr "Масштабувати субтитри"
+msgstr ""
 
 msgid "DVB subtitle decoder"
 msgstr ""
 
-#, fuzzy
 msgid "Decoder"
-msgstr "вектор"
+msgstr ""
 
 msgid "Buffer size"
 msgstr ""
@@ -528,9 +526,8 @@ msgstr ""
 msgid "Number of PES packets"
 msgstr ""
 
-#, fuzzy
 msgid "Local Display Frontend"
-msgstr "Локальний фронтенд"
+msgstr ""
 
 msgid "Use keyboard"
 msgstr ""
@@ -553,9 +550,8 @@ msgstr ""
 msgid "Window height"
 msgstr ""
 
-#, fuzzy
 msgid "Window aspect"
-msgstr "Пропорція відео"
+msgstr ""
 
 msgid "Scale to window size"
 msgstr ""
@@ -584,17 +580,14 @@ msgstr ""
 msgid "Max number of clients"
 msgstr ""
 
-#, fuzzy
 msgid "PIPE transport"
-msgstr "прозорий"
+msgstr ""
 
-#, fuzzy
 msgid "TCP transport"
-msgstr "прозорий"
+msgstr ""
 
-#, fuzzy
 msgid "UDP transport"
-msgstr "прозорий"
+msgstr ""
 
 msgid "RTP (multicast) transport"
 msgstr ""
@@ -632,9 +625,8 @@ msgstr ""
 msgid "RTSP clients can control VDR"
 msgstr ""
 
-#, fuzzy
 msgid "Playlist settings"
-msgstr "Налаштування відео"
+msgstr ""
 
 msgid "Show the track number"
 msgstr ""
@@ -657,9 +649,8 @@ msgstr ""
 msgid "Media Player"
 msgstr ""
 
-#, fuzzy
 msgid "Grayscale"
-msgstr "відтінки сірого"
+msgstr ""
 
 msgid "Bitmap"
 msgstr ""
@@ -667,9 +658,8 @@ msgstr ""
 msgid "OSD"
 msgstr ""
 
-#, fuzzy
 msgid "Test Images"
-msgstr "Зображення"
+msgstr ""
 
 msgid "X11/xine-lib output plugin"
 msgstr ""
