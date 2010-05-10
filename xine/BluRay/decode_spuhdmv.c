@@ -336,7 +336,7 @@ static uint8_t segbuf_get_u8(segment_buffer_t *buf)
 {
   if (!(buf->error = ++buf->segment_data > buf->segment_end))
     return buf->segment_data[-1];
-  XINE_HDMV_ERROR("segbuf_get_u8: read failed (end of segment reached) !");
+  XINE_HDMV_ERROR("segbuf_get_u8: read failed (end of segment reached) !\n");
   return 0;
 }
 
@@ -522,6 +522,7 @@ static int segbuf_decode_video_descriptor(segment_buffer_t *buf)
   uint8_t  frame_rate = segbuf_get_u8 (buf);
 
   XINE_HDMV_TRACE("  video_descriptor: %dx%d fps %d\n", width, height, frame_rate);
+
   return buf->error;
 }
 
@@ -847,7 +848,7 @@ static void free_objs(spuhdmv_decoder_t *this)
 
 static void decode_segment(spuhdmv_decoder_t *this)
 {
-  XINE_HDMV_TRACE("*** new segment, pts %010"PRId64": 0x%02x (%8d bytes)",
+  XINE_HDMV_TRACE("*** new segment, pts %010"PRId64": 0x%02x (%8d bytes)\n",
                   this->pts, this->buf->segment_type, this->buf->segment_len);
 
   switch (segbuf_segment_type(this->buf)) {
