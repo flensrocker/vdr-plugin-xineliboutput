@@ -17,7 +17,7 @@ else
     $(warning libbluray not found)
 endif
 
-ifeq ($(shell pkg-config libxine --atleast-version=1.1.17 || echo "yes"), yes)
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.18.2 || echo "yes"), yes)
     ENABLE_SPU_PLUGIN ?= yes
 else
     ENABLE_SPU_PLUGIN ?= no
