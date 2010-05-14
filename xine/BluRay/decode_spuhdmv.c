@@ -171,27 +171,27 @@ struct presentation_segment_s {
  */
 
 #define LIST_REPLACE(list, obj, FREE_FUNC)      \
-  do {						\
-    unsigned int id = obj->id;			\
-						\
-    /* insert to list */			\
-    obj->next = list;				\
-    list = obj;					\
-						\
-    /* remove old */				\
-    while (obj->next && obj->next->id != id)	\
-      obj = obj->next;				\
-    if (obj->next) {				\
-      void *tmp = (void*)obj->next;		\
-      obj->next = obj->next->next;		\
-      FREE_FUNC(tmp);				\
-    }						\
+  do {                                          \
+    unsigned int id = obj->id;                  \
+                                                \
+    /* insert to list */                        \
+    obj->next = list;                           \
+    list = obj;                                 \
+                                                \
+    /* remove old */                            \
+    while (obj->next && obj->next->id != id)    \
+      obj = obj->next;                          \
+    if (obj->next) {                            \
+      void *tmp = (void*)obj->next;             \
+      obj->next = obj->next->next;              \
+      FREE_FUNC(tmp);                           \
+    }                                           \
   } while (0);
 
 #define LIST_DESTROY(list, FREE_FUNC) \
-  while (list) {	       \
+  while (list) {               \
     void *tmp = (void*)list;   \
-    list = list->next;	       \
+    list = list->next;         \
     FREE_FUNC(tmp);            \
   }
 
@@ -273,8 +273,8 @@ static void segbuf_parse_segment_header(segment_buffer_t *buf)
     buf->error        = 0;
 
     if ( buf->segment_type < 0x14 ||
-	 ( buf->segment_type > 0x18 &&
-	   buf->segment_type != 0x80)) {
+         ( buf->segment_type > 0x18 &&
+           buf->segment_type != 0x80)) {
       XINE_HDMV_ERROR("unknown segment type, resetting\n");
       segbuf_reset(buf);
     }
@@ -419,17 +419,17 @@ static int segbuf_decode_rle(segment_buffer_t *buf, subtitle_object_t *obj)
     } else {
       byte = segbuf_get_u8 (buf);
       if (!(byte & 0x80)) {
-	rlep->color = 0;
-	if (!(byte & 0x40))
-	  rlep->len   = byte & 0x3f;
-	else
-	  rlep->len   = ((byte & 0x3f) << 8) | segbuf_get_u8 (buf);
+        rlep->color = 0;
+        if (!(byte & 0x40))
+          rlep->len   = byte & 0x3f;
+        else
+          rlep->len   = ((byte & 0x3f) << 8) | segbuf_get_u8 (buf);
       } else {
-	if (!(byte & 0x40))
-	  rlep->len   = byte & 0x3f;
-	else
-	  rlep->len   = ((byte & 0x3f) << 8) | segbuf_get_u8 (buf);
-	rlep->color = segbuf_get_u8 (buf);
+        if (!(byte & 0x40))
+          rlep->len   = byte & 0x3f;
+        else
+          rlep->len   = ((byte & 0x3f) << 8) | segbuf_get_u8 (buf);
+        rlep->color = segbuf_get_u8 (buf);
       }
     }
 
@@ -441,10 +441,10 @@ static int segbuf_decode_rle(segment_buffer_t *buf, subtitle_object_t *obj)
     } else {
       /* end of line marker (00 00) */
       if (x < obj->width) {
-	rlep->len = obj->width - x;
-	rlep->color = 0xff;
-	rlep++;
-	obj->num_rle ++;
+        rlep->len = obj->width - x;
+        rlep->color = 0xff;
+        rlep++;
+        obj->num_rle ++;
       }
       x = 0;
       y++;
@@ -491,8 +491,8 @@ static subtitle_object_t *segbuf_decode_object(segment_buffer_t *buf, subtitle_o
     XINE_HDMV_TRACE("    object length %d bytes, size %dx%d\n", obj->data_len, obj->width, obj->height);
 
     if (obj->data_len > segbuf_data_length(buf)) {
-      XINE_HDMV_TRACE("    object length %d bytes, have only %d bytes -> missing %d bytes\n",
-                      obj->data_len, (int)segbuf_data_length(buf), obj->data_len - (int)segbuf_data_length(buf));
+      XINE_HDMV_TRACE("    object length %d bytes, have only %zd bytes -> missing %d bytes\n",
+                      obj->data_len, segbuf_data_length(buf), obj->data_len - (int)segbuf_data_length(buf));
 
       if (obj->raw_data)
         free(obj->raw_data);
@@ -754,7 +754,7 @@ static int decode_presentation_segment(spuhdmv_decoder_t *this)
 }
 
 static int show_overlay(spuhdmv_decoder_t *this, composition_object_t *cobj, unsigned int palette_id_ref,
-			int overlay_index, int64_t pts, int force_update)
+                        int overlay_index, int64_t pts, int force_update)
 {
   video_overlay_manager_t *ovl_manager = this->stream->video_out->get_overlay_manager(this->stream->video_out);
   metronom_t              *metronom    = this->stream->metronom;
