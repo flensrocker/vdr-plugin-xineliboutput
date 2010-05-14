@@ -1307,7 +1307,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
 
   count=ts_payloadsize(originalPkt);
 
-  ptr = originalPkt+offset+(PKT_SIZE-count);
+  ptr = (char*)originalPkt+offset+(PKT_SIZE-count);
   len = count-offset;
   memcpy (this->pmt_write_ptr[program_count], ptr, len);
   this->pmt_write_ptr[program_count] +=len;
@@ -1706,7 +1706,7 @@ static int sync_correct(demux_ts_t*this, uint8_t *buf, int32_t npkt_read) {
     memmove(&buf[0], &buf[n + p * this->pkt_size],
 	    ((this->pkt_size * (npkt_read - p)) - n));
     read_length = this->input->read(this->input,
-				    &buf[(this->pkt_size * (npkt_read - p)) - n],
+				    (char*)&buf[(this->pkt_size * (npkt_read - p)) - n],
 				    n + p * this->pkt_size);
     /* FIXME: when read_length is not as required... we now stop demuxing */
     if (read_length != (n + p * this->pkt_size)) {
@@ -1776,7 +1776,7 @@ static unsigned char * demux_synchronise(demux_ts_t* this) {
 
     /* NEW: handle read returning less packets than NPKT_PER_READ... */
     do {
-      read_length = this->input->read(this->input, this->buf,
+      read_length = this->input->read(this->input, (char*)this->buf,
 				      this->pkt_size * NPKT_PER_READ);
       if (read_length < 0 || read_length % this->pkt_size) {
 	xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
