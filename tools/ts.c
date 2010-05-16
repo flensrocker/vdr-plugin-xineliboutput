@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.23 2010-04-16 10:35:53 phintuka Exp $
+ * $Id: ts.c,v 1.24 2010-05-16 11:35:13 phintuka Exp $
  *
  */
 
@@ -410,7 +410,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
 
               LOGPMT("parse_pmt: DVBSUB pid 0x%.4x: %s  page %d %d type %2.2x", pid,
                      pmt->spu_tracks[no].lang, pmt->spu_tracks[no].comp_page_id,
-                     pmt->spu_tracks[no].aux_page_id, stream[0]);
+                     pmt->spu_tracks[no].aux_page_id, STREAM_DVBSUB);
             }
           }
         }
