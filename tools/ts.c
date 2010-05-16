@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.24 2010-05-16 11:35:13 phintuka Exp $
+ * $Id: ts.c,v 1.25 2010-05-16 11:44:32 phintuka Exp $
  *
  */
 
@@ -191,6 +191,32 @@ static int find_audio_track(pmt_data_t *pmt, uint pid)
       return i;
   }
   return -1;
+}
+
+static inline int is_audio_descriptor(const uint8_t descriptor_tag)
+{
+  switch (descriptor_tag) {
+    case STREAM_DESCR_AC3:
+    case STREAM_DESCR_EAC3:
+    case STREAM_DESCR_DTS:
+    case STREAM_DESCR_AAC:
+      return 1;
+    default:;
+  }
+  return 0;
+}
+
+static ts_stream_type descriptor_to_stream_type(const uint8_t descriptor_tag)
+{
+  switch (descriptor_tag) {
+    case STREAM_DESCR_DVBSUB: return STREAM_DVBSUB;
+    case STREAM_DESCR_AC3:    return STREAM_AUDIO_AC3;
+    case STREAM_DESCR_EAC3:   return STREAM_AUDIO_EAC3;
+    case STREAM_DESCR_DTS:    return STREAM_AUDIO_DTS;
+    case STREAM_DESCR_AAC:    return STREAM_AUDIO_AAC;
+    default:;
+  }
+  return (ts_stream_type)0;
 }
 
 /*
@@ -380,11 +406,12 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
         break;
       case ISO_13818_PES_PRIVATE:
         for (i = 5; i < coded_length; i += stream[i+1] + 2) {
-          if (((stream[i] == STREAM_DESCR_AC3) || (stream[i] == STREAM_DESCR_EAC3)) && (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
-            if (find_audio_track(pmt, pid) < 0) {
-              LOGPMT("parse_pmt: AC3 audio pid 0x%.4x type %2.2x", pid, stream[0]);
+          if (is_audio_descriptor(stream[i])) {
+            if (pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS &&
+                find_audio_track(pmt, pid) < 0) {
+              LOGPMT("parse_pmt: PS1 audio pid 0x%.4x type %2.2x descriptor %2.2x", pid, stream[0], stream[i]);
               pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
-              pmt->audio_tracks[pmt->audio_tracks_count].type = (stream[i] == STREAM_DESCR_EAC3) ? STREAM_AUDIO_EAC3 : STREAM_AUDIO_AC3;
+              pmt->audio_tracks[pmt->audio_tracks_count].type = descriptor_to_stream_type(stream[i]);
               /* demux_ts_get_lang_desc(pmt->audio_tracks[pmt->audio_tracks_count].lang, */
               /*                        stream + 5, stream_info_length); */
               pmt->audio_tracks_count++;
