@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.8 2010-05-16 11:53:32 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.9 2010-05-16 11:59:58 phintuka Exp $
  *
  */
 
@@ -413,6 +413,8 @@ static int osdscaler_set_property(vo_driver_t *self, int prop, int val)
         this->enable = val?1:0;
       }
       return this->enable;
+
+    default:;
   }
 
   return vo_def_set_property(self, prop, val);
