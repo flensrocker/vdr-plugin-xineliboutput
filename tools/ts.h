@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.h,v 1.15 2010-05-15 19:24:05 phintuka Exp $
+ * $Id: ts.h,v 1.16 2010-05-16 11:28:18 phintuka Exp $
  *
  */
 
@@ -76,9 +76,14 @@ typedef enum {
   ISO_14496_PART10_VIDEO = 0x1b,  /* ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264) */
   STREAM_VIDEO_MPEG      = 0x80,
   STREAM_AUDIO_AC3       = 0x81,
-  STREAM_AUDIO_EAC3      = 0x84,
 
-  STREAM_DVBSUB          = 0x100
+  /* private streams, payload type detected from PMT stream descriptor tag */
+
+  STREAM_AUDIO_EAC3      = 0x7a06, // ISO_13818_PES_PRIVATE | (STREAM_DESCR_EAC3   << 8)
+  STREAM_AUDIO_DTS       = 0x7b06, // ISO_13818_PES_PRIVATE | (STREAM_DESCR_DTS    << 8)
+  STREAM_AUDIO_AAC       = 0x7c06, // ISO_13818_PES_PRIVATE | (STREAM_DESCR_AAC    << 8)
+  STREAM_DVBSUB          = 0x5906, // ISO_13818_PES_PRIVATE | (STREAM_DESCR_DVBSUB << 8)
+
 } ts_stream_type;
 
 /* stream info descriptors */
