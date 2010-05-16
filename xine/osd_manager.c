@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.17 2010-03-13 23:47:18 phintuka Exp $
+ * $Id: osd_manager.c,v 1.18 2010-05-16 11:57:21 phintuka Exp $
  *
  */
 
@@ -490,10 +490,10 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   /* if no scaling was required, we may still need to re-center OSD */
   if (!this->vo_scaling && !rle_scaled) {
     if (!use_unscaled) {
-    if (this->video_width != osd->extent_width)
-      ov_overlay.x += (this->video_width - osd->extent_width)/2;
-    if (this->video_height != osd->extent_height)
-      ov_overlay.y += (this->video_height - osd->extent_height)/2;
+      if (this->video_width != osd->extent_width)
+        ov_overlay.x += (this->video_width - osd->extent_width)/2;
+      if (this->video_height != osd->extent_height)
+        ov_overlay.y += (this->video_height - osd->extent_height)/2;
     } else {
       if (this->win_width >= 360 && this->win_height >= 288) {
         if (this->win_width != osd->extent_width)
