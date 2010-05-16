@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.7 2010-03-13 22:31:12 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.8 2010-05-16 11:53:32 phintuka Exp $
  *
  */
 
@@ -279,10 +279,15 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
     if (frame->crop_right  > 0) this->output_width  -= frame->crop_right;
   }
 
+  if (this->output_width < 128 || this->output_height < 128) {
+    LOGMSG("invalid output dimensions: %dx%d", this->output_width, this->output_height);
+    return 0;
+  }
+
   /* check if scaling should be done */
   if (ABS(this->output_width  - extent_width)  > extent_width /20 ||
       ABS(this->output_height - extent_height) > extent_height/20 ) {
-    LOGOSD("scaling required");
+    LOGOSD("scaling required to %dx%d", this->output_width, this->output_height);
     this->factor_x = 0x10000 * this->output_width  / extent_width;
     this->factor_y = 0x10000 * this->output_height / extent_height;
     return 1;
