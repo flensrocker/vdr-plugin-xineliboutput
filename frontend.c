@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.85 2010-03-15 11:43:26 phintuka Exp $
+ * $Id: frontend.c,v 1.86 2010-05-18 15:28:34 phintuka Exp $
  *
  */
 
@@ -234,6 +234,8 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_StreamPos = 0;
   m_LastClearPos = 0;
   m_Frames = 0;
+  m_TrickSpeed = -1;
+  m_bTrickSpeedBack = false;
   m_bEndOfStreamReached = false;
   m_bPlayingFile = false;
   m_StatusMonitor = NULL;
@@ -274,6 +276,11 @@ void cXinelibThread::SetVolume(int NewVolume)
 void cXinelibThread::TrickSpeed(int Speed, bool Backwards)
 {
   TRACEF("cXinelibThread::TrickSpeed");
+
+  Lock();
+  m_TrickSpeed      = Speed;
+  m_bTrickSpeedBack = Backwards;
+  Unlock();
 
   cString str = cString::sprintf("TRICKSPEED %d%s", Speed, Backwards ? " Backwards" : "");
   Xine_Control(str);
