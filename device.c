@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.106 2010-05-19 12:56:59 phintuka Exp $
+ * $Id: device.c,v 1.107 2010-05-19 12:58:16 phintuka Exp $
  *
  */
 
@@ -1221,24 +1221,24 @@ int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
   if (ts_PID(Data) == PatPmtParser()->Vpid()) {
 
-  if (!AcceptVideoPacket(Data, Length))
-    return Length;
+    if (!AcceptVideoPacket(Data, Length))
+      return Length;
 
-  if (m_StreamStart) {
-    if (!m_tssVideoSize)
-      m_tssVideoSize = ts_state_init(4096);
+    if (m_StreamStart) {
+      if (!m_tssVideoSize)
+        m_tssVideoSize = ts_state_init(4096);
 
-    if (ts_get_video_size(m_tssVideoSize, Data, m_VideoSize,
-                          (PatPmtParser()->Vtype() == ISO_14496_PART10_VIDEO))) {
+      if (ts_get_video_size(m_tssVideoSize, Data, m_VideoSize,
+                            (PatPmtParser()->Vtype() == ISO_14496_PART10_VIDEO))) {
 
-      m_StreamStart = false;
-      LOGMSG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);
-      ForEach(m_clients, &cXinelibThread::SetHDMode, (m_VideoSize->width > 800));
+        m_StreamStart = false;
+        LOGMSG("Detected video size %dx%d", m_VideoSize->width, m_VideoSize->height);
+        ForEach(m_clients, &cXinelibThread::SetHDMode, (m_VideoSize->width > 800));
 
-      ts_state_dispose(m_tssVideoSize);
-      m_tssVideoSize = NULL;
+        ts_state_dispose(m_tssVideoSize);
+        m_tssVideoSize = NULL;
+      }
     }
-  }
   }
 
   return PlayTsAny(Data, Length);
