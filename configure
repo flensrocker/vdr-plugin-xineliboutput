@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.21 2010-03-12 12:07:22 phintuka Exp $
+# * $Id: configure,v 1.22 2010-05-19 12:42:42 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -320,7 +320,6 @@ done
 
 check_deps(){
   disabled libxine && disable x11 fb libavutil libjpeg
-  disabled x11     && disable xshm xrender xrandr xdpms xinerama vdpau
   disabled x11     && disable dbus-glib-1 xshm xrender xrandr xdpms xinerama vdpau
   disabled vdr     && disable libextractor
 }
