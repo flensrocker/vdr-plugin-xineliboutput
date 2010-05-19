@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.105 2010-03-15 12:40:30 phintuka Exp $
+ * $Id: device.c,v 1.106 2010-05-19 12:56:59 phintuka Exp $
  *
  */
 
@@ -1219,10 +1219,12 @@ int cXinelibDevice::PlayTsAudio(const uchar *Data, int Length)
 
 int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 {
+  if (ts_PID(Data) == PatPmtParser()->Vpid()) {
+
   if (!AcceptVideoPacket(Data, Length))
     return Length;
 
-  if (m_StreamStart && ts_PID(Data) == PatPmtParser()->Vpid()) {
+  if (m_StreamStart) {
     if (!m_tssVideoSize)
       m_tssVideoSize = ts_state_init(4096);
 
@@ -1236,6 +1238,7 @@ int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
       ts_state_dispose(m_tssVideoSize);
       m_tssVideoSize = NULL;
     }
+  }
   }
 
   return PlayTsAny(Data, Length);
