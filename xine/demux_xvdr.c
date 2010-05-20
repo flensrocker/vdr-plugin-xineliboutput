@@ -543,7 +543,6 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
       if (ts_data->video) {
         buf_element_t *vbuf     = ts2es_put(ts_data->video, buf->content, src_fifo);
         if (vbuf) {
-          this->pts = vbuf->pts;
           check_newpts( this, vbuf, PTS_VIDEO );
 
           this->stream->video_fifo->put(this->stream->video_fifo, vbuf);
@@ -559,7 +558,6 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
           if (ts_data->audio[i]) {
             buf_element_t *abuf = ts2es_put(ts_data->audio[i], buf->content, src_fifo);
             if (abuf) {
-              this->pts = abuf->pts;
               check_newpts( this, abuf, PTS_AUDIO );
               track_audio_stream_change (this, abuf);
 
