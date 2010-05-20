@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.316 2010-05-12 10:45:00 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.317 2010-05-20 13:02:04 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.316 2010-05-12 10:45:00 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.317 2010-05-20 13:02:04 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3100,6 +3100,15 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       if(sw != this->sw_volume_control) {
 	this->sw_volume_control = sw;
 	if(sw) {
+          /*
+           * XXX make sure libxine's internal copy of the mixer
+           * volume is initialized before using XINE_PARAM_AUDIO_MUTE...
+           * (this fixes mixer volume being reset to 45 here every time
+           *  at vdr-sxfe start when using software volume control.)
+           */
+          tmp32 = xine_get_param(stream, XINE_PARAM_AUDIO_VOLUME);
+          xine_set_param(stream, XINE_PARAM_AUDIO_VOLUME, tmp32);
+
 	  xine_set_param(stream, XINE_PARAM_AUDIO_MUTE, 0);
 	} else {
 	  xine_set_param(stream, XINE_PARAM_AUDIO_AMP_LEVEL, 100);
