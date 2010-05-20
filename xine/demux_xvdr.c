@@ -416,9 +416,8 @@ static void demux_xvdr_parse_pack (demux_xvdr_t *this)
 
   if (!buf) {
     if (errno == EINTR) {
-      /* very verbose logging ? */
-      if (iSysLogLevel >= SYSLOGLEVEL_VERBOSE)
-        LOGDBG("input->read_block() was interrupted");
+      LOGVERBOSE("input->read_block() was interrupted");
+      ts_data_flush(this->ts_data);
     } else if (errno != EAGAIN) {
       LOGDBG("DEMUX_FINISHED (input returns NULL with error)");
       this->status = DEMUX_FINISHED;
