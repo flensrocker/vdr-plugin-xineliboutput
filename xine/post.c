@@ -200,6 +200,10 @@ static void __pplugin_update_parameters(xine_post_t *post, char *args)
                 _pplugin_update_parameter(&pobj);
               }
               break;
+            case POST_PARAM_TYPE_LAST:
+              break; /* terminator of parameter list */
+            default:
+              LOGMSG("%s(%d): Unknown post parameter type %d!", __FUNCTION__, __LINE__, pobj.param->type);
             }
           } else {
             LOGMSG("Unknown post plugin parameter %s !", param);
