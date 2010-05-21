@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.85 2010-01-09 23:31:42 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.86 2010-05-21 12:53:55 phintuka Exp $
  *
  */
 
@@ -135,9 +135,11 @@ static uint64_t read_key_seq(void)
                     k |= key1 & 0xFF;
                   } while (key1 != 0x7E);
                   break;
+                default:;
               }
             }
             break;
+          default:;
         }
       }
     }
@@ -461,7 +463,7 @@ static const struct option long_options[] = {
   { "tcp",       no_argument,  NULL, 't' },
   { "udp",       no_argument,  NULL, 'u' },
   { "rtp",       no_argument,  NULL, 'r' },
-  { NULL }
+  { NULL,        no_argument,  NULL,  0  }
 };
 
 #define PRINTF(x...) do { if(SysLogLevel>1) printf(x); } while(0)
