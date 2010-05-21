@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.89 2010-03-12 23:00:26 phintuka Exp $
+ * $Id: config.c,v 1.90 2010-05-21 12:44:22 phintuka Exp $
  *
  */
 
@@ -696,8 +696,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       { "post",         required_argument, NULL, 'P' },
       { "config",       required_argument, NULL, 'C' },
       { "primary",      no_argument,       NULL, 'p' },
-      { "exit-on-close",no_argument,     NULL, 'c' },
-      { NULL }
+      { "exit-on-close",no_argument,       NULL, 'c' },
+      { NULL,           no_argument,       NULL,  0  }
     };
 
   int c;

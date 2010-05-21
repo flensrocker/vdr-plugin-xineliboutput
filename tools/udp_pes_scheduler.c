@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.53 2010-03-14 11:50:50 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.54 2010-05-21 12:47:59 phintuka Exp $
  *
  */
 
@@ -868,7 +868,7 @@ void cUdpScheduler::ReSend(int fd, uint64_t Pos, int Seq1, int Seq2)
   struct {
     stream_udp_header_t hdr;
     char                payload[64-sizeof(stream_udp_header_t)];
-  } udp_ctrl = {{(uint64_t)INT64_C(-1), (uint16_t)-1}, {0}};
+  } udp_ctrl = {{(uint64_t)INT64_C(-1), (uint16_t)-1, 0, {}}, {0}};
 
   // Handle buffer wrap
   if(Seq1 > Seq2)
