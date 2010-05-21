@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.3 2009-02-16 16:14:58 phintuka Exp $
+ * $Id: rle.c,v 1.4 2010-05-21 11:55:15 phintuka Exp $
  *
  */
 
@@ -23,10 +23,10 @@
  * rle_compress()
  *
  */
-int rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint h)
+uint rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint h)
 {
   xine_rle_elem_t rle, *rle_p = 0, *rle_base;
-  int x, y, num_rle = 0, rle_size = 8128;
+  uint x, y, num_rle = 0, rle_size = 8128;
   const uint8_t *c;
 
   rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
