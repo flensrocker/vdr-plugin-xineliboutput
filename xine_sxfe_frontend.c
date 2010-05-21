@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.119 2010-05-21 12:16:25 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.120 2010-05-21 12:21:05 phintuka Exp $
  *
  */
 
@@ -617,7 +617,7 @@ static Visual *find_argb_visual(Display *dpy, int scr)
 
 static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
 {
-  int i, pixelcounter = 0;
+  uint i, pixelcounter = 0;
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
 
   for(i = 0; i < cmd->num_rle; ++i) {
@@ -625,8 +625,10 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
     const uint8_t r = (cmd->palette + (cmd->data + i)->color)->r;
     const uint8_t g = (cmd->palette + (cmd->data + i)->color)->g;
     const uint8_t b = (cmd->palette + (cmd->data + i)->color)->b;
-    int j, finalcolor = 0;
-    finalcolor |= ((alpha << 24) & 0xFF000000);
+    uint32_t finalcolor;
+    uint     j;
+
+    finalcolor  = ((alpha << 24) & 0xFF000000);
     finalcolor |= ((r << 16) & 0x00FF0000);
     finalcolor |= ((g << 8) & 0x0000FF00);
     finalcolor |= (b & 0x000000FF);
@@ -1008,7 +1010,7 @@ static void set_icon(sxfe_t *this)
 #else
   long      q[2+32*32];
   uint32_t *p = (uint32_t*)&vdrlogo_32x32;
-  int       i;
+  uint      i;
   for (i = 0; i < 2 + vdrlogo_32x32.width*vdrlogo_32x32.height; i++)
     q[i] = p[i];
   XChangeProperty(this->display, this->window[0],
@@ -1653,7 +1655,7 @@ static int sxfe_run(frontend_t *this_gen)
         if ( cmessage->message_type == this->xa_SXFE_INTERRUPT )
           LOGDBG("ClientMessage: sxfe_interrupt");
 
-        if ( cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW ) {
+        if ( (Atom)cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW ) {
           /* we got a window deletion message from out window manager.*/
           LOGDBG("ClientMessage: WM_DELETE_WINDOW");
 
