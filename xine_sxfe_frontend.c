@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.117 2010-01-03 09:54:39 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.118 2010-05-21 12:01:53 phintuka Exp $
  *
  */
 
@@ -1576,6 +1576,8 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
         }
       }
       break;
+
+    default:; // ignore other buttons.
   }
 }
 
@@ -1659,6 +1661,7 @@ static int sxfe_run(frontend_t *this_gen)
         }
         break;
       }
+      default:; // ignore other events.
     }
 
     if (event.type == this->completion_event)
