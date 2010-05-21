@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.18 2010-05-16 11:57:21 phintuka Exp $
+ * $Id: osd_manager.c,v 1.19 2010-05-21 12:38:48 phintuka Exp $
  *
  */
 
@@ -145,7 +145,7 @@ static void clear_osdcmd(osd_command_t *cmd)
  */
 static void osdcmd_to_overlay(vo_overlay_t *ovl, osd_command_t *cmd)
 {
-  int i;
+  uint i;
 
   ovl->rle       = (rle_elem_t*)cmd->data;
   ovl->data_size = cmd->datalen;
