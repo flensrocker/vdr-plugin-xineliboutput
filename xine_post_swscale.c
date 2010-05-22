@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.10 2010-04-16 10:23:24 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.11 2010-05-22 12:45:30 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -481,7 +481,7 @@ typedef union {
 
 static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 			const int dst_pitch, const int src_pitch,
-			const int dst_width, const int dst_height,			 
+			const int dst_width, const int dst_height,
 			const int src_width, const int src_height,
 			const int Interlaced, const uint32_t * const hControl, 
 			const uint32_t * const vOffsets, const uint32_t * const vWeights,
@@ -517,7 +517,7 @@ static int do_warp_yuy2(uint8_t *dst, const uint8_t *src,
 
   for (y = dst_start; y < dst_height; y++) {
 
-    if(vOffsets[y] >= src_height) {
+    if((int)vOffsets[y] >= src_height) {
       /* slice completed */
       /*DBG("do_warp_yuy2: max input height reached: need line %d, height %d\n -> Returning next output line: %d\n",
 	vOffsets[y], src_height, y);*/
@@ -859,7 +859,7 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
    */
 
   for (y = dst_start; y < dst_height; y++) {
-    if(vOffsets[y] >= src_height) {
+    if((int)vOffsets[y] >= src_height) {
       /* slice completed */
       /*DBG("do_warp_yv12: max input height reached: need line %d, height %d\n -> Returning next output line: %d , start was %d\n",
 	(int)vOffsets[y], (int)src_height, (int)y, (int)dst_start);*/
