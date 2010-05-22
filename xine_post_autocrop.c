@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.38 2010-01-30 08:32:06 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.39 2010-05-22 12:09:24 phintuka Exp $
  *
  */
 
@@ -878,6 +878,7 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
             if(end_line >= frame->height)
               end_line = frame->height-1;
             TRACE2("        wide -> center bottom\n");
+    default:;
     }
 
   } else {
@@ -1518,6 +1519,7 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 	  }
 	}
 	break;
+      default:;
       }
     }
   }
