@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.20 2010-05-22 12:27:46 phintuka Exp $
+ * $Id: osd_manager.c,v 1.21 2010-05-22 12:30:19 phintuka Exp $
  *
  */
 
@@ -24,7 +24,7 @@
 #include "osd_manager.h"
 
 /*#define LOGOSD(x...) LOGMSG(x)*/
-#define LOGOSD(x...)
+#define LOGOSD(x...) do {} while(0)
 
 static const char log_module_input_osd[] = "[input_osd] ";
 #define LOG_MODULENAME log_module_input_osd
@@ -438,9 +438,9 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
       /* unscaled OSD instead of downscaling ? */
       if (w_diff < 0 || h_diff < 0)
         if (cmd->flags & OSDFLAG_UNSCALED_LOWRES)
-          if (0 < (use_unscaled = unscaled_supported))
+          if (0 < (use_unscaled = unscaled_supported)) {
             LOGOSD("Size out of margins, using unscaled overlay");
-
+            }
       if (!use_unscaled && cmd->scaling > 0) {
         osdcmd_scale(this, cmd, osd, this->video_width, this->video_height);
         rle_scaled = 1;
