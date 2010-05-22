@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.116 2010-03-31 20:46:33 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.117 2010-05-22 11:59:28 phintuka Exp $
  *
  */
 
@@ -398,7 +398,7 @@ static void fe_frame_output_cb (void *data,
       char cmd[4096];
       if(snprintf(cmd, sizeof(cmd), "%s %d", 
                   this->aspect_controller, (int)(video_aspect * 10000.0)) 
-         < sizeof(cmd)) {
+         < (int)sizeof(cmd)) {
         LOGDBG("Aspect ratio changed, executing %s", cmd);
         if(system(cmd) == -1)
 	  LOGERR("Executing /bin/sh -c %s failed", cmd);
@@ -1072,6 +1072,7 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
       case 2: /* 4:3   */ r = 4.0/3.0; break;
       case 3: /* 16:9  */ r = 16.0/9.0; break;
       case 4: /* 16:10 */ r = 16.0/10.0; break;
+      default: LOGDBG("%s(%d): unknown aspect: %d", __FUNCTION__, __LINE__, this->aspect);
       }
       /* in finnish locale decimal separator is "," - same as post plugin parameter separator :( */
       sprintf(tmp, "%04d", (int)(r*1000.0));
