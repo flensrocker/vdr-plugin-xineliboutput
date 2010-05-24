@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.12 2010-05-24 12:03:00 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.13 2010-05-24 12:12:36 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -36,9 +36,10 @@
  *    - Added PIC support (do not clobber ebx in x86, access only local variables from asm)
  *    - Fixed yv12 stretched warp tables generation
  */
- 
+
 #include <xine/xine_internal.h>
 #include <xine/post.h>
+#include <float.h>  /* DBL_MIN */
 
 /*
  * tools
@@ -56,6 +57,12 @@
 #ifndef FABS
 #  define FABS(x) ((x) < 0.0 ? -(x) : (x))
 #endif
+
+static int doublecmp(double a, double b) {
+  if      (FABS(a-b) <= 2*DBL_MIN) return 0; // equal
+  else if (a > b) return 1;
+  else            return -1;
+}
 
 
 /*#define DBG(x...)*/
@@ -143,7 +150,7 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
 
   for(i=0; i < newwidth; i+=2) {
     /* first make even pixel control */
-    if (hWarp==1)  /*if no warp factor */
+    if (doublecmp(hWarp, 1.0) == 0)  /* if no warp factor */
       j = i * 256 * (oldwidth-1) / (newwidth-1);
     else           /* stretch and warp somehow */
       j = (int) (256 * WarpFactor(i / (newwidth-1.0), hWarp) * (oldwidth-1));
@@ -161,7 +168,7 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
     }
 
     /* now make odd pixel control */
-    if (hWarp==1)   /* if no warp factor */
+    if (doublecmp(hWarp, 1.0) == 0)   /* if no warp factor */
       j = (i+1) * 256 * (oldwidth-1) / (newwidth-1);
     else        /* stretch and warp somehow */
       j = (int) (256 * WarpFactor((i+1) / (newwidth-1.0), hWarp) * (oldwidth-1));
@@ -185,7 +192,7 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
   // UV
   for(i=0; i < newwidth/2; i+=2) {
     /* first make even pixel control */
-    if (hWarp==1)  /*if no warp factor */
+    if (doublecmp(hWarp, 1.0) == 0)  /* if no warp factor */
       j = i * 256 * (oldwidth/2-1) / (newwidth/2-1);
     else           /* stretch and warp somehow */
       j = (int) (256 * WarpFactor(i / (newwidth/2-1.0), hWarp) * (oldwidth/2-1));
@@ -203,7 +210,7 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
     }
 
     /* now make odd pixel control */
-    if (hWarp==1)   /* if no warp factor */
+    if (doublecmp(hWarp, 1.0) == 0)   /* if no warp factor */
       j = (i+1) * 256 * (oldwidth/2-1) / (newwidth/2-1);
     else        /* stretch and warp somehow */
       j = (int) (256 * WarpFactor((i+1) / (newwidth/2-1.0), hWarp) * (oldwidth/2-1));
@@ -232,7 +239,7 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
 
   /* First Luma Table */
   for(i=0; i< newheight; ++i) {
-    if (vWarp==1)  /* if no warp factor */
+    if (doublecmp(vWarp, 1.0) == 0)  /* if no warp factor */
       j = i * 256 * (oldheight-1) / (newheight-1);
     else           /* stretch and warp somehow */
       j = (int) (256 * WarpFactor(i / (newheight-1.0), vWarp) * (oldheight-1));
@@ -264,7 +271,7 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
 
   /* Vertical table for chroma */
   for(i=0; i< newheight/2; ++i) {
-    if (vWarp==1)  /* if no warp factor */
+    if (doublecmp(vWarp, 1.0) == 0)  /* if no warp factor */
 #ifdef VANILLA
       j = (int) ( (i+.25) * 256 * (oldheight-1) / (newheight-1.0) - 64 );
 #else
@@ -343,7 +350,7 @@ static void init_tables_yuy2(int newwidth, int newheight, int oldwidth, int oldh
   /* First set up horizontal table */
   for(i=0; i < newwidth; i+=2) {
     /* first make even pixel control */
-    if (hWarp==1)          /* if no warp factor */
+    if (doublecmp(hWarp, 1.0) == 0)          /* if no warp factor */
       j = i * 256 * (oldwidth-1) / (newwidth-1);
     else                   /* stretch and warp somehow */
       j = (int) (256 * WarpFactor(i / (newwidth-1.0), hWarp) * (oldwidth-1));
@@ -365,7 +372,7 @@ static void init_tables_yuy2(int newwidth, int newheight, int oldwidth, int oldh
     }
     
     /* now make odd pixel control */
-    if (hWarp==1)                          /* if no warp factor */
+    if (doublecmp(hWarp, 1.0) == 0)  /* if no warp factor */
       j = (i+1) * 256 * (oldwidth-1) / (newwidth-1);
     else                                   /* stretch and warp somehow */
       j = (int) (256 * WarpFactor((i+1) / (newwidth-1.0), hWarp) * (oldwidth-1));
@@ -395,7 +402,7 @@ static void init_tables_yuy2(int newwidth, int newheight, int oldwidth, int oldh
   /* Next set up vertical table. The offsets are measured in lines and will be mult */
   /* by the source pitch later */
   for(i=0; i< newheight; ++i) {
-    if (vWarp==1)                   /* if no warp factor */
+    if (doublecmp(vWarp, 1.0) == 0)                   /* if no warp factor */
       j = i * 256 * (oldheight-1) / (newheight-1);
     else                            /* stretch and warp somehow */
       j = (int) (256 * WarpFactor(i / (newheight-1.0), vWarp) * (oldheight-1));
@@ -1562,8 +1569,11 @@ static vo_frame_t *got_frame(vo_frame_t *frame)
     this->input_aspect = frame->ratio;
     this->input_interlaced = !!(frame->flags & VO_INTERLACED_FLAG);
 
-    /* re-configure target size and aspect ratio */ 
-    this->output_aspect = this->config.output_aspect ?: frame->ratio;
+    /* re-configure target size and aspect ratio */
+    if (doublecmp(this->config.output_aspect, 0.0) == 0)
+      this->output_aspect = frame->ratio;
+    else
+      this->output_aspect = this->config.output_aspect;
     if (!this->config.no_downscaling) {
       this->output_width  = this->config.output_width  ?: frame->width;
       this->output_height = this->config.output_height ?: frame->height;
