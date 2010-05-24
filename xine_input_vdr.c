@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.317 2010-05-20 13:02:04 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.318 2010-05-24 12:55:48 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.317 2010-05-20 13:02:04 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.318 2010-05-24 12:55:48 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4010,9 +4010,9 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
   struct sockaddr_in server_address;
   socklen_t          address_len = sizeof(server_address);
 
-  int n = recvfrom(this->fd_data, read_buffer->mem,
-                   read_buffer->max_size, MSG_TRUNC,
-                   &server_address, &address_len);
+  ssize_t n = recvfrom(this->fd_data, read_buffer->mem,
+                       read_buffer->max_size, MSG_TRUNC,
+                       &server_address, &address_len);
   if (n <= 0) {
     if (!n || (errno != EINTR && errno != EAGAIN)) {
       LOGERR("read_socket_udp(): recvfrom() failed");
@@ -4047,14 +4047,14 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
    */
 
   if (this->rtp) {
-    if (n < sizeof(stream_rtp_header_impl_t)) {
+    if (n < (ssize_t)sizeof(stream_rtp_header_impl_t)) {
       LOGMSG("received invalid RTP packet (too short)");
       read_buffer->free_buffer(read_buffer);
       errno = EAGAIN;
       return NULL;
     }
   }
-  else if (n < sizeof(stream_udp_header_t)) {
+  else if (n < (ssize_t)sizeof(stream_udp_header_t)) {
     LOGMSG("received invalid UDP packet (too short)");
     read_buffer->free_buffer(read_buffer);
     errno = EAGAIN;
@@ -4062,7 +4062,7 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
   }
 
   if (n > read_buffer->max_size) {
-    LOGMSG("received too large UDP packet (%d bytes, buffer is %d bytes)", n, read_buffer->max_size);
+    LOGMSG("received too large UDP packet (%zd bytes, buffer is %d bytes)", n, read_buffer->max_size);
     read_buffer->free_buffer(read_buffer);
     errno = EAGAIN;
     return NULL;
