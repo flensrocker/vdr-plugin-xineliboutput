@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.11 2010-05-22 12:45:30 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.12 2010-05-24 12:03:00 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -39,6 +39,24 @@
  
 #include <xine/xine_internal.h>
 #include <xine/post.h>
+
+/*
+ * tools
+ */
+
+#ifndef ALIGN
+#  define ALIGN(b,p) ((void*)((((unsigned long)(p)) + (b)-1) & (~((b)-1))))
+#endif
+#ifndef MIN
+#  define MIN(a,b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+#  define MAX(a,b) ((a) > (b) ? (a) : (b))
+#endif
+#ifndef FABS
+#  define FABS(x) ((x) < 0.0 ? -(x) : (x))
+#endif
+
 
 /*#define DBG(x...)*/
 #define DBG(x...) fprintf(stderr, "post_warp: " x)
@@ -1271,23 +1289,6 @@ static int do_warp_yv12(uint8_t *dst, const uint8_t * const src,
 #endif
   return 0; 
 }
-
-/*
- * tools
- */
-
-#ifndef ALIGN
-#  define ALIGN(b,p) ((void*)((((unsigned long)(p)) + (b)-1) & (~((b)-1))))
-#endif
-#ifndef MIN
-#  define MIN(a,b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef MAX
-#  define MAX(a,b) ((a) > (b) ? (a) : (b))
-#endif
-#ifndef FABS
-#  define FABS(x) ((x) < 0.0 ? -(x) : (x))
-#endif
 
 /*
  * xine plugin
