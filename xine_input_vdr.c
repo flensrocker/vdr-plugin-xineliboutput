@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.319 2010-05-24 12:58:46 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.320 2010-05-25 12:42:05 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.319 2010-05-24 12:58:46 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.320 2010-05-25 12:42:05 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -886,7 +886,7 @@ static ssize_t write_control_data(vdr_input_plugin_t *this, const void *str, siz
   while (len > 0) {
 
     if (!this->control_running) {
-      LOGERR("write_control aborted");
+      LOGMSG("write_control aborted");
       return -1;
     }
 
