@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.89 2010-05-25 12:28:13 phintuka Exp $
+# $Id: Makefile,v 1.90 2010-05-25 13:43:12 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -357,7 +357,7 @@ $(VDRFBFE): $(OBJS_FBFE)
 #
 
 $(XINEINPUTVDR): $(OBJS_XINEINPUTVDR)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $(OBJS_XINEINPUTVDR)
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) $(LIBS_AVUTIL) -o $@ $(OBJS_XINEINPUTVDR)
 $(XINEPOSTAUTOCROP): xine_post_autocrop.o
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
 $(XINEPOSTSWSCALE): xine_post_swscale.o

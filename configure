@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.23 2010-05-25 12:28:13 phintuka Exp $
+# * $Id: configure,v 1.24 2010-05-25 13:43:12 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -349,7 +349,7 @@ if enabled libxine; then
   fi
   log " $XINEPLUGINDIR"
 
-  test_library   XINE libavutil    "libavutil/mem.h"           "-lavutil"    "av_mallocz(1)"
+  test_library   AVUTIL libavutil    "libavutil/mem.h"           "-lavutil"    "av_mallocz(1)"
   test_library   JPEG libjpeg      "jpeglib.h"                 "-ljpeg"      "jpeg_create_compress(0)"
   test_library   X11  x11          "X11/X.h"                   "-lX11"       "XInitThreads()"
   if enabled x11; then
@@ -445,6 +445,7 @@ echo "CFLAGS_VDR  += $CFLAGS_VDR">>$makefile
 echo "CFLAGS_X11  += $CFLAGS_X11">>$makefile
 echo "LIBS_XINE   += $LIBS_XINE">>$makefile
 echo "LIBS_JPEG   += $LIBS_JPEG">>$makefile
+echo "LIBS_AVUTIL += $LIBS_AVUTIL">>$makefile
 echo "LIBS_VDR    += $LIBS_VDR">>$makefile
 echo "LIBS_X11    += $LIBS_X11">>$makefile
 
