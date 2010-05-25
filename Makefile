@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.88 2010-03-07 17:27:14 rofafor Exp $
+# $Id: Makefile,v 1.89 2010-05-25 12:28:13 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -335,22 +335,22 @@ $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 #
 
 $(VDRPLUGIN_SXFE): $(OBJS_SXFE_SO)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
-	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) -o $@
+	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) -o $@
 
 #
 # vdr-fbfe
 #
 
 $(VDRPLUGIN_FBFE): $(OBJS_FBFE_SO)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) $(LIBS_JPEG) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
-	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -o $@
+	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) -o $@
 
 #
 # xine plugins
