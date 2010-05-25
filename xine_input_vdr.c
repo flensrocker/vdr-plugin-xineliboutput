@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.320 2010-05-25 12:42:05 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.321 2010-05-25 13:30:11 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.320 2010-05-25 12:42:05 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.321 2010-05-25 13:30:11 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -695,7 +695,8 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
        * This provides much faster sync after channel switch, replay start etc.
        */
 
-      int fill_level, trim_rel, trim_act;
+      int trim_rel, trim_act;
+      unsigned fill_level;
 
       #define DIVIDER 8000
       #define WEIGHTING 2
@@ -1330,7 +1331,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
   /* HD buffer */
   if (this->hd_stream && size <= HD_BUF_ELEM_SIZE) {
-    if (this->hd_buffer->buffer_pool_num_free > this->reserved_buffers)
+    if (this->hd_buffer->buffer_pool_num_free > (int)this->reserved_buffers)
       buf = this->hd_buffer->buffer_pool_try_alloc(this->hd_buffer);
     if (!force && !buf)
       return NULL;
@@ -1338,7 +1339,7 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
   /* limit max. buffered data */
   if(!force && !buf) {
-    if (this->buffer_pool->buffer_pool_num_free < this->reserved_buffers)
+    if (this->buffer_pool->buffer_pool_num_free < (int)this->reserved_buffers)
       return NULL;
   }
 
@@ -2589,7 +2590,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   todo    = osdcmd.size - sizeof(osdcmd.size);
 
   /* read data */
-  size_t bytes = MIN(todo, expect);
+  ssize_t bytes = MIN(todo, expect);
   if (read_control(this, pt, bytes) != bytes) {
     LOGMSG("control: error reading OSDCMD data");
     return CONTROL_DISCONNECTED;
@@ -2597,9 +2598,10 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
   if (expect < todo) {
     /* server uses larger struct, discard rest of data */
-    uint8_t dummy[todo-expect];
-    LOGMSG("osd_command_t size %d, expected %d", (int)osdcmd.size, (int)expect);
-    if (read_control(this, dummy, todo-expect) != todo-expect) {
+    ssize_t skip = todo - expect;
+    uint8_t dummy[skip];
+    LOGMSG("osd_command_t size %d, expected %zu", osdcmd.size, expect);
+    if (read_control(this, dummy, skip) != skip) {
       LOGMSG("control: error reading OSDCMD data (unknown part)");
       return CONTROL_DISCONNECTED;
     }
@@ -2609,7 +2611,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
   /* read palette */
   if (osdcmd.palette && osdcmd.colors>0) {
-    int bytes = sizeof(xine_clut_t)*(osdcmd.colors);
+    ssize_t bytes = sizeof(xine_clut_t)*(osdcmd.colors);
     osdcmd.palette = malloc(bytes);
     if (read_control(this, (unsigned char *)osdcmd.palette, bytes) != bytes) {
       LOGMSG("control: error reading OSDCMD palette");
@@ -2876,7 +2878,7 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
 static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
-  int err = CONTROL_OK, i, j;
+  int err = CONTROL_OK;
   int /*int32_t*/ tmp32 = 0;
   uint64_t tmp64 = 0ULL;
   xine_stream_t *stream = this->stream;
@@ -2939,7 +2941,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = set_deinterlace_method(this, cmd+12);
 
   } else if(!strncasecmp(cmd, "EVENT ", 6)) {
-    int i;
+    unsigned i;
     char *pt = strchr(cmd, '\n');
     if(pt) *pt=0;
     pt = strstr(cmd+6, " CHAPTER");
@@ -3139,7 +3141,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "EQUALIZER ", 10)) {
-    int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0};
+    int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0}, i, j;
     sscanf(cmd+10,"%d %d %d %d %d %d %d %d %d %d",
 	   eqs,eqs+1,eqs+2,eqs+3,eqs+4,eqs+5,eqs+6,eqs+7,eqs+8,eqs+9);
     for(i=XINE_PARAM_EQ_30HZ,j=0; i<=XINE_PARAM_EQ_16000HZ; i++,j++)
@@ -3603,10 +3605,10 @@ static const struct {
 static void vdr_event_cb (void *user_data, const xine_event_t *event) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *)user_data;
-  int i;
+  unsigned i;
 
   for (i = 0; i < sizeof(vdr_keymap) / sizeof(vdr_keymap[0]); i++) {
-    if (event->type == vdr_keymap[i].event) {
+    if ((uint32_t)event->type == vdr_keymap[i].event) {
       if (event->data && event->data_length == 4 &&
           !strncmp(event->data, "VDR", 4)) {
         /*LOGMSG("Input event created by self, ignoring");*/
@@ -3849,7 +3851,7 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
       wait_stream_sync(this))
     return NULL;
 
-  if (read_buffer && read_buffer->size >= sizeof(stream_tcp_header_t))
+  if (read_buffer && read_buffer->size >= (ssize_t)sizeof(stream_tcp_header_t))
     todo += ((stream_tcp_header_t *)read_buffer->content)->len;
 
   while (XIO_READY == (result = _x_io_select(this->stream, this->fd_data, XIO_READ_READY, 100))) {
@@ -4110,7 +4112,7 @@ static buf_element_t *udp_check_packet(buf_element_t *read_buffer)
   uint8_t             *pkt_data = read_buffer->content + sizeof(stream_udp_header_t);
 
   /* Check for MPEG-TS sync byte or PES header */
-  if (read_buffer->size > sizeof(stream_udp_header_t) &&
+  if (read_buffer->size > (ssize_t)sizeof(stream_udp_header_t) &&
       !DATA_IS_TS(pkt_data) &&
       (pkt_data[0] || pkt_data[1] || pkt_data[2] != 1)) {
     LOGMSG("received invalid UDP packet (TS sync byte or PES header missing)");
@@ -4224,7 +4226,7 @@ static buf_element_t *udp_process_queue(vdr_input_plugin_t *this)
     buf_element_t       *buf = NULL;
     stream_udp_header_t *pkt = (stream_udp_header_t*)udp->queue[udp->next_seq]->content;
     udp->queue_input_pos = pkt->pos + udp->queue[udp->next_seq]->size - sizeof(stream_udp_header_t);
-    if (udp->queue[udp->next_seq]->size > sizeof(stream_udp_header_t))
+    if (udp->queue[udp->next_seq]->size > (ssize_t)sizeof(stream_udp_header_t))
       buf = udp->queue[udp->next_seq];
     else
       udp->queue[udp->next_seq]->free_buffer(udp->queue[udp->next_seq]);
@@ -5067,7 +5069,7 @@ static int vdr_plugin_open_local (input_plugin_t *this_gen)
   return vdr_plugin_open(this_gen);
 }
 
-static void set_recv_buffer_size(int fd, int max_buf)
+static void set_recv_buffer_size(int fd, unsigned max_buf)
 {
   /* try to have larger receiving buffer */
 
