@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.90 2010-05-21 12:44:22 phintuka Exp $
+ * $Id: config.c,v 1.91 2010-05-26 11:53:13 phintuka Exp $
  *
  */
 
@@ -569,6 +569,8 @@ config_t::config_t() {
   osd_scaling          = OSD_SCALING_NEAREST;
   osd_spu_scaling      = OSD_SCALING_NEAREST;
   hud_osd              = 0;
+  opengl_always        = 0;
+  opengl_hud           = 0;
 
   osd_blending             = OSD_BLENDING_SOFTWARE;
   osd_blending_lowresvideo = OSD_BLENDING_HARDWARE;
@@ -792,6 +794,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "X11.WindowHeight")) height = atoi(Value);
   else if (!strcasecmp(Name, "X11.UseKeyboard"))  use_x_keyboard = atoi(Value);
   else if (!strcasecmp(Name, "X11.HUDOSD"))       hud_osd = atoi(Value);
+  else if (!strcasecmp(Name, "X11.OpenglAlways")) opengl_always = atoi(Value);
+  else if (!strcasecmp(Name, "X11.OpenglHUDOSD")) opengl_hud = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Driver")) STRN0CPY(audio_driver, Value);
   else if (!strcasecmp(Name, "Audio.Port"))   STRN0CPY(audio_port, Value);
