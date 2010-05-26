@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.87 2010-05-26 11:54:26 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.88 2010-05-26 12:10:02 phintuka Exp $
  *
  */
 
@@ -440,6 +440,8 @@ static const struct option long_options[] = {
   { "fullscreen", no_argument,       NULL, 'f' },
   { "geometry",   required_argument, NULL, 'g' },
   { "hud",        no_argument,       NULL, 'D' },
+  { "opengl-always",no_argument,     NULL, 'O' },
+  { "opengl-hud", no_argument,       NULL, 'Q' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
   { "buffers",    required_argument, NULL, 'B' },
@@ -569,6 +571,20 @@ int main(int argc, char *argv[])
               PRINTF("HUD OSD mode\n");
 #else
               PRINTF("HUD OSD not supported\n");
+#endif
+              break;
+    case 'O': opengl_always=1;
+#ifdef HAVE_OPENGL
+              PRINTF("Using OpenGL to draw video and HUD OSD\n");
+#else
+              PRINTF("OpenGL not supported\n");
+#endif
+              break;
+    case 'Q': opengl_hud=1;
+#ifdef HAVE_OPENGL
+              PRINTF("Using OpenGL to draw HUD OSD\n");
+#else
+              PRINTF("OpenGL not supported\n");
 #endif
               break;
     case 'w': width = atoi(optarg);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.91 2010-05-26 11:53:13 phintuka Exp $
+ * $Id: config.c,v 1.92 2010-05-26 12:10:02 phintuka Exp $
  *
  */
 
@@ -685,6 +685,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
   static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
       { "hud",          no_argument,       NULL, 'D' },
+      { "opengl-always",no_argument,       NULL, 'O' },
+      { "opengl-hud",   no_argument,       NULL, 'Q' },
       { "width",        required_argument, NULL, 'w' },
       { "height",       required_argument, NULL, 'h' },
       //{ "xkeyboard",    no_argument,       NULL, 'k' },
@@ -712,6 +714,16 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'D': ProcessArg("X11.HUDOSD", "1");
 #ifndef HAVE_XRENDER
               LOGMSG("HUD OSD not supported\n");
+#endif
+              break;
+    case 'O': ProcessArg("OpenglAlways", "1");
+#ifndef HAVE_OPENGL
+              LOGMSG("OpenGL HUD OSD not supported\n");
+#endif
+              break;
+    case 'Q': ProcessArg("OpenglHUDOSD", "1");
+#ifndef HAVE_OPENGL
+              LOGMSG("OpenGL HUD OSD not supported\n");
 #endif
               break;
     case 'w': ProcessArg("Fullscreen", "0");
