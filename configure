@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.24 2010-05-25 13:43:12 phintuka Exp $
+# * $Id: configure,v 1.25 2010-05-26 11:34:38 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -233,6 +233,8 @@ FEATURES="
   xinerama
   xrandr
   xrender
+  xshape
+  opengl
   vdpau
 "
 
@@ -266,6 +268,8 @@ show_help(){
   echo "  --disable-xinerama     disable Xinerama support [no]"
   echo "  --disable-xrandr       disable Xrandr support (video mode switching) [no]"
   echo "  --disable-xrender      disable Xrender support (HUD OSD) [no]"
+  echo "  --disable-xshape       disable Xshape support (non-transparent HUD OSD without composite manager) [no]"
+  echo "  --disable-opengl       disable OpenGL support (transparent HUD OSD without composite manager) [no]"
   echo "  --disable-vdpau        disable VDPAU support (X11) [no]"
   echo
   echo "  --debug                debug configure script"
@@ -320,8 +324,10 @@ done
 
 check_deps(){
   disabled libxine && disable x11 fb libavutil libjpeg
-  disabled x11     && disable dbus-glib-1 xshm xrender xrandr xdpms xinerama vdpau
+  disabled x11     && disable dbus-glib-1 xshm xrender xshape opengl xrandr xdpms xinerama vdpau
   disabled vdr     && disable libextractor
+  disabled xrender && disable opengl
+  disabled xshape  && disable opengl
 }
 
 check_deps
@@ -356,9 +362,11 @@ if enabled libxine; then
     test_library X11  xext         "X11/extensions/Xext.h"     "-lXext"      ""
     test_library X11  xshm         "X11/extensions/XShm.h"     "-lXext"      "XShmQueryExtension(0)"
     test_library X11  xrender      "X11/extensions/Xrender.h"  "-lXrender"   "XRenderQueryFormats(0)"
+    test_library X11  xshape       "X11/extensions/shape.h"    "-lXext"      "XShapeQueryExtension(0,0,0)"
     test_library X11  xrandr       "X11/extensions/Xrandr.h"   "-lXrandr"    "XRRGetScreenInfo(0,0)"
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
     test_library X11  xinerama     "X11/extensions/Xinerama.h" "-lXinerama"  "XineramaQueryScreens(0,0)"
+    test_library X11  opengl       "GL/glx.h"                  "-lGL -lGLU -lglut"  "glXQueryVersion(0,0,0)"
     test_library none vdpau        "vdpau/vdpau_x11.h"         "-lvdpau"     "vdp_device_create_x11(0,0,0,0)"
     test_library X11  dbus-glib-1  \
       "dbus/dbus-glib.h" \
