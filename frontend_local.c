@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.47 2010-03-13 12:11:51 phintuka Exp $
+ * $Id: frontend_local.c,v 1.48 2010-05-26 11:54:26 phintuka Exp $
  *
  */
 
@@ -339,6 +339,7 @@ void cXinelibLocal::Action(void)
     } else {
       LOGDBG("cXinelibLocal::Action - fe created");
       if(!curr_fe->fe_display_open(curr_fe, 0, 0, xc.width, xc.height, xc.fullscreen, xc.hud_osd,
+                                   xc.opengl_always, xc.opengl_hud,
                                    xc.modeswitch, xc.modeline, xc.display_aspect,
                                    keypress_handler, 0/*no_x_kbd*/, 0/*gui_hotkeys*/,
                                    xc.video_port,

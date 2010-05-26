@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.86 2010-05-21 12:53:55 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.87 2010-05-26 11:54:26 phintuka Exp $
  *
  */
 
@@ -471,7 +471,7 @@ static const struct option long_options[] = {
 int main(int argc, char *argv[])
 {
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
-  int fullscreen = 0, hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
+  int fullscreen = 0, hud = 0, opengl_always = 0, opengl_hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int pes_buffers = 250;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
@@ -754,7 +754,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize display */
-  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, 0,
+  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, opengl_always, opengl_hud, 0,
                            "", aspect, NULL, noxkbd, gui_hotkeys,
                            video_port, scale_video, 0,
                            aspect_controller, window_id)) {

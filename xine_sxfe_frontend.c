@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.121 2010-05-21 12:33:08 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.122 2010-05-26 11:54:26 phintuka Exp $
  *
  */
 
@@ -1103,7 +1103,7 @@ static void create_windows(sxfe_t *this)
  */
 static int sxfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
-                             int width, int height, int fullscreen, int hud,
+                             int width, int height, int fullscreen, int hud, int opengl_always, int opengl_hud,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
                              const char *video_port, int scale_video, int field_order,
