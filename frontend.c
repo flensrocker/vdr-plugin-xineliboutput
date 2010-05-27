@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.87 2010-05-27 11:43:50 phintuka Exp $
+ * $Id: frontend.c,v 1.88 2010-05-27 12:04:50 phintuka Exp $
  *
  */
 
@@ -321,7 +321,7 @@ void cXinelibThread::SetNoVideo(bool bVal)
 
   Xine_Control("NOVIDEO", m_bNoVideo ? 1 : 0);
 
-  if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
+  if(m_bNoVideo && strcmp(xc.audio_visualization, "none") && strcmp(xc.audio_visualization, "image")) {
 
     char *opts = NULL;
     if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
@@ -686,7 +686,7 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 {
   TRACEF("cXinelibThread::PlayFile");
 
-  char vis[256];
+  char vis[256+4096];
 
   switch(PlayMode) {
     case pmVideoOnly:
@@ -705,6 +705,8 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     default:
       if (xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom")) {
 	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
+      } else if (xc.audio_vis_image_opts[0] && !strcmp(xc.audio_visualization, "image")) {
+	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_image_opts);
       } else {
 	strn0cpy(vis, xc.audio_visualization, sizeof(vis));
       }
@@ -712,11 +714,11 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
       break;
   }
 
-  char buf[4096];
+  char buf[4096+4096+256];
   m_bEndOfStreamReached = false;
   if(snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s",
 	      LoopPlay ? "Loop" : "", Position, vis, FileName ? FileName : "")
-     >= 4096) {
+     >= 4096+4096+256) {
     LOGMSG("PlayFile: message too long !");
     return 0;
   }
@@ -826,7 +828,7 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 	  audio_equalizer[8],audio_equalizer[9]);
   r = Xine_Control(buf) && r;
 
-  if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
+  if (m_bNoVideo && strcmp(xc.audio_visualization, "none") && strcmp(xc.audio_visualization, "image")) {
     char *opts = NULL;
     if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
       opts = xc.audio_vis_goom_opts;

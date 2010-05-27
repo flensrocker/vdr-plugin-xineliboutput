@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.92 2010-05-26 12:10:02 phintuka Exp $
+ * $Id: config.c,v 1.93 2010-05-27 12:04:50 phintuka Exp $
  *
  */
 
@@ -175,7 +175,7 @@ const char * const config_t::s_audioEqNames[ AUDIO_EQ_count+1 ] = {
 };
 
 const char * const config_t::s_audioVisualizations[ AUDIO_VIS_count+1 ] = {
-  "none", "goom", "oscope", "fftscope", "fftgraph",
+  "none", "goom", "oscope", "fftscope", "fftgraph", "image",
   NULL
 };
 
@@ -185,6 +185,7 @@ const char * const config_t::s_audioVisualizationNames[ AUDIO_VIS_count+1 ] = {
   trNOOP("Oscilloscope"),
   trNOOP("FFT Scope"),
   trNOOP("FFT Graph"),
+  trNOOP("Image"),
   NULL
 };
 
@@ -530,6 +531,7 @@ config_t::config_t() {
   memset(audio_equalizer,0,sizeof(audio_equalizer));
   strn0cpy(audio_visualization, "goom", sizeof(audio_visualization));
   strn0cpy(audio_vis_goom_opts, "fps:25,width:720,height:576", sizeof(audio_vis_goom_opts));
+  strn0cpy(audio_vis_image_opts, "", sizeof(audio_vis_image_opts));
 
   headphone = 0;
   audio_upmix = 0;
