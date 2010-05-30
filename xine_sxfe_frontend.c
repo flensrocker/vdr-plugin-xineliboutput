@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.124 2010-05-30 22:05:31 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.125 2010-05-30 22:18:32 phintuka Exp $
  *
  */
 
@@ -648,6 +648,7 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
 static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
+
   if(this && this->hud && cmd) {
     XLockDisplay(this->display);
     switch(cmd->cmd) {
@@ -666,35 +667,35 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XFlush(this->display);
       break;
 
-    case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
+    case OSD_Set_RLE: { /* Create/update OSD window. Data is rle-compressed. */
       LOGDBG("HUD Set RLE");
+
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
+
+      XDouble scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
+      XDouble scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
+      int x = cmd->x + cmd->dirty_area.x1;
+      int y = cmd->y + cmd->dirty_area.y1;
+      int w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
+      int h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
+
 #ifdef HAVE_XSHM
       if(this->completion_event != -1) {
         hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window */
           XShmPutImage(this->display, this->hud_window, this->gc, this->hud_img,
-                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
+                       x, y, x, y, w, h,
                        False);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                       cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
-                       cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
+                       x, y, x, y, w, h,
                        False);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
-                             cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
-                             (XDouble)this->x.width / (XDouble)this->osd_width,
-                             (XDouble)this->x.height / (XDouble)this->osd_height,
+                             x, y, w, h,
+                             scale_x, scale_y,
                              (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       }
@@ -705,23 +706,14 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
         if(!cmd->scaling) {
           /* Place image directly onto hud window (always unscaled) */
           XPutImage(this->display, this->hud_window, this->gc, this->hud_img,
-                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1);
+                    x, y, x, y, w, h);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                    cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
-                    cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1);
+                    x, y, x, y, w, h);
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
-                             cmd->x + cmd->dirty_area.x1, cmd->y + cmd->dirty_area.y1,
-                             cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1,
-                             cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1,
-                             (XDouble)this->x.width / (XDouble)this->osd_width,
-                             (XDouble)this->x.height / (XDouble)this->osd_height,
+                             x, y, w, h,
+                             scale_x, scale_y,
                              (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
         }
       }
