@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.9 2010-05-16 11:59:58 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.10 2010-05-30 20:31:18 phintuka Exp $
  *
  */
 
@@ -169,6 +169,7 @@ typedef struct {
   uint8_t  unscaled_supported;
   uint8_t  custom_extent_supported;
   uint8_t  argb_supported;
+  uint8_t  video_window_supported;
 
   /* current output */
   uint16_t output_width;
@@ -205,11 +206,12 @@ static void osdscaler_overlay_begin (vo_driver_t *self, vo_frame_t *frame, int c
     LOGOSD("osdscaler_overlay_begin: changed = 1");
     osd_data_clear(this->active_osds);
     this->active_osds = NULL;
-    this->unscaled_supported = !!(vo_def_get_capabilities(self) & VO_CAP_UNSCALED_OVERLAY);
-    /* VO_CAP_OSDSCALING == VO_CAP_CUSTOM_EXTENT_OVERLAY */
-    this->custom_extent_supported = !!(vo_def_get_capabilities(self) & VO_CAP_OSDSCALING);
-    /* VO_CAP_ARGB == VO_CAP_ARGB_LAYER_OVERLAY */
-    this->argb_supported = !!(vo_def_get_capabilities(self) & VO_CAP_ARGB);
+
+    uint64_t caps = vo_def_get_capabilities(self);
+    this->unscaled_supported      = !!(caps & VO_CAP_UNSCALED_OVERLAY);
+    this->custom_extent_supported = !!(caps & VO_XCAP_OSDSCALING);    /* == VO_CAP_CUSTOM_EXTENT_OVERLAY */
+    this->argb_supported          = !!(caps & VO_XCAP_ARGB_LAYER_OVERLAY);
+    this->video_window_supported  = !!(caps & VO_XCAP_VIDEO_WINDOW_OVERLAY);
   }
 
   /* redirect */
@@ -381,7 +383,7 @@ static void osdscaler_overlay_end (vo_driver_t *self, vo_frame_t *vo_img)
 static uint32_t osdscaler_get_capabilities(vo_driver_t *self)
 {
   return vo_def_get_capabilities(self) |
-         VO_CAP_OSDSCALING;
+         VO_XCAP_OSDSCALING;
 }
 
 /*

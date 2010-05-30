@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_props.h,v 1.4 2009-03-17 12:20:33 phintuka Exp $
+ * $Id: vo_props.h,v 1.5 2010-05-30 20:31:18 phintuka Exp $
  *
  */
 
@@ -18,18 +18,23 @@
 /* output can scale OSD */
 #ifdef VO_CAP_CUSTOM_EXTENT_OVERLAY
   /* xine-lib 1.2 */
-# define VO_CAP_OSDSCALING  VO_CAP_CUSTOM_EXTENT_OVERLAY
+# define VO_XCAP_OSDSCALING  VO_CAP_CUSTOM_EXTENT_OVERLAY
 #else
-# define VO_CAP_OSDSCALING  0x01000000
+# define VO_XCAP_OSDSCALING  0x01000000
 #endif
 
 /* Output can blend ARGB surfaces */
 #ifdef VO_CAP_ARGB_LAYER_OVERLAY
-# define VO_CAP_ARGB  VO_CAP_ARGB_LAYER_OVERLAY
+# define VO_XCAP_ARGB_LAYER_OVERLAY  VO_CAP_ARGB_LAYER_OVERLAY
 #else
-# define VO_CAP_ARGB  0x02000000
+# define VO_XCAP_ARGB_LAYER_OVERLAY  0x02000000
 #endif
 
+#ifdef VO_CAP_VIDEO_WINDOW_OVERLAY
+# define VO_XCAP_VIDEO_WINDOW_OVERLAY VO_CAP_VIDEO_WINDOW_OVERLAY
+#else
+# define VO_XCAP_VIDEO_WINDOW_OVERLAY 0x04000000
+#endif
 
 /*
  * Extended vo properties

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.21 2010-05-22 12:30:19 phintuka Exp $
+ * $Id: osd_manager.c,v 1.22 2010-05-30 20:31:18 phintuka Exp $
  *
  */
 
@@ -260,7 +260,7 @@ static int exec_osd_size(osd_manager_impl_t *this, osd_command_t *cmd)
 
   xine_video_port_t *video_out = this->stream->video_out;
 
-  this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING);
+  this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_XCAP_OSDSCALING);
 
   return CONTROL_OK;
 }
@@ -417,7 +417,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   }
 
   /* request OSD scaling from video_out layer */
-  this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_CAP_OSDSCALING);
+  this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_XCAP_OSDSCALING);
   if (this->vo_scaling) {
     video_out->set_property(video_out, VO_PROP_OSD_SCALING, cmd->scaling ? 1 : 0);
   }
