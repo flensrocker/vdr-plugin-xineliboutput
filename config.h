@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.71 2010-05-27 12:04:50 phintuka Exp $
+ * $Id: config.h,v 1.72 2010-05-30 23:24:12 phintuka Exp $
  *
  */
 
@@ -165,7 +165,8 @@
 #define OSD_SIZE_1280x720       2
 #define OSD_SIZE_1920x1080      3
 #define OSD_SIZE_custom         4
-#define OSD_SIZE_count          5
+#define OSD_SIZE_stream         5
+#define OSD_SIZE_count          6
 
 // Media player menu (bitmask)
 #define MEDIA_MENU_FILES        (1<<0)

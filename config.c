@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.93 2010-05-27 12:04:50 phintuka Exp $
+ * $Id: config.c,v 1.94 2010-05-30 23:24:12 phintuka Exp $
  *
  */
 
@@ -243,6 +243,7 @@ const char * const config_t::s_osdSizes[] = {
   "1280x720",
   "1920x1080",
   trNOOP("custom"),
+  trNOOP("video stream"),
   NULL
 };
 
