@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.123 2010-05-30 21:57:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.124 2010-05-30 22:05:31 phintuka Exp $
  *
  */
 
@@ -737,6 +737,10 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Set_YUV:    /* Create/update OSD window. Data is in YUV420 format. */
       LOGDBG("HUD osd set YUV");
+      break;
+
+    case OSD_VideoWindow:
+      LOGDBG("HUD osd VideoWindow");
       break;
 
     case OSD_Close: /* Close OSD window */
