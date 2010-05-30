@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.11 2010-05-20 13:20:56 phintuka Exp $
+ * $Id: ts2es.c,v 1.12 2010-05-30 20:21:22 phintuka Exp $
  *
  */
 
@@ -69,11 +69,14 @@ static void ts2es_parse_pes(ts2es_t *this)
   if (pes_pid != PRIVATE_STREAM1)
     return;
 
-  /* RAW AC3 audio ? -> do nothing */
-  if (this->stream_type == STREAM_AUDIO_AC3) {
-    this->xine_buf_type |= BUF_AUDIO_A52;
-    this->buf->type = this->xine_buf_type;
-    return;
+  /* RAW audio ? -> do nothing */
+  switch (this->stream_type) {
+    case STREAM_AUDIO_AC3:
+    case STREAM_AUDIO_EAC3:
+    case STREAM_AUDIO_AAC:
+    case STREAM_AUDIO_DTS:
+      return;
+    default:;
   }
 
   /* AC3 syncword in beginning of PS1 payload ? */
