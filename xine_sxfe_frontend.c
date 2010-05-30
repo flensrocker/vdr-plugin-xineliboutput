@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.122 2010-05-26 11:54:26 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.123 2010-05-30 21:57:58 phintuka Exp $
  *
  */
 
@@ -1258,11 +1258,13 @@ static int sxfe_display_open(frontend_t *this_gen,
   set_fullscreen_props(this);
 
   XUnlockDisplay (this->display);
+
 #ifdef HAVE_XRENDER
-  return hud_osd_open(this);
-#else
-  return 1;
+  if (!hud_osd_open(this))
+    return 0;
 #endif
+
+  return 1;
 }
 
 /*
