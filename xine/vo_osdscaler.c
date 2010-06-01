@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.11 2010-05-30 20:48:22 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.12 2010-06-01 12:08:30 phintuka Exp $
  *
  */
 
@@ -258,7 +258,7 @@ static int check_for_scaling(osdscaler_hook_t *this, vo_frame_t *frame, vo_overl
   extent_width  = data->extent_width;
   extent_height = data->extent_height;
 
-  if (data->scaling < 1)
+  if (data->scaling < 1) {
     return 0;
   }
 
