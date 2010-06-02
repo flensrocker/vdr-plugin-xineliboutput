@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.110 2010-06-02 10:19:18 phintuka Exp $
+ * $Id: device.c,v 1.111 2010-06-02 10:26:21 phintuka Exp $
  *
  */
 
@@ -333,13 +333,16 @@ void cXinelibDevice::MakePrimaryDevice(bool On)
     new cXinelibOsdProvider(this);
 }
 
-void cXinelibDevice::ForcePrimaryDevice(bool On)
+bool cXinelibDevice::ForcePrimaryDevice(bool On)
 {
   TRACEF("cXinelibDevice::ForcePrimaryDevice");
 
   m_MainThreadLock.Lock();
   m_MainThreadFunctors.Add(CreateFunctor(this, &cXinelibDevice::ForcePrimaryDeviceImpl, On));
   m_MainThreadLock.Unlock();
+
+  return xc.force_primary_device ||
+         (cDevice::PrimaryDevice() && this == cDevice::PrimaryDevice());
 }
 
 void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
