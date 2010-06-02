@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.125 2010-05-30 22:18:32 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.126 2010-06-02 17:30:23 rofafor Exp $
  *
  */
 
@@ -667,7 +667,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XFlush(this->display);
       break;
 
-    case OSD_Set_RLE: { /* Create/update OSD window. Data is rle-compressed. */
+    case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
       LOGDBG("HUD Set RLE");
 
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
