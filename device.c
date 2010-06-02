@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.109 2010-05-30 23:24:12 phintuka Exp $
+ * $Id: device.c,v 1.110 2010-06-02 10:19:18 phintuka Exp $
  *
  */
 
@@ -259,6 +259,9 @@ bool cXinelibDevice::StartDevice()
     }
     if(xc.force_primary_device)
       ForcePrimaryDevice(true);
+    else if (cDevice::PrimaryDevice() && this != cDevice::PrimaryDevice()) {
+      LOGMSG("WARNING: xineliboutput is not the primary device !");
+    }
   }
 
   if(m_server) {
@@ -320,7 +323,7 @@ void cXinelibDevice::StopDevice(void)
 // Primary device switching
 //
 
-void cXinelibDevice::MakePrimaryDevice(bool On) 
+void cXinelibDevice::MakePrimaryDevice(bool On)
 {
   TRACEF("cXinelibDevice::MakePrimaryDevice");
 
@@ -330,7 +333,7 @@ void cXinelibDevice::MakePrimaryDevice(bool On)
     new cXinelibOsdProvider(this);
 }
 
-void cXinelibDevice::ForcePrimaryDevice(bool On) 
+void cXinelibDevice::ForcePrimaryDevice(bool On)
 {
   TRACEF("cXinelibDevice::ForcePrimaryDevice");
 
@@ -339,7 +342,7 @@ void cXinelibDevice::ForcePrimaryDevice(bool On)
   m_MainThreadLock.Unlock();
 }
 
-void cXinelibDevice::ForcePrimaryDeviceImpl(bool On) 
+void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
 {
   TRACEF("cXinelibDevice::ForcePrimaryDeviceImpl");
   ASSERT(cThread::IsMainThread(), false);
