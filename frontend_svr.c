@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.93 2010-05-27 12:04:50 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.94 2010-06-02 10:27:59 phintuka Exp $
  *
  */
 
@@ -1757,7 +1757,16 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   m_ConnType[cli] = ctDetecting;
   fd_control[cli].set_handle(fd);
   fd_control[cli].set_buffers(KILOBYTE(128), KILOBYTE(128));
-  cXinelibDevice::Instance().ForcePrimaryDevice(true);
+
+  if (!cXinelibDevice::Instance().ForcePrimaryDevice(true)) {
+    const char *msg = "Not primary device.\r\n";
+    ssize_t len = strlen(msg);
+    LOGMSG("Dropping client: xineliboutput is not the primary device !");
+    if(write(fd, msg, len) != len)
+      LOGERR("Write failed.");
+    CLOSESOCKET(fd);
+    return;
+  }
 }
 
 void cXinelibServer::Handle_Discovery_Broadcast(void)
