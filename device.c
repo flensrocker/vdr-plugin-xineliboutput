@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.111 2010-06-02 10:26:21 phintuka Exp $
+ * $Id: device.c,v 1.112 2010-06-04 10:40:20 rofafor Exp $
  *
  */
 
@@ -1118,7 +1118,7 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   return length;
 }
 
-#if VDRVERSNUM >= 10701
+#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
 /*
  * hook to PlayTs() to get PAT and PMT
  */
@@ -1249,7 +1249,7 @@ int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 
   return PlayTsAny(Data, Length);
 }
-#endif // VDRVERSNUM >= 10701
+#endif // VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
 
 bool cXinelibDevice::AcceptVideoPacket(const uchar *Data, int Length)
 {
@@ -1356,7 +1356,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   bool isPes   = DATA_IS_PES(Data) && ((Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
   bool isH264  = isPes && pes_is_frame_h264(Data, Length);
-#if VDRVERSNUM >= 10701
+#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
   bool isTs    = DATA_IS_TS(Data);
 #endif
 
@@ -1383,7 +1383,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	      &mmin<int>, Length);
     } else if(isPes) {
       /*cDevice::*/PlayPes(Data, Length, m_SkipAudio);
-#if VDRVERSNUM >= 10701
+#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
     } else if(isTs) {
       int written = 0, total = (Length/TS_SIZE)*TS_SIZE;
       while (written < total) {
