@@ -1,17 +1,13 @@
 #
-# deps
-#
-
-BLURAY_INC_DIR ?= /usr/src/libbluray/src/
-
-#
 # select plugins
 #
 
 ENABLE_DEMUX_PLUGIN ?= yes
 
-ifeq ($(shell grep BLURAY $(BLURAY_INC_DIR)/bluray.h > /dev/null && echo yes), yes)
+ifeq ($(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ pkg-config libbluray && echo yes), yes)
     ENABLE_INPUT_PLUGIN ?= yes
+    CFLAGS_BD ?= $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ pkg-config libbluray --cflags)
+    LIBS_BD   ?= $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ pkg-config libbluray --libs)
 else
     ENABLE_INPUT_PLUGIN ?= no
     $(warning libbluray not found)
@@ -42,9 +38,6 @@ CFLAGS      += $(shell pkg-config libxine --cflags)
 CFLAGS      += $(CFLAGS_BD)
 INSTALL      = install
 
-ifeq ($(ENABLE_INPUT_PLUGIN), yes)
-CFLAGS_BD   ?= -I$(BLURAY_INC_DIR)
-endif
 
 #
 # linker options
@@ -52,10 +45,6 @@ endif
 
 LIBS_XINE    = $(shell pkg-config libxine --libs)
 LDFLAGS     += -shared -fvisibility=hidden
-
-ifeq ($(ENABLE_INPUT_PLUGIN), yes)
-LIBS_BD     ?= -L/usr/local/lib -lbluray
-endif
 
 #
 # targets
