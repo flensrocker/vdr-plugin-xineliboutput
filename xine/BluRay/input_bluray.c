@@ -250,7 +250,7 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
     offset = bd_tell(this->bdh) + offset;
   }
   else if (origin == SEEK_END) {
-    if (offset < this->bdh->s_size)
+    if (offset < bd_get_title_size(this->bdh))
       offset = bd_get_title_size(this->bdh) - offset;
     else
       offset = 0;
