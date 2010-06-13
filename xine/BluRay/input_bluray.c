@@ -182,6 +182,16 @@ static void handle_events(bluray_input_plugin_t *this)
 
     switch (event->type) {
 
+      case XINE_EVENT_INPUT_NEXT:
+        lprintf("XINE_EVENT_INPUT_NEXT: next title\n");
+        open_title(this, MAX(0, this->current_title-1));
+        break;
+
+      case XINE_EVENT_INPUT_PREVIOUS:
+        lprintf("XINE_EVENT_INPUT_PREVIOUS: previous title\n");
+        open_title(this, MIN(this->num_titles, this->current_title+1));
+        break;
+
       case XINE_EVENT_INPUT_ANGLE_NEXT: {
         int angle = MIN(8, this->bdh->angle - 1);
         lprintf("XINE_EVENT_INPUT_ANGLE_NEXT: set angle %d --> %d\n", this->bdh->angle, angle);
