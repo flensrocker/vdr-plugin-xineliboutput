@@ -182,15 +182,61 @@ static void handle_events(bluray_input_plugin_t *this)
 
     switch (event->type) {
 
-      case XINE_EVENT_INPUT_NEXT:
-        lprintf("XINE_EVENT_INPUT_NEXT: next title\n");
+      case XINE_EVENT_INPUT_LEFT:
+        lprintf("XINE_EVENT_INPUT_LEFT: next title\n");
         open_title(this, MAX(0, this->current_title-1));
         break;
 
-      case XINE_EVENT_INPUT_PREVIOUS:
-        lprintf("XINE_EVENT_INPUT_PREVIOUS: previous title\n");
+      case XINE_EVENT_INPUT_RIGHT:
+        lprintf("XINE_EVENT_INPUT_RIGHT: previous title\n");
         open_title(this, MIN(this->num_titles, this->current_title+1));
         break;
+
+      case XINE_EVENT_INPUT_NEXT: {
+        uint64_t offset = bd_tell(this->bdh);
+        int      chapter;
+
+        lprintf("XINE_EVENT_INPUT_NEXT: next chapter\n");
+        for (chapter = 0; chapter < this->title_info->chapter_count; chapter++) {
+          lprintf ("chapter %d at %"PRIu64" (now %"PRIu64")\n", chapter,
+                   this->title_info->chapters[chapter].offset, offset);
+          if (this->title_info->chapters[chapter].offset > offset)
+            break;
+        }
+
+        if (chapter >= this->title_info->chapter_count) {
+          if (this->current_title < this->num_titles - 1)
+            open_title(this, this->current_title + 1);
+        } else {
+          bd_seek_chapter(this->bdh, chapter);
+          _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter+1);
+        }
+        break;
+      }
+
+      case XINE_EVENT_INPUT_PREVIOUS: {
+        uint64_t offset = bd_tell(this->bdh);
+        int      chapter;
+
+        lprintf("XINE_EVENT_INPUT_PREVIOUS: previous chapter\n");
+        for (chapter = 0; chapter < this->title_info->chapter_count; chapter++) {
+          lprintf ("chapter %d at %"PRIu64" (now %"PRIu64")\n", chapter,
+                   this->title_info->chapters[chapter].offset, offset);
+          if (this->title_info->chapters[chapter].offset > offset)
+            break;
+        }
+
+        chapter -= 2;
+
+        if (chapter < 0 && this->current_title > 0) {
+          open_title(this, this->current_title - 1);
+        } else {
+          chapter = MAX(0, chapter);
+          bd_seek_chapter(this->bdh, chapter);
+          _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter+1);
+        }
+        break;
+      }
 
       case XINE_EVENT_INPUT_ANGLE_NEXT: {
         int angle = MIN(8, this->bdh->angle - 1);
