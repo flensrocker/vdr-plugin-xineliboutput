@@ -102,19 +102,29 @@ typedef struct {
 
   BLURAY               *bdh;
 
+  int            num_titles;
+  int            current_title;
+  BD_TITLE_INFO *title_info;
+
 } bluray_input_plugin_t;
 
 static int open_title (bluray_input_plugin_t *this, int title)
 {
-  if (bd_select_playlist(this->bdh, title) <= 0 || !this->bdh->title) {
-    LOGMSG("bd_select_playlist(%d) failed\n", title);
+  if (bd_select_title(this->bdh, title) <= 0 || !this->bdh->title) {
+    LOGMSG("bd_select_title(%d) failed\n", title);
     return 0;
   }
 
+  this->current_title = title;
+
+  if (this->title_info)
+    bd_free_title_info(this->title_info);
+  this->title_info = bd_get_title_info(this->bdh, this->current_title);
+
 #ifdef LOG
-  int ms = this->bdh->title->duration / TICKS_IN_MS;
+  int ms = this->title_info->duration / INT64_C(90000);
   lprintf("Opened playlist %s. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
-          this->bdh->title->name, (int64_t)this->bdh->title->packets * PKT_SIZE,
+          this->bdh->title->name, bd_get_title_size(this->bdh),
           ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
 #endif
 
@@ -132,22 +142,24 @@ static int open_title (bluray_input_plugin_t *this, int title)
     free(t);
   }
 
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_COUNT,    this->num_titles);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER,   title);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   this->bdh->title->angle);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   this->bdh->angle);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_COUNT,    this->title_info->angle_count);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, 1);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->bdh->title->chap_list.count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->bdh->title->chap_list.count>0);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
 
-  uint64_t rate = this->bdh->title->packets * UINT64_C(192) * UINT64_C(8) // bits
-                  * INT64_C(45000)  // tick is 1/45000s
-                  / (uint64_t)(this->bdh->title->duration);
+  uint64_t rate = bd_get_title_size(this->bdh) * UINT64_C(8) // bits
+                  * INT64_C(90000)
+                  / (uint64_t)(this->title_info->duration);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_BITRATE, rate);
 
   int krate = (int)(rate / UINT64_C(1024));
-  int s = this->bdh->title->duration / 45000;
+  int s = this->title_info->duration / 90000;
   int h = s / 3600; s -= h*3600;
   int m = s / 60;   s -= m*60;
-  int f = this->bdh->title->duration % 45000; f = f * 1000 / 45000;
+  int f = this->title_info->duration % 90000; f = f * 1000 / 90000;
   LOGMSG("BluRay stream: length:  %d:%d:%d.%03d\n"
          "               bitrate: %d.%03d Mbps\n\n",
          h, m, s, f, krate/1024, (krate%1024)*1000/1024);
@@ -384,6 +396,9 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
   if (this->event_queue)
     xine_event_dispose_queue(this->event_queue);
 
+  if (this->title_info)
+    bd_free_title_info(this->title_info);
+
   if (this->bdh)
     bd_close(this->bdh);
 
@@ -435,20 +450,6 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     return -1;
   }
 
-  /* if title was not in mrl, find the main title */
-
-  if (title < 0) {
-    char *main_title = nav_find_main_title(this->disc_root);
-    title = 0;
-    if (main_title) {
-      if (sscanf(main_title, "%d.mpls", &title) != 1)
-        title = -1;
-      lprintf("main title: %s (%d) \n", main_title, title);
-    } else {
-      LOGMSG("nav_find_main_title(%s) failed\n", this->disc_root);
-    }
-  }
-
   /* open libbluray */
 
   /* replace ~/ in keyfile path */
@@ -465,13 +466,26 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   free(keyfile);
   lprintf("bd_open(\'%s\') OK\n", this->disc_root);
 
+  /* load title list */
+
+  this->num_titles = bd_get_titles(this->bdh, TITLES_RELEVANT);
+  LOGMSG("%d titles\n", this->num_titles);
+
   /* select title */
 
-  int num_titles = bd_get_titles(this->bdh, TITLES_RELEVANT);
-  LOGMSG("%d relevant titles\n", num_titles);
+  /* if title was not in mrl, find the main title */
+  if (title < 0) {
+    int i, duration = 0;
+    for (i = 0; i < this->bdh->title_list->count; i++) {
+      if (this->bdh->title_list->title_info[i].duration >= duration) {
+        duration = this->bdh->title_list->title_info[i].duration;
+        title = i;
+      }
+    }
+  }
 
   if (open_title(this, title) <= 0 &&
-      open_title(this, 1) <= 0)
+      open_title(this, 0) <= 0)
     return -1;
 
   /* jump to chapter */
