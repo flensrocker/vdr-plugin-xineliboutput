@@ -93,7 +93,10 @@ typedef struct {
   input_plugin_t        input_plugin;
 
   xine_stream_t        *stream;
+  xine_event_queue_t   *event_queue;
+
   bluray_input_class_t *class;
+
   char                 *mrl;
   char                 *disc_root;
 
@@ -138,6 +141,42 @@ static int open_title (bluray_input_plugin_t *this, int title)
   return 1;
 }
 
+static void handle_events(bluray_input_plugin_t *this)
+{
+  if (!this->event_queue)
+    return;
+
+  xine_event_t *event;
+  while (NULL != (event = xine_event_get(this->event_queue))) {
+
+    if (!this->bdh || !this->bdh->title) {
+      xine_event_free(event);
+      return;
+    }
+
+    switch (event->type) {
+
+      case XINE_EVENT_INPUT_ANGLE_NEXT: {
+        int angle = MIN(8, this->bdh->angle - 1);
+        lprintf("XINE_EVENT_INPUT_ANGLE_NEXT: set angle %d --> %d\n", this->bdh->angle, angle);
+        bd_seamless_angle_change(this->bdh, angle);
+        _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, angle);
+        break;
+      }
+
+      case XINE_EVENT_INPUT_ANGLE_PREVIOUS: {
+        int angle = MAX(0, this->bdh->angle - 1);
+        lprintf("XINE_EVENT_INPUT_ANGLE_PREVIOUS: set angle %d --> %d\n", this->bdh->angle, angle);
+        bd_seamless_angle_change(this->bdh, angle);
+        _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, angle);
+        break;
+      }
+    }
+
+    xine_event_free(event);
+  }
+}
+
 /*
  * xine plugin interface
  */
@@ -156,6 +195,8 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
 
   if (!this || !this->bdh || len < 0)
     return -1;
+
+  handle_events(this);
 
   off_t result = bd_read (this->bdh, (unsigned char *)buf, len);
 
@@ -326,6 +367,9 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
+  if (this->event_queue)
+    xine_event_dispose_queue(this->event_queue);
+
   if (this->bdh)
     bd_close(this->bdh);
 
@@ -468,6 +512,8 @@ static input_plugin_t *bluray_class_get_instance (input_class_t *cls_gen, xine_s
   this->input_plugin.get_optional_data  = bluray_plugin_get_optional_data;
   this->input_plugin.dispose            = bluray_plugin_dispose;
   this->input_plugin.input_class        = cls_gen;
+
+  this->event_queue = xine_event_new_queue (this->stream);
 
   return &this->input_plugin;
 }
