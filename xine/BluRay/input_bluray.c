@@ -291,11 +291,53 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
   return bd_seek (this->bdh, offset);
 }
 
+static off_t bluray_plugin_seek_time (input_plugin_t *this_gen, int time_offset, int origin)
+{
+  bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
+
+  if (!this || !this->bdh || !this->bdh->title)
+    return -1;
+
+  /* convert relative seeks to absolute */
+
+  if (origin == SEEK_CUR) {
+    time_offset += this_gen->get_current_time(this_gen);
+  }
+  else if (origin == SEEK_END) {
+    int duration = this->title_info->duration / 90;
+    if (time_offset < duration)
+      time_offset = duration - time_offset;
+    else
+      time_offset = 0;
+  }
+
+  lprintf("bluray_plugin_seek_time() seeking to %d.%03ds\n", time_offset / 1000, time_offset % 1000);
+
+  return bd_seek_time(this->bdh, time_offset * INT64_C(90));
+}
+
 static off_t bluray_plugin_get_current_pos (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
   return this->bdh ? bd_tell(this->bdh) : 0;
+}
+
+static int bluray_plugin_get_current_time (input_plugin_t *this_gen)
+{
+  bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
+
+  if (this->bdh && this->bdh->title) {
+    off_t    offset   = bd_tell(this->bdh);
+    uint32_t in_pkt   = offset / PKT_SIZE;
+    uint32_t clip_pkt = 0, out_pkt = 0, out_time = 0;
+
+    nav_packet_search(this->bdh->title, in_pkt, &clip_pkt, &out_pkt, &out_time);
+
+    return (int)(out_time / TICKS_IN_MS);
+  }
+
+  return -1;
 }
 
 static off_t bluray_plugin_get_length (input_plugin_t *this_gen)
@@ -523,7 +565,9 @@ static input_plugin_t *bluray_class_get_instance (input_class_t *cls_gen, xine_s
   this->input_plugin.read               = bluray_plugin_read;
   this->input_plugin.read_block         = bluray_plugin_read_block;
   this->input_plugin.seek               = bluray_plugin_seek;
+  this->input_plugin.seek_time          = bluray_plugin_seek_time;
   this->input_plugin.get_current_pos    = bluray_plugin_get_current_pos;
+  this->input_plugin.get_current_time   = bluray_plugin_get_current_time;
   this->input_plugin.get_length         = bluray_plugin_get_length;
   this->input_plugin.get_blocksize      = bluray_plugin_get_blocksize;
   this->input_plugin.get_mrl            = bluray_plugin_get_mrl;
