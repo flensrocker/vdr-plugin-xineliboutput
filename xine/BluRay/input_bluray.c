@@ -21,8 +21,8 @@
  *
  * Input plugin for BluRay discs / images
  *
- * Requires libbluray from http://www.assembla.com/spaces/libbluray/
- * Tested with SVN revision 103
+ * Requires libbluray from http://bd.videolan.org/
+ * Tested with SVN revision 498
  *
  */
 
