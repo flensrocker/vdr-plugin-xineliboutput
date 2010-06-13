@@ -138,6 +138,20 @@ static int open_title (bluray_input_plugin_t *this, int title)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->bdh->title->chap_list.count);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->bdh->title->chap_list.count>0);
 
+  uint64_t rate = this->bdh->title->packets * UINT64_C(192) * UINT64_C(8) // bits
+                  * INT64_C(45000)  // tick is 1/45000s
+                  / (uint64_t)(this->bdh->title->duration);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_BITRATE, rate);
+
+  int krate = (int)(rate / UINT64_C(1024));
+  int s = this->bdh->title->duration / 45000;
+  int h = s / 3600; s -= h*3600;
+  int m = s / 60;   s -= m*60;
+  int f = this->bdh->title->duration % 45000; f = f * 1000 / 45000;
+  LOGMSG("BluRay stream: length:  %d:%d:%d.%03d\n"
+         "               bitrate: %d.%03d Mbps\n\n",
+         h, m, s, f, krate/1024, (krate%1024)*1000/1024);
+
   return 1;
 }
 
@@ -466,20 +480,6 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     bd_seek_chapter(this->bdh, chapter);
     _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter);
   }
-
-  uint64_t rate = this->bdh->title->packets * UINT64_C(192) * UINT64_C(8) // bits
-                  * INT64_C(45000)  // tick is 1/45000s
-                  / (uint64_t)(this->bdh->title->duration);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_BITRATE, rate);
-
-  int krate = (int)(rate / UINT64_C(1024));
-  int s = this->bdh->title->duration / 45000;
-  int h = s / 3600; s -= h*3600;
-  int m = s / 60;   s -= m*60;
-  int f = this->bdh->title->duration % 45000; f = f * 1000 / 45000;
-  LOGMSG("BluRay stream: length:  %d:%d:%d.%03d\n"
-         "               bitrate: %d.%03d Mbps\n\n",
-         h, m, s, f, krate/1024, (krate%1024)*1000/1024);
 
   return 1;
 }
