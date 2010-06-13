@@ -251,12 +251,16 @@ static buf_element_t *bluray_plugin_read_block (input_plugin_t *this_gen, fifo_b
     todo = ALIGNED_UNIT_SIZE;
 
   if (todo > 0) {
+    bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
     buf->size = bluray_plugin_read(this_gen, (char*)buf->mem, todo);
     buf->type = BUF_DEMUX_BLOCK;
 
-    if (buf->size > 0)
+    if (buf->size > 0) {
+      buf->extra_info->input_time = 0;
+      buf->extra_info->total_time = this->title_info->duration / 90000;
       return buf;
+    }
   }
 
   buf->free_buffer (buf);
