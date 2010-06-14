@@ -138,6 +138,8 @@ static int open_title (bluray_input_plugin_t *this, int title)
     char *t = strrchr(this->disc_root, '/');
     if (!t[1])
       while (t > this->disc_root && t[-1] != '/') t--;
+    else
+      while (t[0] == '/') t++;
     t = strdup(t);
     if (t[strlen(t)-1] ==  '/')
       t[strlen(t)-1] = 0;
