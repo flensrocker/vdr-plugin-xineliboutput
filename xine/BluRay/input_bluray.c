@@ -577,6 +577,9 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   this->num_titles = bd_get_titles(this->bdh, TITLES_RELEVANT);
   LOGMSG("%d titles\n", this->num_titles);
 
+  if (this->num_titles < 1)
+    return -1;
+
   /* select title */
 
   /* if title was not in mrl, find the main title */
