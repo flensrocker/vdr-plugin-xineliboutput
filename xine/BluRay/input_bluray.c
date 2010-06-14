@@ -82,6 +82,9 @@ typedef struct {
 
   xine_t         *xine;
 
+  xine_mrl_t    **xine_playlist;
+  int             xine_playlist_size;
+
   /* config */
   char           *mountpoint;
   char           *keyfile;
@@ -662,6 +665,21 @@ static void keyfile_change_cb(void *data, xine_cfg_entry_t *cfg)
   this->keyfile = cfg->str_value;
 }
 
+static void free_xine_playlist(bluray_input_class_t *this)
+{
+  if (this->xine_playlist) {
+    int i;
+    for (i = 0; i < this->xine_playlist_size; i++) {
+      MRL_ZERO(this->xine_playlist[i]);
+      free(this->xine_playlist[i]);
+    }
+    free(this->xine_playlist);
+    this->xine_playlist = NULL;
+  }
+
+  this->xine_playlist_size = 0;
+}
+
 static const char *bluray_class_get_description (input_class_t *this_gen)
 {
   return _("BluRay input plugin");
@@ -681,6 +699,44 @@ static char **bluray_class_get_autoplay_list (input_class_t *this_gen, int *num_
   return autoplay_list;
 }
 
+xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename, int *nFiles)
+{
+  bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
+
+  lprintf("bluray_class_get_dir(%s)\n", filename);
+
+  free_xine_playlist(this);
+
+  if (1/*!filename*/) {
+    NAV_TITLE_LIST *title_list = nav_get_title_list(this->mountpoint, TITLES_RELEVANT);
+
+    if (title_list) {
+      int i;
+
+      this->xine_playlist_size = title_list->count;
+      this->xine_playlist      = calloc(this->xine_playlist_size + 1, sizeof(xine_mrl_t*));
+
+      for (i = 0; i < this->xine_playlist_size; i++) {
+        this->xine_playlist[i] = calloc(1, sizeof(xine_mrl_t));
+
+        if (asprintf(&this->xine_playlist[i]->origin, "bluray:/") < 0)
+          this->xine_playlist[i]->origin = NULL;
+        if (asprintf(&this->xine_playlist[i]->mrl,    "bluray:/%d", i) < 0)
+          this->xine_playlist[i]->mrl = NULL;
+        this->xine_playlist[i]->type = 0; /*mrl_dvd*/
+        this->xine_playlist[i]->size = title_list->title_info[i].duration;
+      }
+
+      nav_free_title_list(title_list);
+    }
+  }
+
+  if (nFiles)
+    *nFiles = this->xine_playlist_size;
+
+  return this->xine_playlist;
+}
+
 static int bluray_class_eject_media (input_class_t *this_gen)
 {
 #if 0
@@ -695,6 +751,8 @@ static void bluray_class_dispose (input_class_t *this_gen)
 {
   bluray_input_class_t *this   = (bluray_input_class_t *) this_gen;
   config_values_t      *config = this->xine->config;
+
+  free_xine_playlist(this);
 
   config->unregister_callback(config, "media.bluray.mountpoint");
   config->unregister_callback(config, "media.bluray.device");
@@ -713,7 +771,7 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
   this->input_class.get_instance       = bluray_class_get_instance;
   this->input_class.get_identifier     = bluray_class_get_identifier;
   this->input_class.get_description    = bluray_class_get_description;
-  this->input_class.get_dir            = NULL;
+  this->input_class.get_dir            = bluray_class_get_dir;
   this->input_class.get_autoplay_list  = bluray_class_get_autoplay_list;
   this->input_class.dispose            = bluray_class_dispose;
   this->input_class.eject_media        = bluray_class_eject_media;
