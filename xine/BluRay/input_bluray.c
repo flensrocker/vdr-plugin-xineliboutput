@@ -553,47 +553,72 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
   free (this);
 }
 
+static int parse_mrl(const char *mrl_in, char **path, int *title, int *chapter)
+{
+  if (strncasecmp (mrl_in, "bluray:", 7))
+    return -1;
+
+  char *mrl = strdup(mrl_in);
+
+  /* title[.chapter] given ? parse and drop it */
+  if (mrl[strlen(mrl)-1] != '/') {
+    char *end = strrchr(mrl, '/');
+    if (end && end[1]) {
+      if (sscanf(end, "/%d.%d", title, chapter) < 1)
+        *title = -1;
+      else
+        *end = 0;
+    }
+  }
+  lprintf(" -> title %d, chapter %d, mrl \'%s\'\n", *title, *chapter, mrl);
+
+  if (!strcasecmp (mrl, "bluray:") ||
+      !strcasecmp (mrl, "bluray:/") ||
+      !strcasecmp (mrl, "bluray://") ||
+      !strcasecmp (mrl, "bluray:///")) {
+
+    /* default device */
+    *path = NULL;
+ 
+  } else if (!strncasecmp (mrl, "bluray:/", 8)) {
+
+    /* strip extra slashes */
+    char *start = mrl + 7;
+    while (start[0] == '/' && start[1] == '/')
+      start++;
+
+    *path = strdup(start);
+
+    _x_mrl_unescape(*path);
+
+    lprintf("non-defaut mount point \'%s\'\n", *path);
+
+  } else {
+    lprintf("invalid mrl \'%s\'\n", mrl);
+    free(mrl);
+    return 0;
+  }
+
+  free(mrl);
+
+  return 1;
+}
+
 static int bluray_plugin_open (input_plugin_t *this_gen)
 {
-  bluray_input_plugin_t *this  = (bluray_input_plugin_t *) this_gen;
-  int                    title = -1, chapter = 0;
+  bluray_input_plugin_t *this    = (bluray_input_plugin_t *) this_gen;
+  int                    title   = -1;
+  int                    chapter = 0;
 
   lprintf("bluray_plugin_open\n");
 
-  /* validate mrl */
+  /* validate and parse mrl */
 
-  if (strncasecmp (this->mrl, "bluray:", 7))
+  if (!parse_mrl(this->mrl, &this->disc_root, &title, &chapter))
     return -1;
 
-  if (!strcasecmp (this->mrl, "bluray:") ||
-      !strcasecmp (this->mrl, "bluray:/") ||
-      !strcasecmp (this->mrl, "bluray://") ||
-      !strcasecmp (this->mrl, "bluray:///")) {
-
+  if (!this->disc_root)
     this->disc_root = strdup(this->class->mountpoint);
-
-  } else if (!strncasecmp (this->mrl, "bluray:/", 8)) {
-
-    if (!strncasecmp (this->mrl, "bluray:///", 10))
-      this->disc_root = strdup(this->mrl + 9);
-    else if (!strncasecmp (this->mrl, "bluray://", 9))
-      this->disc_root = strdup(this->mrl + 8);
-    else
-      this->disc_root = strdup(this->mrl + 7);
-
-    _x_mrl_unescape(this->disc_root);
-
-    if (this->disc_root[strlen(this->disc_root)-1] != '/') {
-      char *end = strrchr(this->disc_root, '/');
-      if (end && end[1])
-        if (sscanf(end, "/%d.%d", &title, &chapter) < 1)
-          title = -1;
-      *end = 0;
-    }
-
-  } else {
-    return -1;
-  }
 
   /* open libbluray */
 
