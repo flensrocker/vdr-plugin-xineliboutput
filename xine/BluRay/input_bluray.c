@@ -788,34 +788,38 @@ static char **bluray_class_get_autoplay_list (input_class_t *this_gen, int *num_
 xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename, int *nFiles)
 {
   bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
+  char *path = NULL;
+  int title = -1, chapter = -1, i;
 
   lprintf("bluray_class_get_dir(%s)\n", filename);
 
   free_xine_playlist(this);
 
-  if (1/*!filename*/) {
-    NAV_TITLE_LIST *title_list = nav_get_title_list(this->mountpoint, TITLES_RELEVANT);
+  if (filename)
+    parse_mrl(filename, &path, &title, &chapter);
 
-    if (title_list) {
-      int i;
+  NAV_TITLE_LIST *title_list = nav_get_title_list(path?:this->mountpoint, TITLES_RELEVANT);
 
-      this->xine_playlist_size = title_list->count;
-      this->xine_playlist      = calloc(this->xine_playlist_size + 1, sizeof(xine_mrl_t*));
+  if (title_list) {
 
-      for (i = 0; i < this->xine_playlist_size; i++) {
-        this->xine_playlist[i] = calloc(1, sizeof(xine_mrl_t));
+    this->xine_playlist_size = title_list->count;
+    this->xine_playlist      = calloc(this->xine_playlist_size + 1, sizeof(xine_mrl_t*));
 
-        if (asprintf(&this->xine_playlist[i]->origin, "bluray:/") < 0)
-          this->xine_playlist[i]->origin = NULL;
-        if (asprintf(&this->xine_playlist[i]->mrl,    "bluray:/%d", i) < 0)
-          this->xine_playlist[i]->mrl = NULL;
-        this->xine_playlist[i]->type = 0; /*mrl_dvd*/
-        this->xine_playlist[i]->size = title_list->title_info[i].duration;
-      }
+    for (i = 0; i < this->xine_playlist_size; i++) {
+      this->xine_playlist[i] = calloc(1, sizeof(xine_mrl_t));
 
-      nav_free_title_list(title_list);
+      if (asprintf(&this->xine_playlist[i]->origin, "bluray:/%s", path?:"") < 0)
+        this->xine_playlist[i]->origin = NULL;
+      if (asprintf(&this->xine_playlist[i]->mrl,    "bluray:/%s/%d", path?:"", i) < 0)
+        this->xine_playlist[i]->mrl = NULL;
+      this->xine_playlist[i]->type = mrl_dvd;
+      this->xine_playlist[i]->size = title_list->title_info[i].duration;
     }
+
+    nav_free_title_list(title_list);
   }
+
+  free(path);
 
   if (nFiles)
     *nFiles = this->xine_playlist_size;
