@@ -102,6 +102,7 @@ typedef struct {
 
   char                 *mrl;
   char                 *disc_root;
+  char                 *disc_name;
 
   BLURAY               *bdh;
 
@@ -512,6 +513,7 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
 
   free (this->mrl);
   free (this->disc_root);
+  free (this->disc_name);
 
   free (this);
 }
@@ -594,6 +596,22 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
       }
     }
   }
+
+  /* get disc name */
+
+  if (strcmp(this->disc_root, this->class->mountpoint)) {
+    char *t = strrchr(this->disc_root, '/');
+    if (!t[1])
+      while (t > this->disc_root && t[-1] != '/') t--;
+    else
+      while (t[0] == '/') t++;
+    this->disc_name = strdup(t);
+    char *end = this->disc_name + strlen(this->disc_name) - 1;
+    if (*end ==  '/')
+      *end = 0;
+  }
+
+  /* open */
 
   if (open_title(this, title) <= 0 &&
       open_title(this, 0) <= 0)
