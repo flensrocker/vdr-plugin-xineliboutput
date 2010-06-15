@@ -126,6 +126,17 @@ static int get_current_chapter(bluray_input_plugin_t *this)
   return MAX(0, chapter - 1);
 }
 
+static void update_stream_info(bluray_input_plugin_t *this)
+{
+  /* set stream info */
+
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_COUNT,    this->title_info->angle_count);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   this->bdh->angle);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, get_current_chapter(this) + 1);
+}
+
 static int open_title (bluray_input_plugin_t *this, int title)
 {
   if (bd_select_title(this->bdh, title) <= 0 || !this->bdh->title) {
@@ -146,35 +157,31 @@ static int open_title (bluray_input_plugin_t *this, int title)
           ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
 #endif
 
-  /* set stream metainfo */
+  /* set title */
 
-  /* title */
-  if (strcmp(this->disc_root, this->class->mountpoint)) {
-    char *t = strrchr(this->disc_root, '/');
-    if (!t[1])
-      while (t > this->disc_root && t[-1] != '/') t--;
-    else
-      while (t[0] == '/') t++;
-    t = strdup(t);
-    if (t[strlen(t)-1] ==  '/')
-      t[strlen(t)-1] = 0;
-    _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, t);
-    free(t);
-  }
+  xine_ui_data_t udata;
+  xine_event_t uevent = {
+    .type = XINE_EVENT_UI_SET_TITLE,
+    .stream = this->stream,
+    .data = &udata,
+    .data_length = sizeof(udata)
+  };
+  if (this->disc_name && this->disc_name[0])
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, Title %d/%d", this->disc_name, title, this->num_titles);
+  else
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "Title %d/%d", title, this->num_titles);
+  xine_event_send(this->stream, &uevent);
 
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_COUNT,    this->num_titles);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER,   title);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   this->bdh->angle);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_COUNT,    this->title_info->angle_count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, 1);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
+  _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, udata.str);
+
+  /* calculate and set stream rate */
 
   uint64_t rate = bd_get_title_size(this->bdh) * UINT64_C(8) // bits
                   * INT64_C(90000)
                   / (uint64_t)(this->title_info->duration);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_BITRATE, rate);
 
+#ifdef LOG
   int krate = (int)(rate / UINT64_C(1024));
   int s = this->title_info->duration / 90000;
   int h = s / 3600; s -= h*3600;
@@ -183,6 +190,14 @@ static int open_title (bluray_input_plugin_t *this, int title)
   LOGMSG("BluRay stream: length:  %d:%d:%d.%03d\n"
          "               bitrate: %d.%03d Mbps\n\n",
          h, m, s, f, krate/1024, (krate%1024)*1000/1024);
+#endif
+
+  /* set stream info */
+
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_COUNT,  this->num_titles);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, this->current_title);
+
+  update_stream_info(this);
 
   return 1;
 }
@@ -618,8 +633,9 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   /* jump to chapter */
 
   if (chapter > 0) {
+    chapter = MAX(0, MIN(this->title_info->chapter_count, chapter) - 1);
     bd_seek_chapter(this->bdh, chapter);
-    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter);
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter + 1);
   }
 
   return 1;
