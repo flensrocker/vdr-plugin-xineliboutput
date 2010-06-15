@@ -112,6 +112,20 @@ typedef struct {
 
 } bluray_input_plugin_t;
 
+static int get_current_chapter(bluray_input_plugin_t *this)
+{
+  uint64_t offset = bd_tell(this->bdh);
+  int      chapter;
+
+  /* search for next chapter mark */
+  for (chapter = 0; chapter < this->title_info->chapter_count; chapter++) {
+    if (this->title_info->chapters[chapter].offset > offset)
+      break;
+  }
+
+  return MAX(0, chapter - 1);
+}
+
 static int open_title (bluray_input_plugin_t *this, int title)
 {
   if (bd_select_title(this->bdh, title) <= 0 || !this->bdh->title) {
@@ -199,16 +213,9 @@ static void handle_events(bluray_input_plugin_t *this)
         break;
 
       case XINE_EVENT_INPUT_NEXT: {
-        uint64_t offset = bd_tell(this->bdh);
-        int      chapter;
+        int chapter = get_current_chapter(this) + 1;
 
         lprintf("XINE_EVENT_INPUT_NEXT: next chapter\n");
-        for (chapter = 0; chapter < this->title_info->chapter_count; chapter++) {
-          lprintf ("chapter %d at %"PRIu64" (now %"PRIu64")\n", chapter,
-                   this->title_info->chapters[chapter].offset, offset);
-          if (this->title_info->chapters[chapter].offset > offset)
-            break;
-        }
 
         if (chapter >= this->title_info->chapter_count) {
           if (this->current_title < this->num_titles - 1)
@@ -221,18 +228,9 @@ static void handle_events(bluray_input_plugin_t *this)
       }
 
       case XINE_EVENT_INPUT_PREVIOUS: {
-        uint64_t offset = bd_tell(this->bdh);
-        int      chapter;
+        int chapter = get_current_chapter(this) - 1;
 
         lprintf("XINE_EVENT_INPUT_PREVIOUS: previous chapter\n");
-        for (chapter = 0; chapter < this->title_info->chapter_count; chapter++) {
-          lprintf ("chapter %d at %"PRIu64" (now %"PRIu64")\n", chapter,
-                   this->title_info->chapters[chapter].offset, offset);
-          if (this->title_info->chapters[chapter].offset > offset)
-            break;
-        }
-
-        chapter -= 2;
 
         if (chapter < 0 && this->current_title > 0) {
           open_title(this, this->current_title - 1);
