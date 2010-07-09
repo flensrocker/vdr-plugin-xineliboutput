@@ -21,8 +21,8 @@
  *
  * Input plugin for BluRay discs / images
  *
- * Requires libbluray from http://bd.videolan.org/
- * Tested with SVN revision 498
+ * Requires libbluray from git://git.videolan.org/libbluray.git
+ * Tested with revision 2010-07-09
  *
  */
 
@@ -43,7 +43,6 @@
 #include <dlfcn.h>
 
 #include <libbluray/bluray.h>
-#include <libbluray/navigation.h>
 
 #define LOG_MODULE "input_bluray"
 #define LOG_VERBOSE
@@ -107,9 +106,10 @@ typedef struct {
 
   BLURAY               *bdh;
 
-  int            num_titles;
-  int            current_title;
-  BD_TITLE_INFO *title_info;
+  int                num_titles;
+  int                current_title;
+  BLURAY_TITLE_INFO *title_info;
+  int                current_clip;
 
   uint32_t       cap_seekable;
 
@@ -134,7 +134,7 @@ static void update_stream_info(bluray_input_plugin_t *this)
   /* set stream info */
 
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_COUNT,    this->title_info->angle_count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   this->bdh->angle);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   bd_get_current_angle(this->bdh));
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, get_current_chapter(this) + 1);
@@ -142,7 +142,7 @@ static void update_stream_info(bluray_input_plugin_t *this)
 
 static int open_title (bluray_input_plugin_t *this, int title)
 {
-  if (bd_select_title(this->bdh, title) <= 0 || !this->bdh->title) {
+  if (bd_select_title(this->bdh, title) <= 0) {
     LOGMSG("bd_select_title(%d) failed\n", title);
     return 0;
   }
@@ -155,8 +155,8 @@ static int open_title (bluray_input_plugin_t *this, int title)
 
 #ifdef LOG
   int ms = this->title_info->duration / INT64_C(90000);
-  lprintf("Opened playlist %s. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
-          this->bdh->title->name, bd_get_title_size(this->bdh),
+  lprintf("Opened playlist %d. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
+          title, bd_get_title_size(this->bdh),
           ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
 #endif
 
@@ -224,7 +224,7 @@ static void handle_events(bluray_input_plugin_t *this)
   xine_event_t *event;
   while (NULL != (event = xine_event_get(this->event_queue))) {
 
-    if (!this->bdh || !this->bdh->title) {
+    if (!this->bdh || !this->title_info) {
       xine_event_free(event);
       return;
     }
@@ -279,18 +279,20 @@ static void handle_events(bluray_input_plugin_t *this)
       }
 
       case XINE_EVENT_INPUT_ANGLE_NEXT: {
-        int angle = MIN(8, this->bdh->angle - 1);
-        lprintf("XINE_EVENT_INPUT_ANGLE_NEXT: set angle %d --> %d\n", this->bdh->angle, angle);
+        unsigned curr_angle = bd_get_current_angle(this->bdh);
+        unsigned angle      = MIN(8, curr_angle + 1);
+        lprintf("XINE_EVENT_INPUT_ANGLE_NEXT: set angle %d --> %d\n", curr_angle, angle);
         bd_seamless_angle_change(this->bdh, angle);
-        _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, angle);
+        _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, bd_get_current_angle(this->bdh));
         break;
       }
 
       case XINE_EVENT_INPUT_ANGLE_PREVIOUS: {
-        int angle = MAX(0, this->bdh->angle - 1);
-        lprintf("XINE_EVENT_INPUT_ANGLE_PREVIOUS: set angle %d --> %d\n", this->bdh->angle, angle);
+        unsigned curr_angle = bd_get_current_angle(this->bdh);
+        unsigned angle      = curr_angle ? curr_angle - 1 : 0;
+        lprintf("XINE_EVENT_INPUT_ANGLE_PREVIOUS: set angle %d --> %d\n", curr_angle, angle);
         bd_seamless_angle_change(this->bdh, angle);
-        _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, angle);
+        _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, bd_get_current_angle(this->bdh));
         break;
       }
     }
@@ -393,7 +395,7 @@ static off_t bluray_plugin_seek_time (input_plugin_t *this_gen, int time_offset,
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  if (!this || !this->bdh || !this->bdh->title)
+  if (!this || !this->bdh || !this->title_info)
     return -1;
 
   /* convert relative seeks to absolute */
@@ -425,17 +427,7 @@ static int bluray_plugin_get_current_time (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  if (this->bdh && this->bdh->title) {
-    off_t    offset   = bd_tell(this->bdh);
-    uint32_t in_pkt   = offset / PKT_SIZE;
-    uint32_t clip_pkt = 0, out_pkt = 0, out_time = 0;
-
-    nav_packet_search(this->bdh->title, in_pkt, &clip_pkt, &out_pkt, &out_time);
-
-    return (int)(out_time / TICKS_IN_MS);
-  }
-
-  return -1;
+  return this->bdh ? bd_tell_time(this->bdh) / 90 : -1;
 }
 
 static off_t bluray_plugin_get_length (input_plugin_t *this_gen)
@@ -479,23 +471,28 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
      */
     case INPUT_OPTIONAL_DATA_AUDIOLANG:
-      if (this->bdh->title) {
-        int        channel = *((int *)data);
-        CLPI_PROG *prog    = &this->bdh->title->clip_list.clip->cl->program.progs[0];
-        int i, n = 0;
-        for (i=0 ; i < prog->num_streams; i++)
-          if (prog->streams[i].pid >= 0x1100 && prog->streams[i].pid < 0x1200) {
-            /* audio stream #n */
-            if (channel == n || channel == prog->streams[i].pid) {
-              memcpy(data, prog->streams[i].lang, 4);
+      if (this->title_info) {
+        int               channel = *((int *)data);
+        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[this->current_clip];
 
-              lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: ch %d pid %x: %s\n",
-                      channel, prog->streams[i].pid, prog->streams[i].lang);
+        if (channel < clip->audio_stream_count) {
+          memcpy(data, clip->audio_streams[channel].lang, 4);
+          lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: %02d [pid 0x%04x]: %s\n",
+                  channel, clip->audio_streams[channel].pid, clip->audio_streams[channel].lang);
 
-              return INPUT_OPTIONAL_SUCCESS;
-            }
-            n++;
+          return INPUT_OPTIONAL_SUCCESS;
+        }
+        /* search by pid */
+        int i;
+        for (i = 0; i < clip->audio_stream_count; i++) {
+          if (channel == clip->audio_streams[i].pid) {
+            memcpy(data, clip->audio_streams[i].lang, 4);
+            lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: pid 0x%04x -> ch %d: %s\n",
+                    channel, i, clip->audio_streams[i].lang);
+
+            return INPUT_OPTIONAL_SUCCESS;
           }
+        }
       }
       return INPUT_OPTIONAL_UNSUPPORTED;
 
@@ -504,25 +501,28 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      * - channel number can be mpeg-ts PID (0x1200 ... 0x12ff)
      */
     case INPUT_OPTIONAL_DATA_SPULANG:
-      if (this->bdh->title) {
-        int        channel = *((int *)data);
-        CLPI_PROG *prog    = &this->bdh->title->clip_list.clip->cl->program.progs[0];
-        int i, n = 0;
-        for (i=0 ; i < prog->num_streams; i++)
-          if (prog->streams[i].pid         >= 0x1200 && prog->streams[i].pid         <  0x1300 &&
-              prog->streams[i].coding_type >= 0x90   && prog->streams[i].coding_type <= 0x92) {
-            /* subtitle stream #n */
-            if (channel == n || channel == prog->streams[i].pid) {
+      if (this->title_info) {
+        int               channel = *((int *)data);
+        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[this->current_clip];
 
-              memcpy(data, prog->streams[i].lang, 4);
+        if (channel < clip->pg_stream_count) {
+          memcpy(data, clip->pg_streams[channel].lang, 4);
+          lprintf("INPUT_OPTIONAL_DATA_SPULANG: %02d [pid 0x%04x]: %s\n",
+                  channel, clip->pg_streams[channel].pid, clip->pg_streams[channel].lang);
 
-              lprintf("INPUT_OPTIONAL_DATA_SPULANG: ch %d pid %x: %s\n",
-                      channel, prog->streams[i].pid, prog->streams[i].lang);
+          return INPUT_OPTIONAL_SUCCESS;
+        }
+        /* search by pid */
+        int i;
+        for (i = 0; i < clip->pg_stream_count; i++) {
+          if (channel == clip->pg_streams[i].pid) {
+            memcpy(data, clip->pg_streams[i].lang, 4);
+            lprintf("INPUT_OPTIONAL_DATA_SPULANG: pid 0x%04x -> ch %d: %s\n",
+                    channel, i, clip->pg_streams[i].lang);
 
-              return INPUT_OPTIONAL_SUCCESS;
-            }
-            n++;
+            return INPUT_OPTIONAL_SUCCESS;
           }
+        }
       }
       return INPUT_OPTIONAL_UNSUPPORTED;
 
@@ -649,11 +649,13 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   /* if title was not in mrl, find the main title */
   if (title < 0) {
     int i, duration = 0;
-    for (i = 0; i < this->bdh->title_list->count; i++) {
-      if (this->bdh->title_list->title_info[i].duration >= duration) {
-        duration = this->bdh->title_list->title_info[i].duration;
+    for (i = 0; i < this->num_titles; i++) {
+      BLURAY_TITLE_INFO *info = bd_get_title_info(this->bdh, i);
+      if (info->duration > duration) {
+        duration = info->duration;
         title = i;
       }
+      bd_free_title_info(info);
     }
   }
 
@@ -789,7 +791,7 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
 {
   bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
   char *path = NULL;
-  int title = -1, chapter = -1, i;
+  int title = -1, chapter = -1, i, num_titles;
 
   lprintf("bluray_class_get_dir(%s)\n", filename);
 
@@ -798,26 +800,34 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
   if (filename)
     parse_mrl(filename, &path, &title, &chapter);
 
-  NAV_TITLE_LIST *title_list = nav_get_title_list(path?:this->mountpoint, TITLES_RELEVANT);
+  BLURAY *bdh    = bd_open(path?:this->mountpoint, NULL);
 
-  if (title_list) {
+  if (bdh) {
+    num_titles = bd_get_titles(bdh, TITLES_RELEVANT);
 
-    this->xine_playlist_size = title_list->count;
-    this->xine_playlist      = calloc(this->xine_playlist_size + 1, sizeof(xine_mrl_t*));
+    if (num_titles > 0) {
 
-    for (i = 0; i < this->xine_playlist_size; i++) {
-      this->xine_playlist[i] = calloc(1, sizeof(xine_mrl_t));
+      this->xine_playlist_size = num_titles;
+      this->xine_playlist      = calloc(this->xine_playlist_size + 1, sizeof(xine_mrl_t*));
 
-      if (asprintf(&this->xine_playlist[i]->origin, "bluray:/%s", path?:"") < 0)
-        this->xine_playlist[i]->origin = NULL;
-      if (asprintf(&this->xine_playlist[i]->mrl,    "bluray:/%s/%d", path?:"", i) < 0)
-        this->xine_playlist[i]->mrl = NULL;
-      this->xine_playlist[i]->type = mrl_dvd;
-      this->xine_playlist[i]->size = title_list->title_info[i].duration;
+      for (i = 0; i < num_titles; i++) {
+        //BLURAY_TITLE_INFO *info = bd_get_title_info(bd, title);
+
+        this->xine_playlist[i] = calloc(1, sizeof(xine_mrl_t));
+
+        if (asprintf(&this->xine_playlist[i]->origin, "bluray:/%s", path?:"") < 0)
+          this->xine_playlist[i]->origin = NULL;
+        if (asprintf(&this->xine_playlist[i]->mrl,    "bluray:/%s/%d", path?:"", i) < 0)
+          this->xine_playlist[i]->mrl = NULL;
+        this->xine_playlist[i]->type = mrl_dvd;
+        //this->xine_playlist[i]->size = info->duration;
+
+        //bd_free_title_info(info);
+      }
     }
-
-    nav_free_title_list(title_list);
   }
+
+  bd_close(bdh);
 
   free(path);
 
