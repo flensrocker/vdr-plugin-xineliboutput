@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.94 2010-06-02 10:27:59 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.95 2010-07-09 21:31:37 phintuka Exp $
  *
  */
 
@@ -1167,7 +1167,7 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 
   fd_control[cli].printf("NOVIDEO %d\r\nLIVE %d\r\n",
                          m_bNoVideo?1:0, m_bLiveMode?1:0);
-  fd_control[cli].printf("TRICKSPEED %d%s",
+  fd_control[cli].printf("TRICKSPEED %d%s\r\n",
                          m_TrickSpeed, m_bTrickSpeedBack ? " Backwards" : "");
 
   SetVolume(m_Volume);
