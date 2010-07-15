@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.130 2010-07-15 12:49:46 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.131 2010-07-15 12:59:42 phintuka Exp $
  *
  */
 
@@ -637,20 +637,20 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
 
   for(i = 0; i < cmd->num_rle; ++i) {
-    const uint8_t alpha = (cmd->palette + (cmd->data + i)->color)->alpha;
-    const uint8_t r = (cmd->palette + (cmd->data + i)->color)->r;
-    const uint8_t g = (cmd->palette + (cmd->data + i)->color)->g;
-    const uint8_t b = (cmd->palette + (cmd->data + i)->color)->b;
+    const uint32_t a = (cmd->palette + (cmd->data + i)->color)->alpha;
+    const uint32_t r = (cmd->palette + (cmd->data + i)->color)->r;
+    const uint32_t g = (cmd->palette + (cmd->data + i)->color)->g;
+    const uint32_t b = (cmd->palette + (cmd->data + i)->color)->b;
     uint32_t finalcolor;
     uint     j;
 
-    finalcolor  = ((alpha << 24) & 0xFF000000);
-    finalcolor |= ((r << 16) & 0x00FF0000);
-    finalcolor |= ((g << 8) & 0x0000FF00);
-    finalcolor |= (b & 0x000000FF);
+    finalcolor  = (a << 24);
+    finalcolor |= (r << 16);
+    finalcolor |= (g << 8);
+    finalcolor |= b;
 
-    for(j = 0; j < (cmd->data + i)->len; ++j) {
-      if(pixelcounter >= cmd->w) {
+    for (j = 0; j < (cmd->data + i)->len; ++j) {
+      if (pixelcounter >= cmd->w) {
         idx += HUD_MAX_WIDTH - pixelcounter;
         pixelcounter = 0;
       }
