@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.128 2010-07-15 12:37:10 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.129 2010-07-15 12:44:17 phintuka Exp $
  *
  */
 
@@ -149,6 +149,13 @@ typedef struct sxfe_s {
   uint8_t  opengl_hud : 1;
   uint8_t  gui_hotkeys : 1;
   uint8_t  no_x_kbd : 1;
+
+  uint8_t  video_win_active; /* activate video window? */
+  uint8_t  video_win_changed;
+  uint16_t video_win_x;      /* video window position, x */
+  uint16_t video_win_y;      /* video window position, y */
+  uint16_t video_win_w;      /* video window width */
+  uint16_t video_win_h;      /* video window height */
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
@@ -650,6 +657,8 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
 static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
+  XDouble scale_x, scale_y;
+  int x, y, w, h;
 
   if(this && this->hud && cmd) {
     XLockDisplay(this->display);
@@ -666,6 +675,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
                      0, 0, this->osd_width+2, this->osd_height+2);
+      this->video_win_active = 0;
       XFlush(this->display);
       break;
 
@@ -675,12 +685,12 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
 
-      XDouble scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
-      XDouble scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
-      int x = cmd->x + cmd->dirty_area.x1;
-      int y = cmd->y + cmd->dirty_area.y1;
-      int w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
-      int h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
+      scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
+      scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
+      x = cmd->x + cmd->dirty_area.x1;
+      y = cmd->y + cmd->dirty_area.y1;
+      w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
+      h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
 
 #ifdef HAVE_XSHM
       if(this->completion_event != -1) {
@@ -734,7 +744,35 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_VideoWindow:
-      LOGDBG("HUD osd VideoWindow");
+      LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
+
+      // Compute the coordinates of the video window
+      scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
+      scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
+
+      x = cmd->x;
+      y = cmd->y;
+      w = cmd->w;
+      h = cmd->h;
+
+      x = (int)ceil((double)(x>0 ? x-1 : 0) * scale_x);
+      y = (int)ceil((double)(y>0 ? y-1 : 0) * scale_y);
+      w = (int)floor((double)(w+2) * scale_x);
+      h = (int)floor((double)(h+2) * scale_y);
+
+      if (x != this->video_win_x || y != this->video_win_y ||
+          w != this->video_win_w || h != this->video_win_h)
+        this->video_win_changed = 1;
+
+      this->video_win_x = x;
+      this->video_win_y = y;
+      this->video_win_w = w;
+      this->video_win_h = h;
+
+      this->video_win_active = 1;
+
+      LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
+
       break;
 
     case OSD_Close: /* Close OSD window */
@@ -746,6 +784,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
                      0, 0, this->x.width, this->x.height);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
                      0, 0, this->osd_width+2, this->osd_height+2);
+      this->video_win_active = 0;
       XFlush(this->display);
       break;
 
@@ -1162,6 +1201,8 @@ static int sxfe_display_open(frontend_t *this_gen,
   this->x.scale_video = scale_video;
   this->x.field_order = field_order ? 1 : 0;
   this->x.aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
+
+  this->video_win_active = 0;
 
   this->origxpos      = 0;
   this->origypos      = 0;
