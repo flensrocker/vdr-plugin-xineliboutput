@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.129 2010-07-15 12:44:17 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.130 2010-07-15 12:49:46 phintuka Exp $
  *
  */
 
@@ -538,7 +538,8 @@ static Xrender_Surf * xrender_surf_new(Display *dpy, Drawable draw, Visual *vis,
 
 static void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *dst,
                                int x, int y, int w, int h,
-                               XDouble scale_x, XDouble scale_y, int smooth)
+                               XDouble scale_x, XDouble scale_y, int smooth,
+                               int *new_x, int *new_y, int *new_w, int *new_h)
 {
   XTransform xf;
 
@@ -557,6 +558,11 @@ static void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *ds
   w = (int)floor((double)(w+2) * scale_x);
   h = (int)floor((double)(h+2) * scale_y);
   XRenderComposite(dpy, PictOpSrc, src->pic, None, dst->pic, x, y, 0, 0, x, y, w, h);
+
+  *new_x = x;
+  *new_y = y;
+  *new_w = w;
+  *new_h = h;
 }
 
 static Xrender_Surf * xrender_surf_adopt(Display *dpy, Drawable draw, Visual *vis, int w, int h)
@@ -708,7 +714,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
                              x, y, w, h,
                              scale_x, scale_y,
-                             (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
+                             (cmd->scaling & 2),  // Note: HUD_SCALING_BILINEAR=2
+                             &x, &y, &w, &h);
         }
       }
       else
@@ -726,7 +733,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           xrender_surf_blend(this->display, this->surf_img, this->surf_win,
                              x, y, w, h,
                              scale_x, scale_y,
-                             (cmd->scaling & 2)); // Note: HUD_SCALING_BILINEAR=2
+                             (cmd->scaling & 2),   // Note: HUD_SCALING_BILINEAR=2
+                             &x, &y, &w, &h);
         }
       }
       break;
