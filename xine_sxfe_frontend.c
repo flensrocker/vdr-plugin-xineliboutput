@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.127 2010-07-15 12:34:05 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.128 2010-07-15 12:37:10 phintuka Exp $
  *
  */
 
@@ -145,6 +145,8 @@ typedef struct sxfe_s {
   uint8_t  check_move : 1;
   uint8_t  dragging : 1;
   uint8_t  hud : 1;
+  uint8_t  opengl_always : 1;
+  uint8_t  opengl_hud : 1;
   uint8_t  gui_hotkeys : 1;
   uint8_t  no_x_kbd : 1;
 
@@ -1131,11 +1133,23 @@ static int sxfe_display_open(frontend_t *this_gen,
 #ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
     this->hud        = hud;
+    this->opengl_always = opengl_always;
+    this->opengl_hud = opengl_hud;
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
+    if (opengl_always) {
+      LOGDBG("sxfe_display_open: Using opengl to draw video and HUD OSD");
+    }
+    if (opengl_hud) {
+      LOGDBG("sxfe_display_open: Using opengl to draw HUD OSD only");
+    }
 #else
     LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
 #endif
+  } else {
+    if (opengl_always || opengl_hud) {
+      LOGERR("sxfe_display_open: the --opengl options must be used with --hud !");
+    }
   }
 
   this->x.xpos        = xpos;
