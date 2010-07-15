@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.131 2010-07-15 12:59:42 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.132 2010-07-15 13:04:35 phintuka Exp $
  *
  */
 
@@ -159,6 +159,7 @@ typedef struct sxfe_s {
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
+  uint32_t       *shape_mask_mem;
   XImage         *hud_img;
   Visual         *hud_vis;
   Xrender_Surf   *surf_win;
@@ -631,10 +632,13 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   return visual;
 }
 
-static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
+static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
 {
   uint i, pixelcounter = 0;
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
+
+  if (mask_changed)
+    *mask_changed = 0;
 
   for(i = 0; i < cmd->num_rle; ++i) {
     const uint32_t a = (cmd->palette + (cmd->data + i)->color)->alpha;
@@ -654,7 +658,14 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
         idx += HUD_MAX_WIDTH - pixelcounter;
         pixelcounter = 0;
       }
-      dst[idx++] = finalcolor;
+      dst[idx] = finalcolor;
+      if (mask) {
+        if ((dst[idx] && (!mask[idx])) || (!dst[idx] && mask[idx])) {
+          *mask_changed = 1;
+          mask[idx] = dst[idx];
+        }
+      }
+      ++idx;
       ++pixelcounter;
     }
   }
@@ -663,6 +674,7 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
 static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
+  int mask_changed;
   XDouble scale_x, scale_y;
   int x, y, w, h;
 
@@ -700,7 +712,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
 #ifdef HAVE_XSHM
       if(this->completion_event != -1) {
-        hud_fill_img_memory((uint32_t*)(this->hud_img->data), cmd);
+        hud_fill_img_memory((uint32_t*)(this->hud_img->data), this->shape_mask_mem, &mask_changed, cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window */
           XShmPutImage(this->display, this->hud_window, this->gc, this->hud_img,
@@ -721,7 +733,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       else
 #endif
       {
-        hud_fill_img_memory(this->hud_img_mem, cmd);
+        hud_fill_img_memory(this->hud_img_mem, this->shape_mask_mem, &mask_changed, cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window (always unscaled) */
           XPutImage(this->display, this->hud_window, this->gc, this->hud_img,
