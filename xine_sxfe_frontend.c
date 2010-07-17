@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.132 2010-07-15 13:04:35 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.133 2010-07-17 12:06:53 phintuka Exp $
  *
  */
 
@@ -817,6 +817,46 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   return 1;
 }
 
+static void hud_frame_output_cb (void *data,
+                                  int video_width, int video_height,
+                                  double video_pixel_aspect,
+                                  int *dest_x, int *dest_y,
+                                  int *dest_width, int *dest_height,
+                                  double *dest_pixel_aspect,
+                                  int *win_x, int *win_y)
+{
+  sxfe_t *this = (sxfe_t*)data;
+
+  /* Call the original handler */
+  this->x.frame_output_handler(data,
+                               video_width, video_height,
+                               video_pixel_aspect,
+                               dest_x, dest_y,
+                               dest_width, dest_height,
+                               dest_pixel_aspect,
+                               win_x, win_y);
+
+  /* Set the desitination position if the video window is active */
+  if (this->video_win_active) {
+
+    /* Clear the window if the size has changed */
+    if (this->video_win_changed) {
+      Window win = this->window[this->fullscreen ? 1 : 0];
+      GC     gc  = XCreateGC(this->display, win, 0, NULL);
+      XSetForeground(this->display, gc, 0x00000000);
+      XFillRectangle(this->display, win, gc, 0, 0, this->x.width-1, this->x.height-1);
+      XFreeGC(this->display, gc);
+    }
+
+    *dest_x = this->video_win_x;
+    *dest_y = this->video_win_y;
+    *dest_width  = this->video_win_w;
+    *dest_height = this->video_win_h;
+  }
+
+  this->video_win_changed = 0;
+}
+
 static int hud_osd_open(sxfe_t *this)
 {
   if(this && this->hud) {
@@ -900,8 +940,17 @@ static int hud_osd_open(sxfe_t *this)
     XUnlockDisplay(this->display);
 
     this->fe.xine_osd_command = hud_osd_command;
+
+    if (this->x.scale_video) {
+      // Enable this if you want to have video window support (e.g., for yaepghd)
+      // However, vdpau does not support this. Works ok for xv
+      this->x.vis_x11.frame_output_cb  = hud_frame_output_cb;
+    }
+
+    return 1;
   }
-  return 1;
+
+  return 0;
 }
 
 /*
