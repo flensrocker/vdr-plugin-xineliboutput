@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.133 2010-07-17 12:06:53 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.134 2010-07-17 12:29:36 phintuka Exp $
  *
  */
 
@@ -994,13 +994,15 @@ static void hud_osd_focus(sxfe_t *this, XFocusChangeEvent *fev)
 
       XLockDisplay(this->display);
 
-      if(fev->type == FocusIn)
+      if (fev->type == FocusIn) {
         /* Show HUD again if sxfe window receives focus */
         XMapWindow(this->display, this->hud_window);
+      }
 
-      else if(fev->type == FocusOut)
+      else if (fev->type == FocusOut) {
         /* Dismiss HUD window if focusing away from frontend window */
         XUnmapWindow(this->display, this->hud_window);
+      }
 
       XUnlockDisplay(this->display);
     }
@@ -1168,10 +1170,13 @@ static double detect_display_ratio(Display *dpy, int screen)
 static void create_windows(sxfe_t *this)
 {
   XSetWindowAttributes xswa;
+  unsigned long        xswa_mask;
 
   xswa.background_pixel = 0x00000000;
   xswa.border_pixel     = 0;
   xswa.backing_store    = WhenMapped;
+
+  xswa_mask = CWBackPixel | CWBorderPixel | CWBackingStore;
 
   XLockDisplay(this->display);
 
@@ -1181,12 +1186,12 @@ static void create_windows(sxfe_t *this)
                                    this->x.xpos, this->x.ypos,
                                    this->x.width, this->x.height, 1,
                                    CopyFromParent, InputOutput, CopyFromParent,
-                                   (CWBackPixel | CWBorderPixel | CWBackingStore), &xswa);
+                                   xswa_mask, &xswa);
   this->window[1] = XCreateWindow (this->display, DefaultRootWindow(this->display),
                                    this->xinerama_x, this->xinerama_y,
                                    this->x.width, this->x.height, 0,
                                    CopyFromParent, InputOutput, CopyFromParent,
-                                   (CWBackPixel | CWBorderPixel | CWBackingStore), &xswa);
+                                   xswa_mask, &xswa);
 
   /* full-screen window */
   set_fullscreen_props(this);
