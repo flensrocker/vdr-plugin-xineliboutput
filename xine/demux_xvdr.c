@@ -506,13 +506,19 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
     if (ts_pid == 0) {
       pat_data_t pat;
 
-      ts_data_flush(ts_data);
-
       if (ts_parse_pat(&pat, buf->content)) {
-        ts_data->pmt_pid        = pat.pmt_pid[0];
-        ts_data->program_number = pat.program_number[0];
-        if (iSysLogLevel >= SYSLOGLEVEL_VERBOSE)
-          LOGDBG("Got PAT, PMT pid = %d, program = %d", ts_data->pmt_pid, ts_data->program_number);
+        if (ts_data->pmt_pid        != pat.pmt_pid[0] ||
+            ts_data->program_number != pat.program_number[0]) {
+
+          LOGVERBOSE("PAT: program changed, flushing demuxer");
+
+          ts_data_flush(ts_data);
+
+          ts_data->pmt_pid        = pat.pmt_pid[0];
+          ts_data->program_number = pat.program_number[0];
+        } else {
+          LOGVERBOSE("Got PAT, PMT pid = %d, program = %d", ts_data->pmt_pid, ts_data->program_number);
+        }
       }
     }
 
