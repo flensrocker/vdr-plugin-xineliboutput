@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.12 2010-05-30 20:21:22 phintuka Exp $
+ * $Id: ts2es.c,v 1.13 2010-07-18 13:18:06 phintuka Exp $
  *
  */
 
@@ -220,6 +220,9 @@ void ts2es_flush(ts2es_t *this)
   if (this->buf) {
 
     this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
+
+    /* clear PTS (frame is bypassing demuxer timestamp checks) */
+    this->buf->pts = 0;
 
     this->fifo->put (this->fifo, this->buf);
     this->buf = NULL;
