@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.134 2010-07-17 12:29:36 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.135 2010-07-18 19:41:43 phintuka Exp $
  *
  */
 
@@ -950,7 +950,7 @@ static int hud_osd_open(sxfe_t *this)
     return 1;
   }
 
-  return 0;
+  return 1;
 }
 
 /*
