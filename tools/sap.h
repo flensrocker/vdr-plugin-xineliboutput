@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sap.h,v 1.8 2007-03-29 14:22:30 phintuka Exp $
+ * $Id: sap.h,v 1.9 2010-07-19 13:20:22 phintuka Exp $
  *
  */
 
@@ -12,7 +12,7 @@
 #define XINELIBOUTPUT_SAP_H_
 
 #include <arpa/inet.h>
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 # include <machine/endian.h>
 #else
 # include <endian.h>

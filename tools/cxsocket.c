@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: cxsocket.c,v 1.11 2007-03-27 02:45:48 phintuka Exp $
+ * $Id: cxsocket.c,v 1.12 2010-07-19 13:20:22 phintuka Exp $
  *
  */
 
@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 # include <sys/sendfile.h>
 #endif
 #include <netinet/tcp.h>
@@ -119,7 +119,7 @@ bool cxSocket::set_multicast(int ttl)
 ssize_t cxSocket::sendfile(int fd_file, off_t *offset, size_t count)
 {
   int r; 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
   r = ::sendfile(m_fd, fd_file, offset, count);
   if(r<0 && (errno == ENOSYS || errno == EINVAL)) {
     // fall back to read/write
@@ -145,7 +145,7 @@ ssize_t cxSocket::sendfile(int fd_file, off_t *offset, size_t count)
       }
     }
     return done;
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
   }
   return r;
 #endif
@@ -153,7 +153,7 @@ ssize_t cxSocket::sendfile(int fd_file, off_t *offset, size_t count)
 
 bool cxSocket::set_cork(bool state)
 {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
   return false;
 #else
   int iCork = state ? 1 : 0;
@@ -190,10 +190,17 @@ ssize_t cxSocket::tx_buffer_free(void)
 {
   int wmem = tx_buffer_size();
   int size = -1;
+#if defined(__FreeBSD__) && defined(FIONWRITE)
+  if(ioctl(m_fd, FIONWRITE, &size)) {
+    LOGERR("ioctl(FIONWRITE) failed");
+    return (ssize_t)-1;
+  }
+#else
   if(ioctl(m_fd, TIOCOUTQ, &size)) {
     LOGERR("ioctl(TIOCOUTQ) failed");
     return (ssize_t)-1;
   }
+#endif
 
   return (ssize_t)(wmem - size);
 }

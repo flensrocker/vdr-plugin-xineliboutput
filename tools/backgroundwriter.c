@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.c,v 1.22 2010-03-13 12:20:05 phintuka Exp $
+ * $Id: backgroundwriter.c,v 1.23 2010-07-19 13:20:21 phintuka Exp $
  *
  */
 
@@ -14,6 +14,10 @@
 
 #include <stdint.h>
 #include <unistd.h>
+#ifdef __FreeBSD__
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
 #include <netinet/tcp.h> // CORK, NODELAY
 
 #include <vdr/tools.h>

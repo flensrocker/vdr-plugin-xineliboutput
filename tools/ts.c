@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.27 2010-07-19 13:12:10 phintuka Exp $
+ * $Id: ts.c,v 1.28 2010-07-19 13:20:22 phintuka Exp $
  *
  */
 
@@ -14,6 +14,9 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __FreeBSD__
+#include <sys/types.h>
+#endif
 
 #ifndef LOG_MODULENAME
 #  define LOG_MODULENAME "[mpeg-ts  ] "

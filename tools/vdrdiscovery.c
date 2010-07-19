@@ -7,12 +7,15 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.9 2009-06-29 21:23:33 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.10 2010-07-19 13:20:22 phintuka Exp $
  *
  */
 
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef __FreeBSD__
+#include <string.h>
+#endif
 #include <poll.h>
 #include <unistd.h>
 #include <netinet/in.h>

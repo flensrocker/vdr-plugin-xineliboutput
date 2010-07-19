@@ -4,12 +4,15 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.4 2010-05-21 11:55:15 phintuka Exp $
+ * $Id: rle.c,v 1.5 2010-07-19 13:20:22 phintuka Exp $
  *
  */
 
 #include <stdint.h>
 #include <stdlib.h>
+#ifdef __FreeBSD__
+#include <sys/types.h>
+#endif
 
 #include "../xine_osd_command.h"
 

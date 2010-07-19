@@ -4,14 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rtcp.h,v 1.3 2007-03-29 14:22:31 phintuka Exp $
+ * $Id: rtcp.h,v 1.4 2010-07-19 13:20:22 phintuka Exp $
  *
  */
 
 #ifndef XINELIBOUTPUT_RTCP_H_
 #define XINELIBOUTPUT_RTCP_H_
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 # include <machine/endian.h>
 #else
 # include <endian.h>
