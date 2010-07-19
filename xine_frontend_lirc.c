@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.24 2010-01-03 09:54:39 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.25 2010-07-19 13:39:24 phintuka Exp $
  *
  */
 /*
@@ -25,6 +25,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#ifdef __FreeBSD__
+#include <string.h>
+#endif
 #include <unistd.h>
 #include <pthread.h>
 #include <netinet/in.h>

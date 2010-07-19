@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.322 2010-05-29 22:50:37 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.323 2010-07-19 13:39:24 phintuka Exp $
  *
  */
 
@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 #include <syslog.h>
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 # define DVD_STREAMING_SPEED
 #endif
 
@@ -130,11 +130,11 @@ typedef struct {
 
 /******************************* LOG ***********************************/
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.322 2010-05-29 22:50:37 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.323 2010-07-19 13:39:24 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -152,7 +152,7 @@ void x_syslog(int level, const char *module, const char *fmt, ...)
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
   buf[sizeof(buf)-1] = 0;
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
   if(!bLogToSysLog) {
     fprintf(stderr, "%s%s\n", module, buf);
   } else {
