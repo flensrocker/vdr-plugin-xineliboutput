@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.26 2010-05-21 13:02:24 phintuka Exp $
+ * $Id: ts.c,v 1.27 2010-07-19 13:12:10 phintuka Exp $
  *
  */
 
@@ -76,6 +76,7 @@ static uint32_t ts_compute_crc32(const uint8_t *data, uint32_t length, uint32_t 
 int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
 {
   const uint8_t *original_pkt = pkt;
+  uint           pat_changed  = 0;
 
   if (! ts_PAYLOAD_START(pkt)) {
     LOGMSG ("parse_pat: PAT without payload unit start indicator");
@@ -92,7 +93,7 @@ int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
   uint     section_syntax_indicator = ((pkt[6] >> 7) & 0x01) ;
   uint     section_length           = ((pkt[6] & 0x03) << 8) | pkt[7];
 /*uint     transport_stream_id      = (pkt[8]  << 8) | pkt[9];*/
-/*uint     version_number           = (pkt[10] >> 1) & 0x1f;*/
+  uint     version_number           = (pkt[10] >> 1) & 0x1f;
   uint     current_next_indicator   = pkt[10] & 0x01;
   uint     section_number           = pkt[11];
   uint     last_section_number      = pkt[12];
@@ -125,6 +126,15 @@ int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
     return 0;
   }
 
+  /* check if version or crc changed */
+  if (pat->crc32 != crc32 || pat->version != version_number) {
+    LOGPMT("PAT changed: version %d->%d, crc32 0x%x->0x%x",
+           pat->version, version_number, pat->crc32, crc32);
+    pat->crc32   = crc32;
+    pat->version = version_number;
+    pat_changed++;
+  }
+
   /*
    * Process all programs in the program loop
    */
@@ -143,8 +153,19 @@ int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
     if (program_number == 0x0000)
       continue;
 
-    pat->program_number[program_count] = program_number;
-    pat->pmt_pid[program_count] = pmt_pid;
+    if (pat->program_number[program_count] != program_number ||
+        pat->pmt_pid[program_count]        != pmt_pid) {
+
+      LOGPMT("PAT: program %d changed: number %d->%d, pmt pid 0x%x->0x%x",
+             program_count,
+             pat->program_number[program_count], program_number,
+             pat->pmt_pid[program_count], pmt_pid);
+
+      pat->program_number[program_count] = program_number;
+      pat->pmt_pid[program_count] = pmt_pid;
+
+      pat_changed++;
+    }
 
     LOGPMT("PAT acquired count=%d programNumber=0x%04x pmtPid=0x%04x",
            program_count,
@@ -155,6 +176,8 @@ int ts_parse_pat(pat_data_t *pat, const uint8_t *pkt)
   }
 
   pat->program_number[program_count] = 0;
+
+  pat->pat_changed_flag = !!pat_changed;
 
   return program_count;
 }
