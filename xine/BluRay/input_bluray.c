@@ -634,15 +634,18 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* if title was not in mrl, find the main title */
   if (title < 0) {
-    int i, duration = 0;
+    uint64_t duration = 0;
+    int i, playlist = 99999;
     for (i = 0; i < this->num_titles; i++) {
       BLURAY_TITLE_INFO *info = bd_get_title_info(this->bdh, i);
       if (info->duration > duration) {
+        title    = i;
         duration = info->duration;
-        title = i;
+        playlist = info->playlist;
       }
       bd_free_title_info(info);
     }
+    lprintf("main title: %d (%05d.mpls)\n", title, playlist);
   }
 
   /* get disc name */
