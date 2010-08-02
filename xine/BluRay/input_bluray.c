@@ -22,7 +22,7 @@
  * Input plugin for BluRay discs / images
  *
  * Requires libbluray from git://git.videolan.org/libbluray.git
- * Tested with revision 2010-07-09
+ * Tested with revision 2010-08-02
  *
  */
 
@@ -115,20 +115,6 @@ typedef struct {
 
 } bluray_input_plugin_t;
 
-static int get_current_chapter(bluray_input_plugin_t *this)
-{
-  uint64_t offset = bd_tell(this->bdh);
-  int      chapter;
-
-  /* search for next chapter mark */
-  for (chapter = 0; chapter < this->title_info->chapter_count; chapter++) {
-    if (this->title_info->chapters[chapter].offset > offset)
-      break;
-  }
-
-  return MAX(0, chapter - 1);
-}
-
 static void update_stream_info(bluray_input_plugin_t *this)
 {
   /* set stream info */
@@ -137,7 +123,7 @@ static void update_stream_info(bluray_input_plugin_t *this)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   bd_get_current_angle(this->bdh));
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, get_current_chapter(this) + 1);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, bd_get_current_chapter(this->bdh) + 1);
 }
 
 static int open_title (bluray_input_plugin_t *this, int title)
@@ -244,7 +230,7 @@ static void handle_events(bluray_input_plugin_t *this)
         break;
 
       case XINE_EVENT_INPUT_NEXT: {
-        int chapter = get_current_chapter(this) + 1;
+        unsigned chapter = bd_get_current_chapter(this->bdh) + 1;
 
         lprintf("XINE_EVENT_INPUT_NEXT: next chapter\n");
 
@@ -262,7 +248,7 @@ static void handle_events(bluray_input_plugin_t *this)
       }
 
       case XINE_EVENT_INPUT_PREVIOUS: {
-        int chapter = get_current_chapter(this) - 1;
+        int chapter = bd_get_current_chapter(this->bdh) - 1;
 
         lprintf("XINE_EVENT_INPUT_PREVIOUS: previous chapter\n");
 
