@@ -366,7 +366,7 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
     offset = bd_tell(this->bdh) + offset;
   }
   else if (origin == SEEK_END) {
-    if (offset < bd_get_title_size(this->bdh))
+    if (offset < (off_t)bd_get_title_size(this->bdh))
       offset = bd_get_title_size(this->bdh) - offset;
     else
       offset = 0;
@@ -413,14 +413,14 @@ static int bluray_plugin_get_current_time (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  return this->bdh ? bd_tell_time(this->bdh) / 90 : -1;
+  return this->bdh ? (int)(bd_tell_time(this->bdh) / UINT64_C(90)) : -1;
 }
 
 static off_t bluray_plugin_get_length (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
-  return this->bdh ? bd_get_title_size(this->bdh) : -1;
+  return this->bdh ? (off_t)bd_get_title_size(this->bdh) : (off_t)-1;
 }
 
 static uint32_t bluray_plugin_get_blocksize (input_plugin_t *this_gen)
