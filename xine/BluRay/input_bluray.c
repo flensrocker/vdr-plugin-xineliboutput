@@ -671,7 +671,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   /* jump to chapter */
 
   if (chapter > 0) {
-    chapter = MAX(0, MIN(this->title_info->chapter_count, chapter) - 1);
+    chapter = MAX(0, MIN((int)this->title_info->chapter_count, chapter) - 1);
     bd_seek_chapter(this->bdh, chapter);
     _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, chapter + 1);
   }
