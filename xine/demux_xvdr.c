@@ -146,7 +146,6 @@ static void demux_xvdr_parse_pes(demux_xvdr_t *this, buf_element_t *buf);
 static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 static int32_t parse_audio_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
-static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf);
 
 static void pts_wrap_workaround(demux_xvdr_t *this, buf_element_t *buf, int video)
 {
@@ -456,6 +455,11 @@ static void demux_xvdr_parse_pes (demux_xvdr_t *this, buf_element_t *buf)
   uint8_t       *p = buf->content;
   int32_t        result;
 
+  if (IS_PADDING_PACKET(p)) {
+    buf->free_buffer (buf);
+    return;
+  }
+
   this->stream_id  = p[3];
 
   if (this->ts_data) {
@@ -467,8 +471,6 @@ static void demux_xvdr_parse_pes (demux_xvdr_t *this, buf_element_t *buf)
     result = parse_video_stream(this, p, buf);
   } else if (IS_MPEG_AUDIO_PACKET(p)) {
     result = parse_audio_stream(this, p, buf);
-  } else if (IS_PADDING_PACKET(p)) {
-    result = parse_padding_stream(this, p, buf);
   } else if (IS_PS1_PACKET(p)) {
     result = parse_private_stream_1(this, p, buf);
   } else {
@@ -595,12 +597,6 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
   }
 
   buf->free_buffer(buf);
-}
-
-static int32_t parse_padding_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t *buf)
-{
-  buf->free_buffer (buf);
-  return -1;
 }
 
 /* FIXME: Extension data is not parsed, and is also not skipped. */
