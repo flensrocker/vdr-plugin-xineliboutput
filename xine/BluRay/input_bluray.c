@@ -61,6 +61,10 @@
 # include <xine/input_plugin.h>
 #endif
 
+#ifndef XINE_VERSION_CODE
+# error XINE_VERSION_CODE undefined !
+#endif
+
 #ifndef EXPORTED
 #  define EXPORTED __attribute__((visibility("default")))
 #endif
@@ -301,7 +305,11 @@ static uint32_t bluray_plugin_get_capabilities (input_plugin_t *this_gen)
          INPUT_CAP_CHAPTERS;
 }
 
+#if XINE_VERSION_CODE >= 10190
+static off_t bluray_plugin_read (input_plugin_t *this_gen, void *buf, off_t len)
+#else
 static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
+#endif
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
@@ -757,15 +765,23 @@ static void free_xine_playlist(bluray_input_class_t *this)
   this->xine_playlist_size = 0;
 }
 
+#if INPUT_PLUGIN_IFACE_VERSION < 18
 static const char *bluray_class_get_description (input_class_t *this_gen)
 {
+  (void)this_gen;
+
   return _("BluRay input plugin");
 }
+#endif
 
+#if INPUT_PLUGIN_IFACE_VERSION < 18
 static const char *bluray_class_get_identifier (input_class_t *this_gen)
 {
+  (void)this_gen;
+
   return "bluray";
 }
+#endif
 
 static char **bluray_class_get_autoplay_list (input_class_t *this_gen, int *num_files)
 {
@@ -858,8 +874,13 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
   this->xine = xine;
 
   this->input_class.get_instance       = bluray_class_get_instance;
+#if INPUT_PLUGIN_IFACE_VERSION < 18
   this->input_class.get_identifier     = bluray_class_get_identifier;
   this->input_class.get_description    = bluray_class_get_description;
+#else
+  this->input_class.identifier         = "bluray";
+  this->input_class.description        = _("BluRay input plugin");
+#endif
   this->input_class.get_dir            = bluray_class_get_dir;
   this->input_class.get_autoplay_list  = bluray_class_get_autoplay_list;
   this->input_class.dispose            = bluray_class_dispose;
@@ -891,6 +912,10 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
 
 const plugin_info_t xine_plugin_info[] EXPORTED = {
   /* type, API, "name", version, special_info, init_function */
+#if INPUT_PLUGIN_IFACE_VERSION <= 17
   { PLUGIN_INPUT | PLUGIN_MUST_PRELOAD, 17, "BLURAY", XINE_VERSION_CODE, NULL, bluray_init_plugin },
+#elif INPUT_PLUGIN_IFACE_VERSION >= 18
+  { PLUGIN_INPUT | PLUGIN_MUST_PRELOAD, 18, "BLURAY", XINE_VERSION_CODE, NULL, bluray_init_plugin },
+#endif
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
