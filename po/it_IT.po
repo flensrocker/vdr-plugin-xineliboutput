@@ -86,6 +86,9 @@ msgstr "Spettro FFT"
 msgid "FFT Graph"
 msgstr "Grafico FFT"
 
+msgid "Image"
+msgstr ""
+
 msgid "Mono 1.0"
 msgstr "Mono 1.0"
 
@@ -154,6 +157,9 @@ msgstr "più vicino"
 
 msgid "bilinear"
 msgstr "bilineare"
+
+msgid "video stream"
+msgstr ""
 
 msgid "none"
 msgstr "nessuno"

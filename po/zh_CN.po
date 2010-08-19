@@ -84,6 +84,9 @@ msgstr "FFT的范围"
 msgid "FFT Graph"
 msgstr "FFT 图像"
 
+msgid "Image"
+msgstr ""
+
 msgid "Mono 1.0"
 msgstr "单声道 1.0"
 
@@ -152,6 +155,9 @@ msgstr "最近"
 
 msgid "bilinear"
 msgstr "双线性"
+
+msgid "video stream"
+msgstr ""
 
 msgid "none"
 msgstr "无"

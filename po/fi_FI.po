@@ -85,6 +85,9 @@ msgstr "spektri"
 msgid "FFT Graph"
 msgstr "spektrogrammi"
 
+msgid "Image"
+msgstr "Kuva"
+
 msgid "Mono 1.0"
 msgstr "Mono 1.0"
 
@@ -153,6 +156,9 @@ msgstr "lähin"
 
 msgid "bilinear"
 msgstr "bilineaarinen"
+
+msgid "video stream"
+msgstr "videolähete"
 
 msgid "none"
 msgstr "ei"
