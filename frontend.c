@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.89 2010-08-25 09:46:59 phintuka Exp $
+ * $Id: frontend.c,v 1.90 2010-08-25 09:50:15 phintuka Exp $
  *
  */
 
@@ -84,9 +84,9 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
   cGeneralRemote *remote = NULL;
   for (cRemote *item = Remotes.First(); item; item = Remotes.Next(item)) {
     if (!strcmp(item->Name(), keymap)) {
-      // dirty... but only way to support learning ...
-      ((cGeneralRemote*)item)->Put(key, repeat, release);
-      return;
+      // dirty... but using protected cRemote::Put() is the only way to support learning ...
+      remote = (cGeneralRemote*)item;
+      break;
     }
   }
 
@@ -94,8 +94,13 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
   if (!remote)
     remote = new cGeneralRemote(keymap);
 
+  // put key to remote queue
   if (key[0]) {
-    remote->Put(key, repeat, release);
+    if (!remote->Put(key, repeat, release)) {
+      if (!key[1]) {
+        remote->cRemote::Put(KBDKEY(key[0]));
+      }
+    }
   }
 }
 
