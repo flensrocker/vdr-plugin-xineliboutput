@@ -3,7 +3,8 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
-- Added FreeBSD compability (Thanks to Juergen Lock)
+- Added support for Alt and Ctrl key modifiers to X11 keyboard remote controller.
+- Added FreeBSD compability (Thanks to Juergen Lock and Joerg Pulz)
 - Added support for yaepg(hd) video window with HUD OSD (Thanks to grueni75)
 - Fixed lot of compiler warnings (Thanks to Winfried Koehler)
 - Fixed mixer volume being reset at vdr-sxfe start when using software volume control

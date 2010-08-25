@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.135 2010-07-18 19:41:43 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.136 2010-08-25 09:17:23 phintuka Exp $
  *
  */
 
@@ -1578,8 +1578,17 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
     }
     if (fe_event)
       this->x.fe.send_event((frontend_t*)this, fe_event);
-    else if (!this->no_x_kbd)
-      this->x.fe.send_input_event((frontend_t*)this, "XKeySym", XKeysymToString(ks), 0, 0);
+    else if (!this->no_x_kbd) {
+      char keyname[40] = "";
+      if (kev->state & Mod1Mask) {
+        strcat(keyname, "Alt+");
+      }
+      if (kev->state & ControlMask) {
+        strcat(keyname, "Ctrl+");
+      }
+      strncat(keyname, XKeysymToString(ks), sizeof(keyname) - 11);
+      this->x.fe.send_input_event((frontend_t*)this, "XKeySym", keyname, 0, 0);
+    }
   }
 }
 

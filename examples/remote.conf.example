@@ -45,6 +45,8 @@ XKeySym.Volume-    KP_Subtract
 XKeySym.Mute       m
 XKeySym.Info       I
 XKeySym.Audio      A
+XKeySym.Audio      Alt+A
+XKeySym.Audio      Alt+a
 XKeySym.Subtitles  S
 XKeySym.Schedule   F6
 XKeySym.Channels   F7
