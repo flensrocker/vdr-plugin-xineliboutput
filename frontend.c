@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.88 2010-05-27 12:04:50 phintuka Exp $
+ * $Id: frontend.c,v 1.89 2010-08-25 09:46:59 phintuka Exp $
  *
  */
 
@@ -57,8 +57,8 @@
 //
 
 /*static*/
-void cXinelibThread::KeypressHandler(const char *keymap, const char *key, 
-				     bool repeat, bool release)
+void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
+                                     bool repeat, bool release)
 {
 #ifdef XINELIBOUTPUT_LOG_KEYS
   static FILE *flog = fopen("/video/keys.log","w");
@@ -69,24 +69,33 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
 
   TRACE("keypress_handler: " << (keymap?keymap:"") << " " << key);
 
-  if(!key)
+  // check if key exists.
+  // Note: empty key ("") is used to trigger learning; it only creates the cRemote object.
+  if (!key)
     return;
 
-  if(keymap) {
-    cRemote *item = Remotes.First();
-    while(item) {
-      if(!strcmp(item->Name(), keymap)) {
-	// dirty... but only way to support learning ...
-	((cGeneralRemote*)item)->Put(key, repeat, release);
-	return;
-      }
-      item = Remotes.Next(item);
-    }
-    cGeneralRemote *r = new cGeneralRemote(keymap);
-    if(*key)
-      r->Put(key, repeat, release);
-  } else {
+  if (!keymap) {
+    // raw VDR key
     cRemote::Put(cKey::FromString(key));
+    return;
+  }
+
+  // find correct remote
+  cGeneralRemote *remote = NULL;
+  for (cRemote *item = Remotes.First(); item; item = Remotes.Next(item)) {
+    if (!strcmp(item->Name(), keymap)) {
+      // dirty... but only way to support learning ...
+      ((cGeneralRemote*)item)->Put(key, repeat, release);
+      return;
+    }
+  }
+
+  // not found ? create new one
+  if (!remote)
+    remote = new cGeneralRemote(keymap);
+
+  if (key[0]) {
+    remote->Put(key, repeat, release);
   }
 }
 
