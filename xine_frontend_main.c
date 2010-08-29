@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.88 2010-05-26 12:10:02 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.89 2010-08-29 08:53:29 rofafor Exp $
  *
  */
 
@@ -379,51 +379,58 @@ static char *strcatrealloc(char *dest, const char *src)
 static const char help_str[] =
 "When server address is not given, server is searched from local network.\n"
 "If server is not found, localhost (127.0.0.1) is used as default.\n\n"
-    "   --help                        Show (this) help message\n"
-    "   --audio=audiodriver[:device]  Select audio driver and optional port\n"
-    "   --video=videodriver[:device]  Select video driver and optional port\n"
+    "   -H, --help                    Show (this) help message\n"
+    "   -A, --audio=audiodriver[:device]\n"
+    "                                 Select audio driver and optional port\n"
+    "   -V, --video=videodriver[:device]\n"
+    "                                 Select video driver and optional port\n"
 #ifndef IS_FBFE
-    "   --display=displayaddress      X11 display address\n"
-    "   --wid=id                      Use existing X11 window\n"
+    "   -d, --display=displayaddress  X11 display address\n"
+    "   -W, --wid=id                  Use existing X11 window\n"
 #endif
-    "   --aspect=[auto|4:3|16:9|16:10|default]\n"
+    "   -a, --aspect=[auto|4:3|16:9|16:10|default]\n"
     "                                 Display aspect ratio\n"
     "                                 Use script to control HW aspect ratio:\n"
-    "                                   --aspect=auto:path_to_script\n"
-    "   --fullscreen                  Fullscreen mode\n"
+    "                                 --aspect=auto:path_to_script\n"
+    "   -f, --fullscreen              Fullscreen mode\n"
 #ifdef HAVE_XRENDER
-    "   --hud                         Head Up Display OSD mode\n"
+    "   -D, --hud                     Head Up Display OSD mode using compositing\n"
 #endif
-    "   --width=x                     Video window width\n"
-    "   --height=x                    Video window height\n"
-    "   --geometry=WxH[+X+Y]          Set output window geometry (X style)\n"
-    "   --buffers=x                   Number of PES buffers\n"
-    "   --noscaling                   Disable all video scaling\n"
-    "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
-    "                                 examples:\n"
+#ifdef HAVE_OPENGL
+    "   -Q, --opengl-always           Always use OpenGL for video and Head Up Display OSD\n"
+    "   -O, --opengl-hud              Head Up Display OSD mode using OpenGL\n"
+#endif
+    "   -w, --width=x                 Video window width\n"
+    "   -h, --height=x                Video window height\n"
+    "   -g, --geometry=WxH[+X+Y]      Set output window geometry (X style)\n"
+    "   -B, --buffers=x               Number of PES buffers\n"
+    "   -n, --noscaling               Disable all video scaling\n"
+    "   -P, --post=name[:arg=val[,arg=val]]\n"
+    "                                 Load and use xine post plugin(s)\n"
+    "                                 Examples:\n"
     "                                 --post=upmix\n"
     "                                 --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
-    "   --lirc[=devicename]           Use lirc input device\n"
+    "   -L, --lirc[=devicename]       Use lirc input device\n"
     "                                 Optional lirc socket name can be given\n"
-    "   --config=file                 Use config file (default: ~/.xine/config_xineliboutput).\n"
-    "   --verbose                     Verbose debug output\n"
-    "   --silent                      Silent mode (report only errors)\n"
-    "   --syslog                      Write all output to system log\n"
-    "   --nokbd                       Disable console keyboard input\n"
+    "   -C, --config=file             Use config file (default: ~/.xine/config_xineliboutput).\n"
+    "   -v, --verbose                 Verbose debug output\n"
+    "   -s, --silent                  Silent mode (report only errors)\n"
+    "   -l, --syslog                  Write all output to system log\n"
+    "   -k, --nokbd                   Disable console keyboard input\n"
 #ifndef IS_FBFE
-    "   --noxkbd                      Disable X11 keyboard input\n"
+    "   -x, --noxkbd                  Disable X11 keyboard input\n"
 #endif
-    "   --hotkeys                     Enable frontend GUI hotkeys\n"
-    "   --shutdown=MIN[:CMD]          Shutdown after MIN minutes of inactivity\n"
-    "                                 USe CMD to perform shutdown (default: /sbin/shutdown)\n"
-    "   --terminal=dev                Controlling tty\n"
-    "   --daemon                      Run as daemon (disable keyboard,\n"
+    "   -o, --hotkeys                 Enable frontend GUI hotkeys\n"
+    "   -p, --shutdown=MIN[:CMD]      Shutdown after MIN minutes of inactivity\n"
+    "                                 Use CMD to perform shutdown (default: /sbin/shutdown)\n"
+    "   -T, --terminal=dev            Controlling TTY\n"
+    "   -b, --daemon                  Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
-    "   --slave                       Enable slave mode (read commands from stdin)\n"
-    "   --reconnect                   Automatically reconnect when connection has been lost\n"
-    "   --tcp                         Use TCP transport\n"
-    "   --udp                         Use UDP transport\n"
-    "   --rtp                         Use RTP transport\n\n"
+    "   -S, --slave                   Enable slave mode (read commands from stdin)\n"
+    "   -R, --reconnect               Automatically reconnect when connection has been lost\n"
+    "   -t, --tcp                     Use TCP transport\n"
+    "   -u, --udp                     Use UDP transport\n"
+    "   -r, --rtp                     Use RTP transport\n\n"
     "                                 If no transport options are given, transports\n"
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
