@@ -3,6 +3,7 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Hide mouse cursor after 2 seconds mouse inactivity (Thanks to Gerald Dachs)
 - Added support for entering text using letters.
 - Added support for Alt and Ctrl key modifiers to X11 keyboard remote controller.
 - Added FreeBSD compability (Thanks to Juergen Lock and Joerg Pulz)

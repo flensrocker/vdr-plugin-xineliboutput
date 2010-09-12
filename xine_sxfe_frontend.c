@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.137 2010-09-12 21:53:11 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.138 2010-09-12 22:01:43 phintuka Exp $
  *
  */
 
@@ -108,6 +108,7 @@ typedef struct sxfe_s {
   XF86VidModeModeInfo**  XF86_modelines;
 #endif
   Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
+  int      mousecursor_timeout;
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
@@ -184,6 +185,8 @@ typedef struct sxfe_s {
 #define OSD_DEF_HEIGHT     576
 #define HUD_MAX_WIDTH      1920
 #define HUD_MAX_HEIGHT     1200
+
+#define MOUSECURSOR_TIMEOUT 2000  // 2 seconds
 
 static void sxfe_dest_size_cb (void *data,
                                int video_width, int video_height, double video_pixel_aspect,
@@ -1346,13 +1349,15 @@ static int sxfe_display_open(frontend_t *this_gen,
                 ExposureMask |
                 KeyPressMask |
                 ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |
-                FocusChangeMask);
+                FocusChangeMask |
+                PointerMotionMask);
   XSelectInput (this->display, this->window[1],
                 StructureNotifyMask |
                 ExposureMask |
                 KeyPressMask |
                 ButtonPressMask |
-                FocusChangeMask);
+                FocusChangeMask |
+                PointerMotionMask);
 
   /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
@@ -1365,8 +1370,10 @@ static int sxfe_display_open(frontend_t *this_gen,
   XSetWMProtocols(this->display, this->window[this->fullscreen ? 1 : 0], &(this->xa_WM_DELETE_WINDOW), 1);
 
   /* Hide cursor */
-  if(this->window_id <= 0)
-    set_cursor(this->display, this->window[1], 0);
+  if(this->window_id <= 0) {
+    set_cursor(this->display, this->window[this->fullscreen ? 1 : 0], 0);
+    this->mousecursor_timeout = 0;
+  }
 
   /* No screen saver */
   /* #warning TODO: suspend --> activate blank screen saver / DPMS display off ? */
@@ -1657,6 +1664,13 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
  */
 static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
 {
+  // make mouse cursor visible
+  if (this->mousecursor_timeout <= 0) {
+    set_cursor(this->display, this->window[this->fullscreen ? 1 : 0], 1);
+  }
+  // start timeout
+  this->mousecursor_timeout = MOUSECURSOR_TIMEOUT;
+
   if(this->dragging && !this->fullscreen) {
     Window tmp_win;
     int xpos, ypos;
@@ -1744,11 +1758,22 @@ static int sxfe_run(frontend_t *this_gen)
    * watchdog to emergency exit ...
    */
   if (! XPending(this->display)) {
+    const int poll_timeout = 50;
     struct pollfd pfd = {
       .fd = ConnectionNumber(this->display),
       .events = POLLIN,
     };
-    if (poll(&pfd, 1, 50) < 1 || !(pfd.revents & POLLIN)) {
+    if (poll(&pfd, 1, poll_timeout) < 1 || !(pfd.revents & POLLIN)) {
+
+      // timeout expired?
+      if (this->mousecursor_timeout > 0) {
+        this->mousecursor_timeout -= poll_timeout;
+        if (this->mousecursor_timeout <= 0) {
+          // hide Cursor
+          set_cursor(this->display, this->window[this->fullscreen ? 1 : 0], 0);
+        }
+      }
+
       return !this->x.fe.xine_is_finished((frontend_t*)this, 0);
     }
   }
