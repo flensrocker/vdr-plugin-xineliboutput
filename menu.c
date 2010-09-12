@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.77 2010-02-18 21:36:36 phintuka Exp $
+ * $Id: menu.c,v 1.78 2010-09-12 20:38:47 phintuka Exp $
  *
  */
 
@@ -324,7 +324,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
     char *buffer = NULL;
     if (asprintf(&buffer, "%s/%s", m_CurrentDir, d) >= 0) {
       while (buffer[0] == '/' && buffer[1] == '/')
-        strcpy(buffer, buffer+1);
+        memmove(buffer, buffer+1, strlen(buffer));
       free(m_CurrentDir);
       m_CurrentDir = buffer;
     }
