@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-03-11 23:58+0200\n"
+"POT-Creation-Date: 2010-08-23 10:38+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -85,7 +85,7 @@ msgid "FFT Graph"
 msgstr "FFT Graph"
 
 msgid "Image"
-msgstr ""
+msgstr "Bilder"
 
 msgid "Mono 1.0"
 msgstr ""
@@ -94,7 +94,7 @@ msgid "Stereo 2.0"
 msgstr ""
 
 msgid "Headphones 2.0"
-msgstr ""
+msgstr "Kopfhörer 2.0"
 
 msgid "Stereo 2.1"
 msgstr ""
@@ -136,7 +136,7 @@ msgid "Hardware"
 msgstr ""
 
 msgid "no"
-msgstr ""
+msgstr "nein"
 
 msgid "grayscale"
 msgstr ""
@@ -148,7 +148,7 @@ msgid "transparent grayscale"
 msgstr ""
 
 msgid "yes"
-msgstr ""
+msgstr "ja"
 
 msgid "nearest"
 msgstr ""
@@ -172,7 +172,7 @@ msgid "nonkey"
 msgstr ""
 
 msgid "all"
-msgstr ""
+msgstr "alle"
 
 msgid "Frontend initialization failed"
 msgstr "Initialisierung des Frontends fehlgeschlagen"
@@ -289,10 +289,10 @@ msgid "Aspect ratio"
 msgstr "Seitenverhältnis"
 
 msgid "Video aspect ratio"
-msgstr ""
+msgstr "Video Seitenverhältnis"
 
 msgid "On"
-msgstr ""
+msgstr "an"
 
 msgid "Deinterlacing"
 msgstr "Deinterlacing"
@@ -304,13 +304,13 @@ msgid "Downmix AC3 to surround"
 msgstr "AC3 zu Surround herunter mischen"
 
 msgid "Default playlist not found"
-msgstr ""
+msgstr "Std. Wiedergabeliste nicht gefunden"
 
 msgid "Default playlist is not symlink"
-msgstr ""
+msgstr "Std Wiedergabeliste ist kein sym .Link"
 
 msgid "Default playlist not defined"
-msgstr ""
+msgstr "Std Wiedergabeliste nicht definiert"
 
 msgid "Delay"
 msgstr "Verzögerung"
