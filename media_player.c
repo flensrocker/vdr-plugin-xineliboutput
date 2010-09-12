@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.74 2010-02-23 12:18:47 phintuka Exp $
+ * $Id: media_player.c,v 1.75 2010-09-12 20:45:40 phintuka Exp $
  *
  */
 
@@ -1244,7 +1244,7 @@ void cXinelibImagesControl::Seek(int Rel)
   free(m_File);
   m_File = strdup(m_Files[m_Index]);
   if(NULL != (pt=strrchr(m_File, '/')))
-    strcpy(m_File, pt+1); 
+    memmove(m_File, pt+1, strlen(pt));
   if(NULL != (pt=strrchr(m_File, '.')))
     *pt = 0;
 
