@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.323 2010-07-19 13:39:24 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.324 2010-09-12 20:54:27 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.323 2010-07-19 13:39:24 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.324 2010-09-12 20:54:27 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3449,6 +3449,13 @@ static void *vdr_control_thread(void *this_gen)
 
 /**************************** Control to VDR ********************************/
 
+static const char *trim_str(const char *s)
+{
+  while (*s == ' ' || *s == '\r' || *s == '\n')
+    s++;
+  return s;
+}
+
 static void slave_track_maps_changed(vdr_input_plugin_t *this)
 {
   char tracks[1024], lang[128];
@@ -3477,9 +3484,8 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   current = xine_get_param(this->slave_stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_audio_lang(this->slave_stream, i, lang)) {
-      while(lang[0]==' ') strcpy(lang, lang+1);
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32, 
-		      "%s%d:%s ", i==current?"*":"", i, lang);
+		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
       n++;
     }
   tracks[sizeof(tracks)-1] = 0;
@@ -3512,9 +3518,8 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   }
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_spu_lang(this->slave_stream, i, lang)) {
-      while(lang[0]==' ') strcpy(lang, lang+1);
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
-		      "%s%d:%s ", i==current?"*":"", i, lang);
+		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
       n++;
     }
   tracks[sizeof(tracks)-1] = 0;
