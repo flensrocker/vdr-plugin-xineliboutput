@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.136 2010-08-25 09:17:23 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.137 2010-09-12 21:53:11 phintuka Exp $
  *
  */
 
@@ -183,7 +183,7 @@ typedef struct sxfe_s {
 #define OSD_DEF_WIDTH      720
 #define OSD_DEF_HEIGHT     576
 #define HUD_MAX_WIDTH      1920
-#define HUD_MAX_HEIGHT     1080
+#define HUD_MAX_HEIGHT     1200
 
 static void sxfe_dest_size_cb (void *data,
                                int video_width, int video_height, double video_pixel_aspect,
