@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.29 2010-03-12 22:47:28 phintuka Exp $
+ * $Id: playlist.c,v 1.30 2010-09-13 11:39:34 phintuka Exp $
  *
  */
 
@@ -488,6 +488,17 @@ void cPlaylist::Del(cPlaylistItem *it)
 		cList<cPlaylistItem>::Prev(Current());
 
   cListBase::Del(it);
+  m_Version++;
+}
+
+void cPlaylist::Move(int From, int To)
+{
+  cMutexLock ml(&m_Lock);
+
+  if (Count() < 3)
+    return;
+
+  cListBase::Move(From, To);
   m_Version++;
 }
 
