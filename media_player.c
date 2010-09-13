@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.75 2010-09-12 20:45:40 phintuka Exp $
+ * $Id: media_player.c,v 1.76 2010-09-13 11:27:05 phintuka Exp $
  *
  */
 
@@ -501,7 +501,7 @@ void cXinelibPlayerControl::Queue(const char *File)
       m_Player->Playlist().Read(File);
   }
 
-  Skins.Message(mtInfo, tr("Queued to playlist"));
+  cRemote::Put(Skins.Message(mtInfo, tr("Queued to playlist")), true);
 
   m_Lock.Unlock();
 
