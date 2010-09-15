@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.76 2010-09-13 11:27:05 phintuka Exp $
+ * $Id: media_player.c,v 1.77 2010-09-15 07:54:39 phintuka Exp $
  *
  */
 
@@ -290,6 +290,9 @@ void cXinelibPlayer::Activate(bool On)
 
 class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
 {
+  private:
+    int        m_Marked;
+
   protected:
 
     cPlaylist& m_Playlist;
@@ -319,6 +322,7 @@ cPlaylistMenu::cPlaylistMenu(cPlaylist &Playlist, bool& RandomPlay) :
      m_RandomPlay(RandomPlay),
      m_IC("UTF-8", cCharSetConv::SystemCharacterTable())
 {
+  m_Marked = -1;
   SetTitle(cString::sprintf("%s: %s", tr("Playlist"), m_IC.Convert(*Playlist.Name())));
   Playlist.Listen(this);
   Set(true);
@@ -342,6 +346,23 @@ eOSState cPlaylistMenu::ProcessKey(eKeys Key)
     Set();
 
   eOSState state = cOsdMenu::ProcessKey(Key);
+
+  if (m_Marked >= 0) {
+    switch(Key) {
+      case kOk:
+        m_Playlist.Move(m_Marked, Current());
+        Set();
+        m_Marked = -1;
+        return osContinue;
+
+      case kBack:
+        m_Marked = -1;
+        return osEnd;
+
+      default:;
+    }
+    return osContinue;
+  }
 
   if(state == osUnknown) {
     switch(Key) {
@@ -370,7 +391,11 @@ eOSState cPlaylistMenu::ProcessKey(eKeys Key)
 		      Set();
 	              return result;
                     }
-      case kBlue:   
+      case kBlue:
+                    Mark();
+                    m_Marked = Current();
+	            return osContinue;
+      case k0:
                     m_Playlist.Sort();
 		    Set();
 	            return osContinue;
