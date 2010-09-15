@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.77 2010-09-15 07:54:39 phintuka Exp $
+ * $Id: media_player.c,v 1.78 2010-09-15 08:03:00 phintuka Exp $
  *
  */
 
@@ -420,7 +420,7 @@ void cPlaylistMenu::SetHelpButtons(void)
   SetHelp(!m_RandomPlay ? tr("Button$Random") : tr("Button$Normal"),
 	  tr("Button$Add files"),
 	  m_Playlist.Count()>1 ? tr("Button$Remove") : NULL,
-	  tr("Button$Sort"));
+	  tr("Button$Mark"));
   Display();
 }
 
