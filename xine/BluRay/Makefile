@@ -9,10 +9,10 @@ else
     $(warning demux plugin is not compatible with xine-lib-1.2. Track languages are not available.)
 endif
 
-ifeq ($(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ pkg-config libbluray && echo yes), yes)
+ifeq ($(shell pkg-config libbluray && echo yes), yes)
     ENABLE_INPUT_PLUGIN ?= yes
-    CFLAGS_BD ?= $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ pkg-config libbluray --cflags)
-    LIBS_BD   ?= $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ pkg-config libbluray --libs)
+    CFLAGS_BD ?= $(shell pkg-config libbluray --cflags)
+    LIBS_BD   ?= $(shell pkg-config libbluray --libs)
 else
     ENABLE_INPUT_PLUGIN ?= no
     $(warning libbluray not found)
