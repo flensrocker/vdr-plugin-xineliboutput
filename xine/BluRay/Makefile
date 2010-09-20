@@ -18,18 +18,18 @@ else
     $(warning libbluray not found)
 endif
 
-ifeq ($(shell pkg-config libxine --atleast-version=1.1.18.2 || echo "yes"), yes)
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.19 || echo "yes"), yes)
     ENABLE_SPU_PLUGIN ?= yes
 else
     ENABLE_SPU_PLUGIN ?= no
-    $(warning SPU plugin is included in xine-lib 1.1.17+)
+    $(warning SPU plugin is included in xine-lib 1.1.19+)
 endif
 
-ifeq ($(shell pkg-config libxine --atleast-version=1.1.17.1 || echo "yes"), yes)
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.18 || echo "yes"), yes)
     ENABLE_PCM_PLUGIN ?= yes
 else
     ENABLE_PCM_PLUGIN ?= no
-    $(warning PCM plugin is included in xine-lib 1.1.17.1+)
+    $(warning PCM plugin is included in xine-lib 1.1.18+)
 endif
 
 #
