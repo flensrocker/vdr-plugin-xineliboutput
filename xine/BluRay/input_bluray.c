@@ -130,27 +130,20 @@ static void update_stream_info(bluray_input_plugin_t *this)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, bd_get_current_chapter(this->bdh) + 1);
 }
 
-static int open_title (bluray_input_plugin_t *this, int title)
+static void update_title_info(bluray_input_plugin_t *this)
 {
-  if (bd_select_title(this->bdh, title) <= 0) {
-    LOGMSG("bd_select_title(%d) failed\n", title);
-    return 0;
-  }
-
-  this->current_title = title;
-
   if (this->title_info)
     bd_free_title_info(this->title_info);
   this->title_info = bd_get_title_info(this->bdh, this->current_title);
   if (!this->title_info) {
     LOGMSG("bd_get_title_info(%d) failed\n", this->current_title);
-    return 0;
+    return;
   }
 
 #ifdef LOG
   int ms = this->title_info->duration / INT64_C(90000);
-  lprintf("Opened playlist %d. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
-          title, bd_get_title_size(this->bdh),
+  lprintf("Opened title %d. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
+          this->current_title, bd_get_title_size(this->bdh),
           ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
 #endif
 
@@ -197,6 +190,18 @@ static int open_title (bluray_input_plugin_t *this, int title)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, this->current_title + 1);
 
   update_stream_info(this);
+}
+
+static int open_title (bluray_input_plugin_t *this, int title)
+{
+  if (bd_select_title(this->bdh, title) <= 0) {
+    LOGMSG("bd_select_title(%d) failed\n", title);
+    return 0;
+  }
+
+  this->current_title = title;
+
+  update_title_info(this);
 
   return 1;
 }
