@@ -164,9 +164,11 @@ static int open_title (bluray_input_plugin_t *this, int title)
     .data_length = sizeof(udata)
   };
   if (this->disc_name && this->disc_name[0])
-    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, Title %d/%d", this->disc_name, title, this->num_titles);
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, Title %d/%d",
+                             this->disc_name, this->current_title + 1, this->num_titles);
   else
-    udata.str_len = snprintf(udata.str, sizeof(udata.str), "Title %d/%d", title, this->num_titles);
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "Title %d/%d",
+                             this->current_title + 1, this->num_titles);
   xine_event_send(this->stream, &uevent);
 
   _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, udata.str);
@@ -192,7 +194,7 @@ static int open_title (bluray_input_plugin_t *this, int title)
   /* set stream info */
 
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_COUNT,  this->num_titles);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, this->current_title);
+  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER, this->current_title + 1);
 
   update_stream_info(this);
 
