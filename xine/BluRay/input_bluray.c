@@ -439,6 +439,8 @@ static off_t bluray_plugin_get_length (input_plugin_t *this_gen)
 
 static uint32_t bluray_plugin_get_blocksize (input_plugin_t *this_gen)
 {
+  (void)this_gen;
+
   return ALIGNED_UNIT_SIZE;
 }
 
@@ -791,6 +793,8 @@ static const char *bluray_class_get_identifier (input_class_t *this_gen)
 
 static char **bluray_class_get_autoplay_list (input_class_t *this_gen, int *num_files)
 {
+  (void)this_gen;
+
   static char *autoplay_list[] = { "bluray:/", NULL };
 
   *num_files = 1;
@@ -850,6 +854,7 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
 
 static int bluray_class_eject_media (input_class_t *this_gen)
 {
+  (void)this_gen;
 #if 0
   bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
 
@@ -874,6 +879,8 @@ static void bluray_class_dispose (input_class_t *this_gen)
 
 static void *bluray_init_plugin (xine_t *xine, void *data)
 {
+  (void)data;
+
   config_values_t      *config = xine->config;
   bluray_input_class_t *this   = (bluray_input_class_t *) calloc(1, sizeof (bluray_input_class_t));
 
