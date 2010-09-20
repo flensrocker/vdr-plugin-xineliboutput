@@ -142,6 +142,10 @@ static int open_title (bluray_input_plugin_t *this, int title)
   if (this->title_info)
     bd_free_title_info(this->title_info);
   this->title_info = bd_get_title_info(this->bdh, this->current_title);
+  if (!this->title_info) {
+    LOGMSG("bd_get_title_info(%d) failed\n", this->current_title);
+    return 0;
+  }
 
 #ifdef LOG
   int ms = this->title_info->duration / INT64_C(90000);
