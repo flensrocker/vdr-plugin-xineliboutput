@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.141 2010-09-24 12:45:44 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.142 2010-09-24 12:51:14 phintuka Exp $
  *
  */
 
@@ -1558,10 +1558,13 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
     const char    *fe_event = NULL;
     const char    *ks_name;
 
+    /* resolve key symbol */
     XLockDisplay (this->display);
     XLookupString(kev, buffer, sizeof(buffer), &ks, &status);
     ks_name = XKeysymToString(ks);
     XUnlockDisplay (this->display);
+
+    /* hotkeys */
 
     switch(ks) {
       case XK_f:
@@ -1585,23 +1588,30 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
         break;
       default:;
     }
-    if (fe_event)
+
+    if (fe_event) {
       this->x.fe.send_event((frontend_t*)this, fe_event);
-    else if (!this->no_x_kbd) {
-      if (ks_name) {
-        if (kev->state & (Mod1Mask|ControlMask)) {
+      return;
+    }
+
+    /* send key event to VDR */
+
+    if (!this->no_x_kbd && ks_name) {
+
+      /* check for key modifiers (Alt/Ctrl) */
       char keyname[40] = "";
-      if (kev->state & Mod1Mask) {
-        strcat(keyname, "Alt+");
-      }
-      if (kev->state & ControlMask) {
-        strcat(keyname, "Ctrl+");
-      }
-      strncat(keyname, ks_name, sizeof(keyname) - 11);
-          ks_name = keyname;
+      if (kev->state & (Mod1Mask|ControlMask)) {
+        if (kev->state & Mod1Mask) {
+          strcat(keyname, "Alt+");
         }
-        this->x.fe.send_input_event((frontend_t*)this, "XKeySym", ks_name, 0, 0);
+        if (kev->state & ControlMask) {
+          strcat(keyname, "Ctrl+");
+        }
+        strncat(keyname, ks_name, sizeof(keyname) - 11);
+        ks_name = keyname;
       }
+
+      this->x.fe.send_input_event((frontend_t*)this, "XKeySym", ks_name, 0, 0);
     }
   }
 }
