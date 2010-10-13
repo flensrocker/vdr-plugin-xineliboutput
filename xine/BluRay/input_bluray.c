@@ -881,7 +881,7 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
 {
   bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
   char *path = NULL;
-  int title = -1, chapter = -1, i, num_titles;
+  int title = -1, chapter = -1, i, num_pl;
 
   lprintf("bluray_class_get_dir(%s)\n", filename);
 
@@ -893,14 +893,14 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
   BLURAY *bdh    = bd_open(path?:this->mountpoint, NULL);
 
   if (bdh) {
-    num_titles = bd_get_titles(bdh, TITLES_RELEVANT);
+    num_pl = bd_get_titles(bdh, TITLES_RELEVANT);
 
-    if (num_titles > 0) {
+    if (num_pl > 0) {
 
-      this->xine_playlist_size = num_titles;
+      this->xine_playlist_size = num_pl;
       this->xine_playlist      = calloc(this->xine_playlist_size + 1, sizeof(xine_mrl_t*));
 
-      for (i = 0; i < num_titles; i++) {
+      for (i = 0; i < num_pl; i++) {
         //BLURAY_TITLE_INFO *info = bd_get_title_info(bd, title);
 
         this->xine_playlist[i] = calloc(1, sizeof(xine_mrl_t));
