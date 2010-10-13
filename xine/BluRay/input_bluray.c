@@ -43,6 +43,7 @@
 #include <dlfcn.h>
 
 #include <libbluray/bluray.h>
+#include <libbluray/overlay.h>
 
 #define LOG_MODULE "input_bluray"
 #define LOG_VERBOSE
@@ -101,6 +102,7 @@ typedef struct {
 
   xine_stream_t        *stream;
   xine_event_queue_t   *event_queue;
+  xine_osd_t           *osd;
 
   bluray_input_class_t *class;
 
@@ -118,6 +120,65 @@ typedef struct {
   uint32_t       cap_seekable;
 
 } bluray_input_plugin_t;
+
+static void close_overlay(bluray_input_plugin_t *this)
+{
+  if (this->osd) {
+    xine_osd_free(this->osd);
+    this->osd = NULL;
+  }
+}
+
+static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
+{
+  bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
+  uint32_t color[256];
+  uint8_t  trans[256];
+  unsigned i;
+
+  if (!this) {
+    return;
+  }
+
+  if (!ov || !ov->img) {
+    /* hide OSD */
+    close_overlay(this);
+    return;
+  }
+
+  /* open xine OSD */
+
+  if (!this->osd) {
+    this->osd = xine_osd_new(this->stream, 0, 0, 1920, 1080);
+  }
+
+  /* convert and set palette */
+
+  for(i = 0; i < 256; i++) {
+    trans[i] = ov->palette[i].T;
+    color[i] = (ov->palette[i].Y << 16) | (ov->palette[i].Cr << 8) | ov->palette[i].Cb;
+  }
+
+  xine_osd_set_palette(this->osd, color, trans);
+
+  /* uncompress and draw bitmap */
+
+  const BD_PG_RLE_ELEM *rlep = ov->img;
+  uint8_t *img = malloc(ov->w * ov->h);
+  unsigned pixels = ov->w * ov->h;
+
+  for (i = 0; i < pixels; i += rlep->len, rlep++) {
+    memset(img + i, rlep->color, rlep->len);
+  }
+
+  xine_osd_draw_bitmap(this->osd, img, ov->x, ov->y, ov->w, ov->h, NULL);
+
+  free(img);
+
+  /* display */
+
+  xine_osd_show(this->osd, 0);
+}
 
 static void update_stream_info(bluray_input_plugin_t *this)
 {
@@ -544,6 +605,11 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
 
+  if (this->bdh)
+    bd_register_overlay_proc(this->bdh, NULL, NULL);
+
+  close_overlay(this);
+
   if (this->event_queue)
     xine_event_dispose_queue(this->event_queue);
 
@@ -682,6 +748,10 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     if (*end ==  '/')
       *end = 0;
   }
+
+  /* register overlay (graphics) handler */
+
+  bd_register_overlay_proc(this->bdh, this, overlay_proc);
 
   /* open */
 
