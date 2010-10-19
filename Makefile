@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.91 2010-07-09 22:14:32 phintuka Exp $
+# $Id: Makefile,v 1.92 2010-10-19 11:49:19 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -257,7 +257,7 @@ DEFINES += -Wall
 ###
 
 mpg2c: mpg2c.c
-	$(CC) mpg2c.c -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) mpg2c.c -o $@
 
 # data
 black_720x576.c: mpg2c black_720x576.mpg
