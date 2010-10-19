@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.92 2010-10-19 11:49:19 phintuka Exp $
+# $Id: Makefile,v 1.93 2010-10-19 11:51:00 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -239,7 +239,7 @@ OBJS_XINE = $(OBJS_XINEINPUTVDR) xine_post_autocrop.o xine_post_swscale.o xine_p
 ### Dependencies:
 ###
 
-MAKEDEP = g++ -MM -MG
+MAKEDEP = $(CXX) -MM -MG
 DEPFILE = .dependencies
 $(DEPFILE): Makefile config.mak
 	@rm -f $@
