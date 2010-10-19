@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.93 2010-10-19 11:51:00 phintuka Exp $
+# $Id: Makefile,v 1.94 2010-10-19 11:53:31 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -53,7 +53,8 @@ ifeq ($(ARCH_APPLE_DARWIN), yes)
 else
     CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
-    LDFLAGS_SO ?= -shared -fvisibility=hidden
+    LDFLAGS_SO ?= -fvisibility=hidden
+    LDFLAGS_SO += -shared
 endif
 
 ###
