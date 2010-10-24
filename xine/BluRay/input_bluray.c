@@ -43,6 +43,7 @@
 #include <dlfcn.h>
 
 #include <libbluray/bluray.h>
+#include <libbluray/keys.h>
 #include <libbluray/overlay.h>
 
 #define LOG_MODULE "input_bluray"
@@ -120,6 +121,7 @@ typedef struct {
   BLURAY_TITLE_INFO *title_info;
   int                current_clip;
   int                error;
+  int                menu_open;
 
   uint32_t       cap_seekable;
 
@@ -139,6 +141,9 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
   uint32_t color[256];
   uint8_t  trans[256];
   unsigned i;
+
+  if (ov->plane == 1)
+    this->menu_open = 0;
 
   if (!this) {
     return;
@@ -182,6 +187,9 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
   /* display */
 
   xine_osd_show(this->osd, 0);
+
+  if (ov->plane == 1)
+    this->menu_open = 0;
 }
 
 static void update_stream_info(bluray_input_plugin_t *this)
@@ -369,19 +377,48 @@ static void handle_events(bluray_input_plugin_t *this)
       return;
     }
 
+    int64_t pts = xine_get_current_vpts(this->stream) -
+      this->stream->metronom->get_option(this->stream->metronom, METRONOM_VPTS_OFFSET);
+
+    if (this->menu_open) {
+      switch (event->type) {
+        case XINE_EVENT_INPUT_LEFT:      bd_user_input(this->bdh, pts, BD_VK_LEFT);  break;
+        case XINE_EVENT_INPUT_RIGHT:     bd_user_input(this->bdh, pts, BD_VK_RIGHT); break;
+      }
+    } else {
+      switch (event->type) {
+
+        case XINE_EVENT_INPUT_LEFT:
+          lprintf("XINE_EVENT_INPUT_LEFT: next title\n");
+          open_title(this, MAX(0, this->current_title - 1));
+          stream_reset(this);
+          break;
+
+        case XINE_EVENT_INPUT_RIGHT:
+          lprintf("XINE_EVENT_INPUT_RIGHT: previous title\n");
+          open_title(this, MIN(this->num_titles, this->current_title + 1));
+          stream_reset(this);
+          break;
+      }
+    }
+
     switch (event->type) {
 
-      case XINE_EVENT_INPUT_LEFT:
-        lprintf("XINE_EVENT_INPUT_LEFT: next title\n");
-        open_title(this, MAX(0, this->current_title-1));
-        stream_reset(this);
-        break;
-
-      case XINE_EVENT_INPUT_RIGHT:
-        lprintf("XINE_EVENT_INPUT_RIGHT: previous title\n");
-        open_title(this, MIN(this->num_titles, this->current_title+1));
-        stream_reset(this);
-        break;
+      case XINE_EVENT_INPUT_MENU1:     bd_menu_call(this->bdh); break;
+      case XINE_EVENT_INPUT_MENU2:     bd_user_input(this->bdh, pts, BD_VK_POPUP); break;
+      case XINE_EVENT_INPUT_UP:        bd_user_input(this->bdh, pts, BD_VK_UP);    break;
+      case XINE_EVENT_INPUT_DOWN:      bd_user_input(this->bdh, pts, BD_VK_DOWN);  break;
+      case XINE_EVENT_INPUT_SELECT:    bd_user_input(this->bdh, pts, BD_VK_ENTER); break;
+      case XINE_EVENT_INPUT_NUMBER_0:  bd_user_input(this->bdh, pts, BD_VK_0); break;
+      case XINE_EVENT_INPUT_NUMBER_1:  bd_user_input(this->bdh, pts, BD_VK_1); break;
+      case XINE_EVENT_INPUT_NUMBER_2:  bd_user_input(this->bdh, pts, BD_VK_2); break;
+      case XINE_EVENT_INPUT_NUMBER_3:  bd_user_input(this->bdh, pts, BD_VK_3); break;
+      case XINE_EVENT_INPUT_NUMBER_4:  bd_user_input(this->bdh, pts, BD_VK_4); break;
+      case XINE_EVENT_INPUT_NUMBER_5:  bd_user_input(this->bdh, pts, BD_VK_5); break;
+      case XINE_EVENT_INPUT_NUMBER_6:  bd_user_input(this->bdh, pts, BD_VK_6); break;
+      case XINE_EVENT_INPUT_NUMBER_7:  bd_user_input(this->bdh, pts, BD_VK_7); break;
+      case XINE_EVENT_INPUT_NUMBER_8:  bd_user_input(this->bdh, pts, BD_VK_8); break;
+      case XINE_EVENT_INPUT_NUMBER_9:  bd_user_input(this->bdh, pts, BD_VK_9); break;
 
       case XINE_EVENT_INPUT_NEXT: {
         unsigned chapter = bd_get_current_chapter(this->bdh) + 1;
