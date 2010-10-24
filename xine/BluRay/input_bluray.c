@@ -94,7 +94,10 @@ typedef struct {
   char           *mountpoint;
   char           *keyfile;
   char           *device;
-
+  char           *language;
+  char           *country;
+  int             region;
+  int             parental;
 } bluray_input_class_t;
 
 typedef struct {
@@ -834,6 +837,14 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   handle_libbluray_events(this);
 
+  /* update player settings */
+  bd_set_player_setting    (this->bdh, BLURAY_PLAYER_SETTING_REGION_CODE,  this->class->region);
+  bd_set_player_setting    (this->bdh, BLURAY_PLAYER_SETTING_PARENTAL,     this->class->parental);
+  bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_AUDIO_LANG,   this->class->language);
+  bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_PG_LANG,      this->class->language);
+  bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_MENU_LANG,    this->class->language);
+  bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_COUNTRY_CODE, this->class->country);
+
   /* open */
 
   if (open_title(this, title) <= 0 &&
@@ -912,6 +923,34 @@ static void keyfile_change_cb(void *data, xine_cfg_entry_t *cfg)
   bluray_input_class_t *this = (bluray_input_class_t *) data;
 
   this->keyfile = cfg->str_value;
+}
+
+static void language_change_cb(void *data, xine_cfg_entry_t *cfg)
+{
+  bluray_input_class_t *this = (bluray_input_class_t *) data;
+
+  this->language = cfg->str_value;
+}
+
+static void country_change_cb(void *data, xine_cfg_entry_t *cfg)
+{
+  bluray_input_class_t *this = (bluray_input_class_t *) data;
+
+  this->country = cfg->str_value;
+}
+
+static void region_change_cb(void *data, xine_cfg_entry_t *cfg)
+{
+  bluray_input_class_t *this = (bluray_input_class_t *) data;
+
+  this->region = cfg->num_value;
+}
+
+static void parental_change_cb(void *data, xine_cfg_entry_t *cfg)
+{
+  bluray_input_class_t *this = (bluray_input_class_t *) data;
+
+  this->parental = cfg->num_value;
 }
 
 static void free_xine_playlist(bluray_input_class_t *this)
@@ -1029,6 +1068,10 @@ static void bluray_class_dispose (input_class_t *this_gen)
   config->unregister_callback(config, "media.bluray.mountpoint");
   config->unregister_callback(config, "media.bluray.device");
   config->unregister_callback(config, "media.bluray.keyfile");
+  config->unregister_callback(config, "media.bluray.region");
+  config->unregister_callback(config, "media.bluray.language");
+  config->unregister_callback(config, "media.bluray.country");
+  config->unregister_callback(config, "media.bluray.parental");
 
   free (this);
 }
@@ -1071,6 +1114,38 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
                                             _("AACS key file"),
                                             _("Location of libaacs key file."),
                                             0, keyfile_change_cb, (void *) this);
+
+  /* Player settings */
+  this->language =
+    config->register_string(config, "media.bluray.language",
+                            "eng",
+                            _("default language for BluRay playback"),
+                            _("xine tries to use this language as a default for BluRay playback. "
+                              "As far as the BluRay supports it, menus and audio tracks will be presented "
+                              "in this language.\nThe value must be a three character"
+                              "ISO639-2 language code."),
+                            0, language_change_cb, this);
+  this->country =
+    config->register_string(config, "media.bluray.country",
+                            "en",
+                            _("BluRay player country code"),
+                            _("The value must be a two character ISO3166-1 country code."),
+                            0, country_change_cb, this);
+  this->region =
+    config->register_num(config, "media.bluray.region",
+                         7,
+                         _("BluRay player region code (1=A, 2=B, 4=C)"),
+                         _("This only needs to be changed if your BluRay jumps to a screen "
+                           "complaining about a wrong region code. It has nothing to do with "
+                           "the region code set in BluRay drives, this is purely software."),
+                         0, region_change_cb, this);
+  this->parental =
+    config->register_num(config, "media.bluray.parental",
+                         99,
+                         _("parental control age limit (1-99)"),
+                         _("Prevents playback of BluRay titles where parental "
+                           "control age limit is higher than this limit"),
+                         0, parental_change_cb, this);
 
   return this;
 }
