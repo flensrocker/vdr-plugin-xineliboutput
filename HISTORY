@@ -6,7 +6,7 @@ VDR Plugin 'xineliboutput' Revision History
 - Hide mouse cursor after 2 seconds mouse inactivity (Thanks to Gerald Dachs)
 - Added support for entering text using letters.
 - Added support for Alt and Ctrl key modifiers to X11 keyboard remote controller.
-- Added FreeBSD compability (Thanks to Juergen Lock and Joerg Pulz)
+- Added FreeBSD compatibility (Thanks to Juergen Lock and Joerg Pulz)
 - Added support for yaepg(hd) video window with HUD OSD (Thanks to grueni75)
 - Fixed lot of compiler warnings (Thanks to Winfried Koehler)
 - Fixed mixer volume being reset at vdr-sxfe start when using software volume control
