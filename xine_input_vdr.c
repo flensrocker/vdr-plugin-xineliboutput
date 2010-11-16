@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.324 2010-09-12 20:54:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.325 2010-11-16 15:07:28 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.324 2010-09-12 20:54:27 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.325 2010-11-16 15:07:28 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2294,6 +2294,18 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     int is_file_mrl = !strncmp(filename, "file:/", 6) ? 5 : 0;
     this->loop_play = 0;
 
+    /* mrlbase is needed for filename and for bgimage in remote mode */
+    char mrlbase[256];
+    if(this->fd_control >= 0) {
+      char *host = strdup(strstr(this->mrl, "//")+2);
+      char *port = strchr(host, ':');
+      int  iport = port ? atoi(port+1) : DEFAULT_VDR_PORT;
+      if(port) *port = 0;
+      snprintf(mrlbase, sizeof(mrlbase), "http://%s:%d/PLAYFILE",
+               host?:"127.0.0.1", iport);
+      free(host);
+    }
+
     if(this->slave_stream)
       handle_control_playfile(this, "PLAYFILE 0");
 
@@ -2311,15 +2323,9 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	if(errno == ENOENT || errno == ENOTDIR) 
 	  LOGERR("File not found !");
 	if(this->fd_control >= 0) {
-	  char mrl[sizeof(filename)+256], mrlbase[256];
-	  char *host = strdup(strstr(this->mrl, "//")+2);
-	  char *port = strchr(host, ':');
+	  char mrl[sizeof(filename)+256];
 	  char *sub  = strstr(filename, "#subtitle:");
-	  int  iport = port ? atoi(port+1) : DEFAULT_VDR_PORT;
-	  if(port) *port = 0;
 	  if(sub) *sub = 0;
-	  snprintf(mrlbase, sizeof(mrlbase), "http://%s:%d/PLAYFILE", 
-		   host?:"127.0.0.1", iport);
 	  sprintf(mrl, "%s%s", mrlbase, filename + is_file_mrl);
 	  if(sub) {
 	    sub += 10; /*strlen("#subtitle:");*/
@@ -2327,7 +2333,6 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	    strcat(mrl, mrlbase);
 	    strcat(mrl, sub);
 	  }
-	  free(host);
 	  LOGMSG("  -> trying to stream from server (%s) ...", mrl);
 	  strn0cpy(filename, mrl, sizeof(filename));
 	}
