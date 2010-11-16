@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.326 2010-11-16 15:18:53 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.327 2010-11-16 15:27:26 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.326 2010-11-16 15:18:53 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.327 2010-11-16 15:27:26 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -306,6 +306,12 @@ typedef struct vdr_input_plugin_s {
   xine_stream_t      *slave_stream;
   xine_event_queue_t *slave_event_queue;
   int                 autoplay_size;
+
+  /* background image stream */
+  struct {
+    xine_stream_t        *stream;
+    xine_event_queue_t   *event_queue;
+  } bg_stream;
 
   /* Sync */
   pthread_mutex_t     lock;
@@ -2265,6 +2271,19 @@ static void close_slave_stream(vdr_input_plugin_t *this)
   if (!this->slave_stream)
     return;
 
+  if(this->bg_stream.stream) {
+    LOGMSG("Closing background stream");
+    xine_stop(this->bg_stream.stream);
+
+    if (this->bg_stream.event_queue) {
+      xine_event_dispose_queue (this->bg_stream.event_queue);
+      this->bg_stream.event_queue = NULL;
+    }
+    xine_close(this->bg_stream.stream);
+    xine_dispose(this->bg_stream.stream);
+    this->bg_stream.stream = NULL;
+  }
+
   /* dispose event queue first to prevent processing of PLAYBACK FINISHED event */
   if (this->slave_event_queue) {
     xine_event_dispose_queue (this->slave_event_queue);
@@ -2291,7 +2310,7 @@ static void close_slave_stream(vdr_input_plugin_t *this)
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
-  char filename[4096], av[256], *pav = av;
+  char filename[4096], av[256+4096], *pav = av;
   int loop = 0, pos = 0, err = 0, avsize = sizeof(av)-2, mix_streams = 0;
 
   while(*pt==' ') pt++;
@@ -2453,6 +2472,45 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 		  mix_streams ? av : "");
 	  this->funcs.fe_control(this->funcs.fe_handle, tmp);
 	  has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
+
+          /* Play background image */
+          if(!has_video && !mix_streams && *av && !strncmp(av, "image", 5)) {
+
+            char bgimage[4096];
+            sprintf(bgimage,"%s",av+6);
+
+            /* background image stream init */
+            if (!this->bg_stream.stream) {
+              LOGDBG("handle_control_playfile: Background stream init");
+              this->bg_stream.stream = xine_stream_new(this->class->xine, NULL, this->slave_stream->video_out);
+              xine_set_param(this->bg_stream.stream, XINE_PARAM_IGNORE_AUDIO, 1);
+              xine_set_param(this->bg_stream.stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL, -2);
+              xine_set_param(this->bg_stream.stream, XINE_PARAM_SPU_CHANNEL, -2);
+              xine_set_param(this->bg_stream.stream, XINE_PARAM_AUDIO_REPORT_LEVEL, 0);
+            }
+            if (!this->bg_stream.event_queue) {
+              LOGDBG("handle_control_playfile: Background event queue init");
+              this->bg_stream.event_queue = xine_event_new_queue(this->bg_stream.stream);
+              xine_event_create_listener_thread(this->bg_stream.event_queue, vdr_event_cb, this);
+            }
+ 
+            /* open background image */
+            if (!xine_open(this->bg_stream.stream, bgimage) || !xine_play(this->bg_stream.stream, 0, 0)) {
+              LOGMSG("Error opening background image %s (File not found ? Unknown format ?)", bgimage);
+              if(this->fd_control >= 0) {
+                /* Remote mode */
+                char bgmrl[4096+256] = "";
+                strcat(bgmrl, mrlbase);
+                strcat(bgmrl, bgimage + 5);
+                LOGMSG("  -> trying to stream background image from server (%s) ...", bgmrl);
+                if (!xine_open(this->bg_stream.stream, bgmrl) || !xine_play(this->bg_stream.stream, 0, 0))
+                  LOGMSG("Error streaming background image from server!");
+              }
+            }
+ 
+             has_video = 1;
+          }
+
 	  this->funcs.fe_control(this->funcs.fe_handle, 
 				 has_video ? "NOVIDEO 1\r\n" : "NOVIDEO 0\r\n");
 	  if(!has_video && !mix_streams && *av && strcmp(av, "none")) {
@@ -4858,7 +4916,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* stop slave stream */
   if (this->slave_stream) {
-    close_slave_stream(this, 0);
+    close_slave_stream(this);
   }
 
   if(this->fd_control>=0)
