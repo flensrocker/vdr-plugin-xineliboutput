@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.325 2010-11-16 15:07:28 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.326 2010-11-16 15:18:53 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.325 2010-11-16 15:07:28 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.326 2010-11-16 15:18:53 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2260,6 +2260,34 @@ static void dvd_menu_domain(vdr_input_plugin_t *this, int value)
   }
 }
 
+static void close_slave_stream(vdr_input_plugin_t *this)
+{
+  if (!this->slave_stream)
+    return;
+
+  /* dispose event queue first to prevent processing of PLAYBACK FINISHED event */
+  if (this->slave_event_queue) {
+    xine_event_dispose_queue (this->slave_event_queue);
+    this->slave_event_queue = NULL;
+  }
+
+  xine_stop(this->slave_stream);
+
+  if(this->funcs.fe_control) {
+    this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
+    this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
+  }
+  xine_close(this->slave_stream);
+  xine_dispose(this->slave_stream);
+
+  pthread_mutex_lock(&this->lock);
+  this->slave_stream = NULL;
+  pthread_mutex_unlock(&this->lock);
+
+  if(this->funcs.fe_control)
+    this->funcs.fe_control(this->funcs.fe_handle, "SLAVE CLOSED\r\n");
+}
+
 static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 {
   const char *pt = cmd + 9;
@@ -2449,28 +2477,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
     this->loop_play = 0;
     if(this->slave_stream) {
-
-      /* dispose event queue first to prevent processing of PLAYBACK FINISHED event */
-      if (this->slave_event_queue) {
-	xine_event_dispose_queue (this->slave_event_queue);
-	this->slave_event_queue = NULL;
-      }
-
-      xine_stop(this->slave_stream);
-
-      if(this->funcs.fe_control) {
-	this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
-	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
-      }
-      xine_close(this->slave_stream);
-      xine_dispose(this->slave_stream);
-
-      pthread_mutex_lock(&this->lock);
-      this->slave_stream = NULL;
-      pthread_mutex_unlock(&this->lock);
-
-      if(this->funcs.fe_control)
-	this->funcs.fe_control(this->funcs.fe_handle, "SLAVE CLOSED\r\n");
+      close_slave_stream(this);
 
       _x_demux_control_start(this->stream);
 
@@ -4851,18 +4858,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   /* stop slave stream */
   if (this->slave_stream) {
-    LOGMSG("dispose: Closing slave stream");
-    if (this->slave_event_queue) 
-      xine_event_dispose_queue (this->slave_event_queue);
-    this->slave_event_queue = NULL;
-    if(this->funcs.fe_control) {
-      this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
-      this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
-    }
-    xine_stop(this->slave_stream);
-    xine_close(this->slave_stream);
-    xine_dispose(this->slave_stream);
-    this->slave_stream = NULL;
+    close_slave_stream(this, 0);
   }
 
   if(this->fd_control>=0)
