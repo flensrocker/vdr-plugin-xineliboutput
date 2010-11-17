@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.95 2010-11-17 13:45:04 phintuka Exp $
+ * $Id: config.c,v 1.96 2010-11-17 13:46:24 phintuka Exp $
  *
  */
 
@@ -819,6 +819,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Audio.Delay"))  audio_delay = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Compression")) audio_compression = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Visualization.GoomOpts")) STRN0CPY(audio_vis_goom_opts, Value);
+  else if (!strcasecmp(Name, "Audio.Visualization.ImageOpts")) STRN0CPY(audio_vis_image_opts, Value);
   else if (!strcasecmp(Name, "Audio.Visualization")) STRN0CPY(audio_visualization, Value);
   else if (!strcasecmp(Name, "Audio.Surround"))  audio_surround = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Upmix"))     audio_upmix = atoi(Value);
