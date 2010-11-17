@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.91 2010-11-17 13:58:50 phintuka Exp $
+ * $Id: frontend.c,v 1.92 2010-11-17 13:59:22 phintuka Exp $
  *
  */
 
@@ -290,8 +290,8 @@ bool cXinelibThread::IsReady(void)
 void cXinelibThread::SetVolume(int NewVolume)
 {
   m_Volume = NewVolume;
-  cString str = cString::sprintf("VOLUME %d%s", NewVolume * 100 / 255, 
-				 xc.sw_volume_control ? " SW" : "");
+  cString str = cString::sprintf("VOLUME %d%s", NewVolume * 100 / 255,
+                                 xc.sw_volume_control ? " SW" : "");
   Xine_Control(str);
 }
 
