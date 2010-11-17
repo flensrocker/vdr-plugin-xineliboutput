@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.30 2010-09-13 11:39:34 phintuka Exp $
+ * $Id: playlist.c,v 1.31 2010-11-17 13:07:28 phintuka Exp $
  *
  */
 
@@ -975,7 +975,7 @@ static cString EscapeString(const char *s)
   int size = strlen(s) + 16;
   char *buf = (char *)malloc(size);
   int i = 0;
-  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
+  LOGVERBOSE("EscapeString('%s')", fn);
 
   while (*fn) {
     if(size-7 < i)
