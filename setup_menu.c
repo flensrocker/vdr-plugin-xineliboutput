@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.77 2010-04-16 10:33:30 phintuka Exp $
+ * $Id: setup_menu.c,v 1.78 2010-11-17 13:49:28 phintuka Exp $
  *
  */
 
@@ -212,6 +212,10 @@ void cMenuSetupAudio::Set(void)
                                   &goom_height, 240, 1280));
     Add(new cMenuEditTypedIntItem(indent(tr("Speed")), tr("fps"),
                                   &goom_fps, 1, 100));
+  } else if(visualization == AUDIO_VIS_IMAGE) {
+    Add(new cMenuEditStrItem(indent(tr("Background image")),
+			     newconfig.audio_vis_image_opts,
+			     sizeof(newconfig.audio_vis_image_opts)));
   }
 
   if(current<1) current=1; /* first item is not selectable */
@@ -303,6 +307,7 @@ void cMenuSetupAudio::Store(void)
   SetupStore("Audio.Headphone",    xc.headphone);
   SetupStore("Audio.Visualization",xc.audio_visualization);
   SetupStore("Audio.Visualization.GoomOpts",xc.audio_vis_goom_opts);
+  SetupStore("Audio.Visualization.ImageOpts",xc.audio_vis_image_opts);
   SetupStore("Audio.SoftwareVolumeControl", xc.sw_volume_control);
   Setup.Save();
 }
