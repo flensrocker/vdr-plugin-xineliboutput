@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.94 2010-05-30 23:24:12 phintuka Exp $
+ * $Id: config.c,v 1.95 2010-11-17 13:45:04 phintuka Exp $
  *
  */
 
@@ -532,7 +532,7 @@ config_t::config_t() {
   memset(audio_equalizer,0,sizeof(audio_equalizer));
   strn0cpy(audio_visualization, "goom", sizeof(audio_visualization));
   strn0cpy(audio_vis_goom_opts, "fps:25,width:720,height:576", sizeof(audio_vis_goom_opts));
-  strn0cpy(audio_vis_image_opts, "", sizeof(audio_vis_image_opts));
+  strn0cpy(audio_vis_image_opts, "file:/usr/share/xine/visuals/default.avi", sizeof(audio_vis_image_opts));
 
   headphone = 0;
   audio_upmix = 0;
