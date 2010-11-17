@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.90 2010-08-25 09:50:15 phintuka Exp $
+ * $Id: frontend.c,v 1.91 2010-11-17 13:58:50 phintuka Exp $
  *
  */
 
@@ -97,6 +97,14 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
   // put key to remote queue
   if (key[0]) {
     if (!remote->Put(key, repeat, release)) {
+      if (!strcmp(keymap, "KBD")) {
+        uint64_t value = 0;
+        sscanf(key, "%"PRIX64, &value);
+        if (value) {
+          remote->cRemote::Put(KBDKEY(value));
+          return;
+        }
+      }
       if (!key[1]) {
         remote->cRemote::Put(KBDKEY(key[0]));
       }
