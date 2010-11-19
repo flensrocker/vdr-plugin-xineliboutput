@@ -355,7 +355,7 @@ msgid "fps"
 msgstr "fps"
 
 msgid "Background image"
-msgstr ""
+msgstr "Taustakuva"
 
 msgid "Audio Equalizer"
 msgstr "Taajuuskorjain"
