@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.95 2010-11-23 13:14:03 phintuka Exp $
+# $Id: Makefile,v 1.96 2010-11-23 13:39:07 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -327,7 +327,7 @@ config: config.mak
 #
 
 $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
 	@-rm -rf $(LIBDIR)/$@.$(APIVERSION)
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 
@@ -336,35 +336,35 @@ $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 #
 
 $(VDRPLUGIN_SXFE): $(OBJS_SXFE_SO)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
-	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
+	$(CC) -g $(OBJS_SXFE) $(LDFLAGS) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
 #
 # vdr-fbfe
 #
 
 $(VDRPLUGIN_FBFE): $(OBJS_FBFE_SO)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(OBJS_FBFE_SO) $(LIBS_XINE) $(LIBS_JPEG) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_FBFE_SO) $(LIBS_XINE) $(LIBS_JPEG) -o $@
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
-	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
+	$(CC) -g $(OBJS_FBFE) $(LDFLAGS) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
 #
 # xine plugins
 #
 
 $(XINEINPUTVDR): $(OBJS_XINEINPUTVDR)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) $(LIBS_AVUTIL) $(LIBS_PTHREAD) -o $@ $(OBJS_XINEINPUTVDR)
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) $(LIBS_AVUTIL) $(LIBS_PTHREAD) -o $@ $(OBJS_XINEINPUTVDR)
 $(XINEPOSTAUTOCROP): xine_post_autocrop.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) -o $@ $<
 $(XINEPOSTSWSCALE): xine_post_swscale.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) -o $@ $<
 $(XINEPOSTAUDIOCHANNEL): xine_post_audiochannel.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LIBS_XINE) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) -o $@ $<
 
 #
 # install
