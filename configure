@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.28 2010-10-19 11:59:20 phintuka Exp $
+# * $Id: configure,v 1.29 2010-11-23 13:21:06 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -236,11 +236,12 @@ FEATURES="
   xshape
   opengl
   vdpau
+  i18n
 "
 
 # set defaults
 
-enable x11 vdr fb xine
+enable x11 vdr fb xine i18n
 
 # clear log file
 
@@ -271,6 +272,7 @@ show_help(){
   echo "  --disable-xshape       disable Xshape support (non-transparent HUD OSD without composite manager) [no]"
   echo "  --disable-opengl       disable OpenGL support (transparent HUD OSD without composite manager) [no]"
   echo "  --disable-vdpau        disable VDPAU support (X11) [no]"
+  echo "  --disable-i18n         disable i18n support [no]"
   echo
   echo "  --debug                debug configure script"
   echo "  --disable-pkgconfig    do not use pkg-config"
