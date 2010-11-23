@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.98 2010-11-23 13:45:05 phintuka Exp $
+# $Id: Makefile,v 1.99 2010-11-23 13:46:59 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -340,7 +340,7 @@ $(VDRPLUGIN_SXFE): $(OBJS_SXFE_SO)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
-	$(CC) $(CFLAGS) $(OBJS_SXFE) $(LDFLAGS) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
 #
 # vdr-fbfe
@@ -351,20 +351,20 @@ $(VDRPLUGIN_FBFE): $(OBJS_FBFE_SO)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
-	$(CC) $(CFLAGS) $(OBJS_FBFE) $(LDFLAGS) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
 #
 # xine plugins
 #
 
 $(XINEINPUTVDR): $(OBJS_XINEINPUTVDR)
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) $(LIBS_AVUTIL) $(LIBS_PTHREAD) -o $@ $(OBJS_XINEINPUTVDR)
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_XINEINPUTVDR) $(LIBS_XINE) $(LIBS_AVUTIL) $(LIBS_PTHREAD) -o $@
 $(XINEPOSTAUTOCROP): xine_post_autocrop.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $< -o $@ $(LIBS_XINE)
 $(XINEPOSTSWSCALE): xine_post_swscale.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $< -o $@ $(LIBS_XINE)
 $(XINEPOSTAUDIOCHANNEL): xine_post_audiochannel.o
-	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(LIBS_XINE) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $< -o $@ $(LIBS_XINE)
 
 #
 # install
