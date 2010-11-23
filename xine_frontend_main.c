@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.89 2010-08-29 08:53:29 rofafor Exp $
+ * $Id: xine_frontend_main.c,v 1.90 2010-11-23 12:53:29 phintuka Exp $
  *
  */
 
@@ -611,7 +611,7 @@ int main(int argc, char *argv[])
                 PRINTF("Can't access terminal: %s\n", tty);
                 return -2;
               }
-              PRINTF("Terminal: %s", tty);
+              PRINTF("Terminal: %s\n", tty);
               break;
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
