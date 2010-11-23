@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.94 2010-10-19 11:53:31 phintuka Exp $
+# $Id: Makefile,v 1.95 2010-11-23 13:14:03 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -275,7 +275,7 @@ $(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)):
 ### Internationalization (I18N):
 
 PODIR     = po
-LOCALEDIR ?= $(VDRDIR)/locale
+LOCALEDIR ?= $(DESTDIR)$(VDRDIR)/locale
 I18Npo    = $(wildcard $(PODIR)/*.po)
 I18Nmsgs  = $(addprefix $(LOCALEDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
 I18Npot   = $(PODIR)/$(PLUGIN).pot
