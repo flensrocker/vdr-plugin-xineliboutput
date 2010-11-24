@@ -530,8 +530,18 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
 
   handle_events(this);
 
-  result = bd_read(this->bdh, (unsigned char *)buf, len);
-  handle_libbluray_events(this);
+  if (this->nav_mode) {
+    do {
+      BD_EVENT ev;
+      result = bd_read_ext (this->bdh, (unsigned char *)buf, len, &ev);
+      handle_libbluray_event(this, ev);
+      if (result == 0)
+        handle_events(this);
+    } while (!this->error && result == 0);
+  } else {
+    result = bd_read (this->bdh, (unsigned char *)buf, len);
+    handle_libbluray_events(this);
+  }
 
   if (result < 0)
     LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), (int)result, (int)len);
