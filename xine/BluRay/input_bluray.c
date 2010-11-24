@@ -93,7 +93,6 @@ typedef struct {
 
   /* config */
   char           *mountpoint;
-  char           *keyfile;
   char           *device;
   char           *language;
   char           *country;
@@ -812,18 +811,10 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* open libbluray */
 
-  /* replace ~/ in keyfile path */
-  char *keyfile = NULL;
-  if (this->class->keyfile && !strncmp(this->class->keyfile, "~/", 2))
-    if (asprintf(&keyfile, "%s/%s", xine_get_homedir(), this->class->keyfile + 2) < 0)
-      keyfile = NULL;
-  /* open */
-  if (! (this->bdh = bd_open (this->disc_root, keyfile ?: this->class->keyfile))) {
+  if (! (this->bdh = bd_open (this->disc_root, NULL))) {
     LOGMSG("bd_open(\'%s\') failed: %s\n", this->disc_root, strerror(errno));
-    free(keyfile);
     return -1;
   }
-  free(keyfile);
   lprintf("bd_open(\'%s\') OK\n", this->disc_root);
 
   /* load title list */
@@ -953,13 +944,6 @@ static void device_change_cb(void *data, xine_cfg_entry_t *cfg)
   bluray_input_class_t *this = (bluray_input_class_t *) data;
 
   this->device = cfg->str_value;
-}
-
-static void keyfile_change_cb(void *data, xine_cfg_entry_t *cfg)
-{
-  bluray_input_class_t *this = (bluray_input_class_t *) data;
-
-  this->keyfile = cfg->str_value;
 }
 
 static void language_change_cb(void *data, xine_cfg_entry_t *cfg)
@@ -1104,7 +1088,6 @@ static void bluray_class_dispose (input_class_t *this_gen)
 
   config->unregister_callback(config, "media.bluray.mountpoint");
   config->unregister_callback(config, "media.bluray.device");
-  config->unregister_callback(config, "media.bluray.keyfile");
   config->unregister_callback(config, "media.bluray.region");
   config->unregister_callback(config, "media.bluray.language");
   config->unregister_callback(config, "media.bluray.country");
@@ -1146,11 +1129,6 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
                                            _("The path to the device "
                                              "which you intend to use for playing BluRy discs."),
                                            0, device_change_cb, (void *) this);
-  this->keyfile = config->register_filename(config, "media.bluray.keyfile",
-                                            "~/.xine/aacskeys.bin", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
-                                            _("AACS key file"),
-                                            _("Location of libaacs key file."),
-                                            0, keyfile_change_cb, (void *) this);
 
   /* Player settings */
   this->language =
