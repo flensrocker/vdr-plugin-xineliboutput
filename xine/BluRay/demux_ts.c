@@ -2561,7 +2561,7 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
  */
 
 static const char *get_description (demux_class_t *this_gen) {
-  return "MPEG Transport Stream demuxer";
+  return "MPEG Transport Stream demuxer (HDMV)";
 }
 
 static const char *get_identifier (demux_class_t *this_gen) {
