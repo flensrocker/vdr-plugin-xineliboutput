@@ -2572,13 +2572,17 @@ static const char *get_identifier (demux_class_t *this_gen) {
 }
 #endif
 
+#if DEMUX_PLUGIN_IFACE_VERSION < 27
 static const char *get_extensions (demux_class_t *this_gen) {
   return "m2ts mts";
 }
+#endif
 
+#if DEMUX_PLUGIN_IFACE_VERSION < 27
 static const char *get_mimetypes (demux_class_t *this_gen) {
   return NULL;
 }
+#endif
 
 static void class_dispose (demux_class_t *this_gen) {
 
@@ -2599,12 +2603,14 @@ static void *init_class (xine_t *xine, void *data) {
 #if DEMUX_PLUGIN_IFACE_VERSION < 27
   this->demux_class.get_description = get_description;
   this->demux_class.get_identifier  = get_identifier;
+  this->demux_class.get_mimetypes   = get_mimetypes;
+  this->demux_class.get_extensions  = get_extensions;
 #else
   this->demux_class.description     = "MPEG Transport Stream demuxer (HDMV)";
   this->demux_class.identifier      = "MPEG_TS_HDMV";
+  this->demux_class.mimetypes       = NULL;
+  this->demux_class.extensions      = "m2ts mts";
 #endif
-  this->demux_class.get_mimetypes   = get_mimetypes;
-  this->demux_class.get_extensions  = get_extensions;
   this->demux_class.dispose         = class_dispose;
 
   return this;
