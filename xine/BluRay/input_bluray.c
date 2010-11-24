@@ -121,6 +121,8 @@ typedef struct {
   int                current_clip;
   int                error;
   int                menu_open;
+  int                pg_enable;
+  int                pg_stream;
 
   uint32_t       cap_seekable;
 
@@ -159,6 +161,8 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
   if (!this->osd) {
     this->osd = xine_osd_new(this->stream, 0, 0, 1920, 1080);
   }
+  if (!this->pg_enable)
+    _x_select_spu_channel(this->stream, -1);
 
   /* convert and set palette */
 
@@ -334,8 +338,28 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
       /* stream selection */
 
       case BD_EVENT_AUDIO_STREAM:
+        lprintf("BD_EVENT_AUDIO_STREAM %d\n", ev.param);
+        this->stream->audio_channel_user = ev.param - 1;
+        break;
+
       case BD_EVENT_PG_TEXTST:
+        lprintf("BD_EVENT_PG_TEXTST %s\n", ev.param ? "ON" : "OFF");
+        this->pg_enable = ev.param;
+        if (!this->pg_enable) {
+          _x_select_spu_channel(this->stream, -2);
+        } else {
+          _x_select_spu_channel(this->stream, this->pg_stream);
+        }
+        break;
+
       case BD_EVENT_PG_TEXTST_STREAM:
+        lprintf("BD_EVENT_PG_TEXTST_STREAM %d\n", ev.param);
+        this->pg_stream = ev.param - 1;
+        if (this->pg_enable) {
+          _x_select_spu_channel(this->stream, this->pg_stream);
+        }
+        break;
+
       case BD_EVENT_IG_STREAM:
       case BD_EVENT_SECONDARY_AUDIO:
       case BD_EVENT_SECONDARY_AUDIO_STREAM:
