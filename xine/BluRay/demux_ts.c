@@ -2472,7 +2472,8 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
       break;
 
     /* accept BluRay discs */
-    if (!strncasecmp (mrl, "bluray:/", 8)) {
+    if (!strncasecmp (mrl, "bluray:/", 8) ||
+        !strncasecmp (mrl, "bd:/", 4)) {
       hdmv = 1;
       break;
     }
