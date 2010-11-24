@@ -2560,13 +2560,17 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
  * ts demuxer class
  */
 
+#if DEMUX_PLUGIN_IFACE_VERSION < 27
 static const char *get_description (demux_class_t *this_gen) {
   return "MPEG Transport Stream demuxer (HDMV)";
 }
+#endif
 
+#if DEMUX_PLUGIN_IFACE_VERSION < 27
 static const char *get_identifier (demux_class_t *this_gen) {
   return "MPEG_TS_HDMV";
 }
+#endif
 
 static const char *get_extensions (demux_class_t *this_gen) {
   return "m2ts mts";
@@ -2592,8 +2596,13 @@ static void *init_class (xine_t *xine, void *data) {
   this->xine   = xine;
 
   this->demux_class.open_plugin     = open_plugin;
+#if DEMUX_PLUGIN_IFACE_VERSION < 27
   this->demux_class.get_description = get_description;
   this->demux_class.get_identifier  = get_identifier;
+#else
+  this->demux_class.description     = "MPEG Transport Stream demuxer (HDMV)";
+  this->demux_class.identifier      = "MPEG_TS_HDMV";
+#endif
   this->demux_class.get_mimetypes   = get_mimetypes;
   this->demux_class.get_extensions  = get_extensions;
   this->demux_class.dispose         = class_dispose;
@@ -2611,7 +2620,11 @@ static const demuxer_info_t demux_info_ts = {
 
 const plugin_info_t xine_plugin_info[] EXPORTED = {
   /* type, API, "name", version, special_info, init_function */
+#if DEMUX_PLUGIN_IFACE_VERSION <= 26
   { PLUGIN_DEMUX, 26, "mpeg-ts-hdmv", XINE_VERSION_CODE, &demux_info_ts, init_class },
+#elif DEMUX_PLUGIN_IFACE_VERSION >= 27
+  { PLUGIN_DEMUX, 27, "mpeg-ts-hdmv", XINE_VERSION_CODE, &demux_info_ts, init_class },
+#endif
   { PLUGIN_NONE, 0, "", 0, NULL, NULL }
 };
 
