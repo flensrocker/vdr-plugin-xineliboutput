@@ -189,7 +189,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
   xine_osd_show(this->osd, 0);
 
   if (ov->plane == 1)
-    this->menu_open = 0;
+    this->menu_open = 1;
 }
 
 static void update_stream_info(bluray_input_plugin_t *this)
