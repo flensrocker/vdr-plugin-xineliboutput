@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.99 2010-11-23 13:46:59 phintuka Exp $
+# $Id: Makefile,v 1.100 2010-11-25 13:58:16 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -273,7 +273,7 @@ $(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)):
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(CFLAGS_X11) $(OPTFLAGS) -o $@ $<
 
 ### Internationalization (I18N):
-
+ifeq ($(HAVE_I18N), yes)
 PODIR     = po
 LOCALEDIR ?= $(DESTDIR)$(VDRDIR)/locale
 I18Npo    = $(wildcard $(PODIR)/*.po)
@@ -293,6 +293,7 @@ $(I18Npot): $(wildcard *.c)
 $(I18Nmsgs): $(LOCALEDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
 	@mkdir -p $(dir $@)
 	cp $< $@
+endif
 
 .PHONY: i18n
 i18n: $(I18Nmsgs)
@@ -413,6 +414,7 @@ clean:
 		tools/*.o tools/*~ tools/*.flc xine/*.o xine/*~ \
 		xine/*.flc $(VDR_FBFE) $(VDR_SXFE) mpg2c black_720x576.c \
 		nosignal_720x576.c vdrlogo_720x576.c vdr-sxfe vdr-fbfe \
-		$(PODIR)/*.mo $(PODIR)/*.pot \
 		features.h config.mak configure.log
-
+ifeq ($(HAVE_I18N), yes)
+	@-rm -f $(PODIR)/*.mo $(PODIR)/*.pot
+endif
