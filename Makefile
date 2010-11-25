@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.100 2010-11-25 13:58:16 phintuka Exp $
+# $Id: Makefile,v 1.101 2010-11-25 14:28:49 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -127,9 +127,9 @@ PACKAGE = vdr-$(ARCHIVE)
 ### The name of executable and libraries
 ###
 
-VDRPLUGIN            = libvdr-$(PLUGIN).so
-VDRPLUGIN_SXFE       = lib$(PLUGIN)-sxfe.so
-VDRPLUGIN_FBFE       = lib$(PLUGIN)-fbfe.so
+VDRPLUGIN            = libvdr-$(PLUGIN).so.$(APIVERSION)
+VDRPLUGIN_SXFE       = lib$(PLUGIN)-sxfe.so.$(VERSION)
+VDRPLUGIN_FBFE       = lib$(PLUGIN)-fbfe.so.$(VERSION)
 VDRSXFE              = vdr-sxfe
 VDRFBFE              = vdr-fbfe
 XINEINPUTVDR         = xineplug_inp_xvdr.so
@@ -329,8 +329,8 @@ config: config.mak
 
 $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
-	@-rm -rf $(LIBDIR)/$@.$(APIVERSION)
-	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
+	@-rm -rf $(LIBDIR)/$@
+	@cp $@ $(LIBDIR)/$@
 
 #
 # vdr-sxfe
@@ -338,8 +338,8 @@ $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 
 $(VDRPLUGIN_SXFE): $(OBJS_SXFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) -o $@
-	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
-	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE).$(VERSION)
+	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE)
+	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE)
 $(VDRSXFE): $(OBJS_SXFE)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
@@ -349,8 +349,8 @@ $(VDRSXFE): $(OBJS_SXFE)
 
 $(VDRPLUGIN_FBFE): $(OBJS_FBFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_FBFE_SO) $(LIBS_XINE) $(LIBS_JPEG) -o $@
-	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
-	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE).$(VERSION)
+	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE)
+	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE)
 $(VDRFBFE): $(OBJS_FBFE)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
