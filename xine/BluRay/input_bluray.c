@@ -144,12 +144,12 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
   uint8_t  trans[256];
   unsigned i;
 
-  if (ov->plane == 1)
-    this->menu_open = 0;
-
   if (!this) {
     return;
   }
+
+  if (!ov || ov->plane == 1)
+    this->menu_open = 0;
 
   if (!ov || !ov->img) {
     /* hide OSD */
