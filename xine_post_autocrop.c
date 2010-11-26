@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.41 2010-05-22 12:20:03 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.42 2010-11-26 12:57:24 phintuka Exp $
  *
  */
 
@@ -73,8 +73,7 @@
 #define DEFAULT_SOFT_START_STEP          4      /* unit: lines per frame */
 #define DEFAULT_SUBS_DETECT_LIFETIME   (60*25)  /* 1 minute, unit: frames */
 #define DEFAULT_SUBS_DETECT_STABILIZE_TIME 12    /* unit: frames */
-
-#define LOGOSKIP (frame->width/4)  /* skip logo (Y, top-left or top-right quarter) */
+#define DEFAULT_LOGO_WIDTH              20  /* percentage of frame width */
 
 /*
  * Plugin
@@ -90,6 +89,8 @@ typedef struct autocrop_parameters_s {
   int    soft_start_step;
   int    stabilize;
   int    stabilize_time;
+  int    logo_width;
+
   int    use_driver_crop;
 } autocrop_parameters_t;
 
@@ -112,6 +113,8 @@ PARAM_ITEM(POST_PARAM_TYPE_INT, soft_start_step, NULL, 1, 999, 0,
   "soft start step width of cropping")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, stabilize, NULL, 0, 1, 0,
   "stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)")
+PARAM_ITEM(POST_PARAM_TYPE_INT, logo_width, NULL, 0, 99, 0,
+  "maximum width of logo for automatic logo detection (percentage of frame width)")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_driver_crop, NULL, 0, 1, 0,
   "use video driver to crop frames (default is to copy frames in post plugin)")
 END_PARAM_DESCR(autocrop_param_descr)
@@ -133,6 +136,7 @@ typedef struct autocrop_post_plugin_s
   int soft_start_step;
   int stabilize;
   int stabilize_time;
+  int logo_width;
   int always_use_driver_crop;
 
   /* Current cropping status */
@@ -664,6 +668,8 @@ int dbg_top=0, dbg_bottom=0;
 
 static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
+  post_video_port_t *port = (post_video_port_t *)frame->port;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
   int y;
   int ypitch = frame->pitches[0];
   int upitch = frame->pitches[1];
@@ -672,20 +678,23 @@ static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom
   uint8_t *udata = frame->base[1];
   uint8_t *vdata = frame->base[2];
   int max_crop = (frame->height / 4) / 2; /* 4:3 --> 16:9 */
+  int logo_width      = frame->width  * this->logo_width / 100;
+  int check_width     = frame->width - logo_width;
 
   /* from top -> down */
   ydata += 8 * ypitch;  /* skip 8 first lines */
   udata += 4 * upitch;
   vdata += 4 * vpitch;
+
   for(y = 8; y <= max_crop   *2 /* *2 = 20:9+subs -> 16:9 */ ; y += 2) {
-    if(  ! ( blank_line_UV(udata,                (frame->width-LOGOSKIP)/2) ||
-	     blank_line_UV(udata+LOGOSKIP/2,     (frame->width-LOGOSKIP)/2)    ) ||
-	 ! ( blank_line_UV(vdata,                (frame->width-LOGOSKIP)/2) ||
-	     blank_line_UV(vdata+LOGOSKIP/2,     (frame->width-LOGOSKIP)/2)    ) ||
-	 ! ( blank_line_Y( ydata,                (frame->width-LOGOSKIP)  ) ||
-	     blank_line_Y( ydata+LOGOSKIP,       (frame->width-LOGOSKIP)  )    ) ||
-	 ! ( blank_line_Y( ydata+ypitch,         (frame->width-LOGOSKIP)  ) ||
-	     blank_line_Y( ydata+ypitch+LOGOSKIP,(frame->width-LOGOSKIP)  )    )) {
+    if(  ! ( blank_line_UV(udata,                  check_width/2) ||
+             blank_line_UV(udata+logo_width/2,     check_width/2)    ) ||
+         ! ( blank_line_UV(vdata,                  check_width/2) ||
+             blank_line_UV(vdata+logo_width/2,     check_width/2)    ) ||
+         ! ( blank_line_Y( ydata,                  check_width  ) ||
+             blank_line_Y( ydata+logo_width,       check_width  )    ) ||
+         ! ( blank_line_Y( ydata+ypitch,           check_width  ) ||
+             blank_line_Y( ydata+ypitch+logo_width,check_width  )    )) {
       break;
     } else {
       ydata += 2 * ypitch;
@@ -731,16 +740,20 @@ static int analyze_frame_yv12(vo_frame_t *frame, int *crop_top, int *crop_bottom
 
 static int analyze_frame_yuy2(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
+  post_video_port_t *port = (post_video_port_t *)frame->port;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *)port->post;
   int y;
   int pitch = frame->pitches[0];
   uint8_t *data = frame->base[0];
   int max_crop = (frame->height / 4) / 2; /* 4:3 --> 16:9 */
+  int logo_width      = frame->width  * this->logo_width / 100;
+  int check_width     = frame->width - logo_width;
 
   /* from top -> down */
   data += 6 * pitch;  /* skip 6 first lines */
   for(y = 6; y <= max_crop  *2 /* *2 = 20:9+subs -> 16:9 */ ; y ++)
-    if(  ! ( blank_line_YUY2(data,            (frame->width-LOGOSKIP)*2) ||
-	     blank_line_YUY2(data+2*LOGOSKIP, (frame->width-LOGOSKIP)*2))) 
+    if(  ! ( blank_line_YUY2(data,              check_width*2) ||
+             blank_line_YUY2(data+2*logo_width, check_width*2)))
       break;
     else 
       data += pitch;
@@ -1552,13 +1565,14 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->stabilize   = param->stabilize;
   this->stabilize_time = param->stabilize_time;
   this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
+  this->logo_width = param->logo_width;
 
   TRACE("autocrop_set_parameters: "
-	"autodetect=%d  autodetect_rate=%d  "
+        "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
         "stabilize=%d  stabilize_time=%d  use_driver_crop=%d\n",
-	this->autodetect, this->autodetect_rate,
+        this->autodetect, this->autodetect_rate, this->logo_width,
         this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
 	this->soft_start, this->soft_start_step,
         this->stabilize, this->stabilize_time,
@@ -1581,13 +1595,14 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->stabilize          = this->stabilize;
   param->stabilize_time = this->stabilize_time;
   param->use_driver_crop    = this->always_use_driver_crop;
+  param->logo_width = this->logo_width;
 
   TRACE("autocrop_get_parameters: "
-	"autodetect=%d  autodetect_rate=%d  "
+        "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
         "stabilize=%d  stabilize_time=%d  use_driver_crop=%d\n",
-	this->autodetect, this->autodetect_rate,
+        this->autodetect, this->autodetect_rate, this->logo_width,
         this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
 	this->soft_start, this->soft_start_step,
         this->stabilize, this->stabilize_time,
@@ -1611,7 +1626,8 @@ static char *autocrop_get_help(void) {
            "  soft_start:                 Enable soft start of cropping\n"
            "  soft_start_step:            Soft start step width of cropping\n"
            "  stabilize:                  Stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
-           "  use_driver_crop:            Always use video driver crop"
+           "  use_driver_crop:            Always use video driver crop\n"
+           "  logo_width:                 Width of logo (percentage of frame width) for automatic logo detection\n"
            "\n"
          );
 }
@@ -1683,6 +1699,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->soft_start  = 1;
       this->soft_start_step = DEFAULT_SOFT_START_STEP;
       this->stabilize   = 1;
+      this->logo_width = DEFAULT_LOGO_WIDTH;
 
       uint64_t caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
