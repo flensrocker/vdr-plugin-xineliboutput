@@ -2,12 +2,7 @@
 # select plugins
 #
 
-ifeq ($(shell pkg-config libxine --atleast-version=1.1.90 || echo "yes"), yes)
-    ENABLE_DEMUX_PLUGIN ?= yes
-else
-    ENABLE_DEMUX_PLUGIN ?= no
-    $(warning demux plugin is not compatible with xine-lib-1.2. Track languages are not available.)
-endif
+ENABLE_DEMUX_PLUGIN ?= yes
 
 ifeq ($(shell pkg-config libbluray && echo yes), yes)
     ENABLE_INPUT_PLUGIN ?= yes

@@ -2441,7 +2441,12 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
   }
     break;
 
-  case METHOD_BY_EXTENSION: {
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
+  case METHOD_BY_EXTENSION:
+#else
+  case METHOD_BY_MRL:
+#endif
+  {
     const char *const mrl = input->get_mrl (input);
 
     if (_x_demux_check_extension (mrl, "m2ts mts"))
@@ -2450,8 +2455,11 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
       hdmv = 0;
 
     /* check extension */
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
     const char *const extensions = class_gen->get_extensions (class_gen);
-
+#else
+    const char *const extensions = class_gen->extensions;
+#endif
     if (_x_demux_check_extension (mrl, extensions))
       break;
 
@@ -2560,25 +2568,25 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
  * ts demuxer class
  */
 
-#if DEMUX_PLUGIN_IFACE_VERSION < 27
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
 static const char *get_description (demux_class_t *this_gen) {
   return "MPEG Transport Stream demuxer (HDMV)";
 }
 #endif
 
-#if DEMUX_PLUGIN_IFACE_VERSION < 27
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
 static const char *get_identifier (demux_class_t *this_gen) {
   return "MPEG_TS_HDMV";
 }
 #endif
 
-#if DEMUX_PLUGIN_IFACE_VERSION < 27
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
 static const char *get_extensions (demux_class_t *this_gen) {
   return "m2ts mts";
 }
 #endif
 
-#if DEMUX_PLUGIN_IFACE_VERSION < 27
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
 static const char *get_mimetypes (demux_class_t *this_gen) {
   return NULL;
 }
@@ -2600,7 +2608,7 @@ static void *init_class (xine_t *xine, void *data) {
   this->xine   = xine;
 
   this->demux_class.open_plugin     = open_plugin;
-#if DEMUX_PLUGIN_IFACE_VERSION < 27
+#if DEMUXER_PLUGIN_IFACE_VERSION < 27
   this->demux_class.get_description = get_description;
   this->demux_class.get_identifier  = get_identifier;
   this->demux_class.get_mimetypes   = get_mimetypes;
