@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.328 2010-12-06 12:45:42 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.329 2010-12-06 12:55:07 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.328 2010-12-06 12:45:42 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.329 2010-12-06 12:55:07 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2493,15 +2493,17 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
               this->bg_stream.event_queue = xine_event_new_queue(this->bg_stream.stream);
               xine_event_create_listener_thread(this->bg_stream.event_queue, vdr_event_cb, this);
             }
- 
+
             /* open background image */
             if (!xine_open(this->bg_stream.stream, bgimage) || !xine_play(this->bg_stream.stream, 0, 0)) {
               LOGMSG("Error opening background image %s (File not found ? Unknown format ?)", bgimage);
-              if(this->fd_control >= 0) {
+
+              int is_bg_file_mrl = !strncmp(bgimage, "file:/", 6) ? 5 : 0;
+              if (this->fd_control >= 0 && (bgimage[0] == '/' || is_bg_file_mrl)) {
                 /* Remote mode */
-                char bgmrl[4096+256] = "";
-                strcat(bgmrl, mrlbase);
-                strcat(bgmrl, bgimage + 5);
+                char bgmrl[4096+256];
+                snprintf(bgmrl, sizeof(bgmrl), "%s%s", mrlbase, bgimage + is_bg_file_mrl);
+                bgmrl[sizeof(bgmrl)-1] = 0;
                 LOGMSG("  -> trying to stream background image from server (%s) ...", bgmrl);
                 if (!xine_open(this->bg_stream.stream, bgmrl) || !xine_play(this->bg_stream.stream, 0, 0))
                   LOGMSG("Error streaming background image from server!");
