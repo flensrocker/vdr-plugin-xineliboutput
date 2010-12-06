@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.327 2010-11-16 15:27:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.328 2010-12-06 12:45:42 phintuka Exp $
  *
  */
 
@@ -134,7 +134,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.327 2010-11-16 15:27:26 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.328 2010-12-06 12:45:42 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3794,6 +3794,9 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 	  if (this->funcs.fe_control)
 	    this->funcs.fe_control(this->funcs.fe_handle, "ENDOFSTREAM\r\n");
 	}
+      } else if(event->stream == this->bg_stream.stream) {
+        LOGMSG("XINE_EVENT_UI_PLAYBACK_FINISHED (background stream)");
+        xine_play(this->bg_stream.stream, 0, 0);
       }
       pthread_mutex_unlock(&this->lock);
 
