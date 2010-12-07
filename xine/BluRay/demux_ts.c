@@ -1009,6 +1009,25 @@ static void fill_extra_info(demux_ts_t *this, buf_element_t *buf)
 /*
  *  buffer arriving pes data
  */
+static void flush_demux_ts_media(demux_ts_media *m)
+{
+  if (m && m->buf) {
+    m->buf->content = m->buf->mem;
+    m->buf->size = m->buffered_bytes;
+    m->buf->type = m->type;
+    m->buf->pts = m->pts;
+    m->buf->decoder_info[0] = 1;
+
+    m->fifo->put(m->fifo, m->buf);
+    m->buffered_bytes = 0;
+    m->buf = NULL; /* forget about buf -- not our responsibility anymore */
+
+#ifdef TS_LOG
+      printf ("demux_ts: produced buffer, pts=%lld\n", m->pts);
+#endif
+  }
+}
+
 static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
                                 unsigned int mediaIndex,
                                 unsigned int pus,
@@ -1038,9 +1057,6 @@ static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
   if (pus) { /* new PES packet */
 
     if (m->buffered_bytes) {
-      m->buf->content = m->buf->mem;
-      m->buf->size = m->buffered_bytes;
-      m->buf->type = m->type;
       if( (m->buf->type & 0xffff0000) == BUF_SPU_DVD ) {
         m->buf->decoder_flags |= BUF_FLAG_SPECIAL;
         m->buf->decoder_info[1] = BUF_SPECIAL_SPU_DVD_SUBTYPE;
@@ -1049,15 +1065,8 @@ static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
       else {
         m->buf->decoder_flags |= BUF_FLAG_FRAME_END;
       }
-      m->buf->pts = m->pts;
-      m->buf->decoder_info[0] = 1;
 
-      m->fifo->put(m->fifo, m->buf);
-      m->buffered_bytes = 0;
-      m->buf = NULL; /* forget about buf -- not our responsibility anymore */
-#ifdef TS_LOG
-      printf ("demux_ts: produced buffer, pts=%lld\n", m->pts);
-#endif
+      flush_demux_ts_media(m);
     }
     /* allocate the buffer here, as pes_header needs a valid buf for dvbsubs */
      m->buf = m->fifo->buffer_pool_alloc(m->fifo);
@@ -1088,20 +1097,8 @@ static void demux_ts_buffer_pes(demux_ts_t*this, unsigned char *ts,
   } else if (!m->corrupted_pes) { /* no pus -- PES packet continuation */
 
     if ((m->buffered_bytes + len) > MAX_PES_BUF_SIZE) {
-      m->buf->content = m->buf->mem;
-      m->buf->size = m->buffered_bytes;
-      m->buf->type = m->type;
-      m->buf->pts = m->pts;
-      m->buf->decoder_info[0] = 1;
-
-      m->fifo->put(m->fifo, m->buf);
-      m->buffered_bytes = 0;
+      flush_demux_ts_media(m);
       m->buf = m->fifo->buffer_pool_alloc(m->fifo);
-
-#ifdef TS_LOG
-      printf ("demux_ts: produced buffer, pts=%lld\n", m->pts);
-#endif
-
     }
     memcpy(m->buf->mem + m->buffered_bytes, ts, len);
     m->buffered_bytes += len;
