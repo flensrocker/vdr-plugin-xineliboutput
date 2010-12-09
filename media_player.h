@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.18 2010-12-09 11:57:37 phintuka Exp $
+ * $Id: media_player.h,v 1.19 2010-12-09 12:19:25 phintuka Exp $
  *
  */
 
@@ -67,11 +67,10 @@ class cXinelibPlayerControl : public cControl
 
 // --- DVD player -----------------------------------------------------------
 
-class cDvdMenu;
 class cXinelibDvdPlayerControl : public cXinelibPlayerControl
 {
   private:
-    cDvdMenu *m_DvdMenu;
+    cOsdMenu *m_DvdMenu;
 
     void      CloseDvdMenu(void);
 
