@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.31 2010-11-17 13:07:28 phintuka Exp $
+ * $Id: playlist.c,v 1.32 2010-12-09 14:13:03 phintuka Exp $
  *
  */
 
@@ -522,6 +522,23 @@ cPlaylistItem *cPlaylist::Prev(void)
   if(Current())
     return m_Current = (cList<cPlaylistItem>::Prev(Current()) ?: Last());
   return NULL;
+}
+
+cPlaylistItem *cPlaylist::Seek(int Rel)
+{
+  cMutexLock ml(&m_Lock);
+  if (!Current())
+    return NULL;
+
+  if (Rel > 0)
+    while (Rel--)
+      m_Current = (cList<cPlaylistItem>::Next(Current()) ?: Last());
+
+  if (Rel < 0)
+    while (Rel++)
+      m_Current = (cList<cPlaylistItem>::Prev(Current()) ?: First());
+
+  return Current();
 }
 
 bool cPlaylist::StoreCache(void) 
