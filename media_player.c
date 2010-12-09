@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.81 2010-12-09 11:57:37 phintuka Exp $
+ * $Id: media_player.c,v 1.82 2010-12-09 12:30:11 phintuka Exp $
  *
  */
 
@@ -1381,4 +1381,137 @@ eOSState cXinelibImagesControl::ProcessKey(eKeys Key)
     Show();
 
   return osContinue;
+}
+
+// --- Exteral interface ---------------------------------------------------
+
+//
+// cPlayerFactory
+//
+
+cControl *CreateControl(cXinelibDevice *Dev,
+                        ePlayMode PlayMode,
+                        cPlaylist *Playlist,
+                        bool BackToMenu)
+{
+  LOGMSG("cPlayerFactory::Create(cPlaylist*) not implemented !");
+  return NULL;
+}
+
+cControl *CreateControl(cXinelibDevice *Dev,
+                        ePlayMode PlayMode,
+                        const char *Mrl,
+                        const char *SubFile,
+                        bool BackToMenu)
+{
+  // Special mrls
+
+  if (!strncmp(Mrl, "dvd:/", 5))
+    return new cXinelibDvdPlayerControl(Mrl);
+  if (xc.IsDvdImage(Mrl))
+    return new cXinelibDvdPlayerControl(Mrl);
+
+  if (!strncmp(Mrl, "cdda:/", 6))
+    return new cXinelibPlayerControl(ShowMusic, Mrl);
+
+  // Playmode
+
+  if (PlayMode == pmAudioOnly)
+    return new cXinelibPlayerControl(ShowMusic, Mrl);
+  if (PlayMode == pmAudioVideo)
+    return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
+  if (PlayMode == pmVideoOnly) {
+    char ** pMrl = new char * [2];
+    pMrl[0] = strdup(Mrl);
+    pMrl[1] = NULL;
+    return new cXinelibImagesControl(pMrl, 0, 1);
+  }
+
+  // guess from playlist content
+
+  if (xc.IsPlaylistFile(Mrl)) {
+    cPlaylist Playlist;
+    Playlist.Read(Mrl);
+    if (Playlist.Count() < 1)
+      return NULL;
+
+    if (xc.IsAudioFile(Playlist.First()->Filename))
+      return new cXinelibPlayerControl(ShowMusic, Mrl);
+
+    if (xc.IsImageFile(Playlist.First()->Filename)) {
+      char ** pMrl = new char * [2];
+      pMrl[0] = strdup(Mrl);
+      pMrl[1] = NULL;
+      return new cXinelibImagesControl(pMrl, 0, 1);
+    }
+
+    return new cXinelibPlayerControl(ShowFiles, Mrl);
+  }
+
+  // guess from file type
+
+  if (xc.IsAudioFile(Mrl))
+    return new cXinelibPlayerControl(ShowMusic, Mrl);
+
+  if (xc.IsVideoFile(Mrl))
+    return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
+
+  if (xc.IsImageFile(Mrl)) {
+    char ** pMrl = new char * [2];
+    pMrl[0] = strdup(Mrl);
+    pMrl[1] = NULL;
+    return new cXinelibImagesControl(pMrl, 0, 1);
+  }
+
+  // default
+
+  return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
+}
+
+void cPlayerFactory::Queue(const char *Mrl)
+{
+  cXinelibPlayerControl::Queue(Mrl);
+}
+
+bool cPlayerFactory::IsOpen(void)
+{
+  return cXinelibPlayerControl::IsOpen();
+}
+
+bool cPlayerFactory::Launch(ePlayMode PlayMode,
+                            const char *Mrl,
+                            const char *SubFile,
+                            bool BackToMenu)
+{
+  cXinelibDevice *Dev     = &(cXinelibDevice::Instance());
+  cControl       *Control = CreateControl(Dev, PlayMode, Mrl, SubFile, BackToMenu);
+
+  if (!Control) {
+    LOGMSG("cPlayerFactory::Launch(%s) failed !", Mrl);
+    return false;
+  }
+
+  cControl::Shutdown();
+  cControl::Launch(Control);
+
+  return true;
+}
+
+bool cPlayerFactory::Launch(ePlayMode PlayMode,
+                            cPlaylist *Playlist,
+                            bool BackToMenu)
+{
+  cXinelibDevice *Dev     = &(cXinelibDevice::Instance());
+  cControl       *Control = CreateControl(Dev, PlayMode, Playlist, BackToMenu);
+
+  if (!Control) {
+    LOGMSG("cPlayerFactory::Launch(cPlaylist*) failed !");
+    delete Playlist;
+    return false;
+  }
+
+  cControl::Shutdown();
+  cControl::Launch(Control);
+
+  return true;
 }
