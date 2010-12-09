@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.80 2010-12-09 11:43:56 phintuka Exp $
+ * $Id: media_player.c,v 1.81 2010-12-09 11:57:37 phintuka Exp $
  *
  */
 
@@ -89,6 +89,8 @@ class cXinelibPlayer : public cPlayer
     const cString& File(void) { return m_File; }
     int  CurrentFile(void) { return m_Playlist.Current()->Index(); } 
     int  Files(void) { return m_Playlist.Count(); }
+
+    bool UpdateMetaInfo(bool Force = false);
 };
 
 cXinelibPlayer::cXinelibPlayer(cXinelibDevice *Dev, const char *File, bool Queue, const char *SubFile)
@@ -187,6 +189,38 @@ void cXinelibPlayer::SetSpeed(int Speed)
   }
 }
 
+bool cXinelibPlayer::UpdateMetaInfo(bool Force)
+{
+  // update playlist metainfo
+  const char *ti = GetMetaInfo(miTitle);
+  bool TitleChanged =  ti && ti[0] && (!*Playlist().Current()->Title ||
+                                       !strstr(Playlist().Current()->Title, ti));
+  if (Force || TitleChanged) {
+    const char *tr = GetMetaInfo(miTracknumber);
+    const char *al = GetMetaInfo(miAlbum);
+    const char *ar = GetMetaInfo(miArtist);
+
+    if (!Force)
+      LOGDBG("metainfo changed: %s->%s %s->%s %s->%s %s->%s",
+             *Playlist().Current()->Artist      ?: "-", ar ?: "-",
+             *Playlist().Current()->Album       ?: "-", al ?: "-",
+             *Playlist().Current()->Tracknumber ?: "-", tr ?: "-",
+             *Playlist().Current()->Title       ?: "-", ti ?: "-");
+
+    m_Playlist.Current()->Title = ti;
+    if (tr && tr[0])
+      m_Playlist.Current()->Tracknumber = tr;
+    if (al && al[0])
+      m_Playlist.Current()->Album = al;
+    if (ar && ar[0])
+      m_Playlist.Current()->Artist = ar;
+
+    return true;
+  }
+
+  return false;
+}
+
 bool cXinelibPlayer::NextFile(int step)
 {
   if (m_Playlist.Count() > 0) {
@@ -243,21 +277,8 @@ void cXinelibPlayer::Activate(bool On)
     m_Error = !m_Dev->PlayFile(mrl, pos);
     LOGDBG("cXinelibPlayer playing %s (%s)", *m_File, m_Error ? "FAIL" : "OK");
 
-    if(!m_Error) {
-      // update playlist metainfo
-      const char *ti = GetMetaInfo(miTitle);
-      const char *tr = GetMetaInfo(miTracknumber);
-      const char *al = GetMetaInfo(miAlbum);
-      const char *ar = GetMetaInfo(miArtist);
-      if(ti && ti[0] && (!*m_Playlist.Current()->Title || !strstr(m_Playlist.Current()->Title, ti)))
-	m_Playlist.Current()->Title = ti;
-      if(tr && tr[0])
-        m_Playlist.Current()->Tracknumber = tr;
-      if(al && al[0])
-	m_Playlist.Current()->Album = al;
-      if(ar && ar[0])
-	m_Playlist.Current()->Artist = ar;
-
+    if (!m_Error) {
+      UpdateMetaInfo(true);
       UpdateNumTracks();
     }
   } else {
@@ -636,27 +657,8 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   }
 
   else {
-    // metainfo may change during playback (DVD titles, CDDA tracks)
-    const char *ti = m_Player->GetMetaInfo(miTitle);
-    if(ti && ti[0] && (!*m_Player->Playlist().Current()->Title ||
-		       !strstr(m_Player->Playlist().Current()->Title, ti))) {
-      const char *tr = m_Player->GetMetaInfo(miTracknumber);
-      const char *al = m_Player->GetMetaInfo(miAlbum);
-      const char *ar = m_Player->GetMetaInfo(miArtist);
-      LOGDBG("metainfo changed: %s->%s %s->%s %s->%s %s->%s",
-	     *m_Player->Playlist().Current()->Artist?:"-", ar?:"-", 
-	     *m_Player->Playlist().Current()->Album ?:"-", al?:"-", 
-	     *m_Player->Playlist().Current()->Tracknumber ?:"-", tr?:"-",
-             *m_Player->Playlist().Current()->Title ?:"-", ti?:"-");
-      m_Player->Playlist().Current()->Title = ti;
-      if(tr && tr[0])
-        m_Player->Playlist().Current()->Tracknumber = tr;
-      if(al && al[0])
-	m_Player->Playlist().Current()->Album = al;
-      if(ar && ar[0])
-	m_Player->Playlist().Current()->Artist = ar;
+    if (m_Player->UpdateMetaInfo())
       MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
-    }
   }
 
   // playlist menu
@@ -955,14 +957,9 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
     return osEnd;
   }
 
-  // Update DVD title information
-  const char *ti = m_Player->GetMetaInfo(miTitle);
-  if (ti && ti[0] && (!m_CurrentDVDTitle || !strstr(m_CurrentDVDTitle, ti))) {
-    memset(m_CurrentDVDTitle, 0, 63);
-    strn0cpy(m_CurrentDVDTitle, ti, 63);
-    m_Player->Playlist().Current()->Title = m_CurrentDVDTitle;
-    MsgReplaying(m_CurrentDVDTitle, NULL);
-  }
+  // Check for changed title
+  if (m_Player->UpdateMetaInfo())
+    MsgReplaying(*m_Player->Playlist().Current()->Title, NULL);
 
   // Handle menu selection
   if (m_DvdMenu) {
