@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.83 2010-12-09 12:47:18 phintuka Exp $
+ * $Id: media_player.c,v 1.84 2010-12-09 13:24:55 phintuka Exp $
  *
  */
 
@@ -480,6 +480,47 @@ void cPlaylistMenu::Set(bool setCurrentPlaying)
 
 #include <vdr/skins.h>
 
+class cXinelibPlayerControl : public cControl
+{
+  private:
+    static cMutex m_Lock;
+
+    static cXinelibPlayer *OpenPlayer(const char *File, bool Queue = false, const char *SubFile = NULL);
+
+ protected:
+    static cXinelibPlayer *m_Player;
+
+    cSkinDisplayReplay *m_DisplayReplay;
+    cPlaylistMenu      *m_PlaylistMenu;
+
+    eMainMenuMode m_Mode;
+    bool    m_ShowModeOnly;
+    bool    m_RandomPlay;
+    time_t  m_AutoShowStart;
+    int     m_CurrentPos;
+    int     m_CurrentLen;
+    bool    m_BlinkState;
+
+    cTimeMs lastTime;
+    int     number;
+
+    void CloseMenus(void);
+    void MsgReplaying(const char *Title, const char *File);
+
+  public:
+    cXinelibPlayerControl(eMainMenuMode Mode, const char *File, const char *SubFile = NULL);
+    virtual ~cXinelibPlayerControl();
+
+    virtual void Show(void);
+    virtual void Hide(void);
+    virtual eOSState ProcessKey(eKeys Key);
+    virtual cOsdObject *GetInfo(void);
+
+    static void Close(void);
+    static bool IsOpen(void) { return m_Player != NULL; };
+    static void Queue(const char *File);
+};
+
 cXinelibPlayer *cXinelibPlayerControl::m_Player = NULL;
 cMutex cXinelibPlayerControl::m_Lock;
 
@@ -920,6 +961,24 @@ eOSState cDvdMenu::ProcessKey(eKeys Key)
 //
 // cXinelibDvdPlayerControl
 //
+
+class cXinelibDvdPlayerControl : public cXinelibPlayerControl
+{
+  private:
+    cOsdMenu *m_DvdMenu;
+
+    void      CloseDvdMenu(void);
+
+  public:
+    cXinelibDvdPlayerControl(const char *File) :
+      cXinelibPlayerControl(ShowFiles, File), m_DvdMenu(NULL)
+      {}
+    virtual ~cXinelibDvdPlayerControl();
+
+    virtual void Show(void);
+    virtual void Hide(void);
+    virtual eOSState ProcessKey(eKeys Key);
+};
 
 cXinelibDvdPlayerControl::~cXinelibDvdPlayerControl() 
 {
