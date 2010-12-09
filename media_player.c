@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.79 2010-12-09 11:40:07 phintuka Exp $
+ * $Id: media_player.c,v 1.80 2010-12-09 11:43:56 phintuka Exp $
  *
  */
 
@@ -872,6 +872,8 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   return osContinue;
 }
 
+// --- DVD player -----------------------------------------------------------
+
 //
 // cDvdMenu
 //
@@ -882,6 +884,8 @@ class cDvdMenu : public cOsdMenu {
 
   public:
     cDvdMenu(cXinelibPlayer *Player);
+
+    virtual eOSState ProcessKey(eKeys Key);
 };
 
 cDvdMenu::cDvdMenu(cXinelibPlayer *Player) : cOsdMenu(tr("DVD Menu")), m_Player(Player)
@@ -893,6 +897,22 @@ cDvdMenu::cDvdMenu(cXinelibPlayer *Player) : cOsdMenu(tr("DVD Menu")), m_Player(
   Add(new cOsdItem(tr("DVD Audio menu"), osUser5));
   Add(new cOsdItem(tr("Close menu"),     osEnd));
   Display();
+}
+
+eOSState cDvdMenu::ProcessKey(eKeys Key)
+{
+  eOSState state = cOsdMenu::ProcessKey(Key);
+  switch (state) {
+    case osUser1: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU1"); return osEnd;
+    case osUser2: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU2"); return osEnd;
+    case osUser3: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU3"); return osEnd;
+    case osUser4: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU4"); return osEnd;
+    case osUser5: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU5"); return osEnd;
+    case osBack:
+    case osEnd:   return osEnd;
+    default:      break;
+  }
+  return state;
 }
 
 //
@@ -946,18 +966,8 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 
   // Handle menu selection
   if (m_DvdMenu) {
-    if (Key == kRed)
+    if (Key == kRed || m_DvdMenu->ProcessKey(Key) == osEnd)
       Hide();
-    else switch(m_DvdMenu->ProcessKey(Key)) {
-      case osUser1: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU1"); break;
-      case osUser2: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU2"); break;
-      case osUser3: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU3"); break;
-      case osUser4: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU4"); break;
-      case osUser5: Hide(); m_Player->Control("EVENT XINE_EVENT_INPUT_MENU5"); break;
-      case osBack:
-      case osEnd:   Hide(); break;
-      default:      break;
-    }
     return osContinue;
   }
 
