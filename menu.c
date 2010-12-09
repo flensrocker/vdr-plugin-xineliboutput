@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.80 2010-12-09 13:03:32 phintuka Exp $
+ * $Id: menu.c,v 1.81 2010-12-09 13:14:55 phintuka Exp $
  *
  */
 
@@ -283,16 +283,16 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
     if (!ForceOpen && GetCurrent()->IsDvd()) {
       /* play dvd */
-      cString f = cPlaylist::BuildMrl("dvd", m_CurrentDir, "/", GetCurrent()->Name());
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibDvdPlayerControl(f));
+      cPlayerFactory::Launch(pmAudioVideo,
+                             cPlaylist::BuildMrl("dvd", m_CurrentDir, "/", GetCurrent()->Name()),
+                             NULL, true);
       return osEnd;
     }
     if (!ForceOpen && GetCurrent()->IsBluRay()) {
       /* play BluRay disc/image */
-      cString f = cPlaylist::BuildMrl("bluray", m_CurrentDir, "/", GetCurrent()->Name());
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibDvdPlayerControl(f));
+      cPlayerFactory::Launch(pmAudioVideo,
+                             cPlaylist::BuildMrl("bluray", m_CurrentDir, "/", GetCurrent()->Name(), "/"),
+                             NULL, true);
       return osEnd;
     }
     if (ForceOpen && GetCurrent()->IsDir() &&
@@ -306,12 +306,12 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
         cString f = cString::sprintf("%s/%s/", m_CurrentDir, GetCurrent()->Name());
 
-        if (!Queue || !cXinelibPlayerControl::IsOpen())
+        if (!Queue || !cPlayerFactory::IsOpen())
           cControl::Shutdown();
         if (Queue)
-          cXinelibPlayerControl::Queue(f);
+          cPlayerFactory::Queue(f);
         else
-          cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
+          cPlayerFactory::Launch(m_Mode == ShowFiles ? pmAudioVideo : pmAudioOnly, f, NULL, true);
         return Queue ? osContinue : osEnd;
 
       } else {
@@ -342,16 +342,19 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
       /* video/audio */
       if (m_OnlyQueue && !Queue)
         return osContinue;
-      if (!Queue || !cXinelibPlayerControl::IsOpen())
+      if (!Queue || !cPlayerFactory::IsOpen())
         cControl::Shutdown();
       if (Queue)
-        cXinelibPlayerControl::Queue(f);
-      if (!cXinelibPlayerControl::IsOpen()) {
+        cPlayerFactory::Queue(f);
+      if (!cPlayerFactory::IsOpen()) {
         if (Rewind)
           unlink(cString::sprintf("%s.resume", *f));
-        cControl::Launch(GetCurrent()->IsDvd()
-                         ? new cXinelibDvdPlayerControl(cPlaylist::BuildMrl("dvd", f))
-                         : new cXinelibPlayerControl(m_Mode, f, GetCurrent()->SubFile()));
+
+        if (GetCurrent()->IsDvd())
+          cPlayerFactory::Launch(pmAudioVideo, cPlaylist::BuildMrl("dvd", f), NULL, true);
+        else
+          cPlayerFactory::Launch(m_Mode == ShowFiles ? pmAudioVideo : pmAudioOnly,
+                                 f, GetCurrent()->SubFile(), true);
       }
       if (Queue)
         return osContinue;
