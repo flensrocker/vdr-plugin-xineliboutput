@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.78 2010-09-15 08:03:00 phintuka Exp $
+ * $Id: media_player.c,v 1.79 2010-12-09 11:40:07 phintuka Exp $
  *
  */
 
@@ -24,8 +24,10 @@
 
 #include "logdefs.h"
 
-static void BackToMenu(void)
+static void BackToMenu(eMainMenuMode Menu)
 {
+  xc.main_menu_mode = Menu;
+
   cRemote::CallPlugin("xineliboutput");
 }
 
@@ -778,9 +780,8 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   }
 
   switch(Key) { // key bindings common for both players
-    case kBack:   xc.main_menu_mode = m_Mode;
-                  Hide(); 
-		  BackToMenu();
+    case kBack:   Hide();
+                  BackToMenu(m_Mode);
                   break;
     case kStop:
     case kBlue:   Hide();
@@ -1026,13 +1027,12 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
 		   }
 		   break;
       case kBack:  if (config_t::IsDvdImage(m_Player->File())) {
-                     xc.main_menu_mode = m_Mode;
+                     BackToMenu(m_Mode);
                    } else {
-                     xc.main_menu_mode = ShowMenu;
+                     BackToMenu(ShowMenu);
                    }
                    Hide();
 		   Close();
-                   BackToMenu();
 		   return osEnd;
       default:     break;
     }
@@ -1314,13 +1314,12 @@ void cXinelibImagesControl::Hide(void)
 eOSState cXinelibImagesControl::ProcessKey(eKeys Key)
 {
   switch(Key) {
-    case kBack:    xc.main_menu_mode = ShowImages;
-                   Hide(); 
-                   Close(); 
-                   BackToMenu();
-                   //return osPlugin;		   
+    case kBack:    Hide();
+                   Close();
+                   BackToMenu(ShowImages);
+                   //return osPlugin;
 		   return osEnd;
-    case kYellow:  Delete(); 
+    case kYellow:  Delete();
                    break;
     case kStop:
     case kBlue:    Hide();
