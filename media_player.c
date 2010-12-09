@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.82 2010-12-09 12:30:11 phintuka Exp $
+ * $Id: media_player.c,v 1.83 2010-12-09 12:47:18 phintuka Exp $
  *
  */
 
@@ -1409,6 +1409,9 @@ cControl *CreateControl(cXinelibDevice *Dev,
   if (!strncmp(Mrl, "dvd:/", 5))
     return new cXinelibDvdPlayerControl(Mrl);
   if (xc.IsDvdImage(Mrl))
+    return new cXinelibDvdPlayerControl(Mrl);
+
+  if (!strncmp(Mrl, "bluray:/", 8))
     return new cXinelibDvdPlayerControl(Mrl);
 
   if (!strncmp(Mrl, "cdda:/", 6))
