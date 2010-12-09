@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.79 2010-12-09 11:18:14 phintuka Exp $
+ * $Id: menu.c,v 1.80 2010-12-09 13:03:32 phintuka Exp $
  *
  */
 
@@ -617,19 +617,16 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       AddSubMenu(new cMenuBrowseFiles(ShowImages));
       return osContinue;
     case osUser4:
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
+      cPlayerFactory::Launch("dvd:/");
       return osEnd;
     case osUser5:
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibDvdPlayerControl("bluray:/"));
+      cPlayerFactory::Launch("bluray:/");
       return osEnd;
     case osUser6:
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibPlayerControl(ShowMusic, "cdda:/"));
+      cPlayerFactory::Launch("cdda:/");
       return osEnd;
     case osUser7:
-      if(!g_PendingMenuAction) {
+      if (!g_PendingMenuAction) {
         g_PendingMenuAction = new cEqualizer();
         return osPlugin;
       }
@@ -676,13 +673,11 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 
   switch (Key) {
     case HOTKEY_DVD:
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
+      cPlayerFactory::Launch("dvd:/");
       break;
 
     case HOTKEY_DVD_TRACK1:
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibDvdPlayerControl("dvd:/1"));
+      cPlayerFactory::Launch("dvd:/1");
       break;
 
     case HOTKEY_LOCAL_FE:
@@ -834,8 +829,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
                 Message = tr("Default playlist not found");
               } else {
                 LOGDBG("Replaying default playlist: %s", *file);
-                cControl::Shutdown();
-                cControl::Launch(new cXinelibPlayerControl(CloseOsd, buffer));
+                cPlayerFactory::Launch(buffer);
               }
             } else {
               Message = tr("Default playlist is not symlink");
