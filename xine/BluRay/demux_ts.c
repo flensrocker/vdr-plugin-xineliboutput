@@ -168,6 +168,10 @@
 #  define BUF_SPU_HDMV            0x04080000
 #endif
 
+#ifndef DEMUX_OPTIONAL_DATA_FLUSH
+#  define DEMUX_OPTIONAL_DATA_FLUSH 0x10000
+#endif
+
 /*
   #define TS_LOG
   #define TS_PMT_LOG
@@ -2329,6 +2333,56 @@ static uint32_t demux_ts_get_capabilities(demux_plugin_t *this_gen)
   return DEMUX_CAP_AUDIOLANG | DEMUX_CAP_SPULANG;
 }
 
+static void flush_decoders(demux_ts_t *this)
+{
+  buf_element_t *buf;
+  xine_stream_t *stream = this->stream;
+  unsigned int i;
+
+  /* flush demuxer caches*/
+  for (i = 0; i < MAX_PIDS; i++) {
+    demux_ts_media *m = &this->media[i];
+    if (m->buf) {
+      m->buf->decoder_flags |= BUF_FLAG_FRAME_END;
+      flush_demux_ts_media(m);
+    }
+  }
+
+  /* flush decoders */
+  buf = stream->video_fifo->buffer_pool_alloc (stream->video_fifo);
+  buf->type = BUF_CONTROL_FLUSH_DECODER;
+  stream->video_fifo->put (stream->video_fifo, buf);
+
+  buf = stream->audio_fifo->buffer_pool_alloc (stream->audio_fifo);
+  buf->type = BUF_CONTROL_FLUSH_DECODER;
+  stream->audio_fifo->put (stream->audio_fifo, buf);
+
+  /* reset decoders */
+  buf = stream->video_fifo->buffer_pool_alloc (stream->video_fifo);
+  buf->type = BUF_CONTROL_RESET_DECODER;
+  stream->video_fifo->put (stream->video_fifo, buf);
+
+  buf = stream->audio_fifo->buffer_pool_alloc (stream->audio_fifo);
+  buf->type = BUF_CONTROL_RESET_DECODER;
+  stream->audio_fifo->put (stream->audio_fifo, buf);
+
+  /* reset demuxer */
+  this->videoPid    = INVALID_PID;
+  this->audio_tracks_count = 0;
+  this->media_num   = 0;
+  this->send_newpts = 1;
+  this->spu_pid     = INVALID_PID;
+  this->spu_media   = 0;
+  this->spu_langs_count= 0;
+  this->last_pmt_crc = 0;
+
+  /* wait until processed */
+  _x_demux_control_headers_done (stream);
+
+  /* start */
+  _x_demux_control_start (stream);
+}
+
 static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
 				      void *data, int data_type)
 {
@@ -2379,6 +2433,11 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
         strcpy(str, "none");
         return DEMUX_OPTIONAL_UNSUPPORTED;
       }
+      return DEMUX_OPTIONAL_SUCCESS;
+
+    case DEMUX_OPTIONAL_DATA_FLUSH:
+      // BluRay: stream reset
+      flush_decoders(this);
       return DEMUX_OPTIONAL_SUCCESS;
 
     default:
