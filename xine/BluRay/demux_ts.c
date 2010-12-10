@@ -299,7 +299,7 @@ typedef struct {
 
 typedef struct {
   spu_dvb_descriptor_t desc;
-  int pid;
+  unsigned int pid;
   int media_index;
 } demux_ts_spu_lang;
 
@@ -307,7 +307,7 @@ typedef struct {
 #define MAX_AUDIO_TRACKS 32
 
 typedef struct {
-    int pid;
+    unsigned int pid;
     int media_index;
     char lang[4];
 } demux_ts_audio_track;
@@ -756,7 +756,7 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
                                       xine_stream_t *stream) {
 
   unsigned char *p;
-  uint32_t       header_len;
+  int            header_len;
   int64_t        pts;
   uint32_t       stream_id;
   int            pkt_len;
@@ -1525,7 +1525,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
 	/* DVBSUB */
 	else if (stream[i] == 0x59)
 	  {
-	    int pos;
+	    unsigned int pos;
             for (pos = i + 2;
 		 pos + 8 <= i + 2 + stream[i + 1]
 		   && this->spu_langs_count < MAX_SPU_LANGS;
@@ -1930,7 +1930,7 @@ static void demux_ts_parse_packet (demux_ts_t*this) {
   unsigned int   data_offset;
   unsigned int   data_len;
   uint32_t       program_count;
-  int i;
+  unsigned int i;
 
   /* get next synchronised packet, or NULL */
   originalPkt = demux_synchronise(this);
@@ -2447,7 +2447,8 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
 
 static int detect_ts(uint8_t *buf, size_t len, int ts_size)
 {
-  int    i, j;
+  int    i;
+  size_t j;
   int    try_again, ts_detected = 0;
   size_t packs = len / ts_size - 2;
 
