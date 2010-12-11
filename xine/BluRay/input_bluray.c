@@ -115,8 +115,11 @@ typedef struct {
 
   BLURAY               *bdh;
 
-  int                num_title_idx;
+  const BLURAY_DISC_INFO *disc_info;
+
+  int                num_title_idx;     /* number of relevant playlists */
   int                current_title_idx;
+  int                num_titles;        /* navigation mode, number of titles in disc index */
   BLURAY_TITLE_INFO *title_info;
   int                current_clip;
   int                error;
@@ -428,7 +431,15 @@ static void handle_events(bluray_input_plugin_t *this)
 
     switch (event->type) {
 
-      case XINE_EVENT_INPUT_MENU1:     bd_menu_call(this->bdh, pts); break;
+      case XINE_EVENT_INPUT_MENU1:
+        if (!this->disc_info->top_menu_supported) {
+          _x_message (this->stream, XINE_MSG_GENERAL_WARNING,
+                      "Can't open Top Menu",
+                      "Top Menu title not supported", NULL);
+        }
+        bd_menu_call(this->bdh, pts);
+        break;
+
       case XINE_EVENT_INPUT_MENU2:     bd_user_input(this->bdh, pts, BD_VK_POPUP); break;
       case XINE_EVENT_INPUT_UP:        bd_user_input(this->bdh, pts, BD_VK_UP);    break;
       case XINE_EVENT_INPUT_DOWN:      bd_user_input(this->bdh, pts, BD_VK_DOWN);  break;
@@ -834,6 +845,64 @@ static int parse_mrl(const char *mrl_in, char **path, int *title, int *chapter)
   return 1;
 }
 
+static int get_disc_info(bluray_input_plugin_t *this)
+{
+  const BLURAY_DISC_INFO *disc_info;
+
+  disc_info = bd_get_disc_info(this->bdh);
+
+  if (!disc_info) {
+    LOGMSG("bd_get_disc_info() failed\n");
+    return -1;
+  }
+
+  if (!disc_info->bluray_detected) {
+    LOGMSG("bd_get_disc_info(): BluRay not detected\n");
+    this->nav_mode = 0;
+    return 0;
+  }
+
+  if (disc_info->aacs_detected && !disc_info->aacs_handled) {
+    if (!disc_info->libaacs_detected)
+      _x_message (this->stream, XINE_MSG_ENCRYPTED_SOURCE,
+                  "Media stream scrambled/encrypted with AACS",
+                  "libaacs not installed", NULL);
+    else
+      _x_message (this->stream, XINE_MSG_ENCRYPTED_SOURCE,
+                  "Media stream scrambled/encrypted with AACS", NULL);
+    return -1;
+  }
+
+  if (disc_info->bdplus_detected && !disc_info->bdplus_handled) {
+    if (!disc_info->libbdplus_detected)
+      _x_message (this->stream, XINE_MSG_ENCRYPTED_SOURCE,
+                  "Media scrambled/encrypted with BD+",
+                  "libbdplus not installed.", NULL);
+    else
+      _x_message (this->stream, XINE_MSG_ENCRYPTED_SOURCE,
+                  "Media stream scrambled/encrypted with BD+", NULL);
+    return -1;
+  }
+
+  if (this->nav_mode && !disc_info->first_play_supported) {
+    _x_message (this->stream, XINE_MSG_GENERAL_WARNING,
+                "Can't play disc in HDMV navigation mode",
+                "First Play title not supported", NULL);
+    this->nav_mode = 0;
+  }
+
+  if (this->nav_mode && disc_info->num_unsupported_titles > 0) {
+    _x_message (this->stream, XINE_MSG_GENERAL_WARNING,
+                "Unsupported titles found",
+                "Some titles can't be played in navigation mode", NULL);
+  }
+
+  this->num_titles = disc_info->num_hdmv_titles + disc_info->num_bdj_titles;
+  this->disc_info  = disc_info;
+
+  return 1;
+}
+
 static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this    = (bluray_input_plugin_t *) this_gen;
@@ -859,6 +928,10 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     return -1;
   }
   lprintf("bd_open(\'%s\') OK\n", this->disc_root);
+
+  if (get_disc_info(this) < 0) {
+    return -1;
+  }
 
   /* load title list */
 
