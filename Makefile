@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.101 2010-11-25 14:28:49 phintuka Exp $
+# $Id: Makefile,v 1.102 2010-12-11 21:10:19 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -331,6 +331,7 @@ $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
 	@-rm -rf $(LIBDIR)/$@
 	@cp $@ $(LIBDIR)/$@
+# Keep VDR Makefile happy - it requires $(LIBDIR)/.$(APIVERSION) somewhere in this file ...
 
 #
 # vdr-sxfe
