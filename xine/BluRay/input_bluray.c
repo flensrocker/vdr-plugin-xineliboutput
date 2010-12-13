@@ -120,6 +120,7 @@ typedef struct {
   int                num_title_idx;     /* number of relevant playlists */
   int                current_title_idx;
   int                num_titles;        /* navigation mode, number of titles in disc index */
+  int                current_title;     /* navigation mode, title from disc index */
   BLURAY_TITLE_INFO *title_info;
   int                current_clip;
   int                error;
@@ -320,7 +321,8 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         break;
 
       case BD_EVENT_TITLE:
-        LOGMSG("BD_EVENT_TITLE_ID %d\n", ev.param);
+        LOGMSG("BD_EVENT_TITLE %d\n", ev.param);
+        this->current_title = ev.param;
         break;
 
       case BD_EVENT_PLAYLIST:
@@ -418,15 +420,21 @@ static void handle_events(bluray_input_plugin_t *this)
       switch (event->type) {
 
         case XINE_EVENT_INPUT_LEFT:
-          lprintf("XINE_EVENT_INPUT_LEFT: next title\n");
-          open_title(this, MAX(0, this->current_title_idx - 1));
-          stream_reset(this);
+          lprintf("XINE_EVENT_INPUT_LEFT: previous title\n");
+          if (!this->nav_mode) {
+            open_title(this, MAX(0, this->current_title_idx - 1));
+          } else {
+            bd_play_title(this->bdh, MAX(1, this->current_title - 1));
+          }
           break;
 
         case XINE_EVENT_INPUT_RIGHT:
-          lprintf("XINE_EVENT_INPUT_RIGHT: previous title\n");
-          open_title(this, MIN(this->num_title_idx, this->current_title_idx + 1));
-          stream_reset(this);
+          lprintf("XINE_EVENT_INPUT_RIGHT: next title\n");
+          if (!this->nav_mode) {
+            open_title(this, MIN(this->num_title_idx - 1, this->current_title_idx + 1));
+          } else {
+            bd_play_title(this->bdh, MIN(this->num_titles, this->current_title + 1));
+          }
           break;
       }
     }
@@ -1008,16 +1016,20 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_COUNTRY_CODE, this->class->country);
 
   /* open */
+  this->current_title = -1;
+  this->current_title_idx = -1;
+
   if (this->nav_mode) {
     if (bd_play(this->bdh) <= 0) {
       LOGMSG("bd_play() failed\n");
       return -1;
     }
-    this->current_title_idx = -1;
 
-  } else if (open_title(this, title) <= 0 &&
-           open_title(this, 0) <= 0)
-    return -1;
+  } else {
+    if (open_title(this, title) <= 0 &&
+        open_title(this, 0) <= 0)
+      return -1;
+  }
 
   /* jump to chapter */
 
