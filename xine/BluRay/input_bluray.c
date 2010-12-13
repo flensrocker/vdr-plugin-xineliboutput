@@ -326,7 +326,9 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
       case BD_EVENT_PLAYLIST:
         lprintf("BD_EVENT_PLAYLIST %d\n", ev.param);
         this->current_title_idx = bd_get_current_title(this->bdh);
+        this->current_clip = 0;
         update_title_info(this);
+        stream_reset(this);
         break;
 
       case BD_EVENT_PLAYITEM:
