@@ -431,6 +431,22 @@ static void handle_events(bluray_input_plugin_t *this)
 
     switch (event->type) {
 
+      case XINE_EVENT_INPUT_MOUSE_BUTTON: {
+        xine_input_data_t *input = event->data;
+        lprintf("mouse click: button %d at (%d,%d)\n", input->button, input->x, input->y);
+        if (input->button == 1) {
+          bd_mouse_select(this->bdh, pts, input->x, input->y);
+          bd_user_input(this->bdh, pts, BD_VK_MOUSE_ACTIVATE);
+        }
+        break;
+      }
+
+      case XINE_EVENT_INPUT_MOUSE_MOVE: {
+        xine_input_data_t *input = event->data;
+        bd_mouse_select(this->bdh, pts, input->x, input->y);
+        break;
+      }
+
       case XINE_EVENT_INPUT_MENU1:
         if (!this->disc_info->top_menu_supported) {
           _x_message (this->stream, XINE_MSG_GENERAL_WARNING,
