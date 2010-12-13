@@ -223,7 +223,7 @@ static void update_title_info(bluray_input_plugin_t *this)
   }
 
 #ifdef LOG
-  int ms = this->title_info->duration / INT64_C(90000);
+  int ms = this->title_info->duration / INT64_C(90);
   lprintf("Opened title %d. Length %"PRId64" bytes / %02d:%02d:%02d.%03d\n",
           this->current_title_idx, bd_get_title_size(this->bdh),
           ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
