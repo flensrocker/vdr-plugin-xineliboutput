@@ -125,6 +125,7 @@ typedef struct {
   int                current_clip;
   int                error;
   int                menu_open;
+  int                stream_flushed;
   int                pg_enable;
   int                pg_stream;
 
@@ -287,8 +288,31 @@ static int open_title (bluray_input_plugin_t *this, int title)
   return 1;
 }
 
+#ifndef DEMUX_OPTIONAL_DATA_FLUSH
+#  define DEMUX_OPTIONAL_DATA_FLUSH 0x10000
+#endif
+
+static void stream_flush(bluray_input_plugin_t *this)
+{
+  if (this->stream_flushed)
+    return;
+
+  lprintf("Stream flush\n");
+
+  this->stream_flushed = 1;
+
+  int tmp = 0;
+  if (DEMUX_OPTIONAL_SUCCESS !=
+      this->stream->demux_plugin->get_optional_data(this->stream->demux_plugin, &tmp, DEMUX_OPTIONAL_DATA_FLUSH)) {
+    LOGMSG("stream flush not supported by the demuxer !\n");
+    return;
+  }
+}
+
 static void stream_reset(bluray_input_plugin_t *this)
 {
+  lprintf("Stream reset\n");
+
   this->cap_seekable = 0;
 
   xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, XINE_FINE_SPEED_NORMAL);
@@ -318,6 +342,11 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
       case BD_EVENT_ANGLE:
         lprintf("BD_EVENT_ANGLE_NUMBER %d\n", ev.param);
         _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER, ev.param);
+        break;
+
+      case BD_EVENT_END_OF_TITLE:
+        LOGMSG("BD_EVENT_END_OF_TITLE\n");
+        stream_flush(this);
         break;
 
       case BD_EVENT_TITLE:
@@ -582,6 +611,8 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
 
   if (result < 0)
     LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), (int)result, (int)len);
+
+  this->stream_flushed = 0;
 
 #if 0
   if (buf[4] != 0x47) {
