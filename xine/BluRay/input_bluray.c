@@ -331,7 +331,19 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         this->error = 1;
         return;
 
+      case BD_EVENT_ENCRYPTED:
+        lprintf("BD_EVENT_ENCRYPTED\n");
+        _x_message (this->stream, XINE_MSG_ENCRYPTED_SOURCE,
+                    "Media stream scrambled/encrypted", NULL);
+        this->error = 1;
+        return;
+
       /* playback control */
+
+      case BD_EVENT_SEEK:
+        lprintf("BD_EVENT_SEEK\n");
+        stream_reset(this);
+        break;
 
       case BD_EVENT_STILL:
         LOGMSG("BD_EVENT_STILL %d\n", ev.param);
