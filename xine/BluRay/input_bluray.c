@@ -603,7 +603,7 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
   off_t result;
 
-  if (!this || !this->bdh || len < 0)
+  if (!this || !this->bdh || len < 0 || this->error)
     return -1;
 
   handle_events(this);
