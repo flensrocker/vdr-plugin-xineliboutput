@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.104 2010-12-15 14:32:01 phintuka Exp $
+# $Id: Makefile,v 1.105 2010-12-15 14:43:36 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -65,7 +65,7 @@ VDRDIR  ?= ../../..
 LIBDIR  ?= ../../lib
 TMPDIR  ?= /tmp
 BINDIR  ?= /usr/bin
-DESTDIR ?= /
+#DESTDIR ?= /
 
 INSTALL ?= install
 
