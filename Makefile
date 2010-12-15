@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.102 2010-12-11 21:10:19 phintuka Exp $
+# $Id: Makefile,v 1.103 2010-12-15 14:13:40 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -92,9 +92,10 @@ else
     APIVERSION = $(shell sed -ne '/define APIVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
 endif
 
+VDR_TREE = no
 ifeq ($(strip $(VDRVERSION)),)
     $(warning ********************************************************)
-    $(warning VDR not detected ! VDR plugin will not be compiled.     )
+    $(warning VDR not detected ! VDR plugins will not be compiled.    )
     $(warning ********************************************************)
     CONFIGURE_OPTS += --disable-vdr
 else
@@ -103,6 +104,16 @@ else
         APIVERSION = $(VDRVERSION)
     endif
     CONFIGURE_OPTS += --add-cflags=-I$(VDRDIR)
+
+    ifeq ($(VDRDIR), ../../..)
+        $(warning Building inside VDR source tree)
+        VDR_TREE = yes
+    else
+        $(warning ********************************************************)
+        $(warning VDR source tree not detected !                          )
+        $(warning VDR plugins will not be installed.                      )
+        $(warning ********************************************************)
+    endif
 endif
 
 
@@ -329,8 +340,10 @@ config: config.mak
 
 $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS) $(OBJS_MPG) $(LIBS) $(LIBS_VDR) -o $@
+ifeq ($(VDR_TREE), yes)
 	@-rm -rf $(LIBDIR)/$@
 	@cp $@ $(LIBDIR)/$@
+endif
 # Keep VDR Makefile happy - it requires $(LIBDIR)/.$(APIVERSION) somewhere in this file ...
 
 #
@@ -339,8 +352,10 @@ $(VDRPLUGIN): $(OBJS) $(OBJS_MPG)
 
 $(VDRPLUGIN_SXFE): $(OBJS_SXFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_SXFE_SO) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) -o $@
+ifeq ($(VDR_TREE), yes)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE)
+endif
 $(VDRSXFE): $(OBJS_SXFE)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
@@ -350,8 +365,10 @@ $(VDRSXFE): $(OBJS_SXFE)
 
 $(VDRPLUGIN_FBFE): $(OBJS_FBFE_SO)
 	$(CC) $(CFLAGS) $(LDFLAGS_SO) $(LDFLAGS) $(OBJS_FBFE_SO) $(LIBS_XINE) $(LIBS_JPEG) -o $@
+ifeq ($(VDR_TREE), yes)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE)
+endif
 $(VDRFBFE): $(OBJS_FBFE)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
 
