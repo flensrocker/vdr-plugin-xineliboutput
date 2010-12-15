@@ -383,7 +383,10 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_PLAYITEM:
         lprintf("BD_EVENT_PLAYITEM %d\n", ev.param);
-        this->current_clip = ev.param;
+        if (ev.param < this->title_info->clip_count)
+          this->current_clip = ev.param;
+        else
+          this->current_clip = 0;
         break;
 
       case BD_EVENT_CHAPTER:
