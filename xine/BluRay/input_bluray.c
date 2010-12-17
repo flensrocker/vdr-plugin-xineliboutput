@@ -661,8 +661,14 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
       BD_EVENT ev;
       result = bd_read_ext (this->bdh, (unsigned char *)buf, len, &ev);
       handle_libbluray_event(this, ev);
-      if (result == 0)
+      if (result == 0) {
         handle_events(this);
+        if (ev.event == BD_EVENT_NONE) {
+          if (this->stream->demux_action_pending) {
+            break;
+          }
+        }
+      }
     } while (!this->error && result == 0);
   } else {
     result = bd_read (this->bdh, (unsigned char *)buf, len);
