@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.78 2010-11-17 13:49:28 phintuka Exp $
+ * $Id: setup_menu.c,v 1.79 2010-12-17 13:07:52 phintuka Exp $
  *
  */
 
@@ -20,6 +20,7 @@
 #include "menuitems.h"
 #include "osd.h"       // cXinelibOsdProvider::RefreshOsd()
 #include "setup_menu.h"
+#include "tools/playlist.h"
 
 #define indent(x) Label_Ident(x)
 #define inden2(x) Label_Ident(Label_Ident(x))
@@ -213,9 +214,9 @@ void cMenuSetupAudio::Set(void)
     Add(new cMenuEditTypedIntItem(indent(tr("Speed")), tr("fps"),
                                   &goom_fps, 1, 100));
   } else if(visualization == AUDIO_VIS_IMAGE) {
-    Add(new cMenuEditStrItem(indent(tr("Background image")),
-			     newconfig.audio_vis_image_opts,
-			     sizeof(newconfig.audio_vis_image_opts)));
+    Add(new cMenuEditStrItem(indent(tr("Background image MRL")),
+			     newconfig.audio_vis_image_mrl,
+			     sizeof(newconfig.audio_vis_image_mrl)));
   }
 
   if(current<1) current=1; /* first item is not selectable */
@@ -299,6 +300,9 @@ void cMenuSetupAudio::Store(void)
 	   goom_width, goom_height, goom_fps);
   xc.audio_vis_goom_opts[sizeof(xc.audio_vis_goom_opts)-1] = 0;
 
+  if(xc.audio_vis_image_mrl[0] == '/')
+    snprintf(xc.audio_vis_image_mrl, sizeof(xc.audio_vis_image_mrl), "%s", *cPlaylist::BuildMrl("file", xc.audio_vis_image_mrl));
+
   SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
   SetupStore("Audio.Delay",    xc.audio_delay);
   SetupStore("Audio.Compression",  xc.audio_compression);
@@ -307,7 +311,7 @@ void cMenuSetupAudio::Store(void)
   SetupStore("Audio.Headphone",    xc.headphone);
   SetupStore("Audio.Visualization",xc.audio_visualization);
   SetupStore("Audio.Visualization.GoomOpts",xc.audio_vis_goom_opts);
-  SetupStore("Audio.Visualization.ImageOpts",xc.audio_vis_image_opts);
+  SetupStore("Audio.Visualization.ImageMRL",xc.audio_vis_image_mrl);
   SetupStore("Audio.SoftwareVolumeControl", xc.sw_volume_control);
   Setup.Save();
 }

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.95 2010-07-09 21:31:37 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.96 2010-12-17 13:07:52 phintuka Exp $
  *
  */
 
@@ -1366,7 +1366,7 @@ void cXinelibServer::Handle_Control_HTTP(int cli, const char *arg)
         if(pos)
           file.Truncate(pos - m_FileName);
         bool Allow = ( !strcmp_escaped(file, m_State[cli]->Uri() + 9)
-                       || !strcmp_escaped(xc.audio_vis_image_opts, m_State[cli]->Uri() + 9)
+                       || !strcmp_escaped(xc.audio_vis_image_mrl, m_State[cli]->Uri() + 9)
                        || (pos && !strcmp_escaped(pos + 10, m_State[cli]->Uri() + 9)));
         if(Allow) {
           LOGMSG("HTTP streaming media file");

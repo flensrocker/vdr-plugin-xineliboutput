@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.72 2010-05-30 23:24:12 phintuka Exp $
+ * $Id: config.h,v 1.73 2010-12-17 13:07:52 phintuka Exp $
  *
  */
 
@@ -339,7 +339,7 @@ class config_t {
     // Audio visualization
     char audio_visualization[64];
     char audio_vis_goom_opts[256];
-    char audio_vis_image_opts[4096];
+    char audio_vis_image_mrl[4096];
 
     // deinterlacing post plugin
     char deinterlace_method[32];

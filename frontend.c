@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.92 2010-11-17 13:59:22 phintuka Exp $
+ * $Id: frontend.c,v 1.93 2010-12-17 13:07:52 phintuka Exp $
  *
  */
 
@@ -727,8 +727,8 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
     default:
       if (xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom")) {
 	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
-      } else if (xc.audio_vis_image_opts[0] && !strcmp(xc.audio_visualization, "image")) {
-	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_image_opts);
+      } else if (xc.audio_vis_image_mrl[0] && !strcmp(xc.audio_visualization, "image")) {
+	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_image_mrl);
       } else {
 	strn0cpy(vis, xc.audio_visualization, sizeof(vis));
       }

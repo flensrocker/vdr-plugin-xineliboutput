@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.96 2010-11-17 13:46:24 phintuka Exp $
+ * $Id: config.c,v 1.97 2010-12-17 13:07:52 phintuka Exp $
  *
  */
 
@@ -532,7 +532,7 @@ config_t::config_t() {
   memset(audio_equalizer,0,sizeof(audio_equalizer));
   strn0cpy(audio_visualization, "goom", sizeof(audio_visualization));
   strn0cpy(audio_vis_goom_opts, "fps:25,width:720,height:576", sizeof(audio_vis_goom_opts));
-  strn0cpy(audio_vis_image_opts, "file:/usr/share/xine/visuals/default.avi", sizeof(audio_vis_image_opts));
+  strn0cpy(audio_vis_image_mrl, "file:/usr/share/xine/visuals/default.avi", sizeof(audio_vis_image_mrl));
 
   headphone = 0;
   audio_upmix = 0;
@@ -819,7 +819,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Audio.Delay"))  audio_delay = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Compression")) audio_compression = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Visualization.GoomOpts")) STRN0CPY(audio_vis_goom_opts, Value);
-  else if (!strcasecmp(Name, "Audio.Visualization.ImageOpts")) STRN0CPY(audio_vis_image_opts, Value);
+  else if (!strcasecmp(Name, "Audio.Visualization.ImageMRL")) STRN0CPY(audio_vis_image_mrl, Value);
   else if (!strcasecmp(Name, "Audio.Visualization")) STRN0CPY(audio_visualization, Value);
   else if (!strcasecmp(Name, "Audio.Surround"))  audio_surround = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Upmix"))     audio_upmix = atoi(Value);
