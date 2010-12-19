@@ -4,14 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.22 2010-12-19 14:44:15 phintuka Exp $
+ * $Id: media_player.h,v 1.23 2010-12-19 14:46:24 phintuka Exp $
  *
  */
 
 #ifndef __XINELIB_PLAYER_H
 #define __XINELIB_PLAYER_H
-
-// --- Image player ---------------------------------------------------------
 
 class cPlaylist;
 
