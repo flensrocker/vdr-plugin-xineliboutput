@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.82 2010-12-19 14:38:37 phintuka Exp $
+ * $Id: menu.c,v 1.83 2010-12-19 14:41:10 phintuka Exp $
  *
  */
 
@@ -363,7 +363,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
       cPlaylist *Playlist = new cPlaylist();
       for (cFileListItem *it = (cFileListItem*)First(); it; it=(cFileListItem*)Next(it)) {
         if (!it->IsDir())
-          Playlist->Read(cString::sprintf("%s/%s", *m_CurrentDir, it->Name()));
+          Playlist->Read(cString::sprintf("%s/%s", m_CurrentDir, it->Name()));
         if (it == Get(Current()))
           Playlist->SetCurrent(Playlist->Last());
       }
