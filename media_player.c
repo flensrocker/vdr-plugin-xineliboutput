@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.84 2010-12-09 13:24:55 phintuka Exp $
+ * $Id: media_player.c,v 1.85 2010-12-19 14:44:15 phintuka Exp $
  *
  */
 
@@ -1241,6 +1241,42 @@ bool cXinelibImagePlayer::ShowImage(const char *File)
 //
 // cXinelibImagesControl
 //
+
+class cXinelibImagesControl : public cControl
+{
+  private:
+    static cXinelibImagePlayer *m_Player;
+    static cMutex m_Lock;
+
+    cSkinDisplayReplay *m_DisplayReplay;
+
+    char **m_Files;
+    char *m_File;
+    int m_Index;
+    int m_Count;
+    int m_Speed;
+    int m_LastShowTime;
+    bool m_ShowModeOnly;
+
+    static cXinelibImagePlayer *OpenPlayer(const char *File);
+
+  protected:
+    void Seek(int Rel);
+    void Delete(void);
+
+  public:
+    cXinelibImagesControl(char **Files, int Index, int Count);
+    virtual ~cXinelibImagesControl();
+
+    virtual void Show(void);
+    virtual void Hide(void);
+    virtual eOSState ProcessKey(eKeys Key);
+
+    virtual cOsdObject *GetInfo(void);
+
+    static void Close(void);
+    static bool IsOpen(void) { return m_Player != NULL; }
+};
 
 cXinelibImagePlayer *cXinelibImagesControl::m_Player = NULL;
 cMutex cXinelibImagesControl::m_Lock;
