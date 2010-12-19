@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.81 2010-12-09 13:14:55 phintuka Exp $
+ * $Id: menu.c,v 1.82 2010-12-19 14:38:37 phintuka Exp $
  *
  */
 
@@ -360,18 +360,14 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
         return osContinue;
     } else {
       /* image */
-      char **files = new char*[Count()+1];
-      int i = 0, index = 0;
-      memset(files, 0, sizeof(char*)*(Count()+1));
+      cPlaylist *Playlist = new cPlaylist();
       for (cFileListItem *it = (cFileListItem*)First(); it; it=(cFileListItem*)Next(it)) {
-        if (it == Get(Current()))
-          index = i;
         if (!it->IsDir())
-          if (asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name()) < 0)
-             i--;
+          Playlist->Read(cString::sprintf("%s/%s", *m_CurrentDir, it->Name()));
+        if (it == Get(Current()))
+          Playlist->SetCurrent(Playlist->Last());
       }
-      cControl::Shutdown();
-      cControl::Launch(new cXinelibImagesControl(files, index, i));
+      cPlayerFactory::Launch(pmVideoOnly, Playlist, true);
     }
     return osEnd;
   }
