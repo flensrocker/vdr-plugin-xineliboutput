@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.85 2010-12-19 14:44:15 phintuka Exp $
+ * $Id: media_player.c,v 1.86 2010-12-20 13:06:11 phintuka Exp $
  *
  */
 
@@ -1250,10 +1250,7 @@ class cXinelibImagesControl : public cControl
 
     cSkinDisplayReplay *m_DisplayReplay;
 
-    char **m_Files;
-    char *m_File;
-    int m_Index;
-    int m_Count;
+    cPlaylist *m_Playlist;
     int m_Speed;
     int m_LastShowTime;
     bool m_ShowModeOnly;
@@ -1265,7 +1262,7 @@ class cXinelibImagesControl : public cControl
     void Delete(void);
 
   public:
-    cXinelibImagesControl(char **Files, int Index, int Count);
+    cXinelibImagesControl(cPlaylist *Playlist);
     virtual ~cXinelibImagesControl();
 
     virtual void Show(void);
@@ -1281,14 +1278,11 @@ class cXinelibImagesControl : public cControl
 cXinelibImagePlayer *cXinelibImagesControl::m_Player = NULL;
 cMutex cXinelibImagesControl::m_Lock;
 
-cXinelibImagesControl::cXinelibImagesControl(char **Files, int Index, int Count) :
-  cControl(OpenPlayer(Files[Index]))
+cXinelibImagesControl::cXinelibImagesControl(cPlaylist *Playlist) :
+  cControl(OpenPlayer(Playlist->Current()->Filename))
 {
   m_DisplayReplay = NULL;
-  m_Files = Files;
-  m_File = NULL;
-  m_Index = Index;
-  m_Count = Count;
+  m_Playlist = Playlist;
   m_Speed = 0;
   m_ShowModeOnly = false;
 
@@ -1304,16 +1298,7 @@ cXinelibImagesControl::~cXinelibImagesControl()
   cStatus::MsgReplaying(this, NULL, NULL, false);
   Close();
 
-  if(m_Files) {
-    int i=0;
-    while(m_Files[i]) {
-      free(m_Files[i]);
-      m_Files[i] = NULL;
-      i++;
-    }
-    delete [] m_Files;
-    m_Files = NULL;
-  }
+  delete m_Playlist;
 }
 
 cXinelibImagePlayer *cXinelibImagesControl::OpenPlayer(const char *File)
@@ -1337,12 +1322,8 @@ void cXinelibImagesControl::Close(void)
 void cXinelibImagesControl::Delete(void)
 {
   if(Interface->Confirm(tr("Delete image ?"))) {
-    if(!unlink(m_Files[m_Index])) {
-      free(m_Files[m_Index]);
-      for(int i=m_Index; i<m_Count; i++)
-	m_Files[i] = m_Files[i+1];
-      m_Count--;
-      m_Files[m_Count] = NULL;      
+    if(!unlink(m_Playlist->Current()->Filename)) {
+      m_Playlist->Del(m_Playlist->Current());
       Seek(0);
     }
   }
@@ -1350,36 +1331,20 @@ void cXinelibImagesControl::Delete(void)
 
 cOsdObject *cXinelibImagesControl::GetInfo(void)
 {
-  return new cMetainfoMenu(m_Files[m_Index]);
+  return new cMetainfoMenu(m_Playlist->Current()->Filename);
 }
 
 void cXinelibImagesControl::Seek(int Rel)
 {
-  if(m_Index == m_Count-1 && Rel>0)
-    m_Index = 0;
-  else if(m_Index == 0 && Rel<0)
-    m_Index = m_Count-1;
-  else
-    m_Index += Rel;
+  m_Playlist->Seek(Rel);
 
-  if(m_Index < 0) 
-    m_Index = 0; 
-  else if(m_Index >= m_Count) 
-    m_Index = m_Count;
-  
-  char *pt;
-  free(m_File);
-  m_File = strdup(m_Files[m_Index]);
-  if(NULL != (pt=strrchr(m_File, '/')))
-    memmove(m_File, pt+1, strlen(pt));
-  if(NULL != (pt=strrchr(m_File, '.')))
-    *pt = 0;
+  const char *Filename = m_Playlist->Current()->Filename;
 
-  cStatus::MsgReplaying(this, m_File, m_Files[m_Index], true);
+  cStatus::MsgReplaying(this, m_Playlist->Current()->Title, Filename, true);
 
-  m_Player->ShowImage(m_Files[m_Index]);
+  m_Player->ShowImage(Filename);
   m_LastShowTime = time(NULL);
-  strn0cpy(xc.browse_images_dir, m_Files[m_Index], sizeof(xc.browse_images_dir));
+  strn0cpy(xc.browse_images_dir, Filename, sizeof(xc.browse_images_dir));
 }
 
 void cXinelibImagesControl::Show(void)
@@ -1392,12 +1357,14 @@ void cXinelibImagesControl::Show(void)
   }
 
   if(!m_ShowModeOnly) {
+    int count = m_Playlist->Count();
+    int index = m_Playlist->Current()->Index();
     char t[128] = "";
-    m_DisplayReplay->SetTitle(m_File);
-    m_DisplayReplay->SetProgress(m_Index, m_Count);
-    sprintf(t, "%d", m_Count);
+    m_DisplayReplay->SetTitle(m_Playlist->Current()->Title);
+    m_DisplayReplay->SetProgress(index, count);
+    sprintf(t, "%d", count);
     m_DisplayReplay->SetTotal( t );
-    sprintf(t, "%d", m_Index+1);
+    sprintf(t, "%d", index+1);
     m_DisplayReplay->SetCurrent( t );
   }
 
@@ -1484,12 +1451,26 @@ eOSState cXinelibImagesControl::ProcessKey(eKeys Key)
 // cPlayerFactory
 //
 
+static cPlaylist *CreatePlaylist(const char *Mrl)
+{
+  cPlaylist *pl = new cPlaylist();
+  pl->Read(Mrl);
+  return pl;
+}
+
 cControl *CreateControl(cXinelibDevice *Dev,
                         ePlayMode PlayMode,
                         cPlaylist *Playlist,
                         bool BackToMenu)
 {
-  LOGMSG("cPlayerFactory::Create(cPlaylist*) not implemented !");
+
+  if (PlayMode == pmVideoOnly) {
+    return new cXinelibImagesControl(Playlist);
+  }
+
+  LOGMSG("cPlayerFactory::Create(cPlaylist*) not implemented for PlayMode %d !",
+         (int)PlayMode);
+
   return NULL;
 }
 
@@ -1519,10 +1500,7 @@ cControl *CreateControl(cXinelibDevice *Dev,
   if (PlayMode == pmAudioVideo)
     return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
   if (PlayMode == pmVideoOnly) {
-    char ** pMrl = new char * [2];
-    pMrl[0] = strdup(Mrl);
-    pMrl[1] = NULL;
-    return new cXinelibImagesControl(pMrl, 0, 1);
+    return new cXinelibImagesControl(CreatePlaylist(Mrl));
   }
 
   // guess from playlist content
@@ -1537,10 +1515,7 @@ cControl *CreateControl(cXinelibDevice *Dev,
       return new cXinelibPlayerControl(ShowMusic, Mrl);
 
     if (xc.IsImageFile(Playlist.First()->Filename)) {
-      char ** pMrl = new char * [2];
-      pMrl[0] = strdup(Mrl);
-      pMrl[1] = NULL;
-      return new cXinelibImagesControl(pMrl, 0, 1);
+      return new cXinelibImagesControl(CreatePlaylist(Mrl));
     }
 
     return new cXinelibPlayerControl(ShowFiles, Mrl);
@@ -1555,10 +1530,7 @@ cControl *CreateControl(cXinelibDevice *Dev,
     return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
 
   if (xc.IsImageFile(Mrl)) {
-    char ** pMrl = new char * [2];
-    pMrl[0] = strdup(Mrl);
-    pMrl[1] = NULL;
-    return new cXinelibImagesControl(pMrl, 0, 1);
+    return new cXinelibImagesControl(CreatePlaylist(Mrl));
   }
 
   // default
