@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.44 2011-01-04 13:23:44 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.45 2011-01-04 13:35:33 phintuka Exp $
  *
  */
 
@@ -1622,6 +1622,21 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 }
 
 
+static void autocrop_video_close(xine_video_port_t *port_gen, xine_stream_t *stream)
+{
+  post_video_port_t *port = (post_video_port_t *)port_gen;
+  autocrop_post_plugin_t *this = (autocrop_post_plugin_t *) port->post;
+
+  if (this->cropping_active) {
+    this->cropping_active = 0;
+    TRACE("deactivate because video close\n");
+  }
+  port->original_port->close(port->original_port, stream);
+  port->stream = NULL;
+  _x_post_dec_usage(port);
+}
+
+
 /*
  *    Parameter functions
  */
@@ -1765,6 +1780,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       port->intercept_ovl          = autocrop_intercept_ovl;
       port->new_manager->add_event = autocrop_overlay_add_event;
       port->new_port.get_frame     = autocrop_get_frame;
+      port->new_port.close         = autocrop_video_close;
       port->new_frame->draw        = autocrop_draw;
 
       this->post_plugin.xine_post.video_input[ 0 ] = &port->new_port;
