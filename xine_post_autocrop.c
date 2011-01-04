@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.45 2011-01-04 13:35:33 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.46 2011-01-04 13:40:45 phintuka Exp $
  *
  */
 
@@ -76,6 +76,7 @@
 #define DEFAULT_LOGO_WIDTH              20  /* percentage of frame width */
 
 /* parameters for avards algorithm */
+#define DEFAULT_OVERSCAN_COMPENSATE     0   /* percentage of frame height for overscan compensation */
 #define DEFAULT_BAR_TONE_TOLERANCE      0   /* 0...255 */
 
 /*
@@ -96,6 +97,7 @@ typedef struct autocrop_parameters_s {
 
   int    use_driver_crop;
   int    use_avards_analysis;
+  int    overscan_compensate;
   int    bar_tone_tolerance;
 } autocrop_parameters_t;
 
@@ -124,6 +126,8 @@ PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_driver_crop, NULL, 0, 1, 0,
   "use video driver to crop frames (default is to copy frames in post plugin)")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_avards_analysis, NULL, 0, 1, 0,
   "use avards algorithm for frame analysis")
+PARAM_ITEM(POST_PARAM_TYPE_INT, overscan_compensate, NULL, 0, 100, 0,
+  "output device overscan for cropped frames (%1000 of frame height)")
 PARAM_ITEM(POST_PARAM_TYPE_INT, bar_tone_tolerance, NULL, 0, 255, 0,
   "tolerance of bar color")
 END_PARAM_DESCR(autocrop_param_descr)
@@ -148,6 +152,7 @@ typedef struct autocrop_post_plugin_s
   int logo_width;
   int always_use_driver_crop;
   int use_avards_analysis;
+  int overscan_compensate;
   int bar_tone_tolerance;
 
   /* Current cropping status */
@@ -1047,6 +1052,16 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
     }
   }
 
+  if (this->overscan_compensate > 0) {
+    int h = (frame->height * this->overscan_compensate) / (2*1000);
+    if (start_line < h)
+      h = start_line;
+    if ((frame->height - end_line) < h)
+      h = frame->height - end_line;
+    start_line -= h;
+    end_line += h;
+  }
+
   /* adjust start and stop to even lines */
   (*crop_top)    = (start_line) & (~1);
   (*crop_bottom) = (end_line + 1) & (~1);
@@ -1663,6 +1678,7 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
   this->logo_width = param->logo_width;
   this->use_avards_analysis = param->use_avards_analysis;
+  this->overscan_compensate = param->overscan_compensate;
   this->bar_tone_tolerance = param->bar_tone_tolerance;
 
   TRACE("autocrop_set_parameters: "
@@ -1696,6 +1712,7 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->use_driver_crop    = this->always_use_driver_crop;
   param->logo_width = this->logo_width;
   param->use_avards_analysis = this->use_avards_analysis;
+  param->overscan_compensate = this->overscan_compensate;
   param->bar_tone_tolerance = this->bar_tone_tolerance;
 
   TRACE("autocrop_get_parameters: "
@@ -1731,6 +1748,7 @@ static char *autocrop_get_help(void) {
            "  use_driver_crop:            Always use video driver crop\n"
            "  logo_width:                 Width of logo (percentage of frame width) for automatic logo detection\n"
            "  use_avards_analysis:        Use AVARDS algorithm for frame analysis\n"
+           "  overscan_compensate:        Output device overscan (%1000 of frame height)\n"
            "  bar_tone_tolerance:         Tolerance of bar color (avards only)"
            "\n"
          );
@@ -1806,6 +1824,7 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->stabilize   = 1;
       this->logo_width = DEFAULT_LOGO_WIDTH;
       this->use_avards_analysis = 0;
+      this->overscan_compensate = DEFAULT_OVERSCAN_COMPENSATE;
       this->bar_tone_tolerance = DEFAULT_BAR_TONE_TOLERANCE;
       uint64_t caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
