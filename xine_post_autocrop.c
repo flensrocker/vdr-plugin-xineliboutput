@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.43 2011-01-03 10:29:17 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.44 2011-01-04 13:23:44 phintuka Exp $
  *
  */
 
@@ -75,6 +75,9 @@
 #define DEFAULT_SUBS_DETECT_STABILIZE_TIME 12    /* unit: frames */
 #define DEFAULT_LOGO_WIDTH              20  /* percentage of frame width */
 
+/* parameters for avards algorithm */
+#define DEFAULT_BAR_TONE_TOLERANCE      0   /* 0...255 */
+
 /*
  * Plugin
  */
@@ -92,6 +95,8 @@ typedef struct autocrop_parameters_s {
   int    logo_width;
 
   int    use_driver_crop;
+  int    use_avards_analysis;
+  int    bar_tone_tolerance;
 } autocrop_parameters_t;
 
 START_PARAM_DESCR(autocrop_parameters_t)
@@ -117,6 +122,10 @@ PARAM_ITEM(POST_PARAM_TYPE_INT, logo_width, NULL, 0, 99, 0,
   "maximum width of logo for automatic logo detection (percentage of frame width)")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_driver_crop, NULL, 0, 1, 0,
   "use video driver to crop frames (default is to copy frames in post plugin)")
+PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_avards_analysis, NULL, 0, 1, 0,
+  "use avards algorithm for frame analysis")
+PARAM_ITEM(POST_PARAM_TYPE_INT, bar_tone_tolerance, NULL, 0, 255, 0,
+  "tolerance of bar color")
 END_PARAM_DESCR(autocrop_param_descr)
 
 
@@ -138,6 +147,8 @@ typedef struct autocrop_post_plugin_s
   int stabilize_time;
   int logo_width;
   int always_use_driver_crop;
+  int use_avards_analysis;
+  int bar_tone_tolerance;
 
   /* Current cropping status */
   int cropping_active;
@@ -780,6 +791,71 @@ static int analyze_frame_yuy2(autocrop_post_plugin_t *this, vo_frame_t *frame,
   return 1;
 }
 
+
+#define AVARDS_FN(fn_name, pixel_pitch, top_overscan_compensate) \
+static int fn_name (autocrop_post_plugin_t *this, vo_frame_t *frame, int *crop_top, int *crop_bottom) \
+{ \
+  int i, top, bottom, histogram[256]; \
+  uint8_t *left, *right; \
+  uint8_t *img = frame->base[0]; \
+  const int bottom_overscan_compensate = 4; \
+  const int ignored_side_width = 16 * pixel_pitch; \
+  const int width = frame->width * pixel_pitch; \
+  const int top_logo_width = (frame->width * this->logo_width / 100) * pixel_pitch; \
+  const int bottom_logo_width = this->subs_detect_lifetime ? -1: top_logo_width - 1; \
+  const int pitch = frame->pitches[0]; \
+  const int half_height = frame->height / 2; \
+\
+  memset(histogram, 0, sizeof(histogram)); \
+  left = img + top_overscan_compensate * pitch; \
+  right = left + width - ignored_side_width; \
+  left += ignored_side_width; \
+  while (left < right) { \
+    histogram[*left]++; \
+    left += pixel_pitch; \
+  } \
+\
+  int bar_tone = 0; \
+  for (i = 1; i < 256; ++i) { \
+    if (histogram[i] > histogram[bar_tone]) \
+      bar_tone = i; \
+  } \
+  const uint8_t min_bar_tone = (bar_tone > this->bar_tone_tolerance) ? bar_tone - this->bar_tone_tolerance: 0; \
+  const uint8_t max_bar_tone = (bar_tone + this->bar_tone_tolerance < 255) ? bar_tone + this->bar_tone_tolerance: 255; \
+\
+  for (top = top_overscan_compensate; top < half_height; ++top) { \
+    left = img + top * pitch; \
+    right = left + width - pixel_pitch - ignored_side_width; \
+    left += ignored_side_width; \
+    while (left <= right && *left >= min_bar_tone && *left <= max_bar_tone) \
+      left += pixel_pitch; \
+    while (right > left && *right >= min_bar_tone && *right <= max_bar_tone) \
+      right -= pixel_pitch; \
+    if ((right - left) > top_logo_width) \
+      break; \
+  } \
+\
+  for (bottom = frame->height - 1 - bottom_overscan_compensate; bottom > half_height; --bottom) { \
+    left = img + bottom * pitch; \
+    right = left + width - pixel_pitch - ignored_side_width; \
+    left += ignored_side_width; \
+    while (left <= right && *left >= min_bar_tone && *left <= max_bar_tone) \
+      left += pixel_pitch; \
+    while (right > left && *right >= min_bar_tone && *right <= max_bar_tone) \
+      right -= pixel_pitch; \
+    if ((right - left) > bottom_logo_width) \
+      break; \
+  } \
+\
+  *crop_top = top; \
+  *crop_bottom = bottom; \
+  return ((bottom - top) > 0); \
+}
+
+AVARDS_FN(analyze_frame_yv12_avards, 1, 8)
+AVARDS_FN(analyze_frame_yuy2_avards, 2, 6)
+
+
 static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 {
   post_video_port_t *port = (post_video_port_t *)frame->port;
@@ -825,14 +901,21 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 
   int result = 0;
 
-  if(frame->format == XINE_IMGFMT_YV12)
-    result = analyze_frame_yv12(this, frame, &start_line, &end_line);
-  else if(frame->format == XINE_IMGFMT_YUY2)
-    result = analyze_frame_yuy2(this, frame, &start_line, &end_line);
+  if (this->use_avards_analysis) {
+    if (frame->format == XINE_IMGFMT_YV12)
+      result = analyze_frame_yv12_avards(this, frame, &start_line, &end_line);
+    else if (frame->format == XINE_IMGFMT_YUY2)
+      result = analyze_frame_yuy2_avards(this, frame, &start_line, &end_line);
+  } else {
+    if(frame->format == XINE_IMGFMT_YV12)
+      result = analyze_frame_yv12(this, frame, &start_line, &end_line);
+    else if(frame->format == XINE_IMGFMT_YUY2)
+      result = analyze_frame_yuy2(this, frame, &start_line, &end_line);
 
 #if defined(__MMX__)
-  _mm_empty();
+    _mm_empty();
 #endif
+  }
 
   /* Ignore empty frames */
   if(!result) {
@@ -1564,17 +1647,20 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->stabilize_time = param->stabilize_time;
   this->always_use_driver_crop = param->use_driver_crop && this->has_driver_crop;
   this->logo_width = param->logo_width;
+  this->use_avards_analysis = param->use_avards_analysis;
+  this->bar_tone_tolerance = param->bar_tone_tolerance;
 
   TRACE("autocrop_set_parameters: "
         "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
-        "stabilize=%d  stabilize_time=%d  use_driver_crop=%d\n",
+        "stabilize=%d  stabilize_time=%d  use_driver_crop=%d  "
+        "use_avards_analysis=%d  overscan_compensate=%d  bar_tone_tolerance=%d\n",
         this->autodetect, this->autodetect_rate, this->logo_width,
         this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
 	this->soft_start, this->soft_start_step,
-        this->stabilize, this->stabilize_time,
-        this->always_use_driver_crop);
+        this->stabilize, this->stabilize_time, this->always_use_driver_crop,
+        this->use_avards_analysis, this->overscan_compensate, this->bar_tone_tolerance);
   return 1;
 }
 
@@ -1594,17 +1680,20 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->stabilize_time = this->stabilize_time;
   param->use_driver_crop    = this->always_use_driver_crop;
   param->logo_width = this->logo_width;
+  param->use_avards_analysis = this->use_avards_analysis;
+  param->bar_tone_tolerance = this->bar_tone_tolerance;
 
   TRACE("autocrop_get_parameters: "
         "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
-        "stabilize=%d  stabilize_time=%d  use_driver_crop=%d\n",
+        "stabilize=%d  stabilize_time=%d  use_driver_crop=%d  "
+        "use_avards_analysis=%d  overscan_compensate=%d  bar_tone_tolerance=%d\n",
         this->autodetect, this->autodetect_rate, this->logo_width,
         this->subs_detect, this->subs_detect_lifetime, this->subs_detect_stabilize_time,
 	this->soft_start, this->soft_start_step,
-        this->stabilize, this->stabilize_time,
-        this->always_use_driver_crop);
+        this->stabilize, this->stabilize_time, this->always_use_driver_crop,
+        this->use_avards_analysis, this->overscan_compensate, this->bar_tone_tolerance);
 
   return 1;
 }
@@ -1626,6 +1715,8 @@ static char *autocrop_get_help(void) {
            "  stabilize:                  Stabilize cropping to 14:9, 16:9, (16:9+subs), 20:9, (20:9+subs)\n"
            "  use_driver_crop:            Always use video driver crop\n"
            "  logo_width:                 Width of logo (percentage of frame width) for automatic logo detection\n"
+           "  use_avards_analysis:        Use AVARDS algorithm for frame analysis\n"
+           "  bar_tone_tolerance:         Tolerance of bar color (avards only)"
            "\n"
          );
 }
@@ -1698,7 +1789,8 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->soft_start_step = DEFAULT_SOFT_START_STEP;
       this->stabilize   = 1;
       this->logo_width = DEFAULT_LOGO_WIDTH;
-
+      this->use_avards_analysis = 0;
+      this->bar_tone_tolerance = DEFAULT_BAR_TONE_TOLERANCE;
       uint64_t caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
       this->has_unscaled_overlay = caps & VO_CAP_UNSCALED_OVERLAY;
