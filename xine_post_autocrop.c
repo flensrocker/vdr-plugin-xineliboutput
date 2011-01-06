@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.46 2011-01-04 13:40:45 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.47 2011-01-06 18:55:02 phintuka Exp $
  *
  */
 
@@ -61,12 +61,11 @@
 /*#undef __SSE__           Disable SSE */
 /*#define FILTER2          Tighter Y-filter */
 
-/*#define TRACE        printf*/
-#define TRACE(x...)  do {} while(0)
-/*#define TRACE2       printf*/
-#define TRACE2(x...) do {} while(0)
-/*#define INFO         printf*/
-#define INFO(x...)   do {} while(0)
+#undef LOG_MODULE
+#define LOG_MODULE      "autocrop"
+#define LOG_INFO        1
+#define LOG_DEBUG       1
+#define LOG_TRACE       0
 
 #define DEFAULT_AUTODETECT_RATE          4      /* unit: frames */
 #define DEFAULT_STABILIZE_TIME         (5*25)   /* 5 seconds, unit: frames */
@@ -626,7 +625,7 @@ static void autocrop_init_mm_accel(void)
 
 #if defined(__SSE__)
   if(xine_mm_accel() & MM_ACCEL_X86_SSE) {
-    INFO("autocrop_init_mm_accel: using SSE\n");
+    llprintf(LOG_INFO, "autocrop_init_mm_accel: using SSE\n");
     blank_line_Y  = blank_line_Y_sse;
     blank_line_UV = blank_line_UV_sse;
     blank_line_YUY2 = blank_line_YUY2_sse;
@@ -635,7 +634,7 @@ static void autocrop_init_mm_accel(void)
 #endif
 #if defined(ENABLE_64BIT)
   if(ENABLE_64BIT) {
-    INFO("autocrop_init_mm_accel: using 64-bit integer operations\n");
+    llprintf(LOG_INFO, "autocrop_init_mm_accel: using 64-bit integer operations\n");
     blank_line_Y  = blank_line_Y_C64;
     blank_line_UV = blank_line_UV_C64;
     blank_line_YUY2 = blank_line_YUY2_C64;
@@ -645,14 +644,14 @@ static void autocrop_init_mm_accel(void)
 #if defined(__MMX__)
   if(xine_mm_accel() & MM_ACCEL_X86_MMX) {
     /* mmx not faster than normal x64 (?) */
-    INFO("autocrop_init_mm_accel: using MMX\n");
+    llprintf(LOG_INFO, "autocrop_init_mm_accel: using MMX\n");
     blank_line_Y  = blank_line_Y_mmx;
     blank_line_UV = blank_line_UV_mmx;
     blank_line_YUY2 = blank_line_YUY2_mmx;
     return;
   }
 #endif
-  INFO("autocrop_init_mm_accel: no compatible acceleration methods found\n");
+  llprintf(LOG_INFO, "autocrop_init_mm_accel: no compatible acceleration methods found\n");
 }
 
 static int blank_line_Y_INIT(uint8_t *data, int length)
@@ -746,7 +745,7 @@ static int analyze_frame_yv12(autocrop_post_plugin_t *this, vo_frame_t *frame,
 	blank_line_Y(ydata-ypitch, frame->width) &&  
 	blank_line_UV(udata,       frame->width/2) &&
 	blank_line_UV(vdata,       frame->width/2)) {
-      TRACE("not cropping black frame\n");
+      llprintf(LOG_DEBUG, "not cropping black frame\n");
       return 0;
     }
   }
@@ -788,7 +787,7 @@ static int analyze_frame_yuy2(autocrop_post_plugin_t *this, vo_frame_t *frame,
   if(*crop_top >= max_crop*2 && *crop_bottom <= frame->height-max_crop) {
     data = frame->base[0] + (frame->height/2)*pitch;
     if( blank_line_YUY2(data, frame->width * 2)) {
-      TRACE("not cropping black frame\n");
+      llprintf(LOG_DEBUG, "not cropping black frame\n");
       return 0;
     }
   }
@@ -924,7 +923,7 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 
   /* Ignore empty frames */
   if(!result) {
-    TRACE2("not cropping black frame\n");
+    llprintf(LOG_TRACE, "not cropping black frame\n");
     return;
   }
 
@@ -938,33 +937,33 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
 
     /* bottom bar size */
     if(bottom < frame->height/32) {
-      TRACE2("bottom: %d ->  4:3       ", end_line);
+      llprintf(LOG_TRACE, "bottom: %d ->  4:3       ", end_line);
       end_line = frame->height - 1;  /* no cropping */
     } else if(bottom < frame->height*3/32) {
-      TRACE2("bottom: %d -> 14:9 (%d) ", end_line, frame->height * 15 / 16 - 1);
+      llprintf(LOG_TRACE, "bottom: %d -> 14:9 (%d) ", end_line, frame->height * 15 / 16 - 1);
       end_line = frame->height * 15 / 16 - 1; /* 14:9 */
     } else if(bottom < frame->height*3/16) {
-      TRACE2("bottom: %d -> 16:9 (%d) ", end_line, frame->height * 7 / 8 - 1);
+      llprintf(LOG_TRACE, "bottom: %d -> 16:9 (%d) ", end_line, frame->height * 7 / 8 - 1);
       end_line = frame->height * 7 / 8 - 1;   /* 16:9 */
       wide = 1;
     } else {
-      TRACE2("bottom: %d -> 20:9 (%d) ", end_line, frame->height * 3 / 4 - 1);
+      llprintf(LOG_TRACE, "bottom: %d -> 20:9 (%d) ", end_line, frame->height * 3 / 4 - 1);
       end_line = frame->height * 3 / 4 - 1;   /* 20:9 */
       wide = 2;
     }
 
     /* top bar size */
     if(start_line < frame->height/32) {
-      TRACE2("top:    %3d ->  4:3      \n", start_line);
+      llprintf(LOG_TRACE, "top:    %3d ->  4:3      \n", start_line);
       start_line = 0;        /* no cropping */
     } else if(start_line < frame->height*3/32) {
-      TRACE2("top:    %3d -> 14:9 (%d)\n", start_line, frame->height / 16);
+      llprintf(LOG_TRACE, "top:    %3d -> 14:9 (%d)\n", start_line, frame->height / 16);
       start_line = frame->height / 16; /* 14:9 */
     } else if(start_line < frame->height*3/16 || wide) {
-      TRACE2("top:    %3d -> 16:9 (%d)\n", start_line, frame->height / 8);
+      llprintf(LOG_TRACE, "top:    %3d -> 16:9 (%d)\n", start_line, frame->height / 8);
       start_line = frame->height / 8;   /* 16:9 */
     } else { 
-      TRACE2("top:    %3d -> 20:9 (%d)\n", start_line, frame->height / 4);
+      llprintf(LOG_TRACE, "top:    %3d -> 20:9 (%d)\n", start_line, frame->height / 4);
       start_line = frame->height / 4;   /* 20:9 */
       wide++;
     }
@@ -972,11 +971,11 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
     case 3: start_line -= frame->height / 8;
             if(start_line < 0)
               start_line = 0;
-            TRACE2("        wide -> center top\n");
+            llprintf(LOG_TRACE, "        wide -> center top\n");
     case 2: end_line += frame->height / 8;
             if(end_line >= frame->height)
               end_line = frame->height-1;
-            TRACE2("        wide -> center bottom\n");
+            llprintf(LOG_TRACE, "        wide -> center bottom\n");
     default:;
     }
 
@@ -992,7 +991,7 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
       if(start_line + (frame->height - end_line) > frame->height/4) {
         int diff = start_line + (frame->height - end_line) - frame->height/4;
 	diff &= ~1;
-        TRACE2("balance: %d,%d -> %d,%d\n",
+        llprintf(LOG_TRACE, "balance: %d,%d -> %d,%d\n",
               start_line, end_line,
               start_line, end_line + diff);
 #if 0
@@ -1032,7 +1031,7 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
     if(start_line < frame->height/12 || end_line > frame->height*11/12) {
       /* Small bars -> crop only detected borders */
      if(start_line || end_line < frame->height-1) {
-       TRACE2("Small bars -> <16:9 : start_line = %d end_line = %d (%s%d t%d)\n",
+       llprintf(LOG_TRACE, "Small bars -> <16:9 : start_line = %d end_line = %d (%s%d t%d)\n",
 	      start_line, end_line,
 	      this->height_limit_active ? "height limit " : "",
 	      this->height_limit,
@@ -1040,7 +1039,7 @@ static void analyze_frame(vo_frame_t *frame, int *crop_top, int *crop_bottom)
       }
     } else {
       /* Large bars -> crop to 16:9 */
-      TRACE2("Large bars -> 16:9  : start_line = %d end_line = %d (%s%d t%d)\n",
+      llprintf(LOG_TRACE, "Large bars -> 16:9  : start_line = %d end_line = %d (%s%d t%d)\n",
 	    start_line, end_line,
 	    this->height_limit_active ? "height limit " : "",
 	    this->height_limit,
@@ -1285,12 +1284,12 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
       if(dpts < INT64_C(-30*90000) || dpts > INT64_C(30*90000)) { /* 30 sec */
 	if(this->height_limit_active) {
           this->height_limit_timer = this->subs_detect_lifetime / 2;
-          TRACE("short pts jump reseted height limit\n");
+          llprintf(LOG_DEBUG, "short pts jump reseted height limit\n");
 	}
       }
       if(dpts < INT64_C(-30*60*90000) || dpts > INT64_C(30*60*90000)) { /* 30 min */ 
         cropping_active = 0;
-        TRACE("long pts jump reseted cropping\n");
+        llprintf(LOG_DEBUG, "long pts jump reseted cropping\n");
       }
     }
     this->prev_pts = frame->pts;
@@ -1335,7 +1334,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         this->height_limit_timer -= autodetect_rate;
         if (this->height_limit_timer <= 0) {
           this->height_limit_active = 0;
-          TRACE("height limit timer expired\n");
+          llprintf(LOG_DEBUG, "height limit timer expired\n");
         }
       }
       /* apply height limit */
@@ -1355,7 +1354,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         if(start_line <= 10 && end_line >= (frame->height - 10))
           cropping_active = 0;
         this->stabilize_timer = this->stabilize_time;
-        TRACE("stabilized start: %d -> %d, end %d -> %d\n",
+        llprintf(LOG_DEBUG, "stabilized start: %d -> %d, end %d -> %d\n",
               this->stabilized_start_line, start_line,
               this->stabilized_end_line, end_line);
       }
@@ -1371,15 +1370,15 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         /* reset height limit if top bar changes */
         this->height_limit_active = 0;
         end_line = this->detected_end_line = detected_end_line;
-        TRACE("height limit reset, top bar moved from %d -> %d, bottom now %d\n", this->stabilized_start_line, start_line, end_line);
+        llprintf(LOG_DEBUG, "height limit reset, top bar moved from %d -> %d, bottom now %d\n", this->stabilized_start_line, start_line, end_line);
 
       } else if (this->detected_end_line > (this->prev_detected_end_line + 5)) {
         if(!this->height_limit_active || this->height_limit < this->detected_end_line) {
           /* start or increase height limit */
           if (this->height_limit_active)
-            TRACE("height limit %d -> %d, prev bottom %d\n", this->height_limit, this->detected_end_line, this->prev_detected_end_line);
+            llprintf(LOG_DEBUG, "height limit %d -> %d, prev bottom %d\n", this->height_limit, this->detected_end_line, this->prev_detected_end_line);
           else
-            TRACE("activate height limit %d, prev bottom %d\n", this->detected_end_line, this->prev_detected_end_line);
+            llprintf(LOG_DEBUG, "activate height limit %d, prev bottom %d\n", this->detected_end_line, this->prev_detected_end_line);
           this->height_limit = this->detected_end_line;
           this->height_limit_timer = this->subs_detect_lifetime;
           this->height_limit_active = 1;
@@ -1387,7 +1386,7 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
         } else if(this->height_limit_active && this->height_limit_timer < (this->subs_detect_lifetime / 4)) {
           /* keep height limit timer running */
           this->height_limit_timer = this->subs_detect_lifetime / 2;
-          TRACE("height_limit_timer increment bottom %d;%d -> %d\n", this->prev_detected_end_line, this->detected_end_line, detected_end_line);
+          llprintf(LOG_DEBUG, "height_limit_timer increment bottom %d;%d -> %d\n", this->prev_detected_end_line, this->detected_end_line, detected_end_line);
         }
       }
       this->prev_detected_end_line = this->detected_end_line;
@@ -1424,13 +1423,13 @@ static int autocrop_draw(vo_frame_t *frame, xine_stream_t *stream)
   this->prev_width = frame->width;
 
   if (cropping_active && (start_line != this->start_line || end_line != this->end_line)) {
-    TRACE("active start: %d -> %d, end %d -> %d\n",
+    llprintf(LOG_DEBUG, "active start: %d -> %d, end %d -> %d\n",
           this->start_line, start_line,
           this->end_line, end_line);
   }
 
   if (this->cropping_active != cropping_active)
-    TRACE("draw: active %d -> %d\n", this->cropping_active, cropping_active);
+    llprintf(LOG_DEBUG, "draw: active %d -> %d\n", this->cropping_active, cropping_active);
 
   pthread_mutex_lock(&this->crop_lock);
   this->cropping_active = cropping_active;
@@ -1482,13 +1481,13 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
 
   if(cropping_active && !intercept) {
     cropping_active = 0;
-    TRACE("get_frame: deactivate ratio: %lf width: %d height: %d\n", ratio, width, height);
+    llprintf(LOG_DEBUG, "get_frame: deactivate ratio: %lf width: %d height: %d\n", ratio, width, height);
   }
 
   /* reset when format changes */
   if (cropping_active && this->autodetect && (height != this->prev_height || width != this->prev_width)) {
     cropping_active = 0;
-    TRACE("get_frame: deactivate width %d -> %d height %d -> %d\n", this->prev_width, width, this->prev_height, height);
+    llprintf(LOG_DEBUG, "get_frame: deactivate width %d -> %d height %d -> %d\n", this->prev_width, width, this->prev_height, height);
   }
 
   /* set new ratio when using driver crop */
@@ -1521,7 +1520,7 @@ static vo_frame_t *autocrop_get_frame(xine_video_port_t *port_gen,
 #ifdef HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
       if (!frame->proc_provide_standard_frame_data) {
 #endif
-      TRACE("get_frame: deactivate because missing provide_standard_frame_data feature\n");
+      llprintf(LOG_DEBUG, "get_frame: deactivate because missing provide_standard_frame_data feature\n");
       cropping_active = 0;
       intercept = 0;
 #ifdef HAVE_PROC_PROVIDE_STANDARD_FRAME_DATA
@@ -1593,12 +1592,12 @@ static int32_t autocrop_overlay_add_event(video_overlay_manager_t *this_gen, voi
 	}
 
 	/* when using cropping overlays are moved in video_out */
-	INFO("autocrop_overlay_add_event: subtitle event untouched\n");
+	llprintf(LOG_INFO, "autocrop_overlay_add_event: subtitle event untouched\n");
         } else {
 	/* when cropping here subtitles coming from inside of xine must be re-positioned */
           if(!event->object.overlay->unscaled || !this->has_unscaled_overlay) {
             event->object.overlay->y -= crop_total;
-	  INFO("autocrop_overlay_add_event: subtitle event moved up\n");
+	  llprintf(LOG_INFO, "autocrop_overlay_add_event: subtitle event moved up\n");
 	}
         }
 	break;
@@ -1644,7 +1643,7 @@ static void autocrop_video_close(xine_video_port_t *port_gen, xine_stream_t *str
 
   if (this->cropping_active) {
     this->cropping_active = 0;
-    TRACE("deactivate because video close\n");
+    llprintf(LOG_DEBUG, "deactivate because video close\n");
   }
   port->original_port->close(port->original_port, stream);
   port->stream = NULL;
@@ -1681,7 +1680,7 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->overscan_compensate = param->overscan_compensate;
   this->bar_tone_tolerance = param->bar_tone_tolerance;
 
-  TRACE("autocrop_set_parameters: "
+  llprintf(LOG_DEBUG, "autocrop_set_parameters: "
         "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
@@ -1715,7 +1714,7 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->overscan_compensate = this->overscan_compensate;
   param->bar_tone_tolerance = this->bar_tone_tolerance;
 
-  TRACE("autocrop_get_parameters: "
+  llprintf(LOG_DEBUG, "autocrop_get_parameters: "
         "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
         "subs_detect=%d  subs_detect_lifetime=%d  subs_detect_stabilize_time=%d  "
         "soft_start=%d  soft_start_step=%d  "
