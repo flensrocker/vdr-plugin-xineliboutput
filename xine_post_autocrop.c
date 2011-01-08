@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.49 2011-01-08 02:43:34 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.50 2011-01-08 03:02:52 phintuka Exp $
  *
  */
 
@@ -738,11 +738,12 @@ static int analyze_frame_yv12(autocrop_post_plugin_t *this, vo_frame_t *frame,
 
   /* test for black in center - don't crop if frame is empty */
   if(*crop_top >= max_crop*2 && *crop_bottom <= frame->height-max_crop) {
-    ydata = frame->base[0] + (frame->height/2)*ypitch;
-    udata = frame->base[1] + (frame->height/4)*upitch;
-    vdata = frame->base[2] + (frame->height/4)*vpitch;
+    int center_line = (frame->height >> 2) << 1;
+    ydata = frame->base[0] + (center_line  )*ypitch;
+    udata = frame->base[1] + (center_line/2)*upitch;
+    vdata = frame->base[2] + (center_line/2)*vpitch;
     if( blank_line_Y(ydata,        frame->width) &&
-	blank_line_Y(ydata-ypitch, frame->width) &&  
+        blank_line_Y(ydata+ypitch, frame->width) &&
 	blank_line_UV(udata,       frame->width/2) &&
 	blank_line_UV(vdata,       frame->width/2)) {
       llprintf(LOG_DEBUG, "not cropping black frame\n");
