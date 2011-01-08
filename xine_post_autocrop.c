@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.47 2011-01-06 18:55:02 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.48 2011-01-08 02:41:34 phintuka Exp $
  *
  */
 
@@ -110,7 +110,7 @@ PARAM_ITEM(POST_PARAM_TYPE_INT, stabilize_time, NULL, 1, 9999, 0,
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, enable_subs_detect, NULL, 0, 1, 0,
   "enable automatic subtitle detecton")
 PARAM_ITEM(POST_PARAM_TYPE_INT, subs_detect_lifetime, NULL, 0, 9999, 0,
-  "lifetime of automatic subtitle detection. 0 disables automatic")
+  "lifetime of automatic subtitle detection")
 PARAM_ITEM(POST_PARAM_TYPE_INT, subs_detect_stabilize_time, NULL, 0, 9999, 0,
   "stabilize time of automatic subtitle detection")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, soft_start, NULL, 0, 1, 0,
@@ -126,7 +126,7 @@ PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_driver_crop, NULL, 0, 1, 0,
 PARAM_ITEM(POST_PARAM_TYPE_BOOL, use_avards_analysis, NULL, 0, 1, 0,
   "use avards algorithm for frame analysis")
 PARAM_ITEM(POST_PARAM_TYPE_INT, overscan_compensate, NULL, 0, 100, 0,
-  "output device overscan for cropped frames (%1000 of frame height)")
+  "compensation of output device overscan applied when cropping frames (%1000 of frame height)")
 PARAM_ITEM(POST_PARAM_TYPE_INT, bar_tone_tolerance, NULL, 0, 255, 0,
   "tolerance of bar color")
 END_PARAM_DESCR(autocrop_param_descr)
@@ -1747,7 +1747,7 @@ static char *autocrop_get_help(void) {
            "  use_driver_crop:            Always use video driver crop\n"
            "  logo_width:                 Width of logo (percentage of frame width) for automatic logo detection\n"
            "  use_avards_analysis:        Use AVARDS algorithm for frame analysis\n"
-           "  overscan_compensate:        Output device overscan (%1000 of frame height)\n"
+           "  overscan_compensate:        Compensation of output device overscan applied when cropping frames (%1000 of frame height)\n"
            "  bar_tone_tolerance:         Tolerance of bar color (avards only)"
            "\n"
          );
