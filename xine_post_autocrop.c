@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.48 2011-01-08 02:41:34 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.49 2011-01-08 02:43:34 phintuka Exp $
  *
  */
 
@@ -806,7 +806,7 @@ static int fn_name (autocrop_post_plugin_t *this, vo_frame_t *frame, int *crop_t
   const int ignored_side_width = 16 * pixel_pitch; \
   const int width = frame->width * pixel_pitch; \
   const int top_logo_width = (frame->width * this->logo_width / 100) * pixel_pitch; \
-  const int bottom_logo_width = this->subs_detect_lifetime ? -1: top_logo_width - 1; \
+  const int bottom_logo_width = this->subs_detect ? -1: top_logo_width - 1; \
   const int pitch = frame->pitches[0]; \
   const int half_height = frame->height / 2; \
 \
