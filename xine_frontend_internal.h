@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.6 2009-12-29 13:45:54 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.7 2011-01-08 15:11:05 phintuka Exp $
  *
  */
 
@@ -36,7 +36,7 @@ typedef struct fe_s {
 
   /* called from xine_frontend.c */
   void   (*update_display_size_cb) (struct fe_s *);
-  void   (*toggle_fullscreen_cb)   (struct fe_s *);
+  void   (*toggle_fullscreen_cb)   (struct fe_s *, int);
 
   /* vdr callbacks */
   fe_keypress_f       keypress;

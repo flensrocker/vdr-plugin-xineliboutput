@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.142 2010-09-24 12:51:14 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.143 2011-01-08 15:11:05 phintuka Exp $
  *
  */
 
@@ -1491,7 +1491,7 @@ static int sxfe_display_config(frontend_t *this_gen,
   return 1;
 }
 
-static void sxfe_toggle_fullscreen(fe_t *this_gen)
+static void sxfe_toggle_fullscreen(fe_t *this_gen, int fullscreen)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
@@ -1508,8 +1508,11 @@ static void sxfe_toggle_fullscreen(fe_t *this_gen)
     this->x.ypos = this->origypos;
   }
 
+  if (fullscreen < 0)
+    fullscreen = this->fullscreen ? 0 : 1;
+
   this->fe.fe_display_config((frontend_t*)this, -1, -1, this->origwidth, this->origheight,
-                             this->fullscreen ? 0 : 1,
+                             fullscreen,
                              0/*this->vmode_switch*/, NULL/*this->modeline*/,
                              this->x.aspect, this->x.scale_video, this->x.field_order);
 
@@ -1727,7 +1730,7 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
       /* Double-click toggles between fullscreen and windowed mode */
       if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
         /* Toggle fullscreen */
-        this->x.toggle_fullscreen_cb(&this->x);
+        this->x.toggle_fullscreen_cb(&this->x, -1);
         this->prev_click_time = 0; /* don't react to third click ... */
       } else {
         this->prev_click_time = bev->time;

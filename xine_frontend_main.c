@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.90 2010-11-23 12:53:29 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.91 2011-01-08 15:11:05 phintuka Exp $
  *
  */
 
@@ -273,7 +273,10 @@ static void *slave_receiver_thread(void *fe_gen)
       break;
     }
     if (!strncasecmp(str, "FULLSCREEN", 10)) {
-      fe->send_event(fe, "TOGGLE_FULLSCREEN");
+      if (strpbrk(str + 10, "01"))
+        fe->send_event(fe, str);
+      else
+        fe->send_event(fe, "TOGGLE_FULLSCREEN");
       continue;
     }
     if (!strncasecmp(str, "DEINTERLACE ", 12)) {
