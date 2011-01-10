@@ -7,14 +7,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-12-17 14:54+0200\n"
+"POT-Creation-Date: 2011-01-09 14:16+0100\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: Chinese (traditional) <vdr@linuxtv.org>\n"
-"Language: zh_TW\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: zh_TW\n"
 
 msgid "custom"
 msgstr "自定義"
@@ -380,21 +380,50 @@ msgstr "半(下)"
 msgid "Video"
 msgstr "視頻"
 
-#, fuzzy
-msgid "Autodetect letterbox"
-msgstr "自動檢測盒子模式"
+msgid "Use driver crop"
+msgstr ""
 
-#, fuzzy
-msgid "Soft start"
-msgstr "軟啟動"
+msgid "Autodetect letterbox"
+msgstr ""
 
 #, fuzzy
 msgid "Crop to"
 msgstr "剪裁"
 
+msgid "Autodetect rate"
+msgstr ""
+
+msgid "Stabilize time"
+msgstr ""
+
+msgid "Maximum logo width [%]"
+msgstr ""
+
+msgid "Overscan compensate [%1000]"
+msgstr ""
+
+#, fuzzy
+msgid "Soft start"
+msgstr "軟啟動"
+
+msgid "Soft start step"
+msgstr ""
+
 #, fuzzy
 msgid "Detect subtitles"
 msgstr "檢測的字幕"
+
+msgid "Subs detect stabilize time"
+msgstr ""
+
+msgid "Subs detect lifetime"
+msgstr ""
+
+msgid "Use avards analysis"
+msgstr ""
+
+msgid "Bar tone tolerance"
+msgstr ""
 
 msgid "Software scaling"
 msgstr "軟件縮放"
