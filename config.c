@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.97 2010-12-17 13:07:52 phintuka Exp $
+ * $Id: config.c,v 1.98 2011-01-10 11:01:14 phintuka Exp $
  *
  */
 
@@ -461,8 +461,19 @@ cString config_t::AutocropOptions(void)
   if (!autocrop)
     return NULL;
 
-  return cString::sprintf("enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
-			  autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
+  return cString::sprintf(
+                  "enable_autodetect=%d,autodetect_rate=%d,"
+                  "soft_start=%d,soft_start_step=%d,"
+                  "stabilize=%d,stabilize_time=%d,"
+                  "enable_subs_detect=%d,subs_detect_lifetime=%d,subs_detect_stabilize_time=%d,"
+                  "logo_width=%d,overscan_compensate=%d,use_driver_crop=%d,"
+                  "use_avards_analysis=%d,bar_tone_tolerance=%d",
+			  autocrop_autodetect, autocrop_autodetect_rate,
+			  autocrop_soft, autocrop_soft_start_step,
+			  autocrop_fixedsize, autocrop_stabilize_time,
+			  autocrop_subs, autocrop_subs_detect_lifetime, autocrop_subs_detect_stabilize_time,
+			  autocrop_logo_width, autocrop_overscan_compensate, autocrop_use_driver_crop,
+			  autocrop_use_avards_analysis, autocrop_bar_tone_tolerance);
 }
 
 cString config_t::SwScaleOptions(void)
@@ -590,11 +601,23 @@ config_t::config_t() {
   height         = 576;
   scale_video    = 0;
   field_order    = 0;
+
   autocrop       = 0;
   autocrop_autodetect = 1;
+  autocrop_autodetect_rate = 4;
   autocrop_soft  = 1;
+  autocrop_soft_start_step  = 4;
   autocrop_fixedsize = 1;
+  autocrop_stabilize_time = (5*25);
   autocrop_subs  = 1;
+  autocrop_subs_detect_lifetime = (60*25);
+  autocrop_subs_detect_stabilize_time = 12;
+  autocrop_logo_width = 20;
+  autocrop_use_driver_crop = 0;
+  autocrop_use_avards_analysis = 0;
+  autocrop_overscan_compensate = 0;
+  autocrop_bar_tone_tolerance = 0;
+
 
   swscale               = 0;    // enable/disable
   swscale_change_aspect = 0;    // change video aspect ratio
@@ -882,9 +905,19 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetectRate"))   autocrop_autodetect_rate = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.SoftStart"))    autocrop_soft = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SoftStartStep"))    autocrop_soft_start_step = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.FixedSize"))    autocrop_fixedsize = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.StabilizeTime"))    autocrop_stabilize_time = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.DetectSubs"))   autocrop_subs = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SubsDetectLifetime"))   autocrop_subs_detect_lifetime = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SubsDetectStabilizeTime"))   autocrop_subs_detect_stabilize_time = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.LogoWidth"))   autocrop_logo_width = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.UseDriverCrop"))   autocrop_use_driver_crop = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.UseAvardsAnalysis"))   autocrop_use_avards_analysis = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.OverscanCompensate"))   autocrop_overscan_compensate = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.BarToneTolerance"))   autocrop_bar_tone_tolerance = atoi(Value);
 
   else if (!strcasecmp(Name, "Video.SwScale"))           swscale = atoi(Value);
   else if (!strcasecmp(Name, "Video.SwScale.Aspect"))    swscale_change_aspect = atoi(Value);

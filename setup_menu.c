@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.79 2010-12-17 13:07:52 phintuka Exp $
+ * $Id: setup_menu.c,v 1.80 2011-01-10 11:01:14 phintuka Exp $
  *
  */
 
@@ -501,6 +501,20 @@ class cMenuSetupVideo : public cMenuSetupPage
     config_t newconfig;
 
     cOsdItem *ctrl_autocrop;
+    cOsdItem *ctrl_autocrop_autodetect;
+    cOsdItem *ctrl_autocrop_autodetect_rate;
+    cOsdItem *ctrl_autocrop_soft;
+    cOsdItem *ctrl_autocrop_soft_start_step;
+    cOsdItem *ctrl_autocrop_fixedsize;
+    cOsdItem *ctrl_autocrop_stabilize_time;
+    cOsdItem *ctrl_autocrop_subs;
+    cOsdItem *ctrl_autocrop_subs_detect_lifetime;
+    cOsdItem *ctrl_autocrop_subs_detect_stabilize_time;
+    cOsdItem *ctrl_autocrop_logo_width;
+    cOsdItem *ctrl_autocrop_use_driver_crop;
+    cOsdItem *ctrl_autocrop_use_avards_analysis;
+    cOsdItem *ctrl_autocrop_overscan_compensate;
+    cOsdItem *ctrl_autocrop_bar_tone_tolerance;
     cOsdItem *ctrl_swscale;
     cOsdItem *ctrl_swscale_resize;
     cOsdItem *ctrl_swscale_aspect;
@@ -589,15 +603,61 @@ void cMenuSetupVideo::Set(void)
       new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
 			    &newconfig.autocrop));
   if(newconfig.autocrop) {
-    Add(new cMenuEditBoolItem(indent(tr("Autodetect letterbox")),
+    Add(ctrl_autocrop_use_driver_crop =
+                    new cMenuEditBoolItem(indent(tr("Use driver crop")),
+                              &newconfig.autocrop_use_driver_crop));
+
+    Add(ctrl_autocrop_autodetect =
+                    new cMenuEditBoolItem(indent(tr("Autodetect letterbox")),
 			      &newconfig.autocrop_autodetect));
-    Add(new cMenuEditBoolItem(indent(tr("Soft start")),
-			      &newconfig.autocrop_soft));
-    Add(new cMenuEditBoolItem(indent(tr("Crop to")),
-			      &newconfig.autocrop_fixedsize,
-			      "4:3...20:9", "14:9/16:9"));
-    Add(new cMenuEditBoolItem(indent(tr("Detect subtitles")),
-			      &newconfig.autocrop_subs));
+    if(newconfig.autocrop_autodetect) {
+      Add(ctrl_autocrop_fixedsize =
+                      new cMenuEditBoolItem(indent(tr("Crop to")),
+                                &newconfig.autocrop_fixedsize,
+                                "4:3...20:9", "14:9/16:9"));
+      Add(ctrl_autocrop_autodetect_rate =
+                      new cMenuEditIntItem(indent(tr("Autodetect rate")),
+                                &newconfig.autocrop_autodetect_rate, 1, 30));
+      Add(ctrl_autocrop_stabilize_time =
+                      new cMenuEditIntItem(indent(tr("Stabilize time")),
+                                &newconfig.autocrop_stabilize_time, 1, 9999));
+      Add(ctrl_autocrop_logo_width =
+                      new cMenuEditIntItem(indent(tr("Maximum logo width [%]")),
+                                &newconfig.autocrop_logo_width, 0, 99));
+      Add(ctrl_autocrop_overscan_compensate =
+                      new cMenuEditIntItem(indent(tr("Overscan compensate [%1000]")),
+                                &newconfig.autocrop_overscan_compensate, 0, 9999));
+
+      Add(ctrl_autocrop_soft =
+                      new cMenuEditBoolItem(indent(tr("Soft start")),
+                                &newconfig.autocrop_soft));
+      if(newconfig.autocrop_soft) {
+        Add(ctrl_autocrop_soft_start_step =
+                        new cMenuEditIntItem(indent(tr("Soft start step")),
+                                  &newconfig.autocrop_soft_start_step, 1, 999));
+      }
+
+      Add(ctrl_autocrop_subs =
+                      new cMenuEditBoolItem(indent(tr("Detect subtitles")),
+                                &newconfig.autocrop_subs));
+      if(newconfig.autocrop_subs) {
+        Add(ctrl_autocrop_subs_detect_stabilize_time =
+                        new cMenuEditIntItem(indent(tr("Subs detect stabilize time")),
+                                  &newconfig.autocrop_subs_detect_stabilize_time, 0, 9999));
+        Add(ctrl_autocrop_subs_detect_lifetime =
+                        new cMenuEditIntItem(indent(tr("Subs detect lifetime")),
+                                  &newconfig.autocrop_subs_detect_lifetime, 0, 9999));
+      }
+
+      Add(ctrl_autocrop_use_avards_analysis =
+                      new cMenuEditBoolItem(indent(tr("Use avards analysis")),
+                                &newconfig.autocrop_use_avards_analysis));
+      if (newconfig.autocrop_use_avards_analysis) {
+        Add(ctrl_autocrop_bar_tone_tolerance =
+                        new cMenuEditIntItem(indent(tr("Bar tone tolerance")),
+                                  &newconfig.autocrop_bar_tone_tolerance, 0, 255));
+      }
+    }
   }
 
   ctrl_swscale_resize = ctrl_swscale_aspect = ctrl_swscale_width = ctrl_swscale_height = NULL;
@@ -771,7 +831,21 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
        INDEX_TO_CONTROL(newconfig.contrast),
        newconfig.overscan, newconfig.vo_aspect_ratio);
 #endif
-  else if(item == ctrl_autocrop) {
+  else if(item == ctrl_autocrop
+                  || item == ctrl_autocrop_autodetect
+                  || item == ctrl_autocrop_autodetect_rate
+                  || item == ctrl_autocrop_soft
+                  || item == ctrl_autocrop_soft_start_step
+                  || item == ctrl_autocrop_fixedsize
+                  || item == ctrl_autocrop_stabilize_time
+                  || item == ctrl_autocrop_subs
+                  || item == ctrl_autocrop_subs_detect_lifetime
+                  || item == ctrl_autocrop_subs_detect_stabilize_time
+                  || item == ctrl_autocrop_logo_width
+                  || item == ctrl_autocrop_use_driver_crop
+                  || item == ctrl_autocrop_use_avards_analysis
+                  || item == ctrl_autocrop_overscan_compensate
+                  || item == ctrl_autocrop_bar_tone_tolerance) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	 "autocrop", newconfig.autocrop ? true : false, 
 	 newconfig.AutocropOptions());
@@ -835,11 +909,22 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.Deinterlace", xc.deinterlace_method);
   SetupStore("Video.DeinterlaceOptions", xc.deinterlace_opts);
 
-  SetupStore("Video.AutoCrop",   xc.autocrop); 
+  SetupStore("Video.AutoCrop",   xc.autocrop);
   SetupStore("Video.AutoCrop.AutoDetect", xc.autocrop_autodetect);
+  SetupStore("Video.AutoCrop.AutoDetectRate", xc.autocrop_autodetect_rate);
   SetupStore("Video.AutoCrop.SoftStart",  xc.autocrop_soft);
+  SetupStore("Video.AutoCrop.SoftStartStep",  xc.autocrop_soft_start_step);
   SetupStore("Video.AutoCrop.FixedSize",  xc.autocrop_fixedsize);
+  SetupStore("Video.AutoCrop.StabilizeTime",  xc.autocrop_stabilize_time);
   SetupStore("Video.AutoCrop.DetectSubs", xc.autocrop_subs);
+  SetupStore("Video.AutoCrop.SubsDetectLifetime", xc.autocrop_subs_detect_lifetime);
+  SetupStore("Video.AutoCrop.SubsDetectStabilizeTime", xc.autocrop_subs_detect_stabilize_time);
+  SetupStore("Video.AutoCrop.LogoWidth", xc.autocrop_logo_width);
+  SetupStore("Video.AutoCrop.UseDriverCrop", xc.autocrop_use_driver_crop);
+  SetupStore("Video.AutoCrop.UseAvardsAnalysis", xc.autocrop_use_avards_analysis);
+  SetupStore("Video.AutoCrop.OverscanCompensate", xc.autocrop_overscan_compensate);
+  SetupStore("Video.AutoCrop.BarToneTolerance", xc.autocrop_bar_tone_tolerance);
+
   SetupStore("Video.SwScale",           xc.swscale);
   SetupStore("Video.SwScale.Aspect",    xc.swscale_change_aspect);
   SetupStore("Video.SwScale.Resize",    xc.swscale_resize);
