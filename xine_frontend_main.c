@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.92 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.93 2011-01-17 12:54:22 phintuka Exp $
  *
  */
 
@@ -397,11 +397,17 @@ static const char help_str[] =
     "                                 --aspect=auto:path_to_script\n"
     "   -f, --fullscreen              Fullscreen mode\n"
 #ifdef HAVE_XRENDER
-    "   -D, --hud                     Head Up Display OSD mode using compositing\n"
+    "   -D, --hud[=flag[,flag]]       Head Up Display OSD mode using compositing\n"
+    "                                 flags:\n"
+#  ifdef HAVE_XSHAPE
+    "                                 xshape  Use XShape instead of compositing"
+#  endif
+#  ifdef HAVE_OPENGL
+    "                                 opengl  Use OpenGL instead of compositing"
+#  endif
 #endif
 #ifdef HAVE_OPENGL
-    "   -Q, --opengl-always           Always use OpenGL for video and Head Up Display OSD\n"
-    "   -O, --opengl-hud              Head Up Display OSD mode using OpenGL\n"
+    "   -O, --opengl                  Use OpenGL for video and Head Up Display OSD\n"
 #endif
     "   -w, --width=x                 Video window width\n"
     "   -h, --height=x                Video window height\n"
@@ -449,9 +455,8 @@ static const struct option long_options[] = {
   { "aspect",     required_argument, NULL, 'a' },
   { "fullscreen", no_argument,       NULL, 'f' },
   { "geometry",   required_argument, NULL, 'g' },
-  { "hud",        no_argument,       NULL, 'D' },
-  { "opengl-always",no_argument,     NULL, 'O' },
-  { "opengl-hud", no_argument,       NULL, 'Q' },
+  { "hud",        optional_argument, NULL, 'D' },
+  { "opengl",     no_argument,       NULL, 'O' },
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
   { "buffers",    required_argument, NULL, 'B' },
@@ -576,24 +581,29 @@ int main(int argc, char *argv[])
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
               break;
-    case 'D': hud |= HUD_COMPOSITE;
+    case 'D': hud = HUD_COMPOSITE;
 #ifdef HAVE_XRENDER
               PRINTF("HUD OSD mode\n");
 #else
               PRINTF("HUD OSD not supported\n");
 #endif
+              if (optarg && strstr(optarg, "xshape")) {
+                hud |= HUD_XSHAPE;
+#ifndef HAVE_XSHAPE
+                PRINTF("XShape HUD OSD not supported\n");
+#endif
+              }
+              if (optarg && strstr(optarg, "opengl")) {
+                hud |= HUD_OPENGL;
+#ifndef HAVE_OPENGL
+                PRINTF("OpenGL HUD OSD not supported\n");
+#endif
+              }
               break;
     case 'O': opengl = 1;
               hud |= HUD_OPENGL;
 #ifdef HAVE_OPENGL
               PRINTF("Using OpenGL to draw video and HUD OSD\n");
-#else
-              PRINTF("OpenGL not supported\n");
-#endif
-              break;
-    case 'Q': hud |= HUD_OPENGL;
-#ifdef HAVE_OPENGL
-              PRINTF("Using OpenGL to draw HUD OSD\n");
 #else
               PRINTF("OpenGL not supported\n");
 #endif

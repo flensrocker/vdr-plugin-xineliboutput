@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.43 2010-12-09 12:41:31 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.44 2011-01-17 12:54:22 phintuka Exp $
  *
  */
 
@@ -125,7 +125,18 @@ const char cmdLineHelp[] =
 #endif
 "  -f        --fullscreen   Fullscreen mode (X11)\n"
 #ifdef HAVE_XRENDER
-"  -D        --hud          Head Up Display OSD (X11)\n"
+"  -D        --hud[=flag[,flag]]"
+"                           Head Up Display OSD (X11)\n"
+"                           flags:\n"
+#  ifdef HAVE_XSHAPE
+"                           xshape  Use XShape instead of compositing"
+#  endif
+#  ifdef HAVE_OPENGL
+"                           opengl  Use OpenGL instead of compositing"
+#  endif
+#endif
+#ifdef HAVE_OPENGL
+"   -O       --opengl       Use OpenGL for video and Head Up Display OSD\n"
 #endif
 "  -w        --width=x      Window width\n"
 "  -h        --height=x     Window width\n"

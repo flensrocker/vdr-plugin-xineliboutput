@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.99 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: config.c,v 1.100 2011-01-17 12:54:22 phintuka Exp $
  *
  */
 
@@ -710,9 +710,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
 
   static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
-      { "hud",          no_argument,       NULL, 'D' },
-      { "opengl-always",no_argument,       NULL, 'O' },
-      { "opengl-hud",   no_argument,       NULL, 'Q' },
+      { "hud",          optional_argument, NULL, 'D' },
+      { "opengl",       no_argument,       NULL, 'O' },
       { "width",        required_argument, NULL, 'w' },
       { "height",       required_argument, NULL, 'h' },
       //{ "xkeyboard",    no_argument,       NULL, 'k' },
@@ -738,16 +737,23 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'f': ProcessArg("Fullscreen", "1");
               break;
     case 'D': ProcessArg("X11.HUDOSD", "1");
+              if (optarg && strstr(optarg, "xshape")) {
+                ProcessArg("XShapeHUDOSD", "1");
+#ifndef HAVE_XSHAPE
+                LOGMSG("XShape HUD OSD not supported\n");
+#endif
+              }
+              if (optarg && strstr(optarg, "opengl")) {
+                ProcessArg("OpenglHUDOSD", "1");
+#ifndef HAVE_OPENGL
+                LOGMSG("OpenGL HUD OSD not supported\n");
+#endif
+              }
 #ifndef HAVE_XRENDER
               LOGMSG("HUD OSD not supported\n");
 #endif
               break;
     case 'O': ProcessArg("OpenglAlways", "1");
-#ifndef HAVE_OPENGL
-              LOGMSG("OpenGL HUD OSD not supported\n");
-#endif
-              break;
-    case 'Q': ProcessArg("OpenglHUDOSD", "1");
 #ifndef HAVE_OPENGL
               LOGMSG("OpenGL HUD OSD not supported\n");
 #endif
@@ -834,6 +840,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "X11.HUDOSD"))       hud_osd |= (atoi(Value) ? HUD_COMPOSITE : 0);
   else if (!strcasecmp(Name, "X11.OpenglAlways")) opengl = atoi(Value);
   else if (!strcasecmp(Name, "X11.OpenglHUDOSD")) hud_osd |= (atoi(Value) ? HUD_OPENGL : 0);
+  else if (!strcasecmp(Name, "X11.XShapeHUDOSD")) hud_osd |= (atoi(Value) ? HUD_XSHAPE : 0);
 
   else if (!strcasecmp(Name, "Audio.Driver")) STRN0CPY(audio_driver, Value);
   else if (!strcasecmp(Name, "Audio.Port"))   STRN0CPY(audio_port, Value);
