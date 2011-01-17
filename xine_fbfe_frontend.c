@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.47 2010-05-26 11:54:26 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.48 2011-01-17 12:29:13 phintuka Exp $
  *
  */
 
@@ -118,7 +118,7 @@ static void update_DFBARGS(const char *fb_dev)
  */
 static int fbfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
-                             int width, int height, int fullscreen, int hud, int opengl_always, int opengl_hud,
+                             int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
                              const char *video_port, int scale_video, int field_order,

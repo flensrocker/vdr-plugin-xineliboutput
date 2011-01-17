@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.74 2011-01-10 11:01:14 phintuka Exp $
+ * $Id: config.h,v 1.75 2011-01-17 12:29:13 phintuka Exp $
  *
  */
 
@@ -313,8 +313,7 @@ class config_t {
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
     int  osd_spu_scaling;          // SPU OSD scaling mode: off, nearest, bilinear
     int  hud_osd;                  // head up display OSD
-    int  opengl_always;            // use opengl acceleration for video and HUD OSD
-    int  opengl_hud;               // use opengl acceleration for HUD OSD only
+    int  opengl;                   // use opengl acceleration for video and HUD OSD
     int  osd_blending;             // OSD blending method
     int  osd_blending_lowresvideo; // Use hardware blending for low-resolution video
     int  alpha_correction;

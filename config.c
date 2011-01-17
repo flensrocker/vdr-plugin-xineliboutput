@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.98 2011-01-10 11:01:14 phintuka Exp $
+ * $Id: config.c,v 1.99 2011-01-17 12:29:13 phintuka Exp $
  *
  */
 
@@ -22,6 +22,7 @@
 
 #include "logdefs.h"
 #include "config.h"
+#include "xine_frontend.h" // HUD_*
 
 #define STRN0CPY(dst, src) \
   do { \
@@ -583,8 +584,7 @@ config_t::config_t() {
   osd_scaling          = OSD_SCALING_NEAREST;
   osd_spu_scaling      = OSD_SCALING_NEAREST;
   hud_osd              = 0;
-  opengl_always        = 0;
-  opengl_hud           = 0;
+  opengl               = 0;
 
   osd_blending             = OSD_BLENDING_SOFTWARE;
   osd_blending_lowresvideo = OSD_BLENDING_HARDWARE;
@@ -831,9 +831,9 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "X11.WindowWidth"))  width = atoi(Value);
   else if (!strcasecmp(Name, "X11.WindowHeight")) height = atoi(Value);
   else if (!strcasecmp(Name, "X11.UseKeyboard"))  use_x_keyboard = atoi(Value);
-  else if (!strcasecmp(Name, "X11.HUDOSD"))       hud_osd = atoi(Value);
-  else if (!strcasecmp(Name, "X11.OpenglAlways")) opengl_always = atoi(Value);
-  else if (!strcasecmp(Name, "X11.OpenglHUDOSD")) opengl_hud = atoi(Value);
+  else if (!strcasecmp(Name, "X11.HUDOSD"))       hud_osd |= (atoi(Value) ? HUD_COMPOSITE : 0);
+  else if (!strcasecmp(Name, "X11.OpenglAlways")) opengl = atoi(Value);
+  else if (!strcasecmp(Name, "X11.OpenglHUDOSD")) hud_osd |= (atoi(Value) ? HUD_OPENGL : 0);
 
   else if (!strcasecmp(Name, "Audio.Driver")) STRN0CPY(audio_driver, Value);
   else if (!strcasecmp(Name, "Audio.Port"))   STRN0CPY(audio_port, Value);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.91 2011-01-08 15:11:05 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.92 2011-01-17 12:29:13 phintuka Exp $
  *
  */
 
@@ -483,7 +483,7 @@ static const struct option long_options[] = {
 int main(int argc, char *argv[])
 {
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
-  int fullscreen = 0, hud = 0, opengl_always = 0, opengl_hud = 0, xpos = 0, ypos = 0, width = 720, height = 576;
+  int fullscreen = 0, hud = 0, opengl = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int pes_buffers = 250;
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
@@ -576,21 +576,22 @@ int main(int argc, char *argv[])
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
               break;
-    case 'D': hud=1;
+    case 'D': hud |= HUD_COMPOSITE;
 #ifdef HAVE_XRENDER
               PRINTF("HUD OSD mode\n");
 #else
               PRINTF("HUD OSD not supported\n");
 #endif
               break;
-    case 'O': opengl_always=1;
+    case 'O': opengl = 1;
+              hud |= HUD_OPENGL;
 #ifdef HAVE_OPENGL
               PRINTF("Using OpenGL to draw video and HUD OSD\n");
 #else
               PRINTF("OpenGL not supported\n");
 #endif
               break;
-    case 'Q': opengl_hud=1;
+    case 'Q': hud |= HUD_OPENGL;
 #ifdef HAVE_OPENGL
               PRINTF("Using OpenGL to draw HUD OSD\n");
 #else
@@ -780,7 +781,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize display */
-  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, opengl_always, opengl_hud, 0,
+  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, opengl, 0,
                            "", aspect, NULL, noxkbd, gui_hotkeys,
                            video_port, scale_video, 0,
                            aspect_controller, window_id)) {

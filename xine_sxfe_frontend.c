@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.143 2011-01-08 15:11:05 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.144 2011-01-17 12:29:13 phintuka Exp $
  *
  */
 
@@ -1226,7 +1226,7 @@ static void create_windows(sxfe_t *this)
  */
 static int sxfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
-                             int width, int height, int fullscreen, int hud, int opengl_always, int opengl_hud,
+                             int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
                              const char *video_port, int scale_video, int field_order,
@@ -1249,21 +1249,21 @@ static int sxfe_display_open(frontend_t *this_gen,
 #ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
     this->hud        = hud;
-    this->opengl_always = opengl_always;
-    this->opengl_hud = opengl_hud;
+    this->opengl_always = opengl;
+    this->opengl_hud = !!(hud & HUD_OPENGL);
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
-    if (opengl_always) {
+    if (this->opengl_always) {
       LOGDBG("sxfe_display_open: Using opengl to draw video and HUD OSD");
     }
-    if (opengl_hud) {
+    if (this->opengl_hud) {
       LOGDBG("sxfe_display_open: Using opengl to draw HUD OSD only");
     }
 #else
     LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
 #endif
   } else {
-    if (opengl_always || opengl_hud) {
+    if (this->opengl_always || this->opengl_hud) {
       LOGERR("sxfe_display_open: the --opengl options must be used with --hud !");
     }
   }
