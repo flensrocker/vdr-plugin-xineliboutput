@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.144 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.145 2011-01-18 12:36:21 phintuka Exp $
  *
  */
 
@@ -27,6 +27,9 @@
 #endif
 #ifdef HAVE_XRENDER
 #  include <X11/extensions/Xrender.h>
+#endif
+#ifdef HAVE_XSHAPE
+#  include <X11/extensions/shape.h>
 #endif
 #ifdef HAVE_XF86VIDMODE
 #  include <X11/extensions/xf86vmode.h>
@@ -146,6 +149,7 @@ typedef struct sxfe_s {
   uint8_t  check_move : 1;
   uint8_t  dragging : 1;
   uint8_t  hud : 1;
+  uint8_t  xshape_hud : 1;
   uint8_t  opengl_always : 1;
   uint8_t  opengl_hud : 1;
   uint8_t  gui_hotkeys : 1;
@@ -161,10 +165,17 @@ typedef struct sxfe_s {
   /* HUD stuff */
 #ifdef HAVE_XRENDER
   uint32_t       *shape_mask_mem;
+#ifdef HAVE_XSHAPE
+  uint8_t         hud_visible;
+  Pixmap          shape_mask_pixmap;
+  GC              shape_mask_gc;
+  Picture         shape_mask_picture;
+#endif
   XImage         *hud_img;
   Visual         *hud_vis;
   Xrender_Surf   *surf_win;
   Xrender_Surf   *surf_img;
+  Xrender_Surf   *surf_back_img;
   uint32_t       *hud_img_mem;
   GC              gc;
   Window          hud_window;
@@ -680,6 +691,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   int mask_changed;
   XDouble scale_x, scale_y;
   int x, y, w, h;
+  Xrender_Surf *dst_surf = this->surf_win;
+  Window        dst_win  = this->hud_window;
 
   if(this && this->hud && cmd) {
     XLockDisplay(this->display);
@@ -696,7 +709,19 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->surf_img->draw, this->gc,
                      0, 0, this->osd_width+2, this->osd_height+2);
+      if (this->surf_back_img)
+        XFillRectangle(this->display, this->surf_back_img->draw, this->gc, 0, 0, this->x.width, this->x.height);
       this->video_win_active = 0;
+#ifdef HAVE_XSHAPE
+      if (this->xshape_hud) {
+        XSetForeground(this->display, this->shape_mask_gc, 0);
+        XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
+        memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+        XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+        XRaiseWindow(this->display, this->hud_window);
+        XMapWindow(this->display, this->hud_window);
+      }
+#endif
       XFlush(this->display);
       break;
 
@@ -706,6 +731,17 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
 
+#ifdef HAVE_XSHAPE
+      if (this->xshape_hud) {
+        if (!this->hud_visible) {
+          XSetForeground(this->display, this->gc, 0x00000000);
+          XFillRectangle(this->display, this->surf_back_img->draw, this->gc,
+                         0, 0, this->x.width, this->x.height);
+        }
+        this->hud_visible = 1;
+      }
+#endif
+
       scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
       scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
       x = cmd->x + cmd->dirty_area.x1;
@@ -713,12 +749,15 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
       h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
 
+      dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
+      dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
+
 #ifdef HAVE_XSHM
       if(this->completion_event != -1) {
         hud_fill_img_memory((uint32_t*)(this->hud_img->data), this->shape_mask_mem, &mask_changed, cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window */
-          XShmPutImage(this->display, this->hud_window, this->gc, this->hud_img,
+          XShmPutImage(this->display, dst_win, this->gc, this->hud_img,
                        x, y, x, y, w, h,
                        False);
         } else {
@@ -726,7 +765,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
           XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
                        x, y, x, y, w, h,
                        False);
-          xrender_surf_blend(this->display, this->surf_img, this->surf_win,
+          xrender_surf_blend(this->display, this->surf_img, dst_surf,
                              x, y, w, h,
                              scale_x, scale_y,
                              (cmd->scaling & 2),  // Note: HUD_SCALING_BILINEAR=2
@@ -739,19 +778,40 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
         hud_fill_img_memory(this->hud_img_mem, this->shape_mask_mem, &mask_changed, cmd);
         if(!cmd->scaling) {
           /* Place image directly onto hud window (always unscaled) */
-          XPutImage(this->display, this->hud_window, this->gc, this->hud_img,
+          XPutImage(this->display, dst_win, this->gc, this->hud_img,
                     x, y, x, y, w, h);
         } else {
           /* Place image onto Xrender surface which will be blended onto hud window */
           XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
                     x, y, x, y, w, h);
-          xrender_surf_blend(this->display, this->surf_img, this->surf_win,
+          xrender_surf_blend(this->display, this->surf_img, dst_surf,
                              x, y, w, h,
                              scale_x, scale_y,
                              (cmd->scaling & 2),   // Note: HUD_SCALING_BILINEAR=2
                              &x, &y, &w, &h);
         }
       }
+#ifdef HAVE_XSHAPE
+      if (this->xshape_hud) {
+        if (mask_changed) {
+          LOGDBG("hud_osd_command(OSD_Set_RLE): Updating shape of window");
+          XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->shape_mask_picture,
+                           x, y, 0, 0, x, y, w, h);
+
+          // WHY MASK CHANGE HAS NO EFFECT UNLESS WINDOW IS UNMAPPED FIRST ... ???
+          XUnmapWindow(this->display, this->hud_window);
+          XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+          XMapWindow(this->display, this->hud_window);
+        }
+      }
+#endif
+
+      // Put the image onto the hud window
+      if (this->surf_back_img)
+        XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->surf_win->pic, x,y,0,0,x,y,w,h);
+
+      XFlush(this->display);
+
       break;
 
     case OSD_SetPalette: /* Modify palette of already created OSD window */
@@ -802,6 +862,16 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD osd Close");
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
+#ifdef HAVE_XSHAPE
+      if (this->xshape_hud) {
+        XUnmapWindow(this->display,this->hud_window);
+        this->hud_visible = 0;
+        XSetForeground(this->display, this->shape_mask_gc, 0);
+        XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
+        memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+        XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+      }
+#endif
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
                      0, 0, this->x.width, this->x.height);
@@ -937,8 +1007,46 @@ static int hud_osd_open(sxfe_t *this)
                                    HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 32, 0);
     }
 
+#ifdef HAVE_XSHAPE
+    if (this->opengl_always || this->opengl_hud) {
+      this->xshape_hud = 0;
+    }
+
+    if (this->xshape_hud) {
+
+      // Check if extension is available
+      if (XShapeQueryExtension(this->display, &dummy, &dummy)) {
+
+        // Create the pixmap
+        this->shape_mask_pixmap = XCreatePixmap(this->display, this->hud_window,
+                                                DisplayWidth(this->display, this->screen),
+                                                DisplayHeight(this->display, this->screen), 1);
+        this->shape_mask_mem = calloc(sizeof(uint32_t), HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+        this->shape_mask_gc = XCreateGC(this->display, this->shape_mask_pixmap, 0, NULL);
+        XSetForeground(this->display, this->shape_mask_gc, 0);
+        XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0,
+                       DisplayWidth(this->display, this->screen), DisplayHeight(this->display, this->screen));
+        this->shape_mask_picture = XRenderCreatePicture(this->display, this->shape_mask_pixmap,
+                                                        XRenderFindStandardFormat(this->display, PictStandardA1),
+                                                        0, NULL);
+        XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+
+     } else {
+        LOGMSG("hud_osd_open(): XShape not available, composite window manager must be running to see OSD.");
+        this->xshape_hud = 0;
+     }
+    }
+
+    this->hud_visible = 0;
+#endif
+
     this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
     this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
+
+    if (this->xshape_hud)
+      this->surf_back_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis,
+                                             DisplayWidth(this->display, this->screen),
+                                             DisplayHeight(this->display, this->screen), 1);
 
     XUnlockDisplay(this->display);
 
@@ -1028,8 +1136,18 @@ static void hud_osd_close(sxfe_t *this)
 #endif
       XDestroyImage(this->hud_img);
 
+#ifdef HAVE_XSHAPE
+    if (this->shape_mask_picture)
+      XRenderFreePicture(this->display, this->shape_mask_picture);
+    if (this->shape_mask_pixmap)
+      XFreePixmap(this->display, this->shape_mask_pixmap);
+    free(this->shape_mask_mem);
+#endif
+
     if(this->surf_img)
       xrender_surf_free(this->display, this->surf_img);
+    if (this->surf_back_img)
+      xrender_surf_free(this->display, this->surf_back_img);
     if(this->surf_win)
       xrender_surf_free(this->display, this->surf_win);
 
@@ -1249,10 +1367,11 @@ static int sxfe_display_open(frontend_t *this_gen,
 #ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
     this->hud        = hud;
-    this->opengl_always = opengl;
+    this->xshape_hud = !!(hud & HUD_XSHAPE);
     this->opengl_hud = !!(hud & HUD_OPENGL);
     this->osd_width  = OSD_DEF_WIDTH;
     this->osd_height = OSD_DEF_HEIGHT;
+    this->opengl_always = !!opengl;
     if (this->opengl_always) {
       LOGDBG("sxfe_display_open: Using opengl to draw video and HUD OSD");
     }
