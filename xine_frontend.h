@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.23 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.24 2011-01-19 06:58:31 rofafor Exp $
  *
  */
 
@@ -59,10 +59,10 @@ struct frontend_config_s {
 #define FE_OK     1
 #define FE_ERROR  0
 
-/* HUD OSD */
-#define HUD_COMPOSITE 1
-#define HUD_XSHAPE    2
-#define HUD_OPENGL    3
+/* HUD OSD bitmask values */
+#define HUD_COMPOSITE 0x1
+#define HUD_XSHAPE    0x2
+#define HUD_OPENGL    0x4
 
 struct frontend_s {
   /* Display */
