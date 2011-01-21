@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.h,v 1.3 2010-05-21 11:55:15 phintuka Exp $
+ * $Id: rle.h,v 1.4 2011-01-21 14:38:55 phintuka Exp $
  *
  */
 
@@ -43,6 +43,16 @@ void rle_uncompress_argb(uint32_t *dst,
 struct xine_rle_elem_s *rle_scale_nearest(const struct xine_rle_elem_s *old_rle,
                                           int *rle_elems,
                                           uint w, uint h, uint new_w, uint new_h);
+
+
+/*
+ * HDMV (BluRay) presentation graphics format
+ */
+
+size_t rle_compress_hdmv(uint8_t **rle_data, const uint8_t *data, uint w, uint h, int *num_rle);
+int rle_uncompress_hdmv(struct xine_rle_elem_s **data,
+                        uint w, uint h,
+                        const uint8_t *rle_data, uint num_rle, size_t rle_size);
 
 
 #if defined __cplusplus

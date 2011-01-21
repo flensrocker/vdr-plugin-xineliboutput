@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.5 2010-07-19 13:20:22 phintuka Exp $
+ * $Id: rle.c,v 1.6 2011-01-21 14:38:55 phintuka Exp $
  *
  */
 
@@ -171,4 +171,169 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
 
   *rle_elems = num_rle;
   return new_rle_start;
+}
+
+/*
+ * encode single HDMV PG rle element
+ */
+static uint8_t *write_rle_hdmv(uint8_t *rle_data, uint color, uint len)
+{
+  /* short non-transparent sequences are uncompressed */
+  if (color && len < 4) {
+    uint i;
+    for (i = 0; i < len; i++) {
+      *rle_data++ = color;
+    }
+    return rle_data;
+  }
+
+  /* rle code marker */
+  *rle_data++ = 0;
+
+  if (!color) {
+    /* transparent */
+    if (len < 64) {
+      *rle_data++ = len;
+    } else {
+      *rle_data++ = 0x40 | ((len >> 8) & 0x3f);
+      *rle_data++ = len & 0xff;
+    }
+  } else {
+    if (len < 64) {
+      *rle_data++ = 0x80 | len;
+    } else {
+      *rle_data++ = 0x80 | 0x40 | ((len >> 8) & 0x3f);
+      *rle_data++ = len & 0xff;
+    }
+    *rle_data++ = color;
+  }
+
+  return rle_data;
+}
+
+/*
+ * compress LUT8 image using HDMV PG compression algorithm
+ */
+size_t rle_compress_hdmv(uint8_t **rle_data, const uint8_t *data, uint w, uint h, int *num_rle)
+{
+  uint     y;
+  size_t   rle_size = 0;
+  uint8_t *rle = NULL;
+
+  *rle_data = NULL;
+  *num_rle = 0;
+
+  for (y = 0; y < h; y++) {
+
+    /* grow buffer ? */
+    if ((ssize_t)(rle_size - (rle - *rle_data)) < w * 4) {
+      size_t used = rle - *rle_data;
+      rle_size = rle_size < 1 ? w*h/16 : rle_size*2;
+      *rle_data = realloc(*rle_data, rle_size);
+      rle = *rle_data + used;
+    }
+
+    /* compress line */
+    uint color = *data;
+    uint len   = 1;
+    uint x     = 1;
+
+    for (x = 1; x < w; x++) {
+      if (data[x] == color) {
+        len++;
+      } else {
+        rle = write_rle_hdmv(rle, color, len);
+        (*num_rle)++;
+        color = data[x];
+        len   = 1;
+      }
+    }
+
+    if (len) {
+      rle = write_rle_hdmv(rle, color, len);
+      (*num_rle)++;
+    }
+
+    /* end of line marker */
+    rle = write_rle_hdmv(rle, 0, 0);
+    (*num_rle)++;
+    data += w;
+  }
+
+  return rle - *rle_data;
+}
+
+
+int rle_uncompress_hdmv(xine_rle_elem_t **data,
+                        uint w, uint h,
+                        const uint8_t *rle_data, uint num_rle, size_t rle_size)
+{
+  uint rle_count = 0, x = 0, y = 0;
+  xine_rle_elem_t *rlep = calloc(2*num_rle, sizeof(xine_rle_elem_t));
+  const uint8_t *end = rle_data + rle_size;
+
+  *data = rlep;
+
+  /* convert to xine-lib rle format */
+  while (y < h) {
+
+    if (rle_data >= end || rle_count >= 2*num_rle) {
+      free(*data);
+      *data = NULL;
+      return -1 - (rle_data >= end);
+    }
+
+    /* decode RLE element */
+    uint byte = *rle_data++;
+    if (byte) {
+      rlep->color = byte;
+      rlep->len   = 1;
+    } else {
+      byte = *rle_data++;
+      if (!(byte & 0x80)) {
+        rlep->color = 0;
+        if (!(byte & 0x40))
+          rlep->len = byte & 0x3f;
+        else
+          rlep->len = ((byte & 0x3f) << 8) | *rle_data++;
+      } else {
+        if (!(byte & 0x40))
+          rlep->len = byte & 0x3f;
+        else
+          rlep->len = ((byte & 0x3f) << 8) | *rle_data++;
+        rlep->color = *rle_data++;
+      }
+    }
+
+    /* move to next element */
+    if (rlep->len > 0) {
+
+      if (rlep->len == 1 && x && rlep[-1].color == rlep->color) {
+        rlep[-1].len++;
+        x++;
+      } else {
+        x += rlep->len;
+        rlep++;
+        rle_count++;
+      }
+
+      if (x > w) {
+        return -9999;
+      }
+
+    } else {
+      /* end of line marker (00 00) */
+      if (x < w-1) {
+        //return -1-rlep->color - (w-x);
+        rlep->len = w - x;
+        rlep->color = 0xff;
+        rlep++;
+        rle_count++;
+      }
+      x = 0;
+      y++;
+    }
+  }
+
+  return rle_count;
 }
