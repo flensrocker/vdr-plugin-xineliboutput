@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.98 2011-01-21 14:22:37 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.99 2011-01-21 14:43:17 phintuka Exp $
  *
  */
 
@@ -42,6 +42,7 @@
 #include "tools/http.h"
 #include "tools/vdrdiscovery.h"
 #include "tools/sdp.h"
+#include "tools/rle.h"
 
 #include "frontend_svr.h"
 #include "device.h"
@@ -238,23 +239,6 @@ void cXinelibServer::CloseConnection(int cli)
   }
 }
 
-static int recompress_osd_net(uint8_t *raw, xine_rle_elem_t *data, int elems)
-{
-  uint8_t *raw0 = raw;
-  for(int i=0; i<elems; i++) {
-    uint16_t len = data[i].len;
-    uint16_t color = data[i].color;
-    if(len >= 0x80) {
-      *(raw++) = (len>>8) | 0x80;
-      *(raw++) = (len & 0xff);
-    } else {
-      *(raw++) = (len & 0x7f);
-    }
-    *(raw++) = color;
-  }
-  return (raw-raw0);
-}
-
 static int write_osd_command(cxSocket& s, osd_command_t *cmd)
 {
   cxPoller p(s, true);
@@ -320,7 +304,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
     memcpy(&cmdnet, cmd, sizeof(osd_command_t));
     if (cmd->data) {
       cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
-      cmdnet.datalen = recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
+      cmdnet.datalen = rle_recompress_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
     }
     // -> network byte order
     hton_osdcmd(cmdnet);

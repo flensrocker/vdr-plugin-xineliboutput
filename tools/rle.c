@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.6 2011-01-21 14:38:55 phintuka Exp $
+ * $Id: rle.c,v 1.7 2011-01-21 14:43:17 phintuka Exp $
  *
  */
 
@@ -62,6 +62,37 @@ uint rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint 
 
   *rle_data = rle_base;
   return num_rle;
+}
+
+uint rle_compress_net(uint8_t **rle_data, uint *elems, const uint8_t *data, uint w, uint h)
+{
+  *elems = rle_compress((xine_rle_elem_t**)rle_data, data, w, h);
+  return rle_recompress_net(*rle_data, *(xine_rle_elem_t **)rle_data, *elems);
+}
+
+/*
+ * rle_recompress_net()
+ *
+ * recompress RLE-compressed OSD using variable sized RLE codewords
+*/
+uint rle_recompress_net(uint8_t *raw, xine_rle_elem_t *data, uint elems)
+{
+  uint8_t *raw0 = raw;
+  uint i;
+
+  for (i = 0; i < elems; i++) {
+    uint16_t len   = data[i].len;
+    uint16_t color = data[i].color;
+    if (len >= 0x80) {
+      *(raw++) = (len>>8) | 0x80;
+      *(raw++) = (len & 0xff);
+    } else {
+      *(raw++) = (len & 0x7f);
+    }
+    *(raw++) = color;
+  }
+
+  return (raw - raw0);
 }
 
 /*

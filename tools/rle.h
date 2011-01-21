@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.h,v 1.4 2011-01-21 14:38:55 phintuka Exp $
+ * $Id: rle.h,v 1.5 2011-01-21 14:43:17 phintuka Exp $
  *
  */
 
@@ -26,6 +26,8 @@ struct xine_clut_s;
 
 
 uint rle_compress(struct xine_rle_elem_s **rle_data, const uint8_t *data, uint w, uint h);
+uint rle_compress_net(uint8_t **rle_data, uint *elems, const uint8_t *data, uint w, uint h);
+uint rle_recompress_net(uint8_t *raw, xine_rle_elem_t *data, uint elems);
 
 void rle_uncompress_lut8(const struct xine_rle_elem_s *rle_data,
                          uint8_t *data, uint w, uint h);
