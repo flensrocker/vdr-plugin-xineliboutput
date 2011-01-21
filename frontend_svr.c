@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.96 2010-12-17 13:07:52 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.97 2011-01-21 14:10:22 phintuka Exp $
  *
  */
 
@@ -1025,6 +1025,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
     return;
   }
 
+#if 0
   /* check client IP's */
   struct sockaddr_in sinc, sind;
   socklen_t len = sizeof(sinc);
@@ -1048,6 +1049,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
     CloseConnection(cli);
     return;
   }
+#endif
 
   /* close old data connection */
   CloseDataConnection(clientId);
