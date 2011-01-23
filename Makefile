@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.105 2010-12-15 14:43:36 phintuka Exp $
+# $Id: Makefile,v 1.106 2011-01-23 19:42:08 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -219,7 +219,7 @@ OBJS_MPG = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
 OBJS_FE_SO = xine_frontend.o logdefs.o \
              xine/post.o xine/vo_hook.o xine/vo_osdscaler.o xine/vo_osdreorder.o xine/vo_lastpts.o \
              tools/rle.o
-OBJS_FE    = $(OBJS_FE_SO) tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o
+OBJS_FE    = $(OBJS_FE_SO) tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o xine_frontend_kbd.o
 
 OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
 OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
