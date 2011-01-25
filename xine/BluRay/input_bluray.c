@@ -313,6 +313,9 @@ static void stream_flush(bluray_input_plugin_t *this)
 
 static void stream_reset(bluray_input_plugin_t *this)
 {
+  if (!this || !this->stream || !this->stream->demux_plugin)
+    return;
+
   lprintf("Stream reset\n");
 
   this->cap_seekable = 0;
