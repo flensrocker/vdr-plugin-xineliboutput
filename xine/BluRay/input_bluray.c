@@ -1102,10 +1102,6 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   bd_register_overlay_proc(this->bdh, this, overlay_proc);
 
-  /* init libbluray event queue */
-
-  handle_libbluray_events(this);
-
   /* update player settings */
   bd_set_player_setting    (this->bdh, BLURAY_PLAYER_SETTING_REGION_CODE,  this->class->region);
   bd_set_player_setting    (this->bdh, BLURAY_PLAYER_SETTING_PARENTAL,     this->class->parental);
