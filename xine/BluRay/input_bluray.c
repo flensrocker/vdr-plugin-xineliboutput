@@ -240,12 +240,39 @@ static void update_title_info(bluray_input_plugin_t *this)
     .data = &udata,
     .data_length = sizeof(udata)
   };
-  if (this->disc_name && this->disc_name[0])
-    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, Title %d/%d",
-                             this->disc_name, this->current_title_idx + 1, this->num_title_idx);
-  else
-    udata.str_len = snprintf(udata.str, sizeof(udata.str), "Title %d/%d",
-                             this->current_title_idx + 1, this->num_title_idx);
+
+  char title_name[64] = "";
+
+  if (this->meta_dl) {
+    unsigned i;
+    for (i = 0; i < this->meta_dl->toc_count; i++)
+      if (this->meta_dl->toc_entries[i].title_number == (unsigned)this->current_title)
+        if (this->meta_dl->toc_entries[i].title_name)
+          if (strlen(this->meta_dl->toc_entries[i].title_name) > 2)
+            strncpy(title_name, this->meta_dl->toc_entries[i].title_name, sizeof(title_name));
+  }
+
+  if (title_name[0]) {
+  } else if (this->current_title == BLURAY_TITLE_TOP_MENU) {
+    strcpy(title_name, "Top Menu");
+  } else if (this->current_title == BLURAY_TITLE_FIRST_PLAY) {
+    strcpy(title_name, "First Play");
+  } else if (this->nav_mode) {
+    snprintf(title_name, sizeof(title_name), "Title %d/%d (PL %d/%d)",
+             this->current_title, this->num_titles,
+             this->current_title_idx + 1, this->num_title_idx);
+  } else {
+    snprintf(title_name, sizeof(title_name), "Title %d/%d",
+             this->current_title_idx + 1, this->num_title_idx);
+  }
+
+  if (this->disc_name && this->disc_name[0]) {
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, %s",
+                             this->disc_name, title_name);
+  } else {
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s",
+                             title_name);
+  }
   xine_event_send(this->stream, &uevent);
 
   _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, udata.str);
@@ -1102,7 +1129,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   this->meta_dl = bd_get_meta(this->bdh);
 
-  if (this->meta_dl && this->meta_dl->di_name) {
+  if (this->meta_dl && this->meta_dl->di_name && strlen(this->meta_dl->di_name) > 1) {
     this->disc_name = strdup(this->meta_dl->di_name);
   }
   else if (strcmp(this->disc_root, this->class->mountpoint)) {
