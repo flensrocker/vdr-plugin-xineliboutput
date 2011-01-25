@@ -45,6 +45,7 @@
 #include <libbluray/bluray.h>
 #include <libbluray/keys.h>
 #include <libbluray/overlay.h>
+#include <libbluray/meta_data.h>
 
 #define LOG_MODULE "input_bluray"
 #define LOG_VERBOSE
@@ -116,6 +117,7 @@ typedef struct {
   BLURAY               *bdh;
 
   const BLURAY_DISC_INFO *disc_info;
+  const META_DL          *meta_dl; /* disc library meta data */
 
   int                num_title_idx;     /* number of relevant playlists */
   int                current_title_idx;
@@ -1086,7 +1088,12 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* get disc name */
 
-  if (strcmp(this->disc_root, this->class->mountpoint)) {
+  this->meta_dl = bd_get_meta(this->bdh);
+
+  if (this->meta_dl && this->meta_dl->di_name) {
+    this->disc_name = strdup(this->meta_dl->di_name);
+  }
+  else if (strcmp(this->disc_root, this->class->mountpoint)) {
     char *t = strrchr(this->disc_root, '/');
     if (!t[1])
       while (t > this->disc_root && t[-1] != '/') t--;
