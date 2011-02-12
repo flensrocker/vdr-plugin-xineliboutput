@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.94 2011-01-23 19:42:08 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.95 2011-02-12 20:32:17 rofafor Exp $
  *
  */
 
@@ -106,12 +106,12 @@ static const char help_str[] =
     "   -f, --fullscreen              Fullscreen mode\n"
 #ifdef HAVE_XRENDER
     "   -D, --hud[=flag[,flag]]       Head Up Display OSD mode using compositing\n"
-    "                                 flags:\n"
+    "                                 Optional flags:\n"
 #  ifdef HAVE_XSHAPE
-    "                                 xshape  Use XShape instead of compositing"
+    "                                 xshape  Use XShape instead of compositing\n"
 #  endif
 #  ifdef HAVE_OPENGL
-    "                                 opengl  Use OpenGL instead of compositing"
+    "                                 opengl  Use OpenGL instead of compositing\n"
 #  endif
 #endif
 #ifdef HAVE_OPENGL
