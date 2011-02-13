@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.11 2010-03-21 10:44:24 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.12 2011-02-13 14:21:55 phintuka Exp $
  *
  */
 
@@ -111,6 +111,9 @@ static int64_t get_option(metronom_t *metronom, int option)
   }
   if (option == XVDR_METRONOM_STILL_MODE) {
     return this->still_mode;
+  }
+  if (option == XVDR_METRONOM_ID) {
+    return XVDR_METRONOM_ID;
   }
 
   return this->orig_metronom->get_option(this->orig_metronom, option);
