@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.62.2.3 2009-11-16 11:34:49 phintuka Exp $
+ * $Id: setup_menu.c,v 1.62.2.4 2011-02-24 22:43:25 phintuka Exp $
  *
  */
 
@@ -18,6 +18,10 @@
 #include "i18n.h"      // trVDR for vdr-1.4.x
 #include "osd.h"       // cXinelibOsdProvider::RefreshOsd()
 #include "setup_menu.h"
+#include "tools/playlist.h"
+
+#define indent(x) Label_Ident(x)
+#define inden2(x) Label_Ident(Label_Ident(x))
 
 
 namespace XinelibOutputSetupMenu {
@@ -176,7 +180,7 @@ void cMenuSetupAudio::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Audio")));
+  Add(SeparatorItem(tr("Audio")));
 
   Add(audio_ctrl_speakers =
       new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type, 
@@ -212,12 +216,12 @@ void cMenuSetupAudio::Set(void)
 				AUDIO_VIS_count, 
 				xc.s_audioVisualizationNames));
   if(visualization == AUDIO_VIS_GOOM) {
-    Add(new cMenuEditTypedIntItem(tr("  Width"), tr("px"), &goom_width,
-				  320, 1920));
-    Add(new cMenuEditTypedIntItem(tr("  Height"),tr("px"), &goom_height,
-				  240, 1280));
-    Add(new cMenuEditTypedIntItem(tr("  Speed"), tr("fps"), &goom_fps,
-				  1, 100));
+    Add(new cMenuEditTypedIntItem(indent(tr("Width")), tr("px"),
+                                  &goom_width, 320, 1920));
+    Add(new cMenuEditTypedIntItem(indent(tr("Height")),tr("px"),
+                                  &goom_height, 240, 1280));
+    Add(new cMenuEditTypedIntItem(indent(tr("Speed")), tr("fps"),
+                                  &goom_fps, 1, 100));
   }
 
   if(current<1) current=1; /* first item is not selectable */
@@ -301,6 +305,9 @@ void cMenuSetupAudio::Store(void)
 	   goom_width, goom_height, goom_fps);
   xc.audio_vis_goom_opts[sizeof(xc.audio_vis_goom_opts)-1] = 0;
 
+  if(xc.audio_vis_image_mrl[0] == '/')
+    snprintf(xc.audio_vis_image_mrl, sizeof(xc.audio_vis_image_mrl), "%s", *cPlaylist::BuildMrl("file", xc.audio_vis_image_mrl));
+
   SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
   SetupStore("Audio.Delay",    xc.audio_delay);
   SetupStore("Audio.Compression",  xc.audio_compression);
@@ -309,6 +316,7 @@ void cMenuSetupAudio::Store(void)
   SetupStore("Audio.Headphone",    xc.headphone);
   SetupStore("Audio.Visualization",xc.audio_visualization);
   SetupStore("Audio.Visualization.GoomOpts",xc.audio_vis_goom_opts);
+  SetupStore("Audio.Visualization.ImageMRL",xc.audio_vis_image_mrl);
   SetupStore("Audio.SoftwareVolumeControl", xc.sw_volume_control);
   Setup.Save();
 }
@@ -350,7 +358,7 @@ void cMenuSetupAudioEq::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Audio Equalizer")));
+  Add(SeparatorItem(tr("Audio Equalizer")));
   for(int i=0; i<AUDIO_EQ_count; i++)
     Add(new cMenuEditTypedIntItem(config_t::s_audioEqNames[i], "%", 
 				  &newconfig.audio_equalizer[i],
@@ -498,6 +506,20 @@ class cMenuSetupVideo : public cMenuSetupPage
     config_t newconfig;
 
     cOsdItem *ctrl_autocrop;
+    cOsdItem *ctrl_autocrop_autodetect;
+    cOsdItem *ctrl_autocrop_autodetect_rate;
+    cOsdItem *ctrl_autocrop_soft;
+    cOsdItem *ctrl_autocrop_soft_start_step;
+    cOsdItem *ctrl_autocrop_fixedsize;
+    cOsdItem *ctrl_autocrop_stabilize_time;
+    cOsdItem *ctrl_autocrop_subs;
+    cOsdItem *ctrl_autocrop_subs_detect_lifetime;
+    cOsdItem *ctrl_autocrop_subs_detect_stabilize_time;
+    cOsdItem *ctrl_autocrop_logo_width;
+    cOsdItem *ctrl_autocrop_use_driver_crop;
+    cOsdItem *ctrl_autocrop_use_avards_analysis;
+    cOsdItem *ctrl_autocrop_overscan_compensate;
+    cOsdItem *ctrl_autocrop_bar_tone_tolerance;
     cOsdItem *ctrl_swscale;
     cOsdItem *ctrl_swscale_resize;
     cOsdItem *ctrl_swscale_aspect;
@@ -576,7 +598,7 @@ void cMenuSetupVideo::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Video")));
+  Add(SeparatorItem(tr("Video")));
 
   Add(ctrl_vo_aspect_ratio =
       new cMenuEditStraI18nItem(tr("Aspect ratio"), &newconfig.vo_aspect_ratio,
@@ -586,15 +608,61 @@ void cMenuSetupVideo::Set(void)
       new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"), 
 			    &newconfig.autocrop));
   if(newconfig.autocrop) {
-    Add(new cMenuEditBoolItem(tr("  Autodetect letterbox"), 
+    Add(ctrl_autocrop_use_driver_crop =
+                    new cMenuEditBoolItem(indent(tr("Use driver crop")),
+                              &newconfig.autocrop_use_driver_crop));
+
+    Add(ctrl_autocrop_autodetect =
+                    new cMenuEditBoolItem(indent(tr("Autodetect letterbox")),
 			      &newconfig.autocrop_autodetect));
-    Add(new cMenuEditBoolItem(tr("  Soft start"), 
-			      &newconfig.autocrop_soft));
-    Add(new cMenuEditBoolItem(tr("  Crop to"),
-			      &newconfig.autocrop_fixedsize,
-			      "4:3...20:9", "14:9/16:9"));
-    Add(new cMenuEditBoolItem(tr("  Detect subtitles"),
-			      &newconfig.autocrop_subs));
+    if(newconfig.autocrop_autodetect) {
+      Add(ctrl_autocrop_fixedsize =
+                      new cMenuEditBoolItem(indent(tr("Crop to")),
+                                &newconfig.autocrop_fixedsize,
+                                "4:3...20:9", "14:9/16:9"));
+      Add(ctrl_autocrop_autodetect_rate =
+                      new cMenuEditIntItem(indent(tr("Autodetect rate")),
+                                &newconfig.autocrop_autodetect_rate, 1, 30));
+      Add(ctrl_autocrop_stabilize_time =
+                      new cMenuEditIntItem(indent(tr("Stabilize time")),
+                                &newconfig.autocrop_stabilize_time, 1, 9999));
+      Add(ctrl_autocrop_logo_width =
+                      new cMenuEditIntItem(indent(tr("Maximum logo width [%]")),
+                                &newconfig.autocrop_logo_width, 0, 99));
+      Add(ctrl_autocrop_overscan_compensate =
+                      new cMenuEditIntItem(indent(tr("Overscan compensate [%1000]")),
+                                &newconfig.autocrop_overscan_compensate, 0, 9999));
+
+      Add(ctrl_autocrop_soft =
+                      new cMenuEditBoolItem(indent(tr("Soft start")),
+                                &newconfig.autocrop_soft));
+      if(newconfig.autocrop_soft) {
+        Add(ctrl_autocrop_soft_start_step =
+                        new cMenuEditIntItem(indent(tr("Soft start step")),
+                                  &newconfig.autocrop_soft_start_step, 1, 999));
+      }
+
+      Add(ctrl_autocrop_subs =
+                      new cMenuEditBoolItem(indent(tr("Detect subtitles")),
+                                &newconfig.autocrop_subs));
+      if(newconfig.autocrop_subs) {
+        Add(ctrl_autocrop_subs_detect_stabilize_time =
+                        new cMenuEditIntItem(indent(tr("Subs detect stabilize time")),
+                                  &newconfig.autocrop_subs_detect_stabilize_time, 0, 9999));
+        Add(ctrl_autocrop_subs_detect_lifetime =
+                        new cMenuEditIntItem(indent(tr("Subs detect lifetime")),
+                                  &newconfig.autocrop_subs_detect_lifetime, 0, 9999));
+      }
+
+      Add(ctrl_autocrop_use_avards_analysis =
+                      new cMenuEditBoolItem(indent(tr("Use avards analysis")),
+                                &newconfig.autocrop_use_avards_analysis));
+      if (newconfig.autocrop_use_avards_analysis) {
+        Add(ctrl_autocrop_bar_tone_tolerance =
+                        new cMenuEditIntItem(indent(tr("Bar tone tolerance")),
+                                  &newconfig.autocrop_bar_tone_tolerance, 0, 255));
+      }
+    }
   }
 
   ctrl_swscale_resize = ctrl_swscale_aspect = ctrl_swscale_width = ctrl_swscale_height = NULL;
@@ -603,19 +671,19 @@ void cMenuSetupVideo::Set(void)
 			    &newconfig.swscale));
   if(newconfig.swscale) {
     Add(ctrl_swscale_aspect =
-	new cMenuEditBoolItem(tr("  Change aspect ratio"), 
+	new cMenuEditBoolItem(indent(tr("Change aspect ratio")),
 			      &newconfig.swscale_change_aspect));
     Add(ctrl_swscale_resize = 
-	new cMenuEditBoolItem(tr("  Change video size"), 
+	new cMenuEditBoolItem(indent(tr("Change video size")),
 			      &newconfig.swscale_resize));
     if(newconfig.swscale_resize) {
       Add(ctrl_swscale_width =
-	  new cMenuEditIntItem( tr("  Width"), 
+	  new cMenuEditIntItem( indent(tr("Width")),
 				&newconfig.swscale_width, 360, 2000));
       Add(ctrl_swscale_height =
-	  new cMenuEditIntItem( tr("  Height"),
+	  new cMenuEditIntItem( indent(tr("Height")),
 				&newconfig.swscale_height, 288, 1200));
-      Add(new cMenuEditBoolItem(tr("  Allow downscaling"),
+      Add(new cMenuEditBoolItem(indent(tr("Allow downscaling")),
 				&newconfig.swscale_downscale));
     }
   }
@@ -628,9 +696,10 @@ void cMenuSetupVideo::Set(void)
   Add(ctrl_pp = new cMenuEditBoolItem(tr("Post processing (ffmpeg)"), 
 				      &newconfig.ffmpeg_pp));
   if(newconfig.ffmpeg_pp) {
-    Add(new cMenuEditIntItem( tr("  Quality"), 
+    Add(new cMenuEditIntItem( indent(tr("Quality")),
 			      &newconfig.ffmpeg_pp_quality, 0, 6));
-    Add(new cMenuEditStrItem( tr("  Mode"), newconfig.ffmpeg_pp_mode, 
+    Add(new cMenuEditStrItem( indent(tr("Mode")),
+                              newconfig.ffmpeg_pp_mode,
 			      255, OptionsChars));
   }
 
@@ -642,47 +711,49 @@ void cMenuSetupVideo::Set(void)
   ctrl_tvtime_method = NULL;
   if(deinterlace == DEINTERLACE_TVTIME) {
     Add(ctrl_tvtime_method =
-	new cMenuEditStraI18nItem(tr("  Method"), &tvtime.method,
-				  tvtime_methods_count, tvtime_method_name));
-    Add(new cMenuEditBoolItem(tr("  Cheap mode"), &tvtime.cheap_mode));
-    Add(new cMenuEditStraI18nItem(tr("  Pulldown"), &tvtime.pulldown,
-				  2, tvtime_pulldown_name));
-    Add(new cMenuEditStraI18nItem(tr("  Frame rate"), &tvtime.framerate,
-				  3, tvtime_framerate_name));
-    Add(new cMenuEditBoolItem(tr("  Judder Correction"), &tvtime.judder_correction));
-    Add(new cMenuEditBoolItem(tr("  Use progressive frame flag"), 
-			      &tvtime.use_progressive_frame_flag));
-    Add(new cMenuEditBoolItem(tr("  Chroma Filter"), 
-			      &tvtime.chroma_filter));
+	new cMenuEditStraI18nItem(indent(tr("Method")),
+                                  &tvtime.method, tvtime_methods_count, tvtime_method_name));
+    Add(new cMenuEditBoolItem(    indent(tr("Cheap mode")),
+                                  &tvtime.cheap_mode));
+    Add(new cMenuEditStraI18nItem(indent(tr("Pulldown")),
+                                  &tvtime.pulldown, 2, tvtime_pulldown_name));
+    Add(new cMenuEditStraI18nItem(indent(tr("Frame rate")),
+                                  &tvtime.framerate, 3, tvtime_framerate_name));
+    Add(new cMenuEditBoolItem(    indent(tr("Judder Correction")),
+                                  &tvtime.judder_correction));
+    Add(new cMenuEditBoolItem(    indent(tr("Use progressive frame flag")),
+                                  &tvtime.use_progressive_frame_flag));
+    Add(new cMenuEditBoolItem(    indent(tr("Chroma Filter")),
+                                  &tvtime.chroma_filter));
   }
 
   Add(ctrl_unsharp = new cMenuEditBoolItem(tr("Sharpen / Blur"),
                                       &newconfig.unsharp));
   if(newconfig.unsharp) {
-    Add(new cMenuEditOddIntItem( tr("  Width of the luma matrix"),
+    Add(new cMenuEditOddIntItem( indent(tr("Width of the luma matrix")),
                                  &newconfig.unsharp_luma_matrix_width, 3, 11));
-    Add(new cMenuEditOddIntItem( tr("  Height of the luma matrix"),
+    Add(new cMenuEditOddIntItem( indent(tr("Height of the luma matrix")),
                                  &newconfig.unsharp_luma_matrix_height, 3, 11));
-    Add(new cMenuEditFpIntItem( tr("  Amount of luma sharpness/blur"),
-                                &newconfig.unsharp_luma_amount, -20, 20, 1,
-                                tr("Off")));
-    Add(new cMenuEditOddIntItem( tr("  Width of the chroma matrix"),
-                              &newconfig.unsharp_chroma_matrix_width, 3, 11));
-    Add(new cMenuEditOddIntItem( tr("  Height of the chroma matrix"),
-                              &newconfig.unsharp_chroma_matrix_height, 3, 11));
-    Add(new cMenuEditFpIntItem( tr("  Amount of chroma sharpness/blur"),
-                                &newconfig.unsharp_chroma_amount, -20, 20, 1,
-                                tr("Off")));
+    Add(new cMenuEditFpIntItem(  indent(tr("Amount of luma sharpness/blur")),
+                                 &newconfig.unsharp_luma_amount, -20, 20, 1,
+                                 tr("Off")));
+    Add(new cMenuEditOddIntItem( indent(tr("Width of the chroma matrix")),
+                                 &newconfig.unsharp_chroma_matrix_width, 3, 11));
+    Add(new cMenuEditOddIntItem( indent(tr("Height of the chroma matrix")),
+                                 &newconfig.unsharp_chroma_matrix_height, 3, 11));
+    Add(new cMenuEditFpIntItem(  indent(tr("Amount of chroma sharpness/blur")),
+                                 &newconfig.unsharp_chroma_amount, -20, 20, 1,
+                                 tr("Off")));
   }
 
   Add(ctrl_denoise3d = new cMenuEditBoolItem(tr("3D Denoiser"),
                                       &newconfig.denoise3d));
   if(newconfig.denoise3d) {
-    Add(new cMenuEditFpIntItem( tr("  Spatial luma strength"),
+    Add(new cMenuEditFpIntItem( indent(tr("Spatial luma strength")),
                                 &newconfig.denoise3d_luma, 0, 100, 1));
-    Add(new cMenuEditFpIntItem( tr("  Spatial chroma strength"),
+    Add(new cMenuEditFpIntItem( indent(tr("Spatial chroma strength")),
                                 &newconfig.denoise3d_chroma, 0, 100, 1));
-    Add(new cMenuEditFpIntItem( tr("  Temporal strength"),
+    Add(new cMenuEditFpIntItem( indent(tr("Temporal strength")),
                                 &newconfig.denoise3d_time, 0, 100, 1));
   }
 
@@ -761,7 +832,21 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
        INDEX_TO_CONTROL(newconfig.contrast),
        newconfig.overscan, newconfig.vo_aspect_ratio);
 #endif
-  else if(item == ctrl_autocrop) {
+  else if(item == ctrl_autocrop
+                  || item == ctrl_autocrop_autodetect
+                  || item == ctrl_autocrop_autodetect_rate
+                  || item == ctrl_autocrop_soft
+                  || item == ctrl_autocrop_soft_start_step
+                  || item == ctrl_autocrop_fixedsize
+                  || item == ctrl_autocrop_stabilize_time
+                  || item == ctrl_autocrop_subs
+                  || item == ctrl_autocrop_subs_detect_lifetime
+                  || item == ctrl_autocrop_subs_detect_stabilize_time
+                  || item == ctrl_autocrop_logo_width
+                  || item == ctrl_autocrop_use_driver_crop
+                  || item == ctrl_autocrop_use_avards_analysis
+                  || item == ctrl_autocrop_overscan_compensate
+                  || item == ctrl_autocrop_bar_tone_tolerance) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
 	 "autocrop", newconfig.autocrop ? true : false, 
 	 newconfig.AutocropOptions());
@@ -825,11 +910,22 @@ void cMenuSetupVideo::Store(void)
   SetupStore("Video.Deinterlace", xc.deinterlace_method);
   SetupStore("Video.DeinterlaceOptions", xc.deinterlace_opts);
 
-  SetupStore("Video.AutoCrop",   xc.autocrop); 
+  SetupStore("Video.AutoCrop",   xc.autocrop);
   SetupStore("Video.AutoCrop.AutoDetect", xc.autocrop_autodetect);
+  SetupStore("Video.AutoCrop.AutoDetectRate", xc.autocrop_autodetect_rate);
   SetupStore("Video.AutoCrop.SoftStart",  xc.autocrop_soft);
+  SetupStore("Video.AutoCrop.SoftStartStep",  xc.autocrop_soft_start_step);
   SetupStore("Video.AutoCrop.FixedSize",  xc.autocrop_fixedsize);
+  SetupStore("Video.AutoCrop.StabilizeTime",  xc.autocrop_stabilize_time);
   SetupStore("Video.AutoCrop.DetectSubs", xc.autocrop_subs);
+  SetupStore("Video.AutoCrop.SubsDetectLifetime", xc.autocrop_subs_detect_lifetime);
+  SetupStore("Video.AutoCrop.SubsDetectStabilizeTime", xc.autocrop_subs_detect_stabilize_time);
+  SetupStore("Video.AutoCrop.LogoWidth", xc.autocrop_logo_width);
+  SetupStore("Video.AutoCrop.UseDriverCrop", xc.autocrop_use_driver_crop);
+  SetupStore("Video.AutoCrop.UseAvardsAnalysis", xc.autocrop_use_avards_analysis);
+  SetupStore("Video.AutoCrop.OverscanCompensate", xc.autocrop_overscan_compensate);
+  SetupStore("Video.AutoCrop.BarToneTolerance", xc.autocrop_bar_tone_tolerance);
+
   SetupStore("Video.SwScale",           xc.swscale);
   SetupStore("Video.SwScale.Aspect",    xc.swscale_change_aspect);
   SetupStore("Video.SwScale.Resize",    xc.swscale_resize);
@@ -880,6 +976,8 @@ class cMenuSetupOSD : public cMenuSetupPage
     int orig_alpha_correction;
     int orig_alpha_correction_abs;
 
+    cOsdItem *ctrl_size;
+    cOsdItem *ctrl_width;
     cOsdItem *ctrl_scaling;
     cOsdItem *ctrl_alpha;
     cOsdItem *ctrl_alpha_abs;
@@ -892,7 +990,7 @@ class cMenuSetupOSD : public cMenuSetupPage
   protected:
     virtual void Store(void);
     void Set(void);
-  
+
   public:
     cMenuSetupOSD(void);
     ~cMenuSetupOSD();
@@ -917,11 +1015,13 @@ cMenuSetupOSD::~cMenuSetupOSD()
 }
 
 void cMenuSetupOSD::Set(void)
-{ 
+{
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
   int current = Current();
   Clear();
 
+  ctrl_size = NULL;
+  ctrl_width = NULL;
   ctrl_scaling = NULL;
   ctrl_blending = NULL;
   ctrl_lowres = NULL;
@@ -931,8 +1031,8 @@ void cMenuSetupOSD::Set(void)
   ctrl_spulang0 = NULL;
 #endif
 
-  Add(NewTitle(tr("On-Screen Display")));
-  Add(new cMenuEditBoolItem(tr("Hide main menu"), 
+  Add(SeparatorItem(tr("On-Screen Display")));
+  Add(new cMenuEditBoolItem(tr("Hide main menu"),
 			    &newconfig.hide_main_menu));
 
   Add(ctrl_blending =
@@ -942,7 +1042,7 @@ void cMenuSetupOSD::Set(void)
 			    tr(xc.s_osdBlendingMethods[OSD_BLENDING_HARDWARE])));
   if(newconfig.osd_blending == OSD_BLENDING_SOFTWARE) {
     Add(ctrl_lowres =
-	new cMenuEditBoolItem(tr("  Use hardware for low-res video"),
+	new cMenuEditBoolItem(indent(tr("Use hardware for low-res video")),
 			      &newconfig.osd_blending_lowresvideo));
   }
 
@@ -951,9 +1051,11 @@ void cMenuSetupOSD::Set(void)
 	                        OSD_SCALING_count, xc.s_osdScalings));
 
 #if VDRVERSNUM >= 10509
+  Add(new cMenuEditBoolItem(tr("Scale subtitles"), &newconfig.osd_spu_scaling));
+
 # if 0
-  Add(new cMenuEditStraI18nItem(tr("Show all layers"), &newconfig.osd_mixer, 
-			OSD_MIXER_count, xc.s_osdMixers));
+  Add(new cMenuEditStraI18nItem(tr("Show all layers"), &newconfig.osd_mixer,
+                                OSD_MIXER_count, xc.s_osdMixers));
 # endif
 #endif
 
@@ -1042,7 +1144,11 @@ void cMenuSetupOSD::Store(void)
   orig_alpha_correction = xc.alpha_correction;
   orig_alpha_correction_abs = xc.alpha_correction_abs;
 
+  SetupStore("OSD.Size",            xc.s_osdSizes[xc.osd_size]);
+  SetupStore("OSD.Width",           xc.osd_width);
+  SetupStore("OSD.Height",          xc.osd_height);
   SetupStore("OSD.Scaling",         xc.osd_scaling);
+  SetupStore("OSD.ScalingSPU",      xc.osd_spu_scaling);
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);
   SetupStore("OSD.LayersVisible",   xc.osd_mixer);
   SetupStore("OSD.Blending",        xc.osd_blending);
@@ -1113,14 +1219,14 @@ void cMenuSetupDecoder::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Decoder")));
+  Add(SeparatorItem(tr("Decoder")));
   Add(ctrl_pes_buffers_ind = 
       new cMenuEditStraI18nItem(tr("Buffer size"), &pes_buffers_ind, 
 				PES_BUFFERS_count, xc.s_bufferSize));
   if(pes_buffers_ind == PES_BUFFERS_CUSTOM)
     Add(ctrl_pes_buffers = 
-	new cMenuEditIntItem(tr("  Number of PES packets"), &newconfig.pes_buffers, 
-			     10, 10000));
+	new cMenuEditIntItem(indent(tr("Number of PES packets")),
+                             &newconfig.pes_buffers, 10, 10000));
   else
     ctrl_pes_buffers = NULL;
 
@@ -1254,7 +1360,7 @@ void cMenuSetupLocal::Set(void)
   ctrl_audio_driver = NULL;
   ctrl_audio_port = NULL;
 
-  Add(NewTitle(tr("Local Frontend")));
+  Add(SeparatorItem(tr("Local Frontend")));
 
   Add(ctrl_local_fe = 
       new cMenuEditStraI18nItem(tr("Local Display Frontend"), &local_frontend,
@@ -1266,9 +1372,8 @@ void cMenuSetupLocal::Set(void)
   }
 
   if(local_frontend != FRONTEND_NONE) {
-    cString tmp = cString::sprintf("%s >>", tr("Decoder"));
-    Add(new cOsdItem(tmp, osUser1));
-    Add(NewTitle(tr("Video")));
+    Add(SubMenuItem(tr("Decoder"), osUser1));
+    Add(SeparatorItem(tr("Video")));
   }
 
   if(local_frontend == FRONTEND_X11) {
@@ -1300,10 +1405,10 @@ void cMenuSetupLocal::Set(void)
 						&newconfig.fullscreen));
     if(!newconfig.fullscreen) {
       Add(ctrl_window_width = 
-	  new cMenuEditTypedIntItem( tr("  Window width"), tr("px"), 
+	  new cMenuEditTypedIntItem( indent(tr("Window width")), tr("px"), 
 				     &newconfig.width, 1, 2048));
       Add(ctrl_window_height = 
-	  new cMenuEditTypedIntItem( tr("  Window height"), tr("px"), 
+	  new cMenuEditTypedIntItem( indent(tr("Window height")), tr("px"), 
 				     &newconfig.height, 1, 2048));
     }
   }
@@ -1322,7 +1427,7 @@ void cMenuSetupLocal::Set(void)
 				  xc.s_fieldOrder));
 #endif
 
-    Add(NewTitle(tr("Audio")));
+    Add(SeparatorItem(tr("Audio")));
 
     Add(ctrl_audio_driver = 
 	new cMenuEditStraI18nItem(tr("Driver"), &audio_driver, 
@@ -1480,7 +1585,7 @@ void cMenuSetupRemote::Set(void)
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
   Clear();
 
-  Add(NewTitle(tr("Remote Clients")));
+  Add(SeparatorItem(tr("Remote Clients")));
   Add(ctrl_remote_mode = new cMenuEditBoolItem(tr("Allow remote clients"), 
 					       &newconfig.remote_mode));
   ctrl_usertp = NULL;
@@ -1490,46 +1595,46 @@ void cMenuSetupRemote::Set(void)
   ctrl_http_ctrl = NULL;
   ctrl_rtsp_ctrl = NULL;
   if(newconfig.remote_mode) {
-    Add(new cMenuEditIntItem( tr("  Listen port (TCP and broadcast)"), 
+    Add(new cMenuEditIntItem( indent(tr("Listen port (TCP and broadcast)")),
 			      &newconfig.listen_port,
 			      0, 0xffff));
-    Add(new cMenuEditStrItem( tr("  Listen address"), 
+    Add(new cMenuEditStrItem( indent(tr("Listen address")),
 			      &newconfig.remote_local_ip[0], 16, "0123456789."));
-    Add(new cMenuEditBoolItem(tr("  Remote keyboard"), 
+    Add(new cMenuEditBoolItem(indent(tr("Remote keyboard")),
 			      &newconfig.remote_keyboard));
-    Add(new cMenuEditIntItem( tr("  Max number of clients"), 
+    Add(new cMenuEditIntItem( indent(tr("Max number of clients")),
 			      &newconfig.remote_max_clients,
 			      1, MAXCLIENTS));
 
-    Add(new cMenuEditBoolItem(tr("  PIPE transport"), 
+    Add(new cMenuEditBoolItem(indent(tr("PIPE transport")),
 			      &newconfig.remote_usepipe));
-    Add(new cMenuEditBoolItem(tr("  TCP transport"), 
+    Add(new cMenuEditBoolItem(indent(tr("TCP transport")),
 			      &newconfig.remote_usetcp));
-    Add(new cMenuEditBoolItem(tr("  UDP transport"), 
+    Add(new cMenuEditBoolItem(indent(tr("UDP transport")),
 			      &newconfig.remote_useudp));
-    Add(ctrl_usertp = 
-	new cMenuEditBoolItem(tr("  RTP (multicast) transport"), 
+    Add(ctrl_usertp =
+	new cMenuEditBoolItem(indent(tr("RTP (multicast) transport")),
 			      &newconfig.remote_usertp));
     if(newconfig.remote_usertp) {
       Add(ctrl_rtp_addr =
-	  new cMenuEditStrItem( tr("    Address"), 
-			        &newconfig.remote_rtp_addr[0], 16, "0123456789."));
-      Add(new cMenuEditOddIntItem( tr("    Port"), 
-				&newconfig.remote_rtp_port, 1000, 0xfffe));
-      Add(new cMenuEditIntItem( tr("    TTL"), 
-				&newconfig.remote_rtp_ttl, 1, 10));
-      Add(new cMenuEditBoolItem(tr("    Transmit always on"), 
-				&newconfig.remote_rtp_always_on));
-      Add(new cMenuEditBoolItem(tr("    SAP announcements"), 
-				&newconfig.remote_rtp_sap));
+          new cMenuEditStrItem(    inden2(tr("Address")),
+                                   &newconfig.remote_rtp_addr[0], 16, "0123456789."));
+      Add(new cMenuEditOddIntItem( inden2(tr("Port")),
+                                   &newconfig.remote_rtp_port, 1000, 0xfffe));
+      Add(new cMenuEditIntItem(    inden2(tr("TTL")),
+                                   &newconfig.remote_rtp_ttl, 1, 10));
+      Add(new cMenuEditBoolItem(   inden2(tr("Transmit always on")),
+                                   &newconfig.remote_rtp_always_on));
+      Add(new cMenuEditBoolItem(   inden2(tr("SAP announcements")),
+                                   &newconfig.remote_rtp_sap));
     }
-    Add(new cMenuEditBoolItem(tr("  Server announce broadcasts"), 
+    Add(new cMenuEditBoolItem(indent(tr("Server announce broadcasts")),
 			      &newconfig.remote_usebcast));
 
-    Add(new cMenuEditBoolItem(tr("  HTTP transport for media files"), 
+    Add(new cMenuEditBoolItem(indent(tr("HTTP transport for media files")),
 			      &newconfig.remote_http_files));
 
-    Add(NewTitle(tr("Additional network services")));
+    Add(SeparatorItem(tr("Additional network services")));
     Add(ctrl_use_http =
 	new cMenuEditBoolItem(tr("HTTP server"),
 			      &newconfig.remote_use_http));
@@ -1663,7 +1768,7 @@ void cMenuSetupMediaPlayer::Set(void)
   int current = Current();
   Clear();
 
-  Add(NewTitle(tr("Playlist settings")));
+  Add(SeparatorItem(tr("Playlist settings")));
 
   Add(media_ctrl_playlist_tracknumber =
       new cMenuEditBoolItem(tr("Show the track number"),
@@ -1688,15 +1793,15 @@ void cMenuSetupMediaPlayer::Set(void)
   Add(new cMenuEditBoolItem(tr("Arrow keys control DVD playback"),
                             &newconfig.dvd_arrow_keys_control_playback));
 
-  Add(NewTitle(tr("Media Player")));
-  Add(new cMenuEditBitItem(tr("Play file >>"),        &newconfig.media_menu_items, MEDIA_MENU_FILES));
-  Add(new cMenuEditBitItem(tr("Play music >>"),       &newconfig.media_menu_items, MEDIA_MENU_MUSIC));
-  Add(new cMenuEditBitItem(tr("View images >>"),      &newconfig.media_menu_items, MEDIA_MENU_IMAGES));
-  Add(new cMenuEditBitItem(tr("Play DVD disc >>"),    &newconfig.media_menu_items, MEDIA_MENU_DVD));
-  Add(new cMenuEditBitItem(tr("Play audio CD >>"),    &newconfig.media_menu_items, MEDIA_MENU_CD));
-  Add(new cMenuEditBitItem(tr("Play BluRay disc >>"), &newconfig.media_menu_items, MEDIA_MENU_BLURAY));
-  Add(new cMenuEditBitItem(tr("Video settings"),      &newconfig.media_menu_items, MEDIA_MENU_VIDEO_SETUP));
-  Add(new cMenuEditBitItem(tr("Audio settings"),      &newconfig.media_menu_items, MEDIA_MENU_AUDIO_SETUP));
+  Add(SeparatorItem(tr("Media Player")));
+  Add(new cMenuEditBitItem(tr("Play file"),        &newconfig.media_menu_items, MEDIA_MENU_FILES));
+  Add(new cMenuEditBitItem(tr("Play music"),       &newconfig.media_menu_items, MEDIA_MENU_MUSIC));
+  Add(new cMenuEditBitItem(tr("View images"),      &newconfig.media_menu_items, MEDIA_MENU_IMAGES));
+  Add(new cMenuEditBitItem(tr("Play DVD disc"),    &newconfig.media_menu_items, MEDIA_MENU_DVD));
+  Add(new cMenuEditBitItem(tr("Play audio CD"),    &newconfig.media_menu_items, MEDIA_MENU_CD));
+  Add(new cMenuEditBitItem(tr("Play BluRay disc"), &newconfig.media_menu_items, MEDIA_MENU_BLURAY));
+  Add(new cMenuEditBitItem(tr("Video settings"),   &newconfig.media_menu_items, MEDIA_MENU_VIDEO_SETUP));
+  Add(new cMenuEditBitItem(tr("Audio settings"),   &newconfig.media_menu_items, MEDIA_MENU_AUDIO_SETUP));
 
   if(current<1) current=1; /* first item is not selectable */
   SetCurrent(Get(current));
@@ -1828,6 +1933,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;
+      default:; // all other keys - do nothing.
     }
   }
   return state;
