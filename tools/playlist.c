@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.17.2.8 2010-02-28 09:42:34 phintuka Exp $
+ * $Id: playlist.c,v 1.17.2.9 2011-02-24 13:17:03 phintuka Exp $
  *
  */
 
@@ -489,6 +489,17 @@ void cPlaylist::Del(cPlaylistItem *it)
   m_Version++;
 }
 
+void cPlaylist::Move(int From, int To)
+{
+  cMutexLock ml(&m_Lock);
+
+  if (Count() < 3)
+    return;
+
+  cListBase::Move(From, To);
+  m_Version++;
+}
+
 void cPlaylist::SetCurrent(cPlaylistItem *current) 
 {
   cMutexLock ml(&m_Lock);
@@ -509,6 +520,24 @@ cPlaylistItem *cPlaylist::Prev(void)
   if(Current())
     return m_Current = (cList<cPlaylistItem>::Prev(Current()) ?: Last());
   return NULL;
+}
+
+cPlaylistItem *cPlaylist::Seek(int Rel)
+{
+  cMutexLock ml(&m_Lock);
+  if (!Current())
+    return NULL;
+
+  if (Rel > 0) {
+    while (Rel--)
+      m_Current = (cList<cPlaylistItem>::Next(Current()) ?: Last());
+
+  } else if (Rel < 0) {
+    while (Rel++)
+      m_Current = (cList<cPlaylistItem>::Prev(Current()) ?: First());
+  }
+
+  return Current();
 }
 
 bool cPlaylist::StoreCache(void) 
@@ -962,7 +991,7 @@ static cString EscapeString(const char *s)
   int size = strlen(s) + 16;
   char *buf = (char *)malloc(size);
   int i = 0;
-  LOGVERBOSE("cPlaylist::EscapeMrl('%s')", fn);
+  LOGVERBOSE("EscapeString('%s')", fn);
 
   while (*fn) {
     if(size-7 < i)
