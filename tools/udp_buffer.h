@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_buffer.h,v 1.6 2009-03-24 19:35:23 phintuka Exp $
+ * $Id: udp_buffer.h,v 1.6.2.1 2011-02-24 13:21:50 phintuka Exp $
  *
  */
 
@@ -111,7 +111,7 @@ class cUdpBackLog
 
       // RTP header
       header->rtp_hdr.raw[0] = RTP_VERSION_BYTE | RTP_HDREXT_BIT;
-#if VDRVERSNUM >= 10701
+#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
       if (DATA_IS_TS(Data))
         header->rtp_hdr.raw[1] = RTP_PAYLOAD_TYPE_TS;
       else
