@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.59.2.6 2009-09-14 10:10:20 phintuka Exp $
+ * $Id: frontend.c,v 1.59.2.7 2011-02-24 16:47:37 phintuka Exp $
  *
  */
 
@@ -57,8 +57,8 @@
 //
 
 /*static*/
-void cXinelibThread::KeypressHandler(const char *keymap, const char *key, 
-				     bool repeat, bool release)
+void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
+                                     bool repeat, bool release)
 {
 #ifdef XINELIBOUTPUT_LOG_KEYS
   static FILE *flog = fopen("/video/keys.log","w");
@@ -69,24 +69,46 @@ void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
 
   TRACE("keypress_handler: " << (keymap?keymap:"") << " " << key);
 
-  if(!key)
+  // check if key exists.
+  // Note: empty key ("") is used to trigger learning; it only creates the cRemote object.
+  if (!key)
     return;
 
-  if(keymap) {
-    cRemote *item = Remotes.First();
-    while(item) {
-      if(!strcmp(item->Name(), keymap)) {
-	// dirty... but only way to support learning ...
-	((cGeneralRemote*)item)->Put(key, repeat, release);
-	return;
-      }
-      item = Remotes.Next(item);
-    }
-    cGeneralRemote *r = new cGeneralRemote(keymap);
-    if(*key)
-      r->Put(key, repeat, release);
-  } else {
+  if (!keymap) {
+    // raw VDR key
     cRemote::Put(cKey::FromString(key));
+    return;
+  }
+
+  // find correct remote
+  cGeneralRemote *remote = NULL;
+  for (cRemote *item = Remotes.First(); item; item = Remotes.Next(item)) {
+    if (!strcmp(item->Name(), keymap)) {
+      // dirty... but using protected cRemote::Put() is the only way to support learning ...
+      remote = (cGeneralRemote*)item;
+      break;
+    }
+  }
+
+  // not found ? create new one
+  if (!remote)
+    remote = new cGeneralRemote(keymap);
+
+  // put key to remote queue
+  if (key[0]) {
+    if (!remote->Put(key, repeat, release)) {
+      if (!strcmp(keymap, "KBD")) {
+        uint64_t value = 0;
+        sscanf(key, "%"PRIX64, &value);
+        if (value) {
+          remote->cRemote::Put(KBDKEY(value));
+          return;
+        }
+      }
+      if (!key[1]) {
+        remote->cRemote::Put(KBDKEY(key[0]));
+      }
+    }
   }
 }
 
@@ -245,6 +267,7 @@ cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
   m_Volume = 255;
   m_bReady = false;
   m_bNoVideo = true;
+  m_bHDMode = false;
   m_bLiveMode = true; /* can't be replaying when there is no output device */
   m_StreamPos = 0;
   m_LastClearPos = 0;
@@ -281,8 +304,8 @@ bool cXinelibThread::IsReady(void)
 void cXinelibThread::SetVolume(int NewVolume)
 {
   m_Volume = NewVolume;
-  cString str = cString::sprintf("VOLUME %d%s", NewVolume * 100 / 255, 
-				 xc.sw_volume_control ? " SW" : "");
+  cString str = cString::sprintf("VOLUME %d%s", NewVolume * 100 / 255,
+                                 xc.sw_volume_control ? " SW" : "");
   Xine_Control(str);
 }
 
@@ -328,12 +351,14 @@ void cXinelibThread::SetNoVideo(bool bVal)
 
   Xine_Control("NOVIDEO", m_bNoVideo ? 1 : 0);
 
-  char *opts = NULL;
-  if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
-    opts = xc.audio_vis_goom_opts;
-
   if(m_bNoVideo && strcmp(xc.audio_visualization, "none")) {
+
+    char *opts = NULL;
+    if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+      opts = xc.audio_vis_goom_opts;
+
     ConfigurePostprocessing(xc.audio_visualization, true, opts);
+
   } else {
     ConfigurePostprocessing("AudioVisualization", false, NULL);
   }
@@ -419,11 +444,13 @@ int cXinelibThread::Poll(cPoller& Poller, int TimeoutMs)
 
 int cXinelibThread::Play_PES(const uchar *data, int len)
 {
-  Lock();
-  m_StreamPos += len;
-  m_Frames++;
-  /*m_bEndOfStreamReached = false;*/
-  Unlock();
+  if (len >= 0) {
+    Lock();
+    m_StreamPos += len;
+    m_Frames++;
+    /*m_bEndOfStreamReached = false;*/
+    Unlock();
+  }
   return len;
 }
 
@@ -513,18 +540,17 @@ int cXinelibThread::Play_Mpeg1_PES(const uchar *data1, int len)
 
 // Pack elementary MPEG stream to PES
 
-bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
+bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID, bool h264)
 {
   static uchar hdr_vid[] = {0x00,0x00,0x01,0xe0, 0x00,0x00,0x80,0x00,0x00}; /* mpeg2 */
   static uchar hdr_pts[] = {0x00,0x00,0x01,0xe0, 0x00,0x08,0x80,0x80,
                             0x05,0x00,0x00,0x00, 0x00,0x00}; /* mpeg2 */
   static uchar seq_end[] = {0x00,0x00,0x01,0xe0, 0x00,0x07,0x80,0x00,
 			    0x00,
-			    0x00,0x00,0x01,0xB7}; /* mpeg2 */
+			    0x00,0x00,0x01,SC_SEQUENCE_END}; /* mpeg2 */
   int todo = len, done = 0, hdrlen = 9/*sizeof(hdr)*/;
   uchar *frame = new uchar[PES_CHUNK_SIZE+32];
   cPoller p;
-  bool h264 = IS_NAL_AUD(data);
 
   hdr_pts[3] = (uchar)streamID;
   Poll(p, 100);
@@ -555,7 +581,7 @@ bool cXinelibThread::Play_Mpeg2_ES(const uchar *data, int len, int streamID)
   // append sequence end code to video 
   if((streamID & 0xF0) == 0xE0) { 
     seq_end[3] = (uchar)streamID;
-    seq_end[12] = h264 ? NAL_END_SEQ : 0xB7;
+    seq_end[12] = h264 ? NAL_END_SEQ : SC_SEQUENCE_END;
     Poll(p, 100);
     Play_PES(seq_end, sizeof(seq_end));
   }
@@ -706,10 +732,11 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
       break;
     case pmAudioVideo:
     default:
-      if(xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom"))
+      if (xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom")) {
 	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
-      else
+      } else {
 	strn0cpy(vis, xc.audio_visualization, sizeof(vis));
+      }
       vis[sizeof(vis)-1] = 0;
       break;
   }
@@ -801,6 +828,9 @@ void cXinelibThread::Configure(void)
     Xine_Control(cString::sprintf("SCR %s %d", 
 				  xc.live_mode_sync ? "Sync"    : "NoSync",
 				  xc.scr_tuning     ? xc.scr_hz : 90000));
+    Xine_Control("HDMODE", m_bHDMode);
+
+    Xine_Control("CONFIG END");
 }
 
 int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method, 
