@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57.2.8 2011-02-24 17:34:49 phintuka Exp $
+ * $Id: menu.c,v 1.57.2.9 2011-02-24 23:17:33 phintuka Exp $
  *
  */
 
@@ -21,6 +21,7 @@
 #include "menu.h"
 #include "menuitems.h"
 #include "tools/metainfo_menu.h"
+#include "tools/playlist.h"
 #include "device.h"
 #include "media_player.h"
 #include "equalizer.h"
@@ -126,7 +127,7 @@ cMenuBrowseFiles::~cMenuBrowseFiles()
 
 char *cMenuBrowseFiles::GetLastDir(void)
 {
-  switch(m_Mode) {
+  switch (m_Mode) {
     case ShowMusic:  return xc.browse_music_dir;
     case ShowImages: return xc.browse_images_dir;
     default:
@@ -243,7 +244,7 @@ eOSState cMenuBrowseFiles::Delete(void)
   if (!it->IsDir()) {
     if (Interface->Confirm(trVDR("Delete recording?"))) {
       cString name = cString::sprintf("%s/%s", m_CurrentDir, it->Name());
-      if(!unlink(name)) {
+      if (!unlink(name)) {
         isyslog("file %s deleted", *name);
         if (m_Mode != ShowImages) {
           name = cString::sprintf("%s.resume", *name);
@@ -278,42 +279,50 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
   /* directory */
   } else if (GetCurrent()->IsDir()) {
 
-    if(!ForceOpen && GetCurrent()->IsDvd()) {
+    if (!ForceOpen && GetCurrent()->IsDvd()) {
       /* play dvd */
-      cString f = cString::sprintf("dvd:%s/%s", m_CurrentDir, GetCurrent()->Name());
+      cString f = cPlaylist::BuildMrl("dvd", m_CurrentDir, "/", GetCurrent()->Name());
       cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl(f));
       return osEnd;
     }
-    if(ForceOpen && GetCurrent()->IsDir() &&
-       !GetCurrent()->IsDvd() && !GetCurrent()->IsBluRay()) {
+    if (!ForceOpen && GetCurrent()->IsBluRay()) {
+      /* play BluRay disc/image */
+      cString f = cPlaylist::BuildMrl("bluray", m_CurrentDir, "/", GetCurrent()->Name());
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibDvdPlayerControl(f));
+      return osEnd;
+    }
+    if (ForceOpen && GetCurrent()->IsDir() &&
+        !GetCurrent()->IsDvd() &&
+        !GetCurrent()->IsBluRay()) {
       /* play all files */
-      if(m_Mode != ShowImages) {
+      if (m_Mode != ShowImages) {
 
-	if(m_OnlyQueue && !Queue)
-	  return osContinue;
+        if (m_OnlyQueue && !Queue)
+          return osContinue;
 
-	cString f = cString::sprintf("%s/%s/", m_CurrentDir, GetCurrent()->Name());
+        cString f = cString::sprintf("%s/%s/", m_CurrentDir, GetCurrent()->Name());
 
-	if(!Queue || !cXinelibPlayerControl::IsOpen())
-	  cControl::Shutdown();
-	if(Queue)
-	  cXinelibPlayerControl::Queue(f);
-	else 
-	  cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
-	return Queue ? osContinue : osEnd;
+        if (!Queue || !cXinelibPlayerControl::IsOpen())
+          cControl::Shutdown();
+        if (Queue)
+          cXinelibPlayerControl::Queue(f);
+        else
+          cControl::Launch(new cXinelibPlayerControl(m_Mode, f));
+        return Queue ? osContinue : osEnd;
 
       } else {
-	// TODO: show all images
+        // TODO: show all images
       }
     }
 
     /* go to directory */
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
-    if(asprintf(&buffer, "%s/%s", m_CurrentDir, d) >= 0) {
-      while(buffer[0] == '/' && buffer[1] == '/')
-        strcpy(buffer, buffer+1);
+    if (asprintf(&buffer, "%s/%s", m_CurrentDir, d) >= 0) {
+      while (buffer[0] == '/' && buffer[1] == '/')
+        memmove(buffer, buffer+1, strlen(buffer));
       free(m_CurrentDir);
       m_CurrentDir = buffer;
     }
@@ -322,43 +331,39 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
   /* regular file */
   } else {
-    cString f = cString::sprintf("%s%s/%s", 
-				 GetCurrent()->IsDvd() ? "dvd:" : "",
-				 m_CurrentDir, GetCurrent()->Name());
-    if (GetCurrent()->IsDvd()) 
-      strn0cpy(m_ConfigLastDir, m_CurrentDir, sizeof(xc.browse_files_dir));
-    else
-      strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
+    cString f = cString::sprintf("%s/%s", m_CurrentDir, GetCurrent()->Name());
+
+    strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
     StoreConfig();
 
-    if(m_Mode != ShowImages) {
+    if (m_Mode != ShowImages) {
       /* video/audio */
-      if(m_OnlyQueue && !Queue)
-	return osContinue;
-      if(!Queue || !cXinelibPlayerControl::IsOpen())
-	cControl::Shutdown();
-      if(Queue)
-	cXinelibPlayerControl::Queue(f);
-      if(!cXinelibPlayerControl::IsOpen()) {
+      if (m_OnlyQueue && !Queue)
+        return osContinue;
+      if (!Queue || !cXinelibPlayerControl::IsOpen())
+        cControl::Shutdown();
+      if (Queue)
+        cXinelibPlayerControl::Queue(f);
+      if (!cXinelibPlayerControl::IsOpen()) {
         if (Rewind)
           unlink(cString::sprintf("%s.resume", *f));
-	cControl::Launch(GetCurrent()->IsDvd()
-			 ? new cXinelibDvdPlayerControl(f)
-			 : new cXinelibPlayerControl(m_Mode, f, GetCurrent()->SubFile()));
+        cControl::Launch(GetCurrent()->IsDvd()
+                         ? new cXinelibDvdPlayerControl(cPlaylist::BuildMrl("dvd", f))
+                         : new cXinelibPlayerControl(m_Mode, f, GetCurrent()->SubFile()));
       }
-      if(Queue)
-	return osContinue;
+      if (Queue)
+        return osContinue;
     } else {
       /* image */
       char **files = new char*[Count()+1];
       int i = 0, index = 0;
       memset(files, 0, sizeof(char*)*(Count()+1));
-      for(cFileListItem *it = (cFileListItem*)First(); it; it=(cFileListItem*)Next(it)) {
-	if(it==Get(Current()))
-	  index = i;
-	if(!it->IsDir())
-          if(asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name()) < 0)
-            i--;
+      for (cFileListItem *it = (cFileListItem*)First(); it; it=(cFileListItem*)Next(it)) {
+        if (it == Get(Current()))
+          index = i;
+        if (!it->IsDir())
+          if (asprintf(&files[i++], "%s/%s", m_CurrentDir, it->Name()) < 0)
+             i--;
       }
       cControl::Shutdown();
       cControl::Launch(new cXinelibImagesControl(files, index, i));
@@ -401,7 +406,7 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
             if (m_Mode == ShowImages || m_Mode == ShowMusic)
               Add(new cFileListItem(e->d_name, true));
             else
-              Add(new cFileListItem(e->d_name, true, false, false,
+              Add(new cFileListItem(e->d_name, true, false, NULL,
                                     xc.IsDvdFolder(buffer), xc.IsBluRayFolder(buffer)));
 
           // regular files
@@ -412,12 +417,12 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
               Add(new cFileListItem(e->d_name, false));
 
             // images
-            } else if(m_Mode == ShowImages && xc.IsImageFile(buffer)) {
+            } else if (m_Mode == ShowImages && xc.IsImageFile(buffer)) {
               Add(new cFileListItem(e->d_name, false));
 
             // DVD image (.iso)
             } else if (m_Mode == ShowFiles && xc.IsDvdImage(buffer)) {
-              Add(new cFileListItem(e->d_name, false, false, false, true));
+              Add(new cFileListItem(e->d_name, false, false, NULL, true));
 
             // video
             } else if (m_Mode == ShowFiles && xc.IsVideoFile(buffer)) {
@@ -624,15 +629,6 @@ eOSState cDisplaySpuTracks::ProcessKey(eKeys Key)
 
 #include "tools/display_message.h"
 
-static cOsdItem *NewTitle(const char *s)
-{
-  cString str = cString::sprintf("----- %s -----", s);
-  cOsdItem *tmp = new cOsdItem(str);
-  tmp->SetSelectable(false);
-  return tmp;
-}
-
-
 extern cOsdObject *g_PendingMenuAction;
 
 time_t cMenuXinelib::g_LastHotkeyTime = 0;
@@ -648,32 +644,27 @@ cMenuXinelib::cMenuXinelib()
 
   novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
-  Add(NewTitle(tr("Media")));
+  Add(SeparatorItem(tr("Media")));
   if (xc.media_menu_items & MEDIA_MENU_FILES)
-    Add(new cOsdItem(tr("Play file >>"), osUser1));
+    Add(SubMenuItem(tr("Play file"),        osUser1));
   if (xc.media_menu_items & MEDIA_MENU_MUSIC)
-    Add(new cOsdItem(tr("Play music >>"), osUser2));
+    Add(SubMenuItem(tr("Play music"),       osUser2));
   if (xc.media_menu_items & MEDIA_MENU_IMAGES)
-    Add(new cOsdItem(tr("View images >>"), osUser3));
-  if (xc.media_menu_items & MEDIA_MENU_DVD) {
-    if(xc.remote_mode)
-      Add(new cOsdItem(tr("Play remote DVD >>"), osUser4));
-    else
-      Add(new cOsdItem(tr("Play DVD disc >>"), osUser4));
-  }
-  if (xc.media_menu_items & MEDIA_MENU_CD) {
-    if(xc.remote_mode)
-      Add(new cOsdItem(tr("Play remote CD >>"), osUser6));
-    else
-      Add(new cOsdItem(tr("Play audio CD >>"), osUser6));
-  }
+    Add(SubMenuItem(tr("View images"),      osUser3));
+  if (xc.media_menu_items & MEDIA_MENU_DVD)
+    Add(SubMenuItem(tr("Play DVD disc"),    osUser4));
+  if (xc.media_menu_items & MEDIA_MENU_BLURAY)
+    Add(SubMenuItem(tr("Play BluRay disc"), osUser5));
+  if (xc.media_menu_items & MEDIA_MENU_CD)
+    Add(SubMenuItem(tr("Play audio CD"),    osUser6));
+
 #if VDRVERSNUM < 10515
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
     Add(new cOsdItem(tr("Select subtitle track >>"), osUser5));
 #endif
  
   if (xc.media_menu_items & MEDIA_MENU_VIDEO_SETUP) {
-    Add(NewTitle(tr("Video settings")));
+    Add(SeparatorItem(tr("Video settings")));
     Add(ctrl_novideo = new cMenuEditBoolItem(tr("Play only audio"),
                                              &novideo));
     Add(ctrl_autocrop = new cMenuEditBoolItem(tr("Crop letterbox 4:3 to 16:9"),
@@ -684,10 +675,10 @@ cMenuXinelib::cMenuXinelib()
   }
 
   if (xc.media_menu_items & MEDIA_MENU_AUDIO_SETUP) {
-    Add(NewTitle(tr("Audio settings")));
+    Add(SeparatorItem(tr("Audio settings")));
     Add(audio_ctrl_compress = new cMenuEditTypedIntItem(tr("Audio Compression"), "%",
                                                         &compression, 100, 500, NULL, tr("Off")));
-    Add(new cOsdItem(tr("Audio equalizer >>"), osUser7));
+    Add(SubMenuItem(tr("Audio equalizer"), osUser7));
   }
 
   switch (xc.main_menu_mode) {
@@ -735,7 +726,7 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
   if (hotkey_state == hkInit && Key == HOTKEY_START) {
     hotkey_state = hkSeen;
     return osContinue;
-  } else if(hotkey_state == hkSeen && Key != kNone) {
+  } else if (hotkey_state == hkSeen && Key != kNone) {
     hotkey_state = hkNone;
     return ProcessHotkey(Key);
   }
@@ -761,6 +752,10 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
     case osUser4:
       cControl::Shutdown();
       cControl::Launch(new cXinelibDvdPlayerControl("dvd:/"));
+      return osEnd;
+    case osUser5:
+      cControl::Shutdown();
+      cControl::Launch(new cXinelibDvdPlayerControl("bluray:/"));
       return osEnd;
     case osUser6:
       cControl::Shutdown();
