@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.57.2.11 2009-09-14 13:09:23 phintuka Exp $
+ * $Id: device.c,v 1.57.2.12 2011-02-24 16:59:58 phintuka Exp $
  *
  */
 
@@ -259,6 +259,9 @@ bool cXinelibDevice::StartDevice()
     }
     if(xc.force_primary_device)
       ForcePrimaryDevice(true);
+    else if (cDevice::PrimaryDevice() && this != cDevice::PrimaryDevice()) {
+      LOGMSG("WARNING: xineliboutput is not the primary device !");
+    }
   }
 
   if(m_server) {
@@ -320,7 +323,7 @@ void cXinelibDevice::StopDevice(void)
 // Primary device switching
 //
 
-void cXinelibDevice::MakePrimaryDevice(bool On) 
+void cXinelibDevice::MakePrimaryDevice(bool On)
 {
   TRACEF("cXinelibDevice::MakePrimaryDevice");
 
@@ -330,16 +333,19 @@ void cXinelibDevice::MakePrimaryDevice(bool On)
     new cXinelibOsdProvider(this);
 }
 
-void cXinelibDevice::ForcePrimaryDevice(bool On) 
+bool cXinelibDevice::ForcePrimaryDevice(bool On)
 {
   TRACEF("cXinelibDevice::ForcePrimaryDevice");
 
   m_MainThreadLock.Lock();
   m_MainThreadFunctors.Add(CreateFunctor(this, &cXinelibDevice::ForcePrimaryDeviceImpl, On));
   m_MainThreadLock.Unlock();
+
+  return xc.force_primary_device ||
+         (cDevice::PrimaryDevice() && this == cDevice::PrimaryDevice());
 }
 
-void cXinelibDevice::ForcePrimaryDeviceImpl(bool On) 
+void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
 {
   TRACEF("cXinelibDevice::ForcePrimaryDeviceImpl");
   ASSERT(cThread::IsMainThread(), false);
@@ -819,6 +825,7 @@ void cXinelibDevice::Play(void)
   
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   TrickSpeed(-1);
+  cDevice::Play();
 }
 
 void cXinelibDevice::Freeze(void) 
@@ -826,6 +833,7 @@ void cXinelibDevice::Freeze(void)
   TRACEF("cXinelibDevice::Freeze");
 
   TrickSpeed(0);
+  cDevice::Freeze();
 }
 
 int64_t cXinelibDevice::GetSTC(void)
@@ -862,7 +870,7 @@ bool cXinelibDevice::Flush(int TimeoutMs)
 
 int cXinelibDevice::PlayFileCtrl(const char *Cmd, int TimeoutMs)
 {
-  TRACEF("cXinelibDevice::PlayFile");
+  TRACEF("cXinelibDevice::PlayFileCtrl");
   int result = -1;
 
   /*if(m_PlayingFile != pmNone)*/ {
