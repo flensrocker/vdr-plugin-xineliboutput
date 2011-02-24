@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.25.2.4 2009-09-18 10:59:35 phintuka Exp $
+ * $Id: osd.c,v 1.25.2.5 2011-02-24 17:54:15 phintuka Exp $
  *
  */
 
@@ -19,6 +19,10 @@
 #include "tools/rle.h"
 
 #include "osd.h"
+
+#ifndef OSD_LEVEL_TTXTSUBS
+#define OSD_LEVEL_TTXTSUBS 20 // from ttxtsubs plugin
+#endif
 
 //#define LIMIT_OSD_REFRESH_RATE
 
@@ -93,6 +97,7 @@ class cXinelibOsd : public cOsd, public cListObject
 
     void CloseWindows(void);
     void CmdSize(int Width, int Height);
+    void CmdVideoWindow(int X, int Y, int W, int H);
     void CmdRle(int Wnd, int X0, int Y0,
 		int W, int H, unsigned char *Data,
 		int Colors, unsigned int *Palette, 
@@ -198,6 +203,26 @@ void cXinelibOsd::CmdSize(int Width, int Height)
   }
 }
 
+void cXinelibOsd::CmdVideoWindow(int X, int Y, int W, int H)
+{
+  TRACEF("cXinelibOsd::CmdVideoWindow");
+
+  if (m_Device) {
+    osd_command_t osdcmd = {0};
+
+    for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
+      osdcmd.cmd = OSD_VideoWindow;
+      osdcmd.wnd = m_WindowHandles[Wnd];
+      osdcmd.x   = X;
+      osdcmd.y   = Y;
+      osdcmd.w   = W;
+      osdcmd.h   = H;
+
+      m_Device->OsdCmd((void*)&osdcmd);
+    }
+  }
+}
+
 void cXinelibOsd::CmdMove(int Wnd, int NewX, int NewY)
 {
   TRACEF("cXinelibOsd::CmdMove");
@@ -287,6 +312,8 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
     osdcmd.colors  = Colors;
     osdcmd.palette = clut;
     osdcmd.scaling = xc.osd_scaling;
+    if (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)
+      osdcmd.scaling = xc.osd_spu_scaling;
 
     if (DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
@@ -368,6 +395,21 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
     return oeTooManyAreas;
   }
 
+#if VDRVERSNUM >= 10708
+
+  if (xc.osd_spu_scaling && (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)) {
+    m_ExtentWidth  = 720;
+    m_ExtentHeight = 576;
+  } else {
+    double Aspect;
+    int    W, H;
+    m_Device->GetOsdSize(W, H, Aspect);
+    m_ExtentWidth  = W;
+    m_ExtentHeight = H;
+  }
+
+#else
+
   // Detect full OSD area size
   if(Left() + Width() > 720 || Top() + Height() > 576) {
     m_ExtentWidth  = Setup.OSDWidth  + 2 * Setup.OSDLeft;
@@ -379,6 +421,9 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
     m_ExtentWidth  = 720;
     m_ExtentHeight = 576;
   }
+
+#endif
+
   CmdSize(m_ExtentWidth, m_ExtentHeight);
 
   return Result;
@@ -430,9 +475,23 @@ void cXinelibOsd::Flush(void)
   if(!m_IsVisible)
     return;
 
-  int SendDone = 0;
+  int SendDone = 0, XOffset = 0, YOffset = 0;
+
+  if (!xc.osd_spu_scaling && (m_Layer == OSD_LEVEL_SUBTITLES || m_Layer == OSD_LEVEL_TTXTSUBS)) {
+    double Aspect;
+    int    W, H;
+    m_Device->GetOsdSize(W, H, Aspect);
+    YOffset = (H - 576) > 0 ? (H - 576) : 0;
+    XOffset = ((W - 720) / 2) ? ((W - 720) / 2) : 0;
+  }
+
+#ifdef YAEPGHDVERSNUM
+  if (vidWin.bpp)
+    CmdVideoWindow(vidWin.x1, vidWin.y1, vidWin.Width(), vidWin.Height());
+#endif
+
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
-    int x1 = 0, y1 = 0, x2 = Bitmap->Width()-1, y2 = Bitmap->Height()-1;
+    int x1 = 0, y1 = 0, x2 = x1+Bitmap->Width()-1, y2 = y1+Bitmap->Height()-1;
     if (m_Refresh || Bitmap->Dirty(x1, y1, x2, y2)) {
 
       /* XXX what if only palette has been changed ? */
@@ -441,7 +500,7 @@ void cXinelibOsd::Flush(void)
       if (Colors) {
 	osd_rect_t DirtyArea = {x1:x1, y1:y1, x2:x2, y2:y2};
 	CmdRle(i,
-	       Left() + Bitmap->X0(), Top() + Bitmap->Y0(),
+	       Left() + Bitmap->X0() + XOffset, Top() + Bitmap->Y0() + YOffset,
 	       Bitmap->Width(), Bitmap->Height(),
 	       (unsigned char *)Bitmap->Data(0,0),
 	       NumColors, (unsigned int *)Colors,
