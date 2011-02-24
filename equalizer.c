@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: equalizer.c,v 1.4 2007-10-15 00:15:07 phintuka Exp $
+ * $Id: equalizer.c,v 1.4.2.1 2011-02-24 17:11:25 phintuka Exp $
  *
  */
 
@@ -99,6 +99,7 @@ eOSState cEqualizer::ProcessKey(eKeys key)
       case kOk:
         memcpy(xc.audio_equalizer, m_Values, sizeof(xc.audio_equalizer));
 	return osEnd;
+      default:; // all other keys - do nothing.
     }
   }
 
