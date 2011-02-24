@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.24.2.2 2009-09-14 09:42:39 phintuka Exp $
+ * $Id: frontend.h,v 1.24.2.3 2011-02-24 16:40:05 phintuka Exp $
  *
  */
 
@@ -54,6 +54,9 @@ class cXinelibThread : public cThread, public cListObject
     void SetSubtitleTrack(eTrackType Track);
 #endif
 
+    // Sync(): wait until all pending control messages have been processed by the client
+    virtual void Sync(void) { Xine_Control("SYNC"); };
+
   protected:
     int  Xine_Control(const char *cmd, const char *p1);
     int  Xine_Control(const char *cmd, int p1);
@@ -74,12 +77,12 @@ class cXinelibThread : public cThread, public cListObject
     virtual int     Play_PES(const uchar *buf, int len);
     virtual void    OsdCmd(void *cmd) = 0;
     virtual int64_t GetSTC(void) { return -1; }
-    virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE",On?1:0); };
+    virtual void    SetHDMode(bool On) { (void)Xine_Control("HDMODE", m_bHDMode = On); };
     virtual void    SetHeader(const uchar *data, int length, bool reset = false) {};
 
     // Stream type conversions
     int     Play_Mpeg1_PES(const uchar *data, int len);
-    bool    Play_Mpeg2_ES(const uchar *data, int len, int streamID);
+    bool    Play_Mpeg2_ES(const uchar *data, int len, int streamID, bool h264 = false);
 
     // Built-in still images
     bool BlankDisplay(void);
@@ -88,7 +91,7 @@ class cXinelibThread : public cThread, public cListObject
     bool NoSignalDisplay(void);
 
     // Playback files
-    virtual bool PlayFile(const char *FileName, int Position, 
+    virtual bool PlayFile(const char *FileName, int Position = 0, 
 			  bool LoopPlay = false, ePlayMode PlayMode = pmAudioVideo,
 			  int TimeoutMs = -1);
     virtual int  PlayFileCtrl(const char *Cmd, int TimeoutMs=-1) { return Xine_Control(Cmd); }
@@ -135,6 +138,7 @@ class cXinelibThread : public cThread, public cListObject
     bool m_bReady;
     bool m_bNoVideo;
     bool m_bLiveMode;
+    bool m_bHDMode;
     bool m_bEndOfStreamReached;
     bool m_bPlayingFile;
     int  m_Volume;
