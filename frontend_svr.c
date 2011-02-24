@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.83.2.1 2011-02-24 17:07:10 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.83.2.2 2011-02-24 19:06:21 phintuka Exp $
  *
  */
 
@@ -525,6 +525,9 @@ int cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
 
 bool cXinelibServer::Flush(int TimeoutMs)
 {
+  if (!HasClients())
+    return true;
+
   int  result = true;
 
   if(m_Scheduler)
