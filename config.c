@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.71 2008-09-19 12:13:26 phintuka Exp $
+ * $Id: config.c,v 1.71.2.1 2011-02-24 15:26:23 phintuka Exp $
  *
  */
 
@@ -234,6 +234,16 @@ const char * const config_t::s_osdScalings[] = {
   NULL
 };
 
+const char * const config_t::s_osdSizes[] = {
+  trNOOP("automatic"),
+  "720x576",
+  "1280x720",
+  "1920x1080",
+  trNOOP("custom"),
+  trNOOP("video stream"),
+  NULL
+};
+
 const char * const config_t::s_decoders_MPEG2[] = {
   trNOOP("automatic"),
   "libmpeg2",
@@ -307,7 +317,10 @@ static const char exts_video[][8] = {
   "mpv",
   "mp4",
   "m2v",
+  "m2t",
+  "m2ts",
   "m4v",
+  "mts",
   "pes",
   "rm",
   "ts",
@@ -391,13 +404,73 @@ bool config_t::IsImageFile(const char *fname)
   return ext && (ext_is_image(ext) || ext_is_playlist(ext));
 }
 
+bool config_t::IsDvdImage(const char *fname)
+{
+  const char *ext = get_extension(fname);
+  return (ext && !strcasecmp(ext, "iso")) ? true : false;
+}
+
+bool config_t::IsDvdFolder(const char *fname)
+{
+  struct stat st;
+
+  cString folder = cString::sprintf("%s/VIDEO_TS/", fname);
+  if (stat(folder, &st) != 0) {
+    folder = cString::sprintf("%s/video_ts/", fname);
+    if (stat(folder, &st) != 0)
+      return false;
+  }
+
+  if (stat(cString::sprintf("%s/video_ts.ifo", *folder), &st) == 0)
+    return true;
+
+  if (stat(cString::sprintf("%s/VIDEO_TS.IFO", *folder), &st) == 0)
+    return true;
+
+  return false;
+}
+
+bool config_t::IsBluRayFolder(const char *fname)
+{
+  struct stat st;
+
+  cString folder = cString::sprintf("%s/BDMV/", fname);
+  if (stat(folder, &st) != 0) {
+    folder = cString::sprintf("%s/bdmv/", fname);
+    if (stat(folder, &st) != 0)
+      return false;
+  }
+
+  if (stat(cString::sprintf("%s/MovieObject.bdmv", *folder), &st) == 0)
+    return true;
+
+  if (stat(cString::sprintf("%s/movieobject.bdmv", *folder), &st) == 0)
+    return true;
+
+  if (stat(cString::sprintf("%s/MOVIEOBJECT.BDMV", *folder), &st) == 0)
+    return true;
+
+  return false;
+}
+
 cString config_t::AutocropOptions(void)
 {
   if (!autocrop)
     return NULL;
 
-  return cString::sprintf("enable_autodetect=%d,soft_start=%d,stabilize=%d,enable_subs_detect=%d",
-			  autocrop_autodetect, autocrop_soft, autocrop_fixedsize, autocrop_subs);
+  return cString::sprintf(
+                  "enable_autodetect=%d,autodetect_rate=%d,"
+                  "soft_start=%d,soft_start_step=%d,"
+                  "stabilize=%d,stabilize_time=%d,"
+                  "enable_subs_detect=%d,subs_detect_lifetime=%d,subs_detect_stabilize_time=%d,"
+                  "logo_width=%d,overscan_compensate=%d,use_driver_crop=%d,"
+                  "use_avards_analysis=%d,bar_tone_tolerance=%d",
+			  autocrop_autodetect, autocrop_autodetect_rate,
+			  autocrop_soft, autocrop_soft_start_step,
+			  autocrop_fixedsize, autocrop_stabilize_time,
+			  autocrop_subs, autocrop_subs_detect_lifetime, autocrop_subs_detect_stabilize_time,
+			  autocrop_logo_width, autocrop_overscan_compensate, autocrop_use_driver_crop,
+			  autocrop_use_avards_analysis, autocrop_bar_tone_tolerance);
 }
 
 cString config_t::SwScaleOptions(void)
@@ -460,12 +533,14 @@ config_t::config_t() {
   speaker_type = SPEAKERS_STEREO;
 
   post_plugins = NULL;
+  config_file = NULL;
 
   audio_delay       = 0;
   audio_compression = 0;
   memset(audio_equalizer,0,sizeof(audio_equalizer));
   strn0cpy(audio_visualization, "goom", sizeof(audio_visualization));
   strn0cpy(audio_vis_goom_opts, "fps:25,width:720,height:576", sizeof(audio_vis_goom_opts));
+  strn0cpy(audio_vis_image_mrl, "file:/usr/share/xine/visuals/default.avi", sizeof(audio_vis_image_mrl));
 
   headphone = 0;
   audio_upmix = 0;
@@ -496,9 +571,16 @@ config_t::config_t() {
   display_aspect       = 0;     /* auto */
 
   hide_main_menu       = 0;
+  osd_size             = OSD_SIZE_auto;
+  osd_width            = 720;
+  osd_height           = 576;
+  osd_width_auto       = 0;
+  osd_height_auto      = 0;
   osd_mixer            = OSD_MIXER_FULL;
   osd_scaling          = OSD_SCALING_NEAREST;
+  osd_spu_scaling      = OSD_SCALING_NEAREST;
   hud_osd              = 0;
+  opengl               = 0;
 
   osd_blending             = OSD_BLENDING_SOFTWARE;
   osd_blending_lowresvideo = OSD_BLENDING_HARDWARE;
@@ -523,11 +605,23 @@ config_t::config_t() {
   height         = 576;
   scale_video    = 0;
   field_order    = 0;
+
   autocrop       = 0;
   autocrop_autodetect = 1;
+  autocrop_autodetect_rate = 4;
   autocrop_soft  = 1;
+  autocrop_soft_start_step  = 4;
   autocrop_fixedsize = 1;
+  autocrop_stabilize_time = (5*25);
   autocrop_subs  = 1;
+  autocrop_subs_detect_lifetime = (60*25);
+  autocrop_subs_detect_stabilize_time = 12;
+  autocrop_logo_width = 20;
+  autocrop_use_driver_crop = 0;
+  autocrop_use_avards_analysis = 0;
+  autocrop_overscan_compensate = 0;
+  autocrop_bar_tone_tolerance = 0;
+
 
   swscale               = 0;    // enable/disable
   swscale_change_aspect = 0;    // change video aspect ratio
@@ -539,6 +633,7 @@ config_t::config_t() {
   remote_mode    = 0;
   listen_port    = LISTEN_PORT;
   remote_keyboard = 1;
+  remote_max_clients = MAXCLIENTS;
   remote_usetcp   = 1;
   remote_useudp   = 1;
   remote_usertp   = 1;
@@ -576,10 +671,12 @@ config_t::config_t() {
   saturation   = -1; 
   contrast     = -1; 
   brightness   = -1; 
+  sharpness    = -1;
+  noise_reduction = -1;
   vo_aspect_ratio = 0;
 
   live_mode_sync = 1;      // Sync SCR to transponder clock in live mode
-  scr_tunning    = 0;      // Fine-tune xine egine SCR (to sync video to graphics output)
+  scr_tuning     = 0;      // Fine-tune xine egine SCR (to sync video to graphics output)
   scr_hz         = 90000;  // Current SCR speed (Hz), default is 90000
 
   decoder_mpeg2  = DECODER_MPEG2_auto;
@@ -587,12 +684,14 @@ config_t::config_t() {
   ff_h264_speed_over_accurancy = FF_H264_SPEED_OVER_ACCURACY_auto;
   ff_h264_skip_loop_filter     = FF_H264_SKIP_LOOPFILTER_auto;
 
+  strn0cpy(media_root_dir,    "/",            sizeof(media_root_dir));
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
   strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
   cache_implicit_playlists = 1;
   enable_id3_scanner = 1;
   dvd_arrow_keys_control_playback = 1;
+  media_menu_items = ~0;
 
   main_menu_mode = ShowMenu;
   force_primary_device = 0;
@@ -615,7 +714,7 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
 
 bool config_t::ProcessArgs(int argc, char *argv[])
 {
-  static const char short_options[] = "fDw:h:l:r:A:V:d:P:pc";
+  static const char short_options[] = "fDw:h:l:r:A:V:d:P:C:pc";
 
   static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
@@ -631,9 +730,10 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       { "video",        required_argument, NULL, 'V' },
       { "display",      required_argument, NULL, 'd' },
       { "post",         required_argument, NULL, 'P' },
+      { "config",       required_argument, NULL, 'C' },
       { "primary",      no_argument,       NULL, 'p' },
-      { "exit-on-close",no_argument,     NULL, 'c' },
-      { NULL }
+      { "exit-on-close",no_argument,       NULL, 'c' },
+      { NULL,           no_argument,       NULL,  0  }
     };
 
   int c;
@@ -695,6 +795,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
                 post_plugins = strcatrealloc(post_plugins, ";");
               post_plugins = strcatrealloc(post_plugins, optarg);
               break;
+    case 'C': config_file = strdup(optarg);
+              break;
     case 'p': ProcessArg("ForcePrimaryDevice", "1");
               break;
     case 'c': exit_on_close = 1;
@@ -708,7 +810,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
 
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
-  char *pt;
+  const char *pt;
   if(*m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
      *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ') {
     LOGDBG("Skipping configuration entry %s=%s (overridden in command line)", Name, Value);
@@ -734,6 +836,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Audio.Delay"))  audio_delay = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Compression")) audio_compression = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Visualization.GoomOpts")) STRN0CPY(audio_vis_goom_opts, Value);
+  else if (!strcasecmp(Name, "Audio.Visualization.ImageMRL")) STRN0CPY(audio_vis_image_mrl, Value);
   else if (!strcasecmp(Name, "Audio.Visualization")) STRN0CPY(audio_visualization, Value);
   else if (!strcasecmp(Name, "Audio.Surround"))  audio_surround = atoi(Value);
   else if (!strcasecmp(Name, "Audio.Upmix"))     audio_upmix = atoi(Value);
@@ -741,8 +844,12 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Audio.SoftwareVolumeControl")) sw_volume_control = atoi(Value);
 
   else if (!strcasecmp(Name, "OSD.HideMainMenu"))   hide_main_menu = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Size"))           osd_size = strstra(Value, s_osdSizes, 0);
+  else if (!strcasecmp(Name, "OSD.Width"))          osd_width = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.Height"))         osd_height = atoi(Value);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.ScalingSPU"))     osd_spu_scaling = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Blending"))       osd_blending = atoi(Value);
   else if (!strcasecmp(Name, "OSD.BlendingLowRes")) osd_blending_lowresvideo = atoi(Value);
 #if 1
@@ -766,6 +873,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "RemoteMode"))          remote_mode = atoi(Value);
   else if (!strcasecmp(Name, "Remote.ListenPort"))   listen_port = atoi(Value);
   else if (!strcasecmp(Name, "Remote.Keyboard"))     remote_keyboard = atoi(Value);
+  else if (!strcasecmp(Name, "Remote.MaxClients"))   remote_max_clients = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseTcp"))       remote_usetcp = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseUdp"))       remote_useudp = atoi(Value);
   else if (!strcasecmp(Name, "Remote.UseRtp"))       remote_usertp = atoi(Value);
@@ -798,9 +906,19 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetectRate"))   autocrop_autodetect_rate = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.SoftStart"))    autocrop_soft = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SoftStartStep"))    autocrop_soft_start_step = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.FixedSize"))    autocrop_fixedsize = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.StabilizeTime"))    autocrop_stabilize_time = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.DetectSubs"))   autocrop_subs = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SubsDetectLifetime"))   autocrop_subs_detect_lifetime = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.SubsDetectStabilizeTime"))   autocrop_subs_detect_stabilize_time = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.LogoWidth"))   autocrop_logo_width = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.UseDriverCrop"))   autocrop_use_driver_crop = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.UseAvardsAnalysis"))   autocrop_use_avards_analysis = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.OverscanCompensate"))   autocrop_overscan_compensate = atoi(Value);
+  else if (!strcasecmp(Name, "Video.AutoCrop.BarToneTolerance"))   autocrop_bar_tone_tolerance = atoi(Value);
 
   else if (!strcasecmp(Name, "Video.SwScale"))           swscale = atoi(Value);
   else if (!strcasecmp(Name, "Video.SwScale.Aspect"))    swscale_change_aspect = atoi(Value);
@@ -813,6 +931,8 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Saturation"))  saturation = atoi(Value);
   else if (!strcasecmp(Name, "Video.Contrast"))    contrast = atoi(Value);
   else if (!strcasecmp(Name, "Video.Brightness"))  brightness = atoi(Value);
+  else if (!strcasecmp(Name, "Video.Sharpness"))   sharpness = atoi(Value);
+  else if (!strcasecmp(Name, "Video.NoiseReduction")) noise_reduction = atoi(Value);
   else if (!strcasecmp(Name, "Video.Overscan"))    overscan = atoi(Value);
   else if (!strcasecmp(Name, "Video.IBPTrickSpeed"))  ibp_trickspeed = atoi(Value);
   else if (!strcasecmp(Name, "Video.MaxTrickSpeed"))  max_trickspeed = atoi(Value);
@@ -840,19 +960,21 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Post.denoise3d.chroma"))  denoise3d_chroma = atoi(Value);
   else if (!strcasecmp(Name, "Post.denoise3d.time"))    denoise3d_time   = atoi(Value);
 
+  else if (!strcasecmp(Name, "Media.RootDir"))           STRN0CPY(media_root_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseFilesDir"))    STRN0CPY(browse_files_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseMusicDir"))    STRN0CPY(browse_music_dir, Value);
   else if (!strcasecmp(Name, "Media.BrowseImagesDir"))   STRN0CPY(browse_images_dir, Value);
   else if (!strcasecmp(Name, "Media.CacheImplicitPlaylists")) cache_implicit_playlists = atoi(Value);
   else if (!strcasecmp(Name, "Media.EnableID3Scanner"))  enable_id3_scanner = atoi(Value);
   else if (!strcasecmp(Name, "Media.DVD.ArrowKeysControlPlayback")) dvd_arrow_keys_control_playback = atoi(Value);
+  else if (!strcasecmp(Name, "Media.MenuItems"))         media_menu_items = atoi(Value);
 
   else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Album"))       playlist_album = atoi(Value);
 
   else if (!strcasecmp(Name, "Advanced.LiveModeSync")) live_mode_sync = atoi(Value);
-  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tunning = atoi(Value);
+  else if (!strcasecmp(Name, "Advanced.AdjustSCR"))    scr_tuning = atoi(Value);
   else if (!strcasecmp(Name, "Advanced.SCRSpeed"))     scr_hz = atoi(Value);
 
   else if (!strcasecmp(Name, "Audio.Equalizer")) 
