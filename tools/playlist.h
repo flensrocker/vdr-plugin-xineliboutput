@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.h,v 1.11 2010-02-03 11:23:11 phintuka Exp $
+ * $Id: playlist.h,v 1.11.2.1 2011-02-24 13:12:10 phintuka Exp $
  *
  */
 
@@ -109,6 +109,7 @@ class cPlaylist : protected cList<cPlaylistItem>
   bool Read(const char *PlaylistFile, bool Recursive = false);
   void StartScanner(void);
   void Del(cPlaylistItem *it);
+  void Move(int From, int To);
 
   void Sort(void);
   int  Count(void) const;
@@ -123,6 +124,7 @@ class cPlaylist : protected cList<cPlaylistItem>
   void           SetCurrent(cPlaylistItem *current);
   cPlaylistItem *Next(void);
   cPlaylistItem *Prev(void);
+  cPlaylistItem *Seek(int Rel);
 
   static cString BuildMrl(const char *proto, const char *s1,
                           const char *s2 = NULL, const char *s3 = NULL, const char *s4 = NULL);
