@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.83 2010-01-16 20:07:13 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.83.2.1 2011-02-24 17:07:10 phintuka Exp $
  *
  */
 
@@ -42,6 +42,7 @@
 #include "tools/http.h"
 #include "tools/vdrdiscovery.h"
 #include "tools/sdp.h"
+#include "tools/rle.h"
 
 #include "frontend_svr.h"
 #include "device.h"
@@ -214,23 +215,6 @@ void cXinelibServer::CloseConnection(int cli)
   }
 }
 
-static int recompress_osd_net(uint8_t *raw, xine_rle_elem_t *data, int elems)
-{
-  uint8_t *raw0 = raw;
-  for(int i=0; i<elems; i++) {
-    uint16_t len = data[i].len;
-    uint16_t color = data[i].color;
-    if(len >= 0x80) {
-      *(raw++) = (len>>8) | 0x80;
-      *(raw++) = (len & 0xff);
-    } else {
-      *(raw++) = (len & 0x7f);
-    }
-    *(raw++) = color;
-  }
-  return (raw-raw0);
-}
-
 static int write_osd_command(cxSocket& s, osd_command_t *cmd)
 {
   cxPoller p(s, true);
@@ -245,7 +229,7 @@ static int write_osd_command(cxSocket& s, osd_command_t *cmd)
                  (ssize_t)(sizeof(xine_clut_t) * ntohl(cmd->colors)) +
                  (ssize_t)(ntohl(cmd->datalen));
 
-  if(max > 0 && max < MIN(size, 32768)) {
+  if(max > 0 && max < MIN(size, 1024)) {
 /* #warning TODO: buffer latest failed OSD and retry
                   -> skipped OSDs can be left out but
                   latest will be always delivered */
@@ -296,7 +280,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
     memcpy(&cmdnet, cmd, sizeof(osd_command_t));
     if (cmd->data) {
       cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
-      cmdnet.datalen = recompress_osd_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
+      cmdnet.datalen = rle_recompress_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
     }
     // -> network byte order
     hton_osdcmd(cmdnet);
@@ -962,6 +946,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
     return;
   }
 
+#if 0
   /* check client IP's */
   struct sockaddr_in sinc, sind;
   socklen_t len = sizeof(sinc);
@@ -985,6 +970,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
     CloseConnection(cli);
     return;
   }
+#endif
 
   /* close old data connection */
   CloseDataConnection(clientId);
@@ -1691,7 +1677,16 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   m_ConnType[cli] = ctDetecting;
   fd_control[cli].set_handle(fd);
   fd_control[cli].set_buffers(KILOBYTE(128), KILOBYTE(128));
-  cXinelibDevice::Instance().ForcePrimaryDevice(true);
+
+  if (!cXinelibDevice::Instance().ForcePrimaryDevice(true)) {
+    const char *msg = "Not primary device.\r\n";
+    ssize_t len = strlen(msg);
+    LOGMSG("Dropping client: xineliboutput is not the primary device !");
+    if(write(fd, msg, len) != len)
+      LOGERR("Write failed.");
+    CLOSESOCKET(fd);
+    return;
+  }
 }
 
 void cXinelibServer::Handle_Discovery_Broadcast(void)
