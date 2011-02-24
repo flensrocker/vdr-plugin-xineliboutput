@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.31.2.5 2009-09-13 18:48:11 phintuka Exp $
+ * $Id: frontend_local.c,v 1.31.2.6 2011-02-24 16:32:53 phintuka Exp $
  *
  */
 
@@ -124,12 +124,8 @@ int cXinelibLocal::Play_PES(const uchar *data, int len)
     LOCK_FE;
     if (fe && Running()) {
       int done = fe->xine_queue_pes_packet(fe, (char*)data, len);
-      if (done >= 0) {
-	Lock();
-	m_StreamPos += done;
-	Unlock();
-        return done;
-      }
+      if (done >= 0)
+        return cXinelibThread::Play_PES(data, len);
     }
   }
 
@@ -256,24 +252,24 @@ frontend_t *cXinelibLocal::load_frontend(const char *fe_name)
   fe_creator_f *fe_creator = NULL;
   static int my_marker = 0;
 
-  if(!dladdr((void *)&my_marker, &info)) {
-    LOGERR("Error searching plugin: dladdr() returned false (%s)",dlerror());
+  if (!dladdr((void *)&my_marker, &info)) {
+    LOGERR("Error searching plugin: dladdr() returned false (%s)", dlerror());
     return NULL;
   }
   LOGDBG("xineliboutput: plugin file is %s", info.dli_fname);
 
   int  fe_ind = strstra(fe_name, xc.s_frontends, FRONTEND_NONE);
   bool fe_try = false;
-  if(fe_ind == FRONTEND_NONE) {
+  if (fe_ind == FRONTEND_NONE) {
     LOGMSG("Front-end %s unknown!", fe_name);
     fe_ind = 0;
     fe_try = true;
   }
 
   strn0cpy(libname, info.dli_fname, sizeof(libname) - 128);
-  if(strrchr(libname, '/')) 
+  if (strrchr(libname, '/'))
     *(strrchr(libname, '/')+1) = 0;
-  
+
   LOGDBG("Searching frontend %s from %s", xc.s_frontends[fe_ind], libname);
 
   do {
@@ -281,29 +277,28 @@ frontend_t *cXinelibLocal::load_frontend(const char *fe_name)
     LOGDBG("Probing %s", libname);
 
     if (stat(libname, &statbuffer)) {
-      LOGERR("load_frontend: can't stat %s",libname);
+      LOGERR("load_frontend: can't stat %s", libname);
     } else if((statbuffer.st_mode & S_IFMT) != S_IFREG) {
       LOGMSG("load_frontend: %s not regular file ! trying to load anyway ...",
 	     libname);
     }
 
-    if( !(lib = dlopen (libname, RTLD_LAZY | RTLD_GLOBAL))) {
-      char *dl_error_msg = dlerror();
-      LOGERR("load_frontend: cannot dlopen file %s: %s", 
-	     libname, dl_error_msg);
+    if ( !(lib = dlopen (libname, RTLD_LAZY | RTLD_GLOBAL))) {
+      LOGERR("load_frontend: cannot dlopen file %s: %s", libname, dlerror());
+
     } else if ( (fe_creator = (fe_creator_f*)dlsym(lib, "fe_creator"))) {
       LOGDBG("load_frontend: entry at %p", fe_creator);
       frontend_t *fe = (**fe_creator)();
 
-      if(fe) {
-	if(h_fe_lib)
+      if (fe) {
+	if (h_fe_lib)
 	  dlclose(h_fe_lib);
 	h_fe_lib = lib;
 
-	LOGDBG("Using frontend %s (%s) from %s", 
-	       xc.s_frontends[fe_ind], xc.s_frontendNames[fe_ind], 
+	LOGDBG("Using frontend %s (%s) from %s",
+	       xc.s_frontends[fe_ind], xc.s_frontendNames[fe_ind],
 	       xc.s_frontend_files[fe_ind]);
-	
+
 	return fe;
       } else {
 	LOGMSG("Frontend %s (%s) creation failed",
@@ -313,12 +308,12 @@ frontend_t *cXinelibLocal::load_frontend(const char *fe_name)
       LOGERR("Frontend entry point not found");
       dlclose(lib);
     }
-    
+
     fe_ind++;  // try next frontend ...
 
-  } while(fe_try && fe_ind < FRONTEND_count);
+  } while (fe_try && fe_ind < FRONTEND_count);
 
-  LOGMSG("No usable frontends found, giving up !");  
+  LOGMSG("No usable frontends found, giving up !");
   return NULL;
 }
 
@@ -456,7 +451,9 @@ void cXinelibLocal::Action(void)
   }
 
   if(curr_fe) {
-    curr_fe->xine_exit(fe);
+    LOCK_FE_WR;
+    fe = NULL;
+    curr_fe->xine_exit(curr_fe);
     curr_fe->fe_display_close(curr_fe);
     curr_fe->fe_free(curr_fe);
   }
