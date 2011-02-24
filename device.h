@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.34.2.4 2009-09-14 10:51:55 phintuka Exp $
+ * $Id: device.h,v 1.34.2.5 2011-02-24 16:54:38 phintuka Exp $
  *
  */
 
@@ -78,7 +78,7 @@ class cXinelibDevice : public cDevice
 
   public:
     virtual void MakePrimaryDevice(bool On);
-    void ForcePrimaryDevice(bool On);
+    bool ForcePrimaryDevice(bool On);
 
   // Device capabilities
 
