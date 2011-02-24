@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.53 2008-07-29 21:04:35 phintuka Exp $
+ * $Id: config.h,v 1.53.2.1 2011-02-24 15:10:15 phintuka Exp $
  *
  */
 
@@ -15,6 +15,9 @@
 #include <stdint.h>
 
 #include <vdr/config.h>
+
+// Max number of remote clients
+#define MAXCLIENTS     10
 
 // Decoder buffer size
 #define PES_BUFFERS_CUSTOM      0
@@ -153,6 +156,25 @@
 #define OSD_SCALING_BILINEAR    2
 #define OSD_SCALING_count       3
 
+// OSD size
+#define OSD_SIZE_auto           0  // frontend display resolution
+#define OSD_SIZE_720x576        1
+#define OSD_SIZE_1280x720       2
+#define OSD_SIZE_1920x1080      3
+#define OSD_SIZE_custom         4
+#define OSD_SIZE_stream         5
+#define OSD_SIZE_count          6
+
+// Media player menu (bitmask)
+#define MEDIA_MENU_FILES        (1<<0)
+#define MEDIA_MENU_MUSIC        (1<<1)
+#define MEDIA_MENU_IMAGES       (1<<2)
+#define MEDIA_MENU_DVD          (1<<3)
+#define MEDIA_MENU_CD           (1<<4)
+#define MEDIA_MENU_BLURAY       (1<<5)
+#define MEDIA_MENU_VIDEO_SETUP  (1<<6)
+#define MEDIA_MENU_AUDIO_SETUP  (1<<7)
+
 // Video decoder
 #define DECODER_MPEG2_auto       0 /* use value from frontend config_xineliboutput */
 #define DECODER_MPEG2_LIBMPEG2   1
@@ -224,6 +246,7 @@ class config_t {
     static const char * const s_osdBlendingMethods     [OSD_BLENDING_count  + 1];
     static const char * const s_osdMixers              [OSD_MIXER_count     + 1];
     static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
+    static const char * const s_osdSizes               [OSD_SIZE_count      + 1];
     static const char * const s_decoders_MPEG2         [DECODER_MPEG2_count + 1];
     static const char * const s_decoders_H264          [DECODER_H264_count  + 1];
     static const char * const s_ff_skip_loop_filters   [FF_H264_SKIP_LOOPFILTER_count + 1];
@@ -243,6 +266,7 @@ class config_t {
     char audio_driver[32];
     char audio_port[64];
     char *post_plugins;      // static post plugins from command line options
+    char *config_file;       // config file from command line options
     int  pes_buffers;
 
     char modeline[64];
@@ -274,14 +298,23 @@ class config_t {
     int  saturation;          // 0...0xffff, -1 == off
     int  contrast;            // 0...0xffff, -1 == off
     int  brightness;          // 0...0xffff, -1 == off
+    int  sharpness;           // 0...0xffff, -1 == off
+    int  noise_reduction;     // 0...0xffff, -1 == off
     int  vo_aspect_ratio;
 
     // OSD settings 
     eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
     int  hide_main_menu;
+    int  osd_size;
+    int  osd_width;
+    int  osd_height;
+    int  osd_width_auto;
+    int  osd_height_auto;
     int  osd_mixer;                // show multiple OSD layers
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
+    int  osd_spu_scaling;          // SPU OSD scaling mode: off, nearest, bilinear
     int  hud_osd;                  // head up display OSD
+    int  opengl;                   // use opengl acceleration for video and HUD OSD
     int  osd_blending;             // OSD blending method
     int  osd_blending_lowresvideo; // Use hardware blending for low-resolution video
     int  alpha_correction;
@@ -294,6 +327,7 @@ class config_t {
     int  spu_autoshow;    // Preferred SPU language(s) for media player
     char spu_lang[4][4];
 #endif
+    char media_root_dir[4096];     // restrict file browser
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];
@@ -304,10 +338,12 @@ class config_t {
     int  playlist_artist;
     int  playlist_album;
     int  dvd_arrow_keys_control_playback;
+    uint media_menu_items;         // enabled items in media player menu (bitmask)
 
     // Audio visualization
     char audio_visualization[64];
     char audio_vis_goom_opts[256];
+    char audio_vis_image_mrl[4096];
 
     // deinterlacing post plugin
     char deinterlace_method[32];
@@ -321,9 +357,19 @@ class config_t {
     // automatic 4:3 letterbox -> 16:9 cropping post plugin
     int  autocrop;            // enable / disable
     int  autocrop_autodetect;
+    int  autocrop_autodetect_rate;
     int  autocrop_soft;
+    int  autocrop_soft_start_step;
     int  autocrop_fixedsize;
+    int  autocrop_stabilize_time;
     int  autocrop_subs;
+    int  autocrop_subs_detect_lifetime;
+    int  autocrop_subs_detect_stabilize_time;
+    int  autocrop_logo_width;
+    int  autocrop_use_driver_crop;
+    int  autocrop_use_avards_analysis;
+    int  autocrop_overscan_compensate;
+    int  autocrop_bar_tone_tolerance;
 
     // (video) software scaling
     int  swscale;               // enable/disable
@@ -356,8 +402,9 @@ class config_t {
     char remote_local_if[32]; // Listen only on this interface
     char remote_local_ip[32]; // Bind locally to this IP
     int  remote_keyboard;     // Allow remote client to control VDR with keyboard, LIRC, etc.
+    int  remote_max_clients;  // Max. number of clients
 
-    int  remote_usebcast;     // Use proadcasts to find servers automatically
+    int  remote_usebcast;     // Use broadcasts to find servers automatically
     int  remote_usepipe;      // enable local pipes for video transport
     int  remote_usertp;       // enable RTP multicast for video transport
     int  remote_useudp;       // enable UDP unicast for video transport
@@ -379,7 +426,7 @@ class config_t {
 
     // Advanced settings
     int live_mode_sync;   /* Sync SCR to transponder clock in live mode */
-    int scr_tunning;      /* Fine-tune xine egine SCR (to sync video to graphics output) */
+    int scr_tuning;       /* Fine-tune xine egine SCR (to sync video to graphics output) */
     int scr_hz;           /* Current SCR speed (Hz), default is 90000 */
 
     int decoder_mpeg2;    /* DECODER_MPEG2_... */
@@ -392,10 +439,13 @@ class config_t {
     bool SetupParse(const char *Name, const char *Value);
     bool ProcessArgs(int argc, char *argv[]);
 
-    bool IsImageFile(const char *);
-    bool IsAudioFile(const char *);
-    bool IsVideoFile(const char *);
-    bool IsPlaylistFile(const char *);
+    static bool IsImageFile(const char *);
+    static bool IsAudioFile(const char *);
+    static bool IsVideoFile(const char *);
+    static bool IsPlaylistFile(const char *);
+    static bool IsDvdFolder(const char *);
+    static bool IsBluRayFolder(const char *);
+    static bool IsDvdImage(const char *);
 
     cString AutocropOptions(void);
     cString SwScaleOptions(void);
