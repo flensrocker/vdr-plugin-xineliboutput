@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.25 2011-02-25 00:54:30 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.26 2011-02-25 02:40:53 phintuka Exp $
  *
  */
 
@@ -27,6 +27,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <math.h>
+#include <float.h>  /* DBL_MIN */
 
 /* X11 */
 #include <X11/Xlib.h>
@@ -620,9 +621,9 @@ static void xrender_surf_blend(Display *dpy, Xrender_Surf *src, Xrender_Surf *ds
 {
   XTransform xf;
 
-  if(!scale_x)
+  if (scale_x <= 2.0 * DBL_MIN)
     scale_x = 1;
-  if(!scale_y)
+  if (scale_y <= 2.0 * DBL_MIN)
     scale_y = 1;
 
   xf.matrix[0][0] = XDoubleToFixed(1.0 / scale_x); xf.matrix[0][1] = 0; xf.matrix[0][2] = 0;
@@ -705,7 +706,7 @@ static Visual *find_argb_visual(Display *dpy, int scr)
 
 static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
 {
-  int i, pixelcounter = 0;
+  uint i, pixelcounter = 0;
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
 
   for(i = 0; i < cmd->num_rle; ++i) {
@@ -713,8 +714,10 @@ static void hud_fill_img_memory(uint32_t* dst, const struct osd_command_s *cmd)
     const uint8_t r = (cmd->palette + (cmd->data + i)->color)->r;
     const uint8_t g = (cmd->palette + (cmd->data + i)->color)->g;
     const uint8_t b = (cmd->palette + (cmd->data + i)->color)->b;
-    int j, finalcolor = 0;
-    finalcolor |= ((alpha << 24) & 0xFF000000);
+    uint32_t finalcolor;
+    uint     j;
+
+    finalcolor  = ((alpha << 24) & 0xFF000000);
     finalcolor |= ((r << 16) & 0x00FF0000);
     finalcolor |= ((g << 8) & 0x0000FF00);
     finalcolor |= (b & 0x000000FF);
@@ -1088,7 +1091,7 @@ static void set_icon(sxfe_t *this)
 #else
   long      q[2+32*32];
   uint32_t *p = (uint32_t*)&vdrlogo_32x32;
-  int       i;
+  uint      i;
   for (i = 0; i < 2 + vdrlogo_32x32.width*vdrlogo_32x32.height; i++)
     q[i] = p[i];
   XChangeProperty(this->display, this->window[0],
@@ -1273,6 +1276,9 @@ static int sxfe_display_open(frontend_t *this_gen,
     update_screen_size(this);
 
   /* Output to existing window ? (embedded to another app) */
+  if (this->window_id == WINDOW_ID_ROOT) {
+    this->window_id = DefaultRootWindow(this->display);
+  }
   if(this->window_id > 0) {
     LOGMSG("sxfe_diaplay_open(): Using X11 window %d for output", this->window_id);
     this->window[0] = this->window[1] = (Window)this->window_id;
@@ -1510,6 +1516,11 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
         if (this->gui_hotkeys)
           fe_event = "TOGGLE_DEINTERLACE";
         break;
+      case XK_p:
+      case XK_P:
+        if (this->gui_hotkeys)
+          fe_event = "POWER_OFF";
+        break;
       case XK_Escape:
         if (!this->keypress) { /* ESC exits only in remote mode */
           fe_event = "QUIT";
@@ -1656,6 +1667,8 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
         }
       }
       break;
+
+    default:; // ignore other buttons.
   }
 }
 
@@ -1731,7 +1744,7 @@ static int sxfe_run(frontend_t *this_gen)
         if ( cmessage->message_type == this->xa_SXFE_INTERRUPT )
           LOGDBG("ClientMessage: sxfe_interrupt");
 
-        if ( cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW ) {
+        if ( (Atom)cmessage->data.l[0] == this->xa_WM_DELETE_WINDOW ) {
           /* we got a window deletion message from out window manager.*/
           LOGDBG("ClientMessage: WM_DELETE_WINDOW");
 
@@ -1739,6 +1752,7 @@ static int sxfe_run(frontend_t *this_gen)
         }
         break;
       }
+      default:; // ignore other events.
     }
 
     if (event.type == this->completion_event)
