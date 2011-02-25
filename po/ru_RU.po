@@ -228,13 +228,7 @@ msgstr "Проиграть файл"
 msgid "View images"
 msgstr "Просмотреть изображения"
 
-msgid "Play remote DVD"
-msgstr ""
-
 msgid "Play DVD disc"
-msgstr ""
-
-msgid "Play remote CD"
 msgstr ""
 
 msgid "Play audio CD"
@@ -254,9 +248,6 @@ msgstr ""
 
 msgid "Overscan (crop image borders)"
 msgstr ""
-
-msgid "Interlaced Field Order"
-msgstr "Черезстрочный порядок полей"
 
 msgid "Audio settings"
 msgstr ""

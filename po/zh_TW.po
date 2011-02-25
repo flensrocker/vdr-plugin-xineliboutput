@@ -228,14 +228,8 @@ msgstr "媒體"
 msgid "View images"
 msgstr "瀏覽圖像"
 
-msgid "Play remote DVD"
-msgstr "玩遙控影碟"
-
 msgid "Play DVD disc"
 msgstr "播放DVD光盤"
-
-msgid "Play remote CD"
-msgstr "播放遠程光盤"
 
 msgid "Play audio CD"
 msgstr "播放音樂CD"
@@ -254,9 +248,6 @@ msgstr "選擇4:3或者16:9"
 
 msgid "Overscan (crop image borders)"
 msgstr "過掃描(去掉圖像邊框)"
-
-msgid "Interlaced Field Order"
-msgstr "隔行場令"
 
 msgid "Audio settings"
 msgstr "音頻設置"

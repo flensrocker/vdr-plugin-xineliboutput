@@ -229,14 +229,8 @@ msgstr "Média"
 msgid "View images"
 msgstr "Prohlí¾et obrázky"
 
-msgid "Play remote DVD"
-msgstr "Pøehrát vzdálené DVD"
-
 msgid "Play DVD disc"
 msgstr "Pøehrát DVD"
-
-msgid "Play remote CD"
-msgstr "Pøehrát vzdálené CD"
 
 msgid "Play audio CD"
 msgstr "Pøehrát zvukové CD"
@@ -255,9 +249,6 @@ msgstr "Oøíznout letterbox 4:3 na 16:9"
 
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (oøez okrajù obrazu)"
-
-msgid "Interlaced Field Order"
-msgstr "Poøadí pùlsnímkù"
 
 msgid "Audio settings"
 msgstr "Nastavení zvuku"

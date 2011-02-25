@@ -230,14 +230,8 @@ msgstr "Media"
 msgid "View images"
 msgstr "Visualizza immagini"
 
-msgid "Play remote DVD"
-msgstr "Riproduci DVD remoto"
-
 msgid "Play DVD disc"
 msgstr "Riproduci disco DVD"
-
-msgid "Play remote CD"
-msgstr "Riproduci CD remoto"
 
 msgid "Play audio CD"
 msgstr "Riproduci CD audio"
@@ -256,9 +250,6 @@ msgstr "Ritaglia letterbox 4:3 a 16:9"
 
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (ritaglia bordi immagine)"
-
-msgid "Interlaced Field Order"
-msgstr "Ordine campo interlacciato"
 
 msgid "Audio settings"
 msgstr "Impostazioni audio"

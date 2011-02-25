@@ -229,14 +229,8 @@ msgstr "Media"
 msgid "View images"
 msgstr "Katsele kuvia"
 
-msgid "Play remote DVD"
-msgstr "Toista DVD-levy etäkoneesta"
-
 msgid "Play DVD disc"
 msgstr "Toista DVD-levy"
-
-msgid "Play remote CD"
-msgstr "Toista CD-levy etäkoneesta"
 
 msgid "Play audio CD"
 msgstr "Toista CD-levy"
@@ -255,9 +249,6 @@ msgstr "Leikkaa 4:3-letterbox 16:9:ksi"
 
 msgid "Overscan (crop image borders)"
 msgstr "Leikkaa kuvan reunoja (overscan)"
-
-msgid "Interlaced Field Order"
-msgstr "Lomitettujen kenttien järjestys"
 
 msgid "Audio settings"
 msgstr "Ääniasetukset"

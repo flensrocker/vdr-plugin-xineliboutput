@@ -228,14 +228,8 @@ msgstr "Meedia"
 msgid "View images"
 msgstr "Piltide vaatamine"
 
-msgid "Play remote DVD"
-msgstr "Kaug-DVD mängimine"
-
 msgid "Play DVD disc"
 msgstr "DVD mängimine"
-
-msgid "Play remote CD"
-msgstr "Kaug-CD mängimine"
 
 msgid "Play audio CD"
 msgstr "CD mängimine"
@@ -254,9 +248,6 @@ msgstr "4:3-letterbox 16:9:ks kärpimine"
 
 msgid "Overscan (crop image borders)"
 msgstr "Pildiservade kärpimine (overscan)"
-
-msgid "Interlaced Field Order"
-msgstr "Ridade järjestus"
 
 msgid "Audio settings"
 msgstr "Heliseaded"
