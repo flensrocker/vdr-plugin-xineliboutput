@@ -329,17 +329,17 @@ msgstr ""
 msgid "Visualization"
 msgstr "Vizualizace"
 
-msgid "  Width"
-msgstr "  ©íøka"
+msgid "Width"
+msgstr "©íøka"
 
 msgid "px"
 msgstr "bodù"
 
-msgid "  Height"
-msgstr "  Vý¹ka"
+msgid "Height"
+msgstr "Vý¹ka"
 
-msgid "  Speed"
-msgstr "  Rychlost"
+msgid "Speed"
+msgstr "Rychlost"
 
 msgid "fps"
 msgstr "snímkù/sek."
@@ -365,91 +365,91 @@ msgstr ""
 msgid "Video"
 msgstr "Obraz"
 
-msgid "  Autodetect letterbox"
-msgstr "  Automaticky detekovat letterbox"
+msgid "Autodetect letterbox"
+msgstr "Automaticky detekovat letterbox"
 
-msgid "  Soft start"
-msgstr "  Postupné zvìt¹ení"
+msgid "Soft start"
+msgstr "Postupné zvìt¹ení"
 
-msgid "  Crop to"
-msgstr "  Oøíznout na"
+msgid "Crop to"
+msgstr "Oøíznout na"
 
-msgid "  Detect subtitles"
-msgstr "  Detekovat titulky"
+msgid "Detect subtitles"
+msgstr "Detekovat titulky"
 
 msgid "Software scaling"
 msgstr "Softwarové ¹kálování"
 
-msgid "  Change aspect ratio"
-msgstr "  Zmìna pomìru stran obrazu"
+msgid "Change aspect ratio"
+msgstr "Zmìna pomìru stran obrazu"
 
-msgid "  Change video size"
-msgstr "  Zmìnit velikost obrazu"
+msgid "Change video size"
+msgstr "Zmìnit velikost obrazu"
 
-msgid "  Allow downscaling"
-msgstr "  Povolit zmen¹ení"
+msgid "Allow downscaling"
+msgstr "Povolit zmen¹ení"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Post processing (ffmpeg)"
 
-msgid "  Quality"
-msgstr "  Kvalita"
+msgid "Quality"
+msgstr "Kvalita"
 
-msgid "  Mode"
-msgstr "  Mód"
+msgid "Mode"
+msgstr "Mód"
 
-msgid "  Method"
-msgstr "  Metoda"
+msgid "Method"
+msgstr "Metoda"
 
-msgid "  Cheap mode"
-msgstr "  Zjednodu¹ený mód"
+msgid "Cheap mode"
+msgstr "Zjednodu¹ený mód"
 
-msgid "  Pulldown"
+msgid "Pulldown"
 msgstr ""
 
-msgid "  Frame rate"
-msgstr "  Snímková rychlost"
+msgid "Frame rate"
+msgstr "Snímková rychlost"
 
-msgid "  Judder Correction"
-msgstr "  Korekce chvìní"
+msgid "Judder Correction"
+msgstr "Korekce chvìní"
 
-msgid "  Use progressive frame flag"
+msgid "Use progressive frame flag"
 msgstr ""
 
-msgid "  Chroma Filter"
+msgid "Chroma Filter"
 msgstr ""
 
 msgid "Sharpen / Blur"
 msgstr "Zaostøení / rozmazání"
 
-msgid "  Width of the luma matrix"
+msgid "Width of the luma matrix"
 msgstr ""
 
-msgid "  Height of the luma matrix"
+msgid "Height of the luma matrix"
 msgstr ""
 
-msgid "  Amount of luma sharpness/blur"
+msgid "Amount of luma sharpness/blur"
 msgstr ""
 
-msgid "  Width of the chroma matrix"
+msgid "Width of the chroma matrix"
 msgstr ""
 
-msgid "  Height of the chroma matrix"
+msgid "Height of the chroma matrix"
 msgstr ""
 
-msgid "  Amount of chroma sharpness/blur"
+msgid "Amount of chroma sharpness/blur"
 msgstr ""
 
 msgid "3D Denoiser"
 msgstr "3D odstranìní ¹umu"
 
-msgid "  Spatial luma strength"
+msgid "Spatial luma strength"
 msgstr ""
 
-msgid "  Spatial chroma strength"
+msgid "Spatial chroma strength"
 msgstr ""
 
-msgid "  Temporal strength"
+msgid "Temporal strength"
 msgstr ""
 
 msgid "HUE"
@@ -485,7 +485,7 @@ msgstr "Nezobrazovat v hlavním menu"
 msgid "Blending method"
 msgstr ""
 
-msgid "  Use hardware for low-res video"
+msgid "Use hardware for low-res video"
 msgstr ""
 
 msgid "Scaling method"
@@ -512,8 +512,8 @@ msgstr "Dekodér"
 msgid "Buffer size"
 msgstr "Velikost vyrovnávací pamìti"
 
-msgid "  Number of PES packets"
-msgstr "  Poèet PES paketù"
+msgid "Number of PES packets"
+msgstr "Poèet PES paketù"
 
 msgid "Local Display Frontend"
 msgstr "Lokální zobrazovací rozhraní"
@@ -533,11 +533,11 @@ msgstr ""
 msgid "Fullscreen mode"
 msgstr "Celoobrazovkový re¾im"
 
-msgid "  Window width"
-msgstr "  ©íøka okna"
+msgid "Window width"
+msgstr "©íøka okna"
 
-msgid "  Window height"
-msgstr "  Vý¹ka okna"
+msgid "Window height"
+msgstr "Vý¹ka okna"
 
 msgid "Window aspect"
 msgstr "Pomìr stran okna"
@@ -554,50 +554,50 @@ msgstr "Vzdálení klienti"
 msgid "Allow remote clients"
 msgstr "Povolit vzdálené klienty"
 
-msgid "  Listen port (TCP and broadcast)"
+msgid "Listen port (TCP and broadcast)"
 msgstr ""
 
-msgid "  Listen address"
+msgid "Listen address"
 msgstr ""
 
-msgid "  Remote keyboard"
+msgid "Remote keyboard"
 msgstr ""
 
-msgid "  Max number of clients"
+msgid "Max number of clients"
 msgstr ""
 
-msgid "  PIPE transport"
-msgstr "  PIPE transport"
+msgid "PIPE transport"
+msgstr "PIPE transport"
 
-msgid "  TCP transport"
-msgstr "  TCP transport"
+msgid "TCP transport"
+msgstr "TCP transport"
 
-msgid "  UDP transport"
-msgstr "  UDP transport"
+msgid "UDP transport"
+msgstr "UDP transport"
 
-msgid "  RTP (multicast) transport"
-msgstr "  RTP (multicast) transport"
+msgid "RTP (multicast) transport"
+msgstr "RTP (multicast) transport"
 
-msgid "    Address"
-msgstr "    Adresa"
+msgid "Address"
+msgstr "Adresa"
 
-msgid "    Port"
-msgstr "    Port"
+msgid "Port"
+msgstr "Port"
 
-msgid "    TTL"
+msgid "TTL"
 msgstr ""
 
-msgid "    Transmit always on"
-msgstr "    Pøenos stále zapnut"
+msgid "Transmit always on"
+msgstr "Pøenos stále zapnut"
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr ""
 
-msgid "  Server announce broadcasts"
+msgid "Server announce broadcasts"
 msgstr ""
 
-msgid "  HTTP transport for media files"
-msgstr "  HTTP transport pro média"
+msgid "HTTP transport for media files"
+msgstr "HTTP transport pro média"
 
 msgid "Additional network services"
 msgstr "Dal¹í sí»ové slu¾by"

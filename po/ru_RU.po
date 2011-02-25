@@ -328,16 +328,16 @@ msgstr ""
 msgid "Visualization"
 msgstr "Визуализация"
 
-msgid "  Width"
+msgid "Width"
 msgstr ""
 
 msgid "px"
 msgstr "пикселей"
 
-msgid "  Height"
+msgid "Height"
 msgstr ""
 
-msgid "  Speed"
+msgid "Speed"
 msgstr ""
 
 msgid "fps"
@@ -364,91 +364,91 @@ msgstr ""
 msgid "Video"
 msgstr "Видео"
 
-msgid "  Autodetect letterbox"
+msgid "Autodetect letterbox"
 msgstr ""
 
-msgid "  Soft start"
+msgid "Soft start"
 msgstr ""
 
-msgid "  Crop to"
+msgid "Crop to"
 msgstr ""
 
-msgid "  Detect subtitles"
+msgid "Detect subtitles"
 msgstr ""
 
 msgid "Software scaling"
 msgstr ""
 
-msgid "  Change aspect ratio"
+msgid "Change aspect ratio"
 msgstr ""
 
-msgid "  Change video size"
+msgid "Change video size"
 msgstr ""
 
-msgid "  Allow downscaling"
-msgstr "  Масштабировать с падением качества"
+msgid "Allow downscaling"
+msgstr "Масштабировать с падением качества"
 
 msgid "Post processing (ffmpeg)"
 msgstr ""
 
-msgid "  Quality"
+msgid "Quality"
 msgstr ""
 
-msgid "  Mode"
+msgid "Mode"
 msgstr ""
 
-msgid "  Method"
+msgid "Method"
 msgstr ""
 
-msgid "  Cheap mode"
+msgid "Cheap mode"
 msgstr ""
 
-msgid "  Pulldown"
+msgid "Pulldown"
 msgstr ""
 
-msgid "  Frame rate"
+msgid "Frame rate"
 msgstr ""
 
-msgid "  Judder Correction"
+msgid "Judder Correction"
 msgstr ""
 
-msgid "  Use progressive frame flag"
+msgid "Use progressive frame flag"
 msgstr ""
 
-msgid "  Chroma Filter"
+msgid "Chroma Filter"
 msgstr ""
 
 msgid "Sharpen / Blur"
 msgstr ""
 
-msgid "  Width of the luma matrix"
+msgid "Width of the luma matrix"
 msgstr ""
 
-msgid "  Height of the luma matrix"
+msgid "Height of the luma matrix"
 msgstr ""
 
-msgid "  Amount of luma sharpness/blur"
+msgid "Amount of luma sharpness/blur"
 msgstr ""
 
-msgid "  Width of the chroma matrix"
+msgid "Width of the chroma matrix"
 msgstr ""
 
-msgid "  Height of the chroma matrix"
+msgid "Height of the chroma matrix"
 msgstr ""
 
-msgid "  Amount of chroma sharpness/blur"
+msgid "Amount of chroma sharpness/blur"
 msgstr ""
 
 msgid "3D Denoiser"
 msgstr ""
 
-msgid "  Spatial luma strength"
+msgid "Spatial luma strength"
 msgstr ""
 
-msgid "  Spatial chroma strength"
+msgid "Spatial chroma strength"
 msgstr ""
 
-msgid "  Temporal strength"
+msgid "Temporal strength"
 msgstr ""
 
 msgid "HUE"
@@ -484,7 +484,7 @@ msgstr "Скрыть основное меню"
 msgid "Blending method"
 msgstr ""
 
-msgid "  Use hardware for low-res video"
+msgid "Use hardware for low-res video"
 msgstr ""
 
 msgid "Scaling method"
@@ -511,8 +511,8 @@ msgstr "Декодер"
 msgid "Buffer size"
 msgstr "Размер буфера"
 
-msgid "  Number of PES packets"
-msgstr "  PES пакетов"
+msgid "Number of PES packets"
+msgstr "PES пакетов"
 
 msgid "Local Display Frontend"
 msgstr "Фронтенд локального экрана"
@@ -532,11 +532,11 @@ msgstr "Framebuffer устройство"
 msgid "Fullscreen mode"
 msgstr "Полноэкранный режим"
 
-msgid "  Window width"
-msgstr "  Ширина окна"
+msgid "Window width"
+msgstr "Ширина окна"
 
-msgid "  Window height"
-msgstr "  Высота окна"
+msgid "Window height"
+msgstr "Высота окна"
 
 msgid "Window aspect"
 msgstr "Соотношение сторон"
@@ -553,49 +553,49 @@ msgstr "Удаленные клиенты"
 msgid "Allow remote clients"
 msgstr "Разрешить удаленных клиентов"
 
-msgid "  Listen port (TCP and broadcast)"
-msgstr "  Порт (TCP и широковешательный)"
+msgid "Listen port (TCP and broadcast)"
+msgstr "Порт (TCP и широковешательный)"
 
-msgid "  Listen address"
+msgid "Listen address"
 msgstr ""
 
-msgid "  Remote keyboard"
-msgstr "  Удаленная клавиатура"
+msgid "Remote keyboard"
+msgstr "Удаленная клавиатура"
 
-msgid "  Max number of clients"
+msgid "Max number of clients"
 msgstr ""
 
-msgid "  PIPE transport"
-msgstr "  PIPE транспорт"
+msgid "PIPE transport"
+msgstr "PIPE транспорт"
 
-msgid "  TCP transport"
+msgid "TCP transport"
 msgstr "TCP транспорт"
 
-msgid "  UDP transport"
+msgid "UDP transport"
 msgstr "UDP транспорт"
 
-msgid "  RTP (multicast) transport"
-msgstr "  RTP (широковещательный) транспорт"
+msgid "RTP (multicast) transport"
+msgstr "RTP (широковещательный) транспорт"
 
-msgid "    Address"
+msgid "Address"
 msgstr ""
 
-msgid "    Port"
+msgid "Port"
 msgstr ""
 
-msgid "    TTL"
+msgid "TTL"
 msgstr ""
 
-msgid "    Transmit always on"
+msgid "Transmit always on"
 msgstr ""
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr ""
 
-msgid "  Server announce broadcasts"
-msgstr "  Сервер использует широковещание"
+msgid "Server announce broadcasts"
+msgstr "Сервер использует широковещание"
 
-msgid "  HTTP transport for media files"
+msgid "HTTP transport for media files"
 msgstr ""
 
 msgid "Additional network services"

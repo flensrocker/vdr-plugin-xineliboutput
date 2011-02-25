@@ -328,16 +328,16 @@ msgstr "组合，以耳机"
 msgid "Visualization"
 msgstr "可视化"
 
-msgid "  Width"
+msgid "Width"
 msgstr "宽度"
 
 msgid "px"
 msgstr "px"
 
-msgid "  Height"
+msgid "Height"
 msgstr "高度"
 
-msgid "  Speed"
+msgid "Speed"
 msgstr "速度"
 
 msgid "fps"
@@ -364,92 +364,92 @@ msgstr "半(下)"
 msgid "Video"
 msgstr "视频"
 
-msgid "  Autodetect letterbox"
+msgid "Autodetect letterbox"
 msgstr "自动检测盒子模式"
 
-msgid "  Soft start"
+msgid "Soft start"
 msgstr "软启动"
 
-msgid "  Crop to"
+msgid "Crop to"
 msgstr "剪裁"
 
-msgid "  Detect subtitles"
+msgid "Detect subtitles"
 msgstr "检测的字幕"
 
 msgid "Software scaling"
 msgstr "软件缩放"
 
-msgid "  Change aspect ratio"
+msgid "Change aspect ratio"
 msgstr "更改宽高比"
 
-msgid "  Change video size"
+msgid "Change video size"
 msgstr "改变视频大小"
 
-msgid "  Allow downscaling"
+msgid "Allow downscaling"
 msgstr "允许缩小尺度"
 
 msgid "Post processing (ffmpeg)"
 msgstr "后处理（ffmpeg）"
 
-msgid "  Quality"
-msgstr "  Quality"
+msgid "Quality"
+msgstr "Quality"
 
-msgid "  Mode"
-msgstr "  Mode"
+msgid "Mode"
+msgstr "Mode"
 
-msgid "  Method"
-msgstr "  Method"
+msgid "Method"
+msgstr "Method"
 
-msgid "  Cheap mode"
-msgstr "  Cheap mode"
+msgid "Cheap mode"
+msgstr "Cheap mode"
 
-msgid "  Pulldown"
-msgstr "  Pulldown"
+msgid "Pulldown"
+msgstr "Pulldown"
 
-msgid "  Frame rate"
-msgstr "  Frame rate"
+msgid "Frame rate"
+msgstr "Frame rate"
 
-msgid "  Judder Correction"
-msgstr "  Judder Correction"
+msgid "Judder Correction"
+msgstr "Judder Correction"
 
-msgid "  Use progressive frame flag"
-msgstr "  Use progressive frame flag"
+msgid "Use progressive frame flag"
+msgstr "Use progressive frame flag"
 
-msgid "  Chroma Filter"
-msgstr "  Chroma Filter"
+msgid "Chroma Filter"
+msgstr "Chroma Filter"
 
 msgid "Sharpen / Blur"
 msgstr "锐化/模糊"
 
-msgid "  Width of the luma matrix"
-msgstr "  Width of the luma matrix"
+msgid "Width of the luma matrix"
+msgstr "Width of the luma matrix"
 
-msgid "  Height of the luma matrix"
-msgstr "  Height of the luma matrix"
+msgid "Height of the luma matrix"
+msgstr "Height of the luma matrix"
 
-msgid "  Amount of luma sharpness/blur"
-msgstr "  Amount of luma sharpness/blur"
+msgid "Amount of luma sharpness/blur"
+msgstr "Amount of luma sharpness/blur"
 
-msgid "  Width of the chroma matrix"
-msgstr "  Width of the chroma matrix"
+msgid "Width of the chroma matrix"
+msgstr "Width of the chroma matrix"
 
-msgid "  Height of the chroma matrix"
-msgstr "  Height of the chroma matrix"
+msgid "Height of the chroma matrix"
+msgstr "Height of the chroma matrix"
 
-msgid "  Amount of chroma sharpness/blur"
-msgstr "  Amount of chroma sharpness/blur"
+msgid "Amount of chroma sharpness/blur"
+msgstr "Amount of chroma sharpness/blur"
 
 msgid "3D Denoiser"
 msgstr "3D噪点去除"
 
-msgid "  Spatial luma strength"
-msgstr "  Spatial luma strength"
+msgid "Spatial luma strength"
+msgstr "Spatial luma strength"
 
-msgid "  Spatial chroma strength"
-msgstr "  Spatial luma strength"
+msgid "Spatial chroma strength"
+msgstr "Spatial luma strength"
 
-msgid "  Temporal strength"
-msgstr "  Temporal strength"
+msgid "Temporal strength"
+msgstr "Temporal strength"
 
 msgid "HUE"
 msgstr "色相"
@@ -484,7 +484,7 @@ msgstr "隐藏主菜单"
 msgid "Blending method"
 msgstr "混合方法"
 
-msgid "  Use hardware for low-res video"
+msgid "Use hardware for low-res video"
 msgstr "低清晰度视频使用硬"
 
 msgid "Scaling method"
@@ -511,7 +511,7 @@ msgstr "解码器"
 msgid "Buffer size"
 msgstr "缓冲区大小"
 
-msgid "  Number of PES packets"
+msgid "Number of PES packets"
 msgstr "PES的数据包"
 
 msgid "Local Display Frontend"
@@ -532,10 +532,10 @@ msgstr "帧缓冲设备"
 msgid "Fullscreen mode"
 msgstr "全屏模式"
 
-msgid "  Window width"
+msgid "Window width"
 msgstr "窗口宽度"
 
-msgid "  Window height"
+msgid "Window height"
 msgstr "窗口的高度"
 
 msgid "Window aspect"
@@ -553,49 +553,49 @@ msgstr "远程用户"
 msgid "Allow remote clients"
 msgstr "允许远程客户"
 
-msgid "  Listen port (TCP and broadcast)"
+msgid "Listen port (TCP and broadcast)"
 msgstr "听端口(TCP和广播)"
 
-msgid "  Listen address"
+msgid "Listen address"
 msgstr "侦听地址"
 
-msgid "  Remote keyboard"
+msgid "Remote keyboard"
 msgstr "远程键盘"
 
-msgid "  Max number of clients"
+msgid "Max number of clients"
 msgstr "最大数量的客户"
 
-msgid "  PIPE transport"
+msgid "PIPE transport"
 msgstr "PIPE 传送"
 
-msgid "  TCP transport"
+msgid "TCP transport"
 msgstr "TCP 传送"
 
-msgid "  UDP transport"
+msgid "UDP transport"
 msgstr "UDP 传送"
 
-msgid "  RTP (multicast) transport"
+msgid "RTP (multicast) transport"
 msgstr "RTP (组播) 传送"
 
-msgid "    Address"
+msgid "Address"
 msgstr "地址"
 
-msgid "    Port"
+msgid "Port"
 msgstr "端口"
 
-msgid "    TTL"
+msgid "TTL"
 msgstr "TTL"
 
-msgid "    Transmit always on"
+msgid "Transmit always on"
 msgstr "传送永远在线"
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr "SAP公司公布"
 
-msgid "  Server announce broadcasts"
+msgid "Server announce broadcasts"
 msgstr "服务器宣布广播"
 
-msgid "  HTTP transport for media files"
+msgid "HTTP transport for media files"
 msgstr "HTTP传输媒体文件"
 
 msgid "Additional network services"

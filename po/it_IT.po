@@ -330,17 +330,17 @@ msgstr "Suono a cuffie"
 msgid "Visualization"
 msgstr "Visualizzazione"
 
-msgid "  Width"
-msgstr "  Larghezza"
+msgid "Width"
+msgstr "Larghezza"
 
 msgid "px"
 msgstr "px"
 
-msgid "  Height"
-msgstr "  Altezza"
+msgid "Height"
+msgstr "Altezza"
 
-msgid "  Speed"
-msgstr "  Velocità"
+msgid "Speed"
+msgstr "Velocità"
 
 msgid "fps"
 msgstr "fps"
@@ -366,92 +366,92 @@ msgstr "metà (inferiore)"
 msgid "Video"
 msgstr "Video"
 
-msgid "  Autodetect letterbox"
-msgstr "  Rileva letterbox in automatico"
+msgid "Autodetect letterbox"
+msgstr "Rileva letterbox in automatico"
 
-msgid "  Soft start"
-msgstr "  Avvio leggero"
+msgid "Soft start"
+msgstr "Avvio leggero"
 
-msgid "  Crop to"
-msgstr "  Ritaglia a"
+msgid "Crop to"
+msgstr "Ritaglia a"
 
-msgid "  Detect subtitles"
-msgstr "  Rileva sottotitoli"
+msgid "Detect subtitles"
+msgstr "Rileva sottotitoli"
 
 msgid "Software scaling"
 msgstr "Ridimensionamento software"
 
-msgid "  Change aspect ratio"
-msgstr "  Cambia formato video"
+msgid "Change aspect ratio"
+msgstr "Cambia formato video"
 
-msgid "  Change video size"
-msgstr "  Cambia dimensione video"
+msgid "Change video size"
+msgstr "Cambia dimensione video"
 
-msgid "  Allow downscaling"
-msgstr "  Permetti ridimensionamento"
+msgid "Allow downscaling"
+msgstr "Permetti ridimensionamento"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Codifica (ffmpeg)"
 
-msgid "  Quality"
-msgstr "  Qualità"
+msgid "Quality"
+msgstr "Qualità"
 
-msgid "  Mode"
-msgstr "  Modalità"
+msgid "Mode"
+msgstr "Modalità"
 
-msgid "  Method"
-msgstr "  Metodo"
+msgid "Method"
+msgstr "Metodo"
 
-msgid "  Cheap mode"
-msgstr "  Modalità economica"
+msgid "Cheap mode"
+msgstr "Modalità economica"
 
-msgid "  Pulldown"
-msgstr "  Pulldown"
+msgid "Pulldown"
+msgstr "Pulldown"
 
-msgid "  Frame rate"
-msgstr "  Frame rate"
+msgid "Frame rate"
+msgstr "Frame rate"
 
-msgid "  Judder Correction"
-msgstr "  Correzione gamma"
+msgid "Judder Correction"
+msgstr "Correzione gamma"
 
-msgid "  Use progressive frame flag"
-msgstr "  Utilizza flag frame progressivo"
+msgid "Use progressive frame flag"
+msgstr "Utilizza flag frame progressivo"
 
-msgid "  Chroma Filter"
-msgstr "  Filtro Chroma"
+msgid "Chroma Filter"
+msgstr "Filtro Chroma"
 
 msgid "Sharpen / Blur"
 msgstr "Nitido / Blur"
 
-msgid "  Width of the luma matrix"
-msgstr "  Larghezza della matrice luma"
+msgid "Width of the luma matrix"
+msgstr "Larghezza della matrice luma"
 
-msgid "  Height of the luma matrix"
-msgstr "  Altezza della matrice luma"
+msgid "Height of the luma matrix"
+msgstr "Altezza della matrice luma"
 
-msgid "  Amount of luma sharpness/blur"
-msgstr "  Valore di nitidezza/blur luma"
+msgid "Amount of luma sharpness/blur"
+msgstr "Valore di nitidezza/blur luma"
 
-msgid "  Width of the chroma matrix"
-msgstr "  Larghezza della matrice chroma"
+msgid "Width of the chroma matrix"
+msgstr "Larghezza della matrice chroma"
 
-msgid "  Height of the chroma matrix"
-msgstr "  Altezza della matrice chroma"
+msgid "Height of the chroma matrix"
+msgstr "Altezza della matrice chroma"
 
-msgid "  Amount of chroma sharpness/blur"
-msgstr "  Valore di nitidezza/blur chroma"
+msgid "Amount of chroma sharpness/blur"
+msgstr "Valore di nitidezza/blur chroma"
 
 msgid "3D Denoiser"
 msgstr "Denoiser 3D"
 
-msgid "  Spatial luma strength"
-msgstr "  Resistenza luma spaziale"
+msgid "Spatial luma strength"
+msgstr "Resistenza luma spaziale"
 
-msgid "  Spatial chroma strength"
-msgstr "  Resistenza chroma spaziale"
+msgid "Spatial chroma strength"
+msgstr "Resistenza chroma spaziale"
 
-msgid "  Temporal strength"
-msgstr "  Resistenza temporale"
+msgid "Temporal strength"
+msgstr "Resistenza temporale"
 
 msgid "HUE"
 msgstr "Tonalità"
@@ -486,8 +486,8 @@ msgstr "Nascondi voce menu principale"
 msgid "Blending method"
 msgstr "Metodo di sfocatura"
 
-msgid "  Use hardware for low-res video"
-msgstr "  Usa hardware video bassa risoluz."
+msgid "Use hardware for low-res video"
+msgstr "Usa hardware video bassa risoluz."
 
 msgid "Scaling method"
 msgstr "Metodo ridimensione"
@@ -513,8 +513,8 @@ msgstr "Decoder"
 msgid "Buffer size"
 msgstr "Dimensione buffer"
 
-msgid "  Number of PES packets"
-msgstr "  Numero di pacchetti PES"
+msgid "Number of PES packets"
+msgstr "Numero di pacchetti PES"
 
 msgid "Local Display Frontend"
 msgstr "Frontend visualizzazione locale"
@@ -534,11 +534,11 @@ msgstr "Periferica framebuffer"
 msgid "Fullscreen mode"
 msgstr "Mod. schermo intero"
 
-msgid "  Window width"
-msgstr "  Larghezza finestra"
+msgid "Window width"
+msgstr "Larghezza finestra"
 
-msgid "  Window height"
-msgstr "  Altezza finestra"
+msgid "Window height"
+msgstr "Altezza finestra"
 
 msgid "Window aspect"
 msgstr "Aspetto finestra"
@@ -555,50 +555,50 @@ msgstr "Client remoti"
 msgid "Allow remote clients"
 msgstr "Permetti client remoti"
 
-msgid "  Listen port (TCP and broadcast)"
-msgstr "  Porta in ascolto (TCP e broadcast)"
+msgid "Listen port (TCP and broadcast)"
+msgstr "Porta in ascolto (TCP e broadcast)"
 
-msgid "  Listen address"
-msgstr "  Indirizzo in ascolto"
+msgid "Listen address"
+msgstr "Indirizzo in ascolto"
 
-msgid "  Remote keyboard"
-msgstr "  Tastiera remota"
+msgid "Remote keyboard"
+msgstr "Tastiera remota"
 
-msgid "  Max number of clients"
-msgstr "  Numero massimo di client"
+msgid "Max number of clients"
+msgstr "Numero massimo di client"
 
-msgid "  PIPE transport"
-msgstr "  Protocollo PIPE"
+msgid "PIPE transport"
+msgstr "Protocollo PIPE"
 
-msgid "  TCP transport"
-msgstr "  Protocollo TCP"
+msgid "TCP transport"
+msgstr "Protocollo TCP"
 
-msgid "  UDP transport"
-msgstr "  Protocollo UDP"
+msgid "UDP transport"
+msgstr "Protocollo UDP"
 
-msgid "  RTP (multicast) transport"
-msgstr "  Protocollo RTP (multicast)"
+msgid "RTP (multicast) transport"
+msgstr "Protocollo RTP (multicast)"
 
-msgid "    Address"
-msgstr "    Indirizzo"
+msgid "Address"
+msgstr "Indirizzo"
 
-msgid "    Port"
-msgstr "    Porta"
+msgid "Port"
+msgstr "Porta"
 
-msgid "    TTL"
-msgstr "    TTL"
+msgid "TTL"
+msgstr "TTL"
 
-msgid "    Transmit always on"
-msgstr "    Trasmetti sempre"
+msgid "Transmit always on"
+msgstr "Trasmetti sempre"
 
-msgid "    SAP announcements"
-msgstr "    Annunci SAP"
+msgid "SAP announcements"
+msgstr "Annunci SAP"
 
-msgid "  Server announce broadcasts"
-msgstr "  Annuncio trasmissioni dal server"
+msgid "Server announce broadcasts"
+msgstr "Annuncio trasmissioni dal server"
 
-msgid "  HTTP transport for media files"
-msgstr "  Protocollo HTTP file multimediali"
+msgid "HTTP transport for media files"
+msgstr "Protocollo HTTP file multimediali"
 
 msgid "Additional network services"
 msgstr "Ulteriori servizi di rete"

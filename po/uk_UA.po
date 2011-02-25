@@ -331,17 +331,17 @@ msgstr "Міксувати до навушників"
 msgid "Visualization"
 msgstr "Візуалізація"
 
-msgid "  Width"
-msgstr "  Ширина"
+msgid "Width"
+msgstr "Ширина"
 
 msgid "px"
 msgstr "пікселів"
 
-msgid "  Height"
-msgstr "  Висота"
+msgid "Height"
+msgstr "Висота"
 
-msgid "  Speed"
-msgstr "  Швидкість"
+msgid "Speed"
+msgstr "Швидкість"
 
 msgid "fps"
 msgstr "кадри за сек"
@@ -367,92 +367,92 @@ msgstr "половина (нижня)"
 msgid "Video"
 msgstr "Відео"
 
-msgid "  Autodetect letterbox"
-msgstr "  Автовизначення розміру"
+msgid "Autodetect letterbox"
+msgstr "Автовизначення розміру"
 
-msgid "  Soft start"
-msgstr "  М'який старт"
+msgid "Soft start"
+msgstr "М'який старт"
 
-msgid "  Crop to"
-msgstr "  Обрізати до"
+msgid "Crop to"
+msgstr "Обрізати до"
 
-msgid "  Detect subtitles"
-msgstr "  Визначити субтитри"
+msgid "Detect subtitles"
+msgstr "Визначити субтитри"
 
 msgid "Software scaling"
 msgstr "Програмне масштабування"
 
-msgid "  Change aspect ratio"
-msgstr "  Змінити пропорції"
+msgid "Change aspect ratio"
+msgstr "Змінити пропорції"
 
-msgid "  Change video size"
-msgstr "  Змінити розмір відео"
+msgid "Change video size"
+msgstr "Змінити розмір відео"
 
-msgid "  Allow downscaling"
-msgstr "  Дозволити масштабування з зменшенням якості"
+msgid "Allow downscaling"
+msgstr "Дозволити масштабування з зменшенням якості"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Після обробка (ffmpeg)"
 
-msgid "  Quality"
-msgstr "  Якість"
+msgid "Quality"
+msgstr "Якість"
 
-msgid "  Mode"
-msgstr "  Режим"
+msgid "Mode"
+msgstr "Режим"
 
-msgid "  Method"
-msgstr "  Метод"
+msgid "Method"
+msgstr "Метод"
 
-msgid "  Cheap mode"
-msgstr "  \"Дешевий\" метод"
+msgid "Cheap mode"
+msgstr "\"Дешевий\" метод"
 
-msgid "  Pulldown"
-msgstr "  Зниження"
+msgid "Pulldown"
+msgstr "Зниження"
 
-msgid "  Frame rate"
-msgstr "  Частота кадрів"
+msgid "Frame rate"
+msgstr "Частота кадрів"
 
-msgid "  Judder Correction"
-msgstr "  Корекція Judder-а"
+msgid "Judder Correction"
+msgstr "Корекція Judder-а"
 
-msgid "  Use progressive frame flag"
-msgstr "  Використовувати прогресивну мітку кадру"
+msgid "Use progressive frame flag"
+msgstr "Використовувати прогресивну мітку кадру"
 
-msgid "  Chroma Filter"
-msgstr "  Фільтр Chroma"
+msgid "Chroma Filter"
+msgstr "Фільтр Chroma"
 
 msgid "Sharpen / Blur"
 msgstr "Різкість / Затемнення"
 
-msgid "  Width of the luma matrix"
-msgstr "  Ширина luma-матриці"
+msgid "Width of the luma matrix"
+msgstr "Ширина luma-матриці"
 
-msgid "  Height of the luma matrix"
-msgstr "  Висота luma-матриці"
+msgid "Height of the luma matrix"
+msgstr "Висота luma-матриці"
 
-msgid "  Amount of luma sharpness/blur"
-msgstr "  Значення різкості/затемнення для luma"
+msgid "Amount of luma sharpness/blur"
+msgstr "Значення різкості/затемнення для luma"
 
-msgid "  Width of the chroma matrix"
-msgstr "  Ширина chroma-матриці"
+msgid "Width of the chroma matrix"
+msgstr "Ширина chroma-матриці"
 
-msgid "  Height of the chroma matrix"
-msgstr "  Висота chroma-матриці"
+msgid "Height of the chroma matrix"
+msgstr "Висота chroma-матриці"
 
-msgid "  Amount of chroma sharpness/blur"
-msgstr "  Значення різкості/затемнення для chroma"
+msgid "Amount of chroma sharpness/blur"
+msgstr "Значення різкості/затемнення для chroma"
 
 msgid "3D Denoiser"
 msgstr "3D знімач шумів"
 
-msgid "  Spatial luma strength"
-msgstr "  Просторова міцність luma"
+msgid "Spatial luma strength"
+msgstr "Просторова міцність luma"
 
-msgid "  Spatial chroma strength"
-msgstr "  Просторова міцність chroma"
+msgid "Spatial chroma strength"
+msgstr "Просторова міцність chroma"
 
-msgid "  Temporal strength"
-msgstr "  Тимчасова міцність"
+msgid "Temporal strength"
+msgstr "Тимчасова міцність"
 
 msgid "HUE"
 msgstr "HUE"
@@ -487,8 +487,8 @@ msgstr "Сховати екранне меню"
 msgid "Blending method"
 msgstr "Метод змішування"
 
-msgid "  Use hardware for low-res video"
-msgstr "  Викор. апаратні засоби для відео з низьк. розд.зд."
+msgid "Use hardware for low-res video"
+msgstr "Викор. апаратні засоби для відео з низьк. розд.зд."
 
 msgid "Scaling method"
 msgstr "Метод масштабування"
@@ -514,7 +514,7 @@ msgstr ""
 msgid "Buffer size"
 msgstr ""
 
-msgid "  Number of PES packets"
+msgid "Number of PES packets"
 msgstr ""
 
 msgid "Local Display Frontend"
@@ -535,10 +535,10 @@ msgstr ""
 msgid "Fullscreen mode"
 msgstr ""
 
-msgid "  Window width"
+msgid "Window width"
 msgstr ""
 
-msgid "  Window height"
+msgid "Window height"
 msgstr ""
 
 msgid "Window aspect"
@@ -556,49 +556,49 @@ msgstr ""
 msgid "Allow remote clients"
 msgstr ""
 
-msgid "  Listen port (TCP and broadcast)"
+msgid "Listen port (TCP and broadcast)"
 msgstr ""
 
-msgid "  Listen address"
+msgid "Listen address"
 msgstr ""
 
-msgid "  Remote keyboard"
+msgid "Remote keyboard"
 msgstr ""
 
-msgid "  Max number of clients"
+msgid "Max number of clients"
 msgstr ""
 
-msgid "  PIPE transport"
+msgid "PIPE transport"
 msgstr ""
 
-msgid "  TCP transport"
+msgid "TCP transport"
 msgstr ""
 
-msgid "  UDP transport"
+msgid "UDP transport"
 msgstr ""
 
-msgid "  RTP (multicast) transport"
+msgid "RTP (multicast) transport"
 msgstr ""
 
-msgid "    Address"
+msgid "Address"
 msgstr ""
 
-msgid "    Port"
+msgid "Port"
 msgstr ""
 
-msgid "    TTL"
+msgid "TTL"
 msgstr ""
 
-msgid "    Transmit always on"
+msgid "Transmit always on"
 msgstr ""
 
-msgid "    SAP announcements"
+msgid "SAP announcements"
 msgstr ""
 
-msgid "  Server announce broadcasts"
+msgid "Server announce broadcasts"
 msgstr ""
 
-msgid "  HTTP transport for media files"
+msgid "HTTP transport for media files"
 msgstr ""
 
 msgid "Additional network services"
