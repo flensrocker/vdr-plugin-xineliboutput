@@ -227,29 +227,29 @@ msgstr "Sottotitoli"
 msgid "Media"
 msgstr "Media"
 
-msgid "Play file >>"
-msgstr "Riproduci file >>"
+msgid "Play file"
+msgstr "Riproduci file"
 
-msgid "Play music >>"
-msgstr "Riproduci musica >>"
+msgid "Play music"
+msgstr "Riproduci musica"
 
-msgid "View images >>"
-msgstr "Visualizza immagini >>"
+msgid "View images"
+msgstr "Visualizza immagini"
 
-msgid "Play remote DVD >>"
-msgstr "Riproduci DVD remoto >>"
+msgid "Play remote DVD"
+msgstr "Riproduci DVD remoto"
 
-msgid "Play DVD disc >>"
-msgstr "Riproduci disco DVD >>"
+msgid "Play DVD disc"
+msgstr "Riproduci disco DVD"
 
-msgid "Play remote CD >>"
-msgstr "Riproduci CD remoto >>"
+msgid "Play remote CD"
+msgstr "Riproduci CD remoto"
 
-msgid "Play audio CD >>"
-msgstr "Riproduci CD audio >>"
+msgid "Play audio CD"
+msgstr "Riproduci CD audio"
 
-msgid "Select subtitle track >>"
-msgstr "Seleziona traccia sottotitoli >>"
+msgid "Select subtitle track"
+msgstr "Seleziona traccia sottotitoli"
 
 msgid "Video settings"
 msgstr "Impostazioni video"
@@ -275,8 +275,8 @@ msgstr "Modalità cuffie audio"
 msgid "Audio Compression"
 msgstr "Compressione audio"
 
-msgid "Audio equalizer >>"
-msgstr "Equalizzatore audio >>"
+msgid "Audio equalizer"
+msgstr "Equalizzatore audio"
 
 msgid "No subtitles available!"
 msgstr "Nessun sottotitolo disponibile!"
@@ -645,8 +645,8 @@ msgstr "Riproduzione DVD con tasti freccia"
 msgid "Media Player"
 msgstr "Lettore multimediale"
 
-msgid "Play BluRay disc >>"
-msgstr "Riproduci disco BluRay >>"
+msgid "Play BluRay disc"
+msgstr "Riproduci disco BluRay"
 
 msgid "Grayscale"
 msgstr "Scala di grigi"

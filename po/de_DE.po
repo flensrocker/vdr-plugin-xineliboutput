@@ -225,29 +225,29 @@ msgstr "Untertitel"
 msgid "Media"
 msgstr "Medien"
 
-msgid "Play file >>"
-msgstr "Datei abspielen >>"
+msgid "Play file"
+msgstr "Datei abspielen"
 
-msgid "Play music >>"
-msgstr "Musik abspielen >>"
+msgid "Play music"
+msgstr "Musik abspielen"
 
-msgid "View images >>"
-msgstr "Bilder ansehen >>"
+msgid "View images"
+msgstr "Bilder ansehen"
 
-msgid "Play remote DVD >>"
-msgstr "Entfernte DVD abspielen >>"
+msgid "Play remote DVD"
+msgstr "Entfernte DVD abspielen"
 
-msgid "Play DVD disc >>"
-msgstr "DVD abspielen >>"
+msgid "Play DVD disc"
+msgstr "DVD abspielen"
 
-msgid "Play remote CD >>"
-msgstr "Entfernte CD abspielen >>"
+msgid "Play remote CD"
+msgstr "Entfernte CD abspielen"
 
-msgid "Play audio CD >>"
-msgstr "Musik-CD abspielen >>"
+msgid "Play audio CD"
+msgstr "Musik-CD abspielen"
 
-msgid "Select subtitle track >>"
-msgstr "Wähle Untertitel >>"
+msgid "Select subtitle track"
+msgstr "Wähle Untertitel"
 
 msgid "Video settings"
 msgstr "Video-Einstellungen"
@@ -273,8 +273,8 @@ msgstr ""
 msgid "Audio Compression"
 msgstr "Audio-Komprimierung"
 
-msgid "Audio equalizer >>"
-msgstr "Audio-Equalizer >>"
+msgid "Audio equalizer"
+msgstr "Audio-Equalizer"
 
 msgid "No subtitles available!"
 msgstr "Keine Untertitel verfügbar!"
@@ -643,8 +643,8 @@ msgstr ""
 msgid "Media Player"
 msgstr "Medien..."
 
-msgid "Play BluRay disc >>"
-msgstr "BluRay abspielen >>"
+msgid "Play BluRay disc"
+msgstr "BluRay abspielen"
 
 msgid "Grayscale"
 msgstr "Graustufen"

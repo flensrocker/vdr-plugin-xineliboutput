@@ -225,28 +225,28 @@ msgstr "Subtiitrite"
 msgid "Media"
 msgstr "Meedia"
 
-msgid "Play file >>"
-msgstr "Faili mängimine >>"
+msgid "Play file"
+msgstr "Faili mängimine"
 
-msgid "Play music >>"
-msgstr "Muusika mängimine >>"
+msgid "Play music"
+msgstr "Muusika mängimine"
 
-msgid "View images >>"
-msgstr "Piltide vaatamine >>"
+msgid "View images"
+msgstr "Piltide vaatamine"
 
-msgid "Play remote DVD >>"
-msgstr "Kaug-DVD mängimine >>"
+msgid "Play remote DVD"
+msgstr "Kaug-DVD mängimine"
 
-msgid "Play DVD disc >>"
-msgstr "DVD mängimine >>"
+msgid "Play DVD disc"
+msgstr "DVD mängimine"
 
-msgid "Play remote CD >>"
-msgstr "Kaug-CD mängimine >>"
+msgid "Play remote CD"
+msgstr "Kaug-CD mängimine"
 
-msgid "Play audio CD >>"
-msgstr "CD mängimine >>"
+msgid "Play audio CD"
+msgstr "CD mängimine"
 
-msgid "Select subtitle track >>"
+msgid "Select subtitle track"
 msgstr ""
 
 msgid "Video settings"
@@ -273,8 +273,8 @@ msgstr "Kuulari helimudel"
 msgid "Audio Compression"
 msgstr "Heli kompresseerimine"
 
-msgid "Audio equalizer >>"
-msgstr "Heli ekvalaiser >>"
+msgid "Audio equalizer"
+msgstr "Heli ekvalaiser"
 
 msgid "No subtitles available!"
 msgstr ""
@@ -643,8 +643,8 @@ msgstr "Noolte kasutamine DVD juhtimisel"
 msgid "Media Player"
 msgstr "Meediapleier"
 
-msgid "Play BluRay disc >>"
-msgstr "BluRay mängimine >>"
+msgid "Play BluRay disc"
+msgstr "BluRay mängimine"
 
 msgid "Grayscale"
 msgstr "Halltoonid"

@@ -226,29 +226,29 @@ msgstr "Tekstitys"
 msgid "Media"
 msgstr "Media"
 
-msgid "Play file >>"
-msgstr "Toista tiedosto >>"
+msgid "Play file"
+msgstr "Toista tiedosto"
 
-msgid "Play music >>"
-msgstr "Toista musiikkia >>"
+msgid "Play music"
+msgstr "Toista musiikkia"
 
-msgid "View images >>"
-msgstr "Katsele kuvia >>"
+msgid "View images"
+msgstr "Katsele kuvia"
 
-msgid "Play remote DVD >>"
-msgstr "Toista DVD-levy etäkoneesta >>"
+msgid "Play remote DVD"
+msgstr "Toista DVD-levy etäkoneesta"
 
-msgid "Play DVD disc >>"
-msgstr "Toista DVD-levy >>"
+msgid "Play DVD disc"
+msgstr "Toista DVD-levy"
 
-msgid "Play remote CD >>"
-msgstr "Toista CD-levy etäkoneesta >>"
+msgid "Play remote CD"
+msgstr "Toista CD-levy etäkoneesta"
 
-msgid "Play audio CD >>"
-msgstr "Toista CD-levy >>"
+msgid "Play audio CD"
+msgstr "Toista CD-levy"
 
-msgid "Select subtitle track >>"
-msgstr "Valitse tekstityskieli >>"
+msgid "Select subtitle track"
+msgstr "Valitse tekstityskieli"
 
 msgid "Video settings"
 msgstr "Videoasetukset"
@@ -274,8 +274,8 @@ msgstr "Kuulokkeiden äänimoodi"
 msgid "Audio Compression"
 msgstr "Voimista hiljaisia ääniä"
 
-msgid "Audio equalizer >>"
-msgstr "Taajuuskorjain >>"
+msgid "Audio equalizer"
+msgstr "Taajuuskorjain"
 
 msgid "No subtitles available!"
 msgstr "Ei tekstitystä"
@@ -644,8 +644,8 @@ msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
 msgid "Media Player"
 msgstr "Mediasoitin"
 
-msgid "Play BluRay disc >>"
-msgstr "Toista BluRay-levy >>"
+msgid "Play BluRay disc"
+msgstr "Toista BluRay-levy"
 
 msgid "Grayscale"
 msgstr "Harmaasävy"

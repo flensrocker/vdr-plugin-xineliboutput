@@ -225,28 +225,28 @@ msgstr ""
 msgid "Media"
 msgstr "媒体"
 
-msgid "Play file >>"
-msgstr "播放文件 >>"
+msgid "Play file"
+msgstr "播放文件"
 
-msgid "Play music >>"
-msgstr "播放音乐 >>"
+msgid "Play music"
+msgstr "播放音乐"
 
-msgid "View images >>"
-msgstr "浏览图像 >>"
+msgid "View images"
+msgstr "浏览图像"
 
-msgid "Play remote DVD >>"
-msgstr "玩遥控影碟 >>"
+msgid "Play remote DVD"
+msgstr "玩遥控影碟"
 
-msgid "Play DVD disc >>"
-msgstr "播放DVD光盘 >>"
+msgid "Play DVD disc"
+msgstr "播放DVD光盘"
 
-msgid "Play remote CD >>"
-msgstr "播放远程光盘 >>"
+msgid "Play remote CD"
+msgstr "播放远程光盘"
 
-msgid "Play audio CD >>"
-msgstr "播放音乐CD >>"
+msgid "Play audio CD"
+msgstr "播放音乐CD"
 
-msgid "Select subtitle track >>"
+msgid "Select subtitle track"
 msgstr ""
 
 msgid "Video settings"
@@ -273,8 +273,8 @@ msgstr "耳机音频模式"
 msgid "Audio Compression"
 msgstr "音频压缩"
 
-msgid "Audio equalizer >>"
-msgstr "音频均衡器 >>"
+msgid "Audio equalizer"
+msgstr "音频均衡器"
 
 msgid "No subtitles available!"
 msgstr ""
@@ -643,8 +643,8 @@ msgstr "允许按键控制DVD回放"
 msgid "Media Player"
 msgstr "媒体播放器"
 
-msgid "Play BluRay disc >>"
-msgstr "播放BluRay光盘 >>"
+msgid "Play BluRay disc"
+msgstr "播放BluRay光盘"
 
 msgid "Grayscale"
 msgstr "灰度"

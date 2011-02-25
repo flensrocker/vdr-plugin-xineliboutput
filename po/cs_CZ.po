@@ -226,29 +226,29 @@ msgstr "Titulky"
 msgid "Media"
 msgstr "Média"
 
-msgid "Play file >>"
-msgstr "Pøehrát soubor >>"
+msgid "Play file"
+msgstr "Pøehrát soubor"
 
-msgid "Play music >>"
-msgstr "Pøehrát hudbu >>"
+msgid "Play music"
+msgstr "Pøehrát hudbu"
 
-msgid "View images >>"
-msgstr "Prohlí¾et obrázky >>"
+msgid "View images"
+msgstr "Prohlí¾et obrázky"
 
-msgid "Play remote DVD >>"
-msgstr "Pøehrát vzdálené DVD >>"
+msgid "Play remote DVD"
+msgstr "Pøehrát vzdálené DVD"
 
-msgid "Play DVD disc >>"
-msgstr "Pøehrát DVD >>"
+msgid "Play DVD disc"
+msgstr "Pøehrát DVD"
 
-msgid "Play remote CD >>"
-msgstr "Pøehrát vzdálené CD >>"
+msgid "Play remote CD"
+msgstr "Pøehrát vzdálené CD"
 
-msgid "Play audio CD >>"
-msgstr "Pøehrát zvukové CD >>"
+msgid "Play audio CD"
+msgstr "Pøehrát zvukové CD"
 
-msgid "Select subtitle track >>"
-msgstr "Výbìr titulkù >>"
+msgid "Select subtitle track"
+msgstr "Výbìr titulkù"
 
 msgid "Video settings"
 msgstr "Nastavení obrazu"
@@ -274,8 +274,8 @@ msgstr ""
 msgid "Audio Compression"
 msgstr ""
 
-msgid "Audio equalizer >>"
-msgstr "Korekce zvuku (ekvalizér) >>"
+msgid "Audio equalizer"
+msgstr "Korekce zvuku (ekvalizér)"
 
 msgid "No subtitles available!"
 msgstr "Titulky nejsou k dispozici!"
@@ -644,8 +644,8 @@ msgstr ""
 msgid "Media Player"
 msgstr "Pøehrávaè médií"
 
-msgid "Play BluRay disc >>"
-msgstr "Pøehrát BluRay >>"
+msgid "Play BluRay disc"
+msgstr "Pøehrát BluRay"
 
 msgid "Grayscale"
 msgstr "Odstíny ¹edi"

@@ -225,28 +225,28 @@ msgstr ""
 msgid "Media"
 msgstr ""
 
-msgid "Play file >>"
-msgstr "Проиграть файл >>"
+msgid "Play file"
+msgstr "Проиграть файл"
 
-msgid "Play music >>"
-msgstr "Проиграть файл >>"
+msgid "Play music"
+msgstr "Проиграть файл"
 
-msgid "View images >>"
-msgstr "Просмотреть изображения >>"
+msgid "View images"
+msgstr "Просмотреть изображения"
 
-msgid "Play remote DVD >>"
+msgid "Play remote DVD"
 msgstr ""
 
-msgid "Play DVD disc >>"
+msgid "Play DVD disc"
 msgstr ""
 
-msgid "Play remote CD >>"
+msgid "Play remote CD"
 msgstr ""
 
-msgid "Play audio CD >>"
+msgid "Play audio CD"
 msgstr ""
 
-msgid "Select subtitle track >>"
+msgid "Select subtitle track"
 msgstr ""
 
 msgid "Video settings"
@@ -273,8 +273,8 @@ msgstr ""
 msgid "Audio Compression"
 msgstr "Аудио компрессия"
 
-msgid "Audio equalizer >>"
-msgstr "Аудио эквалайзер >>"
+msgid "Audio equalizer"
+msgstr "Аудио эквалайзер"
 
 msgid "No subtitles available!"
 msgstr ""
@@ -643,7 +643,7 @@ msgstr ""
 msgid "Media Player"
 msgstr "Xine-lib"
 
-msgid "Play BluRay disc >>"
+msgid "Play BluRay disc"
 msgstr ""
 
 msgid "Grayscale"

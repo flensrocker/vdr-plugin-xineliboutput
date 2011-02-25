@@ -228,28 +228,28 @@ msgstr ""
 msgid "Media"
 msgstr "Медіа"
 
-msgid "Play file >>"
-msgstr "Програвати файл >>"
+msgid "Play file"
+msgstr "Програвати файл"
 
-msgid "Play music >>"
-msgstr "Прогпавати музику >>"
+msgid "Play music"
+msgstr "Прогпавати музику"
 
-msgid "View images >>"
-msgstr "Переглядати зображення >>"
+msgid "View images"
+msgstr "Переглядати зображення"
 
-msgid "Play remote DVD >>"
+msgid "Play remote DVD"
 msgstr ""
 
-msgid "Play DVD disc >>"
-msgstr "Програвати диск DVD >>"
+msgid "Play DVD disc"
+msgstr "Програвати диск DVD"
 
-msgid "Play remote CD >>"
-msgstr "Програвати аудіо CD >>"
+msgid "Play remote CD"
+msgstr "Програвати аудіо CD"
 
-msgid "Play audio CD >>"
-msgstr "Програвати аудіо CD >>"
+msgid "Play audio CD"
+msgstr "Програвати аудіо CD"
 
-msgid "Select subtitle track >>"
+msgid "Select subtitle track"
 msgstr ""
 
 msgid "Video settings"
@@ -276,8 +276,8 @@ msgstr ""
 msgid "Audio Compression"
 msgstr "Компресія аудіо"
 
-msgid "Audio equalizer >>"
-msgstr "Аудіо еквалайзер >>"
+msgid "Audio equalizer"
+msgstr "Аудіо еквалайзер"
 
 msgid "No subtitles available!"
 msgstr ""
@@ -646,8 +646,8 @@ msgstr ""
 msgid "Media Player"
 msgstr ""
 
-msgid "Play BluRay disc >>"
-msgstr "Програвати диск  BluRay >>"
+msgid "Play BluRay disc"
+msgstr "Програвати диск  BluRay"
 
 msgid "Grayscale"
 msgstr ""
