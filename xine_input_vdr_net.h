@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr_net.h,v 1.12 2009-07-22 11:29:28 phintuka Exp $
+ * $Id: xine_input_vdr_net.h,v 1.12.2.1 2011-02-25 01:04:32 phintuka Exp $
  *
  */
 
@@ -12,7 +12,7 @@
 #define __XINE_INPUT_VDR_NET_H_
 
 #include <arpa/inet.h>
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 # include <machine/endian.h>
 #else
 # include <endian.h>
@@ -61,6 +61,21 @@
 
 
 /*
+ * Substreams
+ */
+
+enum eStreamId {
+  sidVdr      = 0,    /* VDR primary video/audio (MPEG-PES or MPEG-TS) */
+
+  sidPipFirst = 1,    /* VDR PIP video, first (MPEG-TS PAT+PMT+video) */
+  sidPipLast  = 17,
+
+  sidPadding  = 0xfd, /* UDP/RTP padding */
+  sidOsd      = 0xfe, /* OSD */
+  sidControl  = 0xff, /* control messages */
+};
+
+/*
  * Network packet headers
  */
 
@@ -93,7 +108,7 @@ typedef struct stream_udp_header {
                 /* -1ULL and first bytes of frame != 00 00 01 */
                 /* --> embedded control stream data */
   uint16_t seq; /* packet sequence number
-		   (for re-ordering and detecting missing packets) */
+                   (for re-ordering and detecting missing packets) */
 
   uint8_t  payload[0];
 
@@ -121,14 +136,14 @@ typedef struct stream_rtp_header_ext_x {
 
       struct {
 	uint16_t            padding0; /* must be padded to full DWORDs */
-	stream_udp_header_t udphdr;
+        stream_udp_header_t udphdr;
       } PACKED;
 
       struct {
 	uint16_t padding1;  /* must be padded to full DWORDs */
 
-	uint64_t pos;
-	uint16_t seq;
+        uint64_t pos;
+        uint16_t seq;
       } PACKED;
 
     } PACKED;
