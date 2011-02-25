@@ -225,12 +225,6 @@ msgstr ""
 msgid "Media"
 msgstr "媒体"
 
-msgid "Play file"
-msgstr "播放文件"
-
-msgid "Play music"
-msgstr "播放音乐"
-
 msgid "View images"
 msgstr "浏览图像"
 

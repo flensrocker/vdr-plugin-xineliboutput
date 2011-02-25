@@ -228,12 +228,6 @@ msgstr ""
 msgid "Media"
 msgstr "Медіа"
 
-msgid "Play file"
-msgstr "Програвати файл"
-
-msgid "Play music"
-msgstr "Прогпавати музику"
-
 msgid "View images"
 msgstr "Переглядати зображення"
 

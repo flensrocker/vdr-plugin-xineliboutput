@@ -227,12 +227,6 @@ msgstr "Sottotitoli"
 msgid "Media"
 msgstr "Media"
 
-msgid "Play file"
-msgstr "Riproduci file"
-
-msgid "Play music"
-msgstr "Riproduci musica"
-
 msgid "View images"
 msgstr "Visualizza immagini"
 

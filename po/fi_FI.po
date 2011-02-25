@@ -226,12 +226,6 @@ msgstr "Tekstitys"
 msgid "Media"
 msgstr "Media"
 
-msgid "Play file"
-msgstr "Toista tiedosto"
-
-msgid "Play music"
-msgstr "Toista musiikkia"
-
 msgid "View images"
 msgstr "Katsele kuvia"
 

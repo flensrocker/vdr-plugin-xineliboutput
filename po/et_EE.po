@@ -676,20 +676,5 @@ msgstr "X11/xine-lib kuvar"
 #~ msgid "Close menu"
 #~ msgstr "Menüü sulgemine"
 
-#~ msgid "View images"
-#~ msgstr "Piltide kuvamine"
-
-#~ msgid "Play DVD disc"
-#~ msgstr "DVD plaadi esitamine"
-
-#~ msgid "Play BluRay disc"
-#~ msgstr "BluRay plaadi esitamine"
-
-#~ msgid "Play audio CD"
-#~ msgstr "CD plaadi esitamine"
-
-#~ msgid "Audio equalizer"
-#~ msgstr "Ekvalaiser"
-
 #~ msgid "Resolution"
 #~ msgstr "Resolutsioon"
