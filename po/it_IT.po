@@ -6,10 +6,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-02-15 21:20+0200\n"
+"POT-Creation-Date: 2011-02-25 23:46+0200\n"
 "PO-Revision-Date: 2009-02-08 20:09+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -155,6 +156,9 @@ msgstr "più vicino"
 msgid "bilinear"
 msgstr "bilineare"
 
+msgid "video stream"
+msgstr ""
+
 msgid "none"
 msgstr "nessuno"
 
@@ -203,6 +207,27 @@ msgstr "Riproduzione casuale"
 msgid "Normal play"
 msgstr "Riproduzione normale"
 
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
 msgid "Delete image ?"
 msgstr "Eliminare immagine ?"
 
@@ -233,6 +258,9 @@ msgstr "Visualizza immagini"
 msgid "Play DVD disc"
 msgstr "Riproduci disco DVD"
 
+msgid "Play BluRay disc"
+msgstr "Riproduci disco BluRay"
+
 msgid "Play audio CD"
 msgstr "Riproduci CD audio"
 
@@ -253,9 +281,6 @@ msgstr "Overscan (ritaglia bordi immagine)"
 
 msgid "Audio settings"
 msgstr "Impostazioni audio"
-
-msgid "Headphone audio mode"
-msgstr "Modalità cuffie audio"
 
 msgid "Audio Compression"
 msgstr "Compressione audio"
@@ -357,17 +382,47 @@ msgstr "metà (inferiore)"
 msgid "Video"
 msgstr "Video"
 
+msgid "Use driver crop"
+msgstr ""
+
 msgid "Autodetect letterbox"
 msgstr "Rileva letterbox in automatico"
-
-msgid "Soft start"
-msgstr "Avvio leggero"
 
 msgid "Crop to"
 msgstr "Ritaglia a"
 
+msgid "Autodetect rate"
+msgstr ""
+
+msgid "Stabilize time"
+msgstr ""
+
+msgid "Maximum logo width [%]"
+msgstr ""
+
+msgid "Overscan compensate [%1000]"
+msgstr ""
+
+msgid "Soft start"
+msgstr "Avvio leggero"
+
+msgid "Soft start step"
+msgstr ""
+
 msgid "Detect subtitles"
 msgstr "Rileva sottotitoli"
+
+msgid "Subs detect stabilize time"
+msgstr ""
+
+msgid "Subs detect lifetime"
+msgstr ""
+
+msgid "Use avards analysis"
+msgstr ""
+
+msgid "Bar tone tolerance"
+msgstr ""
 
 msgid "Software scaling"
 msgstr "Ridimensionamento software"
@@ -482,6 +537,9 @@ msgstr "Usa hardware video bassa risoluz."
 
 msgid "Scaling method"
 msgstr "Metodo ridimensione"
+
+msgid "Scale subtitles"
+msgstr ""
 
 msgid "Show all layers"
 msgstr "Mostra tutti i livelli"
@@ -627,9 +685,6 @@ msgstr "Riproduzione DVD con tasti freccia"
 msgid "Media Player"
 msgstr "Lettore multimediale"
 
-msgid "Play BluRay disc"
-msgstr "Riproduci disco BluRay"
-
 msgid "Grayscale"
 msgstr "Scala di grigi"
 
@@ -644,3 +699,6 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+
+#~ msgid "Headphone audio mode"
+#~ msgstr "Modalità cuffie audio"

@@ -7,10 +7,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-02-15 21:20+0200\n"
+"POT-Creation-Date: 2011-02-25 23:46+0200\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -153,6 +154,9 @@ msgstr "最近"
 msgid "bilinear"
 msgstr "雙線性"
 
+msgid "video stream"
+msgstr ""
+
 msgid "none"
 msgstr "無"
 
@@ -201,6 +205,27 @@ msgstr "隨機播放"
 msgid "Normal play"
 msgstr "正常播放"
 
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
 msgid "Delete image ?"
 msgstr "是否刪除圖片?"
 
@@ -231,6 +256,9 @@ msgstr "瀏覽圖像"
 msgid "Play DVD disc"
 msgstr "播放DVD光盤"
 
+msgid "Play BluRay disc"
+msgstr "播放BluRay光盤"
+
 msgid "Play audio CD"
 msgstr "播放音樂CD"
 
@@ -251,9 +279,6 @@ msgstr "過掃描(去掉圖像邊框)"
 
 msgid "Audio settings"
 msgstr "音頻設置"
-
-msgid "Headphone audio mode"
-msgstr "耳機音頻模式"
 
 msgid "Audio Compression"
 msgstr "音頻壓縮"
@@ -358,21 +383,51 @@ msgstr "半(下)"
 msgid "Video"
 msgstr "視頻"
 
+msgid "Use driver crop"
+msgstr ""
+
 #, fuzzy
 msgid "Autodetect letterbox"
 msgstr "自動檢測盒子模式"
 
 #, fuzzy
+msgid "Crop to"
+msgstr "剪裁"
+
+msgid "Autodetect rate"
+msgstr ""
+
+msgid "Stabilize time"
+msgstr ""
+
+msgid "Maximum logo width [%]"
+msgstr ""
+
+msgid "Overscan compensate [%1000]"
+msgstr ""
+
+#, fuzzy
 msgid "Soft start"
 msgstr "軟啟動"
 
-#, fuzzy
-msgid "Crop to"
-msgstr "剪裁"
+msgid "Soft start step"
+msgstr ""
 
 #, fuzzy
 msgid "Detect subtitles"
 msgstr "檢測的字幕"
+
+msgid "Subs detect stabilize time"
+msgstr ""
+
+msgid "Subs detect lifetime"
+msgstr ""
+
+msgid "Use avards analysis"
+msgstr ""
+
+msgid "Bar tone tolerance"
+msgstr ""
 
 msgid "Software scaling"
 msgstr "軟件縮放"
@@ -510,6 +565,9 @@ msgstr "低清晰度視頻使用硬"
 msgid "Scaling method"
 msgstr "縮放方法"
 
+msgid "Scale subtitles"
+msgstr ""
+
 msgid "Show all layers"
 msgstr "顯示所有層"
 
@@ -612,7 +670,6 @@ msgstr "RTP (組播)傳送"
 msgid "Address"
 msgstr "地址"
 
-
 #, fuzzy
 msgid "TTL"
 msgstr "TTL"
@@ -672,9 +729,6 @@ msgstr "允許按鍵控制DVD回放"
 msgid "Media Player"
 msgstr "媒體播放器"
 
-msgid "Play BluRay disc"
-msgstr "播放BluRay光盤"
-
 msgid "Grayscale"
 msgstr "灰度"
 
@@ -689,6 +743,9 @@ msgstr "測試圖像"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib視頻輸出插件by NFVDR-HD"
+
+#~ msgid "Headphone audio mode"
+#~ msgstr "耳機音頻模式"
 
 #~ msgid "Resolution"
 #~ msgstr "解決方案"

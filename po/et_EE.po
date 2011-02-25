@@ -7,10 +7,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-02-27 22:52+0200\n"
+"POT-Creation-Date: 2011-02-25 23:46+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Arthur Konovalov\n"
 "Language-Team: <vdr@linuxtv.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -153,6 +154,9 @@ msgstr "lähim"
 msgid "bilinear"
 msgstr "bilineaarne"
 
+msgid "video stream"
+msgstr ""
+
 msgid "none"
 msgstr "ei"
 
@@ -201,6 +205,27 @@ msgstr "Juhuesitus"
 msgid "Normal play"
 msgstr "Normaalne esitus"
 
+msgid "DVD Menu"
+msgstr "DVD menüü"
+
+msgid "Exit DVD menu"
+msgstr "Väljumine DVD menüüst"
+
+msgid "DVD Root menu"
+msgstr "DVD juurmenüü"
+
+msgid "DVD Title menu"
+msgstr "DVD peamemüü"
+
+msgid "DVD SPU menu"
+msgstr "DVD SPU menüü"
+
+msgid "DVD Audio menu"
+msgstr "DVD audio menüü"
+
+msgid "Close menu"
+msgstr "Menüü sulgemine"
+
 msgid "Delete image ?"
 msgstr "Kustutada pilt ?"
 
@@ -231,6 +256,9 @@ msgstr "Piltide vaatamine"
 msgid "Play DVD disc"
 msgstr "DVD mängimine"
 
+msgid "Play BluRay disc"
+msgstr "BluRay mängimine"
+
 msgid "Play audio CD"
 msgstr "CD mängimine"
 
@@ -251,9 +279,6 @@ msgstr "Pildiservade kärpimine (overscan)"
 
 msgid "Audio settings"
 msgstr "Heliseaded"
-
-msgid "Headphone audio mode"
-msgstr "Kuulari helimudel"
 
 msgid "Audio Compression"
 msgstr "Heli kompresseerimine"
@@ -355,17 +380,47 @@ msgstr "pool (alumine)"
 msgid "Video"
 msgstr "Video"
 
+msgid "Use driver crop"
+msgstr ""
+
 msgid "Autodetect letterbox"
 msgstr "Letterbox autotuvastamine"
-
-msgid "Soft start"
-msgstr "Pehme start"
 
 msgid "Crop to"
 msgstr "Kärpimine"
 
+msgid "Autodetect rate"
+msgstr ""
+
+msgid "Stabilize time"
+msgstr ""
+
+msgid "Maximum logo width [%]"
+msgstr ""
+
+msgid "Overscan compensate [%1000]"
+msgstr ""
+
+msgid "Soft start"
+msgstr "Pehme start"
+
+msgid "Soft start step"
+msgstr ""
+
 msgid "Detect subtitles"
 msgstr "Subtiitrite tuvastamine"
+
+msgid "Subs detect stabilize time"
+msgstr ""
+
+msgid "Subs detect lifetime"
+msgstr ""
+
+msgid "Use avards analysis"
+msgstr ""
+
+msgid "Bar tone tolerance"
+msgstr ""
 
 msgid "Software scaling"
 msgstr "Tarkvaraline skaleerimine"
@@ -480,6 +535,9 @@ msgstr "Riistvara kasutus madalresol. videol"
 
 msgid "Scaling method"
 msgstr "Skaleerimise meetod"
+
+msgid "Scale subtitles"
+msgstr ""
 
 msgid "Show all layers"
 msgstr "Kõikide kihtide kuvamine"
@@ -625,9 +683,6 @@ msgstr "Noolte kasutamine DVD juhtimisel"
 msgid "Media Player"
 msgstr "Meediapleier"
 
-msgid "Play BluRay disc"
-msgstr "BluRay mängimine"
-
 msgid "Grayscale"
 msgstr "Halltoonid"
 
@@ -643,26 +698,8 @@ msgstr "Testipildid"
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib kuvar"
 
-#~ msgid "DVD Menu"
-#~ msgstr "DVD menüü"
-
-#~ msgid "Exit DVD menu"
-#~ msgstr "Väljumine DVD menüüst"
-
-#~ msgid "DVD Root menu"
-#~ msgstr "DVD juurmenüü"
-
-#~ msgid "DVD Title menu"
-#~ msgstr "DVD peamemüü"
-
-#~ msgid "DVD SPU menu"
-#~ msgstr "DVD SPU menüü"
-
-#~ msgid "DVD Audio menu"
-#~ msgstr "DVD audio menüü"
-
-#~ msgid "Close menu"
-#~ msgstr "Menüü sulgemine"
+#~ msgid "Headphone audio mode"
+#~ msgstr "Kuulari helimudel"
 
 #~ msgid "Resolution"
 #~ msgstr "Resolutsioon"

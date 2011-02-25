@@ -7,10 +7,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-02-15 21:20+0200\n"
+"POT-Creation-Date: 2011-02-25 23:46+0200\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: <vdr@linuxtv.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=ISO-8859-15\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -153,6 +154,9 @@ msgstr ""
 msgid "bilinear"
 msgstr ""
 
+msgid "video stream"
+msgstr ""
+
 msgid "none"
 msgstr ""
 
@@ -201,6 +205,27 @@ msgstr "Zufallswiedergabe"
 msgid "Normal play"
 msgstr "Normale Wiedergabe"
 
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
 msgid "Delete image ?"
 msgstr "Bild löschen?"
 
@@ -231,6 +256,9 @@ msgstr "Bilder ansehen"
 msgid "Play DVD disc"
 msgstr "DVD abspielen"
 
+msgid "Play BluRay disc"
+msgstr "BluRay abspielen"
+
 msgid "Play audio CD"
 msgstr "Musik-CD abspielen"
 
@@ -251,9 +279,6 @@ msgstr "Overscan (Bildränder abschneiden)"
 
 msgid "Audio settings"
 msgstr "Audio-Einstellungen"
-
-msgid "Headphone audio mode"
-msgstr ""
 
 msgid "Audio Compression"
 msgstr "Audio-Komprimierung"
@@ -355,17 +380,47 @@ msgstr ""
 msgid "Video"
 msgstr "Video"
 
+msgid "Use driver crop"
+msgstr ""
+
 msgid "Autodetect letterbox"
 msgstr "Letterbox automatisch erkennen"
-
-msgid "Soft start"
-msgstr "Weich starten"
 
 msgid "Crop to"
 msgstr "Schneide auf"
 
+msgid "Autodetect rate"
+msgstr ""
+
+msgid "Stabilize time"
+msgstr ""
+
+msgid "Maximum logo width [%]"
+msgstr ""
+
+msgid "Overscan compensate [%1000]"
+msgstr ""
+
+msgid "Soft start"
+msgstr "Weich starten"
+
+msgid "Soft start step"
+msgstr ""
+
 msgid "Detect subtitles"
 msgstr "Erkenne Untertitel"
+
+msgid "Subs detect stabilize time"
+msgstr ""
+
+msgid "Subs detect lifetime"
+msgstr ""
+
+msgid "Use avards analysis"
+msgstr ""
+
+msgid "Bar tone tolerance"
+msgstr ""
 
 msgid "Software scaling"
 msgstr ""
@@ -479,6 +534,9 @@ msgid "Use hardware for low-res video"
 msgstr ""
 
 msgid "Scaling method"
+msgstr ""
+
+msgid "Scale subtitles"
 msgstr ""
 
 msgid "Show all layers"
@@ -624,9 +682,6 @@ msgstr ""
 
 msgid "Media Player"
 msgstr "Medien..."
-
-msgid "Play BluRay disc"
-msgstr "BluRay abspielen"
 
 msgid "Grayscale"
 msgstr "Graustufen"

@@ -8,10 +8,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.0.6\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2010-02-15 21:20+0200\n"
+"POT-Creation-Date: 2011-02-25 23:46+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: <vdr@linuxtv.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -154,6 +155,9 @@ msgstr "lähin"
 msgid "bilinear"
 msgstr "bilineaarinen"
 
+msgid "video stream"
+msgstr ""
+
 msgid "none"
 msgstr "ei"
 
@@ -202,6 +206,27 @@ msgstr "Satunnaistoisto"
 msgid "Normal play"
 msgstr "Normaali toisto"
 
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
 msgid "Delete image ?"
 msgstr "Poistetaanko kuva ?"
 
@@ -232,6 +257,9 @@ msgstr "Katsele kuvia"
 msgid "Play DVD disc"
 msgstr "Toista DVD-levy"
 
+msgid "Play BluRay disc"
+msgstr "Toista BluRay-levy"
+
 msgid "Play audio CD"
 msgstr "Toista CD-levy"
 
@@ -252,9 +280,6 @@ msgstr "Leikkaa kuvan reunoja (overscan)"
 
 msgid "Audio settings"
 msgstr "Ääniasetukset"
-
-msgid "Headphone audio mode"
-msgstr "Kuulokkeiden äänimoodi"
 
 msgid "Audio Compression"
 msgstr "Voimista hiljaisia ääniä"
@@ -356,17 +381,47 @@ msgstr "ylempi puolisko"
 msgid "Video"
 msgstr "Kuva"
 
+msgid "Use driver crop"
+msgstr ""
+
 msgid "Autodetect letterbox"
 msgstr "Tunnista letterbox automaattisesti"
-
-msgid "Soft start"
-msgstr "Portaittainen aloitus"
 
 msgid "Crop to"
 msgstr "Leikkaa kokoon"
 
+msgid "Autodetect rate"
+msgstr ""
+
+msgid "Stabilize time"
+msgstr ""
+
+msgid "Maximum logo width [%]"
+msgstr ""
+
+msgid "Overscan compensate [%1000]"
+msgstr ""
+
+msgid "Soft start"
+msgstr "Portaittainen aloitus"
+
+msgid "Soft start step"
+msgstr ""
+
 msgid "Detect subtitles"
 msgstr "Huomioi tekstitys"
+
+msgid "Subs detect stabilize time"
+msgstr ""
+
+msgid "Subs detect lifetime"
+msgstr ""
+
+msgid "Use avards analysis"
+msgstr ""
+
+msgid "Bar tone tolerance"
+msgstr ""
 
 msgid "Software scaling"
 msgstr "Skaalaa ohjelmistolla"
@@ -481,6 +536,9 @@ msgstr "Laitteisto matalaresoluutioisella videolla"
 
 msgid "Scaling method"
 msgstr "Skaalaustapa"
+
+msgid "Scale subtitles"
+msgstr ""
 
 msgid "Show all layers"
 msgstr "Näytä kaikki kerrokset"
@@ -626,9 +684,6 @@ msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
 msgid "Media Player"
 msgstr "Mediasoitin"
 
-msgid "Play BluRay disc"
-msgstr "Toista BluRay-levy"
-
 msgid "Grayscale"
 msgstr "Harmaasävy"
 
@@ -643,3 +698,6 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
+
+#~ msgid "Headphone audio mode"
+#~ msgstr "Kuulokkeiden äänimoodi"
