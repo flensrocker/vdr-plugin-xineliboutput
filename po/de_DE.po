@@ -225,12 +225,6 @@ msgstr "Untertitel"
 msgid "Media"
 msgstr "Medien"
 
-msgid "Play file"
-msgstr "Datei abspielen"
-
-msgid "Play music"
-msgstr "Musik abspielen"
-
 msgid "View images"
 msgstr "Bilder ansehen"
 

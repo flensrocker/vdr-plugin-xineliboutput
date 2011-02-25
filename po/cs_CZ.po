@@ -226,12 +226,6 @@ msgstr "Titulky"
 msgid "Media"
 msgstr "Média"
 
-msgid "Play file"
-msgstr "Pøehrát soubor"
-
-msgid "Play music"
-msgstr "Pøehrát hudbu"
-
 msgid "View images"
 msgstr "Prohlí¾et obrázky"
 

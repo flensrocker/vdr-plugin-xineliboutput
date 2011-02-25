@@ -225,12 +225,6 @@ msgstr "Subtiitrite"
 msgid "Media"
 msgstr "Meedia"
 
-msgid "Play file"
-msgstr "Faili mängimine"
-
-msgid "Play music"
-msgstr "Muusika mängimine"
-
 msgid "View images"
 msgstr "Piltide vaatamine"
 
