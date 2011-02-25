@@ -582,9 +582,6 @@ msgstr "Protocollo RTP (multicast)"
 msgid "Address"
 msgstr "Indirizzo"
 
-msgid "Port"
-msgstr "Porta"
-
 msgid "TTL"
 msgstr "TTL"
 

@@ -580,9 +580,6 @@ msgstr "RTP (multicast) -transport"
 msgid "Address"
 msgstr "Aadress"
 
-msgid "Port"
-msgstr "Port"
-
 msgid "TTL"
 msgstr "TTL"
 

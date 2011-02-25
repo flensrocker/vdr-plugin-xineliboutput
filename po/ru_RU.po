@@ -580,9 +580,6 @@ msgstr "RTP (широковещательный) транспорт"
 msgid "Address"
 msgstr ""
 
-msgid "Port"
-msgstr ""
-
 msgid "TTL"
 msgstr ""
 

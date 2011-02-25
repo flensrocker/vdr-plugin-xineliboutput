@@ -580,9 +580,6 @@ msgstr "RTP (组播) 传送"
 msgid "Address"
 msgstr "地址"
 
-msgid "Port"
-msgstr "端口"
-
 msgid "TTL"
 msgstr "TTL"
 

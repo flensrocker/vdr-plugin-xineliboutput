@@ -581,9 +581,6 @@ msgstr "RTP (multicast) transport"
 msgid "Address"
 msgstr "Adresa"
 
-msgid "Port"
-msgstr "Port"
-
 msgid "TTL"
 msgstr ""
 

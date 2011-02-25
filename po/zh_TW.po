@@ -621,9 +621,6 @@ msgstr "RTP (組播)傳送"
 msgid "Address"
 msgstr "地址"
 
-#, fuzzy
-msgid "Port"
-msgstr "端口"
 
 #, fuzzy
 msgid "TTL"

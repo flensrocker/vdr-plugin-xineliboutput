@@ -581,9 +581,6 @@ msgstr "RTP (multicast) -siirto"
 msgid "Address"
 msgstr "Osoite"
 
-msgid "Port"
-msgstr "Portti"
-
 msgid "TTL"
 msgstr "TTL-aika"
 
