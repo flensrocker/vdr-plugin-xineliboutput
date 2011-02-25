@@ -449,81 +449,81 @@ msgstr "後處理（ffmpeg）"
 
 #, fuzzy
 msgid "Quality"
-msgstr " Quality"
+msgstr "Quality"
 
 #, fuzzy
 msgid "Mode"
-msgstr " Mode"
+msgstr "Mode"
 
 #, fuzzy
 msgid "Method"
-msgstr " Method"
+msgstr "Method"
 
 #, fuzzy
 msgid "Cheap mode"
-msgstr " Cheap mode"
+msgstr "Cheap mode"
 
 #, fuzzy
 msgid "Pulldown"
-msgstr " Pulldown"
+msgstr "Pulldown"
 
 #, fuzzy
 msgid "Frame rate"
-msgstr " Frame rate"
+msgstr "Frame rate"
 
 #, fuzzy
 msgid "Judder Correction"
-msgstr " Judder Correction"
+msgstr "Judder Correction"
 
 #, fuzzy
 msgid "Use progressive frame flag"
-msgstr " Use progressive frame flag"
+msgstr "Use progressive frame flag"
 
 #, fuzzy
 msgid "Chroma Filter"
-msgstr " Chroma Filter"
+msgstr "Chroma Filter"
 
 msgid "Sharpen / Blur"
 msgstr "銳化/模糊"
 
 #, fuzzy
 msgid "Width of the luma matrix"
-msgstr " Width of the luma matrix"
+msgstr "Width of the luma matrix"
 
 #, fuzzy
 msgid "Height of the luma matrix"
-msgstr " Height of the luma matrix"
+msgstr "Height of the luma matrix"
 
 #, fuzzy
 msgid "Amount of luma sharpness/blur"
-msgstr " Amount of luma sharpness/blur"
+msgstr "Amount of luma sharpness/blur"
 
 #, fuzzy
 msgid "Width of the chroma matrix"
-msgstr " Width of the chroma matrix"
+msgstr "Width of the chroma matrix"
 
 #, fuzzy
 msgid "Height of the chroma matrix"
-msgstr " Height of the chroma matrix"
+msgstr "Height of the chroma matrix"
 
 #, fuzzy
 msgid "Amount of chroma sharpness/blur"
-msgstr " Amount of chroma sharpness/blur"
+msgstr "Amount of chroma sharpness/blur"
 
 msgid "3D Denoiser"
 msgstr "3D噪點去除"
 
 #, fuzzy
 msgid "Spatial luma strength"
-msgstr " Spatial luma strength"
+msgstr "Spatial luma strength"
 
 #, fuzzy
 msgid "Spatial chroma strength"
-msgstr " Spatial luma strength"
+msgstr "Spatial luma strength"
 
 #, fuzzy
 msgid "Temporal strength"
-msgstr " Temporal strength"
+msgstr "Temporal strength"
 
 msgid "HUE"
 msgstr "色相"

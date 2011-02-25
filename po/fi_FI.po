@@ -156,7 +156,7 @@ msgid "bilinear"
 msgstr "bilineaarinen"
 
 msgid "video stream"
-msgstr ""
+msgstr "videolähete"
 
 msgid "none"
 msgstr "ei"
@@ -207,25 +207,25 @@ msgid "Normal play"
 msgstr "Normaali toisto"
 
 msgid "DVD Menu"
-msgstr ""
+msgstr "DVD-valikot"
 
 msgid "Exit DVD menu"
-msgstr ""
+msgstr "Sulje DVD:n valikko"
 
 msgid "DVD Root menu"
-msgstr ""
+msgstr "DVD:n päävalikko"
 
 msgid "DVD Title menu"
-msgstr ""
+msgstr "DVD:n ohjelmavalikko"
 
 msgid "DVD SPU menu"
-msgstr ""
+msgstr "DVD:n tekstitysvalikko"
 
 msgid "DVD Audio menu"
-msgstr ""
+msgstr "DVD:n äänivalikko"
 
 msgid "Close menu"
-msgstr ""
+msgstr "Sulje valikko"
 
 msgid "Delete image ?"
 msgstr "Poistetaanko kuva ?"
@@ -382,7 +382,7 @@ msgid "Video"
 msgstr "Kuva"
 
 msgid "Use driver crop"
-msgstr ""
+msgstr "Leikkaa videoajurilla"
 
 msgid "Autodetect letterbox"
 msgstr "Tunnista letterbox automaattisesti"
@@ -391,37 +391,37 @@ msgid "Crop to"
 msgstr "Leikkaa kokoon"
 
 msgid "Autodetect rate"
-msgstr ""
+msgstr "Tunnistusnopeus"
 
 msgid "Stabilize time"
-msgstr ""
+msgstr "Stabilisointiaika"
 
 msgid "Maximum logo width [%]"
-msgstr ""
+msgstr "Suurin logon leveys [%]"
 
 msgid "Overscan compensate [%1000]"
-msgstr ""
+msgstr "Overscan-kompensointi [%1000]"
 
 msgid "Soft start"
 msgstr "Portaittainen aloitus"
 
 msgid "Soft start step"
-msgstr ""
+msgstr "Portaittaisen aloituksen askel"
 
 msgid "Detect subtitles"
 msgstr "Huomioi tekstitys"
 
 msgid "Subs detect stabilize time"
-msgstr ""
+msgstr "Stabilisointiaika tekstitykselle"
 
 msgid "Subs detect lifetime"
-msgstr ""
+msgstr "Elinaika tekstitykselle"
 
 msgid "Use avards analysis"
-msgstr ""
+msgstr "Analysoi kuvasuhde automaattisesti (avards)"
 
 msgid "Bar tone tolerance"
-msgstr ""
+msgstr "Toleranssi palkkien värisävylle"
 
 msgid "Software scaling"
 msgstr "Skaalaa ohjelmistolla"
@@ -538,7 +538,7 @@ msgid "Scaling method"
 msgstr "Skaalaustapa"
 
 msgid "Scale subtitles"
-msgstr ""
+msgstr "Skaalaa tekstitys"
 
 msgid "Show all layers"
 msgstr "Näytä kaikki kerrokset"

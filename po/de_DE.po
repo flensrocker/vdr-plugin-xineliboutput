@@ -92,7 +92,7 @@ msgid "Stereo 2.0"
 msgstr ""
 
 msgid "Headphones 2.0"
-msgstr ""
+msgstr "Kopfhörer 2.0"
 
 msgid "Stereo 2.1"
 msgstr ""
@@ -134,7 +134,7 @@ msgid "Hardware"
 msgstr ""
 
 msgid "no"
-msgstr ""
+msgstr "nein"
 
 msgid "grayscale"
 msgstr ""
@@ -146,7 +146,7 @@ msgid "transparent grayscale"
 msgstr ""
 
 msgid "yes"
-msgstr ""
+msgstr "ja"
 
 msgid "nearest"
 msgstr ""
@@ -170,7 +170,7 @@ msgid "nonkey"
 msgstr ""
 
 msgid "all"
-msgstr ""
+msgstr "alle"
 
 msgid "Frontend initialization failed"
 msgstr "Initialisierung des Frontends fehlgeschlagen"
@@ -206,25 +206,25 @@ msgid "Normal play"
 msgstr "Normale Wiedergabe"
 
 msgid "DVD Menu"
-msgstr ""
+msgstr "DVD Menü"
 
 msgid "Exit DVD menu"
-msgstr ""
+msgstr "DVD Menü verlassen"
 
 msgid "DVD Root menu"
-msgstr ""
+msgstr "DVD Hauptmenü"
 
 msgid "DVD Title menu"
-msgstr ""
+msgstr "DVD Titelmenü"
 
 msgid "DVD SPU menu"
-msgstr ""
+msgstr "DVD SPU Menü"
 
 msgid "DVD Audio menu"
-msgstr ""
+msgstr "DVD Audiomenü"
 
 msgid "Close menu"
-msgstr ""
+msgstr "Menü schließen"
 
 msgid "Delete image ?"
 msgstr "Bild löschen?"
@@ -284,7 +284,7 @@ msgid "Audio Compression"
 msgstr "Audio-Komprimierung"
 
 msgid "Audio equalizer"
-msgstr "Audio-Equalizer"
+msgstr "Audio Equalizer"
 
 msgid "No subtitles available!"
 msgstr "Keine Untertitel verfügbar!"
@@ -296,10 +296,10 @@ msgid "Aspect ratio"
 msgstr "Seitenverhältnis"
 
 msgid "Video aspect ratio"
-msgstr ""
+msgstr "Video Seitenverhältnis"
 
 msgid "On"
-msgstr ""
+msgstr "an"
 
 msgid "Deinterlacing"
 msgstr "Deinterlacing"
@@ -311,13 +311,13 @@ msgid "Downmix AC3 to surround"
 msgstr "AC3 zu Surround herunter mischen"
 
 msgid "Default playlist not found"
-msgstr ""
+msgstr "Std. Wiedergabeliste nicht gefunden"
 
 msgid "Default playlist is not symlink"
-msgstr ""
+msgstr "Std Wiedergabeliste ist kein sym .Link"
 
 msgid "Default playlist not defined"
-msgstr ""
+msgstr "Std Wiedergabeliste nicht definiert"
 
 msgid "Delay"
 msgstr "Verzögerung"

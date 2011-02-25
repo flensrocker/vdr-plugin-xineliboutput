@@ -251,16 +251,16 @@ msgid "Media"
 msgstr "Meedia"
 
 msgid "View images"
-msgstr "Piltide vaatamine"
+msgstr "Piltide kuvamine"
 
 msgid "Play DVD disc"
-msgstr "DVD mängimine"
+msgstr "DVD plaadi esitamine"
 
 msgid "Play BluRay disc"
-msgstr "BluRay mängimine"
+msgstr "BluRay plaadi esitamine"
 
 msgid "Play audio CD"
-msgstr "CD mängimine"
+msgstr "CD plaadi esitamine"
 
 msgid "Select subtitle track"
 msgstr ""
@@ -284,7 +284,7 @@ msgid "Audio Compression"
 msgstr "Heli kompresseerimine"
 
 msgid "Audio equalizer"
-msgstr "Heli ekvalaiser"
+msgstr "Ekvalaiser"
 
 msgid "No subtitles available!"
 msgstr ""
