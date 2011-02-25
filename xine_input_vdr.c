@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.42 2010-03-07 14:57:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.43 2011-02-25 02:26:23 phintuka Exp $
  *
  */
 
@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <syslog.h>
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 # define DVD_STREAMING_SPEED
 #endif
 
@@ -121,6 +121,12 @@
 #define CONTROL_BUF_BLANK (CONTROL_BUF_BASE|0x00010000) /* 0x0f010000 */
 #define CONTROL_BUF_CLEAR (CONTROL_BUF_BASE|0x00020000) /* 0x0f020000 */
 #define BUF_NETWORK_BLOCK (BUF_DEMUX_BLOCK |0x00010000) /* 0x05010000 */
+#define BUF_LOCAL_BLOCK   (BUF_DEMUX_BLOCK |0x00020000) /* 0x05020000 */
+
+typedef struct {
+  uint64_t pos;
+  uint8_t  payload[0];
+} stream_local_header_t;
 
 #define SPU_CHANNEL_NONE   (-2)
 #define SPU_CHANNEL_AUTO   (-1)
@@ -131,7 +137,7 @@
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.42 2010-03-07 14:57:59 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.43 2011-02-25 02:26:23 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -149,7 +155,7 @@ void x_syslog(int level, const char *module, const char *fmt, ...)
   va_start(argp, fmt);
   vsnprintf(buf, sizeof(buf), fmt, argp);
   buf[sizeof(buf)-1] = 0;
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
   if(!bLogToSysLog) {
     fprintf(stderr, "%s%s\n", module, buf);
   } else {
@@ -328,6 +334,7 @@ typedef struct vdr_input_plugin_s {
   uint8_t             dvd_menu : 1;
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
+  uint8_t             config_ok : 1;
   uint8_t             bih_posted : 1;
   uint8_t             dvd_subtitles : 1;
 
@@ -1165,7 +1172,7 @@ static ssize_t write_control_data(vdr_input_plugin_t *this, const void *str, siz
   while (len > 0) {
 
     if (!this->control_running) {
-      LOGERR("write_control aborted");
+      LOGMSG("write_control aborted");
       return -1;
     }
 
@@ -1212,7 +1219,7 @@ static ssize_t write_control_data(vdr_input_plugin_t *this, const void *str, siz
       return -1;
     }
     len -= ret;
-    str += ret;
+    str  = (uint8_t*)str + ret;
   }
 
   return result;
@@ -1643,7 +1650,8 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
   if(!buf)
     buf = this->stream->audio_fifo->buffer_pool_try_alloc(this->stream->audio_fifo);
 
-  if(buf) {
+  /* set up defaults */
+  if (buf) {
     buf->content = buf->mem;
     buf->size = 0;
     buf->type = BUF_DEMUX_BLOCK;
@@ -1657,6 +1665,17 @@ static buf_element_t *get_buf_element(vdr_input_plugin_t *this, int size, int fo
 
 static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
 {
+  if (buf->type == BUF_LOCAL_BLOCK) {
+    stream_local_header_t *header = (stream_local_header_t *)buf->content;
+    this->curpos  = header->pos;
+
+    buf->content += sizeof(stream_local_header_t);
+    buf->size    -= sizeof(stream_local_header_t);
+    buf->type     = BUF_DEMUX_BLOCK;
+
+    return;
+  }
+
   if (buf->type == BUF_NETWORK_BLOCK) {
     if (this->udp || this->rtp) {
       stream_udp_header_t *header = (stream_udp_header_t *)buf->content;
@@ -3305,7 +3324,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   todo    = osdcmd.size - sizeof(osdcmd.size);
 
   /* read data */
-  size_t bytes = MIN(todo, expect);
+  ssize_t bytes = MIN(todo, expect);
   if (read_control(this, pt, bytes) != bytes) {
     LOGMSG("control: error reading OSDCMD data");
     return CONTROL_DISCONNECTED;
@@ -3313,9 +3332,10 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
   if (expect < todo) {
     /* server uses larger struct, discard rest of data */
-    uint8_t dummy[todo-expect];
-    LOGMSG("osd_command_t size %d, expected %d", (int)osdcmd.size, (int)expect);
-    if (read_control(this, dummy, todo-expect) != todo-expect) {
+    ssize_t skip = todo - expect;
+    uint8_t dummy[skip];
+    LOGMSG("osd_command_t size %d, expected %zu", osdcmd.size, expect);
+    if (read_control(this, dummy, skip) != skip) {
       LOGMSG("control: error reading OSDCMD data (unknown part)");
       return CONTROL_DISCONNECTED;
     }
@@ -3325,7 +3345,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
   /* read palette */
   if (osdcmd.palette && osdcmd.colors>0) {
-    int bytes = sizeof(xine_clut_t)*(osdcmd.colors);
+    ssize_t bytes = sizeof(xine_clut_t)*(osdcmd.colors);
     osdcmd.palette = malloc(bytes);
     if (read_control(this, (unsigned char *)osdcmd.palette, bytes) != bytes) {
       LOGMSG("control: error reading OSDCMD palette");
@@ -3339,7 +3359,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
   if (err == CONTROL_OK && osdcmd.data && osdcmd.datalen>0) {
     osdcmd.data = (xine_rle_elem_t*)malloc(osdcmd.datalen);
     if(read_control(this, (unsigned char *)osdcmd.data, osdcmd.datalen)
-       != osdcmd.datalen) {
+       != (ssize_t)osdcmd.datalen) {
       LOGMSG("control: error reading OSDCMD bitmap");
       err = CONTROL_DISCONNECTED;
     } else {
@@ -3593,7 +3613,7 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
 static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
-  int err = CONTROL_OK, i, j;
+  int err = CONTROL_OK;
   int /*int32_t*/ tmp32 = 0;
   uint64_t tmp64 = 0ULL;
   xine_stream_t *stream = this->stream;
@@ -3656,7 +3676,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = set_deinterlace_method(this, cmd+12);
 
   } else if(!strncasecmp(cmd, "EVENT ", 6)) {
-    int i;
+    unsigned i;
     char *pt = strchr(cmd, '\n');
     if(pt) *pt=0;
     pt = strstr(cmd+6, " CHAPTER");
@@ -3819,6 +3839,15 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       if(sw != this->sw_volume_control) {
 	this->sw_volume_control = sw;
 	if(sw) {
+          /*
+           * XXX make sure libxine's internal copy of the mixer
+           * volume is initialized before using XINE_PARAM_AUDIO_MUTE...
+           * (this fixes mixer volume being reset to 45 here every time
+           *  at vdr-sxfe start when using software volume control.)
+           */
+          tmp32 = xine_get_param(stream, XINE_PARAM_AUDIO_VOLUME);
+          xine_set_param(stream, XINE_PARAM_AUDIO_VOLUME, tmp32);
+
 	  xine_set_param(stream, XINE_PARAM_AUDIO_MUTE, 0);
 	} else {
 	  xine_set_param(stream, XINE_PARAM_AUDIO_AMP_LEVEL, 100);
@@ -3849,7 +3878,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "EQUALIZER ", 10)) {
-    int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0};
+    int eqs[XINE_PARAM_EQ_16000HZ - XINE_PARAM_EQ_30HZ + 2] = {0}, i, j;
     sscanf(cmd+10,"%d %d %d %d %d %d %d %d %d %d",
 	   eqs,eqs+1,eqs+2,eqs+3,eqs+4,eqs+5,eqs+6,eqs+7,eqs+8,eqs+9);
     for(i=XINE_PARAM_EQ_30HZ,j=0; i<=XINE_PARAM_EQ_16000HZ; i++,j++)
@@ -4048,6 +4077,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     else
       err = CONTROL_PARAM_ERROR;
 
+  } else if(!strncasecmp(cmd, "CONFIG END", 10)) {
+    this->config_ok = 1;
+
   } else if(!strncasecmp(cmd, "GRAB ", 5)) {
     handle_control_grab(this, cmd);
 
@@ -4138,6 +4170,13 @@ static void *vdr_control_thread(void *this_gen)
 
 /**************************** Control to VDR ********************************/
 
+static const char *trim_str(const char *s)
+{
+  while (*s == ' ' || *s == '\r' || *s == '\n')
+    s++;
+  return s;
+}
+
 static void slave_track_maps_changed(vdr_input_plugin_t *this)
 {
   char tracks[1024], lang[128];
@@ -4166,9 +4205,8 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   current = xine_get_param(this->slave_stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_audio_lang(this->slave_stream, i, lang)) {
-      while(lang[0]==' ') strcpy(lang, lang+1);
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32, 
-		      "%s%d:%s ", i==current?"*":"", i, lang);
+		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
       n++;
     }
   tracks[sizeof(tracks)-1] = 0;
@@ -4201,9 +4239,8 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   }
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
     if(xine_get_spu_lang(this->slave_stream, i, lang)) {
-      while(lang[0]==' ') strcpy(lang, lang+1);
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
-		      "%s%d:%s ", i==current?"*":"", i, lang);
+		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
       n++;
     }
   tracks[sizeof(tracks)-1] = 0;
@@ -4294,10 +4331,10 @@ static const struct {
 static void vdr_event_cb (void *user_data, const xine_event_t *event) 
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *)user_data;
-  int i;
+  unsigned i;
 
   for (i = 0; i < sizeof(vdr_keymap) / sizeof(vdr_keymap[0]); i++) {
-    if (event->type == vdr_keymap[i].event) {
+    if ((uint32_t)event->type == vdr_keymap[i].event) {
       if (event->data && event->data_length == 4 &&
           !strncmp(event->data, "VDR", 4)) {
         /*LOGMSG("Input event created by self, ignoring");*/
@@ -4935,7 +4972,7 @@ static void *vdr_data_thread(void *this_gen)
 }
 
 #ifdef TEST_PIP
-static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int len)
+static int write_slave_stream(vdr_input_plugin_t *this, int stream, const char *data, int len)
 {
   fifo_input_plugin_t *slave;
   buf_element_t *buf;
@@ -4984,7 +5021,7 @@ static int write_slave_stream(vdr_input_plugin_t *this, const char *data, int le
 }
 #endif
 
-static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, int len)
+static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, int stream, uint64_t pos, const char *data, int len)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   buf_element_t      *buf = NULL;
@@ -4993,11 +5030,11 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
     return len;
 
 #ifdef TEST_PIP
-  /* some (older?) VDR recordings have video PID != 0xE0 ... */
-
-  /* slave (PES) */
-  if(!buf[0] && ((uint8_t*)data)[3] > 0xe0 && ((uint8_t*)data)[3] <= 0xef) 
-    return write_slave_stream(this, data, len);
+  if (stream)
+    return write_slave_stream(this, stream, data, len);
+#else
+  if (stream)
+    return len;
 #endif
 
   TRACE("vdr_plugin_write (%d bytes)", len); 
@@ -5026,8 +5063,13 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, const char *data, in
     return len;
   }
 
-  buf->size = len;
-  xine_fast_memcpy(buf->content, data, len);
+  stream_local_header_t *hdr = (stream_local_header_t*)buf->content;
+  hdr->pos = pos;
+
+  buf->type = BUF_LOCAL_BLOCK;
+  buf->size = len + sizeof(stream_local_header_t);
+  xine_fast_memcpy(buf->content + sizeof(stream_local_header_t), data, len);
+
   this->block_buffer->put(this->block_buffer, buf);
 
   VDR_ENTRY_UNLOCK();
@@ -5524,6 +5566,7 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
 
   /* demuxed video, control messages, ... go directly to demuxer */
   if (buf->type != BUF_NETWORK_BLOCK &&
+      buf->type != BUF_LOCAL_BLOCK &&
       buf->type != BUF_DEMUX_BLOCK)
     return buf;
 
@@ -5756,6 +5799,14 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
   int                 need_pause = 0;
 
   TRACE("vdr_plugin_read_block");
+
+  if (!this->config_ok) {
+    int n = 5;
+    do {
+      LOGMSG("read_block waiting for configuration data");
+      xine_usec_sleep(200*1000);
+    } while (--n > 0 && !this->config_ok);
+  }
 
   /* adjust SCR speed */
   need_pause = adjust_scr_speed(this);
@@ -6134,7 +6185,7 @@ static int vdr_plugin_open_local (input_plugin_t *this_gen)
   return vdr_plugin_open(this_gen);
 }
 
-static void set_recv_buffer_size(int fd, int max_buf)
+static void set_recv_buffer_size(int fd, unsigned max_buf)
 {
   /* try to have larger receiving buffer */
 
