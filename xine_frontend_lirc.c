@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_lirc.c,v 1.25 2010-07-19 13:39:24 phintuka Exp $
+ * $Id: xine_frontend_lirc.c,v 1.25.2.1 2011-02-25 01:18:20 phintuka Exp $
  *
  */
 /*
@@ -35,7 +35,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define LOG_MODULENAME "[lirc]      "
 #include "logdefs.h"
 
 #include "xine_frontend.h"
