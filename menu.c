@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.57.2.9 2011-02-24 23:17:33 phintuka Exp $
+ * $Id: menu.c,v 1.57.2.10 2011-02-25 21:39:37 phintuka Exp $
  *
  */
 
@@ -660,7 +660,7 @@ cMenuXinelib::cMenuXinelib()
 
 #if VDRVERSNUM < 10515
   if(cXinelibDevice::Instance().NumDvdSpuTracks() > 0)
-    Add(new cOsdItem(tr("Select subtitle track >>"), osUser5));
+    Add(SubMenuItem(tr("Select subtitle track"), osUser5));
 #endif
  
   if (xc.media_menu_items & MEDIA_MENU_VIDEO_SETUP) {
