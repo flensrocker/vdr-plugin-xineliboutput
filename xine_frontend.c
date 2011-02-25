@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.53.2.16 2010-03-31 20:50:01 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.53.2.17 2011-02-25 00:35:38 phintuka Exp $
  *
  */
 
@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 # ifdef boolean
 #  define HAVE_BOOLEAN
@@ -72,6 +74,43 @@ static int guess_cpu_count(void)
     LOGDBG("Detected single CPU. Multithreaded decoding and post processing disabled.");
 
   return cores;
+}
+
+static void shutdown_system(char *cmd, int user_requested)
+{
+  const char *reason = user_requested ? "User requested system shutdown" : "Inactivity timer elapsed";
+
+  if (cmd) {
+    LOGMSG("%s. Executing '%s'", reason, cmd);
+    if (-1 == system(cmd))
+      LOGERR("Can't execute %s", cmd);
+  } else {
+    LOGMSG("%s, power off comand undefined!", reason);
+  }
+}
+
+static void make_dirs(const char *file)
+{
+  struct stat st;
+  char *s = strdup(file);
+  char *p = s;
+
+  if (*p == '/') {
+    p++;
+    while ((p = strchr(p, '/')) != NULL) {
+      *p = 0;
+      if (stat(s, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        if (mkdir(s, ACCESSPERMS) == -1) {
+          LOGERR("Can't create %s", s);
+          break;
+        }
+        LOGDBG("Created directory %s", s);
+      }
+      *p++ = '/';
+    }
+  }
+
+  free(s);
 }
 
 /*
@@ -334,7 +373,7 @@ static void fe_frame_output_cb (void *data,
       char cmd[4096];
       if(snprintf(cmd, sizeof(cmd), "%s %d", 
                   this->aspect_controller, (int)(video_aspect * 10000.0)) 
-         < sizeof(cmd)) {
+         < (int)sizeof(cmd)) {
         LOGDBG("Aspect ratio changed, executing %s", cmd);
         if(system(cmd) == -1)
 	  LOGERR("Executing /bin/sh -c %s failed", cmd);
@@ -565,6 +604,8 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
                    "/.xine/config_xineliboutput") < 0)
     return 0;
 
+  LOGDBG("Using xine-lib config file %s", this->configfile);
+  make_dirs(this->configfile);
   xine_config_load (this->xine, this->configfile);
 
   x_reg_num ("engine.buffers.video_num_buffers",
@@ -621,7 +662,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   if(!this->video_port) {
     LOGMSG("fe_xine_init: xine_open_video_driver(\"%s\") failed",
 	   video_driver?video_driver:"(NULL)"); 
-    xine_exit(this->xine);
+    this->fe.xine_exit(this_gen);
     return 0;
   }
 
@@ -662,7 +703,7 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
 
   if(!this->stream) {
     LOGMSG("fe_xine_init: xine_stream_new failed"); 
-    xine_exit(this->xine);
+    this->fe.xine_exit(this_gen);
     return 0;
   }
 
@@ -722,6 +763,18 @@ static int fe_xine_init(frontend_t *this_gen, const char *audio_driver,
   this->video_width = this->video_height = 0;
 
   return 1;
+}
+
+static void fe_shutdown_init(frontend_t *this_gen, const char *cmd, int timeout)
+{
+  fe_t *this = (fe_t*)this_gen;
+
+  free(this->shutdown_cmd);
+
+  this->shutdown_cmd     = cmd ? strdup(cmd) : NULL;
+  this->shutdown_timeout = timeout;
+
+  this->shutdown_time = (timeout <= 0) ? (time_t)-1 : time(NULL) + timeout;
 }
 
 /*
@@ -812,6 +865,9 @@ static void init_dummy_ports(fe_t *this, int on)
 
 static void fe_post_unwire(fe_t *this)
 {
+  if (!this || !this->stream)
+    return;
+
   xine_post_out_t  *vo_source = xine_get_video_source(this->stream);
   xine_post_out_t  *ao_source = xine_get_audio_source(this->stream);
 
@@ -861,9 +917,11 @@ static void fe_post_rewire(const fe_t *this)
 
 static void fe_post_unload(const fe_t *this)
 {
-  LOGDBG("unloading post plugins");
-  vpplugin_unload_post(this->postplugins, NULL);
-  applugin_unload_post(this->postplugins, NULL);
+  if (this->postplugins) {
+    LOGDBG("unloading post plugins");
+    vpplugin_unload_post(this->postplugins, NULL);
+    applugin_unload_post(this->postplugins, NULL);
+  }
 }
 
 static void fe_post_close(const fe_t *this, const char *name, int which)
@@ -987,6 +1045,7 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
       case 2: /* 4:3   */ r = 4.0/3.0; break;
       case 3: /* 16:9  */ r = 16.0/9.0; break;
       case 4: /* 16:10 */ r = 16.0/10.0; break;
+      default: LOGDBG("%s(%d): unknown aspect: %d", __FUNCTION__, __LINE__, this->aspect);
       }
       /* in finnish locale decimal separator is "," - same as post plugin parameter separator :( */
       sprintf(tmp, "%04d", (int)(r*1000.0));
@@ -1096,6 +1155,9 @@ static int fe_xine_stop(frontend_t *this_gen)
   this->input_plugin      = NULL;
   this->playback_finished = 1;
 
+  if (!this->stream)
+    return 0;
+
   xine_stop(this->stream);
 
   fe_post_unwire(this);
@@ -1115,6 +1177,9 @@ static void fe_xine_close(frontend_t *this_gen)
       this->input_plugin->f.xine_input_event = NULL;
       this->input_plugin->f.fe_control       = NULL;
     }
+
+    if (!this->stream)
+      return;
 
     fe_xine_stop(this_gen);
 
@@ -1149,9 +1214,15 @@ static void fe_xine_exit(frontend_t *this_gen)
       xine_dispose(this->stream);
     this->stream = NULL;
 
-    if(this->postplugins->pip_stream) 
-      xine_dispose(this->postplugins->pip_stream);
-    this->postplugins->pip_stream = NULL;
+    if (this->postplugins) {
+      if (this->postplugins->pip_stream)
+        xine_dispose(this->postplugins->pip_stream);
+      this->postplugins->pip_stream = NULL;
+
+      free(this->postplugins->static_post_plugins);
+    }
+    free(this->postplugins);
+    this->postplugins = NULL;
 
     if(this->slave_stream) 
       xine_dispose(this->slave_stream);
@@ -1167,11 +1238,6 @@ static void fe_xine_exit(frontend_t *this_gen)
       xine_close_video_driver(this->xine, this->video_port);
     this->video_port = NULL;
 
-    if(this->postplugins->static_post_plugins)
-      free(this->postplugins->static_post_plugins);
-    free(this->postplugins);
-    this->postplugins = NULL;
-
     xine_exit(this->xine);
     this->xine = NULL;
   }
@@ -1183,6 +1249,7 @@ static void fe_free(frontend_t *this_gen)
     fe_t *this = (fe_t*)this_gen;
     this->fe.fe_display_close(this_gen);
     free(this->configfile);
+    free(this->shutdown_cmd);
     free(this);
   }
 }
@@ -1201,6 +1268,14 @@ static int fe_is_finished(frontend_t *this_gen, int slave_stream)
   if (slave_stream) {
     if (!this->slave_stream || this->slave_playback_finished)
       return FE_XINE_EXIT;
+  }
+
+  /* check inactivity timer */
+  if (this->shutdown_timeout > 0) {
+    if (this->shutdown_time < time(NULL)) {
+      shutdown_system(this->shutdown_cmd, 0);
+      return FE_XINE_EXIT;
+    }
   }
 
   return FE_XINE_RUNNING;
@@ -1231,14 +1306,14 @@ static int xine_osd_command(frontend_t *this_gen, struct osd_command_s *cmd) {
   return this->input_plugin->f.push_input_osd(this->input_plugin, cmd);
 }
 
-static int xine_queue_pes_packet(frontend_t *this_gen, const char *data, int len)
+static int xine_queue_pes_packet(frontend_t *this_gen, int stream, uint64_t pos, const char *data, int len)
 {
   fe_t *this = (fe_t*)this_gen;
 
   if(!find_input_plugin(this))
     return 0/*-1*/;
 
-  return this->input_plugin->f.push_input_write(this->input_plugin, data, len);
+  return this->input_plugin->f.push_input_write(this->input_plugin, stream, pos, data, len);
 }
 
 /*
@@ -1253,6 +1328,10 @@ static int fe_send_input_event(frontend_t *this_gen, const char *map,
 
   LOGDBG("Keypress: %s %s %s %s", 
 	 map, key, repeat?"Repeat":"", release?"Release":"");
+
+  /* reset inactivity timer */
+  if (this->shutdown_timeout > 0)
+    this->shutdown_time = time(NULL) + this->shutdown_timeout;
 
   /* local mode: --> vdr callback */
   if(this->keypress) {
@@ -1310,6 +1389,9 @@ static int fe_send_event(frontend_t *this_gen, const char *data)
 
   } else if(!strncasecmp(data, "DEINTERLACE ", 12)) {
     xine_set_param(this->stream, XINE_PARAM_VO_DEINTERLACE, atoi(data+12) ? 1 : 0);
+
+  } else if (!strcmp(data, "POWER_OFF")) {
+    shutdown_system(this->shutdown_cmd, 1);
 
   } else {
 
@@ -1910,6 +1992,8 @@ void init_fe(fe_t *fe)
   fe->fe.xine_stop        = fe_xine_stop;
   fe->fe.xine_close       = fe_xine_close;
   fe->fe.xine_exit        = fe_xine_exit;
+
+  fe->fe.shutdown_init    = fe_shutdown_init;
 
   fe->fe.fe_free          = fe_free;
 
