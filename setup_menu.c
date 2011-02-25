@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.62.2.4 2011-02-24 22:43:25 phintuka Exp $
+ * $Id: setup_menu.c,v 1.62.2.5 2011-02-25 00:48:45 phintuka Exp $
  *
  */
 
@@ -98,17 +98,6 @@ static int INDEX_TO_CONTROL(int ind)
   return ind2ctrl_tbl[ind];
 }
 #endif
-
-static cOsdItem *NewTitle(const char *s)
-{
-  char str[128];
-  cOsdItem *tmp;
-  snprintf(str, sizeof(str), "----- %s -----", s);
-  str[sizeof(str)-1] = 0;
-  tmp = new cOsdItem(str);
-  tmp->SetSelectable(false);
-  return tmp;
-}
 
 //--- cMenuSetupAudio --------------------------------------------------------
 
@@ -1069,7 +1058,7 @@ void cMenuSetupOSD::Set(void)
 				tr("Off")));
   
 #if VDRVERSNUM < 10515
-  Add(NewTitle(tr("Subtitles")));
+  Add(SeparatorItem(tr("Subtitles")));
   Add(new cMenuEditBoolItem(trVDR("Setup.EPG$Preferred languages"), 
 			    &newconfig.spu_autoshow));
   if(newconfig.spu_autoshow) {
