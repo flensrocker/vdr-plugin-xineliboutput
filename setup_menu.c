@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.62.2.5 2011-02-25 00:48:45 phintuka Exp $
+ * $Id: setup_menu.c,v 1.62.2.6 2011-02-25 21:45:38 phintuka Exp $
  *
  */
 
@@ -1408,13 +1408,6 @@ void cMenuSetupLocal::Set(void)
 				  ASPECT_count, xc.s_aspects));
     Add(ctrl_scale =
 	new cMenuEditBoolItem(tr("Scale to window size"), &newconfig.scale_video));
-
-#ifdef HAVE_XV_FIELD_ORDER
-    Add(ctrl_interlace_order = 
-	new cMenuEditStraI18nItem(tr("Interlaced Field Order"), 
-				  &newconfig.field_order, FIELD_ORDER_count, 
-				  xc.s_fieldOrder));
-#endif
 
     Add(SeparatorItem(tr("Audio")));
 
