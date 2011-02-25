@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.40.2.17 2009-08-21 11:50:41 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.40.2.18 2011-02-25 01:38:54 phintuka Exp $
  *
  */
 
@@ -372,54 +372,60 @@ static char *strcatrealloc(char *dest, const char *src)
 static const char help_str[] =
 "When server address is not given, server is searched from local network.\n"
 "If server is not found, localhost (127.0.0.1) is used as default.\n\n"
-    "   --help                        Show (this) help message\n"
-    "   --audio=audiodriver[:device]  Select audio driver and optional port\n"
-    "   --video=videodriver[:device]  Select video driver and optional port\n"
+    "   -H, --help                    Show (this) help message\n"
+    "   -A, --audio=audiodriver[:device]\n"
+    "                                 Select audio driver and optional port\n"
+    "   -V, --video=videodriver[:device]\n"
+    "                                 Select video driver and optional port\n"
 #ifndef IS_FBFE
-    "   --display=displayaddress      X11 display address\n"
-    "   --wid=id                      Use existing X11 window\n"
+    "   -d, --display=displayaddress  X11 display address\n"
+    "   -W, --wid=id                  Use existing X11 window\n"
+    "                                 Special ID for root window: --wid=root\n"
 #endif
-    "   --aspect=[auto|4:3|16:9|16:10|default]\n"
+    "   -a, --aspect=[auto|4:3|16:9|16:10|default]\n"
     "                                 Display aspect ratio\n"
     "                                 Use script to control HW aspect ratio:\n"
-    "                                   --aspect=auto:path_to_script\n"
-    "   --fullscreen                  Fullscreen mode\n"
+    "                                 --aspect=auto:path_to_script\n"
+    "   -f, --fullscreen              Fullscreen mode\n"
 #ifdef HAVE_XRENDER
-    "   --hud                         Head Up Display OSD mode\n"
+    "   -D, --hud                     Head Up Display OSD mode using compositing\n"
 #endif
-    "   --width=x                     Video window width\n"
-    "   --height=x                    Video window height\n"
-    "   --geometry=WxH[+X+Y]          Set output window geometry (X style)\n"
-    "   --buffers=x                   Number of PES buffers\n"
-    "   --noscaling                   Disable all video scaling\n"
-    "   --post=name[:arg=val[,arg=val]] Load and use xine post plugin(s)\n"
-    "                                 examples:\n"
+    "   -w, --width=x                 Video window width\n"
+    "   -h, --height=x                Video window height\n"
+    "   -g, --geometry=WxH[+X+Y]      Set output window geometry (X style)\n"
+    "   -B, --buffers=x               Number of PES buffers\n"
+    "   -n, --noscaling               Disable all video scaling\n"
+    "   -P, --post=name[:arg=val[,arg=val]]\n"
+    "                                 Load and use xine post plugin(s)\n"
+    "                                 Examples:\n"
     "                                 --post=upmix\n"
     "                                 --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
-    "   --lirc[=devicename]           Use lirc input device\n"
+    "   -L, --lirc[=devicename]       Use lirc input device\n"
     "                                 Optional lirc socket name can be given\n"
-    "   --config=file                 Use config file (default: ~/.xine/config_xineliboutput).\n"
-    "   --verbose                     Verbose debug output\n"
-    "   --silent                      Silent mode (report only errors)\n"
-    "   --syslog                      Write all output to system log\n"
-    "   --nokbd                       Disable console keyboard input\n"
+    "   -C, --config=file             Use config file (default: ~/.xine/config_xineliboutput).\n"
+    "   -v, --verbose                 Verbose debug output\n"
+    "   -s, --silent                  Silent mode (report only errors)\n"
+    "   -l, --syslog                  Write all output to system log\n"
+    "   -k, --nokbd                   Disable console keyboard input\n"
 #ifndef IS_FBFE
-    "   --noxkbd                      Disable X11 keyboard input\n"
+    "   -x, --noxkbd                  Disable X11 keyboard input\n"
 #endif
-    "   --hotkeys                     Enable frontend GUI hotkeys\n"
-    "   --terminal=dev                Controlling tty"
-    "   --daemon                      Run as daemon (disable keyboard,\n"
+    "   -o, --hotkeys                 Enable frontend GUI hotkeys\n"
+    "   -p, --shutdown=MIN[:CMD]      Shutdown after MIN minutes of inactivity\n"
+    "                                 Use CMD to perform shutdown (default: /sbin/shutdown)\n"
+    "   -T, --terminal=dev            Controlling TTY\n"
+    "   -b, --daemon                  Run as daemon (disable keyboard,\n"
     "                                 log to syslog and fork to background)\n"
-    "   --slave                       Enable slave mode (read commands from stdin)\n"
-    "   --reconnect                   Automatically reconnect when connection has been lost\n"
-    "   --tcp                         Use TCP transport\n"
-    "   --udp                         Use UDP transport\n"
-    "   --rtp                         Use RTP transport\n\n"
+    "   -S, --slave                   Enable slave mode (read commands from stdin)\n"
+    "   -R, --reconnect               Automatically reconnect when connection has been lost\n"
+    "   -t, --tcp                     Use TCP transport\n"
+    "   -u, --udp                     Use UDP transport\n"
+    "   -r, --rtp                     Use RTP transport\n\n"
     "                                 If no transport options are given, transports\n"
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:p:vsxlkobSRtur";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -439,6 +445,7 @@ static const struct option long_options[] = {
   { "lirc",       optional_argument, NULL, 'L' },
   { "config",     required_argument, NULL, 'C' },
   { "terminal",   required_argument, NULL, 'T' },
+  { "shutdown",   required_argument, NULL, 'p' },
 
   { "verbose", no_argument,  NULL, 'v' },
   { "silent",  no_argument,  NULL, 's' },
@@ -453,7 +460,7 @@ static const struct option long_options[] = {
   { "tcp",       no_argument,  NULL, 't' },
   { "udp",       no_argument,  NULL, 'u' },
   { "rtp",       no_argument,  NULL, 'r' },
-  { NULL }
+  { NULL,        no_argument,  NULL,  0  }
 };
 
 #define PRINTF(x...) do { if(SysLogLevel>1) printf(x); } while(0)
@@ -466,21 +473,24 @@ int main(int argc, char *argv[])
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   int repeat_emu = 0;
-  int window_id = -1;
+  int window_id = WINDOW_ID_NONE;
   int xmajor, xminor, xsub;
   int c;
   int xine_finished = FE_XINE_ERROR;
+  int inactivity_timer = 0;
   char *mrl = NULL;
   char *video_driver = NULL;
   char *audio_driver = NULL;
-  char *audio_device = NULL;
-  char *video_port = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
-  char *aspect_controller = NULL;
+  char *p;
+  const char *audio_device = NULL;
+  const char *video_port = NULL;
+  const char *aspect_controller = NULL;
   const char *tty = NULL;
   const char *exec_name = argv[0];
   const char *config_file = NULL;
+  const char *power_off_cmd = NULL;
 
   extern const fe_creator_f fe_creator;
   frontend_t *fe = NULL;
@@ -507,25 +517,30 @@ int main(int argc, char *argv[])
               list_xine_plugins(NULL, SysLogLevel>2);
               exit(0);
     case 'A': audio_driver = strdup(optarg);
-              audio_device = strchr(audio_driver, ':');
-              if (audio_device)
-                *(audio_device++) = 0;
+              if (NULL != (p = strchr(audio_driver, ':'))) {
+                *p = 0;
+                audio_device = p + 1;
+              }
               PRINTF("Audio driver: %s\n", audio_driver);
               if (audio_device)
                 PRINTF("Audio device: %s\n", audio_device);
               break;
     case 'V': video_driver = strdup(optarg);
-              video_port   = strchr(video_driver, ':');
-              if (video_port)
-                *(video_port++) = 0;
+              if (NULL != (p = strchr(video_driver, ':'))) {
+                *p = 0;
+                video_port = p + 1;
+              }
               PRINTF("Video driver: %s\n", video_driver);
               if (video_port)
                 PRINTF("Video port: %s\n", video_port);
               break;
 #ifndef IS_FBFE
-    case 'W': window_id = atoi(optarg);
+    case 'W': if (!strcmp(optarg, "root"))
+                window_id = WINDOW_ID_ROOT;
+              else
+                window_id = atoi(optarg);
               break;
-    case 'd': video_port = strdup(optarg);
+    case 'd': video_port = optarg;
               break;
     case 'x': noxkbd = 1;
               break;
@@ -539,13 +554,12 @@ int main(int argc, char *argv[])
               if (!strncmp(optarg, "16:10", 5))
                 aspect = 4;
               if (aspect == 0 && optarg[4] == ':')
-                aspect_controller = strdup(optarg+5);
+                aspect_controller = optarg + 5;
               PRINTF("Aspect ratio: %s\n",
                      aspect==0?"Auto":aspect==2?"4:3":aspect==3?"16:9":
                      aspect==4?"16:10":"Default");
               if (aspect_controller)
-                PRINTF("Using %s to switch aspect ratio\n",
-                       aspect_controller);
+                PRINTF("Using %s to switch aspect ratio\n", aspect_controller);
               break;
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
@@ -574,10 +588,15 @@ int main(int argc, char *argv[])
                 PRINTF("Can't access terminal: %s\n", tty);
                 return -2;
               }
-              PRINTF("Terminal: %s", tty);
+              PRINTF("Terminal: %s\n", tty);
               break;
     case 'n': scale_video = 0;
               PRINTF("Video scaling disabled\n");
+              break;
+    case 'p': inactivity_timer = atoi(optarg);
+              power_off_cmd = strchr(optarg, ':');
+              power_off_cmd = power_off_cmd ? power_off_cmd+1 : "/sbin/shutdown";
+              PRINTF("Shutdown after %d minutes of inactivity using %s\n", inactivity_timer, power_off_cmd);
               break;
     case 'P': if (static_post_plugins)
                 strcatrealloc(static_post_plugins, ";");
@@ -616,6 +635,7 @@ int main(int argc, char *argv[])
                      "          keyboard d,D     -> deinterlace toggle\n"
                      "          LIRC Deinterlace -> deinterlace toggle\n"
                      "          LIRC Fullscreen  -> fullscreen toggle\n"
+                     "          LIRC PowerOff    -> power off\n"
                      "          LIRC Quit        -> exit\n");
               break;
     case 'b': nokbd = daemon_mode = 1;
@@ -750,6 +770,9 @@ int main(int argc, char *argv[])
     fe->fe_free(fe);
     return -5;
   }
+  if (power_off_cmd) {
+    fe->shutdown_init(fe, power_off_cmd, inactivity_timer * 60);
+  }
 
   if (SysLogLevel > 2)
     list_xine_plugins(fe, SysLogLevel>2);
@@ -840,7 +863,6 @@ int main(int argc, char *argv[])
   free(mrl);
   free(audio_driver);
   free(video_driver);
-  free(aspect_controller);
   free(lirc_dev);
 
   return xine_finished==FE_XINE_EXIT ? 0 : 1;
