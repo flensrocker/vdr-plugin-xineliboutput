@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.148 2011-02-26 13:10:38 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.149 2011-02-26 17:16:19 rofafor Exp $
  *
  */
 
@@ -43,7 +43,7 @@
 
 #ifdef HAVE_OPENGL
 #  include <GL/glx.h>
-#  ifdef HAVE_DLFCN
+#  ifdef HAVE_VDR // HAVE_DLFCN
 #    include <dlfcn.h>
 #  endif
 #  ifdef HAVE_PTHREAD
