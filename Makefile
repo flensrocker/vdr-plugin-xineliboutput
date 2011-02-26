@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.38.2.8 2009-08-13 11:12:36 phintuka Exp $
+# $Id: Makefile,v 1.38.2.9 2011-02-26 07:27:17 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -125,11 +125,11 @@ OPTFLAGS ?=
 ifeq ($(APPLE_DARWIN), 1)
     CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g -fno-common -bundle -flat_namespace -undefined suppress
-    LDFLAGS_SO ?= -fvisibility=hidden
+    LDFLAGS_SO ?= $(LDFLAGS) -fvisibility=hidden
 else
     CXXFLAGS   ?= -O3 -pipe -Wall -Woverloaded-virtual -fPIC -g
     CFLAGS     ?= -O3 -pipe -Wall -fPIC -g
-    LDFLAGS_SO ?= -shared -fvisibility=hidden
+    LDFLAGS_SO ?= $(LDFLAGS) -shared -fvisibility=hidden
 endif
 LIBS_VDR ?=
 
@@ -506,7 +506,7 @@ $(VDRPLUGIN_SXFE_SO): $(OBJS_SXFE_SO)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_SXFE_SO).$(VERSION)
 $(VDRSXFE): $(OBJS_SXFE)
-	$(CC) -g $(OBJS_SXFE) $(LIBS_X11) -ljpeg $(LIBS_XINE) -o $@
+	$(CC) -g $(LDFLAGS) $(OBJS_SXFE) $(LIBS_X11) -ljpeg $(LIBS_XINE) -o $@
 endif
 
 ifeq ($(XINELIBOUTPUT_FB), 1)
@@ -515,7 +515,7 @@ $(VDRPLUGIN_FBFE_SO): $(OBJS_FBFE_SO)
 	@-rm -rf $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
 	@cp $@ $(LIBDIR)/$(VDRPLUGIN_FBFE_SO).$(VERSION)
 $(VDRFBFE): $(OBJS_FBFE)
-	$(CC) -g $(OBJS_FBFE) $(LIBS_XINE) -ljpeg -o $@
+	$(CC) -g $(LDFLAGS) $(OBJS_FBFE) $(LIBS_XINE) -ljpeg -o $@
 endif
 
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), 1)
