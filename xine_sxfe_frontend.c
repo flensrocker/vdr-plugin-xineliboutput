@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.146 2011-02-26 12:28:43 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.147 2011-02-26 12:38:18 phintuka Exp $
  *
  */
 
@@ -164,9 +164,9 @@ typedef struct sxfe_s {
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
+  uint8_t         hud_visible;
   uint32_t       *shape_mask_mem;
 #ifdef HAVE_XSHAPE
-  uint8_t         hud_visible;
   Pixmap          shape_mask_pixmap;
   GC              shape_mask_gc;
   Picture         shape_mask_picture;
@@ -731,16 +731,12 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
 
-#ifdef HAVE_XSHAPE
-      if (this->xshape_hud) {
-        if (!this->hud_visible) {
-          XSetForeground(this->display, this->gc, 0x00000000);
-          XFillRectangle(this->display, this->surf_back_img->draw, this->gc,
-                         0, 0, this->x.width, this->x.height);
-        }
-        this->hud_visible = 1;
+      if (!this->hud_visible && this->surf_back_img) {
+        XSetForeground(this->display, this->gc, 0x00000000);
+        XFillRectangle(this->display, this->surf_back_img->draw, this->gc,
+                       0, 0, this->x.width, this->x.height);
       }
-#endif
+      this->hud_visible = 1;
 
       scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
       scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
@@ -865,13 +861,13 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 #ifdef HAVE_XSHAPE
       if (this->xshape_hud) {
         XUnmapWindow(this->display,this->hud_window);
-        this->hud_visible = 0;
         XSetForeground(this->display, this->shape_mask_gc, 0);
         XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
         memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
         XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
       }
 #endif
+      this->hud_visible = 0;
       XSetForeground(this->display, this->gc, 0x00000000);
       XFillRectangle(this->display, this->hud_window, this->gc,
                      0, 0, this->x.width, this->x.height);
@@ -1037,8 +1033,8 @@ static int hud_osd_open(sxfe_t *this)
      }
     }
 
-    this->hud_visible = 0;
 #endif
+    this->hud_visible = 0;
 
     this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
     this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
