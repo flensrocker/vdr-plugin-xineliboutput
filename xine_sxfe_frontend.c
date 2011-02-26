@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.147 2011-02-26 12:38:18 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.148 2011-02-26 13:10:38 phintuka Exp $
  *
  */
 
@@ -39,6 +39,16 @@
 #endif
 #ifdef HAVE_XINERAMA
 #  include <X11/extensions/Xinerama.h>
+#endif
+
+#ifdef HAVE_OPENGL
+#  include <GL/glx.h>
+#  ifdef HAVE_DLFCN
+#    include <dlfcn.h>
+#  endif
+#  ifdef HAVE_PTHREAD
+#    include <pthread.h>
+#  endif
 #endif
 
 #include <xine.h>
@@ -165,6 +175,22 @@ typedef struct sxfe_s {
   /* HUD stuff */
 #ifdef HAVE_XRENDER
   uint8_t         hud_visible;
+#ifdef HAVE_OPENGL
+  GLXDrawable     opengl_window;
+  GLXContext      opengl_context;
+  int             screen_width, screen_height;
+#if 0
+  int32_t         opengl_frame_period;
+#endif
+  pthread_t       opengl_drawing_thread;
+  pthread_mutex_t opengl_redraw_mutex;
+  pthread_cond_t  opengl_redraw_cv;
+  Pixmap          video_frame_pixmap;
+  GC              video_frame_gc;
+  GLuint          video_frame_texture;
+  GLuint          osd_texture;
+  uint8_t         opengl_deinit : 1;
+#endif
   uint32_t       *shape_mask_mem;
 #ifdef HAVE_XSHAPE
   Pixmap          shape_mask_pixmap;
@@ -189,6 +215,20 @@ typedef struct sxfe_s {
 
 } sxfe_t;
 
+
+#ifdef HAVE_OPENGL
+typedef int (*GLXGetVideoSyncProc)  (unsigned int *count);
+typedef int (*GLXWaitVideoSyncProc) (int          divisor,
+                                     int          remainder,
+                                     unsigned int *count);
+typedef void    (*GLXBindTexImageProc)    (Display       *display,
+                                           GLXDrawable   drawable,
+                                           int           buffer,
+                                           int           *attribList);
+GLXGetVideoSyncProc      getVideoSync;
+GLXWaitVideoSyncProc     waitVideoSync;
+GLXBindTexImageProc      bindTexImage;
+#endif
 
 #define DOUBLECLICK_TIME   500  // ms
 
@@ -886,6 +926,16 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   return 1;
 }
 
+#ifdef HAVE_OPENGL
+// Signals a change to the opengl drawing thread
+void opengl_trigger_drawing_thread(sxfe_t *this)
+{
+  pthread_mutex_lock(&this->opengl_redraw_mutex);
+  pthread_cond_signal(&this->opengl_redraw_cv);
+  pthread_mutex_unlock(&this->opengl_redraw_mutex);
+}
+#endif
+
 static void hud_frame_output_cb (void *data,
                                   int video_width, int video_height,
                                   double video_pixel_aspect,
@@ -895,6 +945,13 @@ static void hud_frame_output_cb (void *data,
                                   int *win_x, int *win_y)
 {
   sxfe_t *this = (sxfe_t*)data;
+
+#ifdef HAVE_OPENGL
+  // Inform the opengl drawing thread
+  if (this->opengl_always || this->opengl_hud) {
+    opengl_trigger_drawing_thread(this);
+  }
+#endif
 
   /* Call the original handler */
   this->x.frame_output_handler(data,
@@ -906,11 +963,14 @@ static void hud_frame_output_cb (void *data,
                                win_x, win_y);
 
   /* Set the desitination position if the video window is active */
+#ifdef HAVE_OPENGL
+  if (!(this->opengl_always || this->opengl_hud))
+#endif
   if (this->video_win_active) {
 
     /* Clear the window if the size has changed */
     if (this->video_win_changed) {
-      Window win = this->window[this->fullscreen ? 1 : 0];
+      Window win = this->window[!!this->fullscreen];
       GC     gc  = XCreateGC(this->display, win, 0, NULL);
       XSetForeground(this->display, gc, 0x00000000);
       XFillRectangle(this->display, win, gc, 0, 0, this->x.width-1, this->x.height-1);
@@ -1032,14 +1092,13 @@ static int hud_osd_open(sxfe_t *this)
         this->xshape_hud = 0;
      }
     }
-
 #endif
     this->hud_visible = 0;
 
     this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
     this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
 
-    if (this->xshape_hud)
+    if (this->xshape_hud || this->opengl_hud || this->opengl_always)
       this->surf_back_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis,
                                              DisplayWidth(this->display, this->screen),
                                              DisplayHeight(this->display, this->screen), 1);
@@ -1103,12 +1162,14 @@ static void hud_osd_focus(sxfe_t *this, XFocusChangeEvent *fev)
 
       if (fev->type == FocusIn) {
         /* Show HUD again if sxfe window receives focus */
-        XMapWindow(this->display, this->hud_window);
+        if (!(this->opengl_always || this->opengl_hud))
+          XMapWindow(this->display, this->hud_window);
       }
 
       else if (fev->type == FocusOut) {
         /* Dismiss HUD window if focusing away from frontend window */
-        XUnmapWindow(this->display, this->hud_window);
+        if (!(this->opengl_always || this->opengl_hud))
+          XUnmapWindow(this->display, this->hud_window);
       }
 
       XUnlockDisplay(this->display);
@@ -1333,6 +1394,489 @@ static void create_windows(sxfe_t *this)
   XUnlockDisplay(this->display);
 }
 
+#ifdef HAVE_OPENGL
+
+#if 0
+static void time_measure_start(struct timeval *time_start)
+{
+    gettimeofday(time_start, NULL);
+}
+
+static int time_measure_end(struct timeval *time_start)
+{
+    struct timeval time_end;
+    int diff;
+    gettimeofday(&time_end, NULL);
+    diff = time_end.tv_usec - time_start->tv_usec;
+    if (time_end.tv_usec < time_start->tv_usec) {
+      diff += 1000000;
+    }
+    return diff;
+}
+#endif
+
+static int opengl_init_dl(sxfe_t *this)
+{
+  void *dlhand;
+
+  // Get handles to important functions
+  dlhand = dlopen (NULL, RTLD_LAZY);
+  if (!dlhand) {
+    LOGERR("opengl_init(): dlopen failed (%s)", dlerror());
+    return -1;
+  }
+
+  void *(*glXGetProcAddressARB)(unsigned char *) = NULL;
+  glXGetProcAddressARB = (void *(*)(unsigned char *))dlsym(dlhand, "glXGetProcAddressARB");
+
+  if (glXGetProcAddressARB) {
+
+    if (!(waitVideoSync = (void *)glXGetProcAddressARB((unsigned char *)"glXWaitVideoSyncSGI"))) {
+      LOGMSG("glXGetProcAddressARB(glXWaitVideoSyncSGI) failed");
+      goto error;
+    }
+    if (!(getVideoSync = (void *)glXGetProcAddressARB((unsigned char *)"glXGetVideoSyncSGI"))) {
+      LOGMSG("glXGetProcAddressARB(glXGetVideoSyncSGI) failed");
+      goto error;
+    }
+    if (!(bindTexImage = (void *)glXGetProcAddressARB((unsigned char *)"glXBindTexImageEXT"))) {
+      LOGMSG("glXGetProcAddressARB(glXBindTexImageEXT) failed");
+      goto error;
+    }
+
+  } else {
+
+    LOGMSG("glXGetProcAddressARB not found");
+
+    dlerror();
+    bindTexImage = dlsym(dlhand,"glXBindTexImageEXT");
+    if (dlerror() != NULL) {
+      LOGMSG("opengl_init(): can not get pointer to glXBindTexImageEXT");
+      goto error;
+    }
+    getVideoSync = dlsym(dlhand,"glXGetVideoSyncSGI");
+    if (dlerror() != NULL) {
+      LOGMSG("opengl_init(): can not get pointer to glXGetVideoSyncSGI");
+      goto error;
+    }
+    waitVideoSync = dlsym(dlhand,"glXWaitVideoSyncSGI");
+    if (dlerror() != NULL) {
+      LOGMSG("opengl_init(): can not get pointer to glXWaitVideoSyncSGI");
+      goto error;
+    }
+  }
+
+  dlclose(dlhand);
+  return 0;
+
+ error:
+  dlclose(dlhand);
+  return -1;
+}
+
+static int opengl_init(sxfe_t *this)
+{
+  int glx_major, glx_minor;
+  Window root;
+  int n;
+  GLXFBConfig *fbconfigs;
+  GLXFBConfig fbcroot;
+  XSetWindowAttributes attr;
+  XVisualInfo *visinfo;
+  const char* gl_version;
+  int gl_major, gl_minor;
+  static const int fbc_attr[] = {
+    GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
+    GLX_BIND_TO_TEXTURE_TARGETS_EXT, GLX_TEXTURE_2D_BIT_EXT,
+    GLX_BIND_TO_TEXTURE_RGBA_EXT, True,
+    GLX_DOUBLEBUFFER,  True,
+    GLX_DEPTH_SIZE,    0,
+    GLX_ALPHA_SIZE,    0,
+    GLX_RED_SIZE,      1,
+    GLX_GREEN_SIZE,    1,
+    GLX_BLUE_SIZE,     1,
+    GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+    None
+  };
+  int fbc_attr2[] = {
+    GLX_RGBA,
+    GLX_RED_SIZE, 1,
+    GLX_GREEN_SIZE, 1,
+    GLX_BLUE_SIZE, 1,
+    GLX_DOUBLEBUFFER, 1,
+    None
+  };
+  static const int pixmapAttribs[] = {
+    GLX_TEXTURE_TARGET_EXT,
+    GLX_TEXTURE_2D_EXT,
+    GLX_TEXTURE_FORMAT_EXT,
+    GLX_TEXTURE_FORMAT_RGBA_EXT,
+    None
+  };
+  GLXPixmap glxpixmap;
+#if 0
+  int frame_period_average = 0;
+  int frame_period;
+  const int frame_period_required_samples = 100;
+  struct timeval t;
+  int i;
+  int unsigned sync;
+#endif
+  const char *glxExtensions;
+
+  // Get handles to important functions
+  if (opengl_init_dl(this) < 0) {
+    return -1;
+  }
+
+  // Get the GLX version
+  LOGVERBOSE("Get GLX version ...");
+  if (!glXQueryVersion (this->display, &glx_major, &glx_minor)) {
+    LOGMSG("no GLX support");
+    return -1;
+  }
+  LOGVERBOSE("GLX %d.%d", glx_major, glx_minor);
+
+  // Should have full GLX 1.3 for GL 1.2,
+  if (!(glx_major > 1 || glx_minor > 2)) {
+    const char* exts = glXQueryExtensionsString (this->display, this->screen);
+    if (!exts || !strstr (exts, "GLX_SGIX_fbconfig")) {
+      LOGMSG("no glx fbconfig support");
+      return -1;
+    }
+  }
+  LOGVERBOSE("Found GLX fbconfig support");
+
+  if (!(glx_major > 1 || glx_minor > 2)) {
+      LOGMSG("no glx 1.3 support");
+      return -1;
+  }
+
+  // Check for important extension
+  glxExtensions = glXQueryExtensionsString (this->display, this->screen);
+  if (!strstr (glxExtensions, "GLX_EXT_texture_from_pixmap")) {
+    LOGMSG("No texture from pixmap extension");
+    return -1;
+  }
+  LOGVERBOSE("Found texture from pixmap extension");
+  if (!strstr (glxExtensions, "GLX_SGI_video_sync")) {
+    LOGMSG("No sgi video sync extension");
+    return -1;
+  }
+  LOGVERBOSE("Found sgi video sync extension");
+
+  // Get handles to important functions
+  if (opengl_init_dl(this) < 0) {
+    return -1;
+  }
+
+  // Get properties of the root window
+  root = RootWindow (this->display, this->screen);
+  this->screen_width = DisplayWidth (this->display, this->screen);
+  this->screen_height = DisplayHeight (this->display, this->screen);
+
+  // Create the opengl window
+  if (!(fbconfigs = glXChooseFBConfig(this->display, this->screen, fbc_attr, &n))) {
+    LOGMSG("No glx frame buffer");
+    return -1;
+  }
+
+  fbcroot = fbconfigs[0];
+  XFree (fbconfigs);
+  visinfo = glXChooseVisual(this->display, this->screen, fbc_attr2);
+  attr.colormap = XCreateColormap (this->display, root, visinfo->visual, AllocNone);
+  attr.override_redirect = True;
+  this->opengl_window = XCreateWindow (this->display, root,
+                                       0, 0, this->screen_width, this->screen_height, 0,
+                                       visinfo->depth, InputOutput,
+                                       visinfo->visual, CWColormap | CWOverrideRedirect, &attr);
+  XSelectInput(this->display, this->opengl_window,
+               StructureNotifyMask |
+               ExposureMask |
+               KeyPressMask |
+               ButtonPressMask |
+               FocusChangeMask);
+#ifdef HAVE_XSHAPE
+  if (this->xshape_hud)
+    XShapeCombineRectangles(this->display, this->opengl_window, ShapeInput, 0, 0, NULL, 0,
+                            ShapeSet, Unsorted);
+#endif
+  this->opengl_context = glXCreateContext(this->display, visinfo, None, GL_TRUE);
+  XFree (visinfo);
+  if (this->opengl_context == NULL) {
+    LOGERR("Can't create glx context");
+    return -1;
+  }
+
+  glXMakeCurrent(this->display, this->opengl_window, this->opengl_context);
+  if (!(gl_version = (const char*) glGetString (GL_VERSION))) {
+    LOGERR("Failed to initialize GL");
+    return -1;
+  }
+  sscanf (gl_version, "%d.%d", &gl_major, &gl_minor);
+  if (!(gl_major > 1 || gl_minor > 1)) {
+    LOGMSG("No GL 1.2 support on your platform");
+    return -1;
+  }
+
+  if (!(gl_major > 1 || gl_minor > 2)) {
+    LOGMSG("No GL 1.3 support on your platform");
+    return -1;
+  }
+
+  glMatrixMode (GL_PROJECTION);
+  glLoadIdentity ();
+  glOrtho (0, this->screen_width-1, 0, this->screen_height-1, 0, 65535);
+  glEnable(GL_TEXTURE_2D);
+  glEnable (GL_BLEND);
+  glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glClearColor(0.0, 0.0, 0.0, 1.0);
+  // Hide cursor
+  set_cursor(this->display, this->opengl_window, 0);
+
+  // Associate video and hud with a texture
+  this->video_frame_pixmap = XCreatePixmap(this->display, this->opengl_window,
+                                           this->screen_width, this->screen_height,
+                                           DefaultDepth(this->display, this->screen));
+  this->video_frame_gc = XCreateGC(this->display, this->video_frame_pixmap, 0, NULL);
+  glxpixmap = glXCreatePixmap (this->display, fbcroot, this->video_frame_pixmap, pixmapAttribs);
+  glGenTextures (1, &this->video_frame_texture);
+  glBindTexture (GL_TEXTURE_2D, this->video_frame_texture);
+  bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glxpixmap = glXCreatePixmap (this->display, fbcroot, this->surf_back_img->draw, pixmapAttribs);
+  glGenTextures (1, &this->osd_texture);
+  glBindTexture (GL_TEXTURE_2D, this->osd_texture);
+  bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+#if 0
+  // Detect the frame rate
+  for (i = 0; i < frame_period_required_samples + 2; i++) {
+    if (i > 1) {
+      frame_period = time_measure_end(&t);
+      frame_period_average += frame_period;
+    }
+    time_measure_start(&t);
+    (*getVideoSync) (&sync);
+    (*waitVideoSync) (2, (sync + 1) % 2, &sync);
+  }
+  frame_period_average /= frame_period_required_samples;
+  this->opengl_frame_period = frame_period_average;
+  LOGMSG("opengl_init(): average frame period is %d us", this->opengl_frame_period);
+#endif
+
+  return 0;
+}
+
+// Frees all opengl related resources
+static void opengl_deinit(sxfe_t *this)
+{
+  XFreePixmap(this->display, this->video_frame_pixmap);
+  glXDestroyContext(this->display, this->opengl_context);
+  XDestroyWindow(this->display, this->opengl_window);
+}
+
+// Handles video output
+static void *opengl_draw_frame_thread(void *arg)
+{
+  sxfe_t *this=(sxfe_t *) arg;
+  int unsigned sync;
+  int unsigned prev_sync = 0;
+  int draw_frame = 0, window_mapped = 0, keep_osd_open = 0;
+  int prev_hud_visible = 0;
+  int16_t video_x0, video_y0, video_x1, video_y1;
+  int16_t osd_x0 ,osd_y0, osd_x1, osd_y1;
+  GLfloat osd_alpha = 0;
+  GLfloat osd_alpha_step = 0.2;
+  static int unsigned count = 0;
+  int16_t win_width = -1, win_height = -1;
+  int16_t win_x = -1, win_y = -1;
+  XRectangle xrect;
+  XDouble video_tex_width, video_tex_height;
+  int first_frame = 1;
+
+  while (1) {
+
+    // Wait for trigger
+    pthread_mutex_lock(&this->opengl_redraw_mutex);
+    pthread_cond_wait(&this->opengl_redraw_cv, &this->opengl_redraw_mutex);
+    pthread_mutex_unlock(&this->opengl_redraw_mutex);
+    count++;
+
+    // Check if we should exit
+    if (this->opengl_deinit)
+      break;
+
+    // Check if we need to change the shape of the window
+    if (win_x != this->x.xpos || win_y != this->x.ypos ||
+        win_width != this->x.width || win_height != this->x.height) {
+
+      // Update sizes
+      win_x = this->x.xpos;
+      win_y = this->x.ypos;
+      win_width = this->x.width;
+      win_height = this->x.height;
+      xrect.x = win_x;
+      xrect.y = win_y;
+      xrect.width = win_width;
+      xrect.height = win_height;
+
+      // Set the shape of the opengl window
+#ifdef HAVE_XSHAPE
+      if (this->xshape_hud)
+        XShapeCombineRectangles(this->display, this->opengl_window, ShapeBounding, 0, 0, &xrect, 1, ShapeSet, 0);
+#endif
+    }
+    LOGVERBOSE("win_x=%d win_y=%d win_width=%d win_height=%d", win_x, win_y, win_width, win_height);
+    // Update the global alpha value of the OSD
+    keep_osd_open = 0;
+    if (this->hud_visible) {
+      if (osd_alpha < 1.0) {
+        osd_alpha += osd_alpha_step;
+        if (osd_alpha > 1.0)
+	  osd_alpha = 1.0;
+      }
+    } else {
+      this->video_win_active = 0;
+      if (osd_alpha > 0.0) {
+        osd_alpha -= osd_alpha_step;
+        if (osd_alpha < 0.0)
+	  osd_alpha = 0.0;
+	keep_osd_open = 1;
+      }
+    }
+    LOGVERBOSE("osd_alpha=%.2f keep_osd_open=%d", osd_alpha, keep_osd_open);
+
+    // Decide if we need to do something
+    draw_frame = (this->hud_visible || keep_osd_open || this->opengl_always);
+    if ((this->opengl_hud && this->hud_visible && !prev_hud_visible) ||
+        (this->opengl_always && first_frame)) {
+      LOGDBG("redirecting video to opengl frame texture");
+      xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+                              (void*) this->video_frame_pixmap);
+      draw_frame = 0; // first frame not yet available in pixmap
+      osd_alpha -= 2*osd_alpha_step; // delay the osd
+    }
+    if (this->opengl_hud && !this->hud_visible && prev_hud_visible && !keep_osd_open) {
+      LOGDBG("redirecting video to window");
+      xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
+                              (void*) this->window[this->fullscreen ? 1 : 0]);
+      draw_frame = 1; // draw the last frame
+    }
+    if (draw_frame) {
+      LOGVERBOSE("drawing frame nr %d", count);
+      XLockDisplay(this->display);
+      video_tex_width = 1.0;
+      video_tex_height = 1.0;
+      if (this->video_win_active) {
+        video_x0 = win_x + this->video_win_x;
+	video_y0 = win_y + this->video_win_y;
+	video_tex_width  = ((XDouble)win_width)  / (XDouble)this->screen_width;
+	video_tex_height = ((XDouble)win_height) / (XDouble)this->screen_height;
+	video_x1 = video_x0 + (this->video_win_w - 1);
+	video_y1 = video_y0 + (this->video_win_h - 1);
+      } else {
+        video_x0 = win_x;
+	video_y0 = win_y;
+	video_x1 = video_x0 + this->screen_width - 1;
+	video_y1 = video_y0 + this->screen_height - 1;
+      }
+      osd_x0 = win_x;
+      osd_y0 = win_y;
+      osd_x1 = osd_x0 + this->screen_width - 1;
+      osd_y1 = osd_y0 + this->screen_height - 1;
+      video_y0 = (this->screen_height - 1) - video_y0;
+      video_y1 = (this->screen_height - 1) - video_y1;
+      osd_y0 = (this->screen_height - 1) - osd_y0;
+      osd_y1 = (this->screen_height - 1) - osd_y1;
+      LOGVERBOSE("video_x0=%d video_y0=%d video_x1=%d video_y1=%d", video_x0, video_y0, video_x1, video_y1);
+      LOGVERBOSE("osd_x0=%d osd_y0=%d osd_x1=%d osd_y1=%d", osd_x0, osd_y0, osd_x1, osd_y1);
+      glClear(GL_COLOR_BUFFER_BIT);
+      glBindTexture (GL_TEXTURE_2D, this->video_frame_texture);
+      glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+      glBegin(GL_QUADS);
+        glTexCoord2f(0.0, video_tex_height); glVertex3f(video_x0, video_y1 , 0.0);
+        glTexCoord2f(video_tex_width, video_tex_height); glVertex3f(video_x1, video_y1, 0.0);
+        glTexCoord2f(video_tex_width, 0.0); glVertex3f(video_x1, video_y0, 0.0);
+        glTexCoord2f(0.0, 0.0); glVertex3f(video_x0, video_y0, 0.0);
+      glEnd();
+      if (this->hud_visible || keep_osd_open) {
+        glColor4f(1.0f, 1.0f, 1.0f, osd_alpha);
+        glBindTexture (GL_TEXTURE_2D, this->osd_texture);
+        glBegin(GL_QUADS);
+          glTexCoord2f(0.0, 1.0); glVertex3f(osd_x0, osd_y1 , 0.0);
+          glTexCoord2f(1.0, 1.0); glVertex3f(osd_x1, osd_y1, 0.0);
+          glTexCoord2f(1.0, 0.0); glVertex3f(osd_x1, osd_y0, 0.0);
+          glTexCoord2f(0.0, 0.0); glVertex3f(osd_x0, osd_y0, 0.0);
+        glEnd();
+      }
+      glXSwapBuffers(this->display, this->opengl_window);
+      XUnlockDisplay(this->display);
+      first_frame = 0;
+    }
+
+    if (this->hud_visible && prev_hud_visible && !window_mapped) {
+      (*getVideoSync) (&sync);
+      (*waitVideoSync) (2, (sync + 1) % 2, &sync); // ensure that window shows correct frame
+      LOGDBG("mapping opengl window");
+      XLockDisplay(this->display);
+      XRaiseWindow (this->display, this->opengl_window);
+      XMapWindow(this->display, this->opengl_window);
+      XUnlockDisplay(this->display);
+      window_mapped = 1;
+    }
+    if (!this->hud_visible && !prev_hud_visible && window_mapped && !keep_osd_open) {
+      LOGDBG("unmapping opengl window");
+      XLockDisplay(this->display);
+      XLowerWindow (this->display, this->opengl_window);
+      XUnmapWindow(this->display, this->opengl_window);
+      XUnlockDisplay(this->display);
+      window_mapped = 0;
+    }
+    if (!keep_osd_open) {
+      prev_hud_visible = this->hud_visible;
+    }
+    prev_sync = sync;
+  }
+
+  // Free resources
+  opengl_deinit(this);
+  return NULL;
+}
+
+static int opengl_start(sxfe_t *this)
+{
+  LOGDBG("sxfe_display_open: starting opengl drawing thread");
+  pthread_mutex_init(&this->opengl_redraw_mutex, NULL);
+  pthread_cond_init(&this->opengl_redraw_cv, NULL);
+
+  XLockDisplay (this->display);
+  if (opengl_init(this) < 0) {
+    LOGMSG("OpenGL initialization failed");
+    XUnlockDisplay (this->display);
+    return 0;
+  }
+  XUnlockDisplay (this->display);
+
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  if (pthread_create(&this->opengl_drawing_thread, NULL, opengl_draw_frame_thread, (void *)this)) {
+    pthread_attr_destroy(&attr);
+    LOGERR("sxfe_display_open: can not start OpenGL drawing thread");
+    this->opengl_always = this->opengl_hud = 0; /* avoid pthread_join segfault */
+    return 0;
+  }
+  pthread_attr_destroy(&attr);
+
+  return 1;
+}
+
+#endif
+
 /*
  * sxfe_display_open
  *
@@ -1520,9 +2064,18 @@ static int sxfe_display_open(frontend_t *this_gen,
   XUnlockDisplay (this->display);
 
 #ifdef HAVE_XRENDER
+  // Init the osd window
   if (!hud_osd_open(this))
     return 0;
-#endif
+
+# ifdef HAVE_OPENGL
+  // Start the drawing thread
+  if (this->opengl_always || this->opengl_hud) {
+    if (!opengl_start(this))
+      return 0;
+  }
+# endif // HAVE_OPENGL
+#endif // HAVE_XRENDER
 
   return 1;
 }
@@ -1628,7 +2181,7 @@ static void sxfe_toggle_fullscreen(fe_t *this_gen, int fullscreen)
   }
 
   if (fullscreen < 0)
-    fullscreen = this->fullscreen ? 0 : 1;
+    fullscreen = !this->fullscreen;
 
   this->fe.fe_display_config((frontend_t*)this, -1, -1, this->origwidth, this->origheight,
                              fullscreen,
@@ -1744,6 +2297,11 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
  */
 static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 {
+#ifdef HAVE_OPENGL
+  if (cev->window == this->opengl_window)
+    return;
+#endif
+
   /* Move and resize HUD along with main or fullscreen window */
 #ifdef HAVE_XRENDER
   if(this->hud)
@@ -1994,6 +2552,17 @@ static void sxfe_display_close(frontend_t *this_gen)
     this->fe.xine_exit(this_gen);
 
   if(this->display) {
+
+#ifdef HAVE_OPENGL
+    if (this->opengl_always || this->opengl_hud) {
+      void *status;
+      this->opengl_deinit = 1;
+      opengl_trigger_drawing_thread(this);
+      if (pthread_join(this->opengl_drawing_thread, &status)) {
+        LOGERR("sxfe_display_close: can not join opengl drawing thread!");
+      }
+    }
+#endif
 
 #ifdef HAVE_XRENDER
     hud_osd_close(this);
