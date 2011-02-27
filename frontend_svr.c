@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.99 2011-01-21 14:43:17 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.100 2011-02-27 20:23:28 phintuka Exp $
  *
  */
 
@@ -1791,7 +1791,8 @@ void cXinelibServer::Action(void)
   pollfd pfd[MAXCLIENTS];
 
   /* higher priority */
-  SetPriority(-1);
+  if (geteuid() == 0)
+    SetPriority(-1);
 
   sched_param temp;
   temp.sched_priority = 2;
