@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.75 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: config.h,v 1.76 2011-02-28 13:39:58 phintuka Exp $
  *
  */
 
@@ -273,11 +273,14 @@ class config_t {
     int  modeswitch;
     int  width;
     int  height;
+    int  xpos;
+    int  ypos;
     int  display_aspect;
     int  scale_video;
     int  field_order;
     int  exit_on_close;    // Terminate VDR when local frontend is closed
     int  use_x_keyboard;   // Use X11 keyboard to control VDR (console kbd is handled by VDR)
+    int  window_id;        // use existing X11 window
 
     // Audio settings
     int  speaker_type;

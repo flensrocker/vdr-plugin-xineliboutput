@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.100 2011-01-17 12:54:22 phintuka Exp $
+ * $Id: config.c,v 1.101 2011-02-28 13:37:10 phintuka Exp $
  *
  */
 
@@ -654,6 +654,7 @@ config_t::config_t() {
   remote_local_ip[0] = 0;   // bind locally to this IP - undefined -> any/all
 
   use_x_keyboard = 1;
+  window_id      = WINDOW_ID_NONE;
 
   // video settings
   ibp_trickspeed = 1;
@@ -714,6 +715,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       { "opengl",       no_argument,       NULL, 'O' },
       { "width",        required_argument, NULL, 'w' },
       { "height",       required_argument, NULL, 'h' },
+      { "geometry",     required_argument, NULL, 'g' },
       //{ "xkeyboard",    no_argument,       NULL, 'k' },
       //{ "noxkeyboard",  no_argument,       NULL, 'K' },
       { "local",        required_argument, NULL, 'l' },
@@ -722,6 +724,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       { "audio",        required_argument, NULL, 'A' },
       { "video",        required_argument, NULL, 'V' },
       { "display",      required_argument, NULL, 'd' },
+      { "window",       required_argument, NULL, 'W' },
       { "post",         required_argument, NULL, 'P' },
       { "config",       required_argument, NULL, 'C' },
       { "primary",      no_argument,       NULL, 'p' },
@@ -733,6 +736,8 @@ bool config_t::ProcessArgs(int argc, char *argv[])
   while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
     switch (c) {
     case 'd': ProcessArg("Video.Port", optarg);
+              break;
+    case 'W': ProcessArg("X11.WindowId", optarg);
               break;
     case 'f': ProcessArg("Fullscreen", "1");
               break;
@@ -758,11 +763,20 @@ bool config_t::ProcessArgs(int argc, char *argv[])
               LOGMSG("OpenGL HUD OSD not supported\n");
 #endif
               break;
-    case 'w': ProcessArg("Fullscreen", "0");
+    case 'w': //ProcessArg("Fullscreen", "0");
               ProcessArg("X11.WindowWidth", optarg);
               break;
-    case 'h': ProcessArg("Fullscreen", "0");
+    case 'h': //ProcessArg("Fullscreen", "0");
               ProcessArg("X11.WindowHeight", optarg);
+              break;
+    case 'g': {
+                int _width = width, _height = height, _xpos = 0, _ypos = 0;
+                sscanf (optarg, "%dx%d+%d+%d", &_width, &_height, &_xpos, &_ypos);
+                ProcessArg("X11.WindowWidth",  *cString::sprintf("%d", _width));
+                ProcessArg("X11.WindowHeight", *cString::sprintf("%d", _height));
+                ProcessArg("X11.XPos",         *cString::sprintf("%d", _xpos));
+                ProcessArg("X11.YPos",         *cString::sprintf("%d", _ypos));
+              }
               break;
     //case 'k': ProcessArg("X11.UseKeyboard", "1");
     //          break;
@@ -834,8 +848,11 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "DisplayAspect"))      display_aspect = strstra(Value, s_aspects, 0);
   else if (!strcasecmp(Name, "ForcePrimaryDevice")) force_primary_device = atoi(Value);
 
+  else if (!strcasecmp(Name, "X11.WindowId"))     window_id = (!strcmp(Value, "root")) ? WINDOW_ID_ROOT : atoi(Value);
   else if (!strcasecmp(Name, "X11.WindowWidth"))  width = atoi(Value);
   else if (!strcasecmp(Name, "X11.WindowHeight")) height = atoi(Value);
+  else if (!strcasecmp(Name, "X11.XPos"))         xpos = atoi(Value);
+  else if (!strcasecmp(Name, "X11.YPos"))         ypos = atoi(Value);
   else if (!strcasecmp(Name, "X11.UseKeyboard"))  use_x_keyboard = atoi(Value);
   else if (!strcasecmp(Name, "X11.HUDOSD"))       hud_osd |= (atoi(Value) ? HUD_COMPOSITE : 0);
   else if (!strcasecmp(Name, "X11.OpenglAlways")) opengl = atoi(Value);
@@ -905,6 +922,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
 
   else if (!strcasecmp(Name, "Video.Driver"))      STRN0CPY(video_driver, Value);
   else if (!strcasecmp(Name, "Video.Port"))        STRN0CPY(video_port, Value);
+
   else if (!strcasecmp(Name, "Video.Scale"))       scale_video = atoi(Value);
   else if (!strcasecmp(Name, "Video.DeinterlaceOptions")) STRN0CPY(deinterlace_opts, Value);
   else if (!strcasecmp(Name, "Video.Deinterlace")) STRN0CPY(deinterlace_method, Value);
