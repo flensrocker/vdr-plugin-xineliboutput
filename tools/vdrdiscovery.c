@@ -7,7 +7,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vdrdiscovery.c,v 1.10 2010-07-19 13:20:22 phintuka Exp $
+ * $Id: vdrdiscovery.c,v 1.11 2011-02-28 13:17:52 phintuka Exp $
  *
  */
 
@@ -241,7 +241,7 @@ int udp_discovery_find_server(int *port, char *address)
 	    uint32_t svraddr;
 	    iploc += strlen("Server address: ");
 	    svraddr = inet_addr(iploc);
-	    if(svraddr == INADDR_NONE) {
+	    if(svraddr == INADDR_NONE || svraddr == INADDR_ANY) {
 	      LOGMSG("Server provided invalid address !");
 	    } else {
 	      svraddr = ntohl(svraddr);
