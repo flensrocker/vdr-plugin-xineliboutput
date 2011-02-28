@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.55 2011-02-27 20:23:29 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.56 2011-02-28 13:15:08 phintuka Exp $
  *
  */
 
@@ -39,6 +39,7 @@
 #include "sap.h"  // SAP  - Session Announcement Protocol
 #include "sdp.h"  // SDP  - Session Description Protocol
 #include "rtcp.h" // RTCP
+#include "sys_cap.h"
 
 #include "udp_pes_scheduler.h"
 
@@ -737,7 +738,7 @@ void cUdpScheduler::Action(void)
 {
   /* UDP Scheduler needs high priority */
   const int priority = -5;
-  if (geteuid() == 0)
+  if (have_cap_sys_nice())
     SetPriority(priority);
   errno = 0;
   if ((nice(priority) == -1) && errno)
