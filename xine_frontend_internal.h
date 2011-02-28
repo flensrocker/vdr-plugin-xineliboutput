@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.7 2011-01-08 15:11:05 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.8 2011-02-28 13:23:46 phintuka Exp $
  *
  */
 
@@ -62,6 +62,7 @@ typedef struct fe_s {
     void             *vis;
     fb_visual_t       vis_fb;
     x11_visual_t      vis_x11;
+    raw_visual_t      vis_raw;
   };
 
   /* frontend */
