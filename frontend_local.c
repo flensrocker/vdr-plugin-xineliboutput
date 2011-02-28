@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.52 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: frontend_local.c,v 1.53 2011-02-28 13:29:31 phintuka Exp $
  *
  */
 
@@ -450,7 +450,7 @@ void cXinelibLocal::Action(void)
   if(curr_fe) {
     LOCK_FE_WR;
     fe = NULL;
-    curr_fe->xine_exit(fe);
+    curr_fe->xine_exit(curr_fe);
     curr_fe->fe_display_close(curr_fe);
     curr_fe->fe_free(curr_fe);
   }
