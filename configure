@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.30 2011-02-28 12:28:25 phintuka Exp $
+# * $Id: configure,v 1.31 2011-02-28 12:32:30 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -239,6 +239,7 @@ FEATURES="
   dlfcn
   vdpau
   i18n
+  libcap
 "
 
 # set defaults
@@ -275,6 +276,7 @@ show_help(){
   echo "  --disable-opengl       disable OpenGL support (transparent HUD OSD without composite manager) [no]"
   echo "  --disable-vdpau        disable VDPAU support (X11) [no]"
   echo "  --disable-i18n         disable i18n support [no]"
+  echo "  --disable-libcap       disable libcap support [no]"
   echo
   echo "  --debug                debug configure script"
   echo "  --disable-pkgconfig    do not use pkg-config"
@@ -329,7 +331,7 @@ done
 check_deps(){
   disabled libxine && disable x11 fb libavutil libjpeg
   disabled x11     && disable dbus-glib-1 xshm xrender xshape opengl xrandr xdpms xinerama vdpau
-  disabled vdr     && disable libextractor
+  disabled vdr     && disable libextractor libcap
   disabled xrender && disable opengl
   disabled xshape  && disable opengl
 }
@@ -347,6 +349,7 @@ test_pkgconfig
   test_library   X11  do_error     "none.h"         "-lnolib"
 
 test_library     VDR  libextractor "extractor.h"    "-lextractor" "EXTRACTOR_getKeywords(0,0)"
+test_library     VDR  libcap       "sys/capability.h" "-lcap"     "cap_get_proc()"
 test_library     XINE libxine      "xine.h"         "-lxine"      "xine_init(0)"
 
 if enabled libxine; then
