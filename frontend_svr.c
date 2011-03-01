@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.83.2.2 2011-02-24 19:06:21 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.83.2.3 2011-03-01 08:58:45 phintuka Exp $
  *
  */
 
@@ -43,6 +43,7 @@
 #include "tools/vdrdiscovery.h"
 #include "tools/sdp.h"
 #include "tools/rle.h"
+#include "tools/sys_cap.h"
 
 #include "frontend_svr.h"
 #include "device.h"
@@ -1728,7 +1729,8 @@ void cXinelibServer::Action(void)
   pollfd pfd[MAXCLIENTS];
 
   /* higher priority */
-  SetPriority(-1);
+  if (have_cap_sys_nice())
+    SetPriority(-1);
 
   sched_param temp;
   temp.sched_priority = 2;
