@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
- * $Id: xine_post_swscale.c,v 1.14 2011-02-21 22:42:13 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.15 2011-03-02 12:42:22 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
@@ -66,7 +66,7 @@ static int doublecmp(double a, double b) {
 
 
 /*#define DBG(x...)*/
-#define DBG(x...) fprintf(stderr, "post_warp: " x)
+#define DBG(x...) do { if(this->config.debug) fprintf(stderr, "post_warp: " x); } while (0)
 
 /*#define STREAMING_STORE_TMP*/
 /*#define STREAMING_STORE*/
@@ -139,8 +139,6 @@ static void init_tables_yv12(int newwidth, int newheight, int oldwidth, int oldh
   int k;
   int wY1;
   int wY2;
-  DBG("init_yv12: %dx%d->%dx%d hWarp %1.3lf vWarp %1.3lf\n", 
-      oldwidth, oldheight, newwidth, newheight, hWarp, vWarp);
 
   /* First set up horizontal table, use for both luma & chroma since 
    * it seems to have the same equation.
@@ -344,8 +342,6 @@ static void init_tables_yuy2(int newwidth, int newheight, int oldwidth, int oldh
   int wY2;
   int wUV1;
   int wUV2;
-  DBG("init_yuy2: %dx%d->%dx%d hWarp %1.3lf vWarp %1.3lf\n", 
-      oldwidth, oldheight, newwidth, newheight, hWarp, vWarp);
   
   /* First set up horizontal table */
   for(i=0; i < newwidth; i+=2) {
@@ -1323,6 +1319,7 @@ typedef struct warp_parameters_s {
   int    output_height;
   double output_aspect;
   int    no_downscaling;
+  int    debug;
 } warp_parameters_t;
 
 START_PARAM_DESCR(warp_parameters_t)
@@ -1334,6 +1331,8 @@ PARAM_ITEM(POST_PARAM_TYPE_DOUBLE, output_aspect, NULL,   1,    3, 0,
   "output video aspect ratio")
 PARAM_ITEM(POST_PARAM_TYPE_BOOL,   no_downscaling,NULL,   0,    1, 0,
   "disable downscaling")
+PARAM_ITEM(POST_PARAM_TYPE_BOOL,   debug,         NULL,   0,    1, 0,
+  "debug mode")
 END_PARAM_DESCR(warp_param_descr)
 
 
@@ -1401,6 +1400,11 @@ static void init_tables(warp_plugin_t *this)
     this->vWeightsUV = (uint32_t*)ALIGN(128, BP(this->vOffsetsUV) + this->output_height * sizeof(uint32_t) + 128);
     this->hControlUV = (uint32_t*)ALIGN(128, BP(this->vWeightsUV) + this->output_height * sizeof(uint32_t) + 128);
 
+    DBG("init_yv12: %dx%d->%dx%d hWarp %1.3lf vWarp %1.3lf\n",
+        this->input_width,  this->input_height,
+        this->output_width, this->output_height,
+        this->factor_x, this->factor_y);
+
     init_tables_yv12(this->output_width, this->output_height,
 		     this->input_width,  this->input_height,
 		     this->input_interlaced, this->factor_x, this->factor_y, 
@@ -1408,6 +1412,11 @@ static void init_tables(warp_plugin_t *this)
 		     this->hControlUV, this->vOffsetsUV, this->vWeightsUV );
 
   } else if (this->input_format == XINE_IMGFMT_YUY2) {
+
+    DBG("init_yuy2: %dx%d->%dx%d hWarp %1.3lf vWarp %1.3lf\n",
+        this->input_width,  this->input_height,
+        this->output_width, this->output_height,
+        this->factor_x, this->factor_y);
 
     init_tables_yuy2(this->output_width, this->output_height,
 		     this->input_width,  this->input_height,
@@ -1676,9 +1685,9 @@ static int warp_set_parameters(xine_post_t *this_gen, void *param_gen)
     this->config.output_aspect /= 1000.0;
 
   DBG("warp_set_parameters: "
-      "output_width=%d, output_height=%d, output_aspect=%4.3lf, no_downscaling=%d\n",
+      "output_width=%d, output_height=%d, output_aspect=%4.3lf, no_downscaling=%d, debug=%d\n",
       this->config.output_width, this->config.output_height, this->config.output_aspect,
-      this->config.no_downscaling);
+      this->config.no_downscaling, this->config.debug);
 
   return 1;
 }
@@ -1707,6 +1716,7 @@ static char *warp_get_help(void) {
 	   "  output_aspect:      Adjust aspect ratio using non-linear scaling\n"
 	   "                      (0 -> do not change video aspect ratio)\n"
 	   "  no_downscaling:     Do not downscale video\n"
+           "  debug:              Output debug messages\n"
            "\n"
          );
 }
