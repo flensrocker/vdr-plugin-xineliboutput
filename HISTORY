@@ -48,8 +48,11 @@ Features:
 - Added VDPAU support to letterbox cropping (Thanks to Andreas Auras)
 - Added '-C'/'--config' command-line option to specify xine's configuration file.
 - Added an option to limit number of remote clients
+- Added an option to adjust the stepping value that is used for
+  metronom live mode sync (Thanks to Andreas Auras)
 - Added an option to use smoother SCR tuning (Thanks to Thomas Hilber and Paul Menzel)
   (smooth tuning can be enabled with xine-lib config key media.xvdr.smooth_scr_tuning)
+- Added an option to use xine-lib DVB subtitles decoder
 
 2010-02-07: Version 1.0.5  (branch-1_0_5)
 Backported bugfixes from CVS trunk:
