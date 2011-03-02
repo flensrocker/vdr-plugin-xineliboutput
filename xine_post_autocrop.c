@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_autocrop.c,v 1.50 2011-01-08 03:02:52 phintuka Exp $
+ * $Id: xine_post_autocrop.c,v 1.51 2011-03-02 12:52:37 phintuka Exp $
  *
  */
 
@@ -63,9 +63,10 @@
 
 #undef LOG_MODULE
 #define LOG_MODULE      "autocrop"
-#define LOG_INFO        1
-#define LOG_DEBUG       1
-#define LOG_TRACE       0
+#define LOG_INFO        (this->debug_level > 0)
+#define LOG_DEBUG       (this->debug_level > 1)
+#define LOG_TRACE       (this->debug_level > 2)
+#define LOG_ACCEL       1
 
 #define DEFAULT_AUTODETECT_RATE          4      /* unit: frames */
 #define DEFAULT_STABILIZE_TIME         (5*25)   /* 5 seconds, unit: frames */
@@ -98,6 +99,7 @@ typedef struct autocrop_parameters_s {
   int    use_avards_analysis;
   int    overscan_compensate;
   int    bar_tone_tolerance;
+  int    debug_level;
 } autocrop_parameters_t;
 
 START_PARAM_DESCR(autocrop_parameters_t)
@@ -129,6 +131,8 @@ PARAM_ITEM(POST_PARAM_TYPE_INT, overscan_compensate, NULL, 0, 100, 0,
   "compensation of output device overscan applied when cropping frames (%1000 of frame height)")
 PARAM_ITEM(POST_PARAM_TYPE_INT, bar_tone_tolerance, NULL, 0, 255, 0,
   "tolerance of bar color")
+PARAM_ITEM(POST_PARAM_TYPE_INT, debug_level, NULL, 0, 4, 0,
+  "debug level")
 END_PARAM_DESCR(autocrop_param_descr)
 
 
@@ -153,6 +157,7 @@ typedef struct autocrop_post_plugin_s
   int use_avards_analysis;
   int overscan_compensate;
   int bar_tone_tolerance;
+  int debug_level;
 
   /* Current cropping status */
   int cropping_active;
@@ -625,7 +630,7 @@ static void autocrop_init_mm_accel(void)
 
 #if defined(__SSE__)
   if(xine_mm_accel() & MM_ACCEL_X86_SSE) {
-    llprintf(LOG_INFO, "autocrop_init_mm_accel: using SSE\n");
+    llprintf(LOG_ACCEL, "autocrop_init_mm_accel: using SSE\n");
     blank_line_Y  = blank_line_Y_sse;
     blank_line_UV = blank_line_UV_sse;
     blank_line_YUY2 = blank_line_YUY2_sse;
@@ -634,7 +639,7 @@ static void autocrop_init_mm_accel(void)
 #endif
 #if defined(ENABLE_64BIT)
   if(ENABLE_64BIT) {
-    llprintf(LOG_INFO, "autocrop_init_mm_accel: using 64-bit integer operations\n");
+    llprintf(LOG_ACCEL, "autocrop_init_mm_accel: using 64-bit integer operations\n");
     blank_line_Y  = blank_line_Y_C64;
     blank_line_UV = blank_line_UV_C64;
     blank_line_YUY2 = blank_line_YUY2_C64;
@@ -644,14 +649,14 @@ static void autocrop_init_mm_accel(void)
 #if defined(__MMX__)
   if(xine_mm_accel() & MM_ACCEL_X86_MMX) {
     /* mmx not faster than normal x64 (?) */
-    llprintf(LOG_INFO, "autocrop_init_mm_accel: using MMX\n");
+    llprintf(LOG_ACCEL, "autocrop_init_mm_accel: using MMX\n");
     blank_line_Y  = blank_line_Y_mmx;
     blank_line_UV = blank_line_UV_mmx;
     blank_line_YUY2 = blank_line_YUY2_mmx;
     return;
   }
 #endif
-  llprintf(LOG_INFO, "autocrop_init_mm_accel: no compatible acceleration methods found\n");
+  llprintf(LOG_ACCEL, "autocrop_init_mm_accel: no compatible acceleration methods found\n");
 }
 
 static int blank_line_Y_INIT(uint8_t *data, int length)
@@ -1680,6 +1685,7 @@ static int autocrop_set_parameters(xine_post_t *this_gen, void *param_gen)
   this->use_avards_analysis = param->use_avards_analysis;
   this->overscan_compensate = param->overscan_compensate;
   this->bar_tone_tolerance = param->bar_tone_tolerance;
+  this->debug_level = param->debug_level;
 
   llprintf(LOG_DEBUG, "autocrop_set_parameters: "
         "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
@@ -1714,6 +1720,7 @@ static int autocrop_get_parameters(xine_post_t *this_gen, void *param_gen)
   param->use_avards_analysis = this->use_avards_analysis;
   param->overscan_compensate = this->overscan_compensate;
   param->bar_tone_tolerance = this->bar_tone_tolerance;
+  param->debug_level = this->debug_level;
 
   llprintf(LOG_DEBUG, "autocrop_get_parameters: "
         "autodetect=%d  autodetect_rate=%d  logo_width=%d  "
@@ -1750,6 +1757,7 @@ static char *autocrop_get_help(void) {
            "  use_avards_analysis:        Use AVARDS algorithm for frame analysis\n"
            "  overscan_compensate:        Compensation of output device overscan applied when cropping frames (%1000 of frame height)\n"
            "  bar_tone_tolerance:         Tolerance of bar color (avards only)"
+           "  debug_level:                Output debug messages. 0=none, 1=info, 2=debug, 3=trace.\n"
            "\n"
          );
 }
@@ -1826,6 +1834,8 @@ static post_plugin_t *autocrop_open_plugin(post_class_t *class_gen,
       this->use_avards_analysis = 0;
       this->overscan_compensate = DEFAULT_OVERSCAN_COMPENSATE;
       this->bar_tone_tolerance = DEFAULT_BAR_TONE_TOLERANCE;
+      this->debug_level = 1;
+
       uint64_t caps = port->original_port->get_capabilities(port->original_port);
       this->has_driver_crop = caps & VO_CAP_CROP;
       this->has_unscaled_overlay = caps & VO_CAP_UNSCALED_OVERLAY;
