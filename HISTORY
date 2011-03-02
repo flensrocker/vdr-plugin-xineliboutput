@@ -23,6 +23,7 @@ Backported bugfixes from CVS trunk:
 - Add mrl prefix ("file:") to escaped subtitle file name
 - Query CDDA track count before starting playback
 - Create frontend config directory if it does not exist (bug #2796595)
+- Honor LDFLAGS (gentoo vdr-xineliboutput-1.0.5-ldflags.patch)
 Features:
 - Added Chinese translations (Thanks to NanFeng)
 - Added Estonian translations (Thanks to Arthur Konovalov)
