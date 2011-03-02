@@ -3,16 +3,15 @@ VDR Plugin 'xineliboutput' Revision History
 
 ????-??-??: Version 1.1.0
 
+- Added XShape support for HUD OSD: opaque HUD OSD when no compositing manager
+  (Thanks to grueni75)
+- Added support for background image streams (display images or videos while playing music)
+  (Thanks to Helmar Gerloni)
+- Added manual ordering to playlist menu (Thanks to Marco Skambraks)
 - Hide mouse cursor after 2 seconds mouse inactivity (Thanks to Gerald Dachs)
-- Added support for entering text using letters.
 - Added support for Alt and Ctrl key modifiers to X11 keyboard remote controller.
-- Added FreeBSD compatibility (Thanks to Juergen Lock and Joerg Pulz)
 - Added support for yaepg(hd) video window with HUD OSD (Thanks to grueni75)
-- Fixed lot of compiler warnings (Thanks to Winfried Koehler)
-- Fixed mixer volume being reset at vdr-sxfe start when using software volume control
-  (Thanks to Juergen Lock)
 - New, smoother live mode SCR sync algorithm (Thanks to Dirk Brenken)
-- Added support for libextractor 0.6.0 API (Thanks to Martin Knoll)
 - Scale or re-position SD subtitles on HD OSD (Thanks to Rolf Ahrenberg)
 - Added an option to select subtitle OSD scaling or re-positioning
 - Use xineliboutput/allowed_hosts.conf instead of svdrphosts.conf
@@ -22,37 +21,62 @@ VDR Plugin 'xineliboutput' Revision History
 - Improved OSD scaling (OSD reacts now immediately to frame size changes)
 - Replaced cIConv with VDR's cCharConv.
 - Supports only for vdr-1.6.0 or later.
-- Added an option to limit number of remote clients
 - Implemented build-time configuration script
-- Added an option to adjust the stepping value that is used for
-  metronom live mode sync (Thanks to Andreas Auras)
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
-- Added an option to use xine-lib DVB subtitles decoder
-- Fixed generating LIRC key release events (bug #2919256) (Thanks to Claudius Peschke)
-- Added vdr-??fe option to configure (client) system shutdown
 
+2011-02-28: Version 1.0.6  (CVS branch-1_0_x for vdr.1.4.x and vdr-1.6.x)
+Backported bugfixes from CVS trunk:
 - Fixed VDR OSD when playing DVDs
+- Fixed compilation with libextractor 0.6.0 (Thanks to Martin Knoll)
+- Fixed blanking
+- Fixed grab with jpeg7 and later
+- Fixed segfault when grabbing
+- Fixed unaligned access in swscale post plugin
+- Fixed remote access thru NAT firewall
+- Fixed OSD sending problems in remote mode
+- Fixed handling of kBack in DVD player (Reported by Marco Skambracks)
+- Fixed generating LIRC key release events (bug #2919256) (Thanks to Claudius Peschke)
+- Fixed mixer volume being reset at vdr-sxfe start when using software volume control
+  (Thanks to Juergen Lock)
+- Fixed lot of compiler warnings (Thanks to Winfried Koehler)
+- Reject clients when not primary device
+- Do not lose the key pressed while displaying "Queued to playlist" message
+  (Thanks to Marco Skambraks)
+- Escape only raw file names, not complete mrls (bug #2670927)
+- Add mrl prefix ("file:") to escaped subtitle file name
+- Query CDDA track count before starting playback
+- Create frontend config directory if it does not exist (bug #2796595)
+Features:
 - Added Chinese translations (Thanks to NanFeng)
 - Added Estonian translations (Thanks to Arthur Konovalov)
 - Added Ukrainian translations (Thanks to Yarema aka Knedlyk)
+- Added FreeBSD compatibility (Thanks to Juergen Lock and Joerg Pulz)
+- Added support for libextractor 0.6.0 API (Thanks to Martin Knoll)
+- Updated logo (Thanks to Stefan Wagner)
 - Configurable media player menu
+- Improved automatic letterbox cropping (Thanks to Andreas Auras)
+- Replaced build-time options INTERPRET_LIRC_KEYS and FE_TOGGLE_FULLSCREEN
+  with run-time option --hotkeys
+- Added system shutdown functionality to frontends
+- Added support for video in X11 root window
+- Added support for entering text using letter keys
 - Added "Rewind" key to media files menu
 - Added DVD menu navigation keys option
 - Added support for BluRay and m2ts files
 - Added --terminal, --buffers and --geometry options to vdr-??fe
-- Updated logo (Thanks to Stefan Wagner)
 - Added Gnome screensaver support to vdr-sxfe (Thanks to Alex Stansfield)
-- Added sharpness and noise reduction setup options for VDPAU.
-- Added image grabbing support for VDPAU (Thanks to durchflieger @ vdrportal)
-- Added VDPAU support to letterbox cropping (Thanks to durchflieger @ vdrportal)
-- Improved automatic letterbox cropping (Thanks to durchflieger @ vdrportal)
+- Added sharpness and noise reduction setup options for VDPAU
+- Added image grabbing in PNM format
+- Added image grabbing support for VDPAU (Thanks to Andreas Auras)
+- Added VDPAU support to letterbox cropping (Thanks to Andreas Auras)
 - Added '-C'/'--config' command-line option to specify xine's configuration file.
 - Added an option to limit number of remote clients
-- Replaced build-time options INTERPRET_LIRC_KEYS and FE_TOGGLE_FULLSCREEN
-  with run-time option --hotkeys
+- Added an option to adjust the stepping value that is used for
+  metronom live mode sync (Thanks to Andreas Auras)
 - Added an option to use smoother SCR tuning (Thanks to Thomas Hilber and Paul Menzel)
   (smooth tuning can be enabled with xine-lib config key media.xvdr.smooth_scr_tuning)
+- Added an option to use xine-lib DVB subtitles decoder
 
 2010-02-07: Version 1.0.5  (branch-1_0_5)
 Backported bugfixes from CVS trunk:
