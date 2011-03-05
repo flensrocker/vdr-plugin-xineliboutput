@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.35 2011-03-05 13:41:31 phintuka Exp $
+# * $Id: configure,v 1.36 2011-03-05 13:42:52 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -231,7 +231,6 @@ FEATURES="
   xshm
   xdpms
   xinerama
-  xrandr
   xrender
   xshape
   opengl
@@ -270,7 +269,6 @@ show_help(){
   echo "  --disable-xshm         disable XShm support [no]"
   echo "  --disable-xdpms        disable Xdpms support [no]"
   echo "  --disable-xinerama     disable Xinerama support [no]"
-  echo "  --disable-xrandr       disable Xrandr support (video mode switching) [no]"
   echo "  --disable-xrender      disable Xrender support (HUD OSD) [no]"
   echo "  --disable-xshape       disable Xshape support (non-transparent HUD OSD without composite manager) [no]"
   echo "  --disable-opengl       disable OpenGL support (transparent HUD OSD without composite manager) [no]"
@@ -330,7 +328,7 @@ done
 
 check_deps(){
   disabled libxine && disable x11 fb libavutil libjpeg
-  disabled x11     && disable dbus-glib-1 xshm xrender xshape opengl xrandr xdpms xinerama vdpau
+  disabled x11     && disable dbus-glib-1 xshm xrender xshape opengl xdpms xinerama vdpau
   disabled vdr     && disable libextractor libcap
   disabled dlfcn   && disable opengl
   disabled pthread && disable opengl
@@ -374,7 +372,6 @@ if enabled libxine; then
     test_library X11  xshm         "X11/extensions/XShm.h"     "-lXext"      "XShmQueryExtension(0)"
     test_library X11  xrender      "X11/extensions/Xrender.h"  "-lXrender"   "XRenderQueryFormats(0)"
     test_library X11  xshape       "X11/extensions/shape.h"    "-lXext"      "XShapeQueryExtension(0,0,0)"
-    test_library X11  xrandr       "X11/extensions/Xrandr.h"   "-lXrandr"    "XRRGetScreenInfo(0,0)"
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
     test_library X11  xinerama     "X11/extensions/Xinerama.h" "-lXinerama"  "XineramaQueryScreens(0,0)"
     test_library X11  opengl       "GL/glx.h"                  "-lGL -lGLU -lglut"  "glXQueryVersion(0,0,0)"
