@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.32 2011-02-28 12:35:18 phintuka Exp $
+# * $Id: configure,v 1.33 2011-03-05 12:56:00 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -431,7 +431,7 @@ echo "" >> $header
 echo "#endif /* XINELIBOUTPUT_FEATURES_H */" >> $header
 
 #
-# create features.mak
+# create config.mak
 #
 
 log "Creating $makefile ..."
