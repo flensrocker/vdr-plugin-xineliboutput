@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.34 2011-03-05 13:31:27 phintuka Exp $
+# * $Id: configure,v 1.35 2011-03-05 13:41:31 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -350,10 +350,10 @@ test_pkgconfig
 [ $debug = yes ] && \
   test_library   X11  do_error     "none.h"         "-lnolib"
 
-test_library     VDR  libextractor "extractor.h"    "-lextractor" "EXTRACTOR_getKeywords(0,0)"
-test_library     VDR  libcap       "sys/capability.h" "-lcap"     "cap_get_proc()"
-test_library     XINE libxine      "xine.h"         "-lxine"      "xine_init(0)"
-test_library     DLFCN dlfcn        "dlfcn.h"          "-ldl"      "dlopen(0,0)"
+test_library     VDR   libextractor "extractor.h"      "-lextractor" "EXTRACTOR_getKeywords(0,0)"
+test_library     VDR   libcap       "sys/capability.h" "-lcap"       "cap_get_proc()"
+test_library     XINE  libxine      "xine.h"           "-lxine"      "xine_init(0)"
+test_library     DLFCN dlfcn        "dlfcn.h"          "-ldl"        "dlopen(0,0)"
 
 if enabled libxine; then
 
@@ -365,10 +365,10 @@ if enabled libxine; then
   fi
   log " $XINEPLUGINDIR"
 
-  test_library   AVUTIL libavutil    "libavutil/mem.h"           "-lavutil"    "av_mallocz(1)"
-  test_library   JPEG libjpeg      "jpeglib.h"                 "-ljpeg"      "jpeg_create_compress(0)"
-  test_library   X11  x11          "X11/X.h"                   "-lX11"       "XInitThreads()"
-  test_library   PTHREAD pthread      "pthread.h"                 "-lpthread"   "pthread_create(0,0,0,0)"
+  test_library   AVUTIL  libavutil    "libavutil/mem.h"        "-lavutil"    "av_mallocz(1)"
+  test_library   JPEG    libjpeg      "jpeglib.h"              "-ljpeg"      "jpeg_create_compress(0)"
+  test_library   X11     x11          "X11/X.h"                "-lX11"       "XInitThreads()"
+  test_library   PTHREAD pthread      "pthread.h"              "-lpthread"   "pthread_create(0,0,0,0)"
   if enabled x11; then
     test_library X11  xext         "X11/extensions/Xext.h"     "-lXext"      ""
     test_library X11  xshm         "X11/extensions/XShm.h"     "-lXext"      "XShmQueryExtension(0)"
