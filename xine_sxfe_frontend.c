@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.150 2011-02-28 17:15:49 rofafor Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.151 2011-03-07 12:53:09 phintuka Exp $
  *
  */
 
@@ -686,26 +686,31 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   return visual;
 }
 
+static void palette_to_argb(uint32_t *lut, const struct osd_command_s *cmd)
+{
+  unsigned i;
+  for (i = 0; i < cmd->colors; i++) {
+    lut[i] = (cmd->palette[i].alpha << 24) |
+             (cmd->palette[i].r     << 16) |
+             (cmd->palette[i].g     << 8 ) |
+             (cmd->palette[i].b          );
+  }
+}
+
 static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
 {
   uint i, pixelcounter = 0;
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
+  uint32_t lut[256];
+
+  palette_to_argb(lut, cmd);
 
   if (mask_changed)
     *mask_changed = 0;
 
   for(i = 0; i < cmd->num_rle; ++i) {
-    const uint32_t a = (cmd->palette + (cmd->data + i)->color)->alpha;
-    const uint32_t r = (cmd->palette + (cmd->data + i)->color)->r;
-    const uint32_t g = (cmd->palette + (cmd->data + i)->color)->g;
-    const uint32_t b = (cmd->palette + (cmd->data + i)->color)->b;
-    uint32_t finalcolor;
+    uint32_t finalcolor = lut[(cmd->data + i)->color];
     uint     j;
-
-    finalcolor  = (a << 24);
-    finalcolor |= (r << 16);
-    finalcolor |= (g << 8);
-    finalcolor |= b;
 
     for (j = 0; j < (cmd->data + i)->len; ++j) {
       if (pixelcounter >= cmd->w) {
