@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.22 2010-05-30 20:31:18 phintuka Exp $
+ * $Id: osd_manager.c,v 1.23 2011-03-07 12:36:39 phintuka Exp $
  *
  */
 
@@ -522,6 +522,25 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
   return CONTROL_OK;
 }
 
+static int exec_osd_set_lut8(osd_manager_impl_t *this, osd_command_t *cmd)
+{
+  osd_command_t cmdrle;
+  memcpy(&cmdrle, cmd, sizeof(osd_command_t));
+  if (cmd->data) {
+    cmdrle.num_rle = rle_compress(&cmdrle.data, cmdrle.raw_data, cmdrle.w, cmdrle.h);
+    cmdrle.datalen = 4 * cmdrle.num_rle;
+    cmdrle.cmd = OSD_Set_RLE;
+  }
+
+  return exec_osd_set_rle(this, &cmdrle);
+}
+
+static int exec_osd_set_argb(osd_manager_impl_t *this, osd_command_t *cmd)
+{
+  LOGMSG("OSD_Set_ARGB not implemented");
+  return CONTROL_PARAM_ERROR;
+}
+
 /*
  * exec_osd_set_palette()
  *
@@ -613,6 +632,8 @@ static int exec_osd_command_internal(osd_manager_impl_t *this, struct osd_comman
   case OSD_Move:       return exec_osd_move(this, cmd);
   case OSD_Flush:      return exec_osd_flush(this, cmd);
   case OSD_Set_RLE:    return exec_osd_set_rle(this, cmd);
+  case OSD_Set_LUT8:   return exec_osd_set_lut8(this, cmd);
+  case OSD_Set_ARGB:   return exec_osd_set_argb(this, cmd);
   case OSD_Close:      return exec_osd_close(this, cmd);
   case OSD_VideoWindow:return exec_osd_video_window(this, cmd);
   case OSD_Commit:
@@ -623,7 +644,7 @@ static int exec_osd_command_internal(osd_manager_impl_t *this, struct osd_comman
     /* TODO */
     LOGMSG("OSD_Set_YUV not implemented !");
     return CONTROL_PARAM_ERROR;
-  default:;
+  default:
     LOGMSG("Unknown OSD command %d", cmd->cmd);
     return CONTROL_PARAM_ERROR;
   }
