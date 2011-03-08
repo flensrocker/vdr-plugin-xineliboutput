@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.7 2011-01-21 14:43:17 phintuka Exp $
+ * $Id: rle.c,v 1.8 2011-03-08 08:55:14 phintuka Exp $
  *
  */
 
@@ -368,3 +368,75 @@ int rle_uncompress_hdmv(xine_rle_elem_t **data,
 
   return rle_count;
 }
+
+void rle_uncompress_lut8(uint8_t *dst,
+                         uint w, uint h, uint stride,
+                         const struct xine_rle_elem_s *rle_data, uint num_rle)
+{
+  uint i, pixelcounter = 0;
+  uint idx = 0, line = 0;
+
+  for(i = 0; i < num_rle; ++i) {
+    uint8_t color = (rle_data + i)->color;
+    uint    len   = (rle_data + i)->len;
+    uint    j;
+
+    for (j = 0; j < len; ++j) {
+      if (pixelcounter >= w) {
+        idx += stride - pixelcounter;
+        pixelcounter = 0;
+        if (++line >= h)
+          return;
+      }
+      dst[idx] = color;
+      ++idx;
+      ++pixelcounter;
+    }
+  }
+}
+
+void rle_palette_to_argb(uint32_t *argb, const struct xine_clut_s *palette, uint entries)
+{
+  uint i;
+  for (i = 0; i < entries; i++) {
+    argb[i] = (palette[i].alpha << 24) |
+              (palette[i].r     << 16) |
+              (palette[i].g     << 8 ) |
+              (palette[i].b          );
+  }
+}
+
+
+void rle_uncompress_argb(uint32_t *dst,
+                         uint w, uint h, uint stride,
+                         const struct xine_rle_elem_s *rle_data, uint num_rle,
+                         const struct xine_clut_s *palette, uint palette_entries)
+{
+  uint32_t lut[256];
+  uint i, pixelcounter = 0;
+  uint idx = 0, line = 0;
+
+  if (palette_entries > 255)
+    return;
+
+  rle_palette_to_argb(lut, palette, palette_entries);
+
+  for(i = 0; i < num_rle; ++i) {
+    uint32_t color = lut[(rle_data + i)->color];
+    uint     len   = (rle_data + i)->len;
+    uint     j;
+
+    for (j = 0; j < len; ++j) {
+      if (pixelcounter >= w) {
+        idx += stride - pixelcounter;
+        pixelcounter = 0;
+        if (++line >= h)
+          return;
+      }
+      dst[idx] = color;
+      ++idx;
+      ++pixelcounter;
+    }
+  }
+}
+
