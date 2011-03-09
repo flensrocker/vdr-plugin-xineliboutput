@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sys_cap.h,v 1.1 2011-02-28 13:11:54 phintuka Exp $
+ * $Id: sys_cap.h,v 1.2 2011-03-09 11:56:30 phintuka Exp $
  *
  */
 
@@ -31,7 +31,7 @@ static inline cap_flag_value_t get_cap_flag(cap_value_t cap)
   }
 
   if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &val)) {
-    LOGDBG("cap_get_flag(CAP_SYS_NICE) failed");
+    LOGDBG("cap_get_flag(%d) failed", cap);
   }
 
   cap_free(caps);
