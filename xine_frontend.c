@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.118 2011-01-08 15:11:05 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.119 2011-03-10 10:03:12 durchflieger Exp $
  *
  */
 
@@ -1624,6 +1624,7 @@ static void *fe_control(frontend_t *this_gen, const char *cmd)
   return NULL;
 }
 
+
 /*
  * --- RgbToJpeg -------------------------------------------------------------
  *
@@ -1679,6 +1680,8 @@ static void JpegCompressTermDestination(const j_compress_ptr cinfo)
         }
      }
 }
+
+#ifndef HAVE_XINE_GRAB_VIDEO_FRAME
 
 static vo_frame_t *yuy2_to_yv12_frame(xine_stream_t *stream, vo_frame_t *frame)
 {
@@ -1810,9 +1813,10 @@ static char *frame_compress_jpeg(fe_t *this, int *size, int quality, vo_frame_t 
   *size = jcd.size;
   return (char*) jcd.mem;
 }
-
+#endif /* HAVE_XINE_GRAB_VIDEO_FRAME */
 #endif /* HAVE_LIBJPEG */
 
+#ifndef HAVE_XINE_GRAB_VIDEO_FRAME
 static vo_frame_t *yv12_to_yuy2_frame(xine_stream_t *stream, vo_frame_t *frame)
 {
   /* convert yv12 frames to yuy2 */
@@ -1895,15 +1899,15 @@ static char *frame_compress_pnm(fe_t *this, int *size, vo_frame_t *frame)
 
   return (char*)pnm;
 }
+#endif /* HAVE_XINE_GRAB_VIDEO_FRAME */
 
-#ifdef  XINE_GUI_SEND_GRAB_FRAME
-static char *fe_grab_raw_frame(fe_t *this, int *size, int jpeg, int quality, int width, int height, xine_grab_frame_t *frame)
+#if defined(XINE_GUI_SEND_GRAB_FRAME) || defined(HAVE_XINE_GRAB_VIDEO_FRAME)
+#ifdef XINE_GUI_SEND_GRAB_FRAME
+static char *fe_compress_grab_frame(fe_t *this, int *size, int jpeg, int quality, int width, int height, xine_grab_frame_t *frame)
+#else
+static char *fe_compress_grab_frame(fe_t *this, int *size, int jpeg, int quality, int width, int height, xine_grab_video_frame_t *frame)
+#endif
 {
-  frame->width = width;
-  frame->height = height;
-  if (xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_GRAB_FRAME, frame))
-    return NULL;
-
 #ifdef HAVE_LIBJPEG
   if (jpeg) {
     /* Compress JPEG */
@@ -1963,13 +1967,13 @@ static char *fe_grab_raw_frame(fe_t *this, int *size, int jpeg, int quality, int
   *size = bytes + hdrlen;
   return (char*)pnm;
 }
-#endif
+#endif /* defined(XINE_GUI_SEND_GRAB_FRAME) || defined(HAVE_XINE_GRAB_VIDEO_FRAME) */
+
 
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
 		     int quality, int width, int height)
 {
   fe_t *this = (fe_t*)this_gen;
-  vo_frame_t *frame;
 
 #ifndef HAVE_LIBJPEG
   if(jpeg) {
@@ -1992,16 +1996,35 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 
   /* get last frame */
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
+
 #ifdef XINE_GUI_SEND_GRAB_FRAME
   xine_grab_frame_t *grab_frame;
   if (!xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_ALLOC_GRAB_FRAME, &grab_frame)) {
-    char *img = fe_grab_raw_frame(this, size, jpeg, quality, width, height, grab_frame);
+    grab_frame->width = width;
+    grab_frame->height = height;
+    char *img = NULL;
+    if (!xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_GRAB_FRAME, grab_frame))
+      img = fe_compress_grab_frame(this, size, jpeg, quality, width, height, grab_frame);
     xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_FREE_GRAB_FRAME, grab_frame);
     this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
     return img;
   }
 #endif
-  frame = this->stream->video_out->get_last_frame (this->stream->video_out);
+
+#ifdef HAVE_XINE_GRAB_VIDEO_FRAME
+  char *img = NULL;
+  xine_grab_video_frame_t *grab_frame = xine_new_grab_video_frame(this->stream);
+  if (grab_frame) {
+    grab_frame->width = width;
+    grab_frame->height = height;
+    if (!grab_frame->grab(grab_frame))
+      img = fe_compress_grab_frame(this, size, jpeg, quality, width, height, grab_frame);
+    grab_frame->dispose(grab_frame);
+  }
+  this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
+  return img;
+#else
+  vo_frame_t *frame = this->stream->video_out->get_last_frame (this->stream->video_out);
   if(frame)
     frame->lock(frame);
   this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
@@ -2025,6 +2048,7 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 #else /* HAVE_LIBJPEG */
   return NULL;
 #endif
+#endif /* HAVE_XINE_GRAB_VIDEO_FRAME */
 }
 
 /*
