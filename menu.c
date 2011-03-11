@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.83 2010-12-19 14:41:10 phintuka Exp $
+ * $Id: menu.c,v 1.84 2011-03-11 14:45:31 phintuka Exp $
  *
  */
 
@@ -389,7 +389,8 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
   if (d) {
     struct dirent *e;
     while ((e = readdir(d)) != NULL) {
-      if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) {
+      if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..") &&
+          (e->d_name[0] != '.' || xc.show_hidden_files)) {
         cString buffer = cString::sprintf("%s/%s", DirName, e->d_name);
         struct stat st;
         if (stat(buffer, &st) == 0) {

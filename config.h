@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.76 2011-02-28 13:39:58 phintuka Exp $
+ * $Id: config.h,v 1.77 2011-03-11 14:45:31 phintuka Exp $
  *
  */
 
@@ -329,6 +329,7 @@ class config_t {
     char browse_files_dir[4096];
     char browse_music_dir[4096];
     char browse_images_dir[4096];
+    int  show_hidden_files;
     int  cache_implicit_playlists; // used in playlist.c
     int  enable_id3_scanner;       // used in playlist.c
     int  subtitle_vpos;            // used in media player. Not saved !
