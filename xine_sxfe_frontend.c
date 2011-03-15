@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.151 2011-03-07 12:53:09 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.152 2011-03-15 16:15:39 phintuka Exp $
  *
  */
 
@@ -2027,8 +2027,12 @@ static int sxfe_display_open(frontend_t *this_gen,
                 FocusChangeMask |
                 PointerMotionMask);
 
+  /* Get notified when root window size changes */
+  XSelectInput (this->display, XDefaultRootWindow(this->display),
+		StructureNotifyMask);
+
   /* Map current window */
-  XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
+  XMapRaised (this->display, this->window[!!this->fullscreen]);
   XMoveWindow(this->display, this->window[0], this->x.xpos, this->x.ypos);
 
   /* determine display aspect ratio */
@@ -2307,6 +2311,22 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
     return;
 #endif
 
+  /* root window size changed ? */
+  if (cev->window != (Window)this->window_id && cev->window == RootWindow(this->display, this->screen)) {
+    if (this->fullscreen) {
+      if (cev->width != this->x.width || cev->height != this->x.height) {
+        LOGMSG("Root window size changed. Resizing video window from %dx%d to %dx%d",
+               this->x.width, this->x.height, cev->width, cev->height);
+        XLockDisplay(this->display);
+        XResizeWindow(this->display, this->window[1], cev->width, cev->height);
+        XMoveWindow(this->display, this->window[1], this->xinerama_x, this->xinerama_y);
+        XUnlockDisplay(this->display);
+      }
+    }
+
+    return;
+  }
+
   /* Move and resize HUD along with main or fullscreen window */
 #ifdef HAVE_XRENDER
   if(this->hud)
@@ -2315,6 +2335,7 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 
   /* update video window size */
   if (this->x.width != cev->width || this->x.height != cev->height) {
+    LOGDBG("Video window size changed from %dx%d to %dx%d", this->x.width, this->x.height, cev->width, cev->height);
     this->x.width  = cev->width;
     this->x.height = cev->height;
 
