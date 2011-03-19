@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.95 2011-02-12 20:32:17 rofafor Exp $
+ * $Id: xine_frontend_main.c,v 1.96 2011-03-19 17:33:21 phintuka Exp $
  *
  */
 
@@ -462,7 +462,7 @@ int main(int argc, char *argv[])
       strncmp(mrl, MRL_ID ":", MRL_ID_LEN+1) &&
       strncmp(mrl, MRL_ID "+", MRL_ID_LEN+1)) {
     char *mrl2 = mrl;
-    PRINTF("WARNING: MRL does not start with \'" MRL_ID ":\' (%s)", mrl);
+    PRINTF("WARNING: MRL does not start with \'" MRL_ID ":\' (%s)\n", mrl);
     if (asprintf(&mrl, MRL_ID "://%s", mrl) < 0)
       return -1;
     free(mrl2);
