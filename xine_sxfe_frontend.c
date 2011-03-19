@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.154 2011-03-19 12:40:02 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.155 2011-03-19 16:11:58 phintuka Exp $
  *
  */
 
@@ -767,14 +767,117 @@ static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed
   }
 }
 
+static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
+{
+  XDouble scale_x  = (XDouble)this->x.width  / (XDouble)this->osd_width;
+  XDouble scale_y  = (XDouble)this->x.height / (XDouble)this->osd_height;
+  int     x        = cmd->x + cmd->dirty_area.x1;
+  int     y        = cmd->y + cmd->dirty_area.y1;
+  int     w        = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
+  int     h        = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
+  int     mask_changed;
+
+  Xrender_Surf *dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
+  Window        dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
+
+#ifdef HAVE_XSHM
+  if (this->completion_event != -1) {
+    hud_fill_img_memory((uint32_t*)(this->hud_img->data), this->shape_mask_mem, &mask_changed, cmd);
+    if (!cmd->scaling) {
+      /* Place image directly onto hud window */
+      XShmPutImage(this->display, dst_win, this->gc, this->hud_img,
+                   x, y, x, y, w, h,
+                   False);
+    } else {
+      /* Place image onto Xrender surface which will be blended onto hud window */
+      XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
+                   x, y, x, y, w, h,
+                   False);
+      xrender_surf_blend(this->display, this->surf_img, dst_surf,
+                         x, y, w, h,
+                         scale_x, scale_y,
+                         (cmd->scaling & 2),  // Note: HUD_SCALING_BILINEAR=2
+                         &x, &y, &w, &h);
+    }
+  }
+  else
+#endif
+    {
+      hud_fill_img_memory(this->hud_img_mem, this->shape_mask_mem, &mask_changed, cmd);
+      if (!cmd->scaling) {
+        /* Place image directly onto hud window (always unscaled) */
+        XPutImage(this->display, dst_win, this->gc, this->hud_img,
+                  x, y, x, y, w, h);
+      } else {
+        /* Place image onto Xrender surface which will be blended onto hud window */
+        XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
+                  x, y, x, y, w, h);
+        xrender_surf_blend(this->display, this->surf_img, dst_surf,
+                           x, y, w, h,
+                           scale_x, scale_y,
+                           (cmd->scaling & 2),   // Note: HUD_SCALING_BILINEAR=2
+                           &x, &y, &w, &h);
+      }
+    }
+
+#ifdef HAVE_XSHAPE
+  if (this->xshape_hud) {
+    if (mask_changed) {
+      LOGDBG("hud_osd_command(OSD_Set_RLE): Updating shape of window");
+      XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->shape_mask_picture,
+                       x, y, 0, 0, x, y, w, h);
+
+      // WHY MASK CHANGE HAS NO EFFECT UNLESS WINDOW IS UNMAPPED FIRST ... ???
+      XUnmapWindow(this->display, this->hud_window);
+      XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+      XMapWindow(this->display, this->hud_window);
+    }
+  }
+#endif
+
+  /* Put the image onto the hud window */
+  if (this->surf_back_img)
+    XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->surf_win->pic,
+                     x, y, 0, 0, x, y, w, h);
+
+  XFlush(this->display);
+}
+
+static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
+{
+  LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
+
+  // Compute the coordinates of the video window
+  XDouble scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
+  XDouble scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
+
+  int x = cmd->x;
+  int y = cmd->y;
+  int w = cmd->w;
+  int h = cmd->h;
+
+  x = (int)ceil((double)(x>0 ? x-1 : 0) * scale_x);
+  y = (int)ceil((double)(y>0 ? y-1 : 0) * scale_y);
+  w = (int)floor((double)(w+2) * scale_x);
+  h = (int)floor((double)(h+2) * scale_y);
+
+  if (x != this->video_win_x || y != this->video_win_y ||
+      w != this->video_win_w || h != this->video_win_h)
+    this->video_win_changed = 1;
+
+  this->video_win_x = x;
+  this->video_win_y = y;
+  this->video_win_w = w;
+  this->video_win_h = h;
+
+  this->video_win_active = 1;
+
+  LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
+}
+
 static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
-  int mask_changed;
-  XDouble scale_x, scale_y;
-  int x, y, w, h;
-  Xrender_Surf *dst_surf = this->surf_win;
-  Window        dst_win  = this->hud_window;
 
   if(this && this->hud && cmd) {
     XLockDisplay(this->display);
@@ -822,76 +925,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       }
       this->hud_visible = 1;
 
-      scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
-      scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
-      x = cmd->x + cmd->dirty_area.x1;
-      y = cmd->y + cmd->dirty_area.y1;
-      w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
-      h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
-
-      dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
-      dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
-
-#ifdef HAVE_XSHM
-      if(this->completion_event != -1) {
-        hud_fill_img_memory((uint32_t*)(this->hud_img->data), this->shape_mask_mem, &mask_changed, cmd);
-        if(!cmd->scaling) {
-          /* Place image directly onto hud window */
-          XShmPutImage(this->display, dst_win, this->gc, this->hud_img,
-                       x, y, x, y, w, h,
-                       False);
-        } else {
-          /* Place image onto Xrender surface which will be blended onto hud window */
-          XShmPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                       x, y, x, y, w, h,
-                       False);
-          xrender_surf_blend(this->display, this->surf_img, dst_surf,
-                             x, y, w, h,
-                             scale_x, scale_y,
-                             (cmd->scaling & 2),  // Note: HUD_SCALING_BILINEAR=2
-                             &x, &y, &w, &h);
-        }
-      }
-      else
-#endif
-      {
-        hud_fill_img_memory(this->hud_img_mem, this->shape_mask_mem, &mask_changed, cmd);
-        if(!cmd->scaling) {
-          /* Place image directly onto hud window (always unscaled) */
-          XPutImage(this->display, dst_win, this->gc, this->hud_img,
-                    x, y, x, y, w, h);
-        } else {
-          /* Place image onto Xrender surface which will be blended onto hud window */
-          XPutImage(this->display, this->surf_img->draw, this->gc, this->hud_img,
-                    x, y, x, y, w, h);
-          xrender_surf_blend(this->display, this->surf_img, dst_surf,
-                             x, y, w, h,
-                             scale_x, scale_y,
-                             (cmd->scaling & 2),   // Note: HUD_SCALING_BILINEAR=2
-                             &x, &y, &w, &h);
-        }
-      }
-#ifdef HAVE_XSHAPE
-      if (this->xshape_hud) {
-        if (mask_changed) {
-          LOGDBG("hud_osd_command(OSD_Set_RLE): Updating shape of window");
-          XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->shape_mask_picture,
-                           x, y, 0, 0, x, y, w, h);
-
-          // WHY MASK CHANGE HAS NO EFFECT UNLESS WINDOW IS UNMAPPED FIRST ... ???
-          XUnmapWindow(this->display, this->hud_window);
-          XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
-          XMapWindow(this->display, this->hud_window);
-        }
-      }
-#endif
-
-      // Put the image onto the hud window
-      if (this->surf_back_img)
-        XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->surf_win->pic, x,y,0,0,x,y,w,h);
-
-      XFlush(this->display);
-
+      hud_osd_draw(this, cmd);
       break;
 
     case OSD_SetPalette: /* Modify palette of already created OSD window */
@@ -907,35 +941,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_VideoWindow:
-      LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
-
-      // Compute the coordinates of the video window
-      scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
-      scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
-
-      x = cmd->x;
-      y = cmd->y;
-      w = cmd->w;
-      h = cmd->h;
-
-      x = (int)ceil((double)(x>0 ? x-1 : 0) * scale_x);
-      y = (int)ceil((double)(y>0 ? y-1 : 0) * scale_y);
-      w = (int)floor((double)(w+2) * scale_x);
-      h = (int)floor((double)(h+2) * scale_y);
-
-      if (x != this->video_win_x || y != this->video_win_y ||
-          w != this->video_win_w || h != this->video_win_h)
-        this->video_win_changed = 1;
-
-      this->video_win_x = x;
-      this->video_win_y = y;
-      this->video_win_w = w;
-      this->video_win_h = h;
-
-      this->video_win_active = 1;
-
-      LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
-
+      hud_osd_set_video_window(this, cmd);
       break;
 
     case OSD_Close: /* Close OSD window */
