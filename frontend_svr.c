@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.101 2011-02-28 13:15:07 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.102 2011-03-19 21:38:20 phintuka Exp $
  *
  */
 
@@ -300,13 +300,27 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
     return;
 
   if(cmd_gen) {
+    void *compressed_data = NULL;
     osd_command_t *cmd = (osd_command_t*)cmd_gen;
     osd_command_t cmdnet;
     memcpy(&cmdnet, cmd, sizeof(osd_command_t));
+
     if (cmd->data) {
-      cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
-      cmdnet.datalen = rle_recompress_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
+      // compress data
+      if (cmd->cmd == OSD_Set_LUT8) {
+        int num_rle = 0;
+        cmdnet.datalen  = rle_compress_hdmv(&cmdnet.raw_data, cmd->raw_data, cmd->w, cmd->h, &num_rle);
+        cmdnet.num_rle  = num_rle;
+        cmdnet.cmd      = OSD_Set_HDMV;
+        compressed_data = cmdnet.raw_data; // free it later
+
+      } else if (cmd->cmd == OSD_Set_RLE) {
+        cmdnet.raw_data = (uint8_t *)malloc(cmd->datalen);
+        cmdnet.datalen  = rle_recompress_net(cmdnet.raw_data, cmd->data, cmd->num_rle);
+        compressed_data = cmdnet.raw_data; // free it later
+      }
     }
+
     // -> network byte order
     hton_osdcmd(cmdnet);
 
@@ -327,7 +341,7 @@ void cXinelibServer::OsdCmd(void *cmd_gen)
       }
     }
 
-    free(cmdnet.data);
+    free(compressed_data);
 
 #ifdef LOG_OSD_BANDWIDTH
     {
