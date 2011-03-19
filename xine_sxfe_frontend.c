@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.156 2011-03-19 17:24:51 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.157 2011-03-19 20:25:31 phintuka Exp $
  *
  */
 
@@ -1317,7 +1317,7 @@ static void disable_DPMS(sxfe_t *this)
  */
 static int open_display(sxfe_t *this, const char *video_port)
 {
-  if (video_port && strlen(video_port)>2) {
+  if (video_port && *video_port) {
     if (!(this->display = XOpenDisplay(video_port)))
       LOGERR("sxfe_display_open: failed to connect to X server (%s)",
              video_port);
