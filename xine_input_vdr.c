@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.329 2010-12-06 12:55:07 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.330 2011-03-19 17:21:37 phintuka Exp $
  *
  */
 
@@ -29,6 +29,7 @@
 #include <sys/resource.h> /* setpriority() */
 #include <sys/stat.h>
 #include <syslog.h>
+#include <ctype.h>
 
 #if !defined(__APPLE__) && !defined(__FreeBSD__)
 # define DVD_STREAMING_SPEED
@@ -134,7 +135,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.329 2010-12-06 12:55:07 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.330 2011-03-19 17:21:37 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2947,6 +2948,14 @@ static int vdr_plugin_flush_remote(vdr_input_plugin_t *this, int timeout_ms,
   return CONTROL_OK;
 }
 
+static int is_lang_code(const char *s, int len)
+{
+  while (len--)
+    if (!islower(*(s++)))
+      return 0;
+  return !isalpha(*s);
+}
+
 static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *cmd)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
@@ -3258,12 +3267,20 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       ch = ch > -2 ? ch-1 : max_ch-1;
     else if(1 == sscanf(cmd+10, "%d", &tmp32)) {
       ch = tmp32;
-    } else if(cmd[10] && cmd[11] && (cmd[12] < 'a' || cmd[12] > 'z')) {
+    } else if(is_lang_code(cmd+10, 2)) {
       /* ISO 639-1 language code */
       const char spu_lang[3] = {cmd[10], cmd[11], 0};
       LOGMSG("Preferred SPU language: %s", spu_lang);
       this->class->xine->config->update_string(this->class->xine->config,
 					    "media.dvd.language", spu_lang);
+      ch = old_ch = 0;
+    } else if(is_lang_code(cmd+10, 3)) {
+      /* ISO 639-2 language code */
+      const char spu_lang[4] = {cmd[10], cmd[11], cmd[12], 0};
+      LOGMSG("Preferred SPU language: %s", spu_lang);
+      this->class->xine->config->update_string(this->class->xine->config,
+                                               "media.bluray.language", spu_lang);
+
       ch = old_ch = 0;
     } else
       err = CONTROL_PARAM_ERROR;
