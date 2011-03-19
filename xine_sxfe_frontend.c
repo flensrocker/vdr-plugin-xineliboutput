@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.153 2011-03-19 11:40:41 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.154 2011-03-19 12:40:02 phintuka Exp $
  *
  */
 
@@ -62,6 +62,8 @@
 #ifdef HAVE_DBUS_GLIB_1
 #  include "tools/gnome_screensaver.h"
 #endif
+
+#include "tools/rle.h"
 
 #ifndef WIN_LAYER_NORMAL
   #define WIN_LAYER_NORMAL 4
@@ -686,13 +688,54 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   return visual;
 }
 
+static void hud_fill_lut8(uint32_t* dst, const struct osd_command_s *cmd)
+{
+  uint8_t *data = cmd->raw_data;
+  unsigned x, y;
+  uint32_t lut[256];
+
+  rle_palette_to_argb(lut, cmd->palette, cmd->colors);
+
+  dst += cmd->y * HUD_MAX_WIDTH + cmd->x;
+
+  for (y = cmd->h; y; y--) {
+    for (x = 0; x < cmd->w; x++) {
+      dst[x] = lut[*data];
+      ++data;
+    }
+    dst += HUD_MAX_WIDTH;
+  }
+}
+
+static void hud_fill_argb(uint32_t* dst, const struct osd_command_s *cmd)
+{
+  uint32_t *data = (uint32_t*)cmd->raw_data;
+  unsigned y;
+
+  dst += cmd->y * HUD_MAX_WIDTH + cmd->x;
+
+  for (y = cmd->h; y; y--) {
+    memcpy(dst, data, cmd->w * sizeof(uint32_t));
+    data += cmd->w;
+    dst += HUD_MAX_WIDTH;
+  }
+}
+
 static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
 {
+  if (cmd->cmd == OSD_Set_LUT8) {
+    hud_fill_lut8(dst, cmd);
+
+  } else if (cmd->cmd == OSD_Set_ARGB) {
+    hud_fill_argb(dst, cmd);
+
+  } else if (cmd->cmd == OSD_Set_RLE) {
+
   uint i, pixelcounter = 0;
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
   uint32_t lut[256];
 
-  rle_palette_to_argb(lut, cmd);
+  rle_palette_to_argb(lut, cmd->palette, cmd->colors);
 
   if (mask_changed)
     *mask_changed = 0;
@@ -716,6 +759,11 @@ static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed
       ++idx;
       ++pixelcounter;
     }
+  }
+
+  } else {
+    LOGMSG("hud_img_fill_memory(): unsupported format");
+    return;
   }
 }
 
@@ -759,6 +807,8 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       XFlush(this->display);
       break;
 
+    case OSD_Set_LUT8:
+    case OSD_Set_ARGB:
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
       LOGDBG("HUD Set RLE");
 
