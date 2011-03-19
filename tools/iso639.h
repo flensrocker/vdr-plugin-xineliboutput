@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: iso639.h,v 1.5 2011-03-19 16:47:56 phintuka Exp $
+ * $Id: iso639.h,v 1.6 2011-03-19 17:03:56 phintuka Exp $
  *
  */
 
@@ -159,7 +159,8 @@ static const char *iso639_1_to_iso639_2(const char *lang)
 {
   if (lang && lang[0]) {
     if (lang[1] && !lang[2]) {
-      for (unsigned int i = 0 ; i < sizeof(ISO639_map) / sizeof(ISO639_map[0]); i++)
+      unsigned int i;
+      for (i = 0 ; i < sizeof(ISO639_map) / sizeof(ISO639_map[0]); i++)
 	if (!memcmp(ISO639_map[i].iso639_1, lang, 2))
 	  return ISO639_map[i].iso639_2;
       LOGMSG("Unknown iso639-1 code: %s", lang);
@@ -173,7 +174,8 @@ static const char *iso639_2_to_iso639_1(const char *lang)
 {
   if (lang && lang[0]) {
     if (lang[1] && lang[2] && !lang[3]) {
-      for (unsigned int i = 0 ; i < sizeof(ISO639_map) / sizeof(ISO639_map[0]); i++)
+      unsigned int i;
+      for (i = 0 ; i < sizeof(ISO639_map) / sizeof(ISO639_map[0]); i++)
 	if (!memcmp(ISO639_map[i].iso639_2, lang, 3))
 	  return ISO639_map[i].iso639_1;
       LOGMSG("Unknown iso639-2 code: %s", lang);
