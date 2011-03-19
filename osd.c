@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.44 2011-03-19 10:37:56 phintuka Exp $
+ * $Id: osd.c,v 1.45 2011-03-19 14:22:55 phintuka Exp $
  *
  */
 
@@ -192,11 +192,15 @@ void cXinelibOsd::CmdSize(int Width, int Height)
   if (m_Device) {
     osd_command_t osdcmd = {0};
 
+    osdcmd.cmd = OSD_Size;
+    osdcmd.w   = Width;
+    osdcmd.h   = Height;
+
+    if (Prev() == NULL)
+      osdcmd.flags |= OSDFLAG_TOP_LAYER;
+
     for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
-      osdcmd.cmd = OSD_Size;
       osdcmd.wnd = m_WindowHandles[Wnd];
-      osdcmd.w   = Width;
-      osdcmd.h   = Height;
 
       m_Device->OsdCmd((void*)&osdcmd);
     }
