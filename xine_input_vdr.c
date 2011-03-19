@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.331 2011-03-19 20:31:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.332 2011-03-19 20:52:47 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.331 2011-03-19 20:31:45 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.332 2011-03-19 20:52:47 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2712,13 +2712,13 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
           LOGMSG("HDMV mode OSD uncompress error");
           osdcmd.raw_data = raw;
         } else {
-          osdcmd.cmd == OSD_Set_RLE;
+          osdcmd.cmd     = OSD_Set_RLE;
           osdcmd.datalen = osdcmd.num_rle*4;
           free(raw);
         }
       } else if (osdcmd.cmd == OSD_Set_RLE) {
         uint8_t *raw = osdcmd.raw_data;
-        osdcmd.data = uncompress_osd_net(raw, osdcmd.num_rle, osdcmd.datalen);
+        osdcmd.data    = uncompress_osd_net(raw, osdcmd.num_rle, osdcmd.datalen);
         osdcmd.datalen = osdcmd.num_rle*4;
         free(raw);
       }
