@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.152 2011-03-15 16:15:39 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.153 2011-03-19 11:40:41 phintuka Exp $
  *
  */
 
@@ -686,24 +686,13 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   return visual;
 }
 
-static void palette_to_argb(uint32_t *lut, const struct osd_command_s *cmd)
-{
-  unsigned i;
-  for (i = 0; i < cmd->colors; i++) {
-    lut[i] = (cmd->palette[i].alpha << 24) |
-             (cmd->palette[i].r     << 16) |
-             (cmd->palette[i].g     << 8 ) |
-             (cmd->palette[i].b          );
-  }
-}
-
 static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
 {
   uint i, pixelcounter = 0;
   int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
   uint32_t lut[256];
 
-  palette_to_argb(lut, cmd);
+  rle_palette_to_argb(lut, cmd);
 
   if (mask_changed)
     *mask_changed = 0;
