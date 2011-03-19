@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.155 2011-03-19 16:11:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.156 2011-03-19 17:24:51 phintuka Exp $
  *
  */
 
@@ -875,6 +875,61 @@ static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *c
   LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
 }
 
+static void hud_osd_hide(sxfe_t *this)
+{
+  if (!this->hud_visible)
+    return;
+
+  this->hud_visible = 0;
+  this->video_win_active = 0;
+
+#ifdef HAVE_XSHAPE
+  if (this->xshape_hud) {
+    XUnmapWindow(this->display, this->hud_window);
+    XSetForeground(this->display, this->shape_mask_gc, 0);
+    XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
+    memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+    XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+  }
+#endif
+
+  XSetForeground(this->display, this->gc, 0x00000000);
+  XFillRectangle(this->display, this->hud_window, this->gc,
+                 0, 0, this->x.width, this->x.height);
+  XFillRectangle(this->display, this->surf_img->draw, this->gc,
+                 0, 0, this->osd_width+2, this->osd_height+2);
+
+  XFlush(this->display);
+}
+
+static void hud_osd_show(sxfe_t *this)
+{
+  if (this->hud_visible)
+    return;
+
+  this->hud_visible = 1;
+  this->video_win_active = 0;
+
+  XSetForeground(this->display, this->gc, 0x00000000);
+  XFillRectangle(this->display, this->surf_img->draw, this->gc,
+                 0, 0, this->osd_width+2, this->osd_height+2);
+  if (this->surf_back_img)
+    XFillRectangle(this->display, this->surf_back_img->draw, this->gc, 0, 0, this->x.width, this->x.height);
+
+#ifdef HAVE_XSHAPE
+  if (this->xshape_hud) {
+    XSetForeground(this->display, this->shape_mask_gc, 0);
+    XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
+    memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+    XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
+    XRaiseWindow(this->display, this->hud_window);
+    XMapWindow(this->display, this->hud_window);
+  }
+#endif
+
+  XFlush(this->display);
+}
+
 static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
@@ -888,26 +943,14 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Size: /* Set size of VDR OSD area */
       LOGDBG("HUD Set Size");
+
+      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+        break;
+
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
 
-      XSetForeground(this->display, this->gc, 0x00000000);
-      XFillRectangle(this->display, this->surf_img->draw, this->gc,
-                     0, 0, this->osd_width+2, this->osd_height+2);
-      if (this->surf_back_img)
-        XFillRectangle(this->display, this->surf_back_img->draw, this->gc, 0, 0, this->x.width, this->x.height);
-      this->video_win_active = 0;
-#ifdef HAVE_XSHAPE
-      if (this->xshape_hud) {
-        XSetForeground(this->display, this->shape_mask_gc, 0);
-        XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
-        memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
-        XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
-        XRaiseWindow(this->display, this->hud_window);
-        XMapWindow(this->display, this->hud_window);
-      }
-#endif
-      XFlush(this->display);
+      hud_osd_show(this);
       break;
 
     case OSD_Set_LUT8:
@@ -917,13 +960,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
-
-      if (!this->hud_visible && this->surf_back_img) {
-        XSetForeground(this->display, this->gc, 0x00000000);
-        XFillRectangle(this->display, this->surf_back_img->draw, this->gc,
-                       0, 0, this->x.width, this->x.height);
-      }
-      this->hud_visible = 1;
 
       hud_osd_draw(this, cmd);
       break;
@@ -948,23 +984,9 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       LOGDBG("HUD osd Close");
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
-#ifdef HAVE_XSHAPE
-      if (this->xshape_hud) {
-        XUnmapWindow(this->display,this->hud_window);
-        XSetForeground(this->display, this->shape_mask_gc, 0);
-        XFillRectangle(this->display, this->shape_mask_pixmap, this->shape_mask_gc, 0, 0, this->x.width, this->x.height);
-        memset(this->shape_mask_mem, 0, sizeof(uint32_t) * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
-        XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
-      }
-#endif
-      this->hud_visible = 0;
-      XSetForeground(this->display, this->gc, 0x00000000);
-      XFillRectangle(this->display, this->hud_window, this->gc,
-                     0, 0, this->x.width, this->x.height);
-      XFillRectangle(this->display, this->surf_img->draw, this->gc,
-                     0, 0, this->osd_width+2, this->osd_height+2);
-      this->video_win_active = 0;
-      XFlush(this->display);
+
+      hud_osd_hide(this);
+
       break;
 
     default:
