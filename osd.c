@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.45 2011-03-19 14:22:55 phintuka Exp $
+ * $Id: osd.c,v 1.46 2011-03-20 08:03:41 phintuka Exp $
  *
  */
 
@@ -16,7 +16,6 @@
 #include "config.h"
 #include "device.h"
 #include "xine_osd_command.h"
-#include "tools/rle.h"
 
 #include "osd.h"
 
@@ -98,10 +97,10 @@ class cXinelibOsd : public cOsd, public cListObject
     void CloseWindows(void);
     void CmdSize(int Width, int Height);
     void CmdVideoWindow(int X, int Y, int W, int H);
-    void CmdRle(int Wnd, int X0, int Y0,
-		int W, int H, unsigned char *Data,
-		int Colors, unsigned int *Palette, 
-		osd_rect_t *DirtyArea);
+    void CmdLut8(int Wnd, int X0, int Y0,
+                 int W, int H, unsigned char *Data,
+                 int Colors, unsigned int *Palette,
+                 osd_rect_t *DirtyArea);
     void CmdPalette(int Wnd, int Colors, unsigned int *Palette);
     void CmdMove(int Wnd, int Width, int Height);
     void CmdClose(int Wnd);
@@ -294,19 +293,19 @@ void cXinelibOsd::CmdFlush(void)
   }
 }
 
-void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
-                         int W, int H, unsigned char *Data,
-                         int Colors, unsigned int *Palette,
-                         osd_rect_t *DirtyArea)
+void cXinelibOsd::CmdLut8(int Wnd, int X0, int Y0,
+                          int W, int H, unsigned char *Data,
+                          int Colors, unsigned int *Palette,
+                          osd_rect_t *DirtyArea)
 {
-  TRACEF("cXinelibOsd::CmdRle");
+  TRACEF("cXinelibOsd::CmdLut8");
 
   if (m_Device) {
 
     xine_clut_t   clut[Colors];
     osd_command_t osdcmd = {0};
 
-    osdcmd.cmd   = OSD_Set_RLE;
+    osdcmd.cmd   = OSD_Set_LUT8;
     osdcmd.wnd   = m_WindowHandles[Wnd];
     osdcmd.layer = saturate(m_Layer, 0, 0xffff);
     osdcmd.x   = X0;
@@ -336,12 +335,12 @@ void cXinelibOsd::CmdRle(int Wnd, int X0, int Y0,
 
     if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
       osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
-    osdcmd.num_rle = rle_compress(&osdcmd.data, Data, W, H);
-    osdcmd.datalen = 4 * osdcmd.num_rle;
+
+    osdcmd.raw_data = Data;
+    osdcmd.num_rle  = 0;
+    osdcmd.datalen  = W * H;
 
     m_Device->OsdCmd((void*)&osdcmd);
-
-    free(osdcmd.data);
   }
 }
 
@@ -504,12 +503,12 @@ void cXinelibOsd::Flush(void)
       const tColor *Colors = Bitmap->Colors(NumColors);
       if (Colors) {
 	osd_rect_t DirtyArea = {x1:x1, y1:y1, x2:x2, y2:y2};
-	CmdRle(i,
-	       Left() + Bitmap->X0() + XOffset, Top() + Bitmap->Y0() + YOffset,
-	       Bitmap->Width(), Bitmap->Height(),
-	       (unsigned char *)Bitmap->Data(0,0),
-	       NumColors, (unsigned int *)Colors,
-	       &DirtyArea);
+        CmdLut8(i,
+                Left() + Bitmap->X0() + XOffset, Top() + Bitmap->Y0() + YOffset,
+                Bitmap->Width(), Bitmap->Height(),
+                (unsigned char *)Bitmap->Data(0,0),
+                NumColors, (unsigned int *)Colors,
+                &DirtyArea);
 	SendDone++;
       }
     }
