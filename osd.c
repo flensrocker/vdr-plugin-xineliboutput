@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.47 2011-03-20 22:54:22 phintuka Exp $
+ * $Id: osd.c,v 1.48 2011-03-20 23:04:47 phintuka Exp $
  *
  */
 
@@ -97,6 +97,8 @@ class cXinelibOsd : public cOsd, public cListObject
     void CloseWindows(void);
     void CmdSize(int Width, int Height);
     void CmdVideoWindow(int X, int Y, int W, int H);
+    void CmdArgb(int X, int Y, int W, int H,
+                 const unsigned char *Data, int DataLen);
     void CmdLut8(int Wnd, int X0, int Y0,
                  int W, int H, unsigned char *Data,
                  int Colors, unsigned int *Palette,
@@ -105,6 +107,8 @@ class cXinelibOsd : public cOsd, public cListObject
     void CmdMove(int Wnd, int Width, int Height);
     void CmdClose(int Wnd);
     void CmdFlush(void);
+
+    void SetCmdFlags(osd_command_t& cmd);
 
     /* map single OSD window indexes to unique xine-side window handles */
     static uint64_t  m_HandlesBitmap;
@@ -293,6 +297,54 @@ void cXinelibOsd::CmdFlush(void)
   }
 }
 
+void cXinelibOsd::SetCmdFlags(osd_command_t& cmd)
+{
+  if (m_Refresh)
+    cmd.flags |= OSDFLAG_REFRESH;
+  if (xc.osd_blending == OSD_BLENDING_HARDWARE)
+    cmd.flags |= OSDFLAG_UNSCALED;
+  if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
+    cmd.flags |= OSDFLAG_UNSCALED_LOWRES;
+  if (Prev() == NULL)
+    cmd.flags |= OSDFLAG_TOP_LAYER;
+
+  cmd.scaling = xc.osd_scaling;
+
+  if ((VDRVERSNUM < 10717 && m_Layer == OSD_LEVEL_SUBTITLES) ||
+      (                      m_Layer == OSD_LEVEL_TTXTSUBS))
+    cmd.scaling = xc.osd_spu_scaling;
+}
+
+void cXinelibOsd::CmdArgb(int X, int Y, int W, int H,
+                          const unsigned char *Data, int DataLen)
+{
+  TRACEF("cXinelibOsd::CmdArgb");
+
+  if (m_Device) {
+
+    osd_command_t osdcmd = {0};
+
+    osdcmd.cmd   = OSD_Set_ARGB;
+    osdcmd.wnd   = m_WindowHandles[0];
+    osdcmd.layer = saturate(m_Layer, 0, 0xffff);
+    osdcmd.x     = X;
+    osdcmd.y     = Y;
+    osdcmd.w     = W;
+    osdcmd.h     = H;
+
+    osdcmd.dirty_area.x2 = W - 1;
+    osdcmd.dirty_area.y2 = H - 1;
+
+    SetCmdFlags(osdcmd);
+
+    osdcmd.raw_data = (uint8_t*)Data;
+    osdcmd.num_rle  = 0;
+    osdcmd.datalen  = DataLen;
+
+    m_Device->OsdCmd((void*)&osdcmd);
+  }
+}
+
 void cXinelibOsd::CmdLut8(int Wnd, int X0, int Y0,
                           int W, int H, unsigned char *Data,
                           int Colors, unsigned int *Palette,
@@ -314,27 +366,13 @@ void cXinelibOsd::CmdLut8(int Wnd, int X0, int Y0,
     osdcmd.h   = H;
     osdcmd.colors  = Colors;
     osdcmd.palette = clut;
-    osdcmd.scaling = xc.osd_scaling;
-
-    if ((VDRVERSNUM < 10717 && m_Layer == OSD_LEVEL_SUBTITLES) ||
-        (                      m_Layer == OSD_LEVEL_TTXTSUBS))
-      osdcmd.scaling = xc.osd_spu_scaling;
 
     if (DirtyArea)
       memcpy(&osdcmd.dirty_area, DirtyArea, sizeof(osd_rect_t));
-    if (m_Refresh)
-      osdcmd.flags |= OSDFLAG_REFRESH;
-    if (xc.osd_blending == OSD_BLENDING_HARDWARE)
-      osdcmd.flags |= OSDFLAG_UNSCALED;
-    if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
-      osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
-    if (Prev() == NULL)
-      osdcmd.flags |= OSDFLAG_TOP_LAYER;
+
+    SetCmdFlags(osdcmd);
 
     prepare_palette(&clut[0], Palette, Colors, /*Top*/(Prev() == NULL), true);
-
-    if (xc.osd_blending_lowresvideo == OSD_BLENDING_HARDWARE)
-      osdcmd.flags |= OSDFLAG_UNSCALED_LOWRES;
 
     osdcmd.raw_data = Data;
     osdcmd.num_rle  = 0;
@@ -443,10 +481,21 @@ eOsdError cXinelibOsd::CanHandleAreas(const tArea *Areas, int NumAreas)
   if (NumAreas > MAX_OSD_OBJECT)
     return oeTooManyAreas;
 
-  for (int i = 0; i < NumAreas; i++) {
-    if (Areas[i].bpp < 1 || Areas[i].bpp > 8) {
-      LOGMSG("cXinelibOsd::CanHandleAreas(): invalid bpp (%d)", Areas[i].bpp);
+  // bpp
+
+  if (NumAreas == 1 && Areas[0].bpp == 32) {
+    if (!m_Device->SupportsTrueColorOSD()) {
+      LOGDBG("cXinelibOsd::CanHandleAreas(): Device does not support ARGB");
       return oeBppNotSupported;
+    }
+
+  } else {
+
+    for (int i = 0; i < NumAreas; i++) {
+      if (Areas[i].bpp < 1 || Areas[i].bpp > 8) {
+        LOGMSG("cXinelibOsd::CanHandleAreas(): invalid bpp (%d)", Areas[i].bpp);
+        return oeBppNotSupported;
+      }
     }
   }
 
@@ -477,6 +526,27 @@ void cXinelibOsd::Flush(void)
   if(!m_IsVisible)
     return;
 
+#ifdef YAEPGHDVERSNUM
+  if (vidWin.bpp)
+    CmdVideoWindow(vidWin.x1, vidWin.y1, vidWin.Width(), vidWin.Height());
+#endif
+
+#if VDRVERSNUM >= 10717
+  if (IsTrueColor()) {
+
+    LOCK_PIXMAPS;
+    while (cPixmapMemory *pm = RenderPixmaps()) {
+      int w = pm->ViewPort().Width();
+      int h = pm->ViewPort().Height();
+      int d = w * sizeof(tColor);
+      CmdArgb(Left() + pm->ViewPort().X(), Top() + pm->ViewPort().Y(), w, h, pm->Data(), h * d);
+      delete pm;
+    }
+
+    return;
+  }
+#endif
+
   int SendDone = 0, XOffset = 0, YOffset = 0;
 
   if (!xc.osd_spu_scaling &&
@@ -488,11 +558,6 @@ void cXinelibOsd::Flush(void)
     YOffset = (H - 576) > 0 ? (H - 576) : 0;
     XOffset = ((W - 720) / 2) ? ((W - 720) / 2) : 0;
   }
-
-#ifdef YAEPGHDVERSNUM
-  if (vidWin.bpp)
-    CmdVideoWindow(vidWin.x1, vidWin.y1, vidWin.Width(), vidWin.Height());
-#endif
 
   for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
     int x1 = 0, y1 = 0, x2 = x1+Bitmap->Width()-1, y2 = y1+Bitmap->Height()-1;
@@ -616,6 +681,11 @@ cXinelibOsdProvider::~cXinelibOsdProvider()
       cXinelibOsd::m_OsdStack.Del(osd, false);
     }
   }
+}
+
+bool cXinelibOsdProvider::ProvidesTrueColor(void)
+{
+  return m_Device && m_Device->SupportsTrueColorOSD();
 }
 
 cOsd *cXinelibOsdProvider::CreateOsd(int Left, int Top, uint Level)
