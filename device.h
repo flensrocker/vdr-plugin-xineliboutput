@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.60 2010-06-04 10:40:20 rofafor Exp $
+ * $Id: device.h,v 1.61 2011-03-20 21:36:31 phintuka Exp $
  *
  */
 
@@ -89,6 +89,8 @@ class cXinelibDevice : public cDevice
     virtual bool HasDecoder(void) const { return true; };
     virtual bool CanReplay(void) const { return true; };
     virtual bool HasIBPTrickSpeed(void) { return xc.ibp_trickspeed; }
+
+    bool SupportsTrueColorOSD(void);
 
   // Playback control
 

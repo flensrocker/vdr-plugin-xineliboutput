@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.112 2010-06-04 10:40:20 rofafor Exp $
+ * $Id: device.c,v 1.113 2011-03-20 21:36:31 phintuka Exp $
  *
  */
 
@@ -1638,6 +1638,30 @@ void cXinelibDevice::GetOsdSize(int &Width, int &Height, double &PixelAspect)
       break;
   }
   PixelAspect = 16.0 / 9.0 / (double)Width * (double)Height;
+}
+
+bool cXinelibDevice::SupportsTrueColorOSD(void)
+{
+  switch (xc.osd_color_depth) {
+    default:
+    case OSD_DEPTH_LUT8:      return false;
+    case OSD_DEPTH_TRUECOLOR: return true;
+    case OSD_DEPTH_auto:;
+  }
+
+  // Automatic mode:
+  // Use TrueColor if all clients support it.
+  // Special handling when no remote clients:
+  //  - local frontend supports TrueColor --> use TrueColor
+  //  - no local frontend --> use LUT8
+
+  if (m_local) {
+    if (!m_local->SupportsTrueColorOSD())
+      return false;
+    return !m_server || !!m_server->SupportsTrueColorOSD();
+  }
+
+  return m_server && (m_server->SupportsTrueColorOSD() == 1);
 }
 
 //
