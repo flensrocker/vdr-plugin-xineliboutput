@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.46 2011-03-20 08:03:41 phintuka Exp $
+ * $Id: osd.c,v 1.47 2011-03-20 22:54:22 phintuka Exp $
  *
  */
 
@@ -188,7 +188,7 @@ void cXinelibOsd::CmdSize(int Width, int Height)
 {
   TRACEF("cXinelibOsd::CmdSize");
 
-  if (m_Device) {
+  if (m_Device && m_WindowHandles) {
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Size;
@@ -198,7 +198,7 @@ void cXinelibOsd::CmdSize(int Width, int Height)
     if (Prev() == NULL)
       osdcmd.flags |= OSDFLAG_TOP_LAYER;
 
-    for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
+    for (int Wnd = 0; m_WindowHandles[Wnd] >= 0; Wnd++) {
       osdcmd.wnd = m_WindowHandles[Wnd];
 
       m_Device->OsdCmd((void*)&osdcmd);
@@ -210,10 +210,10 @@ void cXinelibOsd::CmdVideoWindow(int X, int Y, int W, int H)
 {
   TRACEF("cXinelibOsd::CmdVideoWindow");
 
-  if (m_Device) {
+  if (m_Device && m_WindowHandles) {
     osd_command_t osdcmd = {0};
 
-    for (int Wnd = 0; GetBitmap(Wnd); Wnd++) {
+    for (int Wnd = 0; m_WindowHandles[Wnd] >= 0; Wnd++) {
       osdcmd.cmd = OSD_VideoWindow;
       osdcmd.wnd = m_WindowHandles[Wnd];
       osdcmd.x   = X;
@@ -230,7 +230,7 @@ void cXinelibOsd::CmdMove(int Wnd, int NewX, int NewY)
 {
   TRACEF("cXinelibOsd::CmdMove");
 
-  if (m_Device) {
+  if (m_Device && m_WindowHandles) {
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd = OSD_Move;
@@ -558,12 +558,9 @@ void cXinelibOsd::CloseWindows(void)
 {
   TRACEF("cXinelibOsd::CloseWindows");
 
-  if(m_IsVisible) {
-    cBitmap *Bitmap;
-    for (int i = 0; (Bitmap = GetBitmap(i)) != NULL; i++) {
+  if (m_IsVisible && m_WindowHandles) {
+    for (int i = 0; m_WindowHandles[i] >= 0; i++) {
       LOGOSD("Close OSD %d.%d", Index(), i);
-      if (m_WindowHandles[i] < 0)
-        LOGMSG("Close unallocated OSD %d.%d  @%d", Index(), i, m_WindowHandles[i]);
       CmdClose(i);
     }
   }
