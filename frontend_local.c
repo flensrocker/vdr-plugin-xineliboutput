@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.54 2011-02-28 13:37:10 phintuka Exp $
+ * $Id: frontend_local.c,v 1.55 2011-03-20 20:59:25 phintuka Exp $
  *
  */
 
@@ -216,6 +216,11 @@ void cXinelibLocal::ConfigureDecoder(int pes_buffers)
     cCondWait::SleepMs(100);
 
   cCondWait::SleepMs(100);
+}
+
+int cXinelibLocal::SupportsTrueColorOSD(void)
+{
+  return !!xc.hud_osd;
 }
 
 //

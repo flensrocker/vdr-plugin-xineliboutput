@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.8 2010-03-13 12:04:29 phintuka Exp $
+ * $Id: frontend_local.h,v 1.9 2011-03-20 20:59:25 phintuka Exp $
  *
  */
 
@@ -48,6 +48,8 @@ class cXinelibLocal : public cXinelibThread
 				 int modeswitch, const char *modeline,
 				 int aspect, int scale_video, int field_order);
     virtual void ConfigureDecoder(int pes_buffers);
+
+    virtual int  SupportsTrueColorOSD(void);
 
   protected:
 

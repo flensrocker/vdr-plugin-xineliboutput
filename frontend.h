@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.40 2010-05-18 15:28:34 phintuka Exp $
+ * $Id: frontend.h,v 1.41 2011-03-20 20:59:25 phintuka Exp $
  *
  */
 
@@ -132,6 +132,8 @@ class cXinelibThread : public cThread, public cListObject
     virtual void ConfigureDecoder(int pes_buffers) {};
     // Remote frontend server:
     virtual bool Listen(int port) { return false; }
+
+    virtual int  SupportsTrueColorOSD(void) { return 0; } /* 0: no, 1: yes, -1: unknown */
 
   //
   // Data

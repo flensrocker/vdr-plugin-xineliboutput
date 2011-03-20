@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.102 2011-03-19 21:38:20 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.103 2011-03-20 20:59:25 phintuka Exp $
  *
  */
 
@@ -127,6 +127,7 @@ cXinelibServer::cXinelibServer(int listen_port) :
     m_State[i] = NULL;
     m_bMulticast[i] = 0;
     m_bConfigOk[i] = false;
+    m_bArgbOSD[i] = false;
     m_bUdp[i] = 0;
     m_ConnType[i] = ctDetecting;
   }
@@ -219,6 +220,7 @@ void cXinelibServer::CloseDataConnection(int cli)
   m_bUdp[cli] = false;
   m_bMulticast[cli] = false;
   m_bConfigOk[cli] = false;
+  m_bArgbOSD[cli] = false;
 
   m_iMulticastMask &= ~(1<<cli);
 
@@ -764,6 +766,23 @@ bool cXinelibServer::HasClients(void)
       return true;
 
   return false;
+}
+
+int cXinelibServer::SupportsTrueColorOSD(void)
+{
+  LOCK_THREAD;
+
+  unsigned i, has_clients = 0;
+
+  for (i = 0; i < MAXCLIENTS; i++)
+    if (fd_control[i].open() && m_bConfigOk[i]) {
+      if (!m_bArgbOSD[i])
+        return 0;
+      else
+        has_clients++;
+    }
+
+  return has_clients ? 1 : -1;
 }
 
 int cXinelibServer::PlayFileCtrl(const char *Cmd, int TimeoutMs)
@@ -1651,6 +1670,10 @@ void cXinelibServer::Handle_Control(int cli, const char *cmd)
     }
 
   } else if(!strncmp(cmd, "INFO ", 5)) {
+
+    if(!strncmp(cmd, "INFO ARGBOSD", 12))
+      m_bArgbOSD[cli] = true;
+
     if(!*xc.local_frontend || !strncmp(xc.local_frontend, "none", 4))
       cXinelibThread::InfoHandler(cmd+5);
 
