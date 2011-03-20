@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.81 2011-03-11 14:45:31 phintuka Exp $
+ * $Id: setup_menu.c,v 1.82 2011-03-20 21:31:36 phintuka Exp $
  *
  */
 
@@ -1039,6 +1039,11 @@ void cMenuSetupOSD::Set(void)
                                   &newconfig.osd_height, 576, 1200));
   }
 
+#if VDRVERSNUM >= 10717
+  Add(new cMenuEditStraI18nItem(tr("Color depth"), &newconfig.osd_color_depth,
+	                        OSD_DEPTH_count, xc.s_osdColorDepths));
+#endif
+
   Add(ctrl_blending =
       new cMenuEditBoolItem(tr("Blending method"),
 			    &newconfig.osd_blending,
@@ -1127,6 +1132,7 @@ void cMenuSetupOSD::Store(void)
   SetupStore("OSD.Size",            xc.s_osdSizes[xc.osd_size]);
   SetupStore("OSD.Width",           xc.osd_width);
   SetupStore("OSD.Height",          xc.osd_height);
+  SetupStore("OSD.ColorDepth",      xc.s_osdColorDepths[xc.osd_color_depth]);
   SetupStore("OSD.Scaling",         xc.osd_scaling);
   SetupStore("OSD.ScalingSPU",      xc.osd_spu_scaling);
   SetupStore("OSD.HideMainMenu",    xc.hide_main_menu);

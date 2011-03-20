@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.102 2011-03-11 14:45:31 phintuka Exp $
+ * $Id: config.c,v 1.103 2011-03-20 21:31:36 phintuka Exp $
  *
  */
 
@@ -235,6 +235,13 @@ const char * const config_t::s_osdScalings[] = {
   trNOOP("no"),
   trNOOP("nearest"),              // item [1]
   trNOOP("bilinear"),             // item [2]
+  NULL
+};
+
+const char * const config_t::s_osdColorDepths[] = {
+  trNOOP("automatic"),
+  trNOOP("LUT8"),
+  trNOOP("TrueColor"),
   NULL
 };
 
@@ -580,6 +587,7 @@ config_t::config_t() {
   osd_height           = 576;
   osd_width_auto       = 0;
   osd_height_auto      = 0;
+  osd_color_depth      = OSD_DEPTH_auto;
   osd_mixer            = OSD_MIXER_FULL;
   osd_scaling          = OSD_SCALING_NEAREST;
   osd_spu_scaling      = OSD_SCALING_NEAREST;
@@ -878,6 +886,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OSD.Size"))           osd_size = strstra(Value, s_osdSizes, 0);
   else if (!strcasecmp(Name, "OSD.Width"))          osd_width = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Height"))         osd_height = atoi(Value);
+  else if (!strcasecmp(Name, "OSD.ColorDepth"))     osd_color_depth = strstra(Value, s_osdColorDepths, 0);
   else if (!strcasecmp(Name, "OSD.LayersVisible"))  osd_mixer = atoi(Value);
   else if (!strcasecmp(Name, "OSD.Scaling"))        osd_scaling = atoi(Value);
   else if (!strcasecmp(Name, "OSD.ScalingSPU"))     osd_spu_scaling = atoi(Value);

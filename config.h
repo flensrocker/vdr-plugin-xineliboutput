@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.77 2011-03-11 14:45:31 phintuka Exp $
+ * $Id: config.h,v 1.78 2011-03-20 21:31:36 phintuka Exp $
  *
  */
 
@@ -145,6 +145,12 @@
 #define OSD_BLENDING_HARDWARE   1  // xine-lib "unscaled osd"
 #define OSD_BLENDING_count      2
 
+// OSD depth
+#define OSD_DEPTH_auto          0
+#define OSD_DEPTH_LUT8          1
+#define OSD_DEPTH_TRUECOLOR     2
+#define OSD_DEPTH_count         3
+
 // OSD layers mixing
 #define OSD_MIXER_NONE          0
 #define OSD_MIXER_GRAY          1
@@ -246,6 +252,7 @@ class config_t {
     static const char * const s_osdMixers              [OSD_MIXER_count     + 1];
     static const char * const s_osdScalings            [OSD_SCALING_count   + 1];
     static const char * const s_osdSizes               [OSD_SIZE_count      + 1];
+    static const char * const s_osdColorDepths         [OSD_DEPTH_count     + 1];
     static const char * const s_decoders_MPEG2         [DECODER_MPEG2_count + 1];
     static const char * const s_decoders_H264          [DECODER_H264_count  + 1];
     static const char * const s_ff_skip_loop_filters   [FF_H264_SKIP_LOOPFILTER_count + 1];
@@ -312,6 +319,7 @@ class config_t {
     int  osd_height;
     int  osd_width_auto;
     int  osd_height_auto;
+    int  osd_color_depth;
     int  osd_mixer;                // show multiple OSD layers
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
     int  osd_spu_scaling;          // SPU OSD scaling mode: off, nearest, bilinear
