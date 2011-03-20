@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.157 2011-03-19 20:25:31 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.158 2011-03-20 20:17:06 phintuka Exp $
  *
  */
 
@@ -2727,6 +2727,8 @@ static int sxfe_xine_play(frontend_t *this_gen)
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     this->x.input_plugin->f.fe_handle     = this_gen;
     this->x.input_plugin->f.intercept_osd = hud_osd_command;
+
+    this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
   }
 #endif /* HAVE_XRENDER */
 
