@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.334 2011-03-24 09:53:03 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.335 2011-03-24 09:57:44 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.334 2011-03-24 09:53:03 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.335 2011-03-24 09:57:44 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5684,14 +5684,14 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
       if((this->fd_data = connect_pipe_data_stream(this)) < 0) {
 	LOGMSG("Data stream connection failed (PIPE)");
       } else {
-	this->tcp = this->udp = this->tcp = 0;
+	this->tcp = this->udp = this->rtp = 0;
 	LOGMSG("Data stream connected (PIPE)");
       }
     }
 
     /* try RTP ? */
 
-    if(this->fd_data < 0 && !this->udp && !this->tcp) {
+    if(this->fd_data < 0 && this->rtp) {
       /* flush control buffer (if PIPE was tried first) */
       while(0 < read(this->fd_control, tmpbuf, 255)) ;
       if((this->fd_data = connect_rtp_data_stream(this)) < 0) {
