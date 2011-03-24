@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.332 2011-03-19 20:52:47 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.333 2011-03-24 09:49:43 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.332 2011-03-19 20:52:47 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.333 2011-03-24 09:49:43 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3274,7 +3274,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
     if (this->slave_stream && this->slave_stream->input_plugin) {
       const char *mrl = this->slave_stream->input_plugin->get_mrl(this->slave_stream->input_plugin);
-      is_dvd = !strncmp(mrl, "dvd:/", 5);
+      is_dvd = !strncmp(mrl, "dvd:/", 5) ||
+               !strncmp(mrl, "bd:/", 4) ||
+               !strncmp(mrl, "bluray:/", 8);
     }
 
     if(strstr(cmd+10, "NEXT"))
