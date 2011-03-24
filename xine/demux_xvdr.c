@@ -976,6 +976,17 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
   result = parse_pes_for_pts(this, p, buf);
   if (result < 0) return -1;
 
+  /* Handle marker packets after still images */
+  if (buf->size == 14 && result == 14 && this->pts == 0) {
+    /*if (this->stream->metronom->get_option(this->stream->metronom, XVDR_METRONOM_STILL_MODE))*/ {
+      LOGDBG("video fifo flush and decoder reset after still image");
+      put_control_buf(this->video_fifo, this->video_fifo, BUF_CONTROL_FLUSH_DECODER);
+      put_control_buf(this->video_fifo, this->video_fifo, BUF_CONTROL_RESET_DECODER);
+      buf->free_buffer(buf);
+      return -1;
+    }
+  }
+
   p += result;
 
   if (this->video_type == 0 && buf->size >= 4) {
