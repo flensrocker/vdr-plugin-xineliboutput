@@ -392,6 +392,30 @@ static void wait_secs(bluray_input_plugin_t *this, unsigned seconds)
   }
 }
 
+static void update_spu_channel(bluray_input_plugin_t *this, int channel)
+{
+  if (this->stream->video_fifo) {
+    buf_element_t *buf = this->stream->video_fifo->buffer_pool_alloc(this->stream->video_fifo);
+    buf->type = BUF_CONTROL_SPU_CHANNEL;
+    buf->decoder_info[0] = channel;
+    buf->decoder_info[1] = channel;
+    buf->decoder_info[2] = channel;
+
+    this->stream->video_fifo->put(this->stream->video_fifo, buf);
+  }
+}
+
+static void update_audio_channel(bluray_input_plugin_t *this, int channel)
+{
+  if (this->stream->audio_fifo) {
+    buf_element_t *buf = this->stream->audio_fifo->buffer_pool_alloc(this->stream->audio_fifo);
+    buf->type = BUF_CONTROL_AUDIO_CHANNEL;
+    buf->decoder_info[0] = channel;
+
+    this->stream->audio_fifo->put(this->stream->audio_fifo, buf);
+  }
+}
+
 static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 {
     switch (ev.event) {
@@ -473,24 +497,20 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_AUDIO_STREAM:
         lprintf("BD_EVENT_AUDIO_STREAM %d\n", ev.param);
-        this->stream->audio_channel_user = ev.param - 1;
+        update_audio_channel(this, ev.param - 1);
         break;
 
       case BD_EVENT_PG_TEXTST:
         lprintf("BD_EVENT_PG_TEXTST %s\n", ev.param ? "ON" : "OFF");
         this->pg_enable = ev.param;
-        if (!this->pg_enable) {
-          _x_select_spu_channel(this->stream, -2);
-        } else {
-          _x_select_spu_channel(this->stream, this->pg_stream);
-        }
+        update_spu_channel(this, this->pg_enable ? this->pg_stream : -1);
         break;
 
       case BD_EVENT_PG_TEXTST_STREAM:
         lprintf("BD_EVENT_PG_TEXTST_STREAM %d\n", ev.param);
         this->pg_stream = ev.param - 1;
         if (this->pg_enable) {
-          _x_select_spu_channel(this->stream, this->pg_stream);
+          update_spu_channel(this, this->pg_stream);
         }
         break;
 
