@@ -1235,6 +1235,8 @@ static input_plugin_t *bluray_class_get_instance (input_class_t *cls_gen, xine_s
 
   this->event_queue = xine_event_new_queue (this->stream);
 
+  this->pg_stream = -1;
+
   return &this->input_plugin;
 }
 
