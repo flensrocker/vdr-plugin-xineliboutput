@@ -214,11 +214,16 @@ static void update_stream_info(bluray_input_plugin_t *this)
   _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, bd_get_current_chapter(this->bdh) + 1);
 }
 
-static void update_title_info(bluray_input_plugin_t *this)
+static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
 {
   if (this->title_info)
     bd_free_title_info(this->title_info);
-  this->title_info = bd_get_title_info(this->bdh, this->current_title_idx);
+
+  if (playlist_id < 0)
+    this->title_info = bd_get_title_info(this->bdh, this->current_title_idx);
+  else
+    this->title_info = bd_get_playlist_info(this->bdh, playlist_id);
+
   if (!this->title_info) {
     LOGMSG("bd_get_title_info(%d) failed\n", this->current_title_idx);
     return;
@@ -303,16 +308,16 @@ static void update_title_info(bluray_input_plugin_t *this)
   update_stream_info(this);
 }
 
-static int open_title (bluray_input_plugin_t *this, int title)
+static int open_title (bluray_input_plugin_t *this, int title_idx)
 {
-  if (bd_select_title(this->bdh, title) <= 0) {
-    LOGMSG("bd_select_title(%d) failed\n", title);
+  if (bd_select_title(this->bdh, title_idx) <= 0) {
+    LOGMSG("bd_select_title(%d) failed\n", title_idx);
     return 0;
   }
 
-  this->current_title_idx = title;
+  this->current_title_idx = title_idx;
 
-  update_title_info(this);
+  update_title_info(this, -1);
 
   return 1;
 }
@@ -447,7 +452,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         lprintf("BD_EVENT_PLAYLIST %d\n", ev.param);
         this->current_title_idx = bd_get_current_title(this->bdh);
         this->current_clip = 0;
-        update_title_info(this);
+        update_title_info(this, ev.param);
         stream_reset(this);
         break;
 
