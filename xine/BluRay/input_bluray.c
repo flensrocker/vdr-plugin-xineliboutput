@@ -867,7 +867,7 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
         int               channel = *((int *)data);
         BLURAY_CLIP_INFO *clip    = &this->title_info->clips[this->current_clip];
 
-        if (channel < clip->audio_stream_count) {
+        if (channel >= 0 && channel < clip->audio_stream_count) {
           memcpy(data, clip->audio_streams[channel].lang, 4);
           lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: %02d [pid 0x%04x]: %s\n",
                   channel, clip->audio_streams[channel].pid, clip->audio_streams[channel].lang);
@@ -897,7 +897,7 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
         int               channel = *((int *)data);
         BLURAY_CLIP_INFO *clip    = &this->title_info->clips[this->current_clip];
 
-        if (channel < clip->pg_stream_count) {
+        if (channel >= 0 && channel < clip->pg_stream_count) {
           memcpy(data, clip->pg_streams[channel].lang, 4);
           lprintf("INPUT_OPTIONAL_DATA_SPULANG: %02d [pid 0x%04x]: %s\n",
                   channel, clip->pg_streams[channel].pid, clip->pg_streams[channel].lang);
