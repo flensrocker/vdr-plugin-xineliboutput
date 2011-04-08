@@ -1150,6 +1150,10 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_MENU_LANG,    this->class->language);
   bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_COUNTRY_CODE, this->class->country);
 
+  /* init eq */
+  BD_EVENT ev;
+  bd_get_event(this->bdh, &ev);
+
   /* get disc name */
 
   this->meta_dl = bd_get_meta(this->bdh);
