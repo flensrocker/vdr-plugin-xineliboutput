@@ -7,14 +7,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-01-09 14:16+0100\n"
+"POT-Creation-Date: 2011-04-09 12:32+0300\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: Chinese (traditional) <vdr@linuxtv.org>\n"
+"Language: zh_TW\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: zh_TW\n"
 
 msgid "custom"
 msgstr "自定義"
@@ -156,6 +156,12 @@ msgstr "最近"
 
 msgid "bilinear"
 msgstr "雙線性"
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
 
 msgid "video stream"
 msgstr ""
@@ -554,6 +560,9 @@ msgstr "隱藏主菜單"
 msgid "Resolution"
 msgstr "解決方案"
 
+msgid "Color depth"
+msgstr ""
+
 msgid "Blending method"
 msgstr "混合方法"
 
@@ -727,6 +736,9 @@ msgstr "緩存信息"
 
 msgid "Arrow keys control DVD playback"
 msgstr "允許按鍵控制DVD回放"
+
+msgid "Show hidden files"
+msgstr ""
 
 msgid "Media Player"
 msgstr "媒體播放器"

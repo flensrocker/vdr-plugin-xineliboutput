@@ -6,14 +6,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-01-09 14:15+0100\n"
+"POT-Creation-Date: 2011-04-09 12:32+0300\n"
 "PO-Revision-Date: 2010-03-06 18:07+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team: Italian <vdr@linuxtv.org>\n"
+"Language: it\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: it\n"
 "X-Poedit-Language: Italian\n"
 "X-Poedit-Country: ITALY\n"
 "X-Poedit-SourceCharset: utf-8\n"
@@ -158,6 +158,12 @@ msgstr "più vicino"
 
 msgid "bilinear"
 msgstr "bilineare"
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
 
 msgid "video stream"
 msgstr ""
@@ -529,6 +535,9 @@ msgstr "Nascondi voce menu princ."
 msgid "Resolution"
 msgstr "Risoluzione"
 
+msgid "Color depth"
+msgstr ""
+
 msgid "Blending method"
 msgstr "Metodo di sfocatura"
 
@@ -684,6 +693,9 @@ msgstr "Cache metainfo"
 
 msgid "Arrow keys control DVD playback"
 msgstr "Riproduzione DVD con tasti freccia"
+
+msgid "Show hidden files"
+msgstr ""
 
 msgid "Media Player"
 msgstr "Lettore multimediale"

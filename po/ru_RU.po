@@ -7,14 +7,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-01-09 14:15+0100\n"
+"POT-Creation-Date: 2011-04-09 12:32+0300\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Vladimir Monchenko\n"
 "Language-Team: Russian <vdr@linuxtv.org>\n"
+"Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=ISO-8859-5\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: ru\n"
 
 msgid "custom"
 msgstr "Пользователь"
@@ -155,6 +155,12 @@ msgid "nearest"
 msgstr ""
 
 msgid "bilinear"
+msgstr ""
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
 msgstr ""
 
 msgid "video stream"
@@ -527,6 +533,9 @@ msgstr "Скрыть основное меню"
 msgid "Resolution"
 msgstr ""
 
+msgid "Color depth"
+msgstr ""
+
 msgid "Blending method"
 msgstr ""
 
@@ -681,6 +690,9 @@ msgid "Cache metainfo"
 msgstr ""
 
 msgid "Arrow keys control DVD playback"
+msgstr ""
+
+msgid "Show hidden files"
 msgstr ""
 
 msgid "Media Player"

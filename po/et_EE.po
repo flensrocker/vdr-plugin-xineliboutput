@@ -7,14 +7,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-01-09 14:15+0100\n"
+"POT-Creation-Date: 2011-04-09 12:32+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Arthur Konovalov\n"
 "Language-Team: Estonian <vdr@linuxtv.org>\n"
+"Language: et\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: et\n"
 
 msgid "custom"
 msgstr "oma"
@@ -156,6 +156,12 @@ msgstr "lähim"
 
 msgid "bilinear"
 msgstr "bilineaarne"
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
 
 msgid "video stream"
 msgstr ""
@@ -527,6 +533,9 @@ msgstr "Peitmine peamenüü valikus"
 msgid "Resolution"
 msgstr "Resolutsioon"
 
+msgid "Color depth"
+msgstr ""
+
 msgid "Blending method"
 msgstr "Segunemise meetod"
 
@@ -682,6 +691,9 @@ msgstr "Metaandmete vahemälu"
 
 msgid "Arrow keys control DVD playback"
 msgstr "Noolte kasutamine DVD juhtimisel"
+
+msgid "Show hidden files"
+msgstr ""
 
 msgid "Media Player"
 msgstr "Meediapleier"
