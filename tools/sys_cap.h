@@ -4,14 +4,14 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: sys_cap.h,v 1.2 2011-03-09 11:56:30 phintuka Exp $
+ * $Id: sys_cap.h,v 1.3 2011-04-09 12:50:16 phintuka Exp $
  *
  */
 
 #ifndef _XINELIBOUTPUT_SYS_CAP_H_
 #define _XINELIBOUTPUT_SYS_CAP_H_
 
-#include "features.h"
+#include "../features.h"
 
 #include <unistd.h>
 #include <sys/types.h>
