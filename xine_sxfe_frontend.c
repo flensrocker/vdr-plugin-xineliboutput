@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.41.2.26 2011-02-25 02:40:53 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.41.2.27 2011-04-11 19:41:08 phintuka Exp $
  *
  */
 
@@ -1039,7 +1039,7 @@ static void disable_DPMS(sxfe_t *this)
  */
 static int open_display(sxfe_t *this, const char *video_port)
 {
-  if (video_port && strlen(video_port)>2) {
+  if (video_port && *video_port) {
     if (!(this->display = XOpenDisplay(video_port)))
       LOGERR("sxfe_display_open: failed to connect to X server (%s)",
              video_port);
@@ -1301,6 +1301,10 @@ static int sxfe_display_open(frontend_t *this_gen,
                 ButtonPressMask |
                 FocusChangeMask);
 
+  /* get notified when root window size changes */
+  XSelectInput (this->display, XDefaultRootWindow(this->display),
+		StructureNotifyMask);
+
   /* Map current window */
   XMapRaised (this->display, this->window[this->fullscreen ? 1 : 0]);
   XMoveWindow(this->display, this->window[0], this->xpos, this->ypos);
@@ -1541,6 +1545,21 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
  */
 static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 {
+  /* root window size changed ? */
+  if (cev->window != this->window_id && cev->window == RootWindow(this->display, this->screen)) {
+    if (this->fullscreen) {
+      if (cev->width != this->width || cev->height != this->height) {
+        LOGMSG("Root window size changed. Resizing video window from %dx%d to %dx%d",
+               this->width, this->height, cev->width, cev->height);
+        XLockDisplay(this->display);
+        XResizeWindow(this->display, this->window[1], cev->width, cev->height);
+        XMoveWindow(this->display, this->window[1], this->xinerama_x, this->xinerama_y);
+        XUnlockDisplay(this->display);
+      }
+    }
+    return;
+  }
+
   /* Move and resize HUD along with main or fullscreen window */
 #ifdef HAVE_XRENDER
   if(this->hud)
@@ -1549,6 +1568,7 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 
   /* update video window size */
   if (this->width != cev->width || this->height != cev->height) {
+    LOGDBG("Video window size changed from %dx%d to %dx%d", this->width, this->height, cev->width, cev->height);
     this->width  = cev->width;
     this->height = cev->height;
 
