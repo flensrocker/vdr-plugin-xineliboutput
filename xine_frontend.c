@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.120 2011-04-11 08:29:17 durchflieger Exp $
+ * $Id: xine_frontend.c,v 1.121 2011-04-11 08:40:06 durchflieger Exp $
  *
  */
 
@@ -1901,12 +1901,8 @@ static char *frame_compress_pnm(fe_t *this, int *size, vo_frame_t *frame)
 }
 #endif /* HAVE_XINE_GRAB_VIDEO_FRAME */
 
-#if defined(XINE_GUI_SEND_GRAB_FRAME) || defined(HAVE_XINE_GRAB_VIDEO_FRAME)
-#ifdef XINE_GUI_SEND_GRAB_FRAME
-static char *fe_compress_grab_frame(fe_t *this, int *size, int jpeg, int quality, int width, int height, xine_grab_frame_t *frame)
-#else
+#ifdef HAVE_XINE_GRAB_VIDEO_FRAME
 static char *fe_compress_grab_frame(fe_t *this, int *size, int jpeg, int quality, int width, int height, xine_grab_video_frame_t *frame)
-#endif
 {
 #ifdef HAVE_LIBJPEG
   if (jpeg) {
@@ -1967,7 +1963,7 @@ static char *fe_compress_grab_frame(fe_t *this, int *size, int jpeg, int quality
   *size = bytes + hdrlen;
   return (char*)pnm;
 }
-#endif /* defined(XINE_GUI_SEND_GRAB_FRAME) || defined(HAVE_XINE_GRAB_VIDEO_FRAME) */
+#endif /* HAVE_XINE_GRAB_VIDEO_FRAME */
 
 
 static char *fe_grab(frontend_t *this_gen, int *size, int jpeg, 
@@ -1996,20 +1992,6 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
 
   /* get last frame */
   this->stream->xine->port_ticket->acquire(this->stream->xine->port_ticket, 0);
-
-#ifdef XINE_GUI_SEND_GRAB_FRAME
-  xine_grab_frame_t *grab_frame;
-  if (!xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_ALLOC_GRAB_FRAME, &grab_frame)) {
-    grab_frame->width = width;
-    grab_frame->height = height;
-    char *img = NULL;
-    if (!xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_GRAB_FRAME, grab_frame))
-      img = fe_compress_grab_frame(this, size, jpeg, quality, width, height, grab_frame);
-    xine_port_send_gui_data(this->stream->video_out, XINE_GUI_SEND_FREE_GRAB_FRAME, grab_frame);
-    this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
-    return img;
-  }
-#endif
 
 #ifdef HAVE_XINE_GRAB_VIDEO_FRAME
   char *img = NULL;
