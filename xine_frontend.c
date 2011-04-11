@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.119 2011-03-10 10:03:12 durchflieger Exp $
+ * $Id: xine_frontend.c,v 1.120 2011-04-11 08:29:17 durchflieger Exp $
  *
  */
 
@@ -2025,8 +2025,10 @@ static char *fe_grab(frontend_t *this_gen, int *size, int jpeg,
   return img;
 #else
   vo_frame_t *frame = this->stream->video_out->get_last_frame (this->stream->video_out);
+#if XINE_VERSION_CODE < 10190
   if(frame)
     frame->lock(frame);
+#endif
   this->stream->xine->port_ticket->release(this->stream->xine->port_ticket, 0);
 
   if(!frame) {
