@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.138.2.45 2011-04-12 11:51:11 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.138.2.46 2011-04-12 12:01:09 phintuka Exp $
  *
  */
 
@@ -62,6 +62,7 @@
 #include "tools/mpeg.h"
 #include "tools/pes.h"
 #include "tools/ts.h"
+#include "tools/rle.c"
 
 /***************************** DEFINES *********************************/
 
@@ -137,7 +138,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.45 2011-04-12 11:51:11 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.138.2.46 2011-04-12 12:01:09 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2055,11 +2056,6 @@ static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
 /*#define NEW_SCALING*/
 #ifdef NEW_SCALING
 #include "tools/rle.h"
-#else
-typedef enum {
-  scale_fast = 0,         /* simple pixel doubling/dropping */
-  scale_good_BW = 1,      /* linear interpolation, palette re-generation */
-} scale_mode_t;
 #endif
 
 /* re-scale compressed RLE image */
@@ -3363,10 +3359,25 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
       LOGMSG("control: error reading OSDCMD bitmap");
       err = CONTROL_DISCONNECTED;
     } else {
-      uint8_t *raw = osdcmd.raw_data;
-      osdcmd.data = uncompress_osd_net(raw, osdcmd.num_rle, osdcmd.datalen);
-      osdcmd.datalen = osdcmd.num_rle*4;
-      free(raw);
+      if (osdcmd.cmd == OSD_Set_HDMV) {
+        uint8_t *raw = osdcmd.raw_data;
+        int n = rle_uncompress_hdmv(&osdcmd.data,
+                                    osdcmd.w, osdcmd.h,
+                                    raw, osdcmd.num_rle, osdcmd.datalen);
+        if (n < 1) {
+          LOGMSG("HDMV mode OSD uncompress error");
+          osdcmd.raw_data = raw;
+        } else {
+          osdcmd.cmd     = OSD_Set_RLE;
+          osdcmd.datalen = osdcmd.num_rle*4;
+          free(raw);
+        }
+      } else if (osdcmd.cmd == OSD_Set_RLE) {
+        uint8_t *raw = osdcmd.raw_data;
+        osdcmd.data    = uncompress_osd_net(raw, osdcmd.num_rle, osdcmd.datalen);
+        osdcmd.datalen = osdcmd.num_rle*4;
+        free(raw);
+      }
     }
   } else {
     osdcmd.data = NULL;
