@@ -149,10 +149,12 @@ Using remote frontends
   find server (or specific transport should be used), mrl must
   be given on command line.
 
+  NOTE: RTP is used only when requested with rtp: mrl or --rtp command-line option.
+
   Examples:
 
     Search for VDR (xineliboutput) server, connect to it and
-    negotiate best available transport. Use best available audio 
+    negotiate best available transport. Use best available audio
     and video driver.
       vdr-fbfe
     or
