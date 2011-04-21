@@ -205,13 +205,14 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
 
 static void update_stream_info(bluray_input_plugin_t *this)
 {
-  /* set stream info */
-
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_COUNT,    this->title_info->angle_count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   bd_get_current_angle(this->bdh));
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
-  _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, bd_get_current_chapter(this->bdh) + 1);
+  if (this->title_info) {
+    /* set stream info */
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_COUNT,    this->title_info->angle_count);
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_ANGLE_NUMBER,   bd_get_current_angle(this->bdh));
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_HAS_CHAPTERS,       this->title_info->chapter_count > 0);
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_COUNT,  this->title_info->chapter_count);
+    _x_stream_info_set(this->stream, XINE_STREAM_INFO_DVD_CHAPTER_NUMBER, bd_get_current_chapter(this->bdh) + 1);
+  }
 }
 
 static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
@@ -482,7 +483,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_PLAYITEM:
         lprintf("BD_EVENT_PLAYITEM %d\n", ev.param);
-        if (ev.param < this->title_info->clip_count)
+        if (!this->title_info || ev.param < this->title_info->clip_count)
           this->current_clip = ev.param;
         else
           this->current_clip = 0;
