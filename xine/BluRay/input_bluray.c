@@ -362,7 +362,7 @@ static void stream_reset(bluray_input_plugin_t *this)
 
   this->cap_seekable = 0;
 
-  xine_set_param(this->stream, XINE_PARAM_FINE_SPEED, XINE_FINE_SPEED_NORMAL);
+  _x_set_fine_speed(this->stream, XINE_FINE_SPEED_NORMAL);
   this->stream->demux_plugin->seek(this->stream->demux_plugin, 0, 0, 1);
   _x_demux_control_start(this->stream);
 
