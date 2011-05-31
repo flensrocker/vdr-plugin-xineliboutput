@@ -147,8 +147,6 @@ static void close_overlay(bluray_input_plugin_t *this)
 static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
-  uint32_t color[256];
-  uint8_t  trans[256];
   unsigned i;
 
   if (!this) {
@@ -173,16 +171,19 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     _x_select_spu_channel(this->stream, -1);
 
   /* convert and set palette */
-
+  if (ov->palette) {
+    uint32_t color[256];
+    uint8_t  trans[256];
   for(i = 0; i < 256; i++) {
     trans[i] = ov->palette[i].T;
     color[i] = (ov->palette[i].Y << 16) | (ov->palette[i].Cr << 8) | ov->palette[i].Cb;
   }
 
   xine_osd_set_palette(this->osd, color, trans);
+  }
 
   /* uncompress and draw bitmap */
-
+  if (ov->img) {
   const BD_PG_RLE_ELEM *rlep = ov->img;
   uint8_t *img = malloc(ov->w * ov->h);
   unsigned pixels = ov->w * ov->h;
@@ -194,6 +195,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
   xine_osd_draw_bitmap(this->osd, img, ov->x, ov->y, ov->w, ov->h, NULL);
 
   free(img);
+  }
 
   /* display */
 
