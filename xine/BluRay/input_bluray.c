@@ -124,7 +124,7 @@ typedef struct {
   int                num_titles;        /* navigation mode, number of titles in disc index */
   int                current_title;     /* navigation mode, title from disc index */
   BLURAY_TITLE_INFO *title_info;
-  int                current_clip;
+  unsigned int       current_clip;
   int                error;
   int                menu_open;
   int                stream_flushed;
@@ -485,10 +485,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_PLAYITEM:
         lprintf("BD_EVENT_PLAYITEM %d\n", ev.param);
-        if (!this->title_info || ev.param < this->title_info->clip_count)
-          this->current_clip = ev.param;
-        else
-          this->current_clip = 0;
+        this->current_clip = ev.param;
         break;
 
       case BD_EVENT_CHAPTER:
@@ -871,6 +868,8 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
   if (!this || !this->stream || !data)
     return INPUT_OPTIONAL_UNSUPPORTED;
 
+  unsigned int current_clip = this->current_clip;
+
   switch (data_type) {
 
     case INPUT_OPTIONAL_DATA_DEMUXER:
@@ -886,9 +885,9 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
      */
     case INPUT_OPTIONAL_DATA_AUDIOLANG:
-      if (this->title_info) {
+      if (this->title_info && this->title_info->clip_count < current_clip) {
         int               channel = *((int *)data);
-        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[this->current_clip];
+        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
 
         if (channel >= 0 && channel < clip->audio_stream_count) {
           memcpy(data, clip->audio_streams[channel].lang, 4);
@@ -916,9 +915,9 @@ static int bluray_plugin_get_optional_data (input_plugin_t *this_gen, void *data
      * - channel number can be mpeg-ts PID (0x1200 ... 0x12ff)
      */
     case INPUT_OPTIONAL_DATA_SPULANG:
-      if (this->title_info) {
+      if (this->title_info && this->title_info->clip_count < current_clip) {
         int               channel = *((int *)data);
-        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[this->current_clip];
+        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
 
         if (channel >= 0 && channel < clip->pg_stream_count) {
           memcpy(data, clip->pg_streams[channel].lang, 4);
