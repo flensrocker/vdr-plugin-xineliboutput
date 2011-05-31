@@ -127,6 +127,7 @@ typedef struct {
   BLURAY_TITLE_INFO *title_info;
   pthread_mutex_t    title_info_mutex;  /* lock this when accessing title_info outside of input/demux thread */
   unsigned int       current_clip;
+  time_t             still_end_time;
   int                error;
   int                menu_open;
   int                stream_flushed;
@@ -370,35 +371,28 @@ static void stream_reset(bluray_input_plugin_t *this)
 
 static void wait_secs(bluray_input_plugin_t *this, unsigned seconds)
 {
-  // infinite still mode ?
-  if (!seconds) {
-    stream_flush(this);
-    xine_usec_sleep(10*1000);
-    return;
+  stream_flush(this);
+
+  if (this->still_end_time) {
+    if (time(NULL) >= this->still_end_time) {
+      lprintf("pause end\n");
+      this->still_end_time = 0;
+      bd_read_skip_still(this->bdh);
+      stream_reset(this);
+      return;
+    }
   }
 
-  // clip to allowed range
-  if (seconds > 300) {
-    seconds = 300;
+  else if (seconds) {
+    if (seconds > 300) {
+      seconds = 300;
+    }
+
+    lprintf("still image, pause for %d seconds\n", seconds);
+    this->still_end_time = time(NULL) + seconds;
   }
 
-  // pause the stream
-  int paused = _x_get_fine_speed(this->stream) == XINE_SPEED_PAUSE;
-  if (!paused) {
-    _x_set_fine_speed(this->stream, XINE_SPEED_PAUSE);
-  }
-
-  // wait until interrupted
-  int loops = seconds * 25; /* N * 40 ms */
-  while (!_x_action_pending(this->stream) && loops-- > 0) {
-    xine_usec_sleep(40*1000);
-  }
-
-  lprintf("paused for %d seconds (%d ms left)\n", seconds - loops/25, loops * 40);
-
-  if (!paused) {
-    _x_set_fine_speed(this->stream, XINE_FINE_SPEED_NORMAL);
-  }
+  xine_usec_sleep(40*1000);
 }
 
 static void update_spu_channel(bluray_input_plugin_t *this, int channel)
@@ -445,6 +439,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_SEEK:
         lprintf("BD_EVENT_SEEK\n");
+        this->still_end_time = 0;
         stream_reset(this);
         break;
 
@@ -492,6 +487,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
       case BD_EVENT_PLAYITEM:
         lprintf("BD_EVENT_PLAYITEM %d\n", ev.param);
         this->current_clip = ev.param;
+        this->still_end_time = 0;
         break;
 
       case BD_EVENT_CHAPTER:
@@ -787,7 +783,7 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
 
   if (!this || !this->bdh)
     return -1;
-  if (this->current_title_idx < 0)
+  if (this->current_title_idx < 0 || this->still_end_time)
     return offset;
 
   /* convert relative seeks to absolute */
@@ -813,6 +809,9 @@ static off_t bluray_plugin_seek_time (input_plugin_t *this_gen, int time_offset,
 
   if (!this || !this->bdh)
     return -1;
+
+  if (this->still_end_time)
+    return bd_tell(this->bdh);
 
   /* convert relative seeks to absolute */
 
