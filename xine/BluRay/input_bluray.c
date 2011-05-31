@@ -54,7 +54,7 @@
 
 #define LOGMSG(x...)  xine_log (this->stream->xine, XINE_LOG_MSG, "input_bluray: " x);
 
-#define XINE_ENGINE_INTERNAL
+#define XINE_ENGINE_INTERNAL  // stream->demux_plugin
 
 #ifdef HAVE_CONFIG_H
 # include "xine_internal.h"
@@ -384,7 +384,7 @@ static void wait_secs(bluray_input_plugin_t *this, unsigned seconds)
 
   // wait until interrupted
   int loops = seconds * 25; /* N * 40 ms */
-  while (!this->stream->demux_action_pending && loops-- > 0) {
+  while (!_x_action_pending(this->stream) && loops-- > 0) {
     xine_usec_sleep(40*1000);
   }
 
@@ -724,7 +724,7 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
       if (result == 0) {
         handle_events(this);
         if (ev.event == BD_EVENT_NONE) {
-          if (this->stream->demux_action_pending) {
+          if (_x_action_pending(this->stream)) {
             break;
           }
         }
