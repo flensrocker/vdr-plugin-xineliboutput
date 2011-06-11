@@ -22,7 +22,7 @@
  * Input plugin for BluRay discs / images
  *
  * Requires libbluray from git://git.videolan.org/libbluray.git
- * Tested with revision 2010-12-10 10:00 UTC
+ * Tested with revision 2011-06-09 10:00 UTC
  *
  */
 
@@ -139,11 +139,26 @@ typedef struct {
 
 } bluray_input_plugin_t;
 
-static void close_overlay(bluray_input_plugin_t *this)
+static void send_num_buttons(bluray_input_plugin_t *this, int n)
+{
+  xine_event_t   event;
+  xine_ui_data_t data;
+
+  event.type = XINE_EVENT_UI_NUM_BUTTONS;
+  event.data = &data;
+  event.data_length = sizeof(data);
+  data.num_buttons = n;
+
+  xine_event_send(this->stream, &event);
+}
+
+static void close_overlay(bluray_input_plugin_t *this, int plane)
 {
   if (this->osd) {
     xine_osd_free(this->osd);
     this->osd = NULL;
+    if (plane != 0)
+      send_num_buttons(this, 0);
   }
 }
 
@@ -161,7 +176,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
 
   if (!ov) {
     /* hide OSD */
-    close_overlay(this);
+    close_overlay(this, -1);
     return;
   }
 
@@ -204,7 +219,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
 
     if (ov->x == 0 && ov->y == 0 && ov->w == 1920 && ov->h == 1080) {
       /* Nothing to display, close OSD */
-      close_overlay(this);
+      close_overlay(this, ov->plane);
       return;
     }
 
@@ -216,8 +231,10 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
 
   xine_osd_show(this->osd, 0);
 
-  if (ov->plane == 1)
+  if (ov->plane == 1) {
     this->menu_open = 1;
+    send_num_buttons(this, 1);
+  }
 }
 
 static void update_stream_info(bluray_input_plugin_t *this)
@@ -990,7 +1007,7 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
   if (this->bdh)
     bd_register_overlay_proc(this->bdh, NULL, NULL);
 
-  close_overlay(this);
+  close_overlay(this, -1);
 
   if (this->event_queue)
     xine_event_dispose_queue(this->event_queue);
