@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.37 2011-06-11 08:37:10 phintuka Exp $
+# * $Id: configure,v 1.38 2011-06-11 08:38:43 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -350,11 +350,11 @@ test_pkgconfig
 [ $debug = yes ] && \
   test_library   X11  do_error     "none.h"         "-lnolib"
 
-test_library     VDR   libextractor "extractor.h"      "-lextractor" "EXTRACTOR_getKeywords(0,0)"
-test_library     VDR   libcap       "sys/capability.h" "-lcap"       "cap_get_proc()"
+test_library     VDR   libextractor "extractor.h"        "-lextractor" "EXTRACTOR_getKeywords(0,0)"
+test_library     VDR   libcap       "sys/capability.h"   "-lcap"       "cap_get_proc()"
 test_library     VDR   libbluray    "libbluray/bluray.h" "-lbluray"    "bd_get_disc_info(0)"
-test_library     XINE  libxine      "xine.h"           "-lxine"      "xine_init(0)"
-test_library     DLFCN dlfcn        "dlfcn.h"          "-ldl"        "dlopen(0,0)"
+test_library     XINE  libxine      "xine.h"             "-lxine"      "xine_init(0)"
+test_library     DLFCN dlfcn        "dlfcn.h"            "-ldl"        "dlopen(0,0)"
 
 if enabled libxine; then
 
