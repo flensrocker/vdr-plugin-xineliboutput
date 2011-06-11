@@ -107,7 +107,7 @@ typedef struct {
 
   xine_stream_t        *stream;
   xine_event_queue_t   *event_queue;
-  xine_osd_t           *osd;
+  xine_osd_t           *osd[2];
 
   bluray_input_class_t *class;
 
@@ -154,11 +154,19 @@ static void send_num_buttons(bluray_input_plugin_t *this, int n)
 
 static void close_overlay(bluray_input_plugin_t *this, int plane)
 {
-  if (this->osd) {
-    xine_osd_free(this->osd);
-    this->osd = NULL;
-    if (plane != 0)
+  if (plane < 0) {
+    close_overlay(this, 0);
+    close_overlay(this, 1);
+    return;
+  }
+
+  if (plane < 2 && this->osd[plane]) {
+    xine_osd_free(this->osd[plane]);
+    this->osd[plane] = NULL;
+    if (plane == 1) {
       send_num_buttons(this, 0);
+      this->menu_open = 0;
+    }
   }
 }
 
@@ -171,20 +179,22 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     return;
   }
 
-  if (!ov || ov->plane == 1)
-    this->menu_open = 0;
-
   if (!ov) {
     /* hide OSD */
     close_overlay(this, -1);
     return;
   }
 
+  if (ov->plane > 1) {
+    return;
+  }
+
   /* open xine OSD */
 
-  if (!this->osd) {
-    this->osd = xine_osd_new(this->stream, 0, 0, 1920, 1080);
+  if (!this->osd[ov->plane]) {
+    this->osd[ov->plane] = xine_osd_new(this->stream, 0, 0, 1920, 1080);
   }
+  xine_osd_t *osd = this->osd[ov->plane];
   if (!this->pg_enable) {
     _x_select_spu_channel(this->stream, -1);
   }
@@ -198,7 +208,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
       color[i] = (ov->palette[i].Y << 16) | (ov->palette[i].Cr << 8) | ov->palette[i].Cb;
     }
 
-    xine_osd_set_palette(this->osd, color, trans);
+    xine_osd_set_palette(osd, color, trans);
   }
 
   /* uncompress and draw bitmap */
@@ -211,7 +221,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
       memset(img + i, rlep->color, rlep->len);
     }
 
-    xine_osd_draw_bitmap(this->osd, img, ov->x, ov->y, ov->w, ov->h, NULL);
+    xine_osd_draw_bitmap(osd, img, ov->x, ov->y, ov->w, ov->h, NULL);
 
     free(img);
 
@@ -224,12 +234,12 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     }
 
     /* wipe rect */
-    xine_osd_draw_rect(this->osd, ov->x, ov->y, ov->x + ov->w - 1, ov->y + ov->h - 1, 0xff, 1);
+    xine_osd_draw_rect(osd, ov->x, ov->y, ov->x + ov->w - 1, ov->y + ov->h - 1, 0xff, 1);
   }
 
   /* display */
 
-  xine_osd_show(this->osd, 0);
+  xine_osd_show(osd, 0);
 
   if (ov->plane == 1) {
     this->menu_open = 1;
