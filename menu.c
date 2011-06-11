@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.84 2011-03-11 14:45:31 phintuka Exp $
+ * $Id: menu.c,v 1.85 2011-06-11 10:21:36 phintuka Exp $
  *
  */
 
@@ -61,7 +61,7 @@ class cMenuBrowseFiles : public cOsdMenu
   protected:
     const eMainMenuMode m_Mode;
     bool          m_OnlyQueue;
-    char         *m_CurrentDir;
+    cString       m_CurrentDir;
     char         *m_ConfigLastDir;
     const char   *help[4];
 
@@ -82,7 +82,7 @@ class cMenuBrowseFiles : public cOsdMenu
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-static char *ParentDir(const char *dir)
+static cString ParentDir(const char *dir)
 {
   char *result = strdup(dir);
   char *pt = strrchr(result, '/');
@@ -91,15 +91,16 @@ static char *ParentDir(const char *dir)
     if (pt != result)
       *pt = 0;
   }
-  return result;
+
+  return cString(result, true);
 }
 
-static char *LastDir(const char *dir)
+static cString LastDir(const char *dir)
 {
   const char *pt = strrchr(dir, '/');
   if (pt && pt[0] && pt[1])
-    return strdup(pt+1);
-  return NULL;
+    return cString(pt+1);
+  return cString(NULL);
 }
 
 cMenuBrowseFiles::cMenuBrowseFiles(eMainMenuMode mode, bool OnlyQueue) :
@@ -109,7 +110,6 @@ cMenuBrowseFiles::cMenuBrowseFiles(eMainMenuMode mode, bool OnlyQueue) :
               2, 4),
     m_Mode(mode)
 {
-  m_CurrentDir = NULL;
   m_OnlyQueue  = OnlyQueue;
 
   m_ConfigLastDir = GetLastDir();
@@ -124,7 +124,6 @@ cMenuBrowseFiles::~cMenuBrowseFiles()
   }
 
   Setup.Save();
-  free(m_CurrentDir);
 }
 
 char *cMenuBrowseFiles::GetLastDir(void)
@@ -142,26 +141,22 @@ void cMenuBrowseFiles::Set(void)
 {
   Clear();
 
-  if (!m_CurrentDir)
-    m_CurrentDir = strdup(m_ConfigLastDir);
+  if (!*m_CurrentDir)
+    m_CurrentDir = m_ConfigLastDir;
 
   int RootDirLen = strlen(xc.media_root_dir);
   if (strncmp(m_CurrentDir, xc.media_root_dir, RootDirLen)) {
-    LOGMSG("Not allowing browsing to %s (root is %s)", m_CurrentDir, xc.media_root_dir);
-    free(m_CurrentDir);
-    m_CurrentDir = strdup(xc.media_root_dir);
+    LOGMSG("Not allowing browsing to %s (root is %s)", *m_CurrentDir, xc.media_root_dir);
+    m_CurrentDir = xc.media_root_dir;
   }
 
   if (m_CurrentDir[0] != '/') {
-    free(m_CurrentDir);
-    m_CurrentDir = strdup(VideoDirectory);
+    m_CurrentDir = VideoDirectory;
   }
 
   // find deepest accessible directory from path
   while (!ScanDir(m_CurrentDir) && strlen(m_CurrentDir) > 1) {
-    char *n = ParentDir(m_CurrentDir);
-    free(m_CurrentDir);
-    m_CurrentDir = n;
+    m_CurrentDir = ParentDir(m_CurrentDir);
   }
 
   // add link to parent folder
@@ -171,21 +166,19 @@ void cMenuBrowseFiles::Set(void)
 
   Sort();
 
-  SetCurrent(Get(Count()>1 && strlen(m_CurrentDir)>1 ? 1 : 0));
+  SetCurrent(Get(Count()>1 && CurrentDirLen>1 ? 1 : 0));
 
   // select last selected item
 
-  char *lastParent = ParentDir(m_ConfigLastDir);
-  if (!strncmp(m_CurrentDir, lastParent, strlen(m_CurrentDir))) {
-    char *item = LastDir(m_ConfigLastDir);
-    if (item) {
+  cString lastParent = ParentDir(m_ConfigLastDir);
+  if (!strncmp(m_CurrentDir, lastParent, CurrentDirLen)) {
+    cString item = LastDir(m_ConfigLastDir);
+    if (*item) {
       for (cFileListItem *it = (cFileListItem*)First(); it; it = (cFileListItem*)Next(it))
         if (!strcmp(it->Name(), item))
           SetCurrent(it);
-      free(item);
     }
   }
-  free(lastParent);
 
   strn0cpy(m_ConfigLastDir, m_CurrentDir, sizeof(xc.browse_files_dir));
   StoreConfig();
@@ -245,7 +238,7 @@ eOSState cMenuBrowseFiles::Delete(void)
   cFileListItem *it = GetCurrent();
   if (!it->IsDir()) {
     if (Interface->Confirm(trVDR("Delete recording?"))) {
-      cString name = cString::sprintf("%s/%s", m_CurrentDir, it->Name());
+      cString name = cString::sprintf("%s/%s", (const char *)m_CurrentDir, it->Name());
       if (!unlink(name)) {
         isyslog("file %s deleted", *name);
         if (m_Mode != ShowImages) {
@@ -272,9 +265,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
   /* parent directory */
   if (!strcmp("..", GetCurrent()->Name())) {
-    char *n = ParentDir(m_CurrentDir);
-    free(m_CurrentDir);
-    m_CurrentDir = n;
+    m_CurrentDir = ParentDir(m_CurrentDir);
     Set();
     return osContinue;
 
@@ -284,14 +275,14 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
     if (!ForceOpen && GetCurrent()->IsDvd()) {
       /* play dvd */
       cPlayerFactory::Launch(pmAudioVideo,
-                             cPlaylist::BuildMrl("dvd", m_CurrentDir, "/", GetCurrent()->Name()),
+                             cPlaylist::BuildMrl("dvd", *m_CurrentDir, "/", GetCurrent()->Name()),
                              NULL, true);
       return osEnd;
     }
     if (!ForceOpen && GetCurrent()->IsBluRay()) {
       /* play BluRay disc/image */
       cPlayerFactory::Launch(pmAudioVideo,
-                             cPlaylist::BuildMrl("bluray", m_CurrentDir, "/", GetCurrent()->Name(), "/"),
+                             cPlaylist::BuildMrl("bluray", *m_CurrentDir, "/", GetCurrent()->Name(), "/"),
                              NULL, true);
       return osEnd;
     }
@@ -304,7 +295,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
         if (m_OnlyQueue && !Queue)
           return osContinue;
 
-        cString f = cString::sprintf("%s/%s/", m_CurrentDir, GetCurrent()->Name());
+        cString f = cString::sprintf("%s/%s/", *m_CurrentDir, GetCurrent()->Name());
 
         if (!Queue || !cPlayerFactory::IsOpen())
           cControl::Shutdown();
@@ -322,18 +313,16 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
     /* go to directory */
     const char *d = GetCurrent()->Name();
     char *buffer = NULL;
-    if (asprintf(&buffer, "%s/%s", m_CurrentDir, d) >= 0) {
+    if (asprintf(&buffer, "%s/%s", *m_CurrentDir, d) >= 0) {
       while (buffer[0] == '/' && buffer[1] == '/')
         memmove(buffer, buffer+1, strlen(buffer));
-      free(m_CurrentDir);
-      m_CurrentDir = buffer;
     }
     Set();
     return osContinue;
 
   /* regular file */
   } else {
-    cString f = cString::sprintf("%s/%s", m_CurrentDir, GetCurrent()->Name());
+    cString f = cString::sprintf("%s/%s", *m_CurrentDir, GetCurrent()->Name());
 
     strn0cpy(m_ConfigLastDir, f, sizeof(xc.browse_files_dir));
     StoreConfig();
@@ -363,7 +352,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
       cPlaylist *Playlist = new cPlaylist();
       for (cFileListItem *it = (cFileListItem*)First(); it; it=(cFileListItem*)Next(it)) {
         if (!it->IsDir())
-          Playlist->Read(cString::sprintf("%s/%s", m_CurrentDir, it->Name()));
+          Playlist->Read(cString::sprintf("%s/%s", *m_CurrentDir, it->Name()));
         if (it == Get(Current()))
           Playlist->SetCurrent(Playlist->Last());
       }
@@ -377,7 +366,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 eOSState cMenuBrowseFiles::Info(void)
 {
   if (GetCurrent() && !GetCurrent()->IsDir()) {
-    cString filename = cString::sprintf("%s/%s", m_CurrentDir, GetCurrent()->Name());
+    cString filename = cString::sprintf("%s/%s", *m_CurrentDir, GetCurrent()->Name());
     return AddSubMenu(new cMetainfoMenu(filename));
   }
   return osContinue;
