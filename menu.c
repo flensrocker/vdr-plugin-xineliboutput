@@ -4,13 +4,17 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.85 2011-06-11 10:21:36 phintuka Exp $
+ * $Id: menu.c,v 1.86 2011-06-11 10:30:17 phintuka Exp $
  *
  */
 
 #include "features.h"
 
 #include <dirent.h>
+
+#ifdef HAVE_LIBBLURAY
+# include <libbluray/bluray.h>
+#endif
 
 #include <vdr/config.h>
 #include <vdr/interface.h>
@@ -53,6 +57,65 @@
 //#define OLD_TOGGLE_FE
 
 #define ISNUMBERKEY(k) (RAWKEY(k) >= k0 && RAWKEY(k) <= k9)
+
+//----------------------------- cMenuBluray ----------------------------------
+
+static bool BlurayMenuSupported(const cString& Path)
+{
+  bool result = false;
+#ifdef HAVE_LIBBLURAY
+  BLURAY *bdh = bd_open(Path, NULL);
+  if (bdh) {
+    const BLURAY_DISC_INFO *di = bd_get_disc_info(bdh);
+    if (di->bluray_detected && !di->num_unsupported_titles)
+      result = true;
+    bd_close(bdh);
+  }
+#endif
+  return result;
+}
+
+class cMenuBluray : public cOsdMenu
+{
+  private:
+    cString m_Path;
+
+  public:
+    cMenuBluray(const char *Path);
+
+    virtual ~cMenuBluray() {};
+
+    virtual eOSState ProcessKey(eKeys Key);
+};
+
+cMenuBluray::cMenuBluray(const char *Path) : cOsdMenu("BluRay")
+{
+  m_Path = Path;
+  Add(new cOsdItem(tr("Play movie title"), osUser1));
+  Add(new cOsdItem(tr("Play disc"),        osUser2));
+  Display();
+}
+
+eOSState cMenuBluray::ProcessKey(eKeys Key)
+{
+  eOSState state = cOsdMenu::ProcessKey(Key);
+  switch (state) {
+    case osUser1:
+      cPlayerFactory::Launch(pmAudioVideo,
+                             cPlaylist::BuildMrl("bluray", *m_Path),
+                             NULL, true);
+      return osEnd;
+    case osUser2:
+      cPlayerFactory::Launch(pmAudioVideo,
+                             cPlaylist::BuildMrl("bd", *m_Path),
+                             NULL, true);
+      return osEnd;
+    case osBack:
+    case osEnd:   return osEnd;
+    default:      break;
+  }
+  return state;
+}
 
 //--------------------------- cMenuBrowseFiles -------------------------------
 
@@ -280,6 +343,11 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
       return osEnd;
     }
     if (!ForceOpen && GetCurrent()->IsBluRay()) {
+      cString bd_path = cString::sprintf("%s/%s/", *m_CurrentDir, GetCurrent()->Name());
+      if (BlurayMenuSupported(bd_path)) {
+        AddSubMenu(new cMenuBluray(bd_path));
+        return osContinue;
+      }
       /* play BluRay disc/image */
       cPlayerFactory::Launch(pmAudioVideo,
                              cPlaylist::BuildMrl("bluray", *m_CurrentDir, "/", GetCurrent()->Name(), "/"),
@@ -609,8 +677,8 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cPlayerFactory::Launch("dvd:/");
       return osEnd;
     case osUser5:
-      cPlayerFactory::Launch("bluray:/");
-      return osEnd;
+      AddSubMenu(new cMenuBluray(NULL));
+      return osContinue;
     case osUser6:
       cPlayerFactory::Launch("cdda:/");
       return osEnd;
