@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.36 2011-03-05 13:42:52 phintuka Exp $
+# * $Id: configure,v 1.37 2011-06-11 08:37:10 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -239,6 +239,7 @@ FEATURES="
   vdpau
   i18n
   libcap
+  libbluray
 "
 
 # set defaults
@@ -264,6 +265,7 @@ show_help(){
   echo "  --enable-libxine       build xine plugins [yes]"
   echo
   echo "  --disable-libextractor disable libextractor support (media file metainfo) [no]"
+  echo "  --disable-libbluray    disable libbluray support (BluRay metainfo) [no]"
   echo "  --disable-libjpeg      disable libjpeg support [no]"
   echo "  --disable-dbus-glib-1  disable dbus-glib support [no]"
   echo "  --disable-xshm         disable XShm support [no]"
@@ -329,7 +331,7 @@ done
 check_deps(){
   disabled libxine && disable x11 fb libavutil libjpeg
   disabled x11     && disable dbus-glib-1 xshm xrender xshape opengl xdpms xinerama vdpau
-  disabled vdr     && disable libextractor libcap
+  disabled vdr     && disable libextractor libcap libbluray
   disabled dlfcn   && disable opengl
   disabled pthread && disable opengl
   disabled xrender && disable opengl
@@ -350,6 +352,7 @@ test_pkgconfig
 
 test_library     VDR   libextractor "extractor.h"      "-lextractor" "EXTRACTOR_getKeywords(0,0)"
 test_library     VDR   libcap       "sys/capability.h" "-lcap"       "cap_get_proc()"
+test_library     VDR   libbluray    "libbluray/bluray.h" "-lbluray"    "bd_get_disc_info(0)"
 test_library     XINE  libxine      "xine.h"           "-lxine"      "xine_init(0)"
 test_library     DLFCN dlfcn        "dlfcn.h"          "-ldl"        "dlopen(0,0)"
 
