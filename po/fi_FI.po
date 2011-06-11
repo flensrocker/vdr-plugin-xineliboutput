@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-04-09 12:32+0300\n"
+"POT-Creation-Date: 2011-06-11 16:18+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: Finnish <vdr@linuxtv.org>\n"
@@ -238,6 +238,12 @@ msgstr "Sulje valikko"
 
 msgid "Delete image ?"
 msgstr "Poistetaanko kuva ?"
+
+msgid "Play movie title"
+msgstr "Toista elokuva"
+
+msgid "Play disc"
+msgstr "Toista levy"
 
 msgid "Images"
 msgstr "Kuvat"

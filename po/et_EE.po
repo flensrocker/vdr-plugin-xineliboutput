@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-04-09 12:32+0300\n"
+"POT-Creation-Date: 2011-06-11 16:21+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Arthur Konovalov\n"
 "Language-Team: Estonian <vdr@linuxtv.org>\n"
@@ -237,6 +237,12 @@ msgstr "Menüü sulgemine"
 
 msgid "Delete image ?"
 msgstr "Kustutada pilt ?"
+
+msgid "Play movie title"
+msgstr ""
+
+msgid "Play disc"
+msgstr ""
 
 msgid "Images"
 msgstr "Pildid"

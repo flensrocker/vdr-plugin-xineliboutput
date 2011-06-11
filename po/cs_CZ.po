@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-04-09 12:32+0300\n"
+"POT-Creation-Date: 2011-06-11 16:18+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team: Czech <vdr@linuxtv.org>\n"
@@ -238,6 +238,12 @@ msgstr ""
 
 msgid "Delete image ?"
 msgstr "Smazat obrázek ?"
+
+msgid "Play movie title"
+msgstr ""
+
+msgid "Play disc"
+msgstr ""
 
 msgid "Images"
 msgstr "Obrázky"
