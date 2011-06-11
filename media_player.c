@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.86 2010-12-20 13:06:11 phintuka Exp $
+ * $Id: media_player.c,v 1.87 2011-06-11 08:26:27 phintuka Exp $
  *
  */
 
@@ -1173,6 +1173,267 @@ eOSState cXinelibDvdPlayerControl::ProcessKey(eKeys Key)
   return osContinue;
 }
 
+
+// --- BluRay player --------------------------------------------------------
+
+//
+// cBdMenu
+//
+
+class cBdMenu : public cOsdMenu {
+  private:
+    cXinelibPlayer *m_Player;
+
+  public:
+    cBdMenu(cXinelibPlayer *Player, bool Menus);
+
+    virtual eOSState ProcessKey(eKeys Key);
+};
+
+cBdMenu::cBdMenu(cXinelibPlayer *Player, bool Menus) :
+    cOsdMenu("BluRay"), m_Player(Player)
+{
+  if (Menus) {
+    Add(new cOsdItem(tr("BluRay Top menu"),       osUser1));
+    Add(new cOsdItem(tr("Toggle Pop-Up menu"),    osUser2));
+  }
+  Add(  new cOsdItem(tr("Next title"),            osUser3));
+  Add(  new cOsdItem(tr("Previous title"),        osUser4));
+  Add(  new cOsdItem(   "----------",             osUnknown));
+  Add(  new cOsdItem(tr("Close menu"),            osBack));
+
+  Display();
+}
+
+eOSState cBdMenu::ProcessKey(eKeys Key)
+{
+  eOSState state = cOsdMenu::ProcessKey(Key);
+  switch (state) {
+    case osUser1: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU1");    return osEnd;
+    case osUser2: m_Player->Control("EVENT XINE_EVENT_INPUT_MENU2");    return osEnd;
+    case osUser3: m_Player->Control("EVENT XINE_EVENT_INPUT_NEXT");     return osEnd;
+    case osUser4: m_Player->Control("EVENT XINE_EVENT_INPUT_PREVIOUS"); return osEnd;
+    case osBack:
+    case osEnd:   return osEnd;
+    default:      break;
+  }
+  return state;
+}
+
+//
+// cXinelibBdPlayerControl
+//
+
+class cXinelibBdPlayerControl : public cXinelibPlayerControl
+{
+  private:
+    cBdMenu *m_BdMenu;
+    void     CloseBdMenu(void);
+
+  public:
+    cXinelibBdPlayerControl(const char *File);
+    virtual ~cXinelibBdPlayerControl();
+
+    virtual void Show(void);
+    virtual void Hide(void);
+    virtual eOSState ProcessKey(eKeys Key);
+};
+
+cXinelibBdPlayerControl::cXinelibBdPlayerControl(const char *File) :
+    cXinelibPlayerControl(ShowFiles, File), m_BdMenu(NULL)
+{
+}
+
+cXinelibBdPlayerControl::~cXinelibBdPlayerControl()
+{
+  CloseBdMenu();
+}
+
+void cXinelibBdPlayerControl::CloseBdMenu(void)
+{
+  if (m_BdMenu) {
+    delete m_BdMenu;
+    m_BdMenu = NULL;
+  }
+}
+
+void cXinelibBdPlayerControl::Hide(void)
+{
+  CloseBdMenu();
+  cXinelibPlayerControl::Hide();
+}
+
+void cXinelibBdPlayerControl::Show(void)
+{
+  if (!m_BdMenu)
+    cXinelibPlayerControl::Show();
+  else
+    cXinelibPlayerControl::Hide();
+}
+
+eOSState cXinelibBdPlayerControl::ProcessKey(eKeys Key)
+{
+  // Check for end of stream and failed open
+  if ( !m_Player->Playing() ) {
+    if (!m_BdMenu)
+      m_BdMenu = new cBdMenu(m_Player, !strncmp(m_Player->File(), "bd:/", 4));
+  }
+
+  // Handle menu
+  if (m_BdMenu) {
+    if (Key == kRed || m_BdMenu->ProcessKey(Key) == osEnd)
+      Hide();
+    return osContinue;
+  }
+
+  // Update progress bar display
+  if (m_DisplayReplay)
+    Show();
+
+  // Detect when in BluRay  menus
+  bool MenuDomain = false;
+  if (Key != kNone || m_DisplayReplay) {
+    const char *nb = m_Player->GetMetaInfo(miDvdButtons);
+    if (nb && *nb && *nb != '0')
+      MenuDomain = true;
+    LOGMSG("dvd buttons %s", nb);
+  }
+
+  // Hide progress bar when in menus
+  if (MenuDomain && m_DisplayReplay)
+    Hide();
+
+  // menu navigation
+  if (MenuDomain) {
+    switch (Key) {
+      case kUp:    m_Player->Control("EVENT XINE_EVENT_INPUT_UP");     return osContinue;
+      case kDown:  m_Player->Control("EVENT XINE_EVENT_INPUT_DOWN");   return osContinue;
+      case kLeft:  m_Player->Control("EVENT XINE_EVENT_INPUT_LEFT");   return osContinue;
+      case kRight: m_Player->Control("EVENT XINE_EVENT_INPUT_RIGHT");  return osContinue;
+      case kOk:    m_Player->Control("EVENT XINE_EVENT_INPUT_SELECT"); return osContinue;
+        //case kBack:  m_Player->Control("EVENT XINE_EVENT_INPUT_MENU1");  return osContinue;
+      default:     break;
+    }
+  }
+
+  // Handle normal keys
+  if (!MenuDomain) {
+    switch (Key) {
+      // Replay control
+      case kUp:    Key = kPlay;    break;
+      case kDown:  Key = kPause;   break;
+      case kLeft:  Key = kFastRew; break;
+      case kRight: Key = kFastFwd; break;
+      case kOk:
+		   if(m_Player->Speed() != 1) {
+		     Hide();
+		     m_ShowModeOnly = !m_ShowModeOnly;
+		     Show();
+		     break;
+		   }
+	           if(m_DisplayReplay) {
+		     Hide();
+		     m_ShowModeOnly = true;
+		   } else {
+		     Hide();
+		     m_ShowModeOnly = false;
+		     Show();
+		   }
+		   break;
+      case kInfo:  Hide();
+	           if(m_DisplayReplay && !m_ShowModeOnly) {
+		     m_ShowModeOnly = true;
+		   } else {
+		     m_ShowModeOnly = false;
+		     Show();
+		   }
+		   break;
+      case kBack:
+                   if (config_t::IsDvdImage(m_Player->File())) {
+                     BackToMenu(m_Mode);
+                   } else {
+                     BackToMenu(ShowMenu);
+                   }
+                   Hide();
+		   Close();
+		   return osEnd;
+      default:     break;
+    }
+  }
+
+  switch(Key) {
+    // menu
+    case kRed:    Hide();
+                  m_BdMenu = new cBdMenu(m_Player, !strncmp(m_Player->File(), "bd:/", 4));
+		  break;
+    // Playback control
+    case kGreen:  m_Player->Control("SEEK -60");  break;
+    case kYellow: m_Player->Control("SEEK +60");  break;
+    case kUser8:
+    case k1:      m_Player->Control("SEEK -20");  break;
+    case kUser9:
+    case k3:      m_Player->Control("SEEK +20");  break;
+
+    case k2:      m_Player->Control("EVENT XINE_EVENT_INPUT_MENU2"); break;
+    case k5:      m_Player->Control("EVENT XINE_EVENT_INPUT_MENU1"); break;
+
+    case kStop:
+    case kBlue:   Hide();
+                  Close();
+                  return osEnd;
+    case k9:      m_Player->Control("EVENT XINE_EVENT_INPUT_NEXT TITLE"); break;
+    case k7:      m_Player->Control("EVENT XINE_EVENT_INPUT_PREVIOUS TITLE"); break;
+    case k6:
+    case kNext:   m_Player->Control("EVENT XINE_EVENT_INPUT_NEXT CHAPTER"); break;
+    case k4:
+    case kPrev:   m_Player->Control("EVENT XINE_EVENT_INPUT_PREVIOUS CHAPTER"); break;
+
+    case kFastFwd:
+                  {
+                    static const int speeds[] = { -3, -2, 1, 2, -4, 2, 3, 4, 4 };
+		    m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                    if(m_Player->Speed() != 1)
+                      Show();
+                    else
+                      Hide();
+                    break;
+		  }
+    case kFastRew:
+                  {
+                    static const int speeds[] = { 0, -4, -3, -2, 0, -2, 1, 2, 3 };
+		    m_Player->SetSpeed(speeds[m_Player->Speed() + 4]);
+                    if(m_Player->Speed() != 1 || !m_ShowModeOnly)
+                      Show();
+                    else
+                      Hide();
+                    break;
+		  }
+    case kInfo:   if(m_DisplayReplay) {
+                    Hide();
+                  } else {
+                    m_ShowModeOnly = false;
+                    Show();
+		  }
+                  break;
+    case kPause:  if(m_Player->Speed()) {
+                    m_Player->SetSpeed(0);
+		    m_ShowModeOnly = false;
+		    Show();
+		    break;
+                  }
+                  // fall thru
+    case kPlay:   m_Player->SetSpeed(1);
+                  m_ShowModeOnly = true;
+		  Hide();
+                  break;
+    default:      break;
+  }
+
+  return osContinue;
+}
+
+// --- Image player ---------------------------------------------------------
+
 //
 // cXinelibImagePlayer
 //
@@ -1484,14 +1745,15 @@ cControl *CreateControl(cXinelibDevice *Dev,
 
   if (!strncmp(Mrl, "dvd:/", 5))
     return new cXinelibDvdPlayerControl(Mrl);
-  if (xc.IsDvdImage(Mrl))
-    return new cXinelibDvdPlayerControl(Mrl);
-
   if (!strncmp(Mrl, "bluray:/", 8))
-    return new cXinelibDvdPlayerControl(Mrl);
-
+    return new cXinelibBdPlayerControl(Mrl);
+  if (!strncmp(Mrl, "bd:/", 4))
+    return new cXinelibBdPlayerControl(Mrl);
   if (!strncmp(Mrl, "cdda:/", 6))
     return new cXinelibPlayerControl(ShowMusic, Mrl);
+
+  if (xc.IsDvdImage(Mrl))
+    return new cXinelibDvdPlayerControl(Mrl);
 
   // Playmode
 
