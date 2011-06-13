@@ -22,7 +22,7 @@
  * Input plugin for BluRay discs / images
  *
  * Requires libbluray from git://git.videolan.org/libbluray.git
- * Tested with revision 2011-06-09 10:00 UTC
+ * Tested with revision 2011-06-13 18:00 UTC
  *
  */
 
@@ -83,6 +83,8 @@
 #define ALIGNED_UNIT_SIZE 6144
 #define PKT_SIZE          192
 #define TICKS_IN_MS       45
+
+#define MIN_TITLE_LENGTH  180
 
 typedef struct {
 
@@ -267,9 +269,9 @@ static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
     bd_free_title_info(this->title_info);
 
   if (playlist_id < 0)
-    this->title_info = bd_get_title_info(this->bdh, this->current_title_idx);
+    this->title_info = bd_get_title_info(this->bdh, this->current_title_idx, 0);
   else
-    this->title_info = bd_get_playlist_info(this->bdh, playlist_id);
+    this->title_info = bd_get_playlist_info(this->bdh, playlist_id, 0);
 
   pthread_mutex_unlock(&this->title_info_mutex);
 
@@ -1187,7 +1189,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   /* load title list */
 
-  this->num_title_idx = bd_get_titles(this->bdh, TITLES_RELEVANT);
+  this->num_title_idx = bd_get_titles(this->bdh, TITLES_RELEVANT, MIN_TITLE_LENGTH);
   LOGMSG("%d titles\n", this->num_title_idx);
 
   if (this->num_title_idx < 1)
@@ -1200,7 +1202,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     uint64_t duration = 0;
     int i, playlist = 99999;
     for (i = 0; i < this->num_title_idx; i++) {
-      BLURAY_TITLE_INFO *info = bd_get_title_info(this->bdh, i);
+      BLURAY_TITLE_INFO *info = bd_get_title_info(this->bdh, i, 0);
       if (info->duration > duration) {
         title    = i;
         duration = info->duration;
@@ -1422,7 +1424,7 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
   BLURAY *bdh    = bd_open(path?:this->mountpoint, NULL);
 
   if (bdh) {
-    num_pl = bd_get_titles(bdh, TITLES_RELEVANT);
+    num_pl = bd_get_titles(bdh, TITLES_RELEVANT, MIN_TITLE_LENGTH);
 
     if (num_pl > 0) {
 
