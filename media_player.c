@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.87 2011-06-11 08:26:27 phintuka Exp $
+ * $Id: media_player.c,v 1.88 2011-06-13 18:23:16 phintuka Exp $
  *
  */
 
@@ -1275,8 +1275,9 @@ eOSState cXinelibBdPlayerControl::ProcessKey(eKeys Key)
 {
   // Check for end of stream and failed open
   if ( !m_Player->Playing() ) {
-    if (!m_BdMenu)
-      m_BdMenu = new cBdMenu(m_Player, !strncmp(m_Player->File(), "bd:/", 4));
+    LOGDBG("cXinelibBdPlayerControl: EndOfStreamReached");
+    Hide();
+    return osEnd;
   }
 
   // Handle menu
