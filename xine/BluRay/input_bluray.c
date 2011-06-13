@@ -824,7 +824,7 @@ static off_t bluray_plugin_seek (input_plugin_t *this_gen, off_t offset, int ori
 
   if (!this || !this->bdh)
     return -1;
-  if (this->current_title_idx < 0 || this->still_end_time)
+  if (this->still_end_time)
     return offset;
 
   /* convert relative seeks to absolute */
