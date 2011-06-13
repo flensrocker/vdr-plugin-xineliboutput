@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.335 2011-03-24 09:57:44 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.336 2011-06-13 18:37:33 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.335 2011-03-24 09:57:44 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.336 2011-06-13 18:37:33 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3050,12 +3050,16 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       *pt = 0;
       this->class->xine->config->update_num(this->class->xine->config,
 					    "media.dvd.skip_behaviour", 1);
+      this->class->xine->config->update_num(this->class->xine->config,
+					    "media.bluray.skip_behaviour", 0);
     }
     pt = strstr(cmd+6, " TITLE");
     if(pt) {
       *pt = 0;
       this->class->xine->config->update_num(this->class->xine->config,
 					    "media.dvd.skip_behaviour", 2);
+      this->class->xine->config->update_num(this->class->xine->config,
+					    "media.bluray.skip_behaviour", 1);
     }
     for(i=0; i<sizeof(eventmap)/sizeof(eventmap[0]); i++)
       if(!strcmp(cmd+6, eventmap[i].name)) {
