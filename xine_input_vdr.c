@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.336 2011-06-13 18:37:33 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.337 2011-06-17 08:24:45 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.336 2011-06-13 18:37:33 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.337 2011-06-17 08:24:45 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5124,6 +5124,7 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
 {
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_gen;
   xine_t *xine = this->class->xine;
+  cfg_entry_t *e;
 
   this->event_queue = xine_event_new_queue (this->stream);
   xine_event_create_listener_thread (this->event_queue, vdr_event_cb, this);
@@ -5165,8 +5166,8 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
     LOGMSG("Using non-default \"media." MRL_ID ".num_buffers_hd:%d\"", this->class->num_buffers_hd);
 
   /* check stream audio fifo size and issue a warning if too small */
-  cfg_entry_t *e = this->class->xine->config->lookup_entry(this->class->xine->config,
-                                                           "engine.buffers.audio_num_buffers");
+  e = this->class->xine->config->lookup_entry(this->class->xine->config,
+                                              "engine.buffers.audio_num_buffers");
   if (e && e->num_value < 500) {
     LOGMSG("WARNING: xine-engine setting \"engine.buffers.audio_num_buffers\":%d is"
            "too low for HD-playback! Please use values between 500-1000!", e->num_value);
@@ -5649,10 +5650,6 @@ static int vdr_plugin_open_net (input_plugin_t *this_gen)
      (!strncasecmp(this->mrl, MRL_ID "+udp://",  MRL_ID_LEN+7) && (this->udp=1)) ||
      (!strncasecmp(this->mrl, MRL_ID "+rtp://",  MRL_ID_LEN+7) && (this->rtp=1)) ||
      (!strncasecmp(this->mrl, MRL_ID "+pipe://", MRL_ID_LEN+8)) ||
-     (!strncasecmp(this->mrl, MRL_ID ":tcp://",  MRL_ID_LEN+7) && (this->tcp=1)) ||
-     (!strncasecmp(this->mrl, MRL_ID ":udp://",  MRL_ID_LEN+7) && (this->udp=1)) ||
-     (!strncasecmp(this->mrl, MRL_ID ":rtp://",  MRL_ID_LEN+7) && (this->rtp=1)) ||
-     (!strncasecmp(this->mrl, MRL_ID ":pipe://", MRL_ID_LEN+8)) ||
      (!strncasecmp(this->mrl, MRL_ID "://",      MRL_ID_LEN+3))) {
 
     char *phost = strdup(strstr(this->mrl, "//") + 2);
