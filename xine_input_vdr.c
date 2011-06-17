@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.339 2011-06-17 13:58:51 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.340 2011-06-17 14:26:17 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.339 2011-06-17 13:58:51 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.340 2011-06-17 14:26:17 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -608,22 +608,41 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
   /*
    * Grab current buffer usage
    */
-  int num_used = this->buffer_pool->size(this->buffer_pool) +
-                 this->block_buffer->size(this->block_buffer);
-  int num_free = this->buffer_pool->num_free(this->buffer_pool);
-  int scr_tuning = this->scr_tuning;
-  /*int num_vbufs = 0;*/
 
-  if (this->hd_stream && this->hd_buffer)
+  unsigned num_used, num_free, fill_level;
+
+  /* amount of free buffers */
+
+  if (this->hd_stream)
     num_free = this->hd_buffer->num_free(this->hd_buffer);
+  else
+    num_free = this->buffer_pool->num_free(this->buffer_pool);
+
+  if (num_free < this->reserved_buffers)
+    num_free = 0;
+  else
+    num_free -= this->reserved_buffers;
+
+  /* amount of used buffers */
+
+  num_used = this->buffer_pool->size(this->buffer_pool) +
+             this->block_buffer->size(this->block_buffer);
+
   if (this->stream->audio_fifo)
     num_used += this->stream->audio_fifo->size(this->stream->audio_fifo);
-  num_free -= this->reserved_buffers;
 
-  if (num_free < 0)
-    num_free = 0;
+  /* fill level */
 
-  log_buffer_fill(this, num_used, num_free, num_vbufs);
+  fill_level = 100 * num_used / (num_used + num_free);
+
+  log_buffer_fill(this, num_used, num_free, num_frames);
+
+
+  /*
+   *
+   */
+
+  int scr_tuning = this->scr_tuning;
 
   /*
    * SCR -> PAUSE
@@ -711,7 +730,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
        */
 
       int trim_rel, trim_act;
-      unsigned fill_level;
 
       #define DIVIDER 8000
       #define WEIGHTING 2
@@ -729,7 +747,6 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
       }
 #endif
       trim_act = scr_tuning - CENTER_POS;
-      fill_level = MAX_FILL_PER_CENT * num_used / (num_used + num_free);
       this->scr_buf.fill_avg += fill_level;
       this->scr_buf.fill_min = MIN(this->scr_buf.fill_min, fill_level);
       this->scr_buf.fill_max = MAX(this->scr_buf.fill_max, fill_level);
@@ -768,20 +785,21 @@ static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
       }
 
     } else {
-      if( num_used > 4*num_free )
+      if (fill_level > 85) {
         scr_tuning = +2; /* play 1% faster */
-      else if( num_used > 2*num_free )
+      } else if (fill_level > 70) {
         scr_tuning = +1; /* play .5% faster */
-      else if( num_free > 4*num_used ) /* <20% */
+      } else if (fill_level < 15) {
         scr_tuning = -2; /* play 1% slower */
-      else if( num_free > 2*num_used ) /* <33% */
+      } else if (fill_level < 30) {
         scr_tuning = -1; /* play .5% slower */
-      else if( (scr_tuning > 0 && num_free > num_used) ||
-               (scr_tuning < 0 && num_used > num_free) )
+      } else if ((scr_tuning > 0 && num_free > num_used) ||
+                 (scr_tuning < 0 && num_used > num_free)) {
         scr_tuning = SCR_TUNING_OFF;
+      }
     }
 
-    if( scr_tuning != this->scr_tuning ) {
+    if (scr_tuning != this->scr_tuning) {
       LOGSCR("scr_tuning: %s -> %s (buffer %d/%d) (tuning now %f%%)",
              scr_tuning_str(this->scr_tuning),
              scr_tuning_str(scr_tuning), num_used, num_free, this->class->scr_tuning_step * scr_tuning * 100.0);
