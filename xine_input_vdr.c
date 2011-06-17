@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.337 2011-06-17 08:24:45 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.338 2011-06-17 13:41:32 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.337 2011-06-17 08:24:45 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.338 2011-06-17 13:41:32 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -271,6 +271,7 @@ static void log_graph(int val, int symb)
 #define KILOBYTE(x)   (1024 * (x))
 
 typedef struct udp_data_s udp_data_t;
+typedef struct slave_stream_s slave_stream_t;
 
 /* plugin class */
 typedef struct vdr_input_class_s {
@@ -285,6 +286,12 @@ typedef struct vdr_input_class_s {
   uint            scr_treshold_hd;
 
 } vdr_input_class_t;
+
+struct slave_stream_s {
+  xine_stream_t      *stream;
+  xine_event_queue_t *event_queue;
+};
+
 
 /* input plugin */
 typedef struct vdr_input_plugin_s {
@@ -305,15 +312,6 @@ typedef struct vdr_input_plugin_s {
   char               *mrl;
 
   xine_stream_t      *pip_stream;
-  xine_stream_t      *slave_stream;
-  xine_event_queue_t *slave_event_queue;
-  int                 autoplay_size;
-
-  /* background image stream */
-  struct {
-    xine_stream_t        *stream;
-    xine_event_queue_t   *event_queue;
-  } bg_stream;
 
   /* Sync */
   pthread_mutex_t     lock;
@@ -327,8 +325,6 @@ typedef struct vdr_input_plugin_s {
   uint8_t             live_mode : 1;
   uint8_t             still_mode : 1;
   uint8_t             stream_start : 1;
-  uint8_t             loop_play : 1;
-  uint8_t             dvd_menu : 1;
   uint8_t             hd_stream : 1;        /* true if current stream is HD */
   uint8_t             sw_volume_control : 1;
   uint8_t             config_ok : 1;
@@ -381,6 +377,13 @@ typedef struct vdr_input_plugin_s {
   uint64_t            curpos;        /* current position (demux side) */
   uint                curframe;
   uint                reserved_buffers;
+
+  /* media player */
+  slave_stream_t      slave;          /* slave stream (media player) data */
+  slave_stream_t      bg_stream;      /* background image stream data */
+  int                 autoplay_size;  /* size of slave stream autoplaylist (ex. CD tracks) */
+  uint8_t             loop_play : 1;
+  uint8_t             dvd_menu : 1;
 
   /* saved video properties */
   uint8_t video_properties_saved;
@@ -565,7 +568,7 @@ static void log_buffer_fill(vdr_input_plugin_t *this, int num_used, int num_free
 static void scr_tuning_set_paused(vdr_input_plugin_t *this)
 {
   if (this->scr_tuning != SCR_TUNING_PAUSED &&
-      !this->slave_stream &&
+      !this->slave.stream &&
       !this->is_trickspeed) {
 
     this->scr_tuning = SCR_TUNING_PAUSED;  /* marked as paused */
@@ -1529,7 +1532,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
     this->stream->metronom->set_option(this->stream->metronom,
                                        METRONOM_PREBUFFER, METRONOM_PREBUFFER_VAL);
 
-    if (this->live_mode || (this->fd_control >= 0 && !this->slave_stream))
+    if (this->live_mode || (this->fd_control >= 0 && !this->slave.stream))
       config->update_num(config, "audio.synchronization.av_sync_method", 1);
 #if 0
     /* does not work after playing music files (?) */
@@ -1586,7 +1589,7 @@ static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
   if (!this->is_paused)
     set_still_mode(this, 0);
 
-  if (this->slave_stream)
+  if (this->slave.stream)
     backwards = 0;
   this->metronom->set_trickspeed(this->metronom, backwards ? speed : 0);
 
@@ -1609,8 +1612,9 @@ static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
     _x_set_fine_speed (this->stream, speed);
   }
 
-  if (this->slave_stream)
-    _x_set_fine_speed (this->slave_stream, speed);
+  if (this->slave.stream) {
+    _x_set_fine_speed (this->slave.stream, speed);
+  }
 
   pthread_mutex_unlock(&this->lock);
   return 0;
@@ -1903,7 +1907,7 @@ static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
     return this->funcs.intercept_osd(this->funcs.fe_handle, cmd) ? CONTROL_OK : CONTROL_DISCONNECTED;
   }
   
-  return this->osd_manager->command(this->osd_manager, cmd, this->slave_stream ?: this->stream);
+  return this->osd_manager->command(this->osd_manager, cmd, this->slave.stream ?: this->stream);
 }
 
 
@@ -2127,14 +2131,14 @@ static int set_video_properties(vdr_input_plugin_t *this,
 
 static void send_meta_info(vdr_input_plugin_t *this)
 {
-  if(this->slave_stream) {
+  if (this->slave.stream) {
 
     /* send stream meta info */
-    char *meta         = NULL;
-    char *title        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TITLE);
-    char *artist       = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ARTIST);
-    char *album        = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_ALBUM);
-    char *tracknumber  = (char *)xine_get_meta_info(this->slave_stream, XINE_META_INFO_TRACK_NUMBER);
+    char *meta        = NULL;
+    char *title       = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_TITLE);
+    char *artist      = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_ARTIST);
+    char *album       = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_ALBUM);
+    char *tracknumber = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_TRACK_NUMBER);
 
     if (asprintf(&meta,
                  "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
@@ -2264,8 +2268,8 @@ static void dvd_menu_domain(vdr_input_plugin_t *this, int value)
   if (value) {
     LOGDBG("dvd_menu_domain(1)");
     this->dvd_menu = 1;
-    this->slave_stream->spu_channel_user = SPU_CHANNEL_AUTO;
-    this->slave_stream->spu_channel = this->slave_stream->spu_channel_auto;
+    this->slave.stream->spu_channel_user = SPU_CHANNEL_AUTO;
+    this->slave.stream->spu_channel = this->slave.stream->spu_channel_auto;
   } else {
     LOGDBG("dvd_menu_domain(0)");
     this->dvd_menu = 0;
@@ -2274,7 +2278,7 @@ static void dvd_menu_domain(vdr_input_plugin_t *this, int value)
 
 static void close_slave_stream(vdr_input_plugin_t *this)
 {
-  if (!this->slave_stream)
+  if (!this->slave.stream)
     return;
 
   if(this->bg_stream.stream) {
@@ -2291,22 +2295,22 @@ static void close_slave_stream(vdr_input_plugin_t *this)
   }
 
   /* dispose event queue first to prevent processing of PLAYBACK FINISHED event */
-  if (this->slave_event_queue) {
-    xine_event_dispose_queue (this->slave_event_queue);
-    this->slave_event_queue = NULL;
+  if (this->slave.event_queue) {
+    xine_event_dispose_queue (this->slave.event_queue);
+    this->slave.event_queue = NULL;
   }
 
-  xine_stop(this->slave_stream);
+  xine_stop(this->slave.stream);
 
   if(this->funcs.fe_control) {
     this->funcs.fe_control(this->funcs.fe_handle, "POST 0 Off\r\n");
     this->funcs.fe_control(this->funcs.fe_handle, "SLAVE 0x0\r\n");
   }
-  xine_close(this->slave_stream);
-  xine_dispose(this->slave_stream);
+  xine_close(this->slave.stream);
+  xine_dispose(this->slave.stream);
 
   pthread_mutex_lock(&this->lock);
-  this->slave_stream = NULL;
+  this->slave.stream = NULL;
   pthread_mutex_unlock(&this->lock);
 
   if(this->funcs.fe_control)
@@ -2359,7 +2363,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       free(host);
     }
 
-    if(this->slave_stream)
+    if (this->slave.stream)
       handle_control_playfile(this, "PLAYFILE 0");
 
     LOGMSG("PLAYFILE  (Loop: %d, Offset: %ds, File: %s %s)",
@@ -2414,31 +2418,31 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
     }
 #endif
 
-    if(!this->slave_stream) {
+    if (!this->slave.stream) {
       cfg_entry_t *e = this->class->xine->config->lookup_entry(this->class->xine->config,
                                                                "engine.buffers.video_num_buffers");
       int vbufs = e ? e->num_value : 250;
       this->class->xine->config->update_num(this->class->xine->config,
 					    "engine.buffers.video_num_buffers", SLAVE_VIDEO_FIFO_SIZE);
       LOGMSG("xine_stream_new(slave_stream): using %dMB video fifo", SLAVE_VIDEO_FIFO_SIZE*8/1024);
-      this->slave_stream = xine_stream_new(this->class->xine, 
-					   this->stream->audio_out, 
-					   this->stream->video_out);
+      this->slave.stream = xine_stream_new(this->class->xine,
+                                           this->stream->audio_out,
+                                           this->stream->video_out);
 
       this->class->xine->config->update_num(this->class->xine->config,
 					    "engine.buffers.video_num_buffers", vbufs);
     }
 
-    if(!this->slave_event_queue) {
-      this->slave_event_queue = xine_event_new_queue (this->slave_stream);
-      xine_event_create_listener_thread (this->slave_event_queue, 
+    if (!this->slave.event_queue) {
+      this->slave.event_queue = xine_event_new_queue (this->slave.stream);
+      xine_event_create_listener_thread (this->slave.event_queue,
 					 vdr_event_cb, this);
     }
-    select_spu_channel(this->slave_stream, SPU_CHANNEL_AUTO);
+    select_spu_channel(this->slave.stream, SPU_CHANNEL_AUTO);
     this->dvd_menu = 0;
 
     errno = 0;
-    err = !xine_open(this->slave_stream, filename);
+    err = !xine_open(this->slave.stream, filename);
     if(err) {
       LOGERR("Error opening file ! (File not found ? Unknown format ?)");
       *filename = 0; /* this triggers stop */
@@ -2458,12 +2462,12 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       set_live_mode(this, 0);
       reset_trick_speed(this);
       reset_scr_tuning(this);
-      this->slave_stream->metronom->set_option(this->slave_stream->metronom, 
-					       METRONOM_PREBUFFER, 90000);
+      this->slave.stream->metronom->set_option(this->slave.stream->metronom,
+                                               METRONOM_PREBUFFER, 90000);
 #endif
 
       this->loop_play = loop;
-      err = !xine_play(this->slave_stream, 0, 1000 * pos);
+      err = !xine_play(this->slave.stream, 0, 1000 * pos);
       if(err) {
 	LOGMSG("Error playing file");
 	*filename = 0; /* this triggers stop */
@@ -2473,11 +2477,11 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
 	if(this->funcs.fe_control) {
 	  char tmp[128];
 	  int has_video;
-	  sprintf(tmp, "SLAVE 0x%lx %s\r\n", 
-		  (unsigned long int)this->slave_stream,
-		  mix_streams ? av : "");
+          sprintf(tmp, "SLAVE 0x%lx %s\r\n",
+                  (unsigned long int)this->slave.stream,
+                  mix_streams ? av : "");
 	  this->funcs.fe_control(this->funcs.fe_handle, tmp);
-	  has_video = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_HAS_VIDEO);
+          has_video = _x_stream_info_get(this->slave.stream, XINE_STREAM_INFO_HAS_VIDEO);
 
           /* Play background image */
           if(!has_video && !mix_streams && *av && !strncmp(av, "image", 5)) {
@@ -2488,7 +2492,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
             /* background image stream init */
             if (!this->bg_stream.stream) {
               LOGDBG("handle_control_playfile: Background stream init");
-              this->bg_stream.stream = xine_stream_new(this->class->xine, NULL, this->slave_stream->video_out);
+              this->bg_stream.stream = xine_stream_new(this->class->xine, NULL, this->slave.stream->video_out);
               xine_set_param(this->bg_stream.stream, XINE_PARAM_IGNORE_AUDIO, 1);
               xine_set_param(this->bg_stream.stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL, -2);
               xine_set_param(this->bg_stream.stream, XINE_PARAM_SPU_CHANNEL, -2);
@@ -2542,7 +2546,7 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
   if(!*filename) {
     LOGMSG("PLAYFILE <STOP>: Closing slave stream");
     this->loop_play = 0;
-    if(this->slave_stream) {
+    if (this->slave.stream) {
       close_slave_stream(this);
 
       _x_demux_control_start(this->stream);
@@ -2790,7 +2794,7 @@ static int vdr_plugin_poll(vdr_input_plugin_t *this, int timeout_ms)
 
   /* Caller must have locked this->vdr_entry_lock ! */
 
-  if (this->slave_stream) {
+  if (this->slave.stream) {
     LOGMSG("vdr_plugin_poll: called while playing slave stream !");
     return 1;
   }
@@ -2859,7 +2863,7 @@ static int vdr_plugin_flush(vdr_input_plugin_t *this, int timeout_ms)
 
   /* Caller must have locked this->vdr_entry_lock ! */
 
-  if(this->slave_stream) {
+  if (this->slave.stream) {
     LOGDBG("vdr_plugin_flush: called while playing slave stream !");
     return 0;
   }
@@ -3006,8 +3010,8 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     return err;
   }
 
-  if(this->slave_stream)
-    stream = this->slave_stream;
+  if (this->slave.stream)
+    stream = this->slave.stream;
 
   if(NULL != (pt = strstr(cmd, "\r\n")))
     *((char*)pt) = 0; /* auts */
@@ -3065,7 +3069,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       if(!strcmp(cmd+6, eventmap[i].name)) {
         xine_event_t ev = {
           .type = eventmap[i].type,
-          .stream = this->slave_stream ?: this->stream,
+          .stream = this->slave.stream ?: this->stream,
           /* tag event to prevent circular input events
              (vdr -> here -> event_listener -> vdr -> ...) */
           .data = "VDR",
@@ -3253,7 +3257,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       xine_set_param(stream, i, eqs[j]);
 
   } else if(!strncasecmp(cmd, "AUDIOSTREAM ", 12)) {
-    if(!this->slave_stream) {
+    if (!this->slave.stream) {
 #if 0
       int ac3 = !strncmp(cmd+12, "AC3", 3);
       if(1 == sscanf(cmd+12 + 4*ac3, "%d", &tmp32)) {
@@ -3280,8 +3284,8 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     int ch_auto = !!strstr(cmd+10, "auto");
     int is_dvd  = 0;
 
-    if (this->slave_stream && this->slave_stream->input_plugin) {
-      const char *mrl = this->slave_stream->input_plugin->get_mrl(this->slave_stream->input_plugin);
+    if (this->slave.stream && this->slave.stream->input_plugin) {
+      const char *mrl = this->slave.stream->input_plugin->get_mrl(this->slave.stream->input_plugin);
       is_dvd = !strncmp(mrl, "dvd:/", 5) ||
                !strncmp(mrl, "bd:/", 4) ||
                !strncmp(mrl, "bluray:/", 8);
@@ -3390,9 +3394,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
     
   } else if(!strncasecmp(cmd, "SEEK ", 5)) {
-    if(this->slave_stream) {
+    if (this->slave.stream) {
       int pos_stream=0, pos_time=0, length_time=0;
-      xine_get_pos_length(this->slave_stream, 
+      xine_get_pos_length(this->slave.stream,
 			  &pos_stream, &pos_time, &length_time);
       if(cmd[5]=='+')
 	pos_time += atoi(cmd+6) * 1000;
@@ -3400,7 +3404,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 	pos_time -= atoi(cmd+6) * 1000;
       else
 	pos_time = atoi(cmd+5) * 1000;
-      err = xine_play (this->slave_stream, 0, pos_time);
+      err = xine_play (this->slave.stream, 0, pos_time);
       if(this->fd_control >= 0)
 	err = CONTROL_OK;
     }
@@ -3429,11 +3433,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
     if(this->autoplay_size < 0) {
       char **list;
-      if(this->slave_stream &&
-	 this->slave_stream->input_plugin &&
-	 this->slave_stream->input_plugin->input_class)
-	list = this->slave_stream->input_plugin->input_class->
-	  get_autoplay_list(this->slave_stream->input_plugin->input_class, &this->autoplay_size);
+      if (this->slave.stream &&
+          this->slave.stream->input_plugin &&
+          this->slave.stream->input_plugin->input_class)
+        list = this->slave.stream->input_plugin->input_class->
+          get_autoplay_list(this->slave.stream->input_plugin->input_class, &this->autoplay_size);
     }
     err = this->autoplay_size;
     if(this->fd_control >= 0) {
@@ -3451,7 +3455,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
   } else if(!strncasecmp(cmd, "SUBTITLES ", 10)) {
-    if(this->slave_stream) {
+    if (this->slave.stream) {
       int vpos = 0;
       if(1 == sscanf(cmd+10, "%d", &vpos))
 	this->class->xine->config->update_num(this->class->xine->config,
@@ -3555,8 +3559,9 @@ static void *vdr_control_thread(void *this_gen)
     write_control(this, "CLOSE\r\n");
   this->control_running = 0;
 
-  if(this->slave_stream)
-    xine_stop(this->slave_stream);
+  if (this->slave.stream) {
+    xine_stop(this->slave.stream);
+  }
 
   LOGDBG("Control thread terminated");
   pthread_exit(NULL);
@@ -3579,7 +3584,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
 
   /* DVD title and menu domain detection */  
 #ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-  i = _x_stream_info_get(this->slave_stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+  i = _x_stream_info_get(this->slave.stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER);
   if(i >= 0) {
     if (i == 0)
       dvd_menu_domain(this, 1);
@@ -3596,9 +3601,9 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   
   strcpy(tracks, "INFO TRACKMAP AUDIO ");
   cnt = strlen(tracks);
-  current = xine_get_param(this->slave_stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
+  current = xine_get_param(this->slave.stream, XINE_PARAM_AUDIO_CHANNEL_LOGICAL);
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
-    if(xine_get_audio_lang(this->slave_stream, i, lang)) {
+    if (xine_get_audio_lang(this->slave.stream, i, lang)) {
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32, 
 		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
       n++;
@@ -3621,7 +3626,7 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   n = 0;  
   strcpy(tracks, "INFO TRACKMAP SPU ");
   cnt = strlen(tracks);
-  current = _x_get_spu_channel (this->slave_stream);
+  current = _x_get_spu_channel (this->slave.stream);
   if(current < 0) {
     /* -2 == none, -1 == auto */
     cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
@@ -3629,10 +3634,10 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
 		    current==SPU_CHANNEL_NONE ? "none" : "auto");
     n++;
     if(current == SPU_CHANNEL_AUTO)
-      current = this->slave_stream->spu_channel_auto;
+      current = this->slave.stream->spu_channel_auto;
   }
   for(i=0; i<32 && cnt<sizeof(tracks)-32; i++)
-    if(xine_get_spu_lang(this->slave_stream, i, lang)) {
+    if (xine_get_spu_lang(this->slave.stream, i, lang)) {
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
 		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
       n++;
@@ -3751,13 +3756,13 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
 
   switch (event->type) {
     case XINE_EVENT_UI_SET_TITLE:
-      if(event->stream==this->slave_stream) {
+      if (event->stream == this->slave.stream) {
 	char msg[256], titlen[64] = "";
 	xine_ui_data_t *data = (xine_ui_data_t *)event->data;
 	LOGMSG("XINE_EVENT_UI_SET_TITLE: %s", data->str);
 
 #ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-	int tt = _x_stream_info_get(this->slave_stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+        int tt = _x_stream_info_get(this->slave.stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
 	snprintf(titlen, sizeof(titlen), "INFO DVDTITLE %d\r\n", tt);
 	if (tt == 0) 
 	  dvd_menu_domain(this, 1);
@@ -3772,7 +3777,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       }
 
     case XINE_EVENT_UI_NUM_BUTTONS:
-      if (event->stream == this->slave_stream) {
+      if (event->stream == this->slave.stream) {
 	xine_ui_data_t *data = (xine_ui_data_t*)event->data;
 	char msg[64];
 	dvd_menu_domain(this, data->num_buttons > 0);
@@ -3786,8 +3791,9 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       }
 
     case XINE_EVENT_UI_CHANNELS_CHANGED:
-      if(event->stream==this->slave_stream) 
+      if (event->stream==this->slave.stream) {
 	slave_track_maps_changed(this);
+      }
       break;
 
     case XINE_EVENT_FRAME_FORMAT_CHANGE:
@@ -3831,7 +3837,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       }
 
       pthread_mutex_lock(&this->lock);
-      if (event->stream == this->slave_stream) {
+      if (event->stream == this->slave.stream) {
 	LOGMSG("XINE_EVENT_UI_PLAYBACK_FINISHED (slave stream)");
 	if (this->fd_control >= 0) {
 	  write_control(this, "ENDOFSTREAM\r\n");
@@ -4581,7 +4587,7 @@ static int vdr_plugin_write(vdr_input_plugin_if_t *this_if, int stream, uint64_t
   vdr_input_plugin_t *this = (vdr_input_plugin_t *) this_if;
   buf_element_t      *buf = NULL;
 
-  if(this->slave_stream)
+  if (this->slave.stream)
     return len;
 
 #ifdef TEST_PIP
@@ -4816,7 +4822,7 @@ static int adjust_scr_speed(vdr_input_plugin_t *this)
 
   if( (!this->live_mode && (this->fd_control < 0 ||
 			    this->fixed_scr)) ||
-      this->slave_stream) {
+      this->slave.stream) {
     if(this->scr_tuning)
       reset_scr_tuning(this);
   } else {
@@ -4845,7 +4851,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
 
   TRACE("vdr_plugin_read_block");
 
-  if (this->slave_stream || !this->config_ok) {
+  if (this->slave.stream || !this->config_ok) {
     if (!this->config_ok) {
       LOGDBG("read_block waiting for configuration data");
       xine_usec_sleep(100*1000);
@@ -4894,7 +4900,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       if (!this->is_paused &&
           !this->still_mode &&
           !this->is_trickspeed &&
-          !this->slave_stream &&
+          !this->slave.stream &&
           this->stream->video_fifo->fifo_size <= 0) {
 
         this->read_timeouts++;
@@ -4963,7 +4969,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
   LOGDBG("vdr_plugin_dispose");
 
   /* stop slave stream */
-  if (this->slave_stream) {
+  if (this->slave.stream) {
     close_slave_stream(this);
   }
 
