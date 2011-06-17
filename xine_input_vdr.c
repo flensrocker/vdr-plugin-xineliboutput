@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.338 2011-06-17 13:41:32 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.339 2011-06-17 13:58:51 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.338 2011-06-17 13:41:32 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.339 2011-06-17 13:58:51 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2135,10 +2135,10 @@ static void send_meta_info(vdr_input_plugin_t *this)
 
     /* send stream meta info */
     char *meta        = NULL;
-    char *title       = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_TITLE);
-    char *artist      = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_ARTIST);
-    char *album       = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_ALBUM);
-    char *tracknumber = (char *)xine_get_meta_info(this->slave.stream, XINE_META_INFO_TRACK_NUMBER);
+    const char *title       = xine_get_meta_info(this->slave.stream, XINE_META_INFO_TITLE);
+    const char *artist      = xine_get_meta_info(this->slave.stream, XINE_META_INFO_ARTIST);
+    const char *album       = xine_get_meta_info(this->slave.stream, XINE_META_INFO_ALBUM);
+    const char *tracknumber = xine_get_meta_info(this->slave.stream, XINE_META_INFO_TRACK_NUMBER);
 
     if (asprintf(&meta,
                  "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
