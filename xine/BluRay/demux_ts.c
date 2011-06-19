@@ -2275,18 +2275,23 @@ static int demux_ts_seek (demux_plugin_t *this_gen,
 
   demux_ts_t *this = (demux_ts_t *) this_gen;
   int i;
-  start_time /= 1000;
   start_pos = (off_t) ( (double) start_pos / 65535 *
               this->input->get_length (this->input) );
 
   if (this->input->get_capabilities(this->input) & INPUT_CAP_SEEKABLE) {
 
     if ((!start_pos) && (start_time)) {
-      start_pos = start_time;
-      start_pos *= this->rate;
-    }
-    this->input->seek (this->input, start_pos, SEEK_SET);
 
+      if (this->input->seek_time) {
+        this->input->seek_time (this->input, start_time, SEEK_SET);
+      } else {
+        start_pos = start_time / 1000;
+        start_pos *= this->rate;
+        this->input->seek (this->input, start_pos, SEEK_SET);
+      }
+    } else {
+      this->input->seek (this->input, start_pos, SEEK_SET);
+    }
   }
 
   this->send_newpts = 1;
