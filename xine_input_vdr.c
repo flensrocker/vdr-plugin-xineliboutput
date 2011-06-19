@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.344 2011-06-19 20:05:49 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.345 2011-06-19 20:15:40 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.344 2011-06-19 20:05:49 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.345 2011-06-19 20:15:40 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1552,7 +1552,7 @@ static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
  *
  * Set/reset live TV mode
  */
-static int set_live_mode(vdr_input_plugin_t *this, int onoff)
+static void set_live_mode(vdr_input_plugin_t *this, int onoff)
 {
   pthread_mutex_lock(&this->lock);
 
@@ -1590,7 +1590,6 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
   pthread_mutex_unlock(&this->lock);
 
   signal_buffer_pool_not_empty(this);
-  return 0;
 }
 
 /*
@@ -1598,7 +1597,7 @@ static int set_live_mode(vdr_input_plugin_t *this, int onoff)
  *
  * Set replay speed
  */
-static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
+static void set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
 {
 /*  speed:
       <0 - show each abs(n)'th frame (drop other frames)
@@ -1611,7 +1610,7 @@ static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
 */
 
   if (speed > 64 || speed < -64)
-    return -2;
+    return;
 
   pthread_mutex_lock(&this->lock);
 
@@ -1648,12 +1647,11 @@ static int set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
   }
 
   pthread_mutex_unlock(&this->lock);
-  return 0;
 }
 
-static int reset_trick_speed(vdr_input_plugin_t *this)
+static void reset_trick_speed(vdr_input_plugin_t *this)
 {
-  return set_trick_speed(this, 1, 0);
+  set_trick_speed(this, 1, 0);
 }
 
 /*
@@ -3181,9 +3179,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
       err = CONTROL_PARAM_ERROR;
 
   } else if(!strncasecmp(cmd, "TRICKSPEED ", 11)) {
-    err = (1 == sscanf(cmd+11, "%d", &tmp32)) ? 
-      set_trick_speed(this, tmp32, !!strstr(cmd+11, "Back")) :
-      CONTROL_PARAM_ERROR;    
+    if (1 == sscanf(cmd+11, "%d", &tmp32)) {
+      set_trick_speed(this, tmp32, !!strstr(cmd+11, "Back"));
+    } else {
+      err = CONTROL_PARAM_ERROR;
+    }
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
     pthread_mutex_lock(&this->lock);
@@ -3209,8 +3209,11 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     pthread_mutex_unlock(&this->lock);
 
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
-    err = (1 == sscanf(cmd+5, "%d", &tmp32)) ? set_live_mode(this, tmp32)
-                                             : CONTROL_PARAM_ERROR;
+    if (1 == sscanf(cmd+5, "%d", &tmp32)) {
+      set_live_mode(this, tmp32);
+    } else {
+      err = CONTROL_PARAM_ERROR;
+    }
 
   } else if(!strncasecmp(cmd, "MASTER ", 7)) {
     if(1 == sscanf(cmd+7, "%d", &tmp32))
