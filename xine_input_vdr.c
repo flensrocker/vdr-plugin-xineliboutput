@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.346 2011-06-19 20:38:53 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.347 2011-06-19 20:54:17 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.346 2011-06-19 20:38:53 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.347 2011-06-19 20:54:17 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1531,6 +1531,7 @@ static void set_buffer_limits(vdr_input_plugin_t *this)
  * set_still_mode()
  *
  * Set/reset still image mode
+ * - caller must hold this->lock !
  */
 static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
 {
@@ -1551,10 +1552,10 @@ static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
  * set_live_mode()
  *
  * Set/reset live TV mode
+ * - caller must hold this->lock !
  */
 static void set_live_mode(vdr_input_plugin_t *this, int onoff)
 {
-  pthread_mutex_lock(&this->lock);
 
   if (this->live_mode != onoff) {
     config_values_t *config = this->class->xine->config;
@@ -1587,8 +1588,6 @@ static void set_live_mode(vdr_input_plugin_t *this, int onoff)
     reset_scr_tuning(this);
   }
 
-  pthread_mutex_unlock(&this->lock);
-
   signal_buffer_pool_not_empty(this);
 }
 
@@ -1596,6 +1595,7 @@ static void set_live_mode(vdr_input_plugin_t *this, int onoff)
  * set_trick_speed()
  *
  * Set replay speed
+ * - caller must hold this->lock !
  */
 static void set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
 {
@@ -1611,8 +1611,6 @@ static void set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
 
   if (speed > 64 || speed < -64)
     return;
-
-  pthread_mutex_lock(&this->lock);
 
   this->is_paused = !!(speed == 0);
 
@@ -1645,8 +1643,6 @@ static void set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
   if (this->slave.stream) {
     _x_set_fine_speed (this->slave.stream, speed);
   }
-
-  pthread_mutex_unlock(&this->lock);
 }
 
 static void reset_trick_speed(vdr_input_plugin_t *this)
@@ -2476,13 +2472,18 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
       xine_usec_sleep(50*1000);
 
       /* keep our own demux happy while playing another stream */
+      pthread_mutex_lock(&this->lock);
+
       reset_trick_speed(this);
       this->live_mode = 1;
       set_live_mode(this, 0);
       reset_trick_speed(this);
       reset_scr_tuning(this);
+
+      pthread_mutex_unlock(&this->lock);
+
       this->slave.stream->metronom->set_option(this->slave.stream->metronom,
-                                               METRONOM_PREBUFFER, 90000);
+                                                      METRONOM_PREBUFFER, 90000);
 #endif
 
       this->loop_play = loop;
@@ -3180,20 +3181,21 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "TRICKSPEED ", 11)) {
     if (1 == sscanf(cmd+11, "%d", &tmp32)) {
+      pthread_mutex_lock(&this->lock);
       set_trick_speed(this, tmp32, !!strstr(cmd+11, "Back"));
+      pthread_mutex_unlock(&this->lock);
     } else {
       err = CONTROL_PARAM_ERROR;
     }
 
   } else if(!strncasecmp(cmd, "STILL ", 6)) {
-    pthread_mutex_lock(&this->lock);
-    /*if(this->fd_control >= 0) {*/
-      if(1 == sscanf(cmd+6, "%d", &tmp32)) {
-	set_still_mode(this, tmp32);
-      } else
-	err = CONTROL_PARAM_ERROR;
-    /*}*/
-    pthread_mutex_unlock(&this->lock);
+    if(1 == sscanf(cmd+6, "%d", &tmp32)) {
+      pthread_mutex_lock(&this->lock);
+      set_still_mode(this, tmp32);
+      pthread_mutex_unlock(&this->lock);
+    } else {
+      err = CONTROL_PARAM_ERROR;
+    }
 
   } else if(!strncasecmp(cmd, "SCR ", 4)) {
     pthread_mutex_lock(&this->lock);
@@ -3210,7 +3212,9 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "LIVE ", 5)) {
     if (1 == sscanf(cmd+5, "%d", &tmp32)) {
+      pthread_mutex_lock(&this->lock);
       set_live_mode(this, tmp32);
+      pthread_mutex_unlock(&this->lock);
     } else {
       err = CONTROL_PARAM_ERROR;
     }
@@ -4774,8 +4778,13 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
 static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int need_pause)
 {
 #ifdef TEST_SCR_PAUSE
-  if(need_pause)
+  if (need_pause) {
+    pthread_mutex_lock(&this->lock);
+
     scr_tuning_set_paused(this);
+
+    pthread_mutex_unlock(&this->lock);
+  }
 #endif
 
   if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
@@ -4804,6 +4813,8 @@ static void handle_disconnect(vdr_input_plugin_t *this)
 
   flush_all_fifos (this, 0);
 
+  pthread_mutex_lock(&this->lock);
+
   reset_trick_speed(this);
   this->live_mode = 0;
   reset_scr_tuning(this);
@@ -4811,6 +4822,8 @@ static void handle_disconnect(vdr_input_plugin_t *this)
 
   this->control_running = 0;
   errno = ENOTCONN;
+
+  pthread_mutex_unlock(&this->lock);
 }
 
 static int adjust_scr_speed(vdr_input_plugin_t *this)
