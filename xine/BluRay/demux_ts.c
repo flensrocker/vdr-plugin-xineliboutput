@@ -2357,11 +2357,11 @@ static void flush_decoders(demux_ts_t *this)
   buf = stream->video_fifo->buffer_pool_alloc (stream->video_fifo);
   buf->type = BUF_CONTROL_FLUSH_DECODER;
   stream->video_fifo->put (stream->video_fifo, buf);
-
+#if 0
   buf = stream->audio_fifo->buffer_pool_alloc (stream->audio_fifo);
   buf->type = BUF_CONTROL_FLUSH_DECODER;
   stream->audio_fifo->put (stream->audio_fifo, buf);
-
+#endif
   /* reset decoders */
   buf = stream->video_fifo->buffer_pool_alloc (stream->video_fifo);
   buf->type = BUF_CONTROL_RESET_DECODER;
