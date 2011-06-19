@@ -135,6 +135,7 @@ typedef struct {
   int                stream_flushed;
   int                pg_enable;
   int                pg_stream;
+  int                mouse_inside_button;
 
   uint32_t       cap_seekable;
   uint8_t        nav_mode;
@@ -584,6 +585,25 @@ static void handle_libbluray_events(bluray_input_plugin_t *this)
   }
 }
 
+static void send_mouse_enter_leave_event(bluray_input_plugin_t *this, int direction)
+{
+  if (direction != this->mouse_inside_button) {
+    xine_event_t        event;
+    xine_spu_button_t   spu_event;
+
+    spu_event.direction = direction;
+    spu_event.button    = 1;
+
+    event.type        = XINE_EVENT_SPU_BUTTON;
+    event.stream      = this->stream;
+    event.data        = &spu_event;
+    event.data_length = sizeof(spu_event);
+    xine_event_send(this->stream, &event);
+
+    this->mouse_inside_button = direction;
+  }
+}
+
 static void handle_events(bluray_input_plugin_t *this)
 {
   if (!this->event_queue)
@@ -636,13 +656,18 @@ static void handle_events(bluray_input_plugin_t *this)
         if (input->button == 1) {
           bd_mouse_select(this->bdh, pts, input->x, input->y);
           bd_user_input(this->bdh, pts, BD_VK_MOUSE_ACTIVATE);
+          send_mouse_enter_leave_event(this, 0);
         }
         break;
       }
 
       case XINE_EVENT_INPUT_MOUSE_MOVE: {
         xine_input_data_t *input = event->data;
-        bd_mouse_select(this->bdh, pts, input->x, input->y);
+        if (bd_mouse_select(this->bdh, pts, input->x, input->y) > 0) {
+          send_mouse_enter_leave_event(this, 1);
+        } else {
+          send_mouse_enter_leave_event(this, 0);
+        }
         break;
       }
 
