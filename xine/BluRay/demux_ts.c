@@ -2388,11 +2388,12 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
 {
   demux_ts_t *this = (demux_ts_t *) this_gen;
   char *str = data;
-  int channel = *((int *)data);
 
   /* be a bit paranoid */
-  if (this == NULL || this->stream == NULL)
+  if (this == NULL || this->stream == NULL || data == NULL)
     return DEMUX_OPTIONAL_UNSUPPORTED;
+
+  int channel = *((int *)data);
 
   switch (data_type)
     {
