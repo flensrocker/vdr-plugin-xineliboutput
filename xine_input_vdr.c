@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.340 2011-06-17 14:26:17 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.341 2011-06-19 07:51:17 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.340 2011-06-17 14:26:17 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.341 2011-06-19 07:51:17 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -2502,10 +2502,9 @@ static int handle_control_playfile(vdr_input_plugin_t *this, const char *cmd)
           has_video = _x_stream_info_get(this->slave.stream, XINE_STREAM_INFO_HAS_VIDEO);
 
           /* Play background image */
-          if(!has_video && !mix_streams && *av && !strncmp(av, "image", 5)) {
+          if(!has_video && !mix_streams && *av && !strncmp(av, "image:", 6)) {
 
-            char bgimage[4096];
-            sprintf(bgimage,"%s",av+6);
+            const char *bgimage = av + 6;
 
             /* background image stream init */
             if (!this->bg_stream.stream) {
