@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.345 2011-06-19 20:15:40 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.346 2011-06-19 20:38:53 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.345 2011-06-19 20:15:40 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.346 2011-06-19 20:38:53 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1829,7 +1829,7 @@ static buf_element_t *fifo_read_block (input_plugin_t *this_gen,
   fifo_input_plugin_t *this = (fifo_input_plugin_t *) this_gen;
   /*LOGDBG("fifo_read_block");*/
 
-  while(!this->stream->demux_action_pending) {
+  while (!_x_action_pending(this->stream)) {
     buf_element_t *buf = fifo_buffer_try_get(this->buffer);
     if(buf) {
       /* LOGDBG("fifo_read_block: got, return"); */
@@ -3893,7 +3893,7 @@ static int wait_stream_sync(vdr_input_plugin_t *this)
 
   while(this->control_running &&
         this->discard_index < this->discard_index_ds &&
-        !this->stream->demux_action_pending &&
+        !_x_action_pending(this->stream) &&
         --counter > 0) {
     struct timespec abstime;
     create_timeout_time(&abstime, 10);
@@ -3916,7 +3916,7 @@ static int wait_stream_sync(vdr_input_plugin_t *this)
   if (!this->control_running) {
     errno = ENOTCONN;
   }
-  else if (this->stream->demux_action_pending) {
+  else if (_x_action_pending(this->stream)) {
     LOGVERBOSE("wait_stream_sync: demux_action_pending set");
     errno = EINTR;
   }
@@ -3991,7 +3991,7 @@ static buf_element_t *vdr_plugin_read_block_tcp(vdr_input_plugin_t *this)
       errno = ENOTCONN;
       return NULL;
     }
-    if (this->stream->demux_action_pending) {
+    if (_x_action_pending(this->stream)) {
       errno = EINTR;
       return NULL;
     }
@@ -4097,7 +4097,7 @@ static buf_element_t *read_socket_udp(vdr_input_plugin_t *this)
     errno = ENOTCONN;
     return NULL;
   }
-  if (this->stream->demux_action_pending) {
+  if (_x_action_pending(this->stream)) {
     errno = EINTR;
     return NULL;
   }
@@ -4442,7 +4442,7 @@ static buf_element_t *vdr_plugin_read_block_udp(vdr_input_plugin_t *this)
     if (NULL != (read_buffer = udp_process_queue(this)))
       return read_buffer;
 
-    if (this->stream->demux_action_pending) {
+    if (_x_action_pending(this->stream)) {
       errno = EINTR;
       return NULL;
     }
@@ -4874,7 +4874,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
     }
 
     /* Return immediately if demux_action_pending flag is set */
-    if (this->stream->demux_action_pending) {
+    if (_x_action_pending(this->stream)) {
       errno = EINTR;
       return NULL;
     }
@@ -4914,7 +4914,7 @@ static buf_element_t *vdr_plugin_read_block (input_plugin_t *this_gen,
       } else {
 	this->read_timeouts = 0;
       }
-      errno = this->stream->demux_action_pending ? EINTR : EAGAIN;
+      errno = _x_action_pending(this->stream) ? EINTR : EAGAIN;
       return NULL;
     }
     this->read_timeouts = 0;
