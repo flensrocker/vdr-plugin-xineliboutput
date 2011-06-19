@@ -262,8 +262,60 @@ static void update_stream_info(bluray_input_plugin_t *this)
   }
 }
 
+static void update_title_name(bluray_input_plugin_t *this)
+{
+  char           title_name[64] = "";
+  xine_ui_data_t udata;
+  xine_event_t   uevent = {
+    .type        = XINE_EVENT_UI_SET_TITLE,
+    .stream      = this->stream,
+    .data        = &udata,
+    .data_length = sizeof(udata)
+  };
+
+  /* check disc library metadata */
+  if (this->meta_dl) {
+    unsigned i;
+    for (i = 0; i < this->meta_dl->toc_count; i++)
+      if (this->meta_dl->toc_entries[i].title_number == (unsigned)this->current_title)
+        if (this->meta_dl->toc_entries[i].title_name)
+          if (strlen(this->meta_dl->toc_entries[i].title_name) > 2)
+            strncpy(title_name, this->meta_dl->toc_entries[i].title_name, sizeof(title_name));
+  }
+
+  /* title name */
+  if (title_name[0]) {
+  } else if (this->current_title == BLURAY_TITLE_TOP_MENU) {
+    strcpy(title_name, "Top Menu");
+  } else if (this->current_title == BLURAY_TITLE_FIRST_PLAY) {
+    strcpy(title_name, "First Play");
+  } else if (this->nav_mode) {
+    snprintf(title_name, sizeof(title_name), "Title %d/%d (PL %d/%d)",
+             this->current_title, this->num_titles,
+             this->current_title_idx + 1, this->num_title_idx);
+  } else {
+    snprintf(title_name, sizeof(title_name), "Title %d/%d",
+             this->current_title_idx + 1, this->num_title_idx);
+  }
+
+  /* disc name */
+  if (this->disc_name && this->disc_name[0]) {
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, %s",
+                             this->disc_name, title_name);
+  } else {
+    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s",
+                             title_name);
+  }
+
+  _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, udata.str);
+
+  xine_event_send(this->stream, &uevent);
+}
+
 static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
 {
+  /* update title_info */
+
   pthread_mutex_lock(&this->title_info_mutex);
 
   if (this->title_info)
@@ -287,52 +339,6 @@ static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
           this->current_title_idx, bd_get_title_size(this->bdh),
           ms / 3600000, (ms % 3600000 / 60000), (ms % 60000) / 1000, ms % 1000);
 #endif
-
-  /* set title */
-
-  xine_ui_data_t udata;
-  xine_event_t uevent = {
-    .type = XINE_EVENT_UI_SET_TITLE,
-    .stream = this->stream,
-    .data = &udata,
-    .data_length = sizeof(udata)
-  };
-
-  char title_name[64] = "";
-
-  if (this->meta_dl) {
-    unsigned i;
-    for (i = 0; i < this->meta_dl->toc_count; i++)
-      if (this->meta_dl->toc_entries[i].title_number == (unsigned)this->current_title)
-        if (this->meta_dl->toc_entries[i].title_name)
-          if (strlen(this->meta_dl->toc_entries[i].title_name) > 2)
-            strncpy(title_name, this->meta_dl->toc_entries[i].title_name, sizeof(title_name));
-  }
-
-  if (title_name[0]) {
-  } else if (this->current_title == BLURAY_TITLE_TOP_MENU) {
-    strcpy(title_name, "Top Menu");
-  } else if (this->current_title == BLURAY_TITLE_FIRST_PLAY) {
-    strcpy(title_name, "First Play");
-  } else if (this->nav_mode) {
-    snprintf(title_name, sizeof(title_name), "Title %d/%d (PL %d/%d)",
-             this->current_title, this->num_titles,
-             this->current_title_idx + 1, this->num_title_idx);
-  } else {
-    snprintf(title_name, sizeof(title_name), "Title %d/%d",
-             this->current_title_idx + 1, this->num_title_idx);
-  }
-
-  if (this->disc_name && this->disc_name[0]) {
-    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s, %s",
-                             this->disc_name, title_name);
-  } else {
-    udata.str_len = snprintf(udata.str, sizeof(udata.str), "%s",
-                             title_name);
-  }
-  xine_event_send(this->stream, &uevent);
-
-  _x_meta_info_set(this->stream, XINE_META_INFO_TITLE, udata.str);
 
   /* calculate and set stream rate */
 
@@ -363,6 +369,9 @@ static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
   }
 
   update_stream_info(this);
+
+  /* set title */
+  update_title_name(this);
 }
 
 static int open_title (bluray_input_plugin_t *this, int title_idx)
