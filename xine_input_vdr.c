@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.343 2011-06-19 19:12:09 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.344 2011-06-19 20:05:49 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.343 2011-06-19 19:12:09 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.344 2011-06-19 20:05:49 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -204,19 +204,19 @@ static void SetupLogLevel(void)
 #ifdef LOG_UDP
 #  define LOGUDP(x...) LOGMSG("UDP:" x)
 #else
-#  define LOGUDP(x...) 
+#  define LOGUDP(x...)
 #endif
 #ifdef LOG_CMD
 #  define LOGCMD(x...) LOGMSG("CMD:" x)
 #else
-#  define LOGCMD(x...) 
+#  define LOGCMD(x...)
 #endif
 #ifdef LOG_TRACE
 #  undef TRACE
 #  define TRACE(x...) printf(x)
 #else
 #  undef TRACE
-#  define TRACE(x...) 
+#  define TRACE(x...)
 #endif
 
 
@@ -417,7 +417,7 @@ struct udp_data_s {
 
   /* missing frames ratio statistics */
   int16_t  missed_frames;
-  int16_t  received_frames; 
+  int16_t  received_frames;
 
   /* SCR adjust */
   uint8_t  scr_jump_done;
@@ -431,16 +431,11 @@ struct udp_data_s {
 #define INCSEQ(x)   (x = NEXTSEQ(x))
 #define ADDSEQ(x,n) ((x + UDP_SEQ_MASK + 1 + n) & UDP_SEQ_MASK)
 
-#define UDP_SIGNAL_FULL_TRESHOLD     50  /* ~100ms with DVB mpeg2 
-					    (2k-blocks @ 8 Mbps)  */
-#define UDP_SIGNAL_NOT_FULL_TRESHOLD 100 /* ~200ms with DVB mpeg2 
-					    (2k-blocks @ 8 Mbps)  */
-
 static udp_data_t *init_udp_data(void)
 {
   udp_data_t *data = calloc(1, sizeof(udp_data_t));
 
-  data->received_frames  = -1; 
+  data->received_frames = -1;
 
   return data;
 }
@@ -449,20 +444,13 @@ static void free_udp_data(udp_data_t *data)
 {
   int i;
 
-  for(i=0; i<=UDP_SEQ_MASK; i++)
-    if(data->queue[i]) {
+  for (i = 0; i <= UDP_SEQ_MASK; i++)
+    if (data->queue[i]) {
       data->queue[i]->free_buffer(data->queue[i]);
       data->queue[i] = NULL;
     }
   free(data);
 }
-
-#if 0
-static void flush_udp_data(udp_data_t *data)
-{
-  /* flush all data immediately even if there are gaps */
-}
-#endif
 
 /********************* cancellable mutex locking *************************/
 
@@ -514,7 +502,7 @@ static void mutex_cleanup(void *arg)
 #ifdef LOG_SCR
 static inline const char *scr_tuning_str(int value)
 {
-  switch(value) {
+  switch (value) {
     case 2:  return "SCR +2";
     case 1:  return "SCR +1";
     case SCR_TUNING_OFF:  return "SCR +0";
