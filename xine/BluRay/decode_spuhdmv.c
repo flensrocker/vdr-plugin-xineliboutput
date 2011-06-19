@@ -881,7 +881,7 @@ static void update_overlays(spuhdmv_decoder_t *this)
 
   while (pseg) {
 
-    if (!pseg->comp_descr.state) {
+    if (!pseg->object_number) {
 
       /* HIDE */
       if (!pseg->shown)
