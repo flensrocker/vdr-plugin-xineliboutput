@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.347 2011-06-19 20:54:17 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.348 2011-06-19 20:56:53 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.347 2011-06-19 20:54:17 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.348 2011-06-19 20:56:53 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -487,6 +487,21 @@ static void mutex_cleanup(void *arg)
     pthread_cleanup_pop(0);                                 \
   }
 
+/****************************** DEBUG **********************************/
+
+#define CHECK_LOCKED(lock)                                              \
+  if (!pthread_mutex_trylock(&lock)) {                                  \
+    LOGMSG("%s: assertion failed: lock %s unlocked !", __PRETTY_FUNCTION__, #lock); \
+    pthread_mutex_unlock(&lock);                                        \
+    return;                                                             \
+  }
+
+#define CHECK_FALSE(flag) \
+  if (flag) {                                                           \
+    LOGMSG("%s: assertion failed: %s is true !", __PRETTY_FUNCTION__, #flag); \
+    return;                                                             \
+  }
+
 /******************************* SCR ***********************************/
 /*
  * SCR fine tuning
@@ -555,9 +570,14 @@ static void log_buffer_fill(vdr_input_plugin_t *this, int num_used, int num_free
 
 static void scr_tuning_set_paused(vdr_input_plugin_t *this)
 {
-  if (this->scr_tuning != SCR_TUNING_PAUSED &&
-      !this->slave.stream &&
-      !this->is_trickspeed) {
+  CHECK_LOCKED(this->lock);
+  CHECK_FALSE(this->is_trickspeed);
+  CHECK_FALSE(this->is_paused);
+  CHECK_FALSE(this->slave.stream);
+  if (this->still_mode)
+    return;
+
+  if (this->scr_tuning != SCR_TUNING_PAUSED) {
 
     this->scr_tuning = SCR_TUNING_PAUSED;  /* marked as paused */
     if (this->scr)
@@ -575,7 +595,13 @@ static void scr_tuning_set_paused(vdr_input_plugin_t *this)
 
 static void reset_scr_tuning(vdr_input_plugin_t *this)
 {
+  CHECK_LOCKED(this->lock);
+
   if (this->scr_tuning != SCR_TUNING_OFF) {
+
+    CHECK_FALSE(this->is_trickspeed);
+    CHECK_FALSE(this->is_paused);
+
     this->scr_tuning = SCR_TUNING_OFF; /* marked as normal */
     if (this->scr)
       this->scr->set_speed_tuning(this->scr, 1.0);
@@ -593,6 +619,11 @@ static void reset_scr_tuning(vdr_input_plugin_t *this)
 
 static void vdr_adjust_realtime_speed(vdr_input_plugin_t *this)
 {
+  CHECK_LOCKED(this->lock);
+  CHECK_FALSE(this->still_mode);
+  CHECK_FALSE(this->is_trickspeed);
+  CHECK_FALSE(this->is_paused);
+
   /*
    * Grab current buffer usage
    */
@@ -1447,6 +1478,8 @@ static buf_element_t *get_buf_element_timed(vdr_input_plugin_t *this, int size, 
  */
 static void strip_network_headers(vdr_input_plugin_t *this, buf_element_t *buf)
 {
+  CHECK_LOCKED(this->lock);
+
   if (buf->type == BUF_LOCAL_BLOCK) {
     stream_local_header_t *header = (stream_local_header_t *)buf->content;
     this->curpos  = header->pos;
@@ -1491,6 +1524,8 @@ static void put_control_buf(fifo_buffer_t *buffer, fifo_buffer_t *pool, int cmd)
  */
 static void set_buffer_limits(vdr_input_plugin_t *this)
 {
+  CHECK_LOCKED(this->lock);
+
   int capacity = (this->hd_stream ? this->hd_buffer : this->buffer_pool)->buffer_pool_capacity;
   int max_buffers;
 
@@ -1535,6 +1570,11 @@ static void set_buffer_limits(vdr_input_plugin_t *this)
  */
 static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
 {
+  CHECK_LOCKED(this->lock);
+
+  if (still_mode || this->still_mode)
+    CHECK_FALSE(this->live_mode);
+
   pthread_mutex_lock (&this->stream->first_frame_lock);
   this->stream->first_frame_flag = 2;
   pthread_mutex_unlock (&this->stream->first_frame_lock);
@@ -1556,6 +1596,7 @@ static void set_still_mode(vdr_input_plugin_t *this, int still_mode)
  */
 static void set_live_mode(vdr_input_plugin_t *this, int onoff)
 {
+  CHECK_LOCKED(this->lock);
 
   if (this->live_mode != onoff) {
     config_values_t *config = this->class->xine->config;
@@ -1609,6 +1650,8 @@ static void set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
       1 - normal
 */
 
+  CHECK_LOCKED(this->lock);
+
   if (speed > 64 || speed < -64)
     return;
 
@@ -1622,7 +1665,10 @@ static void set_trick_speed(vdr_input_plugin_t *this, int speed, int backwards)
   this->metronom->set_trickspeed(this->metronom, backwards ? speed : 0);
 
   if (speed > 1 || speed < -1) {
+    CHECK_FALSE(this->live_mode);
+
     reset_scr_tuning(this);
+
     this->is_trickspeed = 1;
   } else {
     this->is_trickspeed = 0;
@@ -1998,6 +2044,8 @@ static void vdr_x_demux_control_newpts( xine_stream_t *stream, int64_t pts,
 
 static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
 {
+  CHECK_LOCKED(this->lock);
+
   if(this->stream_start) {
     LOGMSG("vdr_flush_engine: stream_start, flush skipped");
     return;
