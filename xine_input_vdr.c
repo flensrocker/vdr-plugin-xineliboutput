@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.341 2011-06-19 07:51:17 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.342 2011-06-19 14:09:51 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.341 2011-06-19 07:51:17 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.342 2011-06-19 14:09:51 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3586,6 +3586,28 @@ static void *vdr_control_thread(void *this_gen)
 
 /**************************** Control to VDR ********************************/
 
+static void update_dvd_title_number(vdr_input_plugin_t *this)
+{
+  /* DVD title number and menu domain detection */
+
+#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
+  int tn = _x_stream_info_get(this->slave.stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER);
+  int tc = _x_stream_info_get(this->slave.stream, XINE_STREAM_INFO_DVD_TITLE_COUNT);
+
+  if (tn >= 0 && tc > 0) {
+    if (tn == 0)
+      dvd_menu_domain(this, 1);
+
+    char buf[64];
+    sprintf(buf, "INFO DVDTITLE %d/%d\r\n", tn, tc);
+    if(this->funcs.xine_input_event)
+      this->funcs.xine_input_event(buf, NULL);
+    else
+      write_control(this, buf);
+  }
+#endif
+}
+
 static const char *trim_str(const char *s)
 {
   while (*s == ' ' || *s == '\r' || *s == '\n')
@@ -3599,20 +3621,8 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   int i, current, n = 0;
   size_t cnt;
 
-  /* DVD title and menu domain detection */  
-#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-  i = _x_stream_info_get(this->slave.stream, XINE_STREAM_INFO_DVD_TITLE_NUMBER);
-  if(i >= 0) {
-    if (i == 0)
-      dvd_menu_domain(this, 1);
-    sprintf(tracks, "INFO DVDTITLE %d\r\n", i);
-    if(this->funcs.xine_input_event)
-      this->funcs.xine_input_event(tracks, NULL);
-    else
-      write_control(this, tracks);
-    LOGDBG("%s", tracks);
-  }
-#endif
+  /* DVD title and menu domain detection */
+  update_dvd_title_number(this);
 
   /* Audio tracks */
   
@@ -3774,17 +3784,13 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
   switch (event->type) {
     case XINE_EVENT_UI_SET_TITLE:
       if (event->stream == this->slave.stream) {
-	char msg[256], titlen[64] = "";
+        char msg[256];
 	xine_ui_data_t *data = (xine_ui_data_t *)event->data;
 	LOGMSG("XINE_EVENT_UI_SET_TITLE: %s", data->str);
 
-#ifdef XINE_STREAM_INFO_DVD_TITLE_NUMBER
-        int tt = _x_stream_info_get(this->slave.stream,XINE_STREAM_INFO_DVD_TITLE_NUMBER);
-	snprintf(titlen, sizeof(titlen), "INFO DVDTITLE %d\r\n", tt);
-	if (tt == 0) 
-	  dvd_menu_domain(this, 1);
-#endif
-	snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n%s", data->str, titlen);
+        update_dvd_title_number(this);
+
+        snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n", data->str);
 	msg[sizeof(msg)-1] = 0;
 	if(this->funcs.xine_input_event) 
 	  this->funcs.xine_input_event(msg, NULL);
