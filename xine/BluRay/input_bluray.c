@@ -635,6 +635,7 @@ static void handle_events(bluray_input_plugin_t *this)
           } else {
             bd_play_title(this->bdh, MAX(1, this->current_title - 1));
           }
+          stream_reset(this);
           break;
 
         case XINE_EVENT_INPUT_RIGHT:
@@ -644,6 +645,7 @@ static void handle_events(bluray_input_plugin_t *this)
           } else {
             bd_play_title(this->bdh, MIN(this->num_titles, this->current_title + 1));
           }
+          stream_reset(this);
           break;
       }
     }
