@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.342 2011-06-19 14:09:51 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.343 2011-06-19 19:12:09 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.342 2011-06-19 14:09:51 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.343 2011-06-19 19:12:09 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1143,6 +1143,31 @@ static ssize_t read_control(vdr_input_plugin_t *this, uint8_t *buf, size_t len)
   }
 
   return total_bytes;
+}
+
+static void puts_vdr(vdr_input_plugin_t *this, const char *s)
+{
+  if (this->fd_control < 0) {
+    if (this->funcs.xine_input_event) {
+      this->funcs.xine_input_event(s, NULL);
+    }
+  } else {
+    write_control(this, s);
+  }
+}
+
+static void printf_vdr(vdr_input_plugin_t *this, const char *fmt, ...)
+{
+  va_list argp;
+  char    buf[512];
+
+  va_start(argp, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, argp);
+  buf[sizeof(buf)-1] = 0;
+
+  puts_vdr(this, buf);
+
+  va_end(argp);
 }
 
 /************************** BUFFER HANDLING ******************************/
@@ -2152,23 +2177,13 @@ static void send_meta_info(vdr_input_plugin_t *this)
   if (this->slave.stream) {
 
     /* send stream meta info */
-    char *meta        = NULL;
     const char *title       = xine_get_meta_info(this->slave.stream, XINE_META_INFO_TITLE);
     const char *artist      = xine_get_meta_info(this->slave.stream, XINE_META_INFO_ARTIST);
     const char *album       = xine_get_meta_info(this->slave.stream, XINE_META_INFO_ALBUM);
     const char *tracknumber = xine_get_meta_info(this->slave.stream, XINE_META_INFO_TRACK_NUMBER);
 
-    if (asprintf(&meta,
-                 "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
-                 title?:"", artist?:"", album?:"", tracknumber?:"") < 0)
-      return;
-
-    if(this->fd_control < 0)
-      this->funcs.xine_input_event(meta, NULL);
-    else
-      write_control(this, meta);
-
-    free(meta);
+    printf_vdr(this, "INFO METAINFO title=@%s@ artist=@%s@ album=@%s@ tracknumber=@%s@\r\n",
+               title?:"", artist?:"", album?:"", tracknumber?:"");
   }
 }
 
@@ -3598,12 +3613,7 @@ static void update_dvd_title_number(vdr_input_plugin_t *this)
     if (tn == 0)
       dvd_menu_domain(this, 1);
 
-    char buf[64];
-    sprintf(buf, "INFO DVDTITLE %d/%d\r\n", tn, tc);
-    if(this->funcs.xine_input_event)
-      this->funcs.xine_input_event(buf, NULL);
-    else
-      write_control(this, buf);
+    printf_vdr(this, "INFO DVDTITLE %d/%d\r\n", tn, tc);
   }
 #endif
 }
@@ -3639,15 +3649,9 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   if(n>1)
     LOGDBG("%s", tracks);
 
-  if(this->funcs.xine_input_event) {
-    /* local mode: -> VDR */
-    this->funcs.xine_input_event(tracks, NULL);
-  } else {
-    /* remote mode: -> connection -> VDR */
-    strcpy(tracks+cnt, "\r\n");
-    write_control(this, tracks);
-  }
-  
+  strcpy(tracks + cnt, "\r\n");
+  puts_vdr(this, tracks);
+
   /* DVD SPU tracks */
 
   n = 0;  
@@ -3672,13 +3676,9 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
   tracks[sizeof(tracks)-1] = 0;
   if(n>1)
     LOGDBG("%s", tracks);
-  
-  if(this->funcs.xine_input_event) {
-    this->funcs.xine_input_event(tracks, NULL);
-  } else {
-    strcpy(tracks+cnt, "\r\n");
-    write_control(this, tracks);
-  }
+
+  strcpy(tracks + cnt, "\r\n");
+  puts_vdr(this, tracks);
 }
 
 /* Map some xine input events to vdr input (remote key names) */
@@ -3784,32 +3784,20 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
   switch (event->type) {
     case XINE_EVENT_UI_SET_TITLE:
       if (event->stream == this->slave.stream) {
-        char msg[256];
 	xine_ui_data_t *data = (xine_ui_data_t *)event->data;
 	LOGMSG("XINE_EVENT_UI_SET_TITLE: %s", data->str);
 
         update_dvd_title_number(this);
 
-        snprintf(msg, sizeof(msg), "INFO TITLE %s\r\n", data->str);
-	msg[sizeof(msg)-1] = 0;
-	if(this->funcs.xine_input_event) 
-	  this->funcs.xine_input_event(msg, NULL);
-	else
-	  write_control(this, msg);
+        printf_vdr(this, "INFO TITLE %s\r\n", data->str);
 	break;
       }
 
     case XINE_EVENT_UI_NUM_BUTTONS:
       if (event->stream == this->slave.stream) {
 	xine_ui_data_t *data = (xine_ui_data_t*)event->data;
-	char msg[64];
 	dvd_menu_domain(this, data->num_buttons > 0);
-	snprintf(msg, sizeof(msg), "INFO DVDBUTTONS %d\r\n", data->num_buttons);
-	msg[sizeof(msg)-1] = 0;
-	if (this->funcs.xine_input_event) 
-	  this->funcs.xine_input_event(msg, NULL);
-	else
-	  write_control(this, msg);
+	printf_vdr(this, "INFO DVDBUTTONS %d\r\n", data->num_buttons);
 	break;
       }
 
