@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.162 2011-07-01 12:43:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.163 2011-07-01 12:49:16 phintuka Exp $
  *
  */
 
@@ -30,9 +30,6 @@
 #endif
 #ifdef HAVE_XSHAPE
 #  include <X11/extensions/shape.h>
-#endif
-#ifdef HAVE_XF86VIDMODE
-#  include <X11/extensions/xf86vmode.h>
 #endif
 #ifdef HAVE_XDPMS
 #  include <X11/extensions/dpms.h>
@@ -118,10 +115,6 @@ typedef struct sxfe_s {
   int      screen;
   int      window_id;        /* output to another window */
   int      completion_event;
-#ifdef HAVE_XF86VIDMODE
-  int      XF86_modelines_count;
-  XF86VidModeModeInfo**  XF86_modelines;
-#endif
   Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
   int      mousecursor_timeout;
 #ifdef HAVE_XDPMS
