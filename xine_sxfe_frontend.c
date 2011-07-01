@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.163 2011-07-01 12:49:16 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.164 2011-07-01 12:56:53 phintuka Exp $
  *
  */
 
@@ -553,8 +553,13 @@ static void update_xinerama_info(sxfe_t *this)
  */
 static void update_screen_size(sxfe_t *this)
 {
-  this->x.width = DisplayWidth(this->display, this->screen);
+  XLockDisplay (this->display);
+
+  this->x.width  = DisplayWidth(this->display, this->screen);
   this->x.height = DisplayHeight(this->display, this->screen);
+
+  XUnlockDisplay(this->display);
+
   update_xinerama_info(this);
 }
 
