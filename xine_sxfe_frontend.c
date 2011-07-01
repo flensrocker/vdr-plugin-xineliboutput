@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.158 2011-03-20 20:17:06 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.159 2011-07-01 12:33:20 phintuka Exp $
  *
  */
 
@@ -160,7 +160,7 @@ typedef struct sxfe_s {
   uint8_t  no_border : 1;
   uint8_t  check_move : 1;
   uint8_t  dragging : 1;
-  uint8_t  hud : 1;
+  uint8_t  hud;
   uint8_t  xshape_hud : 1;
   uint8_t  opengl_always : 1;
   uint8_t  opengl_hud : 1;
