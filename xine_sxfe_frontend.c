@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.160 2011-07-01 12:34:45 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.161 2011-07-01 12:36:20 phintuka Exp $
  *
  */
 
@@ -1840,7 +1840,7 @@ static void *opengl_draw_frame_thread(void *arg)
       draw_frame = 0; // first frame not yet available in pixmap
       osd_alpha -= 2*osd_alpha_step; // delay the osd
     }
-    if (this->opengl_hud && !this->hud_visible && prev_hud_visible && !keep_osd_open) {
+    if (this->opengl_hud && !this->hud_visible && prev_hud_visible && !keep_osd_open && !this->opengl_always) {
       LOGDBG("redirecting video to window");
       xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
                               (void*) this->window[this->fullscreen ? 1 : 0]);
@@ -1895,10 +1895,8 @@ static void *opengl_draw_frame_thread(void *arg)
       }
       glXSwapBuffers(this->display, this->opengl_window);
       XUnlockDisplay(this->display);
-      first_frame = 0;
     }
-
-    if (this->hud_visible && prev_hud_visible && !window_mapped) {
+    if ((this->hud_visible && prev_hud_visible && !window_mapped) || (first_frame && this->opengl_always)) {
       (*getVideoSync) (&sync);
       (*waitVideoSync) (2, (sync + 1) % 2, &sync); // ensure that window shows correct frame
       LOGDBG("mapping opengl window");
@@ -1908,7 +1906,7 @@ static void *opengl_draw_frame_thread(void *arg)
       XUnlockDisplay(this->display);
       window_mapped = 1;
     }
-    if (!this->hud_visible && !prev_hud_visible && window_mapped && !keep_osd_open) {
+    if (!this->hud_visible && !prev_hud_visible && window_mapped && !keep_osd_open && !this->opengl_always) {
       LOGDBG("unmapping opengl window");
       XLockDisplay(this->display);
       XLowerWindow (this->display, this->opengl_window);
@@ -1920,6 +1918,7 @@ static void *opengl_draw_frame_thread(void *arg)
       prev_hud_visible = this->hud_visible;
     }
     prev_sync = sync;
+    first_frame = 0;
   }
 
   // Free resources
