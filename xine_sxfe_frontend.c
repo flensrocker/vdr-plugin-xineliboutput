@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.164 2011-07-01 12:56:53 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.165 2011-07-01 12:57:39 phintuka Exp $
  *
  */
 
@@ -169,7 +169,7 @@ typedef struct sxfe_s {
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
-  uint8_t         hud_visible;
+  uint8_t         hud_visible;     /* used with XShape and OpenGL */
 #ifdef HAVE_OPENGL
   GLXDrawable     opengl_window;
   GLXContext      opengl_context;
@@ -988,7 +988,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     default:
-      LOGDBG("hud_osd_command: unknown osd command");
+      LOGDBG("hud_osd_command: unknown osd command %d", cmd->cmd);
       break;
     }
     XUnlockDisplay(this->display);
@@ -1982,10 +1982,20 @@ static int sxfe_display_open(frontend_t *this_gen,
     this->osd_height = OSD_DEF_HEIGHT;
     this->opengl_always = !!opengl;
     if (this->opengl_always) {
+# ifdef HAVE_OPENGL
       LOGDBG("sxfe_display_open: Using opengl to draw video and HUD OSD");
+# else
+      LOGMSG("sxfe_display_open: Application was compiled without OpenGL support.");
+      return 0;
+# endif
     }
     if (this->opengl_hud) {
+# ifdef HAVE_OPENGL
       LOGDBG("sxfe_display_open: Using opengl to draw HUD OSD only");
+# else
+      LOGMSG("sxfe_display_open: Application was compiled without OpenGL support.");
+      return 0;
+# endif
     }
 #else
     LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
