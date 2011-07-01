@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.166 2011-07-01 13:01:02 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.167 2011-07-01 13:01:58 phintuka Exp $
  *
  */
 
@@ -719,6 +719,26 @@ static void hud_fill_argb(uint32_t* dst, const struct osd_command_s *cmd)
   }
 }
 
+static void update_mask(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
+{
+  uint x, y;
+  *mask_changed = 0;
+
+  dst  += HUD_MAX_WIDTH * cmd->y + cmd->x;
+  mask += HUD_MAX_WIDTH * cmd->y + cmd->x;
+
+  for (y = 0; y < cmd->h; y++) {
+    for (x = 0; x < cmd->w; x++) {
+      if (mask[x] != dst[x]) {
+        *mask_changed = 1;
+        mask[x] = dst[x];
+      }
+    }
+    dst  += HUD_MAX_WIDTH;
+    mask += HUD_MAX_WIDTH;
+  }
+}
+
 static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
 {
   if (cmd->cmd == OSD_Set_LUT8) {
@@ -728,40 +748,18 @@ static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed
     hud_fill_argb(dst, cmd);
 
   } else if (cmd->cmd == OSD_Set_RLE) {
-
-  uint i, pixelcounter = 0;
-  int idx = cmd->y * HUD_MAX_WIDTH + cmd->x;
-  uint32_t lut[256];
-
-  rle_palette_to_argb(lut, cmd->palette, cmd->colors);
-
-  if (mask_changed)
-    *mask_changed = 0;
-
-  for(i = 0; i < cmd->num_rle; ++i) {
-    uint32_t finalcolor = lut[(cmd->data + i)->color];
-    uint     j;
-
-    for (j = 0; j < (cmd->data + i)->len; ++j) {
-      if (pixelcounter >= cmd->w) {
-        idx += HUD_MAX_WIDTH - pixelcounter;
-        pixelcounter = 0;
-      }
-      dst[idx] = finalcolor;
-      if (mask) {
-        if ((dst[idx] && (!mask[idx])) || (!dst[idx] && mask[idx])) {
-          *mask_changed = 1;
-          mask[idx] = dst[idx];
-        }
-      }
-      ++idx;
-      ++pixelcounter;
-    }
-  }
+    rle_uncompress_argb(dst + cmd->y * HUD_MAX_WIDTH + cmd->x,
+                        cmd->w, cmd->h, HUD_MAX_WIDTH,
+                        cmd->data, cmd->num_rle,
+                        cmd->palette, cmd->colors);
 
   } else {
     LOGMSG("hud_img_fill_memory(): unsupported format");
     return;
+  }
+
+  if (mask && mask_changed) {
+    update_mask(dst, mask, mask_changed, cmd);
   }
 }
 
