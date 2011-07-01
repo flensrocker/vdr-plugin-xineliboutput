@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.161 2011-07-01 12:36:20 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.162 2011-07-01 12:43:29 phintuka Exp $
  *
  */
 
@@ -1426,7 +1426,8 @@ static void create_windows(sxfe_t *this)
   xswa.border_pixel     = 0;
   xswa.backing_store    = WhenMapped;
 
-  xswa_mask = CWBackPixel | CWBorderPixel | CWBackingStore;
+  //xswa_mask = CWBackPixel | CWBorderPixel | CWBackingStore;
+  xswa_mask = CWBorderPixel | CWBackingStore;
 
   XLockDisplay(this->display);
 
