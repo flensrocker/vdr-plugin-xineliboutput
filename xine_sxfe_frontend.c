@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.159 2011-07-01 12:33:20 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.160 2011-07-01 12:34:45 phintuka Exp $
  *
  */
 
@@ -1770,6 +1770,14 @@ static void *opengl_draw_frame_thread(void *arg)
   XDouble video_tex_width, video_tex_height;
   int first_frame = 1;
 
+  XLockDisplay (this->display);
+  if (opengl_init(this) < 0) {
+    LOGMSG("OpenGL initialization failed");
+    XUnlockDisplay (this->display);
+    exit(1);
+  }
+  XUnlockDisplay (this->display);
+
   while (1) {
 
     // Wait for trigger
@@ -1924,15 +1932,6 @@ static int opengl_start(sxfe_t *this)
   LOGDBG("sxfe_display_open: starting opengl drawing thread");
   pthread_mutex_init(&this->opengl_redraw_mutex, NULL);
   pthread_cond_init(&this->opengl_redraw_cv, NULL);
-
-  XLockDisplay (this->display);
-  if (opengl_init(this) < 0) {
-    LOGMSG("OpenGL initialization failed");
-    XUnlockDisplay (this->display);
-    return 0;
-  }
-  XUnlockDisplay (this->display);
-
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
