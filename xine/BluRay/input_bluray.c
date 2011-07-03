@@ -173,34 +173,9 @@ static void close_overlay(bluray_input_plugin_t *this, int plane)
   }
 }
 
-static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
+static void draw_bitmap(xine_osd_t *osd, const BD_OVERLAY * const ov)
 {
-  bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
   unsigned i;
-
-  if (!this) {
-    return;
-  }
-
-  if (!ov) {
-    /* hide OSD */
-    close_overlay(this, -1);
-    return;
-  }
-
-  if (ov->plane > 1) {
-    return;
-  }
-
-  /* open xine OSD */
-
-  if (!this->osd[ov->plane]) {
-    this->osd[ov->plane] = xine_osd_new(this->stream, 0, 0, 1920, 1080);
-  }
-  xine_osd_t *osd = this->osd[ov->plane];
-  if (!this->pg_enable) {
-    _x_select_spu_channel(this->stream, -1);
-  }
 
   /* convert and set palette */
   if (ov->palette) {
@@ -227,6 +202,39 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     xine_osd_draw_bitmap(osd, img, ov->x, ov->y, ov->w, ov->h, NULL);
 
     free(img);
+  }
+}
+
+static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
+{
+  bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
+
+  if (!this) {
+    return;
+  }
+
+  if (!ov) {
+    /* hide OSD */
+    close_overlay(this, -1);
+    return;
+  }
+
+  if (ov->plane > 1) {
+    return;
+  }
+
+  /* open xine OSD */
+
+  if (!this->osd[ov->plane]) {
+    this->osd[ov->plane] = xine_osd_new(this->stream, 0, 0, 1920, 1080);
+  }
+  xine_osd_t *osd = this->osd[ov->plane];
+  if (!this->pg_enable) {
+    _x_select_spu_channel(this->stream, -1);
+  }
+
+  if (ov->img) {
+    draw_bitmap(osd, ov);
 
   } else {
 
