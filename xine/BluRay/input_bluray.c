@@ -155,6 +155,17 @@ static void send_num_buttons(bluray_input_plugin_t *this, int n)
   xine_event_send(this->stream, &event);
 }
 
+static xine_osd_t *get_overlay(bluray_input_plugin_t *this, int plane)
+{
+  if (!this->osd[plane]) {
+    this->osd[plane] = xine_osd_new(this->stream, 0, 0, 1920, 1080);
+  }
+  if (!this->pg_enable) {
+    _x_select_spu_channel(this->stream, -1);
+  }
+  return this->osd[plane];
+}
+
 static void close_overlay(bluray_input_plugin_t *this, int plane)
 {
   if (plane < 0) {
@@ -223,15 +234,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     return;
   }
 
-  /* open xine OSD */
-
-  if (!this->osd[ov->plane]) {
-    this->osd[ov->plane] = xine_osd_new(this->stream, 0, 0, 1920, 1080);
-  }
-  xine_osd_t *osd = this->osd[ov->plane];
-  if (!this->pg_enable) {
-    _x_select_spu_channel(this->stream, -1);
-  }
+  xine_osd_t *osd = get_overlay(this, ov->plane);
 
   if (ov->img) {
     draw_bitmap(osd, ov);
