@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.80 2011-07-10 17:57:14 phintuka Exp $
+ * $Id: config.h,v 1.81 2011-07-10 21:35:22 phintuka Exp $
  *
  */
 
@@ -453,6 +453,7 @@ class config_t {
     static bool IsDvdFolder(const char *);
     static bool IsBluRayFolder(const char *);
     static bool IsDvdImage(const char *);
+    static bool IsBluRayImage(const char *);
 
     cString AutocropOptions(void);
     cString SwScaleOptions(void);

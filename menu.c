@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.87 2011-06-14 21:56:17 phintuka Exp $
+ * $Id: menu.c,v 1.88 2011-07-10 21:35:22 phintuka Exp $
  *
  */
 
@@ -408,6 +408,10 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
         if (Rewind)
           unlink(cString::sprintf("%s.resume", *f));
 
+        if (GetCurrent()->IsBluRay()) {
+          AddSubMenu(new cMenuBluray(f));
+          return osContinue;
+        }
         if (GetCurrent()->IsDvd())
           cPlayerFactory::Launch(pmAudioVideo, cPlaylist::BuildMrl("dvd", f), NULL, true);
         else
@@ -479,6 +483,10 @@ bool cMenuBrowseFiles::ScanDir(const char *DirName)
             // images
             } else if (m_Mode == ShowImages && xc.IsImageFile(buffer)) {
               Add(new cFileListItem(e->d_name, false));
+
+            // BluRay image (.iso)
+            } else if (m_Mode == ShowFiles && xc.IsBluRayImage(buffer)) {
+              Add(new cFileListItem(e->d_name, false, false, NULL, false, true));
 
             // DVD image (.iso)
             } else if (m_Mode == ShowFiles && xc.IsDvdImage(buffer)) {

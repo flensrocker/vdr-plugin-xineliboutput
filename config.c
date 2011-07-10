@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.104 2011-07-10 17:46:52 phintuka Exp $
+ * $Id: config.c,v 1.105 2011-07-10 21:35:22 phintuka Exp $
  *
  */
 
@@ -419,6 +419,17 @@ bool config_t::IsDvdImage(const char *fname)
 {
   const char *ext = get_extension(fname);
   return (ext && !strcasecmp(ext, "iso")) ? true : false;
+}
+
+bool config_t::IsBluRayImage(const char *fname)
+{
+  if (IsDvdImage(fname)) {
+    struct stat st;
+    if (!stat(fname, &st)) {
+      return st.st_size > 10*1024*1024*1024ll;
+    }
+  }
+  return false;
 }
 
 bool config_t::IsDvdFolder(const char *fname)
