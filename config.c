@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.103 2011-03-20 21:31:36 phintuka Exp $
+ * $Id: config.c,v 1.104 2011-07-10 17:46:52 phintuka Exp $
  *
  */
 
@@ -604,7 +604,7 @@ config_t::config_t() {
   alpha_correction_abs = 0;
 
   fullscreen     = 0;
-  modeswitch     = 1;
+  modeswitch     = 0;
   width          = 720;
   height         = 576;
   scale_video    = 0;
@@ -716,7 +716,7 @@ bool config_t::ProcessArg(const char *Name, const char *Value)
 
 bool config_t::ProcessArgs(int argc, char *argv[])
 {
-  static const char short_options[] = "fDw:h:l:r:A:V:d:P:C:pc";
+  static const char short_options[] = "fDw:h:l:mr:A:V:d:P:C:pc";
 
   static const struct option long_options[] = {
       { "fullscreen",   no_argument,       NULL, 'f' },
@@ -734,6 +734,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
       { "video",        required_argument, NULL, 'V' },
       { "display",      required_argument, NULL, 'd' },
       { "window",       required_argument, NULL, 'W' },
+      { "modeswitch",   no_argument,       NULL, 'm' },
       { "post",         required_argument, NULL, 'P' },
       { "config",       required_argument, NULL, 'C' },
       { "primary",      no_argument,       NULL, 'p' },
@@ -747,6 +748,11 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'd': ProcessArg("Video.Port", optarg);
               break;
     case 'W': ProcessArg("X11.WindowId", optarg);
+              break;
+    case 'm': ProcessArg("VideoModeSwitching", "1");
+#ifndef HAVE_XRANDR
+              LOGMSG("Video mode switching not supported");
+#endif
               break;
     case 'f': ProcessArg("Fullscreen", "1");
               break;

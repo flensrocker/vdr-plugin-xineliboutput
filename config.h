@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.78 2011-03-20 21:31:36 phintuka Exp $
+ * $Id: config.h,v 1.79 2011-07-10 17:46:12 phintuka Exp $
  *
  */
 
@@ -360,6 +360,12 @@ class config_t {
     int  ffmpeg_pp;           // enable / disable
     int  ffmpeg_pp_quality;   // 0...6
     char ffmpeg_pp_mode[256];
+
+#if 1
+    int autocrop_method;
+    int autocrop_output_aspect;
+    int autocrop_overscan;
+#endif
 
     // automatic 4:3 letterbox -> 16:9 cropping post plugin
     int  autocrop;            // enable / disable
