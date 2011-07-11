@@ -31,8 +31,8 @@ endif
 # compiler options
 #
 
-CFLAGS      += -O2 -fPIC
-CFLAGS      += -Wall
+CFLAGS      += -O2 -fPIC -ggdb
+CFLAGS      += -Wall -Wextra -Wno-unused-parameter
 CFLAGS      += -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 CFLAGS      += $(shell pkg-config libxine --cflags)
 CFLAGS      += $(CFLAGS_BD)
