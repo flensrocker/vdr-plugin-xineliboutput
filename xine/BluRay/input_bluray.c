@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2000-2005 the xine project
  *
- * Copyright (C) 2009 Petri Hintukainen <phintuka@users.sourceforge.net>
+ * Copyright (C) 2009-2011 Petri Hintukainen <phintuka@users.sourceforge.net>
  *
  * This file is part of xine, a free video player.
  *
@@ -22,7 +22,7 @@
  * Input plugin for BluRay discs / images
  *
  * Requires libbluray from git://git.videolan.org/libbluray.git
- * Tested with revision 2011-06-13 18:00 UTC
+ * Tested with revision 2011-07-11 08:45 UTC
  *
  */
 
@@ -1280,8 +1280,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_COUNTRY_CODE, this->class->country);
 
   /* init eq */
-  BD_EVENT ev;
-  bd_get_event(this->bdh, &ev);
+  bd_get_event(this->bdh, NULL);
 
   /* get disc name */
 
