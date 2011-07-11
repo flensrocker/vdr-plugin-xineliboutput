@@ -125,7 +125,8 @@ static void lpcm_decode_data (audio_decoder_t *this_gen, buf_element_t *buf) {
       num_channels = channels[(buf->decoder_info[2] >> (16+4)) & 0x0f];
       switch ((buf->decoder_info[2] >> (24+6)) & 0x03) {
         case 1:  bits_per_sample = 16; break;
-        case 2:  bits_per_sample = 20; break;
+        case 2:  /*bits_per_sample = 20; break;*/
+                 /* 20 bits = padded to 24 bits with four zero bits */
         case 3:  bits_per_sample = 24; break;
         default: bits_per_sample =  0; break;
       }
