@@ -20,11 +20,11 @@ else
     $(warning SPU plugin is included in xine-lib 1.1.19+)
 endif
 
-ifeq ($(shell pkg-config libxine --atleast-version=1.1.18 || echo "yes"), yes)
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.19.1 || echo "yes"), yes)
     ENABLE_PCM_PLUGIN ?= yes
 else
     ENABLE_PCM_PLUGIN ?= no
-    $(warning PCM plugin is included in xine-lib 1.1.18+)
+    $(warning PCM plugin is included in xine-lib 1.1.19+)
 endif
 
 #
