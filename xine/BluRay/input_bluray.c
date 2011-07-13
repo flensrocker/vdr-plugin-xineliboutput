@@ -1214,13 +1214,47 @@ static int get_disc_info(bluray_input_plugin_t *this)
   return 1;
 }
 
+static char *get_file_name(const char *path)
+{
+  const char *name_start;
+  char       *file_name  = NULL;
+  int         len;
+
+  name_start = path + strlen(path) - 1;
+  /* skip trailing '/' */
+  while (name_start > path && name_start[0] == '/')
+    name_start--;
+  /* find prev '/' */
+  while (name_start > path && name_start[-1] != '/')
+    name_start--;
+
+  file_name = strdup(name_start);
+  len = strlen(file_name);
+
+  /* trim trailing '/' */
+  while (len > 0 && file_name[len - 1] ==  '/')
+    file_name[--len] = 0;
+
+  /* trim trailing ".iso" */
+  if (len > 3 && !strcasecmp(file_name + len - 4, ".iso"))
+    file_name[len - 4] = 0;
+
+  /* '_' --> ' ' */
+  for (len = 0; file_name[len]; ++len)
+    if (file_name[len] == '_')
+      file_name[len] = ' ';
+
+  lprintf("disc name: %s\n", file_name);
+  return file_name;
+}
+
 static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this    = (bluray_input_plugin_t *) this_gen;
   int                    title   = -1;
   int                    chapter = 0;
 
-  lprintf("bluray_plugin_open\n");
+  lprintf("bluray_plugin_open '%s'\n",this->mrl);
 
   /* validate and parse mrl */
   if (!parse_mrl(this->mrl, &this->disc_root, &title, &chapter))
@@ -1290,15 +1324,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     this->disc_name = strdup(this->meta_dl->di_name);
   }
   else if (strcmp(this->disc_root, this->class->mountpoint)) {
-    char *t = strrchr(this->disc_root, '/');
-    if (!t[1])
-      while (t > this->disc_root && t[-1] != '/') t--;
-    else
-      while (t[0] == '/') t++;
-    this->disc_name = strdup(t);
-    char *end = this->disc_name + strlen(this->disc_name) - 1;
-    if (*end ==  '/')
-      *end = 0;
+    this->disc_name = get_file_name(this->disc_root);
   }
 
   /* register overlay (graphics) handler */
