@@ -43,6 +43,13 @@
 #include <dlfcn.h>
 #include <pthread.h>
 
+/* for loop device (used with .iso images) */
+#include <sys/mount.h>
+#include <linux/fs.h>
+#include <linux/loop.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
 #include <libbluray/bluray.h>
 #include <libbluray/keys.h>
 #include <libbluray/overlay.h>
@@ -140,7 +147,164 @@ typedef struct {
   uint32_t       cap_seekable;
   uint8_t        nav_mode;
 
+  /* loop device for .iso image */
+  char *iso_image;
+  char *loop_dev;
+  char  mount_point[64];
+
 } bluray_input_plugin_t;
+
+/*
+ * Loop device setup stuff, swiped from busybox.
+ */
+
+int del_loop(const char *device)
+{
+    int fd;
+
+    if ((fd = open(device, O_RDONLY)) < 0) {
+        perror(device);
+        return -1;
+    }
+    if (ioctl(fd, LOOP_CLR_FD, 0) < 0) {
+/* umm... why?  perror("ioctl: LOOP_CLR_FD"); */
+        return -1;
+    }
+    close(fd);
+    return 0;
+}
+
+int set_loop(const char *device, const char *file, int offset, int *loopro)
+{
+    struct loop_info loopinfo;
+    int fd, ffd, mode;
+
+    mode = *loopro ? O_RDONLY : O_RDWR;
+    if ((ffd = open (file, mode)) < 0 && !*loopro
+        && (errno != EROFS || (ffd = open (file, mode = O_RDONLY)) < 0)) {
+        perror (file);
+        return 1;
+    }
+    if ((fd = open (device, mode)) < 0) {
+        close(ffd);
+        perror(device);
+        return 1;
+    }
+    *loopro = (mode == O_RDONLY);
+
+    memset(&loopinfo, 0, sizeof(loopinfo));
+    strncpy(loopinfo.lo_name, file, LO_NAME_SIZE);
+    loopinfo.lo_name[LO_NAME_SIZE-1] = 0;
+
+    loopinfo.lo_offset = offset;
+
+    loopinfo.lo_encrypt_key_size = 0;
+    if (ioctl(fd, LOOP_SET_FD, ffd) < 0) {
+        perror("ioctl: LOOP_SET_FD");
+        close(fd);
+        close(ffd);
+        return 1;
+    }
+    if (ioctl(fd, LOOP_SET_STATUS, &loopinfo) < 0) {
+        (void) ioctl(fd, LOOP_CLR_FD, 0);
+        perror("ioctl: LOOP_SET_STATUS");
+        close(fd);
+        close(ffd);
+        return 1;
+    }
+    close(fd);
+    close(ffd);
+    return 0;
+}
+
+char *find_unused_loop_device (void)
+{
+    char dev[20];
+    int i, fd;
+    struct stat statbuf;
+    struct loop_info loopinfo;
+
+    for(i = 0; i <= 7; i++) {
+        sprintf(dev, "/dev/loop%d", i);
+        if (stat (dev, &statbuf) == 0 && S_ISBLK(statbuf.st_mode)) {
+            if ((fd = open (dev, O_RDONLY)) >= 0) {
+                if(ioctl (fd, LOOP_GET_STATUS, &loopinfo) == -1) {
+                    if (errno == ENXIO) { /* probably free */
+                        close (fd);
+                        return strdup(dev);
+                    }
+                }
+                close (fd);
+            }
+        }
+    }
+    return NULL;
+}
+
+/*
+ *
+ */
+
+static void close_loop_device (bluray_input_plugin_t *this)
+{
+  if (this->iso_image) {
+    umount(this->mount_point);
+    rmdir(this->mount_point);
+    free(this->iso_image);
+    this->iso_image = NULL;
+  }
+  if (this->loop_dev) {
+    del_loop(this->loop_dev);
+    free(this->loop_dev);
+    this->loop_dev = NULL;
+  }
+}
+
+static int mount_iso_image(bluray_input_plugin_t *this)
+{
+  close_loop_device(this);
+
+  /* create temporary mount point */
+  sprintf(this->mount_point, "/tmp/xine_bd.%d.XXXXXX", (int)getpid());
+  if (mktemp(this->mount_point)) {};
+  if (mkdir(this->mount_point, S_IRWXU)) {
+    LOGMSG("Failed to create temporary mount point %s: %s\n",
+           this->mount_point, strerror(errno));
+    return 0;
+  }
+
+  /* find and initialize unused loop device */
+
+  this->loop_dev = find_unused_loop_device();
+  if (!this->loop_dev) {
+    LOGMSG("No free loop device for %s\n", this->disc_root);
+    return 0;
+  }
+
+  int pro = O_RDONLY;
+  if (set_loop(this->loop_dev, this->disc_root, 0, &pro)) {
+    LOGMSG("Error setting up loop device %s for %s\n", this->loop_dev, this->disc_root);
+    return 0;
+  }
+
+  /* mount .iso image */
+  if (mount(this->loop_dev, this->mount_point, "udf",
+            MS_NODEV | MS_MGC_VAL | MS_NOSUID | MS_RDONLY, NULL)) {
+    LOGMSG("Error mounting loop device %s to %s\n", this->loop_dev, this->mount_point);
+    return 0;
+  }
+
+  this->iso_image = this->disc_root;
+  this->disc_root = strdup(this->mount_point);
+
+  LOGMSG("Mounted %s to %s using loop device %s\n", this->iso_image, this->mount_point, this->loop_dev);
+
+  return 1;
+}
+
+/*
+ *
+ */
 
 static void send_num_buttons(bluray_input_plugin_t *this, int n)
 {
@@ -1096,6 +1260,8 @@ static void bluray_plugin_dispose (input_plugin_t *this_gen)
   free (this->disc_root);
   free (this->disc_name);
 
+  close_loop_device(this);
+
   free (this);
 }
 
@@ -1248,6 +1414,15 @@ static char *get_file_name(const char *path)
   return file_name;
 }
 
+static int is_iso_image(const char *mrl)
+{
+  if (mrl) {
+    const char *pos = strrchr(mrl, '.');
+    return pos && !strcasecmp(pos + 1, "iso");
+  }
+  return 0;
+}
+
 static int bluray_plugin_open (input_plugin_t *this_gen)
 {
   bluray_input_plugin_t *this    = (bluray_input_plugin_t *) this_gen;
@@ -1265,6 +1440,10 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
 
   if (!this->disc_root)
     this->disc_root = strdup(this->class->mountpoint);
+
+  /* mount .iso image */
+  if (is_iso_image(this->disc_root) && !mount_iso_image(this))
+    return -1;
 
   /* open libbluray */
 
@@ -1324,7 +1503,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     this->disc_name = strdup(this->meta_dl->di_name);
   }
   else if (strcmp(this->disc_root, this->class->mountpoint)) {
-    this->disc_name = get_file_name(this->disc_root);
+    this->disc_name = get_file_name(this->iso_image ?: this->disc_root);
   }
 
   /* register overlay (graphics) handler */
