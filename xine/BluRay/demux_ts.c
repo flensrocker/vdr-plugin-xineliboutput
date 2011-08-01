@@ -870,7 +870,14 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       m->type |= BUF_AUDIO_DTS;
       return 1;
 
+    } else if (packet_len < 2) {
+      return 0;
+
     } else if (m->descriptor_tag == HDMV_AUDIO_80_PCM) {
+
+      if (packet_len < 4) {
+        return 0;
+      }
 
       m->content = p + 4;
       m->size    = packet_len - 4;
@@ -901,6 +908,10 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       return 1;
     } else if ((p[0] & 0xF0) == 0x80) {
 
+      if (packet_len < 4) {
+        return 0;
+      }
+
       m->content   = p+4;
       m->size      = packet_len - 4;
       m->type      |= BUF_AUDIO_A52;
@@ -915,6 +926,10 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
           pcm_offset += 2;
           break;
         }
+      }
+
+      if (packet_len < pcm_offset) {
+        return 0;
       }
 
       m->content   = p+pcm_offset;
