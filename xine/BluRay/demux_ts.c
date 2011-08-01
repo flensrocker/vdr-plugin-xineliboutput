@@ -724,15 +724,12 @@ static void demux_ts_parse_pat (demux_ts_t*this, unsigned char *original_pkt,
       this->videoPid = INVALID_PID;
       this->spu_pid = INVALID_PID;
 
-      this->pmt_pid[program_count] = pmt_pid;
-
       if (this->pmt[program_count] != NULL) {
         free(this->pmt[program_count]);
         this->pmt[program_count] = NULL;
         this->pmt_write_ptr[program_count] = NULL;
       }
     }
-
 #ifdef TS_PAT_LOG
     if (this->program_number[program_count] != INVALID_PROGRAM)
       printf ("demux_ts: PAT acquired count=%d programNumber=0x%04x "
@@ -848,7 +845,13 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
      * these "raw" streams may begin with a byte that looks like a stream type.
      * For audio streams, m->type already contains the stream no.
      */
-    if((m->descriptor_tag == STREAM_AUDIO_AC3) ||    /* ac3 - raw */
+    if(m->descriptor_tag == HDMV_AUDIO_84_EAC3) {
+      m->content   = p;
+      m->size = packet_len;
+      m->type |= BUF_AUDIO_EAC3;
+      return 1;
+
+    } else if((m->descriptor_tag == STREAM_AUDIO_AC3) ||    /* ac3 - raw */
        (p[0] == 0x0B && p[1] == 0x77)) { /* ac3 - syncword */
       m->content   = p;
       m->size = packet_len;
@@ -1492,22 +1495,26 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
       break;
     case ISO_13818_PES_PRIVATE:
       for (i = 5; i < coded_length; i += stream[i+1] + 2) {
-          if ((stream[i] == 0x6a) && (this->audio_tracks_count < MAX_AUDIO_TRACKS)) {
+        if (((stream[i] == 0x6a) || (stream[i] == 0x7a)) && (this->audio_tracks_count < MAX_AUDIO_TRACKS)) {
           if (apid_check(this, pid) < 0) {
 #ifdef TS_PMT_LOG
             printf ("demux_ts: PMT AC3 audio pid 0x%.4x type %2.2x\n", pid, stream[0]);
 #endif
-          demux_ts_pes_new(this, this->media_num, pid,
-                           this->audio_fifo, STREAM_AUDIO_AC3);
+            if (stream[i] == 0x6a)
+              demux_ts_pes_new(this, this->media_num, pid,
+                               this->audio_fifo, STREAM_AUDIO_AC3);
+            else
+              demux_ts_pes_new(this, this->media_num, pid,
+                               this->audio_fifo, HDMV_AUDIO_84_EAC3);
 
-          this->audio_tracks[this->audio_tracks_count].pid = pid;
-          this->audio_tracks[this->audio_tracks_count].media_index = this->media_num;
-          this->media[this->media_num].type = this->audio_tracks_count;
-          demux_ts_get_lang_desc(this, this->audio_tracks[this->audio_tracks_count].lang,
-                                 stream + 5, stream_info_length);
+            this->audio_tracks[this->audio_tracks_count].pid = pid;
+            this->audio_tracks[this->audio_tracks_count].media_index = this->media_num;
+            this->media[this->media_num].type = this->audio_tracks_count;
+            demux_ts_get_lang_desc(this, this->audio_tracks[this->audio_tracks_count].lang,
+                                   stream + 5, stream_info_length);
           demux_send_special_audio_buf(this, STREAM_AUDIO_AC3, this->audio_tracks_count);
-          this->audio_tracks_count++;
-          break;
+            this->audio_tracks_count++;
+            break;
           }
         }
         /* Teletext */
@@ -1520,7 +1527,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
               printf ("%.2x ", stream[i]);
             printf ("\n");
 #endif
-          break;
+            break;
           }
 
 	/* DVBSUB */
