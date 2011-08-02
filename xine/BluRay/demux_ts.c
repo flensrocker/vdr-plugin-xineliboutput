@@ -2459,18 +2459,22 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
     }
 }
 
-static int detect_ts(uint8_t *buf, size_t len, int ts_size)
+static int detect_ts(uint8_t *buf, size_t len, unsigned int ts_size)
 {
-  int    i;
-  size_t j;
-  int    try_again, ts_detected = 0;
-  size_t packs = len / ts_size - 2;
+  unsigned int i, try_again;
+  size_t       j, packs;
+
+  if (len < ts_size * 4) {
+    return 0;
+  }
+
+  packs = len / ts_size - 2;
 
   for (i = 0; i < ts_size; i++) {
     try_again = 0;
     if (buf[i] == SYNC_BYTE) {
       for (j = 1; j < packs; j++) {
-	if (buf[i + j*ts_size] != SYNC_BYTE) {
+        if (buf[i + j*ts_size] != SYNC_BYTE) {
 	  try_again = 1;
 	  break;
 	}
@@ -2479,12 +2483,12 @@ static int detect_ts(uint8_t *buf, size_t len, int ts_size)
 #ifdef TS_LOG
 	printf ("demux_ts: found 0x47 pattern at offset %d\n", i);
 #endif
-	ts_detected = 1;
+	return 1;
       }
     }
   }
 
-  return ts_detected;
+  return 0;
 }
 
 static demux_plugin_t *open_plugin (demux_class_t *class_gen,
@@ -2494,18 +2498,20 @@ static demux_plugin_t *open_plugin (demux_class_t *class_gen,
   demux_ts_t *this;
   int         i;
   int         hdmv = -1;
+  int         size;
 
   switch (stream->content_detection_method) {
 
   case METHOD_BY_CONTENT: {
     uint8_t buf[2069];
 
-    if (!_x_demux_read_header(input, buf, sizeof(buf)))
+    size = _x_demux_read_header(input, buf, sizeof(buf));
+    if (size < 4 * PKT_SIZE)
       return NULL;
 
-    if (detect_ts(buf, sizeof(buf), PKT_SIZE))
+    if (detect_ts(buf, size, PKT_SIZE))
       hdmv = 0;
-    else if (detect_ts(buf, sizeof(buf), PKT_SIZE+4))
+    else if (detect_ts(buf, size, PKT_SIZE+4))
       hdmv = 1;
     else
       return NULL;
