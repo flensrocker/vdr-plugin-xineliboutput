@@ -220,6 +220,16 @@
 #define ISO13522_STREAM  0xF3
 #define PROG_STREAM_DIR  0xFF
 
+/* descriptors in PMT stream info */
+#define DESCRIPTOR_REG_FORMAT  0x05
+#define DESCRIPTOR_LANG        0x0a
+#define DESCRIPTOR_TELETEXT    0x56
+#define DESCRIPTOR_DVBSUB      0x59
+#define DESCRIPTOR_AC3         0x6a
+#define DESCRIPTOR_EAC3        0x7a
+#define DESCRIPTOR_DTS         0x7b
+#define DESCRIPTOR_AAC         0x7c
+
   typedef enum
     {
       ISO_11172_VIDEO = 0x01,           /* ISO/IEC 11172 Video */
@@ -1154,7 +1164,7 @@ static void demux_ts_get_lang_desc(demux_ts_t *this, char *dest,
   while (d < (data + length))
 
     {
-      if (d[0] == 10 && d[1] >= 4)
+      if (d[0] == DESCRIPTOR_LANG && d[1] >= 4)
 
 	{
       memcpy(dest, d + 2, 3);
@@ -1179,7 +1189,7 @@ static void demux_ts_get_reg_desc(demux_ts_t *this, uint32_t *dest,
   while (d < (data + length))
 
     {
-      if (d[0] == 5 && d[1] >= 4)
+      if (d[0] == DESCRIPTOR_REG_FORMAT && d[1] >= 4)
 
 	{
           *dest = (d[2] << 24) | (d[3] << 16) | (d[4] << 8) | d[5];
@@ -1518,7 +1528,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
           }
         }
         /* Teletext */
-        else if (stream[i] == 0x56)
+        else if (stream[i] == DESCRIPTOR_TELETEXT)
           {
 #ifdef TS_PMT_LOG
             printf ("demux_ts: PMT Teletext, pid: 0x%.4x type %2.2x\n", pid, stream[0]);
@@ -1531,7 +1541,7 @@ printf("Program Number is %i, looking for %i\n",program_number,this->program_num
           }
 
 	/* DVBSUB */
-	else if (stream[i] == 0x59)
+	else if (stream[i] == DESCRIPTOR_DVBSUB)
 	  {
 	    unsigned int pos;
             for (pos = i + 2;
