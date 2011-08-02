@@ -761,7 +761,7 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
 
   if (packet_len < 9) {
     xprintf (xine, XINE_VERBOSITY_DEBUG,
-	     "demux_ts: too short PES packet header (%d bytes)\n", packet_len);
+             "demux_ts: too short PES packet header (%d bytes)\n", packet_len);
     return 0;
   }
 
@@ -771,7 +771,7 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
 
   if (p[0] || p[1] || (p[2] != 1)) {
     xprintf (xine, XINE_VERBOSITY_DEBUG,
-	     "demux_ts: error %02x %02x %02x (should be 0x000001) \n", p[0], p[1], p[2]);
+             "demux_ts: error %02x %02x %02x (should be 0x000001) \n", p[0], p[1], p[2]);
     return 0 ;
   }
 
@@ -902,7 +902,7 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       return 1;
 
     } else if (m->descriptor_tag == ISO_13818_PES_PRIVATE
-	     && p[0] == 0x20 && p[1] == 0x00) {
+               && p[0] == 0x20 && p[1] == 0x00) {
       /* DVBSUB */
       long payload_len = ((buf[4] << 8) | buf[5]) - header_len - 3;
 
@@ -936,9 +936,11 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       m->type      |= BUF_AUDIO_A52;
       return 1;
 
+#if 0
+    /* commented out: does not set PCM type. Decoder can't handle raw PCM stream without configuration. */
     } else if ((p[0]&0xf0) == 0xa0) {
 
-      int pcm_offset;
+      unsigned int pcm_offset;
 
       for (pcm_offset=0; ++pcm_offset < packet_len-1 ; ){
         if (p[pcm_offset] == 0x01 && p[pcm_offset+1] == 0x80 ) { /* START */
@@ -955,9 +957,10 @@ static int demux_ts_parse_pes_header (xine_t *xine, demux_ts_media *m,
       m->size      = packet_len-pcm_offset;
       m->type      |= BUF_AUDIO_LPCM_BE;
       return 1;
+#endif
     }
 
-  } else if ((stream_id >= 0xbc) && ((stream_id & 0xf0) == 0xe0)) {
+  } else if ((stream_id & 0xf0) == 0xe0) {
 
     m->content   = p;
     m->size      = packet_len;
