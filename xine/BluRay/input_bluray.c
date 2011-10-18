@@ -303,7 +303,7 @@ static int mount_iso_image(bluray_input_plugin_t *this)
 }
 
 /*
- *
+ * overlay
  */
 
 static void send_num_buttons(bluray_input_plugin_t *this, int n)
@@ -424,6 +424,10 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     send_num_buttons(this, 1);
   }
 }
+
+/*
+ * stream info
+ */
 
 static void update_stream_info(bluray_input_plugin_t *this)
 {
@@ -549,19 +553,9 @@ static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
   update_title_name(this);
 }
 
-static int open_title (bluray_input_plugin_t *this, int title_idx)
-{
-  if (bd_select_title(this->bdh, title_idx) <= 0) {
-    LOGMSG("bd_select_title(%d) failed\n", title_idx);
-    return 0;
-  }
-
-  this->current_title_idx = title_idx;
-
-  update_title_info(this, -1);
-
-  return 1;
-}
+/*
+ * libbluray event handling
+ */
 
 #ifndef DEMUX_OPTIONAL_DATA_FLUSH
 #  define DEMUX_OPTIONAL_DATA_FLUSH 0x10000
@@ -782,6 +776,24 @@ static void handle_libbluray_events(bluray_input_plugin_t *this)
     if (this->error || ev.event == BD_EVENT_NONE || ev.event == BD_EVENT_ERROR)
       break;
   }
+}
+
+/*
+ * xine event handling
+ */
+
+static int open_title (bluray_input_plugin_t *this, int title_idx)
+{
+  if (bd_select_title(this->bdh, title_idx) <= 0) {
+    LOGMSG("bd_select_title(%d) failed\n", title_idx);
+    return 0;
+  }
+
+  this->current_title_idx = title_idx;
+
+  update_title_info(this, -1);
+
+  return 1;
 }
 
 static void send_mouse_enter_leave_event(bluray_input_plugin_t *this, int direction)
@@ -1010,14 +1022,6 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
     LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), (int)result, (int)len);
 
   this->stream_flushed = 0;
-
-#if 0
-  if (buf[4] != 0x47) {
-    LOGMSG("bd_read(): invalid data ? [%02x %02x %02x %02x %02x ...]\n",
-          buf[0], buf[1], buf[2], buf[3], buf[4]);
-    return 0;
-  }
-#endif
 
   return result;
 }
