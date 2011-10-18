@@ -569,19 +569,29 @@ static int open_title (bluray_input_plugin_t *this, int title_idx)
 
 static void stream_flush(bluray_input_plugin_t *this)
 {
-  if (this->stream_flushed)
+  if (this->stream_flushed || !this->stream || !this->stream->demux_plugin)
     return;
 
   lprintf("Stream flush\n");
 
   this->stream_flushed = 1;
 
+#ifdef XINE_EVENT_END_OF_CLIP
+  xine_event_t event = {
+    .type        = XINE_EVENT_END_OF_CLIP,
+    .stream      = this->stream,
+    .data        = NULL,
+    .data_length = 0,
+  };
+  xine_event_send (this->stream, &event);
+#else
   int tmp = 0;
   if (DEMUX_OPTIONAL_SUCCESS !=
       this->stream->demux_plugin->get_optional_data(this->stream->demux_plugin, &tmp, DEMUX_OPTIONAL_DATA_FLUSH)) {
     LOGMSG("stream flush not supported by the demuxer !\n");
     return;
   }
+#endif
 }
 
 static void stream_reset(bluray_input_plugin_t *this)
