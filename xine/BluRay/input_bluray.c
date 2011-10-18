@@ -1456,8 +1456,13 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
     this->disc_root = strdup(this->class->mountpoint);
 
   /* mount .iso image */
-  if (is_iso_image(this->disc_root) && !mount_iso_image(this))
+  if (is_iso_image(this->disc_root) && !mount_iso_image(this)) {
+    _x_message (this->stream, XINE_MSG_GENERAL_WARNING,
+                "Can't play BluRay .iso image",
+                "Mounting of .iso image using loop device failed.\n"
+                "Not enough loop devices or insufficient permissions ?", NULL);
     return -1;
+  }
 
   /* open libbluray */
 
