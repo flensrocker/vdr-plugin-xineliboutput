@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2005 the xine project
+ * Copyright (C) 2000-2011 the xine project
  *
  * Copyright (C) 2009-2011 Petri Hintukainen <phintuka@users.sourceforge.net>
  *
@@ -22,7 +22,7 @@
  * Input plugin for BluRay discs / images
  *
  * Requires libbluray from git://git.videolan.org/libbluray.git
- * Tested with revision 2011-07-11 08:45 UTC
+ * Tested with revision 2011-10-19 14:00 UTC
  *
  */
 
@@ -352,6 +352,13 @@ static void close_overlay(bluray_input_plugin_t *this, int plane)
   }
 }
 
+static void open_overlay(bluray_input_plugin_t *this, const BD_OVERLAY * const ov)
+{
+  if (!this->osd[ov->plane]) {
+    this->osd[ov->plane] = xine_osd_new(this->stream, ov->x, ov->y, ov->w, ov->h);
+  }
+}
+
 static void draw_bitmap(xine_osd_t *osd, const BD_OVERLAY * const ov)
 {
   unsigned i;
@@ -402,30 +409,44 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
     return;
   }
 
-  xine_osd_t *osd = get_overlay(this, ov->plane);
-
-  if (ov->img) {
-    draw_bitmap(osd, ov);
-
-  } else {
-
-    if (ov->x == 0 && ov->y == 0 && ov->w == 1920 && ov->h == 1080) {
-      /* Nothing to display, close OSD */
+  switch (ov->cmd) {
+    case BD_OVERLAY_INIT:    /* init overlay plane. Size of full plane in x,y,w,h */
+      open_overlay(this, ov);
+      return;
+    case BD_OVERLAY_CLOSE:   /* close overlay */
       close_overlay(this, ov->plane);
       return;
-    }
-
-    /* wipe rect */
-    xine_osd_draw_rect(osd, ov->x, ov->y, ov->x + ov->w - 1, ov->y + ov->h - 1, 0xff, 1);
   }
 
-  /* display */
+  xine_osd_t *osd = get_overlay(this, ov->plane);
 
-  xine_osd_show(osd, 0);
+  switch (ov->cmd) {
+    case BD_OVERLAY_DRAW:    /* draw bitmap (x,y,w,h,img,palette) */
+      draw_bitmap(osd, ov);
+      return;
 
-  if (ov->plane == 1) {
-    this->menu_open = 1;
-    send_num_buttons(this, 1);
+    case BD_OVERLAY_WIPE:    /* clear area (x,y,w,h) */
+      xine_osd_draw_rect(osd, ov->x, ov->y, ov->x + ov->w - 1, ov->y + ov->h - 1, 0xff, 1);
+      return;
+
+    case BD_OVERLAY_CLEAR:   /* clear plane */
+      xine_osd_draw_rect(osd, 0, 0, osd->osd.width - 1, osd->osd.height - 1, 0xff, 1);
+      xine_osd_clear(osd);
+      xine_osd_hide(osd, 0);
+      return;
+
+    case BD_OVERLAY_FLUSH:   /* all changes have been done, flush overlay to display at given pts */
+      xine_osd_show(osd, 0);
+
+      if (ov->plane == 1) {
+        this->menu_open = 1;
+        send_num_buttons(this, 1);
+      }
+      return;
+
+    default:
+      LOGMSG("unknown overlay command %d", ov->cmd);
+      return;
   }
 }
 
