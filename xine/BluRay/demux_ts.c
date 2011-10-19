@@ -174,10 +174,6 @@
 #  define XINE_EVENT_END_OF_CLIP            0x80000001
 #endif
 
-#ifndef DEMUX_OPTIONAL_DATA_FLUSH
-#  define DEMUX_OPTIONAL_DATA_FLUSH 0x10000
-#endif
-
 /*
   #define TS_LOG
   #define TS_PMT_LOG
@@ -2518,11 +2514,6 @@ static int demux_ts_get_optional_data(demux_plugin_t *this_gen,
         strcpy(str, "none");
         return DEMUX_OPTIONAL_UNSUPPORTED;
       }
-      return DEMUX_OPTIONAL_SUCCESS;
-
-    case DEMUX_OPTIONAL_DATA_FLUSH:
-      // BluRay: stream reset
-      flush_decoders(this);
       return DEMUX_OPTIONAL_SUCCESS;
 
     default:
