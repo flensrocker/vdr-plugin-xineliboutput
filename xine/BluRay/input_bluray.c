@@ -647,11 +647,15 @@ static void update_audio_channel(bluray_input_plugin_t *this, int channel)
 
 static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 {
-    switch (ev.event) {
+    switch ((bd_event_e)ev.event) {
 
       case BD_EVENT_ERROR:
         LOGMSG("BD_EVENT_ERROR\n");
         this->error = 1;
+        return;
+
+      case BD_EVENT_READ_ERROR:
+        LOGMSG("BD_EVENT_READ_ERROR\n");
         return;
 
       case BD_EVENT_ENCRYPTED:
