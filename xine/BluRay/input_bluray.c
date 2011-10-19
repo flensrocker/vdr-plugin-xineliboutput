@@ -674,7 +674,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         break;
 
       case BD_EVENT_STILL_TIME:
-        lprintf("BD_EVENT_STILL_TIME %d\n", ev.param);
+        //lprintf("BD_EVENT_STILL_TIME %d\n", ev.param);
         wait_secs(this, ev.param);
         break;
 
