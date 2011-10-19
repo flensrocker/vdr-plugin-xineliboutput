@@ -80,6 +80,10 @@
 #  define EXPORTED __attribute__((visibility("default")))
 #endif
 
+#ifndef XINE_EVENT_END_OF_CLIP
+#  define XINE_EVENT_END_OF_CLIP            0x80000001
+#endif
+
 #ifndef MIN
 # define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
@@ -557,10 +561,6 @@ static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
  * libbluray event handling
  */
 
-#ifndef DEMUX_OPTIONAL_DATA_FLUSH
-#  define DEMUX_OPTIONAL_DATA_FLUSH 0x10000
-#endif
-
 static void stream_flush(bluray_input_plugin_t *this)
 {
   if (this->stream_flushed || !this->stream || !this->stream->demux_plugin)
@@ -570,7 +570,6 @@ static void stream_flush(bluray_input_plugin_t *this)
 
   this->stream_flushed = 1;
 
-#ifdef XINE_EVENT_END_OF_CLIP
   xine_event_t event = {
     .type        = XINE_EVENT_END_OF_CLIP,
     .stream      = this->stream,
@@ -578,14 +577,6 @@ static void stream_flush(bluray_input_plugin_t *this)
     .data_length = 0,
   };
   xine_event_send (this->stream, &event);
-#else
-  int tmp = 0;
-  if (DEMUX_OPTIONAL_SUCCESS !=
-      this->stream->demux_plugin->get_optional_data(this->stream->demux_plugin, &tmp, DEMUX_OPTIONAL_DATA_FLUSH)) {
-    LOGMSG("stream flush not supported by the demuxer !\n");
-    return;
-  }
-#endif
 }
 
 static void stream_reset(bluray_input_plugin_t *this)
