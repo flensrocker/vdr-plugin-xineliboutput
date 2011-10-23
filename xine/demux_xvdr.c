@@ -115,29 +115,62 @@ typedef struct {
 } demux_xvdr_class_t;
 
 
-static const char * get_decoder_name(xine_t *xine, int video_type)
+static const char * get_decoder_name(xine_t *xine, int buf_type)
 {
-  int streamtype = (video_type >> 16) & 0xFF;
-  plugin_node_t *node = xine->plugin_catalog->video_decoder_map[streamtype][0];
+  uint32_t base = buf_type & 0xFF000000;
+  uint32_t type = (buf_type >> 16) & 0xFF;
+  plugin_node_t *node = NULL;
+
+  if (base == BUF_VIDEO_BASE)
+    node = xine->plugin_catalog->video_decoder_map[type][0];
+  else if (base == BUF_AUDIO_BASE)
+    node = xine->plugin_catalog->audio_decoder_map[type][0];
+
   if (node) {
     plugin_info_t *info = node->info;
     if (info)
       return info->id;
   }
-  return "";
+
+  return "<none>";
 }
+
+#define LOG_DECODER(buf_type, name)                              \
+  LOGMSG("Using %-10s decoder \"%s\"",                           \
+         name, get_decoder_name(this->stream->xine, buf_type));
 
 static void detect_video_decoders(demux_xvdr_t *this)
 {
-  if (!strcmp(get_decoder_name(this->stream->xine, BUF_VIDEO_MPEG), "ffmpegvideo"))
-    this->ffmpeg_mpeg2_decoder = 1;
-  LOGMSG("Using decoder \"%s\" for mpeg2 video",
-         this->ffmpeg_mpeg2_decoder ? "FFmpeg" : "libmpeg2");
+  const char *name;
 
-  if (!strcmp(get_decoder_name(this->stream->xine, BUF_VIDEO_H264), "dshowserver"))
+  name = get_decoder_name(this->stream->xine, BUF_VIDEO_MPEG);
+  if (!strcmp(name, "ffmpegvideo"))
+    this->ffmpeg_mpeg2_decoder = 1;
+  LOGMSG("Using MPEG video decoder \"%s\" (%s)",
+         name, this->ffmpeg_mpeg2_decoder ? "FFmpeg" : "libmpeg2");
+
+  name = get_decoder_name(this->stream->xine, BUF_VIDEO_H264);
+  if (!strcmp(name, "dshowserver"))
     this->coreavc_h264_decoder = 1;
-  LOGMSG("Using decoder \"%s\" for H.264 video",
-         this->coreavc_h264_decoder ? "dshowserver (CoreAVC)" : "FFmpeg");
+  LOGMSG("Using H.264      decoder \"%s\" (%s)",
+         name, this->coreavc_h264_decoder ? "dshowserver (CoreAVC)" : "FFmpeg");
+
+  LOG_DECODER(BUF_VIDEO_VC1,     "VC-1");
+}
+
+static void detect_audio_decoders(demux_xvdr_t *this)
+{
+  LOG_DECODER(BUF_AUDIO_MPEG,    "MPEG audio");
+  LOG_DECODER(BUF_AUDIO_A52,     "AC-3");
+  LOG_DECODER(BUF_AUDIO_AAC,     "AAC");
+  LOG_DECODER(BUF_AUDIO_DTS,     "DTS");
+  LOG_DECODER(BUF_AUDIO_LPCM_BE, "LPCM");
+#ifdef BUF_AUDIO_AAC_EAC3
+  LOG_DECODER(BUF_AUDIO_AAC_EAC3, "E-AC-3");
+#endif
+#ifdef BUF_AUDIO_AAC_LATM
+  LOG_DECODER(BUF_AUDIO_AAC_LATM, "AAC LATM");
+#endif
 }
 
 static void demux_xvdr_parse_ts(demux_xvdr_t *this, buf_element_t *buf);
@@ -1210,6 +1243,7 @@ static demux_plugin_t *demux_xvdr_open_plugin (demux_class_t *class_gen,
   this->status     = DEMUX_FINISHED;
 
   detect_video_decoders(this);
+  detect_audio_decoders(this);
 
   return &this->demux_plugin;
 }
