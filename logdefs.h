@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.14 2009-08-01 19:46:49 phintuka Exp $
+ * $Id: logdefs.h,v 1.15 2011-10-25 07:18:37 phintuka Exp $
  *
  */
 
@@ -115,6 +115,15 @@
         } \
       } while(0)
 #endif
+
+#define ASSERT_RET(expr,ret) \
+      do { \
+        if(!(expr)) { \
+          LOGMSG("Asseretion failed: %s at %s:%d (%s)", \
+                 #expr, __FILE__, __LINE__, __FUNCTION__); \
+          ret; \
+        } \
+      } while(0)
 
 
 /*
