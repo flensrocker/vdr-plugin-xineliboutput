@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.167 2011-07-01 13:01:58 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.168 2011-10-25 18:45:12 phintuka Exp $
  *
  */
 
@@ -686,7 +686,8 @@ static Visual *find_argb_visual(Display *dpy, int scr)
   return visual;
 }
 
-static void hud_fill_lut8(uint32_t* dst, const struct osd_command_s *cmd)
+static void hud_fill_lut8(uint32_t* dst, int dst_pitch,
+                          const struct osd_command_s *cmd)
 {
   uint8_t *data = cmd->raw_data;
   unsigned x, y;
@@ -694,38 +695,41 @@ static void hud_fill_lut8(uint32_t* dst, const struct osd_command_s *cmd)
 
   rle_palette_to_argb(lut, cmd->palette, cmd->colors);
 
-  dst += cmd->y * HUD_MAX_WIDTH + cmd->x;
+  dst += cmd->y * dst_pitch + cmd->x;
 
   for (y = cmd->h; y; y--) {
     for (x = 0; x < cmd->w; x++) {
       dst[x] = lut[*data];
       ++data;
     }
-    dst += HUD_MAX_WIDTH;
+    dst += dst_pitch;
   }
 }
 
-static void hud_fill_argb(uint32_t* dst, const struct osd_command_s *cmd)
+static void hud_fill_argb(uint32_t* dst, int dst_pitch,
+                          const struct osd_command_s *cmd)
 {
   uint32_t *data = (uint32_t*)cmd->raw_data;
   unsigned y;
 
-  dst += cmd->y * HUD_MAX_WIDTH + cmd->x;
+  dst += cmd->y * dst_pitch + cmd->x;
 
   for (y = cmd->h; y; y--) {
     memcpy(dst, data, cmd->w * sizeof(uint32_t));
     data += cmd->w;
-    dst += HUD_MAX_WIDTH;
+    dst += dst_pitch;
   }
 }
 
-static void update_mask(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
+static void update_mask(uint32_t* dst, int dst_pitch,
+                        uint32_t* mask, int mask_pitch,
+                        int *mask_changed, const struct osd_command_s *cmd)
 {
   uint x, y;
   *mask_changed = 0;
 
-  dst  += HUD_MAX_WIDTH * cmd->y + cmd->x;
-  mask += HUD_MAX_WIDTH * cmd->y + cmd->x;
+  dst  += dst_pitch  * cmd->y + cmd->x;
+  mask += mask_pitch * cmd->y + cmd->x;
 
   for (y = 0; y < cmd->h; y++) {
     for (x = 0; x < cmd->w; x++) {
@@ -734,32 +738,34 @@ static void update_mask(uint32_t* dst, uint32_t* mask, int *mask_changed, const 
         mask[x] = dst[x];
       }
     }
-    dst  += HUD_MAX_WIDTH;
-    mask += HUD_MAX_WIDTH;
+    dst  += dst_pitch;
+    mask += mask_pitch;
   }
 }
 
-static void hud_fill_img_memory(uint32_t* dst, uint32_t* mask, int *mask_changed, const struct osd_command_s *cmd)
+static void hud_fill_img_memory(uint32_t* dst, int dst_pitch,
+                                uint32_t* mask, int mask_pitch,
+                                int *mask_changed, const struct osd_command_s *cmd)
 {
   if (cmd->cmd == OSD_Set_LUT8) {
-    hud_fill_lut8(dst, cmd);
+    hud_fill_lut8(dst, dst_pitch, cmd);
 
   } else if (cmd->cmd == OSD_Set_ARGB) {
-    hud_fill_argb(dst, cmd);
+    hud_fill_argb(dst, dst_pitch, cmd);
 
   } else if (cmd->cmd == OSD_Set_RLE) {
-    rle_uncompress_argb(dst + cmd->y * HUD_MAX_WIDTH + cmd->x,
-                        cmd->w, cmd->h, HUD_MAX_WIDTH,
+    rle_uncompress_argb(dst + cmd->y * dst_pitch + cmd->x,
+                        cmd->w, cmd->h, dst_pitch,
                         cmd->data, cmd->num_rle,
                         cmd->palette, cmd->colors);
 
   } else {
-    LOGMSG("hud_img_fill_memory(): unsupported format");
+    LOGMSG("hud_fill_img_memory(): unsupported format");
     return;
   }
 
   if (mask && mask_changed) {
-    update_mask(dst, mask, mask_changed, cmd);
+    update_mask(dst, dst_pitch, mask, mask_pitch, mask_changed, cmd);
   }
 }
 
@@ -778,7 +784,9 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
 
 #ifdef HAVE_XSHM
   if (this->completion_event != -1) {
-    hud_fill_img_memory((uint32_t*)(this->hud_img->data), this->shape_mask_mem, &mask_changed, cmd);
+    hud_fill_img_memory((uint32_t*)(this->hud_img->data), HUD_MAX_WIDTH,
+                        this->shape_mask_mem, HUD_MAX_WIDTH,
+                        &mask_changed, cmd);
     if (!cmd->scaling) {
       /* Place image directly onto hud window */
       XShmPutImage(this->display, dst_win, this->gc, this->hud_img,
@@ -799,7 +807,9 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
   else
 #endif
     {
-      hud_fill_img_memory(this->hud_img_mem, this->shape_mask_mem, &mask_changed, cmd);
+      hud_fill_img_memory(this->hud_img_mem, HUD_MAX_WIDTH,
+                          this->shape_mask_mem, HUD_MAX_WIDTH,
+                          &mask_changed, cmd);
       if (!cmd->scaling) {
         /* Place image directly onto hud window (always unscaled) */
         XPutImage(this->display, dst_win, this->gc, this->hud_img,
