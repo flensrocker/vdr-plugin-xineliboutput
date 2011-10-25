@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.97 2011-10-25 18:29:29 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.98 2011-10-25 18:34:32 phintuka Exp $
  *
  */
 
@@ -99,28 +99,39 @@ static const char help_str[] =
     "   -d, --display=displayaddress  X11 display address\n"
     "   -W, --wid=id                  Use existing X11 window\n"
     "                                 Special ID for root window: --wid=root\n"
+# ifdef HAVE_XRANDR
+    "   -m, --modeswitch              Enable video mode switching\n"
+# endif
 #endif
     "   -a, --aspect=[auto|4:3|16:9|16:10|default]\n"
     "                                 Display aspect ratio\n"
     "                                 Use script to control HW aspect ratio:\n"
     "                                 --aspect=auto:path_to_script\n"
+#ifndef IS_FBFE
     "   -f, --fullscreen              Fullscreen mode\n"
-#ifdef HAVE_XRENDER
+# ifdef HAVE_XRENDER
     "   -D, --hud[=flag[,flag]]       Head Up Display OSD mode using compositing\n"
     "                                 Optional flags:\n"
+#  ifdef HAVE_XCOMPOSITE
+    "                                 xrender Use XRender instead of compositing\n"
+    "                                         (no compositing manager required)\n"
+#  endif
 #  ifdef HAVE_XSHAPE
     "                                 xshape  Use XShape instead of compositing\n"
+    "                                         (no compositing manager required)\n"
 #  endif
 #  ifdef HAVE_OPENGL
     "                                 opengl  Use OpenGL instead of compositing\n"
+    "                                         (no compositing manager required)\n"
 #  endif
-#endif
-#ifdef HAVE_OPENGL
+#  ifdef HAVE_OPENGL
     "   -O, --opengl                  Use OpenGL for video and Head Up Display OSD\n"
-#endif
+#  endif
+# endif // HAVE_XRENDER
     "   -w, --width=x                 Video window width\n"
     "   -h, --height=x                Video window height\n"
     "   -g, --geometry=WxH[+X+Y]      Set output window geometry (X style)\n"
+#endif // !IS_FBFE
     "   -B, --buffers=x               Number of PES buffers\n"
     "   -n, --noscaling               Disable all video scaling\n"
     "   -P, --post=name[:arg=val[,arg=val]]\n"
@@ -159,15 +170,24 @@ static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
   { "audio",      required_argument, NULL, 'A' },
   { "video",      required_argument, NULL, 'V' },
+  { "aspect",     required_argument, NULL, 'a' },
+#ifndef IS_FBFE
   { "display",    required_argument, NULL, 'd' },
   { "wid",        required_argument, NULL, 'W' },
-  { "aspect",     required_argument, NULL, 'a' },
+# ifdef HAVE_XRANDR
+  { "modeswitch", no_argument,       NULL, 'm' },
+# endif
   { "fullscreen", no_argument,       NULL, 'f' },
   { "geometry",   required_argument, NULL, 'g' },
+# ifdef HAVE_XRENDER
   { "hud",        optional_argument, NULL, 'D' },
+#  ifdef HAVE_OPENGL
   { "opengl",     no_argument,       NULL, 'O' },
+#  endif
+# endif
   { "width",      required_argument, NULL, 'w' },
   { "height",     required_argument, NULL, 'h' },
+#endif
   { "buffers",    required_argument, NULL, 'B' },
   { "noscaling",  no_argument,       NULL, 'n' },
   { "post",       required_argument, NULL, 'P' },
@@ -199,7 +219,7 @@ int main(int argc, char *argv[])
   int ftcp = 0, fudp = 0, frtp = 0, reconnect = 0, firsttry = 1;
   int fullscreen = 0, hud = 0, opengl = 0, xpos = 0, ypos = 0, width = 720, height = 576;
   int pes_buffers = 250;
-  int scale_video = 1, aspect = 1;
+  int scale_video = 1, aspect = 1, modeswitch = 0;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   int repeat_emu = 0;
   int window_id = WINDOW_ID_NONE;
@@ -269,6 +289,13 @@ int main(int argc, char *argv[])
               else
                 window_id = atoi(optarg);
               break;
+    case 'm': modeswitch = 1;
+#ifdef HAVE_XRANDR
+              PRINTF("Video mode switching enabled\n");
+#else
+              PRINTF("Video mode switching not supported\n");
+#endif
+              break;
     case 'd': video_port = optarg;
               break;
     case 'x': noxkbd = 1;
@@ -290,35 +317,52 @@ int main(int argc, char *argv[])
               if (aspect_controller)
                 PRINTF("Using %s to switch aspect ratio\n", aspect_controller);
               break;
+#ifndef IS_FBFE
     case 'f': fullscreen=1;
               PRINTF("Fullscreen mode\n");
               break;
-    case 'D': hud = HUD_COMPOSITE;
-#ifdef HAVE_XRENDER
+    case 'D':
+# ifdef HAVE_XRENDER
+              hud = HUD_COMPOSITE;
               PRINTF("HUD OSD mode\n");
-#else
-              PRINTF("HUD OSD not supported\n");
-#endif
-              if (optarg && strstr(optarg, "xshape")) {
-                hud |= HUD_XSHAPE;
-#ifndef HAVE_XSHAPE
-                PRINTF("XShape HUD OSD not supported\n");
-#endif
-              }
+# else
+              EXIT("HUD OSD not supported\n");
+# endif
               if (optarg && strstr(optarg, "opengl")) {
+# ifdef HAVE_OPENGL
                 hud |= HUD_OPENGL;
-#ifndef HAVE_OPENGL
-                PRINTF("OpenGL HUD OSD not supported\n");
-#endif
+                PRINTF("OpenGL HUD OSD mode\n");
+                break;
+# else
+                EXIT("OpenGL HUD OSD not supported\n");
+# endif
+              }
+              if (optarg && strstr(optarg, "xrender")) {
+# ifdef HAVE_XCOMPOSITE
+                hud |= HUD_XRENDER;
+                PRINTF("XRender HUD OSD mode\n");
+                break;
+# else
+                EXIT("XRender HUD OSD not supported\n");
+# endif
+              }
+              if (optarg && strstr(optarg, "xshape")) {
+# ifdef HAVE_XSHAPE
+                hud |= HUD_XSHAPE;
+                PRINTF("XShape HUD OSD mode\n");
+# else
+                EXIT("XShape HUD OSD not supported");
+# endif
               }
               break;
-    case 'O': opengl = 1;
+    case 'O':
+# ifdef HAVE_OPENGL
+              opengl = 1;
               hud |= HUD_OPENGL;
-#ifdef HAVE_OPENGL
               PRINTF("Using OpenGL to draw video and HUD OSD\n");
-#else
-              PRINTF("OpenGL not supported\n");
-#endif
+# else
+              EXIT("OpenGL not supported\n");
+# endif
               break;
     case 'w': width = atoi(optarg);
               PRINTF("Width: %d\n", width);
@@ -329,6 +373,7 @@ int main(int argc, char *argv[])
     case 'h': height = atoi(optarg);
               PRINTF("Height: %d\n", height);
               break;
+#endif // !IS_FBFE
     case 'B': pes_buffers = atoi(optarg);
               PRINTF("Buffers: %d\n", pes_buffers);
               break;
@@ -503,7 +548,7 @@ int main(int argc, char *argv[])
   }
 
   /* Initialize display */
-  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, opengl, 0,
+  if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, opengl, modeswitch,
                            "", aspect, NULL, noxkbd, gui_hotkeys,
                            video_port, scale_video, 0,
                            aspect_controller, window_id)) {
