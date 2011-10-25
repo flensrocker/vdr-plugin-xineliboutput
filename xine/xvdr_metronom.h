@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.7 2011-02-13 14:21:55 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.8 2011-10-25 06:36:04 phintuka Exp $
  *
  */
 
@@ -57,6 +57,8 @@ struct xvdr_metronom_s {
   int     still_mode;
   int64_t last_vo_pts;   /* last displayed video frame PTS */
   int     wired;         /* true if currently wired to stream */
+
+  pthread_mutex_t pts_mutex;
 #endif
 };
 
