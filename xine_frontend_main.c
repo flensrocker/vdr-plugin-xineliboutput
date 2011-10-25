@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.96 2011-03-19 17:33:21 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.97 2011-10-25 18:29:29 phintuka Exp $
  *
  */
 
@@ -98,6 +98,7 @@ static const char help_str[] =
 #ifndef IS_FBFE
     "   -d, --display=displayaddress  X11 display address\n"
     "   -W, --wid=id                  Use existing X11 window\n"
+    "                                 Special ID for root window: --wid=root\n"
 #endif
     "   -a, --aspect=[auto|4:3|16:9|16:10|default]\n"
     "                                 Display aspect ratio\n"
@@ -201,7 +202,7 @@ int main(int argc, char *argv[])
   int scale_video = 1, aspect = 1;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   int repeat_emu = 0;
-  int window_id = -1;
+  int window_id = WINDOW_ID_NONE;
   int xmajor, xminor, xsub;
   int c;
   int xine_finished = FE_XINE_ERROR;
@@ -263,7 +264,10 @@ int main(int argc, char *argv[])
                 PRINTF("Video port: %s\n", video_port);
               break;
 #ifndef IS_FBFE
-    case 'W': window_id = atoi(optarg);
+    case 'W': if (!strcmp(optarg, "root"))
+                window_id = WINDOW_ID_ROOT;
+              else
+                window_id = atoi(optarg);
               break;
     case 'd': video_port = optarg;
               break;
