@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.168 2011-10-25 18:45:12 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.169 2011-10-27 07:23:24 phintuka Exp $
  *
  */
 
@@ -832,11 +832,7 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
       LOGDBG("hud_osd_command(OSD_Set_RLE): Updating shape of window");
       XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->shape_mask_picture,
                        x, y, 0, 0, x, y, w, h);
-
-      // WHY MASK CHANGE HAS NO EFFECT UNLESS WINDOW IS UNMAPPED FIRST ... ???
-      XUnmapWindow(this->display, this->hud_window);
       XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
-      XMapWindow(this->display, this->hud_window);
     }
   }
 #endif
