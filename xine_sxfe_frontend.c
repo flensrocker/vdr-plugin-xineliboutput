@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.169 2011-10-27 07:23:24 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.170 2011-10-27 07:26:21 phintuka Exp $
  *
  */
 
@@ -1759,7 +1759,6 @@ static void *opengl_draw_frame_thread(void *arg)
 {
   sxfe_t *this=(sxfe_t *) arg;
   int unsigned sync;
-  int unsigned prev_sync = 0;
   int draw_frame = 0, window_mapped = 0, keep_osd_open = 0;
   int prev_hud_visible = 0;
   int16_t video_x0, video_y0, video_x1, video_y1;
@@ -1920,7 +1919,6 @@ static void *opengl_draw_frame_thread(void *arg)
     if (!keep_osd_open) {
       prev_hud_visible = this->hud_visible;
     }
-    prev_sync = sync;
     first_frame = 0;
   }
 
