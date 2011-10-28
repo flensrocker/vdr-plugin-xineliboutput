@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.98 2011-10-25 18:34:32 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.99 2011-10-28 07:40:32 phintuka Exp $
  *
  */
 
@@ -213,6 +213,7 @@ static const struct option long_options[] = {
 };
 
 #define PRINTF(x...) do { if(SysLogLevel>1) printf(x); } while(0)
+#define EXIT(x...)   do { fprintf(stderr, x); exit(-1); } while(0)
 
 int main(int argc, char *argv[])
 {
@@ -351,7 +352,7 @@ int main(int argc, char *argv[])
                 hud |= HUD_XSHAPE;
                 PRINTF("XShape HUD OSD mode\n");
 # else
-                EXIT("XShape HUD OSD not supported");
+                EXIT("XShape HUD OSD not supported\n");
 # endif
               }
               break;
@@ -379,8 +380,7 @@ int main(int argc, char *argv[])
               break;
     case 'T': tty = optarg;
               if (access(tty, R_OK | W_OK) < 0) {
-                PRINTF("Can't access terminal: %s\n", tty);
-                return -2;
+                EXIT("Can't access terminal: %s\n", tty);
               }
               PRINTF("Terminal: %s\n", tty);
               break;
