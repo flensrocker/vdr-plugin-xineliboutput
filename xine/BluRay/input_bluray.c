@@ -171,6 +171,7 @@ int del_loop(const char *device)
         return -1;
     }
     if (ioctl(fd, LOOP_CLR_FD, 0) < 0) {
+        close(fd);
 /* umm... why?  perror("ioctl: LOOP_CLR_FD"); */
         return -1;
     }

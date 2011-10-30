@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: equalizer.c,v 1.6 2010-04-16 10:32:35 phintuka Exp $
+ * $Id: equalizer.c,v 1.7 2011-10-30 16:54:26 phintuka Exp $
  *
  */
 
@@ -25,7 +25,7 @@ cEqualizer::cEqualizer() : cOsdObject()
 cEqualizer::~cEqualizer()
 {
   delete m_Osd;
-  delete m_Values;
+  delete[] m_Values;
 }
 
 #define OSD_W (220)
