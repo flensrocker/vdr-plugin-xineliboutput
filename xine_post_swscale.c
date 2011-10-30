@@ -15,9 +15,9 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  *
- * $Id: xine_post_swscale.c,v 1.15 2011-03-02 12:42:22 phintuka Exp $
+ * $Id: xine_post_swscale.c,v 1.16 2011-10-30 16:59:02 phintuka Exp $
  *
  * Simple (faster) resize for avisynth
  *     Copyright (C) 2002 Tom Barry
