@@ -4,12 +4,21 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: logdefs.h,v 1.15 2011-10-25 07:18:37 phintuka Exp $
+ * $Id: logdefs.h,v 1.16 2011-11-01 12:26:36 phintuka Exp $
  *
  */
 
 #ifndef _LOGDEFS_H_
 #define _LOGDEFS_H_
+
+
+#if !defined(__GNUC__) || __GNUC__ < 3
+#  define LIKELY(x)   (x)
+#  define UNLIKELY(x) (x)
+#else
+#  define LIKELY(x)   __builtin_expect((x),1)
+#  define UNLIKELY(x) __builtin_expect((x),0)
+#endif
 
 /*
  * Default module name (goes to every log line)
@@ -72,7 +81,7 @@
 
 #define LOGERR(x...)                                \
         do {                                        \
-          if (SysLogLevel >= SYSLOGLEVEL_ERRORS) {  \
+          if (LIKELY(SysLogLevel >= SYSLOGLEVEL_ERRORS)) {      \
             x_syslog(LOG_ERR, LOG_MODULENAME, x);   \
             if (errno)                              \
               LOG_ERRNO;                            \
@@ -80,17 +89,17 @@
         } while(0)
 #define LOGMSG(x...)                                \
         do {                                        \
-          if (SysLogLevel >= SYSLOGLEVEL_INFO)      \
+          if (LIKELY(SysLogLevel >= SYSLOGLEVEL_INFO))  \
             x_syslog(LOG_INFO, LOG_MODULENAME, x);  \
         } while(0)
 #define LOGDBG(x...)                                \
         do {                                        \
-          if (SysLogLevel >= SYSLOGLEVEL_DEBUG)     \
+          if (UNLIKELY(SysLogLevel >= SYSLOGLEVEL_DEBUG))       \
             x_syslog(LOG_DEBUG, LOG_MODULENAME, x); \
         } while(0)
 #define LOGVERBOSE(x...)                            \
         do {                                        \
-          if (SysLogLevel >= SYSLOGLEVEL_VERBOSE)   \
+          if (UNLIKELY(SysLogLevel >= SYSLOGLEVEL_VERBOSE))     \
             x_syslog(LOG_DEBUG, LOG_MODULENAME, x); \
         } while(0)
 
@@ -107,7 +116,7 @@
 #else
 #  define ASSERT(expr,fatal) \
       do { \
-        if(!(expr)) { \
+        if(UNLIKELY(!(expr))) {                         \
           LOGERR("Asseretion failed: %s at %s:%d (%s)", \
                  #expr, __FILE__, __LINE__, __FUNCTION__); \
           if(fatal) \
@@ -118,7 +127,7 @@
 
 #define ASSERT_RET(expr,ret) \
       do { \
-        if(!(expr)) { \
+        if(UNLIKELY(!(expr))) {                         \
           LOGMSG("Asseretion failed: %s at %s:%d (%s)", \
                  #expr, __FILE__, __LINE__, __FUNCTION__); \
           ret; \
