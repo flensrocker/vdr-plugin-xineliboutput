@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.8 2011-03-08 08:55:14 phintuka Exp $
+ * $Id: rle.c,v 1.9 2011-11-08 09:38:54 phintuka Exp $
  *
  */
 
@@ -416,7 +416,7 @@ void rle_uncompress_argb(uint32_t *dst,
   uint i, pixelcounter = 0;
   uint idx = 0, line = 0;
 
-  if (palette_entries > 255)
+  if (palette_entries > 256)
     return;
 
   rle_palette_to_argb(lut, palette, palette_entries);
