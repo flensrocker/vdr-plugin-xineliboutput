@@ -908,55 +908,15 @@ static int32_t parse_private_stream_1(demux_xvdr_t *this, uint8_t *p, buf_elemen
 
   } else if ((p[0]&0xf0) == 0xa0) {
 
-    int pcm_offset;
-    int number_of_frame_headers;
-    int first_access_unit_pointer;
-    int audio_frame_number;
-    int bits_per_sample;
-    int sample_rate;
-    int num_channels;
-    int dynamic_range;
-
-    /*
-     * found in http://members.freemail.absa.co.za/ginggs/dvd/mpeg2_lpcm.txt
-     * appears to be correct.
-     */
-
     track = p[0] & 0x0F;
-    number_of_frame_headers = p[1];
-    /* unknown = p[2]; */
-    first_access_unit_pointer = p[3];
-    audio_frame_number = p[4];
-
-    /*
-     * 000 => mono
-     * 001 => stereo
-     * 010 => 3 channel
-     * ...
-     * 111 => 8 channel
-     */
-    num_channels = (p[5] & 0x7) + 1;
-    sample_rate = p[5] & 0x10 ? 96000 : 48000;
-    switch ((p[5]>>6) & 3) {
-    case 3: /* illegal, use 16-bits? */
-      default:
-        xprintf (this->stream->xine, XINE_VERBOSITY_DEBUG,
-                 "illegal lpcm sample format (%d), assume 16-bit samples\n", (p[5]>>6) & 3 );
-      case 0: bits_per_sample = 16; break;
-      case 1: bits_per_sample = 20; break;
-      case 2: bits_per_sample = 24; break;
-    }
-    dynamic_range = p[6];
 
     /* send lpcm config byte */
     buf->decoder_flags |= BUF_FLAG_SPECIAL;
     buf->decoder_info[1] = BUF_SPECIAL_LPCM_CONFIG;
     buf->decoder_info[2] = p[5];
 
-    pcm_offset = 7;
-
-    buf->content   = p+pcm_offset;
-    buf->size      = this->packet_len-pcm_offset;
+    buf->content   = p + 7;
+    buf->size      = this->packet_len - 7;
     buf->type      = BUF_AUDIO_LPCM_BE + track;
     buf->pts       = this->pts;
 
