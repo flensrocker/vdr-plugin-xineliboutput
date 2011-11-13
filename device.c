@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.115 2011-11-13 08:46:28 phintuka Exp $
+ * $Id: device.c,v 1.116 2011-11-13 08:49:34 phintuka Exp $
  *
  */
 
@@ -1149,6 +1149,16 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
         LOGMSG("Lost PAT/PMT fragment !");
 
       TsBufferFlush();
+
+      /* detect radio streams */
+      int patv, pmtv;
+      if (PatPmtParser()->GetVersions(patv, pmtv)) {
+        if (!PatPmtParser()->Vpid() && PatPmtParser()->Apid(0)) {
+          m_RadioStream = true;
+          m_AudioCount  = 0;
+          ForEach(m_clients, &cXinelibThread::SetNoVideo, m_RadioStream);
+        }
+      }
     }
   }
 
