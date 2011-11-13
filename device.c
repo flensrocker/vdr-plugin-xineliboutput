@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.114 2011-11-13 08:45:30 phintuka Exp $
+ * $Id: device.c,v 1.115 2011-11-13 08:46:28 phintuka Exp $
  *
  */
 
@@ -827,8 +827,9 @@ void cXinelibDevice::Play(void)
   TRACEF("cXinelibDevice::Play");
 
   m_SkipAudio  = false;
-  
+
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
+  ForEach(m_clients, &cXinelibThread::SetStillMode, false);
   TrickSpeed(-1);
   cDevice::Play();
 }
