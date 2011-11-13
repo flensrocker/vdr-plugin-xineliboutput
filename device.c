@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.113 2011-03-20 21:36:31 phintuka Exp $
+ * $Id: device.c,v 1.114 2011-11-13 08:45:30 phintuka Exp $
  *
  */
 
@@ -612,6 +612,7 @@ void cXinelibDevice::SetReplayMode(void)
   m_RadioStream = true; // first seen replayed video packet resets this
   m_AudioCount  = 15;
   m_StreamStart = true;
+  m_TrickSpeed = -1;
 
   ForEach(m_clients, &cXinelibThread::SetLiveMode, false);
   Clear();
