@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_kbd.c,v 1.1 2011-01-23 19:42:08 phintuka Exp $
+ * $Id: xine_frontend_kbd.c,v 1.2 2011-11-13 09:51:44 phintuka Exp $
  *
  */
 
@@ -157,6 +157,8 @@ static void kbd_receiver_thread_cleanup(void *arg)
   int status;
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
   status = system("setterm -cursor on");
+  if (status < 0)
+    LOGMSG("system(\"setterm -cursor on\") failed\n");
   LOGMSG("Keyboard thread terminated");
 }
 
@@ -168,7 +170,11 @@ static void *kbd_receiver_thread(void *fe_gen)
   int status;
 
   status = system("setterm -cursor off");
+  if (status < 0)
+    LOGMSG("system(\"setterm -cursor off\") failed\n");
   status = system("setterm -blank off");
+  if (status < 0)
+    LOGMSG("system(\"setterm -blank off\") failed\n");
 
   /* Set stdin to deliver keypresses without buffering whole lines */
   tcgetattr(STDIN_FILENO, &saved_tm);
