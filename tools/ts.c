@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.28 2010-07-19 13:20:22 phintuka Exp $
+ * $Id: ts.c,v 1.29 2011-11-13 09:45:01 phintuka Exp $
  *
  */
 
@@ -537,17 +537,17 @@ static int ts_get_pcr_1(const uint8_t *pkt, int64_t *ppcr)
     return 0;
 
   int64_t pcr;
-  uint    epcr;
-
   pcr  = ((int64_t) pkt[6]) << 25;
   pcr += (int64_t) (pkt[7]  << 17);
   pcr += (int64_t) (pkt[8]  << 9);
   pcr += (int64_t) (pkt[9]  << 1);
   pcr += (int64_t) ((pkt[10] & 0x80) >> 7);
 
-  epcr = ((pkt[10] & 0x1) << 8) | pkt[11];
-
+#ifdef LOG_PCR
+  uint epcr = ((pkt[10] & 0x1) << 8) | pkt[11];
   LOGPCR("ts_get_pcr: PCR: %"PRId64", EPCR: %u", pcr, epcr);
+#endif
+
   *ppcr = pcr;
   return 1;
 }
