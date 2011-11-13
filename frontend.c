@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.95 2011-03-19 17:20:53 phintuka Exp $
+ * $Id: frontend.c,v 1.96 2011-11-13 08:56:44 phintuka Exp $
  *
  */
 
@@ -702,50 +702,47 @@ int cXinelibThread::Xine_Control(const char *cmd, const char *p1)
   return Xine_Control(buf);
 }
 
-bool cXinelibThread::PlayFile(const char *FileName, int Position, 
-			      bool LoopPlay, ePlayMode PlayMode,
-			      int TimeoutMs)
+bool cXinelibThread::PlayFile(const char *FileName, int Position,
+                              bool LoopPlay, ePlayMode PlayMode,
+                              int TimeoutMs)
 {
   TRACEF("cXinelibThread::PlayFile");
 
-  char vis[256+4096];
+  cString vis, buf;
 
-  switch(PlayMode) {
+  switch (PlayMode) {
     case pmVideoOnly:
       LOGDBG("cXinelibThread::PlayFile: Video from file, audio from VDR");
-      strcpy(vis, "Video");
+      vis = "Video";
       break;
     case pmAudioOnly:
       LOGDBG("cXinelibThread::PlayFile: Audio from file, video from VDR");
-      strcpy(vis, "Audio");
+      vis = "Audio";
       break;
     case pmAudioOnlyBlack:
       //LOGDBG("cXinelibThread::PlayFile: Audio from file, no video");
-      strcpy(vis, "none");
+      vis = "none";
       break;
     case pmAudioVideo:
     default:
       if (xc.audio_vis_goom_opts[0] && !strcmp(xc.audio_visualization, "goom")) {
-	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
+	vis = cString::sprintf("%s:%s", xc.audio_visualization, xc.audio_vis_goom_opts);
       } else if (xc.audio_vis_image_mrl[0] && !strcmp(xc.audio_visualization, "image")) {
-	snprintf(vis, sizeof(vis), "%s:%s", xc.audio_visualization, xc.audio_vis_image_mrl);
+	vis = cString::sprintf("%s:%s", xc.audio_visualization, xc.audio_vis_image_mrl);
       } else {
-	strn0cpy(vis, xc.audio_visualization, sizeof(vis));
+	vis = xc.audio_visualization;
       }
-      vis[sizeof(vis)-1] = 0;
       break;
   }
 
-  char buf[4096+4096+256];
   m_bEndOfStreamReached = false;
-  if(snprintf(buf, sizeof(buf), "PLAYFILE %s %d %s %s",
-	      LoopPlay ? "Loop" : "", Position, vis, FileName ? FileName : "")
-     >= 4096+4096+256) {
-    LOGMSG("PlayFile: message too long !");
-    return 0;
-  }
+  buf = cString::sprintf("PLAYFILE %s %d %s %s",
+                         LoopPlay ? "Loop" : "",
+                         Position,
+                         *vis,
+                         FileName ?: "");
 
-  if(FileName) {
+  if (FileName) {
     Lock();
     m_FileName = FileName;
     m_bPlayingFile = true;
@@ -758,7 +755,7 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
 
   int result = PlayFileCtrl(buf, TimeoutMs);
 
-  if(!FileName || result != 0) {
+  if (!FileName || result != 0) {
     Lock();
     m_bPlayingFile = false;
     m_FileName = NULL;
@@ -766,10 +763,10 @@ bool cXinelibThread::PlayFile(const char *FileName, int Position,
       DELETENULL(m_StatusMonitor);
     Unlock();
   } else {
-    if(xc.extsub_size >= 0)
+    if (xc.extsub_size >= 0)
       Xine_Control("EXTSUBSIZE", xc.extsub_size);
 
-    // set preferred subtitle language 
+    // set preferred subtitle language
     if (Setup.DisplaySubtitles) {
       const char *langs = I18nLanguageCode(Setup.SubtitleLanguages[0]);
       if (langs) {
@@ -832,7 +829,6 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 					    int audio_surround,
 					    int speaker_type) 
 {
-  char buf[1024];
   int r = true;
 
   if(strcmp(deinterlace_method, "tvtime")) 
@@ -843,13 +839,12 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
   r = Xine_Control("AUDIOCOMPRESSION", audio_compression) && r;
   r = Xine_Control("AUDIOSURROUND", audio_surround) && r;
   r = Xine_Control("SPEAKERS", speaker_type) && r;
-  sprintf(buf,"EQUALIZER %d %d %d %d %d %d %d %d %d %d",
-	  audio_equalizer[0],audio_equalizer[1],
-	  audio_equalizer[2],audio_equalizer[3],
-	  audio_equalizer[4],audio_equalizer[5],
-	  audio_equalizer[6],audio_equalizer[7],
-	  audio_equalizer[8],audio_equalizer[9]);
-  r = Xine_Control(buf) && r;
+  r = Xine_Control(cString::sprintf("EQUALIZER %d %d %d %d %d %d %d %d %d %d",
+                                    audio_equalizer[0], audio_equalizer[1],
+                                    audio_equalizer[2], audio_equalizer[3],
+                                    audio_equalizer[4], audio_equalizer[5],
+                                    audio_equalizer[6], audio_equalizer[7],
+                                    audio_equalizer[8], audio_equalizer[9])) && r;
 
   if (m_bNoVideo && strcmp(xc.audio_visualization, "none") && strcmp(xc.audio_visualization, "image")) {
     char *opts = NULL;
@@ -870,38 +865,22 @@ int cXinelibThread::ConfigurePostprocessing(const char *deinterlace_method,
 
 int cXinelibThread::ConfigurePostprocessing(const char *name, bool on, const char *args)
 {
-  char buf[1024];  
-  int l;
-
-  if(on) 
-    l = snprintf(buf, sizeof(buf), "POST %s On %s", (name&&*name)?name:"0", args?args:"");
-  else 
-    // 0 - audio vis.
-    // 1 - audio post
-    // 2 - video post
-    //return fe->post_close(fe, name, -1);
-    l = snprintf(buf, sizeof(buf), "POST %s Off", (name&&*name)?name:"0");
-
-  if(l >= (int)sizeof(buf)) {
-    LOGMSG("ConfigurePostprocessing %s: message too long !", name);
-    return 0;
-  }
-  //buf[sizeof(buf)-1] = 0;
-
-  return Xine_Control(buf);
+  cString cmd = cString::sprintf("POST %s %s %s",
+                                 (name && *name) ? name : "0",
+                                 on ? "On" : "Off",
+                                 (on && args) ? args : "");
+  return Xine_Control(cmd);
 }
 
-int cXinelibThread::ConfigureVideo(int hue, int saturation, 
+int cXinelibThread::ConfigureVideo(int hue, int saturation,
 				   int brightness, int sharpness,
 				   int noise_reduction, int contrast,
 				   int overscan, int vo_aspect_ratio)
 {
-  char cmd[128];
   Xine_Control("OVERSCAN", overscan);
-  snprintf(cmd, sizeof(cmd),
-	   "VIDEO_PROPERTIES %d %d %d %d %d %d %d", 
-	  hue, saturation, brightness, sharpness, noise_reduction, contrast, vo_aspect_ratio);
-  return Xine_Control(cmd);
+  return Xine_Control(cString::sprintf("VIDEO_PROPERTIES %d %d %d %d %d %d %d",
+                                       hue, saturation, brightness, sharpness,
+                                       noise_reduction, contrast, vo_aspect_ratio));
 }
 
 //
