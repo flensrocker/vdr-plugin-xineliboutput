@@ -3,6 +3,7 @@
  *
  * Enable/Disable the GNOME screensaver
  * Supports GNOME screensaver API 2.14 and 2.15
+ * Supports GNOME SessionManager API
  *
  * Call gnome_screensaver_control(1) to enable and
  * gnome_screensaver_control(0) to disable
@@ -14,6 +15,8 @@
  *
  * Modified for xineliboutput by Alex Stansfield
  *   (http://www.linuxtv.org/pipermail/vdr/2007-July/013458.html)
+ *
+ * GNOME SessionManager support by Timo Eskola.
  */
 
 #include <stdlib.h>
@@ -32,6 +35,10 @@
 #define GS_PATH      "/org/gnome/ScreenSaver"
 #define GS_INTERFACE "org.gnome.ScreenSaver"
 
+#define SM_SERVICE   "org.gnome.SessionManager"
+#define SM_PATH      "/org/gnome/SessionManager"
+#define SM_INTERFACE "org.gnome.SessionManager"
+
 #define GS_APPLICATION_NAME     "vdr-sxfe"
 #define GS_REASON_FOR_INHIBIT   "Watching TV"
 
@@ -44,6 +51,55 @@
 #define MSG_GNOMEScreensaverDisabled "GNOME screensaver disabled"
 
 static guint32 cookie;
+
+static int gnome_sessionmanager_control(DBusGConnection *connection, int enable)
+{
+  GError *error;
+  DBusGProxy *proxy;
+  gboolean ret;
+
+  /* Create a proxy object */
+  proxy = dbus_g_proxy_new_for_name(connection,
+                                    SM_SERVICE, SM_PATH, SM_INTERFACE);
+  if (!proxy) {
+    LOGDBG("Failed to get a proxy for " SM_SERVICE);
+    return 0;
+  }
+
+  error = NULL;
+  if (enable) {
+    ret = dbus_g_proxy_call(proxy, "Uninhibit", &error,
+                            G_TYPE_UINT, cookie,
+                            G_TYPE_INVALID, G_TYPE_INVALID);
+  } else {
+    ret = dbus_g_proxy_call(proxy, "Inhibit", &error,
+                            G_TYPE_STRING, GS_APPLICATION_NAME,
+                            G_TYPE_UINT,   0,
+                            G_TYPE_STRING, GS_REASON_FOR_INHIBIT,
+                            G_TYPE_UINT,   12,
+                            G_TYPE_INVALID,
+                            G_TYPE_UINT, &cookie,
+                            G_TYPE_INVALID);
+  }
+
+  g_object_unref(proxy);
+
+  if (!ret) {
+    /* Check if it's a remote exception or a regular GError */
+    if (error->domain == DBUS_GERROR &&
+        error->code   == DBUS_GERROR_REMOTE_EXCEPTION) {
+      LOGMSG(MSG_RemoteMethodException, dbus_g_error_get_name(error), error->message);
+    } else {
+      LOGMSG(MSG_GError, error->message);
+    }
+    g_error_free(error);
+
+    return 0;
+  }
+
+  LOGMSG(enable ? MSG_GNOMEScreensaverEnabled : MSG_GNOMEScreensaverDisabled);
+  return 1;
+}
 
 void gnome_screensaver_control(int enable)
 {
@@ -63,18 +119,23 @@ void gnome_screensaver_control(int enable)
     return;
   }
 
+  /* try session manager interface first */
+  if (gnome_sessionmanager_control(connection, enable))
+    return;
+
   /* Create a proxy object */
   proxy = dbus_g_proxy_new_for_name(connection,
                                     GS_SERVICE, GS_PATH, GS_INTERFACE);
   if (!proxy) {
-    LOGDBG("Failed to get a proxy for gnome-screensaver");
+    LOGDBG("Failed to get a proxy for " GS_SERVICE);
     return;
   }
+
+  error = NULL;
 
   /* Enable the screensaver */
   if (enable) {
     /* First call the GNOME screensaver 2.15 API method */
-    error = NULL;
     ret =
         dbus_g_proxy_call(proxy, "UnInhibit", &error,
                           G_TYPE_UINT, cookie,
@@ -94,7 +155,6 @@ void gnome_screensaver_control(int enable)
   /* Disable the screensaver */
   else {
     /* First call the GNOME screensaver 2.15 API method */
-    error = NULL;
     ret =
         dbus_g_proxy_call(proxy, "Inhibit", &error,
                           G_TYPE_STRING, GS_APPLICATION_NAME,
