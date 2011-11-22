@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.13 2011-10-25 06:36:04 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.14 2011-11-22 09:43:27 phintuka Exp $
  *
  */
 
@@ -222,6 +222,11 @@ static void xvdr_metronom_dispose(xvdr_metronom_t *this)
 
 xvdr_metronom_t *xvdr_metronom_init(xine_stream_t *stream)
 {
+  if (stream->metronom->get_option(stream->metronom, XVDR_METRONOM_ID) == XVDR_METRONOM_ID) {
+    LOGMSG("xvdr_metronom_init(): stream already hooked !");
+    return stream->metronom;
+  }
+
   xvdr_metronom_t *this = calloc(1, sizeof(xvdr_metronom_t));
 
   this->stream        = stream;
