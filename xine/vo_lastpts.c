@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_lastpts.c,v 1.4 2011-10-25 07:19:29 phintuka Exp $
+ * $Id: vo_lastpts.c,v 1.5 2011-11-22 12:23:24 phintuka Exp $
  *
  */
 
@@ -32,6 +32,15 @@ typedef struct {
   metronom_t       *xvdr_metronom;
 } lastpts_hook_t;
 
+static void detect_xvdr_metronom(lastpts_hook_t *this, xine_stream_t *stream)
+{
+  if (stream->metronom->get_option(stream->metronom, XVDR_METRONOM_ID) == XVDR_METRONOM_ID) {
+    LOGMSG("new stream is vdr stream");
+    this->xvdr_metronom = stream->metronom;
+    this->xvdr_stream   = stream;
+  }
+}
+
 /*
  * interface
  */
@@ -47,30 +56,35 @@ static void lastpts_display_frame(vo_driver_t *self, vo_frame_t *vo_img)
   ASSERT_RET(self,   return);
   ASSERT_RET(vo_img, return);
 
+  if (!vo_img->stream || vo_img->stream == XINE_ANON_STREAM || vo_img->pts <= 0) {
+    this->h.orig_driver->display_frame(this->h.orig_driver, vo_img);
+    return;
+  }
+
   /* detect intercepted metronom with XVDR_* option support.
    * This prevents flooding log with "unknown option in set_option" messages
    */
-  if (vo_img->stream != this->prev_stream && vo_img->stream && vo_img->stream != XINE_ANON_STREAM) {
+  if (vo_img->stream != this->prev_stream) {
     LOGMSG("stream changed from %p to %p", this->prev_stream, vo_img->stream);
     this->prev_stream = vo_img->stream;
 
-    if (vo_img->stream->metronom->get_option(vo_img->stream->metronom, XVDR_METRONOM_ID) == XVDR_METRONOM_ID) {
-      LOGMSG("new stream is vdr stream");
-      this->xvdr_metronom = vo_img->stream->metronom;
-      this->xvdr_stream   = vo_img->stream;
-    }
+    detect_xvdr_metronom(this, vo_img->stream);
   }
 
-  if (this->xvdr_metronom) {
+  if (vo_img->stream == this->xvdr_stream) {
 
-    if (vo_img->stream == this->xvdr_stream) {
-      LOGVERBOSE("last pts %"PRId64, vo_img->pts);
+    if (this->xvdr_metronom != vo_img->stream->metronom) {
+      LOGMSG("detected new metronom");
+      this->xvdr_metronom = NULL;
+      detect_xvdr_metronom(this, vo_img->stream);
+    }
+
+    if (this->xvdr_metronom) {
       ASSERT_RET(this->xvdr_metronom->set_option, return);
 
-      this->xvdr_metronom->set_option(this->xvdr_metronom, XVDR_METRONOM_LAST_VO_PTS, vo_img->pts);
+      LOGVERBOSE("last pts %"PRId64, vo_img->pts);
 
-    } else {
-      LOGVERBOSE("last pts %"PRId64" - %p not vdr stream", vo_img->pts, vo_img->stream);
+      this->xvdr_metronom->set_option(this->xvdr_metronom, XVDR_METRONOM_LAST_VO_PTS, vo_img->pts);
     }
   }
 
