@@ -136,7 +136,7 @@ static const char * get_decoder_name(xine_t *xine, int buf_type)
 }
 
 #define LOG_DECODER(buf_type, name)                              \
-  LOGMSG("Using %-10s decoder \"%s\"",                           \
+  LOGDBG("Using %-10s decoder \"%s\"",                           \
          name, get_decoder_name(this->stream->xine, buf_type));
 
 static void detect_video_decoders(demux_xvdr_t *this)
@@ -146,14 +146,14 @@ static void detect_video_decoders(demux_xvdr_t *this)
   name = get_decoder_name(this->stream->xine, BUF_VIDEO_MPEG);
   if (!strcmp(name, "ffmpegvideo"))
     this->ffmpeg_mpeg2_decoder = 1;
-  LOGMSG("Using MPEG video decoder \"%s\" (%s)",
-         name, this->ffmpeg_mpeg2_decoder ? "FFmpeg" : "libmpeg2");
+  LOGDBG("Using MPEG video decoder \"%s\"%s",
+         name, this->ffmpeg_mpeg2_decoder ? " (FFmpeg)" : "");
 
   name = get_decoder_name(this->stream->xine, BUF_VIDEO_H264);
   if (!strcmp(name, "dshowserver"))
     this->coreavc_h264_decoder = 1;
-  LOGMSG("Using H.264      decoder \"%s\" (%s)",
-         name, this->coreavc_h264_decoder ? "dshowserver (CoreAVC)" : "FFmpeg");
+  LOGDBG("Using H.264      decoder \"%s\"%s",
+         name, this->coreavc_h264_decoder ? " (dshowserver (CoreAVC))" : "");
 
   LOG_DECODER(BUF_VIDEO_VC1,     "VC-1");
 }
