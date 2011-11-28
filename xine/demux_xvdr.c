@@ -381,10 +381,23 @@ static void track_audio_stream_change(demux_xvdr_t *this, buf_element_t *buf)
 #else
   if (this->audio_type != buf->type) {
     LOGDBG("audio stream changed: %08x -> %08x", this->audio_type, buf->type);
-    this->audio_type = buf->type;
+
+    ts_data_reset_audio(this->ts_data, this->audio_fifo, buf->type & 0xff);
+
     put_control_buf(this->audio_fifo,
                     this->audio_fifo,
                     BUF_CONTROL_RESET_TRACK_MAP);
+
+    if (this->audio_type) {
+      buf_element_t *b = this->audio_fifo->buffer_pool_try_alloc(this->audio_fifo);
+      if (b) {
+        b->type = BUF_CONTROL_START;
+        b->decoder_flags = BUF_FLAG_GAPLESS_SW;
+        this->audio_fifo->put(this->audio_fifo, b);
+      }
+    }
+
+    this->audio_type = buf->type;
   }
 #endif
 }
