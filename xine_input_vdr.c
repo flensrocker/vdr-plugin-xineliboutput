@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.349 2011-11-22 09:51:12 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.350 2011-11-29 10:02:26 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.349 2011-11-22 09:51:12 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.350 2011-11-29 10:02:26 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3319,6 +3319,7 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
 
   } else if(!strncasecmp(cmd, "SPEAKERS ",9)) {
     if(1 == sscanf(cmd+9, "%d", &tmp32)) {
+      if (this->fd_control < 0)
       this->class->xine->config->update_num(this->class->xine->config,
 					    "audio.output.speaker_arrangement", tmp32);
     } else
