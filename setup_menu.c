@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.82 2011-03-20 21:31:36 phintuka Exp $
+ * $Id: setup_menu.c,v 1.83 2011-11-29 09:57:35 phintuka Exp $
  *
  */
 
@@ -110,7 +110,6 @@ class cMenuSetupAudio : public cMenuSetupPage
     int visualization;
     int goom_width, goom_height, goom_fps;
 
-    cOsdItem *audio_ctrl_speakers;
     cOsdItem *audio_ctrl_volume;
     cOsdItem *audio_ctrl_delay;
     cOsdItem *audio_ctrl_compression;
@@ -172,10 +171,6 @@ void cMenuSetupAudio::Set(void)
   Clear();
 
   Add(SeparatorItem(tr("Audio")));
-
-  Add(audio_ctrl_speakers =
-      new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type, 
-				SPEAKERS_count, xc.s_speakerArrangements));
 
   Add(audio_ctrl_volume =
       new cMenuEditBoolItem(tr("Volume control"), 
@@ -244,17 +239,6 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
   else if(item == audio_ctrl_vis) {
     Set();
   }
-  else if(item == audio_ctrl_speakers) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-          xc.deinterlace_method, newconfig.audio_delay, 
-	  newconfig.audio_compression, newconfig.audio_equalizer,
-	  newconfig.audio_surround, newconfig.speaker_type);
-    if(newconfig.speaker_type <= SPEAKERS_STEREO &&
-       newconfig.audio_upmix) {
-      newconfig.audio_upmix = false;
-      Set();
-    }
-  }
   else if(item == audio_ctrl_surround) {
     cXinelibDevice::Instance().ConfigurePostprocessing(
           xc.deinterlace_method, newconfig.audio_delay, 
@@ -303,7 +287,6 @@ void cMenuSetupAudio::Store(void)
   if(xc.audio_vis_image_mrl[0] == '/')
     snprintf(xc.audio_vis_image_mrl, sizeof(xc.audio_vis_image_mrl), "%s", *cPlaylist::BuildMrl("file", xc.audio_vis_image_mrl));
 
-  SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
   SetupStore("Audio.Delay",    xc.audio_delay);
   SetupStore("Audio.Compression",  xc.audio_compression);
   SetupStore("Audio.Surround",     xc.audio_surround);
@@ -1415,6 +1398,10 @@ void cMenuSetupLocal::Set(void)
       Add(ctrl_audio_port = 
 	  new cMenuEditStrItem(tr("Port"), newconfig.audio_port, 31, 
 			       DriverNameChars));
+
+    if(audio_driver != AUDIO_DRIVER_NONE)
+      Add(new cMenuEditStraI18nItem(tr("Speakers"), &newconfig.speaker_type,
+                                    SPEAKERS_count, xc.s_speakerArrangements));
   }
   
   if(current<1) current=1; /* first item is not selectable */
@@ -1508,6 +1495,7 @@ void cMenuSetupLocal::Store(void)
   SetupStore("Frontend",      xc.local_frontend);
   SetupStore("Audio.Driver",  xc.audio_driver);
   SetupStore("Audio.Port",    xc.audio_port);
+  SetupStore("Audio.Speakers", xc.s_speakerArrangements[xc.speaker_type]);
   SetupStore("Video.Driver",  xc.video_driver);
   SetupStore("Video.Port",    xc.video_port);
 #if 0
