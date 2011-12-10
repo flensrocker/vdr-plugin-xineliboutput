@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.350 2011-11-29 10:02:26 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.351 2011-12-10 10:56:03 rofafor Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.350 2011-11-29 10:02:26 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.351 2011-12-10 10:56:03 rofafor Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5607,6 +5607,7 @@ retry_recvfrom:
 static int connect_tcp_data_stream(vdr_input_plugin_t *this, const char *host, 
 				   int port)
 {
+  static const char ackmsg[] = {'D','A','T','A','\r','\n'};
   struct sockaddr_in sinc;
   socklen_t len = sizeof(sinc);
   uint32_t ipc;
@@ -5640,9 +5641,9 @@ static int connect_tcp_data_stream(vdr_input_plugin_t *this, const char *host,
     LOGERR("Data stream write error (TCP)");
   } else if( XIO_READY != io_select_rd(fd_data)) {
     LOGERR("Data stream poll failed (TCP)");
-  } else if((n=read(fd_data, tmpbuf, sizeof(tmpbuf))) <= 0) {
+  } else if((n=read(fd_data, tmpbuf, sizeof(ackmsg))) <= 0) {
     LOGERR("Data stream read failed (TCP)");
-  } else if(n<6 || strncmp(tmpbuf, "DATA\r\n", 6)) {
+  } else if(n<sizeof(ackmsg) || strncmp(tmpbuf, ackmsg, sizeof(ackmsg))) {
     tmpbuf[n] = 0;
     LOGMSG("Server does not support TCP ? (%s)", tmpbuf);
   } else {
