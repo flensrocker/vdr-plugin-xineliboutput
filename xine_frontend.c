@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.121 2011-04-11 08:40:06 durchflieger Exp $
+ * $Id: xine_frontend.c,v 1.122 2011-12-14 08:12:16 phintuka Exp $
  *
  */
 
@@ -545,8 +545,10 @@ static void configure_audio_out(const fe_t *this, const char *audio_driver, cons
       x_upd_str("audio.device.alsa_passthrough_device",	audio_port);
       x_upd_num("audio.output.speaker_arrangement",     A52_PASSTHRU);
     } else {
+#if 0
       x_upd_num("audio.output.speaker_arrangement",
 		strstr(audio_port, "surround") ? SURROUND51 : STEREO);
+#endif
     }
   }
 
