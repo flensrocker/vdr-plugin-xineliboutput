@@ -311,6 +311,8 @@ static int mount_iso_image(bluray_input_plugin_t *this)
  * overlay
  */
 
+#define PALETTE_INDEX_BACKGROUND 0xff
+
 static void send_num_buttons(bluray_input_plugin_t *this, int n)
 {
   xine_event_t   event;
@@ -324,10 +326,21 @@ static void send_num_buttons(bluray_input_plugin_t *this, int n)
   xine_event_send(this->stream, &event);
 }
 
+static void clear_overlay(xine_osd_t *osd)
+{
+  /* palette entry 0xff is background --> can't use xine_osd_clear(). */
+  memset(osd->osd.area, PALETTE_INDEX_BACKGROUND, osd->osd.width * osd->osd.height);
+  osd->osd.x1 = osd->osd.width;
+  osd->osd.y1 = osd->osd.height;
+  osd->osd.x2 = 0;
+  osd->osd.y2 = 0;
+}
+
 static xine_osd_t *get_overlay(bluray_input_plugin_t *this, int plane)
 {
   if (!this->osd[plane]) {
     this->osd[plane] = xine_osd_new(this->stream, 0, 0, 1920, 1080);
+    clear_overlay(this->osd[plane]);
   }
   if (!this->pg_enable) {
     _x_select_spu_channel(this->stream, -1);
@@ -355,9 +368,14 @@ static void close_overlay(bluray_input_plugin_t *this, int plane)
 
 static void open_overlay(bluray_input_plugin_t *this, const BD_OVERLAY * const ov)
 {
-  if (!this->osd[ov->plane]) {
-    this->osd[ov->plane] = xine_osd_new(this->stream, ov->x, ov->y, ov->w, ov->h);
+  lprintf("open_overlay(%d,%d)\n", ov->w, ov->h);
+
+  if (this->osd[ov->plane]) {
+    close_overlay(this, ov->plane);
   }
+
+  this->osd[ov->plane] = xine_osd_new(this->stream, ov->x, ov->y, ov->w, ov->h);
+  clear_overlay(this->osd[ov->plane]);
 }
 
 static void draw_bitmap(xine_osd_t *osd, const BD_OVERLAY * const ov)
@@ -395,6 +413,7 @@ static void draw_bitmap(xine_osd_t *osd, const BD_OVERLAY * const ov)
 static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
 {
   bluray_input_plugin_t *this = (bluray_input_plugin_t *) this_gen;
+  xine_osd_t *osd;
 
   if (!this) {
     return;
@@ -419,7 +438,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
       return;
   }
 
-  xine_osd_t *osd = get_overlay(this, ov->plane);
+  osd = get_overlay(this, ov->plane);
 
   switch (ov->cmd) {
     case BD_OVERLAY_DRAW:    /* draw bitmap (x,y,w,h,img,palette) */
@@ -427,13 +446,12 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
       return;
 
     case BD_OVERLAY_WIPE:    /* clear area (x,y,w,h) */
-      xine_osd_draw_rect(osd, ov->x, ov->y, ov->x + ov->w - 1, ov->y + ov->h - 1, 0xff, 1);
+      xine_osd_draw_rect(osd, ov->x, ov->y, ov->x + ov->w - 1, ov->y + ov->h - 1, PALETTE_INDEX_BACKGROUND, 1);
       return;
 
     case BD_OVERLAY_CLEAR:   /* clear plane */
-      xine_osd_draw_rect(osd, 0, 0, osd->osd.width - 1, osd->osd.height - 1, 0xff, 1);
-      xine_osd_clear(osd);
       xine_osd_hide(osd, 0);
+      clear_overlay(osd);
       return;
 
     case BD_OVERLAY_FLUSH:   /* all changes have been done, flush overlay to display at given pts */
@@ -446,7 +464,7 @@ static void overlay_proc(void *this_gen, const BD_OVERLAY * const ov)
       return;
 
     default:
-      LOGMSG("unknown overlay command %d", ov->cmd);
+      LOGMSG("unknown overlay command %d\n", ov->cmd);
       return;
   }
 }
