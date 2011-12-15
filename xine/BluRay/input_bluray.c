@@ -611,7 +611,7 @@ static void update_title_info(bluray_input_plugin_t *this, int playlist_id)
 
 static void stream_flush(bluray_input_plugin_t *this)
 {
-  if (this->stream_flushed || !this->stream || !this->stream->demux_plugin)
+  if (this->stream_flushed || !this->stream)
     return;
 
   lprintf("Stream flush\n");
@@ -1070,7 +1070,8 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
   if (result < 0)
     LOGMSG("bd_read() failed: %s (%d of %d)\n", strerror(errno), (int)result, (int)len);
 
-  this->stream_flushed = 0;
+  if (result > 0)
+    this->stream_flushed = 0;
 
   return result;
 }
