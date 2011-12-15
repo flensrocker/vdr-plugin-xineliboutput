@@ -1206,7 +1206,7 @@ static int get_optional_data_impl (bluray_input_plugin_t *this, void *data, int 
      * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
      */
     case INPUT_OPTIONAL_DATA_AUDIOLANG:
-      if (this->title_info && this->title_info->clip_count < current_clip) {
+      if (this->title_info && current_clip < this->title_info->clip_count) {
         int               channel = *((int *)data);
         BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
 
@@ -1236,7 +1236,7 @@ static int get_optional_data_impl (bluray_input_plugin_t *this, void *data, int 
      * - channel number can be mpeg-ts PID (0x1200 ... 0x12ff)
      */
     case INPUT_OPTIONAL_DATA_SPULANG:
-      if (this->title_info && this->title_info->clip_count < current_clip) {
+      if (this->title_info && current_clip < this->title_info->clip_count) {
         int               channel = *((int *)data);
         BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
 
