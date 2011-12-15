@@ -759,8 +759,10 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         break;
 
       case BD_EVENT_TITLE:
-        LOGMSG("BD_EVENT_TITLE %d\n", ev.param);
-        this->current_title = ev.param;
+        if (this->nav_mode) {
+          lprintf("BD_EVENT_TITLE %d\n", ev.param);
+          this->current_title = ev.param;
+        }
         break;
 
       case BD_EVENT_PLAYLIST:
