@@ -1187,10 +1187,70 @@ static const char* bluray_plugin_get_mrl (input_plugin_t *this_gen)
   return this->mrl;
 }
 
+static int get_audio_lang (bluray_input_plugin_t *this, int *data)
+{
+  /*
+   * audio track language:
+   * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
+   */
+
+  unsigned int current_clip = this->current_clip; /* can change any time */
+
+  if (this->title_info && current_clip < this->title_info->clip_count) {
+    int               channel = *data;
+    BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
+
+    if (channel >= 0 && channel < clip->audio_stream_count) {
+      memcpy(data, clip->audio_streams[channel].lang, 4);
+      return INPUT_OPTIONAL_SUCCESS;
+    }
+
+    /* search by pid */
+    int i;
+    for (i = 0; i < clip->audio_stream_count; i++) {
+      if (channel == clip->audio_streams[i].pid) {
+        memcpy(data, clip->audio_streams[i].lang, 4);
+        return INPUT_OPTIONAL_SUCCESS;
+      }
+    }
+  }
+
+  return INPUT_OPTIONAL_UNSUPPORTED;
+}
+
+static int get_spu_lang (bluray_input_plugin_t *this, int *data)
+{
+  /*
+   * SPU track language:
+   * - channel number can be mpeg-ts PID (0x1200 ... 0x12ff)
+   */
+
+  unsigned int current_clip = this->current_clip; /* can change any time */
+
+  if (this->title_info && current_clip < this->title_info->clip_count) {
+    int               channel = *data;
+    BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
+
+    if (channel >= 0 && channel < clip->pg_stream_count) {
+      memcpy(data, clip->pg_streams[channel].lang, 4);
+      return INPUT_OPTIONAL_SUCCESS;
+    }
+
+    /* search by pid */
+    int i;
+    for (i = 0; i < clip->pg_stream_count; i++) {
+      if (channel == clip->pg_streams[i].pid) {
+        memcpy(data, clip->pg_streams[i].lang, 4);
+        return INPUT_OPTIONAL_SUCCESS;
+      }
+    }
+  }
+
+  return INPUT_OPTIONAL_UNSUPPORTED;
+}
+
 static int get_optional_data_impl (bluray_input_plugin_t *this, void *data, int data_type)
 {
-  unsigned int current_clip = this->current_clip;
-
   switch (data_type) {
 
     case INPUT_OPTIONAL_DATA_DEMUXER:
@@ -1201,68 +1261,14 @@ static int get_optional_data_impl (bluray_input_plugin_t *this, void *data, int 
 #endif
       return INPUT_OPTIONAL_SUCCESS;
 
-    /*
-     * audio track language:
-     * - channel number can be mpeg-ts PID (0x1100 ... 0x11ff)
-     */
     case INPUT_OPTIONAL_DATA_AUDIOLANG:
-      if (this->title_info && current_clip < this->title_info->clip_count) {
-        int               channel = *((int *)data);
-        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
+      return get_audio_lang(this, data);
 
-        if (channel >= 0 && channel < clip->audio_stream_count) {
-          memcpy(data, clip->audio_streams[channel].lang, 4);
-          lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: %02d [pid 0x%04x]: %s\n",
-                  channel, clip->audio_streams[channel].pid, clip->audio_streams[channel].lang);
-
-          return INPUT_OPTIONAL_SUCCESS;
-        }
-        /* search by pid */
-        int i;
-        for (i = 0; i < clip->audio_stream_count; i++) {
-          if (channel == clip->audio_streams[i].pid) {
-            memcpy(data, clip->audio_streams[i].lang, 4);
-            lprintf("INPUT_OPTIONAL_DATA_AUDIOLANG: pid 0x%04x -> ch %d: %s\n",
-                    channel, i, clip->audio_streams[i].lang);
-
-            return INPUT_OPTIONAL_SUCCESS;
-          }
-        }
-      }
-      return INPUT_OPTIONAL_UNSUPPORTED;
-
-    /*
-     * SPU track language:
-     * - channel number can be mpeg-ts PID (0x1200 ... 0x12ff)
-     */
     case INPUT_OPTIONAL_DATA_SPULANG:
-      if (this->title_info && current_clip < this->title_info->clip_count) {
-        int               channel = *((int *)data);
-        BLURAY_CLIP_INFO *clip    = &this->title_info->clips[current_clip];
-
-        if (channel >= 0 && channel < clip->pg_stream_count) {
-          memcpy(data, clip->pg_streams[channel].lang, 4);
-          lprintf("INPUT_OPTIONAL_DATA_SPULANG: %02d [pid 0x%04x]: %s\n",
-                  channel, clip->pg_streams[channel].pid, clip->pg_streams[channel].lang);
-
-          return INPUT_OPTIONAL_SUCCESS;
-        }
-        /* search by pid */
-        int i;
-        for (i = 0; i < clip->pg_stream_count; i++) {
-          if (channel == clip->pg_streams[i].pid) {
-            memcpy(data, clip->pg_streams[i].lang, 4);
-            lprintf("INPUT_OPTIONAL_DATA_SPULANG: pid 0x%04x -> ch %d: %s\n",
-                    channel, i, clip->pg_streams[i].lang);
-
-            return INPUT_OPTIONAL_SUCCESS;
-          }
-        }
-      }
-      return INPUT_OPTIONAL_UNSUPPORTED;
+      return get_spu_lang(this, data);
 
     default:
-      return DEMUX_OPTIONAL_UNSUPPORTED;
+      return INPUT_OPTIONAL_UNSUPPORTED;
     }
 
   return INPUT_OPTIONAL_UNSUPPORTED;
