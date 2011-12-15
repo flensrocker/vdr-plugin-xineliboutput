@@ -154,6 +154,8 @@ typedef struct {
   uint8_t            error : 1;
   uint8_t            menu_open : 1;
   uint8_t            stream_flushed : 1;
+  uint8_t            demux_action_req : 1;
+  uint8_t            end_of_title : 1;
   uint8_t            pg_enable : 1;
   int                mouse_inside_button;
 
@@ -625,6 +627,8 @@ static void stream_flush(bluray_input_plugin_t *this)
     .data_length = 0,
   };
   xine_event_send (this->stream, &event);
+
+  this->demux_action_req = 1;
 }
 
 static void stream_reset(bluray_input_plugin_t *this)
@@ -634,6 +638,7 @@ static void stream_reset(bluray_input_plugin_t *this)
 
   lprintf("Stream reset\n");
 
+#if XINE_VERSION_CODE < 10121
   this->cap_seekable = 0;
 
   _x_set_fine_speed(this->stream, XINE_FINE_SPEED_NORMAL);
@@ -641,6 +646,22 @@ static void stream_reset(bluray_input_plugin_t *this)
   _x_demux_control_start(this->stream);
 
   this->cap_seekable = INPUT_CAP_SEEKABLE;
+#else
+  xine_event_t event = {
+    .type        = XINE_EVENT_PIDS_CHANGE,
+    .stream      = this->stream,
+    .data        = NULL,
+    .data_length = 0,
+  };
+
+  if (!this->end_of_title) {
+    _x_demux_flush_engine(this->stream);
+  }
+
+  xine_event_send (this->stream, &event);
+
+  this->demux_action_req = 1;
+#endif
 }
 
 static void wait_secs(bluray_input_plugin_t *this, unsigned seconds)
@@ -756,6 +777,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
       case BD_EVENT_END_OF_TITLE:
         lprintf("BD_EVENT_END_OF_TITLE\n");
         stream_flush(this);
+        this->end_of_title = 1;
         break;
 
       case BD_EVENT_TITLE:
@@ -771,6 +793,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         this->current_clip = 0;
         update_title_info(this, ev.param);
         stream_reset(this);
+        this->end_of_title = 0;
         break;
 
       case BD_EVENT_PLAYITEM:
@@ -1044,6 +1067,20 @@ static uint32_t bluray_plugin_get_capabilities (input_plugin_t *this_gen)
          INPUT_CAP_CHAPTERS;
 }
 
+#if XINE_VERSION_CODE >= 10121
+# define CHECK_READ_INTERRUPT     \
+  do {                            \
+    if (this->demux_action_req) { \
+      this->demux_action_req = 0; \
+      errno = EAGAIN;             \
+      return -1;                  \
+    }                             \
+  } while (0)
+#else
+# define CHECK_READ_INTERRUPT
+#endif
+
+
 #if XINE_VERSION_CODE >= 10190
 static off_t bluray_plugin_read (input_plugin_t *this_gen, void *buf, off_t len)
 #else
@@ -1057,14 +1094,19 @@ static off_t bluray_plugin_read (input_plugin_t *this_gen, char *buf, off_t len)
     return -1;
 
   handle_events(this);
+  CHECK_READ_INTERRUPT;
 
   if (this->nav_mode) {
     do {
       BD_EVENT ev;
       result = bd_read_ext (this->bdh, (unsigned char *)buf, len, &ev);
       handle_libbluray_event(this, ev);
+      CHECK_READ_INTERRUPT;
+
       if (result == 0) {
         handle_events(this);
+        CHECK_READ_INTERRUPT;
+
         if (ev.event == BD_EVENT_NONE) {
           if (_x_action_pending(this->stream)) {
             break;
