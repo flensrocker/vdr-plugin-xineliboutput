@@ -786,7 +786,11 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_AUDIO_STREAM:
         lprintf("BD_EVENT_AUDIO_STREAM %d\n", ev.param);
-        update_audio_channel(this, ev.param - 1);
+        if (ev.param < 32) {
+          update_audio_channel(this, ev.param - 1);
+        } else {
+          update_audio_channel(this, 0);
+        }
         break;
 
       case BD_EVENT_PG_TEXTST:
@@ -797,7 +801,11 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_PG_TEXTST_STREAM:
         lprintf("BD_EVENT_PG_TEXTST_STREAM %d\n", ev.param);
-        this->pg_stream = ev.param - 1;
+        if (ev.param < 64) {
+          this->pg_stream = ev.param - 1;
+        } else {
+          this->pg_stream = -1;
+        }
         if (this->pg_enable) {
           update_spu_channel(this, this->pg_stream);
         }
