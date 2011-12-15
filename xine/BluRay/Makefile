@@ -2,12 +2,22 @@
 # select plugins
 #
 
-ENABLE_DEMUX_PLUGIN ?= yes
+ifeq ($(shell pkg-config libxine --atleast-version=1.1.21 || echo "yes"), yes)
+    ENABLE_DEMUX_PLUGIN ?= yes
+else
+    ENABLE_DEMUX_PLUGIN ?= no
+    $(warning demux plugin is included in xine-lib 1.1.21+)
+endif
 
 ifeq ($(shell pkg-config libbluray && echo yes), yes)
-    ENABLE_INPUT_PLUGIN ?= yes
-    CFLAGS_BD ?= $(shell pkg-config libbluray --cflags)
-    LIBS_BD   ?= $(shell pkg-config libbluray --libs)
+    ifeq ($(shell pkg-config libxine --atleast-version=1.1.21 || echo "yes"), yes)
+        ENABLE_INPUT_PLUGIN ?= yes
+        CFLAGS_BD ?= $(shell pkg-config libbluray --cflags)
+        LIBS_BD   ?= $(shell pkg-config libbluray --libs)
+    else
+        ENABLE_DEMUX_PLUGIN ?= no
+        $(warning input plugin is included in xine-lib 1.1.21+)
+    endif
 else
     ENABLE_INPUT_PLUGIN ?= no
     $(warning libbluray not found)
