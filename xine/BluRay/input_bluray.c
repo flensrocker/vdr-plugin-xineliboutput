@@ -21,8 +21,9 @@
  *
  * Input plugin for BluRay discs / images
  *
- * Requires libbluray from git://git.videolan.org/libbluray.git
- * Tested with revision 2011-10-19 14:00 UTC
+ * Requires libbluray 0.2.1 or later:
+ *   http://www.videolan.org/developers/libbluray.html
+ *   git://git.videolan.org/libbluray.git
  *
  */
 
@@ -40,7 +41,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <dlfcn.h>
 #include <pthread.h>
 
 /* for loop device (used with .iso images) */
@@ -50,7 +50,9 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+/* libbluray */
 #include <libbluray/bluray.h>
+#include <libbluray/bluray-version.h>
 #include <libbluray/keys.h>
 #include <libbluray/overlay.h>
 #include <libbluray/meta_data.h>
