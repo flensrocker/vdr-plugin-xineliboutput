@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2000-2011 the xine project
- *
  * Copyright (C) 2009-2011 Petri Hintukainen <phintuka@users.sourceforge.net>
  *
  * This file is part of xine, a free video player.
@@ -57,6 +56,8 @@
 #include <libbluray/overlay.h>
 #include <libbluray/meta_data.h>
 
+/* xine */
+
 #define LOG_MODULE "input_bluray"
 #define LOG_VERBOSE
 
@@ -64,7 +65,7 @@
 
 #define LOGMSG(x...)  xine_log (this->stream->xine, XINE_LOG_MSG, "input_bluray: " x);
 
-#define XINE_ENGINE_INTERNAL  // stream->demux_plugin
+#define XINE_ENGINE_INTERNAL
 
 #ifdef HAVE_CONFIG_H
 # include "xine_internal.h"
@@ -86,6 +87,8 @@
 #  define XINE_EVENT_END_OF_CLIP            0x80000001
 #endif
 
+/* */
+
 #ifndef MIN
 # define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
@@ -98,6 +101,8 @@
 #define TICKS_IN_MS       45
 
 #define MIN_TITLE_LENGTH  180
+
+/* */
 
 typedef struct {
 
@@ -120,11 +125,11 @@ typedef struct {
 typedef struct {
   input_plugin_t        input_plugin;
 
+  bluray_input_class_t *class;
+
   xine_stream_t        *stream;
   xine_event_queue_t   *event_queue;
   xine_osd_t           *osd[2];
-
-  bluray_input_class_t *class;
 
   char                 *mrl;
   char                 *disc_root;
@@ -143,20 +148,21 @@ typedef struct {
   pthread_mutex_t    title_info_mutex;  /* lock this when accessing title_info outside of input/demux thread */
   unsigned int       current_clip;
   time_t             still_end_time;
-  int                error;
-  int                menu_open;
-  int                stream_flushed;
-  int                pg_enable;
   int                pg_stream;
+
+  uint8_t            nav_mode : 1;
+  uint8_t            error : 1;
+  uint8_t            menu_open : 1;
+  uint8_t            stream_flushed : 1;
+  uint8_t            pg_enable : 1;
   int                mouse_inside_button;
 
   uint32_t       cap_seekable;
-  uint8_t        nav_mode;
 
   /* loop device for .iso image */
-  char *iso_image;
-  char *loop_dev;
-  char  mount_point[64];
+  char              *iso_image;
+  char              *loop_dev;
+  char               mount_point[64];
 
 } bluray_input_plugin_t;
 
@@ -691,6 +697,9 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 {
     switch ((bd_event_e)ev.event) {
 
+      case BD_EVENT_NONE:
+        break;
+
       case BD_EVENT_ERROR:
         LOGMSG("BD_EVENT_ERROR\n");
         this->error = 1;
@@ -707,6 +716,13 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         this->error = 1;
         return;
 
+      /* sound effects */
+#if BLURAY_VERSION >= 202
+      case BD_EVENT_SOUND_EFFECT:
+        lprintf("BD_EVENT_SOUND_EFFECT %d\n", ev.param);
+        break;
+#endif
+
       /* playback control */
 
       case BD_EVENT_SEEK:
@@ -716,7 +732,6 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         break;
 
       case BD_EVENT_STILL_TIME:
-        //lprintf("BD_EVENT_STILL_TIME %d\n", ev.param);
         wait_secs(this, ev.param);
         break;
 
@@ -739,7 +754,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
         break;
 
       case BD_EVENT_END_OF_TITLE:
-        LOGMSG("BD_EVENT_END_OF_TITLE\n");
+        lprintf("BD_EVENT_END_OF_TITLE\n");
         stream_flush(this);
         break;
 
@@ -776,7 +791,7 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
 
       case BD_EVENT_PG_TEXTST:
         lprintf("BD_EVENT_PG_TEXTST %s\n", ev.param ? "ON" : "OFF");
-        this->pg_enable = ev.param;
+        this->pg_enable = !!ev.param;
         update_spu_channel(this, this->pg_enable ? this->pg_stream : -1);
         break;
 
@@ -796,11 +811,8 @@ static void handle_libbluray_event(bluray_input_plugin_t *this, BD_EVENT ev)
       case BD_EVENT_SECONDARY_VIDEO_STREAM:
         // TODO
 
-      case BD_EVENT_NONE:
-        break;
-
       default:
-        LOGMSG("unhandled libbluray event %d [param %d]\n", ev.event, ev.param);
+        lprintf("unhandled libbluray event %d [param %d]\n", ev.event, ev.param);
         break;
     }
 }
@@ -1554,7 +1566,7 @@ static int bluray_plugin_open (input_plugin_t *this_gen)
   bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_MENU_LANG,    this->class->language);
   bd_set_player_setting_str(this->bdh, BLURAY_PLAYER_SETTING_COUNTRY_CODE, this->class->country);
 
-  /* init eq */
+  /* init event queue */
   bd_get_event(this->bdh, NULL);
 
   /* get disc name */
@@ -1661,9 +1673,16 @@ static void device_change_cb(void *data, xine_cfg_entry_t *cfg)
 
 static void language_change_cb(void *data, xine_cfg_entry_t *cfg)
 {
-  bluray_input_class_t *this = (bluray_input_class_t *) data;
+  bluray_input_class_t *class = (bluray_input_class_t *) data;
 
-  this->language = cfg->str_value;
+  class->language = cfg->str_value;
+#if 0
+  if (class->bdh) {
+    bd_set_player_setting_str(class->bdh, BLURAY_PLAYER_SETTING_AUDIO_LANG, class->language);
+    bd_set_player_setting_str(class->bdh, BLURAY_PLAYER_SETTING_PG_LANG,    class->language);
+    bd_set_player_setting_str(class->bdh, BLURAY_PLAYER_SETTING_MENU_LANG,  class->language);
+  }
+#endif
 }
 
 static void country_change_cb(void *data, xine_cfg_entry_t *cfg)
@@ -1736,6 +1755,7 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
   bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
   char *path = NULL;
   int title = -1, chapter = -1, i, num_pl;
+  BLURAY *bdh;
 
   lprintf("bluray_class_get_dir(%s)\n", filename);
 
@@ -1744,7 +1764,7 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
   if (filename)
     parse_mrl(filename, &path, &title, &chapter);
 
-  BLURAY *bdh    = bd_open(path?:this->mountpoint, NULL);
+  bdh = bd_open(path ? path : this->mountpoint, NULL);
 
   if (bdh) {
     num_pl = bd_get_titles(bdh, TITLES_RELEVANT, MIN_TITLE_LENGTH);
@@ -1769,9 +1789,9 @@ xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename,
         //bd_free_title_info(info);
       }
     }
-  }
 
-  bd_close(bdh);
+    bd_close(bdh);
+  }
 
   free(path);
 
@@ -1833,17 +1853,19 @@ static void *bluray_init_plugin (xine_t *xine, void *data)
   this->input_class.dispose            = bluray_class_dispose;
   this->input_class.eject_media        = bluray_class_eject_media;
 
-  this->mountpoint = config->register_filename(config, "media.bluray.mountpoint",
-                                               "/mnt/bluray", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
-                                               _("BluRay mount point"),
-                                               _("Default mount location for BluRay discs."),
-                                               0, mountpoint_change_cb, (void *) this);
-  this->device = config->register_filename(config, "media.bluray.device",
-                                           "/dev/dvd", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
-                                           _("device used for BluRay playback"),
-                                           _("The path to the device "
-                                             "which you intend to use for playing BluRy discs."),
-                                           0, device_change_cb, (void *) this);
+  this->mountpoint =
+    config->register_filename(config, "media.bluray.mountpoint",
+                              "/mnt/bluray", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
+                              _("BluRay mount point"),
+                              _("Default mount location for BluRay discs."),
+                              0, mountpoint_change_cb, (void *) this);
+  this->device =
+    config->register_filename(config, "media.bluray.device",
+                              "/dev/dvd", XINE_CONFIG_STRING_IS_DIRECTORY_NAME,
+                              _("device used for BluRay playback"),
+                              _("The path to the device "
+                                "which you intend to use for playing BluRy discs."),
+                              0, device_change_cb, (void *) this);
 
   /* Player settings */
   this->language =
