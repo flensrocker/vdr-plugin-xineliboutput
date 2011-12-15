@@ -1750,7 +1750,7 @@ static char **bluray_class_get_autoplay_list (input_class_t *this_gen, int *num_
   return autoplay_list;
 }
 
-xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename, int *nFiles)
+static xine_mrl_t **bluray_class_get_dir(input_class_t *this_gen, const char *filename, int *nFiles)
 {
   bluray_input_class_t *this = (bluray_input_class_t*) this_gen;
   char *path = NULL;
