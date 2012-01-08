@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_post_audiochannel.c,v 1.7 2011-10-30 16:59:02 phintuka Exp $
+ * $Id: xine_post_audiochannel.c,v 1.8 2012-01-08 11:16:33 rofafor Exp $
  *
  */
 
@@ -70,7 +70,7 @@ typedef struct audioch_post_plugin_s
 /*
  *    Port functions
  */
-#if XINE_VERSION_CODE < 10200
+#if XINE_VERSION_CODE <= 10200
 static int audioch_port_open(xine_audio_port_t *port_gen, xine_stream_t *stream,
                              uint32_t bits, uint32_t rate, int mode) 
 #else
@@ -85,7 +85,7 @@ static int audioch_port_open(xine_audio_port_t *port_gen, xine_stream_t *stream,
   _x_post_inc_usage(port);
   
   port->stream = stream;
-#if XINE_VERSION_CODE < 10200
+#if XINE_VERSION_CODE <= 10200
   port->bits = bits;
   port->rate = rate;
   port->mode = mode;
@@ -112,7 +112,7 @@ static void audioch_port_put_buffer (xine_audio_port_t *port_gen,
   int i;
 
   if(this->channels == 2) {
-#if XINE_VERSION_CODE < 10200
+#if XINE_VERSION_CODE <= 10200
     int step = buf->format.bits / 8;
 #else
     int step = sample_bytes_table[buf->format.sample_format];
@@ -122,7 +122,7 @@ static void audioch_port_put_buffer (xine_audio_port_t *port_gen,
     newbuf->vpts = buf->vpts;
     newbuf->frame_header_count = buf->frame_header_count;
     newbuf->first_access_unit = buf->first_access_unit;
-#if XINE_VERSION_CODE < 10200
+#if XINE_VERSION_CODE <= 10200
     newbuf->format.bits = buf->format.bits;
     newbuf->format.rate = buf->format.rate;
     newbuf->format.mode = buf->format.mode;
