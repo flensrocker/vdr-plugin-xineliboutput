@@ -25,6 +25,20 @@ VDR Plugin 'xineliboutput' Revision History
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
 
+2011-07-10: Version 1.0.7  (branch-1_0_x)
+Backported bugfixes from CVS trunk:
+- Accept short X11 display names (:0)
+- Improved vdr server discovery when server is listening on all interfaces
+Features:
+- Updated Italian translations (Thanks to Diego Pierotto)
+- Default to UDP transport. RTP is enabled only if requested on command line.
+- Improved automatic BluRay subtitle selection
+- React to X11 display size changes
+- Do not show hidden files in media player file browser
+- Added config entry to show hidden files in media player file browser
+- Added --geometry and --window options to vdr plugin.
+- Allow setting window position when starting in fullscreen mode.
+
 2011-02-28: Version 1.0.6  (CVS branch-1_0_x for vdr.1.4.x and vdr-1.6.x)
 Backported bugfixes from CVS trunk:
 - Fixed VDR OSD when playing DVDs
