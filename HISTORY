@@ -24,6 +24,7 @@ VDR Plugin 'xineliboutput' Revision History
 - Implemented build-time configuration script
 - Fixed aspect ratio problems when using ffmpeg mpeg2 decoder
 - H.264 updates
+- Added support for .ass subtitles to media player (Thanks to zaverel)
 
 2011-07-10: Version 1.0.7  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
