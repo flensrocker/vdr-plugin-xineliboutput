@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.81 2011-07-10 21:35:22 phintuka Exp $
+ * $Id: config.h,v 1.82 2012-01-16 11:57:53 phintuka Exp $
  *
  */
 
@@ -346,6 +346,7 @@ class config_t {
     int  playlist_album;
     int  dvd_arrow_keys_control_playback;
     uint media_menu_items;         // enabled items in media player menu (bitmask)
+    int  media_enable_delete;      // enable Delete in file browser
 
     // Audio visualization
     char audio_visualization[64];

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.89 2011-06-15 20:25:16 phintuka Exp $
+ * $Id: media_player.c,v 1.90 2012-01-16 11:57:53 phintuka Exp $
  *
  */
 
@@ -1587,6 +1587,11 @@ void cXinelibImagesControl::Close(void)
 
 void cXinelibImagesControl::Delete(void)
 {
+  if (!xc.media_enable_delete) {
+    LOGMSG("Deleting files disabled in config");
+    return;
+  }
+
   if(Interface->Confirm(tr("Delete image ?"))) {
     if(!unlink(m_Playlist->Current()->Filename)) {
       m_Playlist->Del(m_Playlist->Current());

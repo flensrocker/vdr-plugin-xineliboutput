@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.83 2011-11-29 09:57:35 phintuka Exp $
+ * $Id: setup_menu.c,v 1.84 2012-01-16 11:57:53 phintuka Exp $
  *
  */
 
@@ -1761,6 +1761,8 @@ void cMenuSetupMediaPlayer::Set(void)
                             &newconfig.dvd_arrow_keys_control_playback));
   Add(new cMenuEditBoolItem(tr("Show hidden files"),
                             &newconfig.show_hidden_files));
+  Add(new cMenuEditBoolItem(tr("Allow removing files"),
+                            &newconfig.media_enable_delete));
 
   Add(SeparatorItem(tr("Media Player")));
   Add(new cMenuEditBitItem(tr("Play file"),        &newconfig.media_menu_items, MEDIA_MENU_FILES));
@@ -1795,6 +1797,7 @@ void cMenuSetupMediaPlayer::Store(void)
   SetupStore("Media.DVD.ArrowKeysControlPlayback", xc.dvd_arrow_keys_control_playback);
   SetupStore("Media.MenuItems", xc.media_menu_items);
   SetupStore("Media.ShowHiddenFiles", xc.show_hidden_files);
+  SetupStore("Media.EnableDelete", xc.media_enable_delete);
 
   Setup.Save();
 }
