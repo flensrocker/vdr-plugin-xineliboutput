@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.14 2011-11-22 09:43:27 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.15 2012-01-16 12:27:14 phintuka Exp $
  *
  */
 
@@ -32,7 +32,7 @@ static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
     this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
 
   if (this->still_mode) {
-    LOGMSG("Still frame, type %d", frame->picture_coding_type);
+    LOGVERBOSE("Still frame, type %d", frame->picture_coding_type);
     frame->pts       = 0;
   }
 
