@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-06-11 16:18+0300\n"
+"POT-Creation-Date: 2012-01-16 13:42+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: Finnish <vdr@linuxtv.org>\n"
@@ -236,6 +236,18 @@ msgstr "DVD:n äänivalikko"
 msgid "Close menu"
 msgstr "Sulje valikko"
 
+msgid "BluRay Top menu"
+msgstr "BluRay-levyn päävalikko"
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
 msgid "Delete image ?"
 msgstr "Poistetaanko kuva ?"
 
@@ -338,9 +350,6 @@ msgstr "xineliboutput: pikanäppäintä %s ei ole kytketty"
 
 msgid "Audio"
 msgstr "Ääni"
-
-msgid "Speakers"
-msgstr "Kaiuttimet"
 
 msgid "Volume control"
 msgstr "Äänenvoimakkuuden säätö"
@@ -615,6 +624,9 @@ msgstr "Lomitettujen kenttien järjestys"
 msgid "Port"
 msgstr "Portti"
 
+msgid "Speakers"
+msgstr "Kaiuttimet"
+
 msgid "Remote Clients"
 msgstr "Etäkäyttö"
 
@@ -701,6 +713,9 @@ msgstr "Ohjaa nuolinäppäimillä DVD-toistoa"
 
 msgid "Show hidden files"
 msgstr "Näytä piilotiedostot"
+
+msgid "Allow removing files"
+msgstr "Salli tiedostojen poistaminen"
 
 msgid "Media Player"
 msgstr "Mediasoitin"

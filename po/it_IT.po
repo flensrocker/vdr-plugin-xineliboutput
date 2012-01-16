@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2011-06-11 16:18+0300\n"
+"POT-Creation-Date: 2012-01-16 13:42+0200\n"
 "PO-Revision-Date: 2011-07-10 02:27+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team: Italian <vdr@linuxtv.org>\n"
@@ -237,6 +237,18 @@ msgstr "Audio menu DVD"
 msgid "Close menu"
 msgstr "Chiudi menu"
 
+msgid "BluRay Top menu"
+msgstr ""
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
 msgid "Delete image ?"
 msgstr "Eliminare immagine ?"
 
@@ -339,9 +351,6 @@ msgstr "xineliboutput: tasto %s non associato"
 
 msgid "Audio"
 msgstr "Audio"
-
-msgid "Speakers"
-msgstr "Altoparlanti"
 
 msgid "Volume control"
 msgstr "Controllo volume"
@@ -616,6 +625,9 @@ msgstr "Ordine campo interlacciato"
 msgid "Port"
 msgstr "Porta"
 
+msgid "Speakers"
+msgstr "Altoparlanti"
+
 msgid "Remote Clients"
 msgstr "Client remoti"
 
@@ -701,6 +713,9 @@ msgid "Arrow keys control DVD playback"
 msgstr "Riproduzione DVD con tasti freccia"
 
 msgid "Show hidden files"
+msgstr ""
+
+msgid "Allow removing files"
 msgstr ""
 
 msgid "Media Player"
