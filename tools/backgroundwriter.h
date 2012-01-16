@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.h,v 1.8 2012-01-16 12:09:18 phintuka Exp $
+ * $Id: backgroundwriter.h,v 1.9 2012-01-16 12:10:33 phintuka Exp $
  *
  */
 
@@ -40,9 +40,9 @@ class cBackgroundWriterI : public cThread
 
   public:
 #if VDRVERSNUM >= 10708
-    cBackgroundWriterI(int fd, int Size = KILOBYTE(512), int Margin = 0);
-#else
     cBackgroundWriterI(int fd, int Size = KILOBYTE(2048), int Margin = 0);
+#else
+    cBackgroundWriterI(int fd, int Size = KILOBYTE(512), int Margin = 0);
 #endif
     virtual ~cBackgroundWriterI();
 
