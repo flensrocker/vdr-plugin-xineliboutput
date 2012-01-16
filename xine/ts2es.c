@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.14 2011-09-15 07:21:29 phintuka Exp $
+ * $Id: ts2es.c,v 1.15 2012-01-16 13:26:14 phintuka Exp $
  *
  */
 
@@ -143,7 +143,7 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
     return NULL;
   }
   if (!ts_HAS_PAYLOAD(data)) {
-    LOGDBG("ts2es: no payload, size %d", bytes);
+    LOGVERBOSE("ts2es: no payload, size %d", bytes);
     return NULL;
   }
 
