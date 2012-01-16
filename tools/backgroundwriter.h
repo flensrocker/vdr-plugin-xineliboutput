@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: backgroundwriter.h,v 1.9 2012-01-16 12:10:33 phintuka Exp $
+ * $Id: backgroundwriter.h,v 1.10 2012-01-16 12:12:49 phintuka Exp $
  *
  */
 
@@ -75,7 +75,12 @@ class cTcpWriter : public cBackgroundWriterI
 	    const uchar *Data,   int DataCount);
 
   public:
+#if VDRVERSNUM >= 10708
+    cTcpWriter(int fd, int Size = KILOBYTE(2048));
+#else
     cTcpWriter(int fd, int Size = KILOBYTE(512));
+#endif
+
     virtual ~cTcpWriter() {};
 
     virtual int Put(eStreamId StreamId, uint64_t StreamPos, const uchar *Data, int DataCount);
