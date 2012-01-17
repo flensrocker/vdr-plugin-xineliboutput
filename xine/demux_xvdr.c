@@ -249,11 +249,10 @@ static void check_newpts(demux_xvdr_t *this, buf_element_t *buf, int video )
         _x_demux_control_newpts(this->stream, buf->pts, 0);
       }
       this->send_newpts = 0;
-
-      this->last_pts[1-video] = 0;
     }
 
     this->last_pts[video] = buf->pts;
+    this->last_pts[1-video] = buf->pts;
   }
 }
 
