@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.352 2011-12-10 11:01:35 rofafor Exp $
+ * $Id: xine_input_vdr.c,v 1.353 2012-01-18 13:29:59 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.352 2011-12-10 11:01:35 rofafor Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.353 2012-01-18 13:29:59 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4837,6 +4837,9 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
   if (buf->type != BUF_DEMUX_BLOCK || DATA_IS_TS(buf->content))
     return;
 
+#if 0
+  /* this is done in demux */
+
   /* generated still images start with empty video PES, PTS = 0.
      Reset metronom pts so images will be displayed */
   if(this->still_mode && buf->size == 14) {
@@ -4847,6 +4850,7 @@ static void postprocess_buf(vdr_input_plugin_t *this, buf_element_t *buf, int ne
       /*buf->content[12] = (uint8_t)((10*90) >> 7);*/
     }
   }
+#endif
 
   /* Count video frames for SCR tuning algorithm */
   if(this->live_mode && this->I_frames < 4)
