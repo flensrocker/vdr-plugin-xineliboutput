@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.173 2012-01-19 13:00:34 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.174 2012-01-19 13:04:32 phintuka Exp $
  *
  */
 
@@ -782,6 +782,11 @@ static void hud_fill_img_memory(uint32_t* dst, int dst_pitch,
 
 static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
 {
+  int x = cmd->x + cmd->dirty_area.x1;
+  int y = cmd->y + cmd->dirty_area.y1;
+  int w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
+  int h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
+
 #ifdef HAVE_OPENGL
   // If opengl is used: Just construct the bitmap
   // The scaling is done in the opengl thread
@@ -810,10 +815,6 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
 
   XDouble scale_x  = (XDouble)this->x.width  / (XDouble)this->osd_width;
   XDouble scale_y  = (XDouble)this->x.height / (XDouble)this->osd_height;
-  int     x        = cmd->x + cmd->dirty_area.x1;
-  int     y        = cmd->y + cmd->dirty_area.y1;
-  int     w        = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
-  int     h        = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
   int     mask_changed;
 
   Xrender_Surf *dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
