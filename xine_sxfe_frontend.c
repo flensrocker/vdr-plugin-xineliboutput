@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.170 2011-10-27 07:26:21 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.171 2012-01-19 12:50:01 phintuka Exp $
  *
  */
 
@@ -155,8 +155,10 @@ typedef struct sxfe_s {
   uint8_t  dragging : 1;
   uint8_t  hud;
   uint8_t  xshape_hud : 1;
+  uint8_t  opengl_xshape_available : 1;
   uint8_t  opengl_always : 1;
   uint8_t  opengl_hud : 1;
+  uint8_t  opengl_osd_texture_img_updated : 1;
   uint8_t  gui_hotkeys : 1;
   uint8_t  no_x_kbd : 1;
 
@@ -180,6 +182,11 @@ typedef struct sxfe_s {
   pthread_t       opengl_drawing_thread;
   pthread_mutex_t opengl_redraw_mutex;
   pthread_cond_t  opengl_redraw_cv;
+  uint32_t        opengl_redraw_request_nr;
+  uint32_t        opengl_redraw_served_nr;
+  pthread_mutex_t opengl_redraw_finished_mutex;
+  pthread_cond_t  opengl_redraw_finished_cv;
+  pthread_mutex_t opengl_osd_texture_img_mutex;
   Pixmap          video_frame_pixmap;
   GC              video_frame_gc;
   GLuint          video_frame_texture;
@@ -198,6 +205,7 @@ typedef struct sxfe_s {
   Xrender_Surf   *surf_img;
   Xrender_Surf   *surf_back_img;
   uint32_t       *hud_img_mem;
+  uint32_t       *opengl_osd_texture_img;
   GC              gc;
   Window          hud_window;
 # ifdef HAVE_XSHM
@@ -212,16 +220,20 @@ typedef struct sxfe_s {
 
 
 #ifdef HAVE_OPENGL
+#if 0
 typedef int (*GLXGetVideoSyncProc)  (unsigned int *count);
 typedef int (*GLXWaitVideoSyncProc) (int          divisor,
                                      int          remainder,
                                      unsigned int *count);
+#endif
 typedef void    (*GLXBindTexImageProc)    (Display       *display,
                                            GLXDrawable   drawable,
                                            int           buffer,
                                            int           *attribList);
+#if 0
 GLXGetVideoSyncProc      getVideoSync;
 GLXWaitVideoSyncProc     waitVideoSync;
+#endif
 GLXBindTexImageProc      bindTexImage;
 #endif
 
@@ -778,9 +790,33 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
   int     w        = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
   int     h        = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
   int     mask_changed;
+  int     i, j;
+  uint32_t value;
 
   Xrender_Surf *dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
   Window        dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
+
+  // If opengl is used: Just construct the bitmap
+  // The scaling is done in the opengl thread
+  if (this->opengl_always || this->opengl_hud) {
+
+    // Create the sub image
+    hud_fill_img_memory(this->hud_img_mem, HUD_MAX_WIDTH,
+                        this->shape_mask_mem, HUD_MAX_WIDTH,
+                        &mask_changed, cmd);
+
+    // Copy the image to the texture and inform the opengl thread
+    pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+    for (i = 0; i < h; i++) {
+      for (j = 0; j < w; j++) {
+        value = this->hud_img_mem[(y+i)*HUD_MAX_WIDTH+x+j];
+        this->opengl_osd_texture_img[(y+i)*this->osd_width+x+j] = (value<<8)|((value>>24)&0xFF);
+      }
+    }
+    this->opengl_osd_texture_img_updated = 1;
+    pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
+
+  } else {
 
 #ifdef HAVE_XSHM
   if (this->completion_event != -1) {
@@ -843,6 +879,7 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
                      x, y, 0, 0, x, y, w, h);
 
   XFlush(this->display);
+  }
 }
 
 static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
@@ -885,6 +922,8 @@ static void hud_osd_hide(sxfe_t *this)
   this->hud_visible = 0;
   this->video_win_active = 0;
 
+  if (this->hud) {
+
 #ifdef HAVE_XSHAPE
   if (this->xshape_hud) {
     XUnmapWindow(this->display, this->hud_window);
@@ -902,6 +941,7 @@ static void hud_osd_hide(sxfe_t *this)
                  0, 0, this->osd_width+2, this->osd_height+2);
 
   XFlush(this->display);
+  }
 }
 
 static void hud_osd_show(sxfe_t *this)
@@ -912,6 +952,14 @@ static void hud_osd_show(sxfe_t *this)
   this->hud_visible = 1;
   this->video_win_active = 0;
 
+  if ((this->opengl_always) || (this->opengl_hud)) {
+    pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+    memset((void*)this->opengl_osd_texture_img,0,sizeof(uint32_t)*this->osd_width*this->osd_height);
+    this->opengl_osd_texture_img_updated=1;
+    pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
+  }
+
+  if (this->hud) {
   XSetForeground(this->display, this->gc, 0x00000000);
   XFillRectangle(this->display, this->surf_img->draw, this->gc,
                  0, 0, this->osd_width+2, this->osd_height+2);
@@ -928,6 +976,7 @@ static void hud_osd_show(sxfe_t *this)
     XMapWindow(this->display, this->hud_window);
   }
 #endif
+  }
 
   XFlush(this->display);
 }
@@ -936,7 +985,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(this && this->hud && cmd) {
+  if(this && (this->hud || this->opengl_always || this->opengl_hud) && cmd) {
     XLockDisplay(this->display);
     switch(cmd->cmd) {
     case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
@@ -951,6 +1000,13 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
+
+      if ((this->opengl_always) || (this->opengl_hud)) {
+        pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+        free(this->opengl_osd_texture_img);
+        this->opengl_osd_texture_img = malloc(sizeof(uint32_t) * this->osd_width * this->osd_height);
+        pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
+      }
 
       hud_osd_show(this);
       break;
@@ -1005,6 +1061,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 void opengl_trigger_drawing_thread(sxfe_t *this)
 {
   pthread_mutex_lock(&this->opengl_redraw_mutex);
+  this->opengl_redraw_request_nr++;
   pthread_cond_signal(&this->opengl_redraw_cv);
   pthread_mutex_unlock(&this->opengl_redraw_mutex);
 }
@@ -1024,6 +1081,12 @@ static void hud_frame_output_cb (void *data,
   // Inform the opengl drawing thread
   if (this->opengl_always || this->opengl_hud) {
     opengl_trigger_drawing_thread(this);
+
+    // Wait until the thrad is finished
+    pthread_mutex_lock(&this->opengl_redraw_finished_mutex);
+    if (this->opengl_redraw_request_nr!=this->opengl_redraw_served_nr) 
+      pthread_cond_wait(&this->opengl_redraw_finished_cv, &this->opengl_redraw_finished_mutex);
+    pthread_mutex_unlock(&this->opengl_redraw_finished_mutex);
   }
 #endif
 
@@ -1172,7 +1235,7 @@ static int hud_osd_open(sxfe_t *this)
     this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
     this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
 
-    if (this->xshape_hud || this->opengl_hud || this->opengl_always)
+    if (this->xshape_hud)
       this->surf_back_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis,
                                              DisplayWidth(this->display, this->screen),
                                              DisplayHeight(this->display, this->screen), 1);
@@ -1506,6 +1569,7 @@ static int opengl_init_dl(sxfe_t *this)
 
   if (glXGetProcAddressARB) {
 
+#if 0	 
     if (!(waitVideoSync = (void *)glXGetProcAddressARB((unsigned char *)"glXWaitVideoSyncSGI"))) {
       LOGMSG("glXGetProcAddressARB(glXWaitVideoSyncSGI) failed");
       goto error;
@@ -1514,6 +1578,7 @@ static int opengl_init_dl(sxfe_t *this)
       LOGMSG("glXGetProcAddressARB(glXGetVideoSyncSGI) failed");
       goto error;
     }
+#endif
     if (!(bindTexImage = (void *)glXGetProcAddressARB((unsigned char *)"glXBindTexImageEXT"))) {
       LOGMSG("glXGetProcAddressARB(glXBindTexImageEXT) failed");
       goto error;
@@ -1529,6 +1594,7 @@ static int opengl_init_dl(sxfe_t *this)
       LOGMSG("opengl_init(): can not get pointer to glXBindTexImageEXT");
       goto error;
     }
+#if 0
     getVideoSync = dlsym(dlhand,"glXGetVideoSyncSGI");
     if (dlerror() != NULL) {
       LOGMSG("opengl_init(): can not get pointer to glXGetVideoSyncSGI");
@@ -1539,6 +1605,7 @@ static int opengl_init_dl(sxfe_t *this)
       LOGMSG("opengl_init(): can not get pointer to glXWaitVideoSyncSGI");
       goto error;
     }
+#endif
   }
 
   dlclose(dlhand);
@@ -1634,11 +1701,13 @@ static int opengl_init(sxfe_t *this)
     return -1;
   }
   LOGVERBOSE("Found texture from pixmap extension");
+#if 0
   if (!strstr (glxExtensions, "GLX_SGI_video_sync")) {
     LOGMSG("No sgi video sync extension");
     return -1;
   }
   LOGVERBOSE("Found sgi video sync extension");
+#endif
 
   // Get handles to important functions
   if (opengl_init_dl(this) < 0) {
@@ -1720,10 +1789,10 @@ static int opengl_init(sxfe_t *this)
   bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glxpixmap = glXCreatePixmap (this->display, fbcroot, this->surf_back_img->draw, pixmapAttribs);
+  //glxpixmap = glXCreatePixmap (this->display, fbcroot, this->surf_back_img->draw, pixmapAttribs);
   glGenTextures (1, &this->osd_texture);
   glBindTexture (GL_TEXTURE_2D, this->osd_texture);
-  bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
+  //bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -1758,7 +1827,7 @@ static void opengl_deinit(sxfe_t *this)
 static void *opengl_draw_frame_thread(void *arg)
 {
   sxfe_t *this=(sxfe_t *) arg;
-  int unsigned sync;
+  //int unsigned sync;
   int draw_frame = 0, window_mapped = 0, keep_osd_open = 0;
   int prev_hud_visible = 0;
   int16_t video_x0, video_y0, video_x1, video_y1;
@@ -1771,6 +1840,7 @@ static void *opengl_draw_frame_thread(void *arg)
   XRectangle xrect;
   XDouble video_tex_width, video_tex_height;
   int first_frame = 1;
+  //struct timeval t;
 
   XLockDisplay (this->display);
   if (opengl_init(this) < 0) {
@@ -1784,9 +1854,11 @@ static void *opengl_draw_frame_thread(void *arg)
 
     // Wait for trigger
     pthread_mutex_lock(&this->opengl_redraw_mutex);
+    if (this->opengl_redraw_served_nr == this->opengl_redraw_request_nr) {
     pthread_cond_wait(&this->opengl_redraw_cv, &this->opengl_redraw_mutex);
+    }
     pthread_mutex_unlock(&this->opengl_redraw_mutex);
-    count++;
+    //time_measure_start(&t);
 
     // Check if we should exit
     if (this->opengl_deinit)
@@ -1808,7 +1880,7 @@ static void *opengl_draw_frame_thread(void *arg)
 
       // Set the shape of the opengl window
 #ifdef HAVE_XSHAPE
-      if (this->xshape_hud)
+      if (this->opengl_xshape_available)
         XShapeCombineRectangles(this->display, this->opengl_window, ShapeBounding, 0, 0, &xrect, 1, ShapeSet, 0);
 #endif
     }
@@ -1833,20 +1905,21 @@ static void *opengl_draw_frame_thread(void *arg)
     LOGVERBOSE("osd_alpha=%.2f keep_osd_open=%d", osd_alpha, keep_osd_open);
 
     // Decide if we need to do something
-    draw_frame = (this->hud_visible || keep_osd_open || this->opengl_always);
+    draw_frame = (this->hud_visible || window_mapped || this->opengl_always);
     if ((this->opengl_hud && this->hud_visible && !prev_hud_visible) ||
         (this->opengl_always && first_frame)) {
       LOGDBG("redirecting video to opengl frame texture");
       xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
                               (void*) this->video_frame_pixmap);
       draw_frame = 0; // first frame not yet available in pixmap
+      count = 0;
       osd_alpha -= 2*osd_alpha_step; // delay the osd
     }
     if (this->opengl_hud && !this->hud_visible && prev_hud_visible && !keep_osd_open && !this->opengl_always) {
       LOGDBG("redirecting video to window");
       xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
                               (void*) this->window[this->fullscreen ? 1 : 0]);
-      draw_frame = 1; // draw the last frame
+      count = 0;
     }
     if (draw_frame) {
       LOGVERBOSE("drawing frame nr %d", count);
@@ -1868,8 +1941,8 @@ static void *opengl_draw_frame_thread(void *arg)
       }
       osd_x0 = win_x;
       osd_y0 = win_y;
-      osd_x1 = osd_x0 + this->screen_width - 1;
-      osd_y1 = osd_y0 + this->screen_height - 1;
+      osd_x1 = osd_x0 + win_width - 1;
+      osd_y1 = osd_y0 + win_height - 1;
       video_y0 = (this->screen_height - 1) - video_y0;
       video_y1 = (this->screen_height - 1) - video_y1;
       osd_y0 = (this->screen_height - 1) - osd_y0;
@@ -1886,8 +1959,22 @@ static void *opengl_draw_frame_thread(void *arg)
         glTexCoord2f(0.0, 0.0); glVertex3f(video_x0, video_y0, 0.0);
       glEnd();
       if (this->hud_visible || keep_osd_open) {
-        glColor4f(1.0f, 1.0f, 1.0f, osd_alpha);
+
+	// Check if we need to update the image
         glBindTexture (GL_TEXTURE_2D, this->osd_texture);
+        pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+	if (this->opengl_osd_texture_img_updated) {
+          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, this->osd_width, this->osd_height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, this->opengl_osd_texture_img);
+          GLenum error = glGetError();
+          if (error != GL_NO_ERROR) {
+            LOGERR("Can't update hud image texture");
+          }
+	  this->opengl_osd_texture_img_updated = 0;
+	}
+        pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);	
+
+	// Draw the hud
+        glColor4f(1.0f, 1.0f, 1.0f, osd_alpha);
         glBegin(GL_QUADS);
           glTexCoord2f(0.0, 1.0); glVertex3f(osd_x0, osd_y1 , 0.0);
           glTexCoord2f(1.0, 1.0); glVertex3f(osd_x1, osd_y1, 0.0);
@@ -1897,10 +1984,9 @@ static void *opengl_draw_frame_thread(void *arg)
       }
       glXSwapBuffers(this->display, this->opengl_window);
       XUnlockDisplay(this->display);
+      count++;
     }
-    if ((this->hud_visible && prev_hud_visible && !window_mapped) || (first_frame && this->opengl_always)) {
-      (*getVideoSync) (&sync);
-      (*waitVideoSync) (2, (sync + 1) % 2, &sync); // ensure that window shows correct frame
+    if ((this->hud_visible && count==2 && !window_mapped) || (first_frame && this->opengl_always)) {
       LOGDBG("mapping opengl window");
       XLockDisplay(this->display);
       XRaiseWindow (this->display, this->opengl_window);
@@ -1908,7 +1994,7 @@ static void *opengl_draw_frame_thread(void *arg)
       XUnlockDisplay(this->display);
       window_mapped = 1;
     }
-    if (!this->hud_visible && !prev_hud_visible && window_mapped && !keep_osd_open && !this->opengl_always) {
+    if (!this->hud_visible && count==3 && window_mapped && !keep_osd_open && !this->opengl_always) {
       LOGDBG("unmapping opengl window");
       XLockDisplay(this->display);
       XLowerWindow (this->display, this->opengl_window);
@@ -1920,6 +2006,14 @@ static void *opengl_draw_frame_thread(void *arg)
       prev_hud_visible = this->hud_visible;
     }
     first_frame = 0;
+    //LOGVERBOSE("drawing time = %d",time_measure_end(&t));
+
+    // Drawing is finished
+    pthread_mutex_lock(&this->opengl_redraw_finished_mutex);
+    this->opengl_redraw_served_nr++;
+    pthread_cond_signal(&this->opengl_redraw_finished_cv);
+    pthread_mutex_unlock(&this->opengl_redraw_finished_mutex);
+
   }
 
   // Free resources
@@ -1932,10 +2026,33 @@ static int opengl_start(sxfe_t *this)
   LOGDBG("sxfe_display_open: starting opengl drawing thread");
   pthread_mutex_init(&this->opengl_redraw_mutex, NULL);
   pthread_cond_init(&this->opengl_redraw_cv, NULL);
+  this->opengl_redraw_request_nr = 0;
+  this->opengl_redraw_served_nr = 0;
+  pthread_mutex_init(&this->opengl_redraw_finished_mutex, NULL);
+  pthread_cond_init(&this->opengl_redraw_finished_cv, NULL);
+  pthread_mutex_init(&this->opengl_osd_texture_img_mutex, NULL);
   pthread_attr_t attr;
+  struct sched_param param;
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-  if (pthread_create(&this->opengl_drawing_thread, NULL, opengl_draw_frame_thread, (void *)this)) {
+  pthread_attr_getschedparam(&attr, &param);
+  param.sched_priority = sched_get_priority_min(SCHED_OTHER);
+  pthread_attr_setschedparam(&attr, &param);
+  pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+  this->x.vis_x11.frame_output_cb = hud_frame_output_cb;       // ensure that the opengl drawing thread gets triggered
+  this->fe.xine_osd_command = hud_osd_command;                  // opengl thread needs to get updated with the new hud image
+  this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
+  this->osd_width  = OSD_DEF_WIDTH;
+  this->osd_height = OSD_DEF_HEIGHT;
+  this->opengl_osd_texture_img = malloc(sizeof(uint32_t) * this->osd_width * this->osd_height);
+  memset((void*)this->opengl_osd_texture_img,0,sizeof(uint32_t)*this->osd_width*this->osd_height);
+  this->opengl_osd_texture_img_updated = 0;
+  int dummy;
+  if (XShapeQueryExtension(this->display, &dummy, &dummy))
+    this->opengl_xshape_available = 1;
+  else
+    this->opengl_xshape_available = 0;
+  if (pthread_create(&this->opengl_drawing_thread, &attr, opengl_draw_frame_thread, (void *)this)) {
     pthread_attr_destroy(&attr);
     LOGERR("sxfe_display_open: can not start OpenGL drawing thread");
     this->opengl_always = this->opengl_hud = 0; /* avoid pthread_join segfault */
@@ -2148,19 +2265,26 @@ static int sxfe_display_open(frontend_t *this_gen,
 
   XUnlockDisplay (this->display);
 
+
+  // Shall opengl or xrender be used?
+  if (this->opengl_always || this->opengl_hud) {
+
+#ifdef HAVE_OPENGL
+    // Start the drawing thread
+    this->hud = 0;
+    if (!opengl_start(this))
+      return 0;
+#endif
+
+  } else {
+
 #ifdef HAVE_XRENDER
   // Init the osd window
   if (!hud_osd_open(this))
     return 0;
+#endif
 
-# ifdef HAVE_OPENGL
-  // Start the drawing thread
-  if (this->opengl_always || this->opengl_hud) {
-    if (!opengl_start(this))
-      return 0;
   }
-# endif // HAVE_OPENGL
-#endif // HAVE_XRENDER
 
   return 1;
 }
@@ -2661,6 +2785,8 @@ static void sxfe_display_close(frontend_t *this_gen)
       if (pthread_join(this->opengl_drawing_thread, &status)) {
         LOGERR("sxfe_display_close: can not join opengl drawing thread!");
       }
+      free(this->hud_img_mem);
+      free(this->opengl_osd_texture_img);
     }
 #endif
 
@@ -2730,7 +2856,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
   int result = this->fe_xine_play(this_gen);
 
 #ifdef HAVE_XRENDER
-  if (result && this->x.input_plugin && this->hud) {
+  if (result && this->x.input_plugin && (this->hud || this->opengl_always || this->opengl_hud)) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     this->x.input_plugin->f.fe_handle     = this_gen;
     this->x.input_plugin->f.intercept_osd = hud_osd_command;

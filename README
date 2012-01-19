@@ -37,6 +37,8 @@ Requirements
   - X server with Composite and Xrender extensions,
     compositing window manager or composite manager (xcompmgr).
     (Required for HUD OSD to blend high-quality OSD using graphics hardware)
+  - X server with OpenGL support
+    (Required for OpenGL video output and OpenGL HUD OSD)
   - libextractor 0.5.20 or later (http://libextractor.sourceforge.net).
     (used for media file metadata extraction in media player)
   - libjpeg for grabbing in JPEG format
@@ -244,20 +246,56 @@ HUD OSD
   OSD is scaled and blended using hardware, so it adds no extra CPU 
   overhead. OSD is always blended to output (display) resolution,
   so it remains sharp and detailed even with low-resolution video.
+  It can also support transparency in the same way as full-featured
+  DVB cards.
 
   HUD OSD must be enabled with command-line option (--hud). Scaling
   options can be configured in xineliboutput plugin setup menu, 
   OSD settings page.
 
+  There are three possible configurations for using HUD OSD. First one
+  is to use a X server with composite / Xrender extensions and a composite
+  manager. This is the default when the hud is enabled with --hud. The
+  second one is to use a X server with XShape support. This configuration
+  is enabled with the --hud=shape option. The third one is to use a
+  X server with OpenGL support. The option --hud=opengl enables this
+  configuration.
+
+  The first configuration requires a composite manager to get transparency
+  support. The second configuration can be used if the composite manager
+  slows down the video play back. The HUD OSD has the same quality, but
+  does not support transparency.
+
+  The third configuration does not require the composite/Xrender extension.
+  Hence, it can also be used with VDPAU NVIDIA graphic cards that produce
+  video tearing with enabled composite extension. OpenGL is only used if
+  the OSD is displayed. For video playback, the normal output to a window
+  via the xine-lib is used. Therefore, normal video playback is as smooth
+  as the xine-lib playback allows. OpenGL playback requires additional
+  computing power from the cpu and graphic card, and can result in
+  occasionally frame drops. If your hardware configuration is powerful
+  enough, you can also try to use the --opengl option. It does both pure
+  video playback and OSD drawing via OpenGL. The advantage is that there
+  are no frame drops if the OSD opens and closes, because there is no
+  switching between window-based and OpenGL-based playback.
+
   Requirements:
-    - X server with Composite and Xrender extensions.
-      Composite extension must be enabled in Xorg config.
-    - Composite window manager (compiz, beryl, or properly configured xfce4, metacity, ...)
-      or separate composite manager (xcompmgr).
+    - First configuration (--hud):
+      - X server with Composite and Xrender extensions.
+        Composite extension must be enabled in Xorg config.
+      - Composite window manager (compiz, beryl, or properly configured xfce4, metacity, ...)
+        or separate composite manager (xcompmgr) for transparency support.
+    - Second configuration (--hud=xshape)
+      - X server with Composite, Xrender and XShape extension.
+      - no window manager required.
+    - Third configuration (--hud=opengl or --opengl)
+      - X server with OpenGL support
+      - no window manager required.
     - Compatible graphics hardware and drivers.
       HUD OSD has been tested with:
         nVidia GF FX5700LE      (driver version 169.09)
         Intel G965 (GMA-X3000)  (driver version 2.2.1, textured XVideo)
+        nVidia GT 425M          (driver version 290.10, VDPAU)
 
         metacity 2.23.2
         xcompmgr 1.1.3
@@ -266,13 +304,40 @@ HUD OSD
     - Drawing video (even without OSD) may be slower when composite 
       extension is enabled.
 
+    - A composite window manager can also slow down the video playback. In
+      case of problems, switch off the window manager to see if playback
+      improves.
+
     - Try to adjust OSD size and offsets to get rid of possible graphical
       corruption.
 
     - For true HD-resolution OSD VDR needs to be patched.
 
+    - OpenGL-based HUD requires that the xine-lib video out driver
+      supports redirecting video frames to a pixmap. VDPAU is known
+      to work (tested with changeset 11949:0e68b56727d6 from 2011-12-21 of
+      xine-lib 1.2). XV does currently not support it.
+
+    - If you see black frames when opening the HUD with the --hud=opengl
+      option: The video out driver frees all resources when the
+      request to switch to a pixmap arrives. This clean up can also
+      include clearing the window, resulting in a black frame until the
+      OpenGL drawing takes over. The VDPAU output drivers behaves in
+      this way. There are two options to fix this: Either enable the
+      BackingStore of the X-Server (Option "BackingStore" TRUE in the
+      Device Section for NVIDIA cards) or patch the xine-lib to not
+      immediately free the resources. There is an example patch for VDPAU
+      included in the patches directory (xinelib_vdpau_black_frame.patch).
+      Please note that enabling the backing store might also require
+      to enable the Composite extension.
+
+    - Tearing free OpenGL playback / HUD requires that the "Sync to VBLank"
+      option is set. For nvidia cards, this can be done via the command
+      "nvidia-settings -a SyncToVBlank=1"
+
   HUD OSD was contributed by Antti Seppälä and Rolf Ahrenberg.
 
+  HUD OSD XShape and OpenGL extensions were contributed by Matthias Grünewald.
 
 Using with xine-ui (xine, fbxine, gxine, ...)
 

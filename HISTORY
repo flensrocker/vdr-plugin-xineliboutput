@@ -26,6 +26,9 @@ VDR Plugin 'xineliboutput' Revision History
 - H.264 updates
 - Added support for .ass subtitles to media player (Thanks to zaverel)
 - Added support for .smi subtitles to media player
+- Added OpenGL HUD OSD support: HUD OSD without compositing / window manager
+  (thanks to grueni75)
+- Added tearing-free OpenGL video output support with high-quality OSD (thanks to grueni75)
 
 2011-07-10: Version 1.0.7  (branch-1_0_x)
 Backported bugfixes from CVS trunk:
