@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.175 2012-01-19 13:06:37 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.176 2012-01-19 14:04:10 phintuka Exp $
  *
  */
 
@@ -1842,7 +1842,7 @@ static void *opengl_draw_frame_thread(void *arg)
   static int unsigned count = 0;
   int16_t win_width = -1, win_height = -1;
   int16_t win_x = -1, win_y = -1;
-  XDouble video_tex_width, video_tex_height;
+  GLfloat video_tex_width, video_tex_height;
   int first_frame = 1;
   //struct timeval t;
 
@@ -1923,8 +1923,8 @@ static void *opengl_draw_frame_thread(void *arg)
       if (this->video_win_active) {
         video_x0 = win_x + this->video_win_x;
 	video_y0 = win_y + this->video_win_y;
-	video_tex_width  = ((XDouble)win_width)  / (XDouble)this->screen_width;
-	video_tex_height = ((XDouble)win_height) / (XDouble)this->screen_height;
+	video_tex_width  = ((GLfloat)win_width)  / (GLfloat)this->screen_width;
+	video_tex_height = ((GLfloat)win_height) / (GLfloat)this->screen_height;
 	video_x1 = video_x0 + (this->video_win_w - 1);
 	video_y1 = video_y0 + (this->video_win_h - 1);
       } else {
