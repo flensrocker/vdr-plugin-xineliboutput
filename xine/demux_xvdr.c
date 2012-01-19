@@ -993,7 +993,7 @@ static int32_t parse_video_stream(demux_xvdr_t *this, uint8_t *p, buf_element_t 
 
   p += result;
 
-  if (this->video_type == 0 && buf->size >= 4) {
+  if (this->video_type == 0 && buf->size >= result + 4) {
     this->video_type = detect_h264(p);
   }
 
