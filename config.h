@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.82 2012-01-16 11:57:53 phintuka Exp $
+ * $Id: config.h,v 1.83 2012-01-19 08:18:26 phintuka Exp $
  *
  */
 
@@ -76,14 +76,16 @@
 #define X11_DRIVER_AUTO          0
 #define X11_DRIVER_XSHM          1
 #define X11_DRIVER_XV            2
-#define X11_DRIVER_XVMC          3
-#define X11_DRIVER_XXMC          4
-#define X11_DRIVER_VIDIX         5
-#define X11_DRIVER_DIRECTFB      6
-#define X11_DRIVER_OPENGL        7
+#define X11_DRIVER_VAAPI         3
+#define X11_DRIVER_VDPAU         4
+#define X11_DRIVER_OPENGL        5
+#define X11_DRIVER_XVMC          6
+#define X11_DRIVER_XXMC          7
 #define X11_DRIVER_SDL           8
-#define X11_DRIVER_NONE          9
-#define X11_DRIVER_count         10
+#define X11_DRIVER_DIRECTFB      9
+#define X11_DRIVER_VIDIX         10
+#define X11_DRIVER_NONE          11
+#define X11_DRIVER_count         12
 
 #define FB_DRIVER_AUTO           0
 #define FB_DRIVER_FB             1
