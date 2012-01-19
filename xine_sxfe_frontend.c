@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.176 2012-01-19 14:04:10 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.177 2012-01-19 14:06:38 phintuka Exp $
  *
  */
 
@@ -168,9 +168,14 @@ typedef struct sxfe_s {
   uint16_t video_win_w;      /* video window width */
   uint16_t video_win_h;      /* video window height */
 
+#if defined(HAVE_XRENDER) || defined(HAVE_OPENGL)
+  uint8_t       osd_visible;
+  uint16_t      osd_width;
+  uint16_t      osd_height;
+#endif
+
   /* HUD stuff */
 #ifdef HAVE_XRENDER
-  uint8_t         hud_visible;     /* used with XShape and OpenGL */
 #ifdef HAVE_OPENGL
   GLXDrawable     opengl_window;
   GLXContext      opengl_context;
@@ -210,9 +215,6 @@ typedef struct sxfe_s {
 # ifdef HAVE_XSHM
   XShmSegmentInfo hud_shminfo;
 # endif
-
-  uint16_t      osd_width;
-  uint16_t      osd_height;
 #endif /* HAVE_XRENDER */
 
 } sxfe_t;
@@ -917,10 +919,10 @@ static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *c
 
 static void hud_osd_hide(sxfe_t *this)
 {
-  if (!this->hud_visible)
+  if (!this->osd_visible)
     return;
 
-  this->hud_visible = 0;
+  this->osd_visible = 0;
   this->video_win_active = 0;
 
   if (this->hud) {
@@ -947,10 +949,10 @@ static void hud_osd_hide(sxfe_t *this)
 
 static void hud_osd_show(sxfe_t *this)
 {
-  if (this->hud_visible)
+  if (this->osd_visible)
     return;
 
-  this->hud_visible = 1;
+  this->osd_visible = 1;
   this->video_win_active = 0;
 
 #ifdef HAVE_OPENGL
@@ -1235,7 +1237,7 @@ static int hud_osd_open(sxfe_t *this)
      }
     }
 #endif
-    this->hud_visible = 0;
+    this->osd_visible = 0;
 
     this->surf_win = xrender_surf_adopt(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
     this->surf_img = xrender_surf_new(this->display, this->hud_window, this->hud_vis, HUD_MAX_WIDTH, HUD_MAX_HEIGHT, 1);
@@ -1834,7 +1836,7 @@ static void *opengl_draw_frame_thread(void *arg)
   sxfe_t *this=(sxfe_t *) arg;
   //int unsigned sync;
   int draw_frame = 0, window_mapped = 0, keep_osd_open = 0;
-  int prev_hud_visible = 0;
+  int prev_osd_visible = 0;
   int16_t video_x0, video_y0, video_x1, video_y1;
   int16_t osd_x0 ,osd_y0, osd_x1, osd_y1;
   GLfloat osd_alpha = 0;
@@ -1881,7 +1883,7 @@ static void *opengl_draw_frame_thread(void *arg)
     LOGVERBOSE("win_x=%d win_y=%d win_width=%d win_height=%d", win_x, win_y, win_width, win_height);
     // Update the global alpha value of the OSD
     keep_osd_open = 0;
-    if (this->hud_visible) {
+    if (this->osd_visible) {
       if (osd_alpha < 1.0) {
         osd_alpha += osd_alpha_step;
         if (osd_alpha > 1.0)
@@ -1899,8 +1901,8 @@ static void *opengl_draw_frame_thread(void *arg)
     LOGVERBOSE("osd_alpha=%.2f keep_osd_open=%d", osd_alpha, keep_osd_open);
 
     // Decide if we need to do something
-    draw_frame = (this->hud_visible || window_mapped || this->opengl_always);
-    if ((this->opengl_hud && this->hud_visible && !prev_hud_visible) ||
+    draw_frame = (this->osd_visible || window_mapped || this->opengl_always);
+    if ((this->opengl_hud && this->osd_visible && !prev_osd_visible) ||
         (this->opengl_always && first_frame)) {
       LOGDBG("redirecting video to opengl frame texture");
       xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
@@ -1909,7 +1911,7 @@ static void *opengl_draw_frame_thread(void *arg)
       count = 0;
       osd_alpha -= 2*osd_alpha_step; // delay the osd
     }
-    if (this->opengl_hud && !this->hud_visible && prev_hud_visible && !keep_osd_open && !this->opengl_always) {
+    if (this->opengl_hud && !this->osd_visible && prev_osd_visible && !keep_osd_open && !this->opengl_always) {
       LOGDBG("redirecting video to window");
       xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
                               (void*) this->window[this->fullscreen ? 1 : 0]);
@@ -1952,7 +1954,7 @@ static void *opengl_draw_frame_thread(void *arg)
         glTexCoord2f(video_tex_width, 0.0); glVertex3f(video_x1, video_y0, 0.0);
         glTexCoord2f(0.0, 0.0); glVertex3f(video_x0, video_y0, 0.0);
       glEnd();
-      if (this->hud_visible || keep_osd_open) {
+      if (this->osd_visible || keep_osd_open) {
 
 	// Check if we need to update the image
         glBindTexture (GL_TEXTURE_2D, this->osd_texture);
@@ -1980,7 +1982,7 @@ static void *opengl_draw_frame_thread(void *arg)
       XUnlockDisplay(this->display);
       count++;
     }
-    if ((this->hud_visible && count==2 && !window_mapped) || (first_frame && this->opengl_always)) {
+    if ((this->osd_visible && count==2 && !window_mapped) || (first_frame && this->opengl_always)) {
       LOGDBG("mapping opengl window");
       XLockDisplay(this->display);
       XRaiseWindow (this->display, this->opengl_window);
@@ -1988,7 +1990,7 @@ static void *opengl_draw_frame_thread(void *arg)
       XUnlockDisplay(this->display);
       window_mapped = 1;
     }
-    if (!this->hud_visible && count==3 && window_mapped && !keep_osd_open && !this->opengl_always) {
+    if (!this->osd_visible && count==3 && window_mapped && !keep_osd_open && !this->opengl_always) {
       LOGDBG("unmapping opengl window");
       XLockDisplay(this->display);
       XLowerWindow (this->display, this->opengl_window);
@@ -1997,7 +1999,7 @@ static void *opengl_draw_frame_thread(void *arg)
       window_mapped = 0;
     }
     if (!keep_osd_open) {
-      prev_hud_visible = this->hud_visible;
+      prev_osd_visible = this->osd_visible;
     }
     first_frame = 0;
     //LOGVERBOSE("drawing time = %d",time_measure_end(&t));
