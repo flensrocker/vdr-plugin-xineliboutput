@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.107 2012-01-16 11:57:53 phintuka Exp $
+ * $Id: config.c,v 1.108 2012-01-19 08:13:35 phintuka Exp $
  *
  */
 
@@ -211,8 +211,8 @@ const char * const config_t::s_subtitleSizes[ SUBTITLESIZE_count+1 ] = {
 };
 
 const char * const config_t::s_subExts[] = {
-  ".sub", ".srt", ".txt", ".ssa", "ass",
-  ".SUB", ".SRT", ".TXT", ".SSA", "ASS",
+  ".sub", ".srt", ".txt", ".ssa", "ass", "smi",
+  ".SUB", ".SRT", ".TXT", ".SSA", "ASS", "SMI",
   NULL
 };
 
