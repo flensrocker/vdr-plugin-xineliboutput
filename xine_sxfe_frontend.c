@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.171 2012-01-19 12:50:01 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.172 2012-01-19 12:56:18 phintuka Exp $
  *
  */
 
@@ -783,22 +783,12 @@ static void hud_fill_img_memory(uint32_t* dst, int dst_pitch,
 
 static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
 {
-  XDouble scale_x  = (XDouble)this->x.width  / (XDouble)this->osd_width;
-  XDouble scale_y  = (XDouble)this->x.height / (XDouble)this->osd_height;
-  int     x        = cmd->x + cmd->dirty_area.x1;
-  int     y        = cmd->y + cmd->dirty_area.y1;
-  int     w        = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
-  int     h        = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
-  int     mask_changed;
-  int     i, j;
-  uint32_t value;
-
-  Xrender_Surf *dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
-  Window        dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
-
+#ifdef HAVE_OPENGL
   // If opengl is used: Just construct the bitmap
   // The scaling is done in the opengl thread
   if (this->opengl_always || this->opengl_hud) {
+    int      i, j;
+    uint32_t value;
 
     // Create the sub image
     hud_fill_img_memory(this->hud_img_mem, HUD_MAX_WIDTH,
@@ -816,7 +806,20 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
     this->opengl_osd_texture_img_updated = 1;
     pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
 
-  } else {
+    return;
+  }
+#endif
+
+  XDouble scale_x  = (XDouble)this->x.width  / (XDouble)this->osd_width;
+  XDouble scale_y  = (XDouble)this->x.height / (XDouble)this->osd_height;
+  int     x        = cmd->x + cmd->dirty_area.x1;
+  int     y        = cmd->y + cmd->dirty_area.y1;
+  int     w        = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
+  int     h        = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
+  int     mask_changed;
+
+  Xrender_Surf *dst_surf = this->surf_back_img ? this->surf_back_img       : this->surf_win;
+  Window        dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
 
 #ifdef HAVE_XSHM
   if (this->completion_event != -1) {
@@ -879,7 +882,6 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
                      x, y, 0, 0, x, y, w, h);
 
   XFlush(this->display);
-  }
 }
 
 static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
@@ -952,12 +954,14 @@ static void hud_osd_show(sxfe_t *this)
   this->hud_visible = 1;
   this->video_win_active = 0;
 
+#ifdef HAVE_OPENGL
   if ((this->opengl_always) || (this->opengl_hud)) {
     pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
     memset((void*)this->opengl_osd_texture_img,0,sizeof(uint32_t)*this->osd_width*this->osd_height);
     this->opengl_osd_texture_img_updated=1;
     pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
   }
+#endif
 
   if (this->hud) {
   XSetForeground(this->display, this->gc, 0x00000000);
@@ -1001,12 +1005,14 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
       this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
 
+#ifdef HAVE_OPENGL
       if ((this->opengl_always) || (this->opengl_hud)) {
         pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
         free(this->opengl_osd_texture_img);
         this->opengl_osd_texture_img = malloc(sizeof(uint32_t) * this->osd_width * this->osd_height);
         pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
       }
+#endif
 
       hud_osd_show(this);
       break;
