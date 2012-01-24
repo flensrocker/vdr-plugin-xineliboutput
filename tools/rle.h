@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.h,v 1.6 2011-03-08 08:55:14 phintuka Exp $
+ * $Id: rle.h,v 1.7 2012-01-24 11:23:10 phintuka Exp $
  *
  */
 
@@ -30,11 +30,16 @@ uint rle_compress_net(uint8_t **rle_data, uint *elems, const uint8_t *data, uint
 uint rle_recompress_net(uint8_t *raw, xine_rle_elem_t *data, uint elems);
 
 void rle_palette_to_argb(uint32_t *argb, const struct xine_clut_s *palette, uint entries);
+void rle_palette_to_rgba(uint32_t *rgba, const struct xine_clut_s *palette, uint entries);
 
 void rle_uncompress_lut8(uint8_t *dst,
                          uint w, uint h, uint stride,
                          const struct xine_rle_elem_s *rle_data, uint num_rle);
 void rle_uncompress_argb(uint32_t *dst,
+                         uint w, uint h, uint stride,
+                         const struct xine_rle_elem_s *rle_data, uint num_rle,
+                         const struct xine_clut_s *palette, uint palette_entries);
+void rle_uncompress_rgba(uint32_t *dst,
                          uint w, uint h, uint stride,
                          const struct xine_rle_elem_s *rle_data, uint num_rle,
                          const struct xine_clut_s *palette, uint palette_entries);
