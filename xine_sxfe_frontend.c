@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.182 2012-01-24 14:34:27 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.183 2012-01-24 14:47:22 phintuka Exp $
  *
  */
 
@@ -900,8 +900,8 @@ static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *c
   LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
 
   // Compute the coordinates of the video window
-  XDouble scale_x = (XDouble)this->x.width  / (XDouble)this->osd_width;
-  XDouble scale_y = (XDouble)this->x.height / (XDouble)this->osd_height;
+  double scale_x = (double)this->x.width  / (double)this->osd_width;
+  double scale_y = (double)this->x.height / (double)this->osd_height;
 
   int x = cmd->x;
   int y = cmd->y;
