@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.177 2012-01-19 14:06:38 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.178 2012-01-24 12:25:12 phintuka Exp $
  *
  */
 
@@ -114,7 +114,7 @@ typedef struct sxfe_s {
   Window   window[2];
   int      screen;
   int      window_id;        /* output to another window */
-  int      completion_event;
+  int      xshm_completion_event;
   Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
   int      mousecursor_timeout;
 #ifdef HAVE_XDPMS
@@ -823,7 +823,7 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
   Window        dst_win  = this->surf_back_img ? this->surf_back_img->draw : this->hud_window;
 
 #ifdef HAVE_XSHM
-  if (this->completion_event != -1) {
+  if (this->xshm_completion_event != -1) {
     hud_fill_img_memory((uint32_t*)(this->hud_img->data), HUD_MAX_WIDTH,
                         this->shape_mask_mem, HUD_MAX_WIDTH,
                         &mask_changed, cmd);
@@ -1185,7 +1185,7 @@ static int hud_osd_open(sxfe_t *this)
     this->gc = XCreateGC(this->display, this->hud_window, 0, NULL);
 
 #ifdef HAVE_XSHM
-    if(this->completion_event != -1) {
+    if(this->xshm_completion_event != -1) {
       this->hud_img = XShmCreateImage(this->display, this->hud_vis, 32, ZPixmap, NULL, &(this->hud_shminfo),
                                       HUD_MAX_WIDTH, HUD_MAX_HEIGHT);
 
@@ -1327,7 +1327,7 @@ static void hud_osd_close(sxfe_t *this)
     LOGDBG("closing hud window...");
 
 #ifdef HAVE_XSHM
-    if(this->completion_event != -1) {
+    if(this->xshm_completion_event != -1) {
       XShmDetach(this->display, &(this->hud_shminfo));
       XDestroyImage(this->hud_img);
       shmdt(this->hud_shminfo.shmaddr);
@@ -2170,10 +2170,10 @@ static int sxfe_display_open(frontend_t *this_gen,
   /* #warning sxfe_display_open: TODO: switch vmode */
 
   /* completion event */
-  this->completion_event = -1;
+  this->xshm_completion_event = -1;
 #ifdef HAVE_XSHM
   if (XShmQueryExtension (this->display) == True) {
-    this->completion_event = XShmGetEventBase (this->display) + ShmCompletion;
+    this->xshm_completion_event = XShmGetEventBase (this->display) + ShmCompletion;
   }
 #endif
 
@@ -2750,8 +2750,8 @@ static int sxfe_run(frontend_t *this_gen)
       default:; // ignore other events.
     }
 
-    if (event.type == this->completion_event)
-      xine_port_send_gui_data (this->x.video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
+    if (event.type == this->xshm_completion_event)
+      xine_port_send_gui_data (this->x.video_port, XINE_GUI_SEND_XSHM_COMPLETION_EVENT, &event);
   }
 
   return !this->x.fe.xine_is_finished((frontend_t*)this, 0);
