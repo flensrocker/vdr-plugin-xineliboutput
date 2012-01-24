@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.180 2012-01-24 13:12:17 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.181 2012-01-24 14:32:38 phintuka Exp $
  *
  */
 
@@ -1308,14 +1308,12 @@ static void hud_osd_focus(sxfe_t *this, XFocusChangeEvent *fev)
 
       if (fev->type == FocusIn) {
         /* Show HUD again if sxfe window receives focus */
-        if (!(this->opengl_always || this->opengl_hud))
-          XMapWindow(this->display, this->hud_window);
+        XMapWindow(this->display, this->hud_window);
       }
 
       else if (fev->type == FocusOut) {
         /* Dismiss HUD window if focusing away from frontend window */
-        if (!(this->opengl_always || this->opengl_hud))
-          XUnmapWindow(this->display, this->hud_window);
+        XUnmapWindow(this->display, this->hud_window);
       }
 
       XUnlockDisplay(this->display);
