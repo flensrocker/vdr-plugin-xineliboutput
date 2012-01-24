@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.179 2012-01-24 12:58:33 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.180 2012-01-24 13:12:17 phintuka Exp $
  *
  */
 
@@ -114,7 +114,9 @@ typedef struct sxfe_s {
   Window   window[2];
   int      screen;
   int      window_id;        /* output to another window */
+#ifdef HAVE_XSHM
   int      xshm_completion_event;
+#endif
   Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
   int      mousecursor_timeout;
 #ifdef HAVE_XDPMS
@@ -2170,8 +2172,8 @@ static int sxfe_display_open(frontend_t *this_gen,
   /* #warning sxfe_display_open: TODO: switch vmode */
 
   /* completion event */
-  this->xshm_completion_event = -1;
 #ifdef HAVE_XSHM
+  this->xshm_completion_event = -1;
   if (XShmQueryExtension (this->display) == True) {
     this->xshm_completion_event = XShmGetEventBase (this->display) + ShmCompletion;
   }
@@ -2750,8 +2752,10 @@ static int sxfe_run(frontend_t *this_gen)
       default:; // ignore other events.
     }
 
+#ifdef HAVE_XSHM
     if (event.type == this->xshm_completion_event)
       xine_port_send_gui_data (this->x.video_port, XINE_GUI_SEND_COMPLETION_EVENT, &event);
+#endif
   }
 
   return !this->x.fe.xine_is_finished((frontend_t*)this, 0);
