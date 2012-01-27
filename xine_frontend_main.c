@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.99 2011-10-28 07:40:32 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.100 2012-01-27 11:28:13 phintuka Exp $
  *
  */
 
@@ -359,8 +359,7 @@ int main(int argc, char *argv[])
     case 'O':
 # ifdef HAVE_OPENGL
               opengl = 1;
-              hud |= HUD_OPENGL;
-              PRINTF("Using OpenGL to draw video and HUD OSD\n");
+              PRINTF("Using OpenGL to draw video and OSD\n");
 # else
               EXIT("OpenGL not supported\n");
 # endif
