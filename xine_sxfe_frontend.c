@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.184 2012-01-24 14:54:44 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.185 2012-01-27 11:26:24 phintuka Exp $
  *
  */
 
@@ -155,10 +155,6 @@ typedef struct sxfe_s {
   uint8_t  no_border : 1;
   uint8_t  check_move : 1;
   uint8_t  dragging : 1;
-  uint8_t  hud;
-  uint8_t  opengl_always : 1;
-  uint8_t  opengl_hud : 1;
-  uint8_t  opengl_osd_texture_img_updated : 1;
   uint8_t  gui_hotkeys : 1;
   uint8_t  no_x_kbd : 1;
 
@@ -177,6 +173,7 @@ typedef struct sxfe_s {
 
   /* HUD stuff */
 #ifdef HAVE_XRENDER
+  /* OpenGL */
 #ifdef HAVE_OPENGL
   GLXDrawable     opengl_window;
   GLXContext      opengl_context;
@@ -196,14 +193,18 @@ typedef struct sxfe_s {
   GC              video_frame_gc;
   GLuint          video_frame_texture;
   GLuint          osd_texture;
+  uint32_t       *opengl_osd_texture_img;
+  uint8_t         opengl_hud : 1;
+  uint8_t         opengl_always : 1;
+  uint8_t         opengl_osd_texture_img_updated : 1;
   uint8_t         opengl_deinit : 1;
-#endif
+#endif /* HAVE_OPENGL */
+  uint8_t         hud;
   XImage         *hud_img;
   Visual         *hud_vis;
   Xrender_Surf   *surf_win;
   Xrender_Surf   *surf_img;
   uint32_t       *hud_img_mem;
-  uint32_t       *opengl_osd_texture_img;
   GC              gc;
   Window          hud_window;
 # ifdef HAVE_XSHAPE
@@ -1008,7 +1009,12 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
-  if(this && (this->hud || this->opengl_always || this->opengl_hud) && cmd) {
+  if (this && cmd)
+#ifdef HAVE_OPENGL
+  if (this->hud || this->opengl_always || this->opengl_hud) {
+#else
+  if (this->hud) {
+#endif
     XLockDisplay(this->display);
     switch(cmd->cmd) {
     case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
@@ -2097,40 +2103,38 @@ static int sxfe_display_open(frontend_t *this_gen,
   LOGDBG("sxfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
          width, height, fullscreen, video_port);
 
-  if(hud) {
+#if defined(HAVE_XRENDER) || defined(HAVE_OPENGL)
+  this->osd_width  = OSD_DEF_WIDTH;
+  this->osd_height = OSD_DEF_HEIGHT;
+#endif
+
+  if (opengl) {
+#ifdef HAVE_OPENGL
+    LOGDBG("sxfe_display_open: Using opengl to draw video and HUD OSD");
+    this->opengl_always = 1;
+#else
+    LOGMSG("sxfe_display_open: Application was compiled without OpenGL support.");
+    return 0;
+#endif
+  }
+  else if (hud & HUD_OPENGL) {
+#ifdef HAVE_OPENGL
+    LOGDBG("sxfe_display_open: Using opengl to draw HUD OSD only");
+    this->opengl_hud = 1;
+#else
+    LOGMSG("sxfe_display_open: Application was compiled without OpenGL support.");
+    return 0;
+#endif
+  } else if (hud) {
 #ifdef HAVE_XRENDER
     LOGDBG("sxfe_display_open: Enabling HUD OSD");
     this->hud        = hud;
 # ifdef HAVE_XSHAPE
     this->xshape_hud = !!(hud & HUD_XSHAPE);
 # endif
-    this->opengl_hud = !!(hud & HUD_OPENGL);
-    this->osd_width  = OSD_DEF_WIDTH;
-    this->osd_height = OSD_DEF_HEIGHT;
-    this->opengl_always = !!opengl;
-    if (this->opengl_always) {
-# ifdef HAVE_OPENGL
-      LOGDBG("sxfe_display_open: Using opengl to draw video and HUD OSD");
-# else
-      LOGMSG("sxfe_display_open: Application was compiled without OpenGL support.");
-      return 0;
-# endif
-    }
-    if (this->opengl_hud) {
-# ifdef HAVE_OPENGL
-      LOGDBG("sxfe_display_open: Using opengl to draw HUD OSD only");
-# else
-      LOGMSG("sxfe_display_open: Application was compiled without OpenGL support.");
-      return 0;
-# endif
-    }
 #else
     LOGMSG("sxfe_display_open: Application was compiled without XRender support. HUD OSD disabled.");
 #endif
-  } else {
-    if (this->opengl_always || this->opengl_hud) {
-      LOGERR("sxfe_display_open: the --opengl options must be used with --hud !");
-    }
   }
 
   this->x.xpos        = xpos;
@@ -2274,25 +2278,21 @@ static int sxfe_display_open(frontend_t *this_gen,
   XUnlockDisplay (this->display);
 
 
+#ifdef HAVE_OPENGL
   // Shall opengl or xrender be used?
   if (this->opengl_always || this->opengl_hud) {
 
-#ifdef HAVE_OPENGL
     // Start the drawing thread
-    this->hud = 0;
     if (!opengl_start(this))
       return 0;
+  }
 #endif
-
-  } else {
 
 #ifdef HAVE_XRENDER
   // Init the osd window
   if (!hud_osd_open(this))
     return 0;
 #endif
-
-  }
 
   return 1;
 }
@@ -2865,8 +2865,9 @@ static int sxfe_xine_play(frontend_t *this_gen)
 
   int result = this->fe_xine_play(this_gen);
 
+  if (result && this->x.input_plugin) {
 #ifdef HAVE_XRENDER
-  if (result && this->x.input_plugin && (this->hud || this->opengl_always || this->opengl_hud)) {
+  if (this->hud) {
     LOGDBG("sxfe_xine_play: Enabling HUD OSD");
     this->x.input_plugin->f.fe_handle     = this_gen;
     this->x.input_plugin->f.intercept_osd = hud_osd_command;
@@ -2874,6 +2875,16 @@ static int sxfe_xine_play(frontend_t *this_gen)
     this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
   }
 #endif /* HAVE_XRENDER */
+#ifdef HAVE_OPENGL
+  if (this->opengl_always || this->opengl_hud) {
+    LOGDBG("sxfe_xine_play: Enabling OpenGL OSD");
+    this->x.input_plugin->f.fe_handle     = this_gen;
+    this->x.input_plugin->f.intercept_osd = hud_osd_command;
+
+    this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
+  }
+#endif /* HAVE_OPENGL */
+  }
 
   return result;
 }
