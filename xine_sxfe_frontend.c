@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.185 2012-01-27 11:26:24 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.186 2012-01-29 19:32:06 phintuka Exp $
  *
  */
 
@@ -158,6 +158,7 @@ typedef struct sxfe_s {
   uint8_t  gui_hotkeys : 1;
   uint8_t  no_x_kbd : 1;
 
+  /* OSD Video Window */
   uint8_t  video_win_active; /* activate video window? */
   uint8_t  video_win_changed;
   uint16_t video_win_x;      /* video window position, x */
@@ -165,6 +166,7 @@ typedef struct sxfe_s {
   uint16_t video_win_w;      /* video window width */
   uint16_t video_win_h;      /* video window height */
 
+  /* OSD */
 #if defined(HAVE_XRENDER) || defined(HAVE_OPENGL)
   uint8_t       osd_visible;
   uint16_t      osd_width;
@@ -178,9 +180,6 @@ typedef struct sxfe_s {
   GLXDrawable     opengl_window;
   GLXContext      opengl_context;
   int             screen_width, screen_height;
-#if 0
-  int32_t         opengl_frame_period;
-#endif
   pthread_t       opengl_drawing_thread;
   pthread_mutex_t opengl_redraw_mutex;
   pthread_cond_t  opengl_redraw_cv;
@@ -1817,10 +1816,8 @@ static int opengl_init(sxfe_t *this)
   bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  //glxpixmap = glXCreatePixmap (this->display, fbcroot, this->surf_back_img->draw, pixmapAttribs);
   glGenTextures (1, &this->osd_texture);
   glBindTexture (GL_TEXTURE_2D, this->osd_texture);
-  //bindTexImage (this->display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -2867,22 +2864,22 @@ static int sxfe_xine_play(frontend_t *this_gen)
 
   if (result && this->x.input_plugin) {
 #ifdef HAVE_XRENDER
-  if (this->hud) {
-    LOGDBG("sxfe_xine_play: Enabling HUD OSD");
-    this->x.input_plugin->f.fe_handle     = this_gen;
-    this->x.input_plugin->f.intercept_osd = hud_osd_command;
+    if (this->hud) {
+      LOGDBG("sxfe_xine_play: Enabling HUD OSD");
+      this->x.input_plugin->f.fe_handle     = this_gen;
+      this->x.input_plugin->f.intercept_osd = hud_osd_command;
 
-    this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
-  }
+      this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
+    }
 #endif /* HAVE_XRENDER */
 #ifdef HAVE_OPENGL
-  if (this->opengl_always || this->opengl_hud) {
-    LOGDBG("sxfe_xine_play: Enabling OpenGL OSD");
-    this->x.input_plugin->f.fe_handle     = this_gen;
-    this->x.input_plugin->f.intercept_osd = hud_osd_command;
+    if (this->opengl_always || this->opengl_hud) {
+      LOGDBG("sxfe_xine_play: Enabling OpenGL OSD");
+      this->x.input_plugin->f.fe_handle     = this_gen;
+      this->x.input_plugin->f.intercept_osd = hud_osd_command;
 
-    this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
-  }
+      this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
+    }
 #endif /* HAVE_OPENGL */
   }
 
