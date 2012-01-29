@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: http.c,v 1.7 2009-06-02 08:37:58 phintuka Exp $
+ * $Id: http.c,v 1.8 2012-01-29 19:30:55 phintuka Exp $
  *
  */
 
@@ -369,7 +369,7 @@ void cHttpStreamer::Action(void)
   int      n = 0;
   cxPoller p(m_fds);
   bool     Disc = !(ParseRequest() && Seek());
-  uint64_t pos  = m_Start;
+  //uint64_t pos  = m_Start;
   off_t    start = (off_t)m_Start;
 
   while(Running() && !Disc) {
@@ -415,7 +415,7 @@ void cHttpStreamer::Action(void)
 	LOGDBG("cHttpStreamer: Reading pipelined request");
 	pthread_testcancel();
 	Disc = !(ReadPipelined() && ParseRequest() && Seek());
-	pos = m_Start;
+	//pos = m_Start;
       }
     } while(--n && Running() && !Disc);
 
