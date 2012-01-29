@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.186 2012-01-29 19:32:06 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.187 2012-01-29 20:52:38 phintuka Exp $
  *
  */
 
@@ -579,6 +579,69 @@ static void update_screen_size(sxfe_t *this)
 }
 
 /*
+ * Generic OSD
+ */
+#if defined(HAVE_XRENDER) || defined(HAVE_OPENGL)
+
+static void osd_fill_lut8(uint32_t* dst, int dst_pitch, int argb,
+                          const struct osd_command_s *cmd)
+{
+  uint8_t *data = cmd->raw_data;
+  unsigned x, y;
+  uint32_t lut[256];
+
+  if (argb) {
+    rle_palette_to_argb(lut, cmd->palette, cmd->colors);
+  } else {
+    rle_palette_to_rgba(lut, cmd->palette, cmd->colors);
+  }
+
+  dst += cmd->y * dst_pitch + cmd->x;
+
+  for (y = cmd->h; y; y--) {
+    for (x = 0; x < cmd->w; x++) {
+      dst[x] = lut[*data];
+      ++data;
+    }
+    dst += dst_pitch;
+  }
+}
+
+static void osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
+{
+  LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
+
+  // Compute the coordinates of the video window
+  double scale_x = (double)this->x.width  / (double)this->osd_width;
+  double scale_y = (double)this->x.height / (double)this->osd_height;
+
+  int x = cmd->x;
+  int y = cmd->y;
+  int w = cmd->w;
+  int h = cmd->h;
+
+  x = (int)ceil((double)(x>0 ? x-1 : 0) * scale_x);
+  y = (int)ceil((double)(y>0 ? y-1 : 0) * scale_y);
+  w = (int)floor((double)(w+2) * scale_x);
+  h = (int)floor((double)(h+2) * scale_y);
+
+  if (x != this->video_win_x || y != this->video_win_y ||
+      w != this->video_win_w || h != this->video_win_h)
+    this->video_win_changed = 1;
+
+  this->video_win_x = x;
+  this->video_win_y = y;
+  this->video_win_w = w;
+  this->video_win_h = h;
+
+  this->video_win_active = 1;
+
+  LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
+}
+
+#endif /* HAVE_XRENDER || HAVE_OPENGL */
+
+/*
  * HUD OSD stuff
  */
 
@@ -700,35 +763,7 @@ static Visual *find_argb_visual(Display *dpy, int scr)
 
   return visual;
 }
-#endif /* HAVE_XRENDER */
 
-#if defined(HAVE_XRENDER) || defined(HAVE_OPENGL)
-static void osd_fill_lut8(uint32_t* dst, int dst_pitch, int argb,
-                          const struct osd_command_s *cmd)
-{
-  uint8_t *data = cmd->raw_data;
-  unsigned x, y;
-  uint32_t lut[256];
-
-  if (argb) {
-    rle_palette_to_argb(lut, cmd->palette, cmd->colors);
-  } else {
-    rle_palette_to_rgba(lut, cmd->palette, cmd->colors);
-  }
-
-  dst += cmd->y * dst_pitch + cmd->x;
-
-  for (y = cmd->h; y; y--) {
-    for (x = 0; x < cmd->w; x++) {
-      dst[x] = lut[*data];
-      ++data;
-    }
-    dst += dst_pitch;
-  }
-}
-#endif /* HAVE_XRENDER || HAVE_OPENGL */
-
-#ifdef HAVE_XRENDER
 static void hud_fill_argb(uint32_t* dst, int dst_pitch,
                           const struct osd_command_s *cmd)
 {
@@ -902,38 +937,6 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
   XFlush(this->display);
 }
 
-static void hud_osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
-{
-  LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
-
-  // Compute the coordinates of the video window
-  double scale_x = (double)this->x.width  / (double)this->osd_width;
-  double scale_y = (double)this->x.height / (double)this->osd_height;
-
-  int x = cmd->x;
-  int y = cmd->y;
-  int w = cmd->w;
-  int h = cmd->h;
-
-  x = (int)ceil((double)(x>0 ? x-1 : 0) * scale_x);
-  y = (int)ceil((double)(y>0 ? y-1 : 0) * scale_y);
-  w = (int)floor((double)(w+2) * scale_x);
-  h = (int)floor((double)(h+2) * scale_y);
-
-  if (x != this->video_win_x || y != this->video_win_y ||
-      w != this->video_win_w || h != this->video_win_h)
-    this->video_win_changed = 1;
-
-  this->video_win_x = x;
-  this->video_win_y = y;
-  this->video_win_w = w;
-  this->video_win_h = h;
-
-  this->video_win_active = 1;
-
-  LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
-}
-
 static void hud_osd_hide(sxfe_t *this)
 {
   if (!this->osd_visible)
@@ -1065,7 +1068,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_VideoWindow:
-      hud_osd_set_video_window(this, cmd);
+      osd_set_video_window(this, cmd);
       break;
 
     case OSD_Close: /* Close OSD window */
