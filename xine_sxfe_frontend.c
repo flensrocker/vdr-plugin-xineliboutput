@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.192 2012-01-30 08:43:11 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.193 2012-01-30 10:25:33 phintuka Exp $
  *
  */
 
@@ -857,32 +857,6 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
   int w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
   int h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
 
-#ifdef HAVE_OPENGL
-  // If opengl is used: Just construct the bitmap
-  // The scaling is done in the opengl thread
-  if (this->opengl_always || this->opengl_hud) {
-    int      i, j;
-    uint32_t value;
-
-    // Create the sub image
-    hud_fill_img_memory(this->hud_img_mem, HUD_MAX_WIDTH,
-                        NULL, 0, NULL, cmd);
-
-    // Copy the image to the texture and inform the opengl thread
-    pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
-    for (i = 0; i < h; i++) {
-      for (j = 0; j < w; j++) {
-        value = this->hud_img_mem[(y+i)*HUD_MAX_WIDTH+x+j];
-        this->opengl_osd_texture_img[(y+i)*this->osd_width+x+j] = (value<<8)|((value>>24)&0xFF);
-      }
-    }
-    this->opengl_osd_texture_img_updated = 1;
-    pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
-
-    return;
-  }
-#endif
-
   XDouble scale_x  = (XDouble)this->x.width  / (XDouble)this->osd_width;
   XDouble scale_y  = (XDouble)this->x.height / (XDouble)this->osd_height;
   int     mask_changed;
@@ -1526,6 +1500,62 @@ static void create_windows(sxfe_t *this)
  * OpenGL OSD
  */
 
+static void opengl_fill_argb(uint32_t* dst, int dst_pitch,
+                             const struct osd_command_s *cmd)
+{
+  int x0 = cmd->dirty_area.x1;
+  int y0 = cmd->dirty_area.y1;
+  int w = cmd->dirty_area.x2 - cmd->dirty_area.x1 + 1;
+  int h = cmd->dirty_area.y2 - cmd->dirty_area.y1 + 1;
+  int x, y;
+
+  uint32_t *src = (uint32_t*)cmd->raw_data;
+
+  dst += (cmd->y + y0) * dst_pitch + cmd->x + x0;
+  src += y0 * cmd->w + x0;
+
+  for (y = h; y; y--){
+    for (x = 0; x < w; x++) {
+      uint32_t value = src[x];
+      dst[x] = (value<<8)|((value>>24)&0xFF);
+    }
+    src += cmd->w;
+    dst += dst_pitch;
+  }
+}
+
+static void opengl_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
+{
+  // Copy the image to the texture and inform the opengl thread
+  pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+
+  uint32_t *dst = this->opengl_osd_texture_img;
+
+  switch (cmd->cmd) {
+    case OSD_Set_LUT8:
+      osd_fill_lut8(dst, this->osd_width, 0, cmd);
+      break;
+
+    case OSD_Set_ARGB:
+      opengl_fill_argb(dst, this->osd_width, cmd);
+      break;
+
+    case OSD_Set_RLE:
+      rle_uncompress_rgba(dst + cmd->y * this->osd_width + cmd->x,
+                          cmd->w, cmd->h, this->osd_width,
+                          cmd->data, cmd->num_rle,
+                          cmd->palette, cmd->colors);
+      break;
+
+    default:
+      LOGMSG("opengl_fill_img_memory(): unsupported format");
+      break;
+  }
+
+  this->opengl_osd_texture_img_updated = 1;
+  pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
+}
+
 static void opengl_osd_hide(sxfe_t *this)
 {
   if (!this->osd_visible)
@@ -2141,7 +2171,6 @@ static int opengl_start(sxfe_t *this)
   pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
   this->x.vis_x11.frame_output_cb = opengl_frame_output_cb;     // ensure that the opengl drawing thread gets triggered
   this->fe.xine_osd_command = opengl_osd_command;               // opengl thread needs to get updated with the new hud image
-  this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
   this->osd_width  = OSD_DEF_WIDTH;
   this->osd_height = OSD_DEF_HEIGHT;
   this->opengl_osd_texture_img = malloc(sizeof(uint32_t) * this->osd_width * this->osd_height);
@@ -2878,7 +2907,6 @@ static void sxfe_display_close(frontend_t *this_gen)
       if (pthread_join(this->opengl_drawing_thread, &status)) {
         LOGERR("sxfe_display_close: can not join opengl drawing thread!");
       }
-      free(this->hud_img_mem);
       free(this->opengl_osd_texture_img);
     }
 #endif
