@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: playlist.c,v 1.33 2010-12-19 14:25:38 phintuka Exp $
+ * $Id: playlist.c,v 1.34 2012-01-30 07:47:36 phintuka Exp $
  *
  */
 
@@ -347,9 +347,9 @@ class cPlsReader : public cPlaylistReader
 	      1 == sscanf(line + 5, "%d=", &n)) {
 	if(*(t+1)) {
 	  if(n == m_Current)
-	    Prev()->Title = t;
+	    Prev()->Title = t+1;
 	  else
-	    m_Title = t;
+	    m_Title = t+1;
 	}
       }
       //else if(!strncasecmp(line, "length", 6) && 
