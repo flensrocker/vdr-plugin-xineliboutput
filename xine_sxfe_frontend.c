@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.188 2012-01-30 07:53:14 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.189 2012-01-30 08:00:55 phintuka Exp $
  *
  */
 
@@ -639,6 +639,29 @@ static void osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
   LOGDBG("scaled video window: %d,%d %dx%d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
 }
 
+static int osd_command(sxfe_t *this, struct osd_command_s *cmd)
+{
+  switch(cmd->cmd) {
+
+    case OSD_Size: /* Set size of VDR OSD area */
+      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+        break;
+
+      LOGVERBOSE("OSD Size %dx%d", cmd->w, cmd->h);
+      this->osd_width  = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
+      this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
+      break;
+
+    case OSD_VideoWindow:
+      LOGVERBOSE("OSD VideoWindow %dx%d@%d,%d", cmd->w, cmd->h, cmd->x, cmd->y);
+      osd_set_video_window(this, cmd);
+      break;
+
+    default:
+      break;
+  }
+  return 1;
+}
 #endif /* HAVE_XRENDER || HAVE_OPENGL */
 
 /*
@@ -1017,6 +1040,12 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 #else
   if (this->hud) {
 #endif
+
+    osd_command(this, cmd);
+
+    if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+      return 1;
+
     XLockDisplay(this->display);
     switch(cmd->cmd) {
     case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
@@ -1025,13 +1054,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Size: /* Set size of VDR OSD area */
       LOGVERBOSE("HUD OSD Size");
-
-      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
-        break;
-
-      this->osd_width = (cmd->w > 0) ? cmd->w : OSD_DEF_WIDTH;
-      this->osd_height = (cmd->h > 0) ? cmd->h : OSD_DEF_HEIGHT;
-
 #ifdef HAVE_OPENGL
       if ((this->opengl_always) || (this->opengl_hud)) {
         pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
@@ -1048,10 +1070,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
     case OSD_Set_ARGB:
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
       LOGVERBOSE("HUD OSD Set");
-
-      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
-        break;
-
       hud_osd_draw(this, cmd);
       break;
 
@@ -1068,16 +1086,11 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_VideoWindow:
-      osd_set_video_window(this, cmd);
       break;
 
     case OSD_Close: /* Close OSD window */
       LOGVERBOSE("HUD OSD Close");
-      if (!(cmd->flags & OSDFLAG_TOP_LAYER))
-        break;
-
       hud_osd_hide(this);
-
       break;
 
     default:
