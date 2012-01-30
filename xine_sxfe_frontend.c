@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.190 2012-01-30 08:08:03 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.191 2012-01-30 08:12:56 phintuka Exp $
  *
  */
 
@@ -968,8 +968,6 @@ static void hud_osd_hide(sxfe_t *this)
   this->osd_visible = 0;
   this->video_win_active = 0;
 
-  if (this->hud) {
-
 #ifdef HAVE_XSHAPE
   if (this->xshape_hud) {
     XUnmapWindow(this->display, this->hud_window);
@@ -987,7 +985,6 @@ static void hud_osd_hide(sxfe_t *this)
                  0, 0, this->osd_width+2, this->osd_height+2);
 
   XFlush(this->display);
-  }
 }
 
 static void hud_osd_show(sxfe_t *this)
@@ -998,16 +995,6 @@ static void hud_osd_show(sxfe_t *this)
   this->osd_visible = 1;
   this->video_win_active = 0;
 
-#ifdef HAVE_OPENGL
-  if ((this->opengl_always) || (this->opengl_hud)) {
-    pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
-    memset((void*)this->opengl_osd_texture_img,0,sizeof(uint32_t)*this->osd_width*this->osd_height);
-    this->opengl_osd_texture_img_updated=1;
-    pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
-  }
-#endif
-
-  if (this->hud) {
   XSetForeground(this->display, this->gc, 0x00000000);
   XFillRectangle(this->display, this->surf_img->draw, this->gc,
                  0, 0, this->osd_width+2, this->osd_height+2);
@@ -1025,7 +1012,6 @@ static void hud_osd_show(sxfe_t *this)
     XMapWindow(this->display, this->hud_window);
   }
 #endif
-  }
 
   XFlush(this->display);
 }
@@ -1035,11 +1021,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   sxfe_t *this = (sxfe_t*)this_gen;
 
   if (this && cmd)
-#ifdef HAVE_OPENGL
-  if (this->hud || this->opengl_always || this->opengl_hud) {
-#else
   if (this->hud) {
-#endif
 
     osd_command(this, cmd);
 
@@ -1054,15 +1036,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
 
     case OSD_Size: /* Set size of VDR OSD area */
       LOGVERBOSE("HUD OSD Size");
-#ifdef HAVE_OPENGL
-      if ((this->opengl_always) || (this->opengl_hud)) {
-        pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
-        free(this->opengl_osd_texture_img);
-        this->opengl_osd_texture_img = malloc(sizeof(uint32_t) * this->osd_width * this->osd_height);
-        pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
-      }
-#endif
-
       hud_osd_show(this);
       break;
 
@@ -1548,6 +1521,79 @@ static void create_windows(sxfe_t *this)
 }
 
 #ifdef HAVE_OPENGL
+
+/*
+ * OpenGL OSD
+ */
+
+static void opengl_osd_hide(sxfe_t *this)
+{
+  if (!this->osd_visible)
+    return;
+
+  this->osd_visible = 0;
+  this->video_win_active = 0;
+}
+
+static void opengl_osd_show(sxfe_t *this)
+{
+  if (this->osd_visible)
+    return;
+
+  this->osd_visible = 1;
+  this->video_win_active = 0;
+
+  pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+
+  free(this->opengl_osd_texture_img);
+  size_t size = sizeof(uint32_t) * this->osd_width * this->osd_height;
+  this->opengl_osd_texture_img = malloc(size);
+  memset(this->opengl_osd_texture_img, 0, size);
+  this->opengl_osd_texture_img_updated = 1;
+
+  pthread_mutex_unlock(&this->opengl_osd_texture_img_mutex);
+
+  XFlush(this->display);
+}
+
+static int opengl_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+
+  if (this && cmd)
+  if (this->opengl_always || this->opengl_hud) {
+
+    sxfe_osd_command(this, cmd);
+
+    if (!(cmd->flags & OSDFLAG_TOP_LAYER))
+      return 1;
+
+    XLockDisplay(this->display);
+    switch(cmd->cmd) {
+      case OSD_Size: /* Set size of VDR OSD area */
+        LOGDBG("OpenGL OSD Size");
+        opengl_osd_show(this);
+        break;
+
+      case OSD_Set_LUT8:
+      case OSD_Set_ARGB:
+      case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
+        LOGDBG("OpenGL OSD Set");
+        opengl_osd_draw(this, cmd);
+        break;
+
+      case OSD_Close: /* Close OSD window */
+        LOGDBG("OpenGL OSD Close");
+        opengl_osd_hide(this);
+        break;
+
+      default:
+        break;
+    }
+    XUnlockDisplay(this->display);
+  }
+  return 1;
+}
 
 /*
  * OpenGL
@@ -2094,7 +2140,7 @@ static int opengl_start(sxfe_t *this)
   pthread_attr_setschedparam(&attr, &param);
   pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
   this->x.vis_x11.frame_output_cb = opengl_frame_output_cb;     // ensure that the opengl drawing thread gets triggered
-  this->fe.xine_osd_command = hud_osd_command;                  // opengl thread needs to get updated with the new hud image
+  this->fe.xine_osd_command = opengl_osd_command;               // opengl thread needs to get updated with the new hud image
   this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
   this->osd_width  = OSD_DEF_WIDTH;
   this->osd_height = OSD_DEF_HEIGHT;
@@ -2916,7 +2962,7 @@ static int sxfe_xine_play(frontend_t *this_gen)
     if (this->opengl_always || this->opengl_hud) {
       LOGDBG("sxfe_xine_play: Enabling OpenGL OSD");
       this->x.input_plugin->f.fe_handle     = this_gen;
-      this->x.input_plugin->f.intercept_osd = hud_osd_command;
+      this->x.input_plugin->f.intercept_osd = opengl_osd_command;
 
       this->x.fe.send_event((frontend_t*)this, "INFO ARGBOSD");
     }
