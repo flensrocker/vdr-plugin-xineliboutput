@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.195 2012-01-30 10:46:45 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.196 2012-01-30 10:49:34 phintuka Exp $
  *
  */
 
@@ -1580,10 +1580,10 @@ static void opengl_osd_show(sxfe_t *this)
   if (this->osd_visible)
     return;
 
+  pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
+
   this->osd_visible = 1;
   this->video_win_active = 0;
-
-  pthread_mutex_lock(&this->opengl_osd_texture_img_mutex);
 
   free(this->opengl_osd_texture_img);
   size_t size = sizeof(uint32_t) * this->osd_width * this->osd_height;
