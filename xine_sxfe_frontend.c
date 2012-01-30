@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.191 2012-01-30 08:12:56 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.192 2012-01-30 08:43:11 phintuka Exp $
  *
  */
 
@@ -1029,7 +1029,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       return 1;
 
     XLockDisplay(this->display);
-    switch(cmd->cmd) {
+    switch (cmd->cmd) {
     case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
       LOGVERBOSE("HUD OSD NOP");
       break;
@@ -1563,13 +1563,13 @@ static int opengl_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   if (this && cmd)
   if (this->opengl_always || this->opengl_hud) {
 
-    sxfe_osd_command(this, cmd);
+    osd_command(this, cmd);
 
     if (!(cmd->flags & OSDFLAG_TOP_LAYER))
       return 1;
 
     XLockDisplay(this->display);
-    switch(cmd->cmd) {
+    switch (cmd->cmd) {
       case OSD_Size: /* Set size of VDR OSD area */
         LOGDBG("OpenGL OSD Size");
         opengl_osd_show(this);
@@ -1613,7 +1613,7 @@ void opengl_trigger_drawing_thread(sxfe_t *this)
 /*
  * Wait until drawing is finished
  */
-voido opengl_wait_drawing_finished(sxfe_t *this)
+void opengl_wait_drawing_finished(sxfe_t *this)
 {
   pthread_mutex_lock(&this->opengl_redraw_finished_mutex);
   if (this->opengl_redraw_request_nr != this->opengl_redraw_served_nr)
