@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.39 2012-01-30 10:41:56 phintuka Exp $
+# * $Id: configure,v 1.40 2012-01-30 11:24:38 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -376,7 +376,7 @@ if enabled libxine; then
     test_library X11  xshape       "X11/extensions/shape.h"    "-lXext"      "XShapeQueryExtension(0,0,0)"
     test_library X11  xdpms        "X11/extensions/dpms.h"     "-lXext"      "DPMSDisable(0)"
     test_library X11  xinerama     "X11/extensions/Xinerama.h" "-lXinerama"  "XineramaQueryScreens(0,0)"
-    test_library X11  opengl       "GL/glx.h"                  "-lGL -lGLU -lglut"  "glXQueryVersion(0,0,0)"
+    test_library X11  opengl       "GL/glx.h"                  "-lGL -lGLU"  "glXQueryVersion(0,0,0)"
     test_library none vdpau        "vdpau/vdpau_x11.h"         "-lvdpau"     "vdp_device_create_x11(0,0,0,0)"
     test_library X11  dbus-glib-1  \
       "dbus/dbus-glib.h" \
