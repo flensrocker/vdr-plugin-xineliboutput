@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.187 2012-01-29 20:52:38 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.188 2012-01-30 07:53:14 phintuka Exp $
  *
  */
 
@@ -609,7 +609,7 @@ static void osd_fill_lut8(uint32_t* dst, int dst_pitch, int argb,
 
 static void osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
 {
-  LOGDBG("HUD osd VideoWindow: unscaled video win: %d %d %d %d", cmd->x, cmd->y, cmd->w, cmd->h);
+  LOGDBG("unscaled video window: %d,%d %dx%d", cmd->x, cmd->y, cmd->w, cmd->h);
 
   // Compute the coordinates of the video window
   double scale_x = (double)this->x.width  / (double)this->osd_width;
@@ -636,7 +636,7 @@ static void osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
 
   this->video_win_active = 1;
 
-  LOGDBG("scaled video win: %d %d %d %d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
+  LOGDBG("scaled video window: %d,%d %dx%d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
 }
 
 #endif /* HAVE_XRENDER || HAVE_OPENGL */
@@ -921,7 +921,7 @@ static void hud_osd_draw(sxfe_t *this, const struct osd_command_s *cmd)
 #ifdef HAVE_XSHAPE
   if (this->xshape_hud) {
     if (mask_changed) {
-      LOGDBG("hud_osd_command(OSD_Set_RLE): Updating shape of window");
+      LOGDBG("hud_osd_draw: Updating shape of window");
       XRenderComposite(this->display, PictOpSrc, this->surf_back_img->pic, None, this->shape_mask_picture,
                        x, y, 0, 0, x, y, w, h);
       XShapeCombineMask(this->display, this->hud_window, ShapeBounding, 0, 0, this->shape_mask_pixmap, ShapeSet);
@@ -1020,11 +1020,11 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
     XLockDisplay(this->display);
     switch(cmd->cmd) {
     case OSD_Nop: /* Do nothing ; used to initialize delay_ms counter */
-      LOGDBG("HUD osd NOP");
+      LOGVERBOSE("HUD OSD NOP");
       break;
 
     case OSD_Size: /* Set size of VDR OSD area */
-      LOGDBG("HUD Set Size");
+      LOGVERBOSE("HUD OSD Size");
 
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
@@ -1047,7 +1047,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
     case OSD_Set_LUT8:
     case OSD_Set_ARGB:
     case OSD_Set_RLE: /* Create/update OSD window. Data is rle-compressed. */
-      LOGDBG("HUD Set RLE");
+      LOGVERBOSE("HUD OSD Set");
 
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
@@ -1056,15 +1056,15 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_SetPalette: /* Modify palette of already created OSD window */
-      LOGDBG("HUD osd SetPalette");
+      LOGDBG("HUD OSD SetPalette");
       break;
 
     case OSD_Move:       /* Change x/y position of already created OSD window */
-      LOGDBG("HUD osd Move");
+      LOGDBG("HUD OSD Move");
       break;
 
     case OSD_Set_YUV:    /* Create/update OSD window. Data is in YUV420 format. */
-      LOGDBG("HUD osd set YUV");
+      LOGDBG("HUD OSD Set YUV");
       break;
 
     case OSD_VideoWindow:
@@ -1072,7 +1072,7 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     case OSD_Close: /* Close OSD window */
-      LOGDBG("HUD osd Close");
+      LOGVERBOSE("HUD OSD Close");
       if (!(cmd->flags & OSDFLAG_TOP_LAYER))
         break;
 
@@ -1081,7 +1081,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
       break;
 
     default:
-      LOGDBG("hud_osd_command: unknown osd command %d", cmd->cmd);
       break;
     }
     XUnlockDisplay(this->display);
