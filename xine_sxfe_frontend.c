@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.189 2012-01-30 08:00:55 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.190 2012-01-30 08:08:03 phintuka Exp $
  *
  */
 
@@ -1101,17 +1101,6 @@ static int hud_osd_command(frontend_t *this_gen, struct osd_command_s *cmd)
   return 1;
 }
 
-#ifdef HAVE_OPENGL
-// Signals a change to the opengl drawing thread
-void opengl_trigger_drawing_thread(sxfe_t *this)
-{
-  pthread_mutex_lock(&this->opengl_redraw_mutex);
-  this->opengl_redraw_request_nr++;
-  pthread_cond_signal(&this->opengl_redraw_cv);
-  pthread_mutex_unlock(&this->opengl_redraw_mutex);
-}
-#endif
-
 static void hud_frame_output_cb (void *data,
                                   int video_width, int video_height,
                                   double video_pixel_aspect,
@@ -1121,19 +1110,6 @@ static void hud_frame_output_cb (void *data,
                                   int *win_x, int *win_y)
 {
   sxfe_t *this = (sxfe_t*)data;
-
-#ifdef HAVE_OPENGL
-  // Inform the opengl drawing thread
-  if (this->opengl_always || this->opengl_hud) {
-    opengl_trigger_drawing_thread(this);
-
-    // Wait until the thrad is finished
-    pthread_mutex_lock(&this->opengl_redraw_finished_mutex);
-    if (this->opengl_redraw_request_nr!=this->opengl_redraw_served_nr) 
-      pthread_cond_wait(&this->opengl_redraw_finished_cv, &this->opengl_redraw_finished_mutex);
-    pthread_mutex_unlock(&this->opengl_redraw_finished_mutex);
-  }
-#endif
 
   /* Call the original handler */
   this->x.frame_output_handler(data,
@@ -1145,9 +1121,6 @@ static void hud_frame_output_cb (void *data,
                                win_x, win_y);
 
   /* Set the desitination position if the video window is active */
-#ifdef HAVE_OPENGL
-  if (!(this->opengl_always || this->opengl_hud))
-#endif
   if (this->video_win_active) {
 
     /* Clear the window if the size has changed */
@@ -1575,6 +1548,58 @@ static void create_windows(sxfe_t *this)
 }
 
 #ifdef HAVE_OPENGL
+
+/*
+ * OpenGL
+ */
+
+/*
+ * Signals a change to the opengl drawing thread
+ */
+void opengl_trigger_drawing_thread(sxfe_t *this)
+{
+  pthread_mutex_lock(&this->opengl_redraw_mutex);
+  this->opengl_redraw_request_nr++;
+  pthread_cond_signal(&this->opengl_redraw_cv);
+  pthread_mutex_unlock(&this->opengl_redraw_mutex);
+}
+
+/*
+ * Wait until drawing is finished
+ */
+voido opengl_wait_drawing_finished(sxfe_t *this)
+{
+  pthread_mutex_lock(&this->opengl_redraw_finished_mutex);
+  if (this->opengl_redraw_request_nr != this->opengl_redraw_served_nr)
+    pthread_cond_wait(&this->opengl_redraw_finished_cv, &this->opengl_redraw_finished_mutex);
+  pthread_mutex_unlock(&this->opengl_redraw_finished_mutex);
+}
+
+static void opengl_frame_output_cb (void *data,
+                                    int video_width, int video_height,
+                                    double video_pixel_aspect,
+                                    int *dest_x, int *dest_y,
+                                    int *dest_width, int *dest_height,
+                                    double *dest_pixel_aspect,
+                                    int *win_x, int *win_y)
+{
+  sxfe_t *this = (sxfe_t*)data;
+
+  /* Inform the opengl drawing thread */
+  opengl_trigger_drawing_thread(this);
+
+  /* Wait until the thrad is finished */
+  opengl_wait_drawing_finished(this);
+
+  /* Call the original handler */
+  this->x.frame_output_handler(data,
+                               video_width, video_height,
+                               video_pixel_aspect,
+                               dest_x, dest_y,
+                               dest_width, dest_height,
+                               dest_pixel_aspect,
+                               win_x, win_y);
+}
 
 #if 0
 static void time_measure_start(struct timeval *time_start)
@@ -2068,7 +2093,7 @@ static int opengl_start(sxfe_t *this)
   param.sched_priority = sched_get_priority_min(SCHED_OTHER);
   pthread_attr_setschedparam(&attr, &param);
   pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
-  this->x.vis_x11.frame_output_cb = hud_frame_output_cb;       // ensure that the opengl drawing thread gets triggered
+  this->x.vis_x11.frame_output_cb = opengl_frame_output_cb;     // ensure that the opengl drawing thread gets triggered
   this->fe.xine_osd_command = hud_osd_command;                  // opengl thread needs to get updated with the new hud image
   this->hud_img_mem = malloc(4 * HUD_MAX_WIDTH * HUD_MAX_HEIGHT);
   this->osd_width  = OSD_DEF_WIDTH;
