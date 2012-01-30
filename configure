@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.38 2011-06-11 08:38:43 phintuka Exp $
+# * $Id: configure,v 1.39 2012-01-30 10:41:56 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -334,8 +334,7 @@ check_deps(){
   disabled vdr     && disable libextractor libcap libbluray
   disabled dlfcn   && disable opengl
   disabled pthread && disable opengl
-  disabled xrender && disable opengl
-  disabled xshape  && disable opengl
+  disabled xrender && disable xshape xshm
 }
 
 check_deps

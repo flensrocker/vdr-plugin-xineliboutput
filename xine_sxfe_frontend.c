@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.193 2012-01-30 10:25:33 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.194 2012-01-30 10:41:56 phintuka Exp $
  *
  */
 
@@ -173,8 +173,6 @@ typedef struct sxfe_s {
   uint16_t      osd_height;
 #endif
 
-  /* HUD stuff */
-#ifdef HAVE_XRENDER
   /* OpenGL */
 #ifdef HAVE_OPENGL
   GLXDrawable     opengl_window;
@@ -198,6 +196,9 @@ typedef struct sxfe_s {
   uint8_t         opengl_osd_texture_img_updated : 1;
   uint8_t         opengl_deinit : 1;
 #endif /* HAVE_OPENGL */
+
+  /* HUD */
+#ifdef HAVE_XRENDER
   uint8_t         hud;
   XImage         *hud_img;
   Visual         *hud_vis;
