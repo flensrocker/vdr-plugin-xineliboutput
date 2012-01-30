@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.194 2012-01-30 10:41:56 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.195 2012-01-30 10:46:45 phintuka Exp $
  *
  */
 
@@ -159,6 +159,7 @@ typedef struct sxfe_s {
   uint8_t  no_x_kbd : 1;
 
   /* OSD Video Window */
+  pthread_mutex_t video_win_mutex;
   uint8_t  video_win_active; /* activate video window? */
   uint8_t  video_win_changed;
   uint16_t video_win_x;      /* video window position, x */
@@ -626,6 +627,8 @@ static void osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
   w = (int)floor((double)(w+2) * scale_x);
   h = (int)floor((double)(h+2) * scale_y);
 
+  pthread_mutex_lock(&this->video_win_mutex);
+
   if (x != this->video_win_x || y != this->video_win_y ||
       w != this->video_win_w || h != this->video_win_h)
     this->video_win_changed = 1;
@@ -636,6 +639,8 @@ static void osd_set_video_window(sxfe_t *this, const struct osd_command_s *cmd)
   this->video_win_h = h;
 
   this->video_win_active = 1;
+
+  pthread_mutex_unlock(&this->video_win_mutex);
 
   LOGDBG("scaled video window: %d,%d %dx%d", this->video_win_x, this->video_win_y, this->video_win_w, this->video_win_h);
 }
@@ -1071,6 +1076,8 @@ static void hud_frame_output_cb (void *data,
   /* Set the desitination position if the video window is active */
   if (this->video_win_active) {
 
+    pthread_mutex_lock(&this->video_win_mutex);
+
     /* Clear the window if the size has changed */
     if (this->video_win_changed) {
       Window win = this->window[!!this->fullscreen];
@@ -1084,9 +1091,11 @@ static void hud_frame_output_cb (void *data,
     *dest_y = this->video_win_y;
     *dest_width  = this->video_win_w;
     *dest_height = this->video_win_h;
-  }
 
-  this->video_win_changed = 0;
+    this->video_win_changed = 0;
+
+    pthread_mutex_unlock(&this->video_win_mutex);
+  }
 }
 
 static int hud_osd_open(sxfe_t *this)
@@ -2058,12 +2067,14 @@ static void *opengl_draw_frame_thread(void *arg)
       video_tex_width = 1.0;
       video_tex_height = 1.0;
       if (this->video_win_active) {
+        pthread_mutex_lock(&this->video_win_mutex);
         video_x0 = win_x + this->video_win_x;
 	video_y0 = win_y + this->video_win_y;
 	video_tex_width  = ((GLfloat)win_width)  / (GLfloat)this->screen_width;
 	video_tex_height = ((GLfloat)win_height) / (GLfloat)this->screen_height;
 	video_x1 = video_x0 + (this->video_win_w - 1);
 	video_y1 = video_y0 + (this->video_win_h - 1);
+        pthread_mutex_unlock(&this->video_win_mutex);
       } else {
         video_x0 = win_x;
 	video_y0 = win_y;
@@ -2207,6 +2218,8 @@ static int sxfe_display_open(frontend_t *this_gen,
 
   if(this->display)
     this->fe.fe_display_close(this_gen);
+
+  pthread_mutex_init(&this->video_win_mutex, NULL);
 
   if(keyfunc) {
     this->x.keypress = keyfunc;
@@ -2934,6 +2947,8 @@ static void sxfe_display_close(frontend_t *this_gen)
     }
     XCloseDisplay (this->display);
     this->display = NULL;
+
+    pthread_mutex_destroy(&this->video_win_mutex);
   }
 
   free(this->x.aspect_controller);
