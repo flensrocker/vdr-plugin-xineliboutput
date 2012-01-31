@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.26 2011-10-25 18:20:16 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.27 2012-01-31 19:49:24 phintuka Exp $
  *
  */
 
@@ -69,6 +69,10 @@ struct frontend_config_s {
 #define WINDOW_ID_NONE  -1
 #define WINDOW_ID_ROOT  -2
 
+/* Video mode switching flags */
+#define MODESWITCH_SIZE       0x1
+#define MODESWITCH_RATE       0x2
+#define MODESWITCH_INTERLACE  0x4
 
 struct frontend_s {
   /* Display */
