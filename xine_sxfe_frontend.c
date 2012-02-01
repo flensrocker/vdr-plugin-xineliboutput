@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.196 2012-01-30 10:49:34 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.197 2012-02-01 19:53:22 phintuka Exp $
  *
  */
 
@@ -111,6 +111,7 @@ typedef struct sxfe_s {
 
   /* X11 */
   Display *display;
+  Window   root_window;
   Window   window[2];
   int      screen;
   int      window_id;        /* output to another window */
@@ -1115,7 +1116,7 @@ static int hud_osd_open(sxfe_t *this)
       return 1;
     }
 
-    this->hud_vis = find_argb_visual(this->display, DefaultScreen(this->display));
+    this->hud_vis = find_argb_visual(this->display, this->screen);
     if(!this->hud_vis) {
       LOGMSG("find_argb_visual() failed. HUD OSD disabled.");
       this->hud = 0;
@@ -1124,7 +1125,7 @@ static int hud_osd_open(sxfe_t *this)
     }
 
     Colormap hud_colormap = XCreateColormap(this->display,
-                                            RootWindow(this->display, DefaultScreen(this->display)),
+                                            this->root_window,
                                             this->hud_vis, AllocNone);
 
     XSetWindowAttributes attributes;
@@ -1134,7 +1135,7 @@ static int hud_osd_open(sxfe_t *this)
     attributes.colormap = hud_colormap;
     attributes.backing_store = Always;
 
-    this->hud_window = XCreateWindow(this->display, DefaultRootWindow(this->display),
+    this->hud_window = XCreateWindow(this->display, this->root_window,
                                      this->x.xpos, this->x.ypos,
                                      this->x.width, this->x.height,
                                      0, 32, InputOutput, this->hud_vis,
@@ -1242,7 +1243,7 @@ static void hud_osd_resize(sxfe_t *this, Window video_window, int width, int hei
       Window tmp_win;
       XLockDisplay(this->display);
       XTranslateCoordinates(this->display, this->window[0],
-                            DefaultRootWindow(this->display),
+                            this->root_window,
                             0, 0, &hud_x, &hud_y, &tmp_win);
       XResizeWindow(this->display, this->hud_window, width, height);
       XMoveWindow(this->display, this->hud_window, hud_x, hud_y);
@@ -1470,12 +1471,12 @@ static void create_windows(sxfe_t *this)
 
   /* create and display our video window */
 
-  this->window[0] = XCreateWindow (this->display, DefaultRootWindow(this->display),
+  this->window[0] = XCreateWindow (this->display, this->root_window,
                                    this->x.xpos, this->x.ypos,
                                    this->x.width, this->x.height, 1,
                                    CopyFromParent, InputOutput, CopyFromParent,
                                    xswa_mask, &xswa);
-  this->window[1] = XCreateWindow (this->display, DefaultRootWindow(this->display),
+  this->window[1] = XCreateWindow (this->display, this->root_window,
                                    this->xinerama_x, this->xinerama_y,
                                    this->x.width, this->x.height, 0,
                                    CopyFromParent, InputOutput, CopyFromParent,
@@ -1772,7 +1773,6 @@ static int opengl_init_dl(sxfe_t *this)
 static int opengl_init(sxfe_t *this)
 {
   int glx_major, glx_minor;
-  Window root;
   int n;
   GLXFBConfig *fbconfigs;
   GLXFBConfig fbcroot;
@@ -1868,7 +1868,6 @@ static int opengl_init(sxfe_t *this)
   }
 
   // Get properties of the root window
-  root = RootWindow (this->display, this->screen);
   this->screen_width = DisplayWidth (this->display, this->screen);
   this->screen_height = DisplayHeight (this->display, this->screen);
 
@@ -1881,9 +1880,9 @@ static int opengl_init(sxfe_t *this)
   fbcroot = fbconfigs[0];
   XFree (fbconfigs);
   visinfo = glXChooseVisual(this->display, this->screen, fbc_attr2);
-  attr.colormap = XCreateColormap (this->display, root, visinfo->visual, AllocNone);
+  attr.colormap = XCreateColormap (this->display, this->root_window, visinfo->visual, AllocNone);
   attr.override_redirect = True;
-  this->opengl_window = XCreateWindow (this->display, root,
+  this->opengl_window = XCreateWindow (this->display, this->root_window,
                                        0, 0, this->screen_width, this->screen_height, 0,
                                        visinfo->depth, InputOutput,
                                        visinfo->visual, CWColormap | CWOverrideRedirect, &attr);
@@ -2313,7 +2312,7 @@ static int sxfe_display_open(frontend_t *this_gen,
   XLockDisplay (this->display);
 
   this->screen = DefaultScreen(this->display);
-
+  this->root_window = DefaultRootWindow(this->display);
   /* #warning sxfe_display_open: TODO: switch vmode */
 
   /* completion event */
@@ -2332,7 +2331,7 @@ static int sxfe_display_open(frontend_t *this_gen,
   /* Output to existing window ? (embedded to another app) */
 
   if (this->window_id == WINDOW_ID_ROOT) {
-    this->window_id = DefaultRootWindow(this->display);
+    this->window_id = this->root_window;
   }
   if(this->window_id > 0) {
     LOGMSG("sxfe_display_open(): Using X11 window %d for output", this->window_id);
@@ -2359,7 +2358,7 @@ static int sxfe_display_open(frontend_t *this_gen,
                 PointerMotionMask);
 
   /* Get notified when root window size changes */
-  XSelectInput (this->display, XDefaultRootWindow(this->display),
+  XSelectInput (this->display, this->root_window,
 		StructureNotifyMask);
 
   /* Map current window */
@@ -2480,7 +2479,7 @@ static int sxfe_display_config(frontend_t *this_gen,
     }
     XSync(this->display, False);
     if(XTranslateCoordinates(this->display, this->window[this->fullscreen ? 1 : 0],
-                             DefaultRootWindow(this->display),
+                             this->root_window,
                              0, 0, &tmp_x, &tmp_y, &tmp_win)) {
       this->x.xpos = tmp_x;
       this->x.ypos = tmp_y;
@@ -2646,7 +2645,7 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 #endif
 
   /* root window size changed ? */
-  if (cev->window != (Window)this->window_id && cev->window == RootWindow(this->display, this->screen)) {
+  if (cev->window != (Window)this->window_id && cev->window == this->root_window) {
     if (this->fullscreen) {
       if (cev->width != this->x.width || cev->height != this->x.height) {
         LOGMSG("Root window size changed. Resizing video window from %dx%d to %dx%d",
@@ -2696,7 +2695,7 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
       Window tmp_win;
       XLockDisplay(this->display);
       if(XTranslateCoordinates(this->display, cev->window,
-                               DefaultRootWindow(this->display),
+                               this->root_window,
                                0, 0, &tmp_x, &tmp_y, &tmp_win)) {
         this->x.xpos = tmp_x;
         this->x.ypos = tmp_y;
@@ -2735,7 +2734,7 @@ static void XMotionEvent_handler(sxfe_t *this, XMotionEvent *mev)
     while(XCheckMaskEvent(this->display, ButtonMotionMask, (XEvent*)mev));
 
     XTranslateCoordinates(this->display, this->window[0],
-                          DefaultRootWindow(this->display),
+                          this->root_window,
                           0, 0, &xpos, &ypos, &tmp_win);
 
     this->x.xpos = (xpos += mev->x_root - this->dragging_x);
