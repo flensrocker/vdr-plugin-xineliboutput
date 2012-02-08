@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.197 2012-02-01 19:53:22 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.198 2012-02-08 11:34:10 phintuka Exp $
  *
  */
 
@@ -1989,6 +1989,7 @@ static void *opengl_draw_frame_thread(void *arg)
   int16_t win_x = -1, win_y = -1;
   GLfloat video_tex_width, video_tex_height;
   int first_frame = 1;
+  int force_redirect = 0;
   //struct timeval t;
 
   XLockDisplay (this->display);
@@ -2022,6 +2023,7 @@ static void *opengl_draw_frame_thread(void *arg)
       win_y = this->x.ypos;
       win_width = this->x.width;
       win_height = this->x.height;
+      force_redirect = 1;
     }
     LOGVERBOSE("win_x=%d win_y=%d win_width=%d win_height=%d", win_x, win_y, win_width, win_height);
     // Update the global alpha value of the OSD
@@ -2045,8 +2047,8 @@ static void *opengl_draw_frame_thread(void *arg)
 
     // Decide if we need to do something
     draw_frame = (this->osd_visible || window_mapped || this->opengl_always);
-    if ((this->opengl_hud && this->osd_visible && !prev_osd_visible) ||
-        (this->opengl_always && first_frame)) {
+    if ((this->opengl_hud && this->osd_visible && (!prev_osd_visible || force_redirect)) ||
+        (this->opengl_always && (first_frame || force_redirect))) {
       LOGDBG("redirecting video to opengl frame texture");
       xine_port_send_gui_data(this->x.video_port, XINE_GUI_SEND_DRAWABLE_CHANGED,
                               (void*) this->video_frame_pixmap);
@@ -2127,7 +2129,7 @@ static void *opengl_draw_frame_thread(void *arg)
       XUnlockDisplay(this->display);
       count++;
     }
-    if ((this->osd_visible && count==2 && !window_mapped) || (first_frame && this->opengl_always)) {
+    if ((this->osd_visible && count==2 && !window_mapped) || (first_frame && this->opengl_always) || force_redirect) {
       LOGDBG("mapping opengl window");
       XLockDisplay(this->display);
       XRaiseWindow (this->display, this->opengl_window);
@@ -2147,6 +2149,7 @@ static void *opengl_draw_frame_thread(void *arg)
       prev_osd_visible = this->osd_visible;
     }
     first_frame = 0;
+    force_redirect = 0;
     //LOGVERBOSE("drawing time = %d",time_measure_end(&t));
 
     // Drawing is finished
