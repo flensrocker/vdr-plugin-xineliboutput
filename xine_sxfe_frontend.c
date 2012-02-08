@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.198 2012-02-08 11:34:10 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.199 2012-02-08 11:37:08 phintuka Exp $
  *
  */
 
@@ -197,6 +197,9 @@ typedef struct sxfe_s {
   uint8_t         opengl_always : 1;
   uint8_t         opengl_osd_texture_img_updated : 1;
   uint8_t         opengl_deinit : 1;
+#ifdef HAVE_XSHAPE
+  uint8_t         opengl_xshape_available : 1;
+#endif
 #endif /* HAVE_OPENGL */
 
   /* HUD */
@@ -1987,6 +1990,9 @@ static void *opengl_draw_frame_thread(void *arg)
   static int unsigned count = 0;
   int16_t win_width = -1, win_height = -1;
   int16_t win_x = -1, win_y = -1;
+#ifdef HAVE_XSHAPE
+  XRectangle xrect;
+#endif
   GLfloat video_tex_width, video_tex_height;
   int first_frame = 1;
   int force_redirect = 0;
@@ -2024,6 +2030,16 @@ static void *opengl_draw_frame_thread(void *arg)
       win_width = this->x.width;
       win_height = this->x.height;
       force_redirect = 1;
+
+      // Set the shape of the opengl window
+#ifdef HAVE_XSHAPE
+      xrect.x = win_x;
+      xrect.y = win_y;
+      xrect.width = win_width;
+      xrect.height = win_height;
+      if (this->opengl_xshape_available)
+        XShapeCombineRectangles(this->display, this->opengl_window, ShapeBounding, 0, 0, &xrect, 1, ShapeSet, 0);
+#endif      
     }
     LOGVERBOSE("win_x=%d win_y=%d win_width=%d win_height=%d", win_x, win_y, win_width, win_height);
     // Update the global alpha value of the OSD
@@ -2190,6 +2206,13 @@ static int opengl_start(sxfe_t *this)
   this->opengl_osd_texture_img = malloc(sizeof(uint32_t) * this->osd_width * this->osd_height);
   memset((void*)this->opengl_osd_texture_img,0,sizeof(uint32_t)*this->osd_width*this->osd_height);
   this->opengl_osd_texture_img_updated = 0;
+#ifdef HAVE_XSHAPE
+  int dummy;
+  if (XShapeQueryExtension(this->display, &dummy, &dummy))
+    this->opengl_xshape_available = 1;
+  else
+    this->opengl_xshape_available = 0;
+#endif
   if (pthread_create(&this->opengl_drawing_thread, &attr, opengl_draw_frame_thread, (void *)this)) {
     pthread_attr_destroy(&attr);
     LOGERR("sxfe_display_open: can not start OpenGL drawing thread");
