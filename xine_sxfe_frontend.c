@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.200 2012-02-17 07:44:25 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.201 2012-02-17 09:23:22 phintuka Exp $
  *
  */
 
@@ -61,6 +61,7 @@
 #endif
 
 #include "tools/rle.h"
+#include "tools/time_ms.h"
 
 #ifndef WIN_LAYER_NORMAL
   #define WIN_LAYER_NORMAL 4
@@ -2828,6 +2829,18 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
  *
  *  - main X event loop
  */
+
+static void check_mouse_cursor_hide(sxfe_t *this, int64_t elapsed)
+{
+  if (elapsed > 0 && elapsed < 500) {
+    this->mousecursor_timeout -= elapsed;
+    if (this->mousecursor_timeout <= 0) {
+      // hide Cursor
+      set_cursor(this->display, this->window[this->fullscreen ? 1 : 0], 0);
+    }
+  }
+}
+
 static int sxfe_run(frontend_t *this_gen) 
 {
   sxfe_t *this = (sxfe_t*)this_gen;
@@ -2838,23 +2851,28 @@ static int sxfe_run(frontend_t *this_gen)
    * watchdog to emergency exit ...
    */
   if (! XPending(this->display)) {
+    uint64_t poll_time = 0;
     const int poll_timeout = 50;
     struct pollfd pfd = {
       .fd = ConnectionNumber(this->display),
       .events = POLLIN,
     };
+
+    if (this->mousecursor_timeout > 0) {
+      poll_time = time_ms();
+    }
+
     if (poll(&pfd, 1, poll_timeout) < 1 || !(pfd.revents & POLLIN)) {
 
-      // timeout expired?
       if (this->mousecursor_timeout > 0) {
-        this->mousecursor_timeout -= poll_timeout;
-        if (this->mousecursor_timeout <= 0) {
-          // hide Cursor
-          set_cursor(this->display, this->window[this->fullscreen ? 1 : 0], 0);
-        }
+        check_mouse_cursor_hide(this, poll_timeout);
       }
 
       return !this->x.fe.xine_is_finished((frontend_t*)this, 0);
+    }
+
+    if (poll_time) {
+      check_mouse_cursor_hide(this, elapsed(poll_time));
     }
   }
 
