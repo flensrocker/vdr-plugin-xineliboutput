@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.199 2012-02-08 11:37:08 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.200 2012-02-17 07:44:25 phintuka Exp $
  *
  */
 
@@ -72,11 +72,11 @@
 #define MWM_HINTS_DECORATIONS       (1L << 1)
 #define PROP_MWM_HINTS_ELEMENTS     5
 typedef struct _mwmhints {
-  uint32_t     flags;
-  uint32_t     functions;
-  uint32_t     decorations;
-  int32_t      input_mode;
-  uint32_t     status;
+  unsigned long flags;
+  unsigned long functions;
+  unsigned long decorations;
+  long          input_mode;
+  unsigned long status;
 } MWMHints;
 
 #ifdef HAVE_XRENDER
