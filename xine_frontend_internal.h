@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.8 2011-02-28 13:23:46 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.9 2012-03-07 08:27:40 phintuka Exp $
  *
  */
 
@@ -37,6 +37,9 @@ typedef struct fe_s {
   /* called from xine_frontend.c */
   void   (*update_display_size_cb) (struct fe_s *);
   void   (*toggle_fullscreen_cb)   (struct fe_s *, int);
+
+  /* if set before xine_init(), will be called by video driver wrapper for each frame */
+  void   (*frame_draw_cb)(void *, vo_frame_t *);
 
   /* vdr callbacks */
   fe_keypress_f       keypress;
