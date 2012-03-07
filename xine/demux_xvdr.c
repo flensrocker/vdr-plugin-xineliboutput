@@ -602,7 +602,7 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
 
     /* demux audio */
     else {
-      int i, done = 0;
+      int i/*, done = 0*/;
       for (i=0; i < ts_data->pmt.audio_tracks_count; i++)
         if (ts_pid == ts_data->pmt.audio_tracks[i].pid) {
           if (ts_data->audio[i]) {
@@ -614,7 +614,7 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
               this->stream->audio_fifo->put(this->stream->audio_fifo, abuf);
             }
           }
-          done = 1;
+          /*done = 1;*/
           break;
         }
 #if 0
