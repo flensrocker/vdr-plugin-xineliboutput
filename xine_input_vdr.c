@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.353 2012-01-18 13:29:59 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.354 2012-03-07 08:41:41 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.353 2012-01-18 13:29:59 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.354 2012-03-07 08:41:41 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1994,20 +1994,44 @@ static int vdr_plugin_exec_osd_command(vdr_input_plugin_if_t *this_if,
 # define DEMUX_RESUME_SIGNAL pthread_cond_signal(&this->stream->demux_resume)
 #endif
 
+#if XINE_VERSION_CODE < 10200
+# define RAISE_ACTION_PENDING this->stream->demux_action_pending = 1
+# define LOWER_ACTION_PENDING this->stream->demux_action_pending = 0
+#else
+# define RAISE_ACTION_PENDING _x_action_raise(this->stream)
+# define LOWER_ACTION_PENDING _x_action_lower(this->stream)
+#endif
+
 static void suspend_demuxer(vdr_input_plugin_t *this)
 {
-  this->stream->demux_action_pending = 1;
-  signal_buffer_not_empty(this);
-  if(this->is_paused) 
+  if (this->is_paused)
     LOGMSG("WARNING: called suspend_demuxer in paused mode !");
+
+  /* request demuxer to release demux_lock */
+  RAISE_ACTION_PENDING;
+
+  /* signal all possible sync points to speed up this */
+  pthread_cond_broadcast(&this->engine_flushed);
+  signal_buffer_not_empty(this);
+
+  /* let demuxer return from vdr_plugin_read_* */
+  if (pthread_mutex_unlock( &this->lock ))
+    LOGERR("pthread_mutex_unlock failed !");
+
+  /* lock demuxer */
   pthread_mutex_lock( &this->stream->demux_lock );
-  this->stream->demux_action_pending = 0;
+
+  LOWER_ACTION_PENDING;
+
+  pthread_mutex_lock( &this->lock );
+
   /* must be paired with resume_demuxer !!! */
 }
 
 static void resume_demuxer(vdr_input_plugin_t *this)
 {
   /* must be paired with suspend_demuxer !!! */
+
   DEMUX_RESUME_SIGNAL;
   pthread_mutex_unlock( &this->stream->demux_lock );
 }
@@ -2068,12 +2092,7 @@ static void vdr_flush_engine(vdr_input_plugin_t *this, uint64_t discard_index)
   }
 
   /* suspend demuxer */
-  this->stream->demux_action_pending = 1;
-  pthread_cond_broadcast(&this->engine_flushed);
-  if(pthread_mutex_unlock( &this->lock )) /* to let demuxer return from vdr_plugin_read_* */
-    LOGERR("pthread_mutex_unlock failed !");
   suspend_demuxer(this);
-  pthread_mutex_lock( &this->lock );
 
   reset_scr_tuning(this);
 
@@ -5088,7 +5107,7 @@ static void vdr_plugin_dispose (input_plugin_t *this_gen)
 
   pthread_cond_broadcast(&this->engine_flushed);
   while(pthread_cond_destroy(&this->engine_flushed) == EBUSY) {
-    LOGMSG("discard_signal busy !");
+    LOGMSG("engine_flushed signal busy !");
     pthread_cond_broadcast(&this->engine_flushed);
     xine_usec_sleep(10);
   }
