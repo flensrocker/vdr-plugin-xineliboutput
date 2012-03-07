@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdreorder.c,v 1.1 2009-03-17 12:14:41 phintuka Exp $
+ * $Id: vo_osdreorder.c,v 1.2 2012-03-07 08:25:37 phintuka Exp $
  *
  */
 
@@ -14,6 +14,8 @@
 
 #include "vo_props.h"
 #include "vo_hook.h"
+
+#include "vo_osdreorder.h"
 
 /*
  *  osdreorder_hook_t

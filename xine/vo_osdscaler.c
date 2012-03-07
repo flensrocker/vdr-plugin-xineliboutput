@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.12 2010-06-01 12:08:30 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.13 2012-03-07 08:25:37 phintuka Exp $
  *
  */
 
@@ -28,6 +28,8 @@
 typedef rle_elem_t xine_rle_elem_t;
 
 #include "../tools/rle.h"
+
+#include "vo_osdscaler.h"
 
 
 /* Make sure our properties won't overlap with xine's properties */

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_lastpts.c,v 1.5 2011-11-22 12:23:24 phintuka Exp $
+ * $Id: vo_lastpts.c,v 1.6 2012-03-07 08:25:37 phintuka Exp $
  *
  */
 
@@ -21,6 +21,7 @@
 #define LOG_MODULENAME "[lastpts  ] "
 #include "../logdefs.h"
 
+#include "vo_lastpts.h"
 
 /*
  *  lastpts_hook_t
