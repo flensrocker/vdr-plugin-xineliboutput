@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.354 2012-03-07 08:41:41 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.355 2012-03-07 08:51:34 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.354 2012-03-07 08:41:41 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.355 2012-03-07 08:51:34 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3525,11 +3525,10 @@ static int vdr_plugin_parse_control(vdr_input_plugin_if_t *this_if, const char *
     }
 
     if(this->autoplay_size < 0) {
-      char **list;
       if (this->slave.stream &&
           this->slave.stream->input_plugin &&
           this->slave.stream->input_plugin->input_class)
-        list = this->slave.stream->input_plugin->input_class->
+        this->slave.stream->input_plugin->input_class->
           get_autoplay_list(this->slave.stream->input_plugin->input_class, &this->autoplay_size);
     }
     err = this->autoplay_size;
@@ -5412,7 +5411,7 @@ static int connect_rtp_data_stream(vdr_input_plugin_t *this)
 {
   char cmd[256];
   unsigned int ip0, ip1, ip2, ip3, port;
-  int fd=-1, one = 1, retries = 0, n;
+  int fd=-1, one = 1, retries = 0;
   struct sockaddr_in multicastAddress;
   struct ip_mreq mreq;
   struct sockaddr_in server_address, sin;
@@ -5509,7 +5508,10 @@ retry_recvfrom:
 
   /* check sender address */
 
-  n = recvfrom(fd, &tmp_rtp, sizeof(tmp_rtp), 0, &sin, &len);
+  if (recvfrom(fd, &tmp_rtp, sizeof(tmp_rtp), 0, &sin, &len) < 0) {
+    LOGERR("RTP recvrom() failed");
+    return -1;
+  }
   if(sin.sin_addr.s_addr != server_address.sin_addr.s_addr) {
     uint32_t tmp_ip = ntohl(sin.sin_addr.s_addr);
     LOGMSG("Received UDP/RTP multicast from unknown sender: %d.%d.%d.%d:%d",
@@ -5544,7 +5546,7 @@ static int connect_udp_data_stream(vdr_input_plugin_t *this)
   socklen_t len = sizeof(sin);
   uint32_t  tmp_ip;
   stream_udp_header_t tmp_udp;
-  int n, retries = 0, port = -1, fd = -1;
+  int retries = 0, port = -1, fd = -1;
 
   /* get server IP address */
   if(getpeername(this->fd_control, (struct sockaddr *)&server_address, &len)) {
@@ -5599,12 +5601,15 @@ retry_recvfrom:
 
   /* check sender address */
 
-  n = recvfrom(fd, &tmp_udp, sizeof(tmp_udp), 0, &sin, &len);
+  if (recvfrom(fd, &tmp_udp, sizeof(tmp_udp), 0, &sin, &len) < 0) {
+    LOGERR("UDP recvrom() failed");
+    return -1;
+  }
   if(sin.sin_addr.s_addr != server_address.sin_addr.s_addr) {
     tmp_ip = ntohl(sin.sin_addr.s_addr);
     LOGMSG("Received UDP packet from unknown sender: %d.%d.%d.%d:%d",
-	   ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff), 
-	   ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff), 
+	   ((tmp_ip>>24)&0xff), ((tmp_ip>>16)&0xff),
+	   ((tmp_ip>>8)&0xff), ((tmp_ip)&0xff),
 	   sin.sin_port);
 
     if(XIO_READY == _x_io_select(this->stream, fd, XIO_READ_READY, 0))
@@ -5621,7 +5626,7 @@ retry_recvfrom:
 
   /* store server address */
   memcpy(&this->udp_data->server_address, &sin, sizeof(sin));
-  
+
   return fd;
 }
 
