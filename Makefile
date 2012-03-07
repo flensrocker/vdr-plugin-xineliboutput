@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.108 2012-03-07 08:27:40 phintuka Exp $
+# $Id: Makefile,v 1.109 2012-03-07 08:29:50 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -206,6 +206,7 @@ endif
 ###
 
 # VDR plugin
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
 OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
        menuitems.o media_player.o equalizer.o \
        frontend_local.o frontend_svr.o \
@@ -214,6 +215,7 @@ OBJS = $(PLUGIN).o device.o frontend.o osd.o config.o menu.o setup_menu.o \
        tools/vdrdiscovery.o tools/time_pts.o tools.o \
        tools/metainfo_menu.o logdefs.o tools/rle.o
 OBJS_MPG = black_720x576.o nosignal_720x576.o vdrlogo_720x576.o
+endif
 
 # frontends
 OBJS_FE_SO = xine_frontend.o logdefs.o \
@@ -286,6 +288,7 @@ $(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)):
 
 ### Internationalization (I18N):
 ifeq ($(HAVE_I18N), yes)
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
 PODIR     = po
 LOCALEDIR ?= $(DESTDIR)$(VDRDIR)/locale
 I18Npo    = $(wildcard $(PODIR)/*.po)
@@ -305,6 +308,7 @@ $(I18Npot): $(wildcard *.c)
 $(I18Nmsgs): $(LOCALEDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
 	@mkdir -p $(dir $@)
 	cp $< $@
+endif
 endif
 
 .PHONY: i18n
