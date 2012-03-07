@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.16 2012-01-16 12:28:50 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.17 2012-03-07 07:56:02 phintuka Exp $
  *
  */
 
@@ -20,11 +20,21 @@
 #define XVDR_METRONOM_COMPILE
 #include "xvdr_metronom.h"
 
+static int warnings = 0;
 
 static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
 {
   xvdr_metronom_t *this = (xvdr_metronom_t *)metronom;
   int64_t          pts  = frame->pts;
+
+#if 1 /* xine-lib master-slave metronom causes some problems ... */
+  if (metronom->got_video_frame != got_video_frame) {
+    if (!warnings++)
+      LOGMSG("got_video_frame: invalid object");
+    return;
+  }
+  warnings = 0;
+#endif
 
   this->video_frames++;
 
