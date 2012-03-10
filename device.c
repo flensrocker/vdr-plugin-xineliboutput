@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.117 2012-01-18 13:38:28 phintuka Exp $
+ * $Id: device.c,v 1.118 2012-03-10 20:54:06 rofafor Exp $
  *
  */
 
@@ -77,7 +77,11 @@ class cXinelibStatusMonitor : public cStatus
     };
 
   protected:
+#if VDRVERSNUM < 10726
     virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
+#else
+    virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber, bool LiveView);
+#endif
     virtual void Replaying(const cControl *Control, const char *Name, 
 			   const char *FileName, bool On);
 
@@ -112,7 +116,11 @@ class cXinelibStatusMonitor : public cStatus
 };
 
 void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device, 
+#if VDRVERSNUM < 10726
 					  int ChannelNumber) 
+#else
+					  int ChannelNumber, bool LiveView) 
+#endif
 {
   TRACEF("cXinelibStatusMonitor::ChannelSwitch");
   TRACK_TIME(200);
