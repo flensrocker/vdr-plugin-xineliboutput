@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.355 2012-03-07 08:51:34 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.356 2012-03-10 23:51:10 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.355 2012-03-07 08:51:34 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.356 2012-03-10 23:51:10 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1168,7 +1168,7 @@ static void puts_vdr(vdr_input_plugin_t *this, const char *s)
 {
   if (this->fd_control < 0) {
     if (this->funcs.xine_input_event) {
-      this->funcs.xine_input_event(s, NULL);
+      this->funcs.xine_input_event(this->funcs.fe_handle, s, NULL);
     }
   } else {
     write_control(this, s);
@@ -3835,7 +3835,7 @@ static void vdr_event_cb (void *user_data, const xine_event_t *event)
       }
       if (this->funcs.xine_input_event) {
         /* local mode: -> VDR */
-        this->funcs.xine_input_event(NULL, vdr_keymap[i].name);
+        this->funcs.xine_input_event(this->funcs.fe_handle, NULL, vdr_keymap[i].name);
       }
       return;
     }

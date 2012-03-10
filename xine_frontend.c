@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.123 2012-03-07 08:27:40 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.124 2012-03-10 23:51:10 phintuka Exp $
  *
  */
 
@@ -1153,6 +1153,15 @@ static void fe_post_open(const fe_t *this, const char *name, const char *args)
     LOGDBG("Post plugin %s loaded and wired", name);
 }
 
+static void input_event_cb(frontend_t *this_gen, const char *keymap, const char *key)
+{
+  fe_t *this = (fe_t*)this_gen;
+
+  if (this->keypress) {
+    this->keypress(keymap, key);
+  }
+}
+
 static int fe_xine_play(frontend_t *this_gen) 
 {
   fe_t *this = (fe_t*)this_gen;
@@ -1168,7 +1177,7 @@ static int fe_xine_play(frontend_t *this_gen)
   if(!find_input_plugin(this))
     return -1;
 
-  this->input_plugin->f.xine_input_event = this->keypress;
+  this->input_plugin->f.xine_input_event = this->keypress ? input_event_cb : NULL;
   this->input_plugin->f.fe_control = fe_control;
   this->input_plugin->f.fe_handle  = this_gen;
 
