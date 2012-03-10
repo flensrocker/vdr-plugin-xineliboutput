@@ -574,7 +574,7 @@ static void demux_xvdr_parse_ts (demux_xvdr_t *this, buf_element_t *buf)
       if (ts_parse_pmt(&ts_data->pmt, ts_data->program_number, buf->content)) {
 
         /* PMT changed, reset ts->es converters */
-        LOGMSG("PMT changed, resetting demuxer");
+        LOGDBG("PMT changed, resetting demuxer");
         ts_data_ts2es_init(&ts_data, this->stream->video_fifo, this->stream->audio_fifo);
 
         this->video_type = (ts_data->pmt.video_type == ISO_14496_PART10_VIDEO) ?
