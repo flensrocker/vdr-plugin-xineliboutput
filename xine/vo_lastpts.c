@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_lastpts.c,v 1.6 2012-03-07 08:25:37 phintuka Exp $
+ * $Id: vo_lastpts.c,v 1.7 2012-03-10 20:56:30 phintuka Exp $
  *
  */
 
@@ -36,7 +36,7 @@ typedef struct {
 static void detect_xvdr_metronom(lastpts_hook_t *this, xine_stream_t *stream)
 {
   if (stream->metronom->get_option(stream->metronom, XVDR_METRONOM_ID) == XVDR_METRONOM_ID) {
-    LOGMSG("new stream is vdr stream");
+    LOGDBG("new stream is vdr stream");
     this->xvdr_metronom = stream->metronom;
     this->xvdr_stream   = stream;
   }
@@ -66,7 +66,7 @@ static void lastpts_display_frame(vo_driver_t *self, vo_frame_t *vo_img)
    * This prevents flooding log with "unknown option in set_option" messages
    */
   if (vo_img->stream != this->prev_stream) {
-    LOGMSG("stream changed from %p to %p", this->prev_stream, vo_img->stream);
+    LOGDBG("stream changed from %p to %p", this->prev_stream, vo_img->stream);
     this->prev_stream = vo_img->stream;
 
     detect_xvdr_metronom(this, vo_img->stream);
