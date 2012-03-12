@@ -12,34 +12,34 @@ msgstr ""
 "Language-Team: Czech <vdr@linuxtv.org>\n"
 "Language: cs\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=iso-8859-2\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Poedit-Language: Czech\n"
 "X-Poedit-Country: CZECH REPUBLIC\n"
 
 msgid "custom"
-msgstr "u¾ivatelský"
+msgstr "uÅ¾ivatelskÃ½"
 
 msgid "tiny"
-msgstr "nejmen¹í"
+msgstr "nejmenÅ¡Ã­"
 
 msgid "small"
-msgstr "malý"
+msgstr "malÃ½"
 
 msgid "medium"
-msgstr "støední"
+msgstr "stÅ™ednÃ­"
 
 msgid "large"
-msgstr "velký"
+msgstr "velkÃ½"
 
 msgid "huge"
-msgstr "nejvìt¹í"
+msgstr "nejvÄ›tÅ¡Ã­"
 
 msgid "automatic"
 msgstr "automaticky"
 
 msgid "default"
-msgstr "výchozí"
+msgstr "vÃ½chozÃ­"
 
 msgid "Pan&Scan"
 msgstr "Pan&Scan"
@@ -48,10 +48,10 @@ msgid "CenterCutOut"
 msgstr ""
 
 msgid "square"
-msgstr "ètvercový"
+msgstr "ÄtvercovÃ½"
 
 msgid "anamorphic"
-msgstr "anamorfní"
+msgstr "anamorfnÃ­"
 
 msgid "DVB"
 msgstr "DVB"
@@ -60,10 +60,10 @@ msgid "off"
 msgstr "vypnuto"
 
 msgid "normal"
-msgstr "normální"
+msgstr "normÃ¡lnÃ­"
 
 msgid "inverted"
-msgstr "inverzní"
+msgstr "inverznÃ­"
 
 msgid "no audio"
 msgstr "bez zvuku"
@@ -75,7 +75,7 @@ msgid "Off"
 msgstr "vypnuto"
 
 msgid "Goom"
-msgstr "Soutìska"
+msgstr "SoutÄ›ska"
 
 msgid "Oscilloscope"
 msgstr "Osciloskop"
@@ -96,7 +96,7 @@ msgid "Stereo 2.0"
 msgstr "Stereo 2.0"
 
 msgid "Headphones 2.0"
-msgstr "Sluchátka 2.0"
+msgstr "SluchÃ¡tka 2.0"
 
 msgid "Stereo 2.1"
 msgstr "Stereo 2.1"
@@ -126,25 +126,25 @@ msgid "Surround 7.1"
 msgstr "Surround 7.1"
 
 msgid "Pass Through"
-msgstr "Prùchozí"
+msgstr "PrÅ¯chozÃ­"
 
 msgid "very large"
-msgstr "velmi velký"
+msgstr "velmi velkÃ½"
 
 msgid "Software"
-msgstr "softwarové"
+msgstr "softwarovÃ©"
 
 msgid "Hardware"
-msgstr "hardwarové"
+msgstr "hardwarovÃ©"
 
 msgid "no"
 msgstr "ne"
 
 msgid "grayscale"
-msgstr "odstíny ¹edi"
+msgstr "odstÃ­ny Å¡edi"
 
 msgid "transparent"
-msgstr "prùhledný"
+msgstr "prÅ¯hlednÃ½"
 
 msgid "transparent grayscale"
 msgstr ""
@@ -183,7 +183,7 @@ msgid "all"
 msgstr ""
 
 msgid "Frontend initialization failed"
-msgstr "Inicializace rozhraní selhala"
+msgstr "Inicializace rozhranÃ­ selhala"
 
 msgid "Server initialization failed"
 msgstr "Inicializace serveru selhala"
@@ -192,13 +192,13 @@ msgid "Playlist"
 msgstr "Seznam stop"
 
 msgid "Button$Random"
-msgstr "Náhodné"
+msgstr "NÃ¡hodnÃ©"
 
 msgid "Button$Normal"
-msgstr "Normální"
+msgstr "NormÃ¡lnÃ­"
 
 msgid "Button$Add files"
-msgstr "Pøidat soubory"
+msgstr "PÅ™idat soubory"
 
 msgid "Button$Remove"
 msgstr "Odstranit"
@@ -207,13 +207,13 @@ msgid "Button$Mark"
 msgstr ""
 
 msgid "Queued to playlist"
-msgstr "Pøidáno do seznamu stop"
+msgstr "PÅ™idÃ¡no do seznamu stop"
 
 msgid "Random play"
-msgstr "Náhodné pøehrávání"
+msgstr "NÃ¡hodnÃ© pÅ™ehrÃ¡vÃ¡nÃ­"
 
 msgid "Normal play"
-msgstr "Normální pøehrávání"
+msgstr "NormÃ¡lnÃ­ pÅ™ehrÃ¡vÃ¡nÃ­"
 
 msgid "DVD Menu"
 msgstr ""
@@ -249,7 +249,7 @@ msgid "Previous title"
 msgstr ""
 
 msgid "Delete image ?"
-msgstr "Smazat obrázek ?"
+msgstr "Smazat obrÃ¡zek ?"
 
 msgid "Play movie title"
 msgstr ""
@@ -258,101 +258,101 @@ msgid "Play disc"
 msgstr ""
 
 msgid "Images"
-msgstr "Obrázky"
+msgstr "ObrÃ¡zky"
 
 msgid "Play music"
-msgstr "Pøehrát hudbu"
+msgstr "PÅ™ehrÃ¡t hudbu"
 
 msgid "Add to playlist"
-msgstr "Pøidat do seznamu stop"
+msgstr "PÅ™idat do seznamu stop"
 
 msgid "Play file"
-msgstr "Pøehrát soubor"
+msgstr "PÅ™ehrÃ¡t soubor"
 
 msgid "Button$Queue"
 msgstr "Fronta"
 
 msgid "Media"
-msgstr "Média"
+msgstr "MÃ©dia"
 
 msgid "View images"
-msgstr "Prohlí¾et obrázky"
+msgstr "ProhlÃ­Å¾et obrÃ¡zky"
 
 msgid "Play DVD disc"
-msgstr "Pøehrát DVD"
+msgstr "PÅ™ehrÃ¡t DVD"
 
 msgid "Play BluRay disc"
-msgstr "Pøehrát BluRay"
+msgstr "PÅ™ehrÃ¡t BluRay"
 
 msgid "Play audio CD"
-msgstr "Pøehrát zvukové CD"
+msgstr "PÅ™ehrÃ¡t zvukovÃ© CD"
 
 msgid "Video settings"
-msgstr "Nastavení obrazu"
+msgstr "NastavenÃ­ obrazu"
 
 msgid "Play only audio"
-msgstr "Pøehrávat pouze zvuk"
+msgstr "PÅ™ehrÃ¡vat pouze zvuk"
 
 msgid "Crop letterbox 4:3 to 16:9"
-msgstr "Oøíznout letterbox 4:3 na 16:9"
+msgstr "OÅ™Ã­znout letterbox 4:3 na 16:9"
 
 msgid "Overscan (crop image borders)"
-msgstr "Overscan (oøez okrajù obrazu)"
+msgstr "Overscan (oÅ™ez okrajÅ¯ obrazu)"
 
 msgid "Audio settings"
-msgstr "Nastavení zvuku"
+msgstr "NastavenÃ­ zvuku"
 
 msgid "Audio Compression"
 msgstr ""
 
 msgid "Audio equalizer"
-msgstr "Korekce zvuku (ekvalizér)"
+msgstr "Korekce zvuku (ekvalizÃ©r)"
 
 msgid "Local Frontend"
-msgstr "Lokální rozhraní"
+msgstr "LokÃ¡lnÃ­ rozhranÃ­"
 
 msgid "Aspect ratio"
-msgstr "Pomìr stran"
+msgstr "PomÄ›r stran"
 
 msgid "Video aspect ratio"
-msgstr "Pomìr stran obrazu"
+msgstr "PomÄ›r stran obrazu"
 
 msgid "On"
 msgstr "zapnuto"
 
 msgid "Deinterlacing"
-msgstr "Odstranìní prokládání"
+msgstr "OdstranÄ›nÃ­ proklÃ¡dÃ¡nÃ­"
 
 msgid "Upmix stereo to 5.1"
-msgstr "Pøevzorkovat stereo na 5.1"
+msgstr "PÅ™evzorkovat stereo na 5.1"
 
 msgid "Downmix AC3 to surround"
-msgstr "Pøevzorkovat AC3 na surround"
+msgstr "PÅ™evzorkovat AC3 na surround"
 
 msgid "Default playlist not found"
-msgstr "Výchozí seznam stop nenalezen"
+msgstr "VÃ½chozÃ­ seznam stop nenalezen"
 
 msgid "Default playlist is not symlink"
-msgstr "Výchozí seznam stop není symbolický odkaz"
+msgstr "VÃ½chozÃ­ seznam stop nenÃ­ symbolickÃ½ odkaz"
 
 msgid "Default playlist not defined"
-msgstr "Výchozí seznam stop není definován"
+msgstr "VÃ½chozÃ­ seznam stop nenÃ­ definovÃ¡n"
 
 msgid "Delay"
-msgstr "Zpo¾dìní"
+msgstr "ZpoÅ¾dÄ›nÃ­"
 
 msgid "ms"
 msgstr "ms"
 
 #, c-format
 msgid "xineliboutput: hotkey %s not binded"
-msgstr "xineliboutput:  horká klávesa %s není pøiøazena"
+msgstr "xineliboutput:  horkÃ¡ klÃ¡vesa %s nenÃ­ pÅ™iÅ™azena"
 
 msgid "Audio"
 msgstr "Zvuk"
 
 msgid "Volume control"
-msgstr "Ovládání hlasitosti"
+msgstr "OvlÃ¡dÃ¡nÃ­ hlasitosti"
 
 msgid "Mix to headphones"
 msgstr ""
@@ -361,19 +361,19 @@ msgid "Visualization"
 msgstr "Vizualizace"
 
 msgid "Width"
-msgstr "©íøka"
+msgstr "Å Ã­Å™ka"
 
 msgid "px"
-msgstr "bodù"
+msgstr "bodÅ¯"
 
 msgid "Height"
-msgstr "Vý¹ka"
+msgstr "VÃ½Å¡ka"
 
 msgid "Speed"
 msgstr "Rychlost"
 
 msgid "fps"
-msgstr "snímkù/sek."
+msgstr "snÃ­mkÅ¯/sek."
 
 msgid "Background image MRL"
 msgstr ""
@@ -406,7 +406,7 @@ msgid "Autodetect letterbox"
 msgstr "Automaticky detekovat letterbox"
 
 msgid "Crop to"
-msgstr "Oøíznout na"
+msgstr "OÅ™Ã­znout na"
 
 msgid "Autodetect rate"
 msgstr ""
@@ -421,7 +421,7 @@ msgid "Overscan compensate [%1000]"
 msgstr ""
 
 msgid "Soft start"
-msgstr "Postupné zvìt¹ení"
+msgstr "PostupnÃ© zvÄ›tÅ¡enÃ­"
 
 msgid "Soft start step"
 msgstr ""
@@ -442,16 +442,16 @@ msgid "Bar tone tolerance"
 msgstr ""
 
 msgid "Software scaling"
-msgstr "Softwarové ¹kálování"
+msgstr "SoftwarovÃ© Å¡kÃ¡lovÃ¡nÃ­"
 
 msgid "Change aspect ratio"
-msgstr "Zmìna pomìru stran obrazu"
+msgstr "ZmÄ›na pomÄ›ru stran obrazu"
 
 msgid "Change video size"
-msgstr "Zmìnit velikost obrazu"
+msgstr "ZmÄ›nit velikost obrazu"
 
 msgid "Allow downscaling"
-msgstr "Povolit zmen¹ení"
+msgstr "Povolit zmenÅ¡enÃ­"
 
 msgid "Post processing (ffmpeg)"
 msgstr "Post processing (ffmpeg)"
@@ -460,22 +460,22 @@ msgid "Quality"
 msgstr "Kvalita"
 
 msgid "Mode"
-msgstr "Mód"
+msgstr "MÃ³d"
 
 msgid "Method"
 msgstr "Metoda"
 
 msgid "Cheap mode"
-msgstr "Zjednodu¹ený mód"
+msgstr "ZjednoduÅ¡enÃ½ mÃ³d"
 
 msgid "Pulldown"
 msgstr ""
 
 msgid "Frame rate"
-msgstr "Snímková rychlost"
+msgstr "SnÃ­mkovÃ¡ rychlost"
 
 msgid "Judder Correction"
-msgstr "Korekce chvìní"
+msgstr "Korekce chvÄ›nÃ­"
 
 msgid "Use progressive frame flag"
 msgstr ""
@@ -484,7 +484,7 @@ msgid "Chroma Filter"
 msgstr ""
 
 msgid "Sharpen / Blur"
-msgstr "Zaostøení / rozmazání"
+msgstr "ZaostÅ™enÃ­ / rozmazÃ¡nÃ­"
 
 msgid "Width of the luma matrix"
 msgstr ""
@@ -505,7 +505,7 @@ msgid "Amount of chroma sharpness/blur"
 msgstr ""
 
 msgid "3D Denoiser"
-msgstr "3D odstranìní ¹umu"
+msgstr "3D odstranÄ›nÃ­ Å¡umu"
 
 msgid "Spatial luma strength"
 msgstr ""
@@ -535,16 +535,16 @@ msgid "Noise Reduction"
 msgstr ""
 
 msgid "Smooth fast forward"
-msgstr "Plynulé pøetáèení"
+msgstr "PlynulÃ© pÅ™etÃ¡ÄenÃ­"
 
 msgid "Fastest trick speed"
 msgstr ""
 
 msgid "On-Screen Display"
-msgstr "Obrazovkové menu"
+msgstr "ObrazovkovÃ© menu"
 
 msgid "Hide main menu"
-msgstr "Nezobrazovat v hlavním menu"
+msgstr "Nezobrazovat v hlavnÃ­m menu"
 
 msgid "Resolution"
 msgstr ""
@@ -565,37 +565,37 @@ msgid "Scale subtitles"
 msgstr ""
 
 msgid "Show all layers"
-msgstr "Zobrazit v¹echny vrstvy"
+msgstr "Zobrazit vÅ¡echny vrstvy"
 
 msgid "Dynamic transparency correction"
-msgstr "Úprava dynamické prùhlednosti"
+msgstr "Ãšprava dynamickÃ© prÅ¯hlednosti"
 
 msgid "Static transparency correction"
-msgstr "Úprava statické prùhlednosti"
+msgstr "Ãšprava statickÃ© prÅ¯hlednosti"
 
 msgid "External subtitle size"
-msgstr "Velikost externích titulkù"
+msgstr "Velikost externÃ­ch titulkÅ¯"
 
 msgid "DVB subtitle decoder"
 msgstr ""
 
 msgid "Decoder"
-msgstr "Dekodér"
+msgstr "DekodÃ©r"
 
 msgid "Buffer size"
-msgstr "Velikost vyrovnávací pamìti"
+msgstr "Velikost vyrovnÃ¡vacÃ­ pamÄ›ti"
 
 msgid "Number of PES packets"
-msgstr "Poèet PES paketù"
+msgstr "PoÄet PES paketÅ¯"
 
 msgid "Local Display Frontend"
-msgstr "Lokální zobrazovací rozhraní"
+msgstr "LokÃ¡lnÃ­ zobrazovacÃ­ rozhranÃ­"
 
 msgid "Use keyboard"
-msgstr "Pou¾ívat klávesnici"
+msgstr "PouÅ¾Ã­vat klÃ¡vesnici"
 
 msgid "Driver"
-msgstr "Ovladaè"
+msgstr "OvladaÄ"
 
 msgid "Display address"
 msgstr ""
@@ -604,22 +604,22 @@ msgid "Framebuffer device"
 msgstr ""
 
 msgid "Fullscreen mode"
-msgstr "Celoobrazovkový re¾im"
+msgstr "CeloobrazovkovÃ½ reÅ¾im"
 
 msgid "Window width"
-msgstr "©íøka okna"
+msgstr "Å Ã­Å™ka okna"
 
 msgid "Window height"
-msgstr "Vý¹ka okna"
+msgstr "VÃ½Å¡ka okna"
 
 msgid "Window aspect"
-msgstr "Pomìr stran okna"
+msgstr "PomÄ›r stran okna"
 
 msgid "Scale to window size"
-msgstr "©kálovat do velikosti okna"
+msgstr "Å kÃ¡lovat do velikosti okna"
 
 msgid "Interlaced Field Order"
-msgstr "Poøadí pùlsnímkù"
+msgstr "PoÅ™adÃ­ pÅ¯lsnÃ­mkÅ¯"
 
 msgid "Port"
 msgstr "Port"
@@ -628,10 +628,10 @@ msgid "Speakers"
 msgstr "Reproduktory"
 
 msgid "Remote Clients"
-msgstr "Vzdálení klienti"
+msgstr "VzdÃ¡lenÃ­ klienti"
 
 msgid "Allow remote clients"
-msgstr "Povolit vzdálené klienty"
+msgstr "Povolit vzdÃ¡lenÃ© klienty"
 
 msgid "Listen port (TCP and broadcast)"
 msgstr ""
@@ -664,7 +664,7 @@ msgid "TTL"
 msgstr ""
 
 msgid "Transmit always on"
-msgstr "Pøenos stále zapnut"
+msgstr "PÅ™enos stÃ¡le zapnut"
 
 msgid "SAP announcements"
 msgstr ""
@@ -673,40 +673,40 @@ msgid "Server announce broadcasts"
 msgstr ""
 
 msgid "HTTP transport for media files"
-msgstr "HTTP transport pro média"
+msgstr "HTTP transport pro mÃ©dia"
 
 msgid "Additional network services"
-msgstr "Dal¹í sí»ové slu¾by"
+msgstr "DalÅ¡Ã­ sÃ­Å¥ovÃ© sluÅ¾by"
 
 msgid "HTTP server"
 msgstr "HTTP server"
 
 msgid "HTTP clients can control VDR"
-msgstr "HTTP klienti mohou ovládat VDR"
+msgstr "HTTP klienti mohou ovlÃ¡dat VDR"
 
 msgid "RTSP server"
 msgstr "RTSP server"
 
 msgid "RTSP clients can control VDR"
-msgstr "RTSP klienti mohou ovládat VDR"
+msgstr "RTSP klienti mohou ovlÃ¡dat VDR"
 
 msgid "Playlist settings"
-msgstr "Nastavení seznamu stop"
+msgstr "NastavenÃ­ seznamu stop"
 
 msgid "Show the track number"
-msgstr "Zobrazovat èíslo stopy"
+msgstr "Zobrazovat ÄÃ­slo stopy"
 
 msgid "Show the name of the artist"
-msgstr "Zobrazovat jméno autora"
+msgstr "Zobrazovat jmÃ©no autora"
 
 msgid "Show the name of the album"
-msgstr "Zobrazovat název alba"
+msgstr "Zobrazovat nÃ¡zev alba"
 
 msgid "Scan for metainfo"
-msgstr "Vyhledávat metainfo"
+msgstr "VyhledÃ¡vat metainfo"
 
 msgid "Cache metainfo"
-msgstr "Uchovávat metainfo"
+msgstr "UchovÃ¡vat metainfo"
 
 msgid "Arrow keys control DVD playback"
 msgstr ""
@@ -718,10 +718,10 @@ msgid "Allow removing files"
 msgstr ""
 
 msgid "Media Player"
-msgstr "Pøehrávaè médií"
+msgstr "PÅ™ehrÃ¡vaÄ mÃ©diÃ­"
 
 msgid "Grayscale"
-msgstr "Odstíny ¹edi"
+msgstr "OdstÃ­ny Å¡edi"
 
 msgid "Bitmap"
 msgstr "Rastr"
@@ -730,37 +730,37 @@ msgid "OSD"
 msgstr "OSD"
 
 msgid "Test Images"
-msgstr "Zku¹ební obrazce"
+msgstr "ZkuÅ¡ebnÃ­ obrazce"
 
 msgid "X11/xine-lib output plugin"
-msgstr "X11/xine-lib výstupní plugin"
+msgstr "X11/xine-lib vÃ½stupnÃ­ plugin"
 
 #~ msgid "Button$Sort"
-#~ msgstr "Tøídìní"
+#~ msgstr "TÅ™Ã­dÄ›nÃ­"
 
 #~ msgid "Play file >>"
-#~ msgstr "Pøehrát soubor >>"
+#~ msgstr "PÅ™ehrÃ¡t soubor >>"
 
 #~ msgid "Play music >>"
-#~ msgstr "Pøehrát hudbu >>"
+#~ msgstr "PÅ™ehrÃ¡t hudbu >>"
 
 #~ msgid "View images >>"
-#~ msgstr "Prohlí¾et obrázky >>"
+#~ msgstr "ProhlÃ­Å¾et obrÃ¡zky >>"
 
 #~ msgid "Play DVD disc >>"
-#~ msgstr "Pøehrát DVD >>"
+#~ msgstr "PÅ™ehrÃ¡t DVD >>"
 
 #~ msgid "Play audio CD >>"
-#~ msgstr "Pøehrát zvukové CD >>"
+#~ msgstr "PÅ™ehrÃ¡t zvukovÃ© CD >>"
 
 #~ msgid "Play BluRay disc >>"
-#~ msgstr "Pøehrát BluRay >>"
+#~ msgstr "PÅ™ehrÃ¡t BluRay >>"
 
 #~ msgid "Play remote DVD >>"
-#~ msgstr "Pøehrát vzdálené DVD >>"
+#~ msgstr "PÅ™ehrÃ¡t vzdÃ¡lenÃ© DVD >>"
 
 #~ msgid "Play remote CD >>"
-#~ msgstr "Pøehrát vzdálené CD >>"
+#~ msgstr "PÅ™ehrÃ¡t vzdÃ¡lenÃ© CD >>"
 
 #~ msgid "Audio equalizer >>"
-#~ msgstr "Korekce zvuku (ekvalizér) >>"
+#~ msgstr "Korekce zvuku (ekvalizÃ©r) >>"

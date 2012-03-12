@@ -13,7 +13,7 @@ msgstr ""
 "Language-Team: German <vdr@linuxtv.org>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ISO-8859-15\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 msgid "custom"
@@ -29,7 +29,7 @@ msgid "medium"
 msgstr "Mittel"
 
 msgid "large"
-msgstr "Groß"
+msgstr "GroÃŸ"
 
 msgid "huge"
 msgstr "Riesig"
@@ -95,7 +95,7 @@ msgid "Stereo 2.0"
 msgstr ""
 
 msgid "Headphones 2.0"
-msgstr "Kopfhörer 2.0"
+msgstr "KopfhÃ¶rer 2.0"
 
 msgid "Stereo 2.1"
 msgstr ""
@@ -197,7 +197,7 @@ msgid "Button$Normal"
 msgstr "Normal"
 
 msgid "Button$Add files"
-msgstr "Füge Dateien hinzu"
+msgstr "FÃ¼ge Dateien hinzu"
 
 msgid "Button$Remove"
 msgstr "Entferne"
@@ -206,7 +206,7 @@ msgid "Button$Mark"
 msgstr "Markieren"
 
 msgid "Queued to playlist"
-msgstr "Hänge an Wiedergabeliste an"
+msgstr "HÃ¤nge an Wiedergabeliste an"
 
 msgid "Random play"
 msgstr "Zufallswiedergabe"
@@ -215,25 +215,25 @@ msgid "Normal play"
 msgstr "Normale Wiedergabe"
 
 msgid "DVD Menu"
-msgstr "DVD Menü"
+msgstr "DVD MenÃ¼"
 
 msgid "Exit DVD menu"
-msgstr "DVD Menü verlassen"
+msgstr "DVD MenÃ¼ verlassen"
 
 msgid "DVD Root menu"
-msgstr "DVD Hauptmenü"
+msgstr "DVD HauptmenÃ¼"
 
 msgid "DVD Title menu"
-msgstr "DVD Titelmenü"
+msgstr "DVD TitelmenÃ¼"
 
 msgid "DVD SPU menu"
-msgstr "DVD SPU Menü"
+msgstr "DVD SPU MenÃ¼"
 
 msgid "DVD Audio menu"
-msgstr "DVD Audiomenü"
+msgstr "DVD AudiomenÃ¼"
 
 msgid "Close menu"
-msgstr "Menü schließen"
+msgstr "MenÃ¼ schlieÃŸen"
 
 msgid "BluRay Top menu"
 msgstr ""
@@ -248,7 +248,7 @@ msgid "Previous title"
 msgstr ""
 
 msgid "Delete image ?"
-msgstr "Bild löschen?"
+msgstr "Bild lÃ¶schen?"
 
 msgid "Play movie title"
 msgstr ""
@@ -263,7 +263,7 @@ msgid "Play music"
 msgstr "Musik abspielen"
 
 msgid "Add to playlist"
-msgstr "Füge zur Wiedergabeliste hinzu"
+msgstr "FÃ¼ge zur Wiedergabeliste hinzu"
 
 msgid "Play file"
 msgstr "Datei abspielen"
@@ -296,7 +296,7 @@ msgid "Crop letterbox 4:3 to 16:9"
 msgstr "Schneide letterbox 4:3 zu 16:9"
 
 msgid "Overscan (crop image borders)"
-msgstr "Overscan (Bildränder abschneiden)"
+msgstr "Overscan (BildrÃ¤nder abschneiden)"
 
 msgid "Audio settings"
 msgstr "Audio-Einstellungen"
@@ -311,10 +311,10 @@ msgid "Local Frontend"
 msgstr "Lokale Anzeige"
 
 msgid "Aspect ratio"
-msgstr "Seitenverhältnis"
+msgstr "SeitenverhÃ¤ltnis"
 
 msgid "Video aspect ratio"
-msgstr "Video Seitenverhältnis"
+msgstr "Video SeitenverhÃ¤ltnis"
 
 msgid "On"
 msgstr "an"
@@ -338,7 +338,7 @@ msgid "Default playlist not defined"
 msgstr "Std Wiedergabeliste nicht definiert"
 
 msgid "Delay"
-msgstr "Verzögerung"
+msgstr "VerzÃ¶gerung"
 
 msgid "ms"
 msgstr "ms"
@@ -366,7 +366,7 @@ msgid "px"
 msgstr "px"
 
 msgid "Height"
-msgstr "Höhe"
+msgstr "HÃ¶he"
 
 msgid "Speed"
 msgstr "Bildrate"
@@ -456,7 +456,7 @@ msgid "Post processing (ffmpeg)"
 msgstr "Nachbearbeitung (ffmpeg)"
 
 msgid "Quality"
-msgstr "Qualität"
+msgstr "QualitÃ¤t"
 
 msgid "Mode"
 msgstr "Modus"
@@ -519,7 +519,7 @@ msgid "HUE"
 msgstr "Farbton"
 
 msgid "Saturation"
-msgstr "Sättigung"
+msgstr "SÃ¤ttigung"
 
 msgid "Contrast"
 msgstr "Kontrast"
@@ -543,7 +543,7 @@ msgid "On-Screen Display"
 msgstr "On-Screen Display"
 
 msgid "Hide main menu"
-msgstr "Verstecke Hauptmenü"
+msgstr "Verstecke HauptmenÃ¼"
 
 msgid "Resolution"
 msgstr ""
@@ -573,7 +573,7 @@ msgid "Static transparency correction"
 msgstr "Statische Transparenz-Korrektur"
 
 msgid "External subtitle size"
-msgstr "Untertitel größe"
+msgstr "Untertitel grÃ¶ÃŸe"
 
 msgid "DVB subtitle decoder"
 msgstr ""
@@ -582,7 +582,7 @@ msgid "Decoder"
 msgstr "Dekoder"
 
 msgid "Buffer size"
-msgstr "Puffergröße"
+msgstr "PuffergrÃ¶ÃŸe"
 
 msgid "Number of PES packets"
 msgstr "Anzahl PES-Pakete"
@@ -609,13 +609,13 @@ msgid "Window width"
 msgstr "Fensterbreite"
 
 msgid "Window height"
-msgstr "Fensterhöhe"
+msgstr "FensterhÃ¶he"
 
 msgid "Window aspect"
-msgstr "Fenster-Seitenverhältnis"
+msgstr "Fenster-SeitenverhÃ¤ltnis"
 
 msgid "Scale to window size"
-msgstr "Skaliere auf Fenster-Größe"
+msgstr "Skaliere auf Fenster-GrÃ¶ÃŸe"
 
 msgid "Interlaced Field Order"
 msgstr "Interlaced Halbbild-Reihenfolge"
@@ -645,16 +645,16 @@ msgid "Max number of clients"
 msgstr ""
 
 msgid "PIPE transport"
-msgstr "Pipe-Übertragung"
+msgstr "Pipe-Ãœbertragung"
 
 msgid "TCP transport"
-msgstr "TCP-Übertragung"
+msgstr "TCP-Ãœbertragung"
 
 msgid "UDP transport"
-msgstr "UDP-Übertragung"
+msgstr "UDP-Ãœbertragung"
 
 msgid "RTP (multicast) transport"
-msgstr "RTP (multicast) Übertragung"
+msgstr "RTP (multicast) Ãœbertragung"
 
 msgid "Address"
 msgstr "Multicast-Adresse"
@@ -666,28 +666,28 @@ msgid "Transmit always on"
 msgstr "Immer senden"
 
 msgid "SAP announcements"
-msgstr "SAP-Ankündigungen"
+msgstr "SAP-AnkÃ¼ndigungen"
 
 msgid "Server announce broadcasts"
 msgstr "Server-Bekanntmachung Broadcast"
 
 msgid "HTTP transport for media files"
-msgstr "HTTP-Verbindung für Medien-Dateien"
+msgstr "HTTP-Verbindung fÃ¼r Medien-Dateien"
 
 msgid "Additional network services"
-msgstr "Zusätzliche Netzwerk-Services"
+msgstr "ZusÃ¤tzliche Netzwerk-Services"
 
 msgid "HTTP server"
 msgstr "HTTP-Server"
 
 msgid "HTTP clients can control VDR"
-msgstr "HTTP-Clients können VDR kontrollieren"
+msgstr "HTTP-Clients kÃ¶nnen VDR kontrollieren"
 
 msgid "RTSP server"
 msgstr "RTSP-Server"
 
 msgid "RTSP clients can control VDR"
-msgstr "RTSP-Clients können VDR kontrollieren"
+msgstr "RTSP-Clients kÃ¶nnen VDR kontrollieren"
 
 msgid "Playlist settings"
 msgstr ""

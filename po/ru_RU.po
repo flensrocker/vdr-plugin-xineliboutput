@@ -13,32 +13,32 @@ msgstr ""
 "Language-Team: Russian <vdr@linuxtv.org>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ISO-8859-5\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 msgid "custom"
-msgstr "¿ÞÛì×ÞÒÐâÕÛì"
+msgstr "ÐŸÐ¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÑŒ"
 
 msgid "tiny"
-msgstr "¾çÕÝì ÜÐÛÕÝìÚØÙ"
+msgstr "ÐžÑ‡ÐµÐ½ÑŒ Ð¼Ð°Ð»ÐµÐ½ÑŒÐºÐ¸Ð¹"
 
 msgid "small"
-msgstr "¼ÐÛÕÝìÚØÙ"
+msgstr "ÐœÐ°Ð»ÐµÐ½ÑŒÐºÐ¸Ð¹"
 
 msgid "medium"
-msgstr "ÁàÕÔÝØÙ"
+msgstr "Ð¡Ñ€ÐµÐ´Ð½Ð¸Ð¹"
 
 msgid "large"
-msgstr "±ÞÛìèÞÙ"
+msgstr "Ð‘Ð¾Ð»ÑŒÑˆÐ¾Ð¹"
 
 msgid "huge"
-msgstr "¾çÕÝì ÑÞÛìÝÞÙ"
+msgstr "ÐžÑ‡ÐµÐ½ÑŒ Ð±Ð¾Ð»ÑŒÐ½Ð¾Ð¹"
 
 msgid "automatic"
-msgstr "°ÒâÞÜÐâØçÕáÚØ"
+msgstr "ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡ÐµÑÐºÐ¸"
 
 msgid "default"
-msgstr "¿Þ ãÜÞÛçÐÝØî"
+msgstr "ÐŸÐ¾ ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ"
 
 msgid "Pan&Scan"
 msgstr "Pan&Scan"
@@ -56,19 +56,19 @@ msgid "DVB"
 msgstr ""
 
 msgid "off"
-msgstr "²ëÚÛ."
+msgstr "Ð’Ñ‹ÐºÐ»."
 
 msgid "normal"
-msgstr "½ÞàÜÐÛìÝëÙ"
+msgstr "ÐÐ¾Ñ€Ð¼Ð°Ð»ÑŒÐ½Ñ‹Ð¹"
 
 msgid "inverted"
-msgstr "¸ÝÒÕàâØàÞÒÐÝÞ"
+msgstr "Ð˜Ð½Ð²ÐµÑ€Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¾"
 
 msgid "no audio"
-msgstr "½Õâ ÐãÔØÞ"
+msgstr "ÐÐµÑ‚ Ð°ÑƒÐ´Ð¸Ð¾"
 
 msgid "no video"
-msgstr "½Õâ ÒØÔÕÞ"
+msgstr "ÐÐµÑ‚ Ð²Ð¸Ð´ÐµÐ¾"
 
 msgid "Off"
 msgstr ""
@@ -248,7 +248,7 @@ msgid "Previous title"
 msgstr ""
 
 msgid "Delete image ?"
-msgstr "ÃÔÐÛØâì ÚÐàâØÝÚã ?"
+msgstr "Ð£Ð´Ð°Ð»Ð¸Ñ‚ÑŒ ÐºÐ°Ñ€Ñ‚Ð¸Ð½ÐºÑƒ ?"
 
 msgid "Play movie title"
 msgstr ""
@@ -257,7 +257,7 @@ msgid "Play disc"
 msgstr ""
 
 msgid "Images"
-msgstr "¸×ÞÑàÐÖÕÝØï"
+msgstr "Ð˜Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð¸Ñ"
 
 msgid "Play music"
 msgstr ""
@@ -266,7 +266,7 @@ msgid "Add to playlist"
 msgstr ""
 
 msgid "Play file"
-msgstr "¿àÞØÓàÐâì äÐÙÛ"
+msgstr "ÐŸÑ€Ð¾Ð¸Ð³Ñ€Ð°Ñ‚ÑŒ Ñ„Ð°Ð¹Ð»"
 
 msgid "Button$Queue"
 msgstr ""
@@ -275,7 +275,7 @@ msgid "Media"
 msgstr ""
 
 msgid "View images"
-msgstr "¿àÞáÜÞâàÕâì Ø×ÞÑàÐÖÕÝØï"
+msgstr "ÐŸÑ€Ð¾ÑÐ¼Ð¾Ñ‚Ñ€ÐµÑ‚ÑŒ Ð¸Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð¸Ñ"
 
 msgid "Play DVD disc"
 msgstr ""
@@ -302,13 +302,13 @@ msgid "Audio settings"
 msgstr ""
 
 msgid "Audio Compression"
-msgstr "°ãÔØÞ ÚÞÜßàÕááØï"
+msgstr "ÐÑƒÐ´Ð¸Ð¾ ÐºÐ¾Ð¼Ð¿Ñ€ÐµÑÑÐ¸Ñ"
 
 msgid "Audio equalizer"
-msgstr "°ãÔØÞ íÚÒÐÛÐÙ×Õà"
+msgstr "ÐÑƒÐ´Ð¸Ð¾ ÑÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€"
 
 msgid "Local Frontend"
-msgstr "»ÞÚÐÛìÝëÙ äàÞÝâÕÝÔ"
+msgstr "Ð›Ð¾ÐºÐ°Ð»ÑŒÐ½Ñ‹Ð¹ Ñ„Ñ€Ð¾Ð½Ñ‚ÐµÐ½Ð´"
 
 msgid "Aspect ratio"
 msgstr ""
@@ -320,10 +320,10 @@ msgid "On"
 msgstr ""
 
 msgid "Deinterlacing"
-msgstr "´ÕØÝâÕàÛÕÙáØÝÓ"
+msgstr "Ð”ÐµÐ¸Ð½Ñ‚ÐµÑ€Ð»ÐµÐ¹ÑÐ¸Ð½Ð³"
 
 msgid "Upmix stereo to 5.1"
-msgstr "¿àÕÞÑàÐ×ÞÒÐâì áâÕàÕÞ Ò 5.1"
+msgstr "ÐŸÑ€ÐµÐ¾Ð±Ñ€Ð°Ð·Ð¾Ð²Ð°Ñ‚ÑŒ ÑÑ‚ÐµÑ€ÐµÐ¾ Ð² 5.1"
 
 msgid "Downmix AC3 to surround"
 msgstr ""
@@ -338,7 +338,7 @@ msgid "Default playlist not defined"
 msgstr ""
 
 msgid "Delay"
-msgstr "·ÐÔÕàÖÚÐ"
+msgstr "Ð—Ð°Ð´ÐµÑ€Ð¶ÐºÐ°"
 
 msgid "ms"
 msgstr "ms"
@@ -348,7 +348,7 @@ msgid "xineliboutput: hotkey %s not binded"
 msgstr ""
 
 msgid "Audio"
-msgstr "°ãÔØÞ"
+msgstr "ÐÑƒÐ´Ð¸Ð¾"
 
 msgid "Volume control"
 msgstr ""
@@ -357,13 +357,13 @@ msgid "Mix to headphones"
 msgstr ""
 
 msgid "Visualization"
-msgstr "²Ø×ãÐÛØ×ÐæØï"
+msgstr "Ð’Ð¸Ð·ÑƒÐ°Ð»Ð¸Ð·Ð°Ñ†Ð¸Ñ"
 
 msgid "Width"
 msgstr ""
 
 msgid "px"
-msgstr "ßØÚáÕÛÕÙ"
+msgstr "Ð¿Ð¸ÐºÑÐµÐ»ÐµÐ¹"
 
 msgid "Height"
 msgstr ""
@@ -378,7 +378,7 @@ msgid "Background image MRL"
 msgstr ""
 
 msgid "Audio Equalizer"
-msgstr "°ãÔØÞ íÚÒÐÛÐÙ×Õà"
+msgstr "ÐÑƒÐ´Ð¸Ð¾ ÑÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€"
 
 msgid "Use Video-Out Driver"
 msgstr ""
@@ -396,7 +396,7 @@ msgid "half (bottom)"
 msgstr ""
 
 msgid "Video"
-msgstr "²ØÔÕÞ"
+msgstr "Ð’Ð¸Ð´ÐµÐ¾"
 
 msgid "Use driver crop"
 msgstr ""
@@ -450,7 +450,7 @@ msgid "Change video size"
 msgstr ""
 
 msgid "Allow downscaling"
-msgstr "¼ÐáèâÐÑØàÞÒÐâì á ßÐÔÕÝØÕÜ ÚÐçÕáâÒÐ"
+msgstr "ÐœÐ°ÑÑˆÑ‚Ð°Ð±Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ñ Ð¿Ð°Ð´ÐµÐ½Ð¸ÐµÐ¼ ÐºÐ°Ñ‡ÐµÑÑ‚Ð²Ð°"
 
 msgid "Post processing (ffmpeg)"
 msgstr ""
@@ -519,13 +519,13 @@ msgid "HUE"
 msgstr "HUE"
 
 msgid "Saturation"
-msgstr "½ÐáëéÕÝÝÞáâì"
+msgstr "ÐÐ°ÑÑ‹Ñ‰ÐµÐ½Ð½Ð¾ÑÑ‚ÑŒ"
 
 msgid "Contrast"
-msgstr "ºÞÝâàÐáâÝÞáâì"
+msgstr "ÐšÐ¾Ð½Ñ‚Ñ€Ð°ÑÑ‚Ð½Ð¾ÑÑ‚ÑŒ"
 
 msgid "Brightness"
-msgstr "ÏàÚÞáâì"
+msgstr "Ð¯Ñ€ÐºÐ¾ÑÑ‚ÑŒ"
 
 msgid "Sharpness"
 msgstr ""
@@ -540,10 +540,10 @@ msgid "Fastest trick speed"
 msgstr ""
 
 msgid "On-Screen Display"
-msgstr "ÍÚàÐÝÝÞÕ ÜÕÝî"
+msgstr "Ð­ÐºÑ€Ð°Ð½Ð½Ð¾Ðµ Ð¼ÐµÐ½ÑŽ"
 
 msgid "Hide main menu"
-msgstr "ÁÚàëâì ÞáÝÞÒÝÞÕ ÜÕÝî"
+msgstr "Ð¡ÐºÑ€Ñ‹Ñ‚ÑŒ Ð¾ÑÐ½Ð¾Ð²Ð½Ð¾Ðµ Ð¼ÐµÐ½ÑŽ"
 
 msgid "Resolution"
 msgstr ""
@@ -567,10 +567,10 @@ msgid "Show all layers"
 msgstr ""
 
 msgid "Dynamic transparency correction"
-msgstr "´ØÝÐÜØçÕáÚÐï ÚÞààÕÚæØï ßàÞ×àÐçÝÞáâØ"
+msgstr "Ð”Ð¸Ð½Ð°Ð¼Ð¸Ñ‡ÐµÑÐºÐ°Ñ ÐºÐ¾Ñ€Ñ€ÐµÐºÑ†Ð¸Ñ Ð¿Ñ€Ð¾Ð·Ñ€Ð°Ñ‡Ð½Ð¾ÑÑ‚Ð¸"
 
 msgid "Static transparency correction"
-msgstr "ÁâÐâØçÕáÚÐï ÚÞààÕÚæØï ßàÞ×àÐçÝÞáâØ"
+msgstr "Ð¡Ñ‚Ð°Ñ‚Ð¸Ñ‡ÐµÑÐºÐ°Ñ ÐºÐ¾Ñ€Ñ€ÐµÐºÑ†Ð¸Ñ Ð¿Ñ€Ð¾Ð·Ñ€Ð°Ñ‡Ð½Ð¾ÑÑ‚Ð¸"
 
 msgid "External subtitle size"
 msgstr ""
@@ -579,82 +579,82 @@ msgid "DVB subtitle decoder"
 msgstr ""
 
 msgid "Decoder"
-msgstr "´ÕÚÞÔÕà"
+msgstr "Ð”ÐµÐºÐ¾Ð´ÐµÑ€"
 
 msgid "Buffer size"
-msgstr "ÀÐ×ÜÕà ÑãäÕàÐ"
+msgstr "Ð Ð°Ð·Ð¼ÐµÑ€ Ð±ÑƒÑ„ÐµÑ€Ð°"
 
 msgid "Number of PES packets"
-msgstr "PES ßÐÚÕâÞÒ"
+msgstr "PES Ð¿Ð°ÐºÐµÑ‚Ð¾Ð²"
 
 msgid "Local Display Frontend"
-msgstr "ÄàÞÝâÕÝÔ ÛÞÚÐÛìÝÞÓÞ íÚàÐÝÐ"
+msgstr "Ð¤Ñ€Ð¾Ð½Ñ‚ÐµÐ½Ð´ Ð»Ð¾ÐºÐ°Ð»ÑŒÐ½Ð¾Ð³Ð¾ ÑÐºÑ€Ð°Ð½Ð°"
 
 msgid "Use keyboard"
-msgstr "¸áßÞÛì×ÞÒÐâì ÚÛÐÒØÐâãàã"
+msgstr "Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÑŒ ÐºÐ»Ð°Ð²Ð¸Ð°Ñ‚ÑƒÑ€Ñƒ"
 
 msgid "Driver"
-msgstr "´àÐÙÒÕà"
+msgstr "Ð”Ñ€Ð°Ð¹Ð²ÐµÑ€"
 
 msgid "Display address"
-msgstr "°ÔàÕá ÔØáßÛÕï"
+msgstr "ÐÐ´Ñ€ÐµÑ Ð´Ð¸ÑÐ¿Ð»ÐµÑ"
 
 msgid "Framebuffer device"
-msgstr "Framebuffer ãáâàÞÙáâÒÞ"
+msgstr "Framebuffer ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð¾"
 
 msgid "Fullscreen mode"
-msgstr "¿ÞÛÝÞíÚàÐÝÝëÙ àÕÖØÜ"
+msgstr "ÐŸÐ¾Ð»Ð½Ð¾ÑÐºÑ€Ð°Ð½Ð½Ñ‹Ð¹ Ñ€ÐµÐ¶Ð¸Ð¼"
 
 msgid "Window width"
-msgstr "ÈØàØÝÐ ÞÚÝÐ"
+msgstr "Ð¨Ð¸Ñ€Ð¸Ð½Ð° Ð¾ÐºÐ½Ð°"
 
 msgid "Window height"
-msgstr "²ëáÞâÐ ÞÚÝÐ"
+msgstr "Ð’Ñ‹ÑÐ¾Ñ‚Ð° Ð¾ÐºÐ½Ð°"
 
 msgid "Window aspect"
-msgstr "ÁÞÞâÝÞèÕÝØÕ áâÞàÞÝ"
+msgstr "Ð¡Ð¾Ð¾Ñ‚Ð½Ð¾ÑˆÐµÐ½Ð¸Ðµ ÑÑ‚Ð¾Ñ€Ð¾Ð½"
 
 msgid "Scale to window size"
-msgstr "¼ÐáèâÐÑØàÞÒÐâì Ò àÐ×ÜÕà ÞÚÝÐ"
+msgstr "ÐœÐ°ÑÑˆÑ‚Ð°Ð±Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð² Ñ€Ð°Ð·Ð¼ÐµÑ€ Ð¾ÐºÐ½Ð°"
 
 msgid "Interlaced Field Order"
-msgstr "ÇÕàÕ×áâàÞçÝëÙ ßÞàïÔÞÚ ßÞÛÕÙ"
+msgstr "Ð§ÐµÑ€ÐµÐ·ÑÑ‚Ñ€Ð¾Ñ‡Ð½Ñ‹Ð¹ Ð¿Ð¾Ñ€ÑÐ´Ð¾Ðº Ð¿Ð¾Ð»ÐµÐ¹"
 
 msgid "Port"
-msgstr "¿Þàâ"
+msgstr "ÐŸÐ¾Ñ€Ñ‚"
 
 msgid "Speakers"
 msgstr ""
 
 msgid "Remote Clients"
-msgstr "ÃÔÐÛÕÝÝëÕ ÚÛØÕÝâë"
+msgstr "Ð£Ð´Ð°Ð»ÐµÐ½Ð½Ñ‹Ðµ ÐºÐ»Ð¸ÐµÐ½Ñ‚Ñ‹"
 
 msgid "Allow remote clients"
-msgstr "ÀÐ×àÕèØâì ãÔÐÛÕÝÝëå ÚÛØÕÝâÞÒ"
+msgstr "Ð Ð°Ð·Ñ€ÐµÑˆÐ¸Ñ‚ÑŒ ÑƒÐ´Ð°Ð»ÐµÐ½Ð½Ñ‹Ñ… ÐºÐ»Ð¸ÐµÐ½Ñ‚Ð¾Ð²"
 
 msgid "Listen port (TCP and broadcast)"
-msgstr "¿Þàâ (TCP Ø èØàÞÚÞÒÕèÐâÕÛìÝëÙ)"
+msgstr "ÐŸÐ¾Ñ€Ñ‚ (TCP Ð¸ ÑˆÐ¸Ñ€Ð¾ÐºÐ¾Ð²ÐµÑˆÐ°Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ð¹)"
 
 msgid "Listen address"
 msgstr ""
 
 msgid "Remote keyboard"
-msgstr "ÃÔÐÛÕÝÝÐï ÚÛÐÒØÐâãàÐ"
+msgstr "Ð£Ð´Ð°Ð»ÐµÐ½Ð½Ð°Ñ ÐºÐ»Ð°Ð²Ð¸Ð°Ñ‚ÑƒÑ€Ð°"
 
 msgid "Max number of clients"
 msgstr ""
 
 msgid "PIPE transport"
-msgstr "PIPE âàÐÝáßÞàâ"
+msgstr "PIPE Ñ‚Ñ€Ð°Ð½ÑÐ¿Ð¾Ñ€Ñ‚"
 
 msgid "TCP transport"
-msgstr "TCP âàÐÝáßÞàâ"
+msgstr "TCP Ñ‚Ñ€Ð°Ð½ÑÐ¿Ð¾Ñ€Ñ‚"
 
 msgid "UDP transport"
-msgstr "UDP âàÐÝáßÞàâ"
+msgstr "UDP Ñ‚Ñ€Ð°Ð½ÑÐ¿Ð¾Ñ€Ñ‚"
 
 msgid "RTP (multicast) transport"
-msgstr "RTP (èØàÞÚÞÒÕéÐâÕÛìÝëÙ) âàÐÝáßÞàâ"
+msgstr "RTP (ÑˆÐ¸Ñ€Ð¾ÐºÐ¾Ð²ÐµÑ‰Ð°Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ð¹) Ñ‚Ñ€Ð°Ð½ÑÐ¿Ð¾Ñ€Ñ‚"
 
 msgid "Address"
 msgstr ""
@@ -669,7 +669,7 @@ msgid "SAP announcements"
 msgstr ""
 
 msgid "Server announce broadcasts"
-msgstr "ÁÕàÒÕà ØáßÞÛì×ãÕâ èØàÞÚÞÒÕéÐÝØÕ"
+msgstr "Ð¡ÐµÑ€Ð²ÐµÑ€ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ ÑˆÐ¸Ñ€Ð¾ÐºÐ¾Ð²ÐµÑ‰Ð°Ð½Ð¸Ðµ"
 
 msgid "HTTP transport for media files"
 msgstr ""
@@ -720,28 +720,28 @@ msgid "Media Player"
 msgstr "Xine-lib"
 
 msgid "Grayscale"
-msgstr "¾ââÕÝÚØ áÕàÞÓÞ"
+msgstr "ÐžÑ‚Ñ‚ÐµÐ½ÐºÐ¸ ÑÐµÑ€Ð¾Ð³Ð¾"
 
 msgid "Bitmap"
-msgstr "±ØâÞÒÐï ÚÐàâÐ"
+msgstr "Ð‘Ð¸Ñ‚Ð¾Ð²Ð°Ñ ÐºÐ°Ñ€Ñ‚Ð°"
 
 msgid "OSD"
 msgstr ""
 
 msgid "Test Images"
-msgstr "ÂÕáâÞÒëÕ Ø×ÞÑàÐÖÕÝØï"
+msgstr "Ð¢ÐµÑÑ‚Ð¾Ð²Ñ‹Ðµ Ð¸Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð¸Ñ"
 
 msgid "X11/xine-lib output plugin"
-msgstr "X11/xine-lib ÒØÔÕÞ ÜÞÔãÛì"
+msgstr "X11/xine-lib Ð²Ð¸Ð´ÐµÐ¾ Ð¼Ð¾Ð´ÑƒÐ»ÑŒ"
 
 #~ msgid "Play file >>"
-#~ msgstr "¿àÞØÓàÐâì äÐÙÛ >>"
+#~ msgstr "ÐŸÑ€Ð¾Ð¸Ð³Ñ€Ð°Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» >>"
 
 #~ msgid "Play music >>"
-#~ msgstr "¿àÞØÓàÐâì äÐÙÛ >>"
+#~ msgstr "ÐŸÑ€Ð¾Ð¸Ð³Ñ€Ð°Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» >>"
 
 #~ msgid "View images >>"
-#~ msgstr "¿àÞáÜÞâàÕâì Ø×ÞÑàÐÖÕÝØï >>"
+#~ msgstr "ÐŸÑ€Ð¾ÑÐ¼Ð¾Ñ‚Ñ€ÐµÑ‚ÑŒ Ð¸Ð·Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð¸Ñ >>"
 
 #~ msgid "Audio equalizer >>"
-#~ msgstr "°ãÔØÞ íÚÒÐÛÐÙ×Õà >>"
+#~ msgstr "ÐÑƒÐ´Ð¸Ð¾ ÑÐºÐ²Ð°Ð»Ð°Ð¹Ð·ÐµÑ€ >>"
