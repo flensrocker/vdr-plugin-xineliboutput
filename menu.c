@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.91 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: menu.c,v 1.92 2012-03-13 13:05:14 phintuka Exp $
  *
  */
 
@@ -568,8 +568,6 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 
 #include "tools/display_message.h"
 
-extern cOsdObject *g_PendingMenuAction;
-
 time_t cMenuXinelib::g_LastHotkeyTime = 0;
 eKeys  cMenuXinelib::g_LastHotkey = kNone;
 
@@ -693,8 +691,8 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       cPlayerFactory::Launch("cdda:/");
       return osEnd;
     case osUser7:
-      if (!g_PendingMenuAction) {
-        g_PendingMenuAction = new cEqualizer();
+      if (!xc.pending_menu_action) {
+        xc.pending_menu_action = new cEqualizer(m_Dev);
         return osPlugin;
       }
       return osContinue;
@@ -939,10 +937,10 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
   }
 
   if (*Message) {
-    if (!g_PendingMenuAction &&
+    if (!xc.pending_menu_action &&
         !cRemote::HasKeys() &&
         cRemote::CallPlugin("xineliboutput"))
-      g_PendingMenuAction = new cDisplayMessage(Message);
+      xc.pending_menu_action = new cDisplayMessage(Message);
   }
 
   g_LastHotkeyTime = now;

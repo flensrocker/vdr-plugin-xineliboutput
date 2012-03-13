@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.84 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: config.h,v 1.85 2012-03-13 13:05:14 phintuka Exp $
  *
  */
 
@@ -308,7 +308,9 @@ class config_t {
     int  vo_aspect_ratio;
 
     // OSD settings 
-    eMainMenuMode main_menu_mode;  // used internally to open right sub-menu
+    eMainMenuMode  main_menu_mode;  // used internally to open right sub-menu
+    cOsdObject    *pending_menu_action;
+
     int  hide_main_menu;
     int  osd_size;
     int  osd_width;

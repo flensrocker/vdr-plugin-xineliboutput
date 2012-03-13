@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.48 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.49 2012-03-13 13:05:14 phintuka Exp $
  *
  */
 
@@ -46,8 +46,6 @@
 static const char *VERSION        = "1.0.90-cvs";
 static const char *DESCRIPTION    = trNOOP("X11/xine-lib output plugin");
 static const char *MAINMENUENTRY  = trNOOP("Media Player");
-
-cOsdObject *g_PendingMenuAction = NULL;
 
 class cPluginXinelibOutput : public cPlugin 
 {
@@ -204,9 +202,9 @@ cOsdObject *cPluginXinelibOutput::MainMenuAction(void)
     return NULL;
   }
 
-  if(g_PendingMenuAction) {
-    cOsdObject *tmp = g_PendingMenuAction;
-    g_PendingMenuAction = NULL;
+  if (xc.pending_menu_action) {
+    cOsdObject *tmp = xc.pending_menu_action;
+    xc.pending_menu_action = NULL;
     return tmp;
   }
 
