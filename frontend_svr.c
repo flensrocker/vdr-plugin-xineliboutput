@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.103 2011-03-20 20:59:25 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.104 2012-03-13 07:58:15 phintuka Exp $
  *
  */
 
@@ -140,8 +140,6 @@ cXinelibServer::cXinelibServer(int listen_port) :
 
   m_iMulticastMask = 0;
   m_MasterCli = -1;
-
-  m_Master     = false;
 
   m_Scheduler  = new cUdpScheduler;
   m_StcFuture  = new cStcFuture;
@@ -484,14 +482,13 @@ int cXinelibServer::Poll(cPoller &Poller, int TimeoutMs)
   // in replay mode local frontend (if present) is master
   if(m_bLiveMode || (*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))) {
     if(m_Scheduler->Clients())
-      return m_Scheduler->Poll(TimeoutMs, m_Master = false);
+      return m_Scheduler->Poll(TimeoutMs, false);
     return DEFAULT_POLL_SIZE;
   }
 
   // replay mode:
   do {
     Lock();
-    m_Master = true;
     int Free = 0xfffff, FreeHttp = 0xfffff, FreeUdp = 0;
     int Clients = 0, Http = 0, Udp = 0;
     for(int i=0; i<MAXCLIENTS; i++) {

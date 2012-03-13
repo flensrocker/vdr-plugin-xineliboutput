@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.30 2011-03-20 20:59:25 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.31 2012-03-13 07:58:15 phintuka Exp $
  *
  */
 
@@ -126,7 +126,6 @@ protected:
     cBackgroundWriterI *m_Writer[MAXCLIENTS]; // buffered output (pipe/tcp/http)
     cConnState         *m_State[MAXCLIENTS];  // connection state (http/rtsp)
     cUdpScheduler      *m_Scheduler;
-    bool                m_Master;
 
     // Storage for return values of pending RPCs
     cStcFuture         *m_StcFuture;
