@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.202 2012-02-24 10:54:54 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.203 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -2239,7 +2239,7 @@ static int sxfe_display_open(frontend_t *this_gen,
                              int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
-                             const char *video_port, int scale_video, int field_order,
+                             const char *video_port, int scale_video,
                              const char *aspect_controller, int window_id)
 {
   sxfe_t    *this = (sxfe_t*)this_gen;
@@ -2299,7 +2299,6 @@ static int sxfe_display_open(frontend_t *this_gen,
 /*this->x.cropping    = 0;*/
   this->x.overscan    = 0;
   this->x.scale_video = scale_video;
-  this->x.field_order = field_order ? 1 : 0;
   this->x.aspect_controller = aspect_controller ? strdup(aspect_controller) : NULL;
 
   this->video_win_active = 0;
@@ -2460,8 +2459,7 @@ static int sxfe_display_config(frontend_t *this_gen,
                                int xpos, int ypos,
                                int width, int height, int fullscreen,
                                int modeswitch, const char *modeline,
-                               int aspect, int scale_video,
-                               int field_order)
+                               int aspect, int scale_video)
 {
   sxfe_t *this = (sxfe_t*)this_gen;
 
@@ -2529,7 +2527,6 @@ static int sxfe_display_config(frontend_t *this_gen,
 /*this->vmode_switch = modeswitch;*/
   this->x.aspect = aspect;
   this->x.scale_video = scale_video;
-  this->x.field_order = field_order ? 1 : 0;
 
   return 1;
 }
@@ -2557,7 +2554,7 @@ static void sxfe_toggle_fullscreen(fe_t *this_gen, int fullscreen)
   this->fe.fe_display_config((frontend_t*)this, -1, -1, this->origwidth, this->origheight,
                              fullscreen,
                              0/*this->vmode_switch*/, NULL/*this->modeline*/,
-                             this->x.aspect, this->x.scale_video, this->x.field_order);
+                             this->x.aspect, this->x.scale_video);
 
   this->fullscreen_state_forced = !force;
 }

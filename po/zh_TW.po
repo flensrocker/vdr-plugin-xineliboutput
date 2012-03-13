@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2012-01-16 13:42+0200\n"
+"POT-Creation-Date: 2012-03-13 13:13+0200\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: Chinese (traditional) <vdr@linuxtv.org>\n"
@@ -57,12 +57,6 @@ msgstr "DVB"
 
 msgid "off"
 msgstr "關"
-
-msgid "normal"
-msgstr "正常"
-
-msgid "inverted"
-msgstr "反轉"
 
 msgid "no audio"
 msgstr "沒有音頻"
@@ -648,9 +642,6 @@ msgstr "窗口縮放"
 msgid "Scale to window size"
 msgstr "縮放到窗口大小"
 
-msgid "Interlaced Field Order"
-msgstr "隔行場令"
-
 msgid "Port"
 msgstr "端口"
 
@@ -778,6 +769,15 @@ msgstr "測試圖像"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib視頻輸出插件by NFVDR-HD"
+
+#~ msgid "normal"
+#~ msgstr "正常"
+
+#~ msgid "inverted"
+#~ msgstr "反轉"
+
+#~ msgid "Interlaced Field Order"
+#~ msgstr "隔行場令"
 
 #~ msgid "Button$Sort"
 #~ msgstr "按鈕$排序"

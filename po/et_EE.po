@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2012-01-16 13:42+0200\n"
+"POT-Creation-Date: 2012-03-13 13:13+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Arthur Konovalov\n"
 "Language-Team: Estonian <vdr@linuxtv.org>\n"
@@ -57,12 +57,6 @@ msgstr "DVB"
 
 msgid "off"
 msgstr "väljas"
-
-msgid "normal"
-msgstr "normaalne"
-
-msgid "inverted"
-msgstr "pööratud"
 
 msgid "no audio"
 msgstr "helita"
@@ -617,9 +611,6 @@ msgstr "Akna külgsuhe"
 msgid "Scale to window size"
 msgstr "Akna skaleeritud suurus"
 
-msgid "Interlaced Field Order"
-msgstr "Ridade järjestus"
-
 msgid "Port"
 msgstr "Port"
 
@@ -733,6 +724,15 @@ msgstr "Testipildid"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib kuvar"
+
+#~ msgid "normal"
+#~ msgstr "normaalne"
+
+#~ msgid "inverted"
+#~ msgstr "pööratud"
+
+#~ msgid "Interlaced Field Order"
+#~ msgstr "Ridade järjestus"
 
 #~ msgid "Button$Sort"
 #~ msgstr "Sorteerimine"

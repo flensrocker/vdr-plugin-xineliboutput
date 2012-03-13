@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.9 2012-03-07 08:27:40 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.10 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -82,7 +82,6 @@ typedef struct fe_s {
   uint8_t     overscan;        /* overscan in % (crop video borders) */
 /*uint8_t     cropping : 1;*/
   uint8_t     scale_video : 1; /* enable/disable all video scaling */
-  uint8_t     field_order : 1; /* invert top/bottom field order */
   uint8_t     playback_finished : 1;
   uint8_t     slave_playback_finished : 1;
 

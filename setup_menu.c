@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.84 2012-01-16 11:57:53 phintuka Exp $
+ * $Id: setup_menu.c,v 1.85 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -1301,7 +1301,7 @@ cMenuSetupLocal::~cMenuSetupLocal(void)
 {
   cXinelibDevice::Instance().ConfigureWindow(
        xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
-       xc.display_aspect, xc.scale_video, xc.field_order);
+       xc.display_aspect, xc.scale_video);
   cXinelibDevice::Instance().ConfigurePostprocessing(
        xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
        xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
@@ -1382,13 +1382,6 @@ void cMenuSetupLocal::Set(void)
     Add(ctrl_scale =
 	new cMenuEditBoolItem(tr("Scale to window size"), &newconfig.scale_video));
 
-#ifdef HAVE_XV_FIELD_ORDER
-    Add(ctrl_interlace_order = 
-	new cMenuEditStraI18nItem(tr("Interlaced Field Order"), 
-				  &newconfig.field_order, FIELD_ORDER_count, 
-				  xc.s_fieldOrder));
-#endif
-
     Add(SeparatorItem(tr("Audio")));
 
     Add(ctrl_audio_driver = 
@@ -1451,8 +1444,7 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
   else if(item == ctrl_aspect || item == ctrl_scale || item == ctrl_interlace_order)
     cXinelibDevice::Instance().ConfigureWindow(
 	xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
-	newconfig.display_aspect, newconfig.scale_video, 
-	newconfig.field_order);
+	newconfig.display_aspect, newconfig.scale_video);
   else if(item == ctrl_local_fe && local_frontend != prev_frontend) {
 
     if(local_frontend == local_frontend_orig) {
@@ -1504,7 +1496,6 @@ void cMenuSetupLocal::Store(void)
   SetupStore("Video.Port.FB", xc.video_port_fb);
 #endif
   SetupStore("Video.Scale",   xc.scale_video);
-  SetupStore("Video.FieldOrder", xc.field_order);
   SetupStore("Modeline",      xc.modeline);
   SetupStore("VideoModeSwitching", xc.modeswitch);
   SetupStore("Fullscreen",    xc.fullscreen);

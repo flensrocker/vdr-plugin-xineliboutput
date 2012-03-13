@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.110 2012-01-30 10:41:56 phintuka Exp $
+ * $Id: config.c,v 1.111 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -90,12 +90,6 @@ const char * const config_t::s_deinterlaceMethodNames[ DEINTERLACE_count+1 ] = {
   "One Field XV",
   "Linear Blend",
   "TvTime",
-  NULL
-};
-
-const char * const config_t::s_fieldOrder[ FIELD_ORDER_count+1 ] = { 
-  trNOOP("normal"),
-  trNOOP("inverted"),
   NULL
 };
 
@@ -632,7 +626,6 @@ config_t::config_t() {
   width          = 720;
   height         = 576;
   scale_video    = 0;
-  field_order    = 0;
 
   autocrop       = 0;
   autocrop_autodetect = 1;
@@ -968,7 +961,6 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Video.Scale"))       scale_video = atoi(Value);
   else if (!strcasecmp(Name, "Video.DeinterlaceOptions")) STRN0CPY(deinterlace_opts, Value);
   else if (!strcasecmp(Name, "Video.Deinterlace")) STRN0CPY(deinterlace_method, Value);
-  else if (!strcasecmp(Name, "Video.FieldOrder"))  field_order=atoi(Value)?1:0;
 
   else if (!strcasecmp(Name, "Video.AutoCrop"))    autocrop = atoi(Value);
   else if (!strcasecmp(Name, "Video.AutoCrop.AutoDetect"))   autocrop_autodetect = atoi(Value);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.118 2012-03-10 20:54:06 rofafor Exp $
+ * $Id: device.c,v 1.119 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -483,8 +483,7 @@ void cXinelibDevice::ConfigureDecoder(int pes_buffers)
 
 void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height, 
 				     int modeswitch, const char *modeline, 
-				     int aspect, int scale_video, 
-				     int field_order)
+				     int aspect, int scale_video)
 {
   TRACEF("cXinelibDevice::ConfigureWindow");
 
@@ -500,7 +499,7 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
 
   if(m_local)
     m_local->ConfigureWindow(fullscreen, width, height, modeswitch, modeline, 
-			     aspect, scale_video, field_order);
+			     aspect, scale_video);
 
   else if(*xc.local_frontend && strncmp(xc.local_frontend, "none", 4)) {
     cXinelibThread *tmp = new cXinelibLocal(xc.local_frontend);
@@ -520,7 +519,7 @@ void cXinelibDevice::ConfigureWindow(int fullscreen, int width, int height,
 	ForcePrimaryDevice(true);
   
       m_local->ConfigureWindow(fullscreen, width, height, modeswitch, modeline,
-			       aspect, scale_video, field_order);
+			       aspect, scale_video);
     }
   }
 }

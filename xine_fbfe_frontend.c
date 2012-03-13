@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.48 2011-01-17 12:29:13 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.49 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -121,7 +121,7 @@ static int fbfe_display_open(frontend_t *this_gen,
                              int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
                              fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
-                             const char *video_port, int scale_video, int field_order,
+                             const char *video_port, int scale_video,
                              const char *aspect_controller, int window_id)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
@@ -146,7 +146,6 @@ static int fbfe_display_open(frontend_t *this_gen,
   this->x.height        = height;
   this->x.aspect        = aspect;
 /*this->x.cropping      = 0;*/
-  this->x.field_order   = field_order;
   this->x.scale_video   = scale_video;
   this->x.overscan      = 0;
   this->x.display_ratio = 1.0;
@@ -195,7 +194,7 @@ static int fbfe_display_config(frontend_t *this_gen,
                                int xpos, int ypos,
                                int width, int height, int fullscreen,
                                int modeswitch, const char *modeline,
-                               int aspect, int scale_video, int field_order)
+                               int aspect, int scale_video)
 {
   fbfe_t *this = (fbfe_t*)this_gen;
 
@@ -208,7 +207,6 @@ static int fbfe_display_config(frontend_t *this_gen,
   this->x.height      = height >= 0 ? height : this->x.height;
   this->x.aspect      = aspect;
   this->x.scale_video = scale_video;
-  this->x.field_order = field_order;
   this->fullscreen    = fullscreen;
 /*this->vmode_switch  = modeswitch;*/
 #if 0

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.124 2012-03-10 23:51:10 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.125 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -317,11 +317,7 @@ static void fe_frame_output_cb (void *data,
   *dest_width  = this->width;
   *dest_height = this->height;
   *dest_x = 0;
-#ifndef HAVE_XV_FIELD_ORDER
-  *dest_y = 0 + this->field_order;
-#else
   *dest_y = 0;
-#endif
 
 #if 1
   if(!this->scale_video) {

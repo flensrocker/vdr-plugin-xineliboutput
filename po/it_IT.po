@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2012-01-16 13:42+0200\n"
+"POT-Creation-Date: 2012-03-13 13:13+0200\n"
 "PO-Revision-Date: 2011-07-10 02:27+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team: Italian <vdr@linuxtv.org>\n"
@@ -59,12 +59,6 @@ msgstr "DVB"
 
 msgid "off"
 msgstr "spento"
-
-msgid "normal"
-msgstr "normale"
-
-msgid "inverted"
-msgstr "invertito"
 
 msgid "no audio"
 msgstr "niente audio"
@@ -619,9 +613,6 @@ msgstr "Aspetto finestra"
 msgid "Scale to window size"
 msgstr "Scala a dimensione finestra"
 
-msgid "Interlaced Field Order"
-msgstr "Ordine campo interlacciato"
-
 msgid "Port"
 msgstr "Porta"
 
@@ -735,6 +726,15 @@ msgstr "Prova immagini"
 
 msgid "X11/xine-lib output plugin"
 msgstr "Plugin uscita X11/xine-lib"
+
+#~ msgid "normal"
+#~ msgstr "normale"
+
+#~ msgid "inverted"
+#~ msgstr "invertito"
+
+#~ msgid "Interlaced Field Order"
+#~ msgstr "Ordine campo interlacciato"
 
 #~ msgid "Button$Sort"
 #~ msgstr "Ordina"

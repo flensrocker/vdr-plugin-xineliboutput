@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.90 2012-01-16 11:57:53 phintuka Exp $
+ * $Id: menu.c,v 1.91 2012-03-13 12:53:41 phintuka Exp $
  *
  */
 
@@ -781,7 +781,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
           strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));
           cXinelibDevice::Instance().ConfigureWindow(
               xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline,
-              xc.display_aspect, xc.scale_video, xc.field_order);
+              xc.display_aspect, xc.scale_video);
         }
         Message = cString::sprintf("%s %s %s", tr("Local Frontend"),
                                    OnlyInfo ? ":" : "->",
@@ -795,7 +795,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
         xc.display_aspect = (xc.display_aspect < ASPECT_count-1) ? xc.display_aspect+1 : 0;
         cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height,
                                                    xc.modeswitch, xc.modeline, xc.display_aspect,
-                                                   xc.scale_video, xc.field_order);
+                                                   xc.scale_video);
       }
       Message = cString::sprintf("%s %s %s", tr("Aspect ratio"),
                                  OnlyInfo ? ":" : "->",

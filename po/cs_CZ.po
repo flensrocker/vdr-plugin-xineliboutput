@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2012-01-16 13:42+0200\n"
+"POT-Creation-Date: 2012-03-13 13:13+0200\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team: Czech <vdr@linuxtv.org>\n"
@@ -58,12 +58,6 @@ msgstr "DVB"
 
 msgid "off"
 msgstr "vypnuto"
-
-msgid "normal"
-msgstr "normální"
-
-msgid "inverted"
-msgstr "inverzní"
 
 msgid "no audio"
 msgstr "bez zvuku"
@@ -618,9 +612,6 @@ msgstr "Poměr stran okna"
 msgid "Scale to window size"
 msgstr "Škálovat do velikosti okna"
 
-msgid "Interlaced Field Order"
-msgstr "Pořadí půlsnímků"
-
 msgid "Port"
 msgstr "Port"
 
@@ -734,6 +725,15 @@ msgstr "Zkušební obrazce"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib výstupní plugin"
+
+#~ msgid "normal"
+#~ msgstr "normální"
+
+#~ msgid "inverted"
+#~ msgstr "inverzní"
+
+#~ msgid "Interlaced Field Order"
+#~ msgstr "Pořadí půlsnímků"
 
 #~ msgid "Button$Sort"
 #~ msgstr "Třídění"
