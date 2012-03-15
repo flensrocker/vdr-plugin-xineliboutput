@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.92 2012-03-13 13:05:14 phintuka Exp $
+ * $Id: menu.c,v 1.93 2012-03-15 23:48:07 rofafor Exp $
  *
  */
 
@@ -692,7 +692,7 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       return osEnd;
     case osUser7:
       if (!xc.pending_menu_action) {
-        xc.pending_menu_action = new cEqualizer(m_Dev);
+        xc.pending_menu_action = new cEqualizer();
         return osPlugin;
       }
       return osContinue;
