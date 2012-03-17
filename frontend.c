@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.96 2011-11-13 08:56:44 phintuka Exp $
+ * $Id: frontend.c,v 1.97 2012-03-17 19:57:29 phintuka Exp $
  *
  */
 
@@ -40,8 +40,6 @@
 #include "tools/general_remote.h"
 #include "tools/iso639.h"
 
-//#define LOG_CONTROL_MESSAGES
-//#define XINELIBOUTPUT_LOG_KEYS
 
 #ifndef STARTUP_IMAGE_FILE
 #  define  STARTUP_IMAGE_FILE "/usr/share/vdr/xineliboutput/logo.mpv"
@@ -60,13 +58,6 @@
 void cXinelibThread::KeypressHandler(const char *keymap, const char *key,
                                      bool repeat, bool release)
 {
-#ifdef XINELIBOUTPUT_LOG_KEYS
-  static FILE *flog = fopen("/video/keys.log","w");
-  if (flog) {
-    fprintf(flog,"KEY %s %s %d %d\n",keymap,key,repeat,release); fflush(flog);
-  }
-#endif
-
   TRACE("keypress_handler: " << (keymap?keymap:"") << " " << key);
 
   // check if key exists.
