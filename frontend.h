@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.42 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: frontend.h,v 1.43 2012-03-17 20:04:49 phintuka Exp $
  *
  */
 
@@ -13,11 +13,12 @@
 
 #include <vdr/tools.h>
 #include <vdr/thread.h>
-#include <vdr/device.h> // ePlayMode
 
 #include "xine_input_vdr_net.h" // eStreamId
 
 class cStatus;
+class cXinelibDevice;
+enum ePlayMode;
 
 //----------------------------- cXinelibThread --------------------------------
 
