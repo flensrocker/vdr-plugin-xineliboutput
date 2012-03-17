@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.86 2012-03-14 10:09:31 phintuka Exp $
+ * $Id: config.h,v 1.87 2012-03-17 19:44:48 phintuka Exp $
  *
  */
 
@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <vdr/config.h>
+#include <vdr/tools.h>
 
 class cOsdObject;
 
