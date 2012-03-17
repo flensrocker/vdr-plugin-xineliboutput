@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.104 2012-03-13 07:58:15 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.105 2012-03-17 20:06:29 phintuka Exp $
  *
  */
 
@@ -224,6 +224,9 @@ void cXinelibServer::CloseDataConnection(int cli)
 
   if(!m_iMulticastMask && !xc.remote_rtp_always_on)
     m_Scheduler->RemoveRtp();
+
+  if (cli == m_MasterCli)
+    m_MasterCli = -1;
 }
 
 void cXinelibServer::CloseConnection(int cli)
