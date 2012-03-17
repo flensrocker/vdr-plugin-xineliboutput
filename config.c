@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.112 2012-03-17 19:36:35 phintuka Exp $
+ * $Id: config.c,v 1.113 2012-03-17 19:40:48 phintuka Exp $
  *
  */
 
@@ -381,7 +381,6 @@ static const char *get_extension(const char *fname)
   return NULL;
 }
 
-#warning move to tools/.c+.h
 static char *strcatrealloc(char *dest, const char *src)
 {
   if (!src || !*src) 
@@ -716,22 +715,18 @@ config_t::config_t() {
 
   main_menu_mode = ShowMenu;
   force_primary_device = 0;
-
-  m_ProcessedArgs = strdup(" ");
 };
 
-#if 0
 static uint8_t g_hidden_options[sizeof(config_t)] = {0};
 static uint8_t g_readonly_options[sizeof(config_t)] = {0};
 uint8_t *config_t::hidden_options   = &g_hidden_options[0];
 uint8_t *config_t::readonly_options = &g_readonly_options[0];
-#endif
 
+cString config_t::m_ProcessedArgs;
 bool config_t::ProcessArg(const char *Name, const char *Value)
 {
   if(SetupParse(Name, Value)) {
-    m_ProcessedArgs = strcatrealloc(m_ProcessedArgs, Name);
-    m_ProcessedArgs = strcatrealloc(m_ProcessedArgs, " ");
+    m_ProcessedArgs = cString::sprintf("%s%s ", *m_ProcessedArgs ? *m_ProcessedArgs : " ", Name);
     return true;
   }
   return false;
@@ -857,7 +852,6 @@ bool config_t::ProcessArgs(int argc, char *argv[])
     case 'P': if(post_plugins)
                 post_plugins = strcatrealloc(post_plugins, ";");
               post_plugins = strcatrealloc(post_plugins, optarg);
-#warning never freed. also m_ProcessedArgs leaks.
               break;
     case 'C': config_file = strdup(optarg);
               break;
@@ -875,7 +869,7 @@ bool config_t::ProcessArgs(int argc, char *argv[])
 bool config_t::SetupParse(const char *Name, const char *Value)
 {
   const char *pt;
-  if (NULL != (pt = strstr(m_ProcessedArgs, Name)) &&
+  if(*m_ProcessedArgs && NULL != (pt=strstr(m_ProcessedArgs+1, Name)) &&
      *(pt-1) == ' ' && *(pt+strlen(Name)) == ' ') {
     LOGDBG("Skipping configuration entry %s=%s (overridden in command line)", Name, Value);
     return true;
