@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.87 2012-03-17 19:44:48 phintuka Exp $
+ * $Id: config.h,v 1.88 2012-03-17 19:46:23 phintuka Exp $
  *
  */
 
@@ -264,6 +264,10 @@ class config_t {
     // Force xineliboutput to be the primary device
     int  force_primary_device;
 
+    // OSD state
+    eMainMenuMode  main_menu_mode;      // used internally to open right sub-menu
+    cOsdObject    *pending_menu_action; // used to replace current OSD with another type of OSD object
+
     // local frontend settings
     char local_frontend[64];
     char video_driver[32];
@@ -286,6 +290,8 @@ class config_t {
     int  exit_on_close;    // Terminate VDR when local frontend is closed
     int  use_x_keyboard;   // Use X11 keyboard to control VDR (console kbd is handled by VDR)
     int  window_id;        // use existing X11 window
+    int  hud_osd;          // head up display OSD
+    int  opengl;           // use opengl acceleration for video and HUD OSD
 
     // Audio settings
     int  speaker_type;
@@ -296,6 +302,10 @@ class config_t {
     int  headphone;         // mix audio for headphones
     int  audio_upmix;       // upmix stereo to 5.1
     int  sw_volume_control; // software (xine-lib) or hardware (alsa) volume control and muting
+    // Audio visualization
+    char audio_visualization[64];
+    char audio_vis_goom_opts[256];
+    char audio_vis_image_mrl[4096];
 
     // Video settings
     int  ibp_trickspeed;
@@ -309,10 +319,6 @@ class config_t {
     int  noise_reduction;     // 0...0xffff, -1 == off
     int  vo_aspect_ratio;
 
-    // OSD state
-    eMainMenuMode  main_menu_mode;      // used internally to open right sub-menu
-    cOsdObject    *pending_menu_action; // used to replace current OSD with another type of OSD object
-
     // OSD settings
     int  hide_main_menu;
     int  osd_size;
@@ -324,8 +330,6 @@ class config_t {
     int  osd_mixer;                // show multiple OSD layers
     int  osd_scaling;              // OSD scaling mode: off, nearest, bilinear
     int  osd_spu_scaling;          // SPU OSD scaling mode: off, nearest, bilinear
-    int  hud_osd;                  // head up display OSD
-    int  opengl;                   // use opengl acceleration for video and HUD OSD
     int  osd_blending;             // OSD blending method
     int  osd_blending_lowresvideo; // Use hardware blending for low-resolution video
     int  alpha_correction;
@@ -348,11 +352,6 @@ class config_t {
     int  dvd_arrow_keys_control_playback;
     uint media_menu_items;         // enabled items in media player menu (bitmask)
     int  media_enable_delete;      // enable Delete in file browser
-
-    // Audio visualization
-    char audio_visualization[64];
-    char audio_vis_goom_opts[256];
-    char audio_vis_image_mrl[4096];
 
     // deinterlacing post plugin
     char deinterlace_method[32];
