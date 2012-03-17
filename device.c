@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.119 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: device.c,v 1.120 2012-03-17 20:14:41 phintuka Exp $
  *
  */
 
@@ -200,13 +200,8 @@ cXinelibDevice::cXinelibDevice()
   m_OriginalPrimaryDevice = 0;
   m_ForcePrimaryDeviceCnt = 0;
 
-  if(*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))
-    m_clients.Add(m_local = new cXinelibLocal(xc.local_frontend));
-  if(xc.remote_mode && xc.listen_port>0)
-    m_clients.Add(m_server = new cXinelibServer(xc.listen_port));
-
   memset(m_MetaInfo, 0, sizeof(m_MetaInfo));
-    
+
   m_PlayMode = pmNone;
   m_AudioChannel = 0;
 
@@ -240,6 +235,23 @@ cXinelibDevice::~cXinelibDevice()
 
   free (m_VideoSize);
   ts_state_dispose(m_tssVideoSize);
+}
+
+bool cXinelibDevice::InitDevice()
+{
+  TRACEF("cXinelibDevice::InitDevice");
+
+  if (m_local || m_server) {
+    LOGMSG("cXinelibDevice::InitDevice() called twice");
+    return false;
+  }
+
+  if (*xc.local_frontend && strncmp(xc.local_frontend, "none", 4))
+    m_clients.Add(m_local = new cXinelibLocal(xc.local_frontend));
+  if (xc.remote_mode && xc.listen_port > 0)
+    m_clients.Add(m_server = new cXinelibServer(xc.listen_port));
+
+  return true;
 }
 
 bool cXinelibDevice::StartDevice()

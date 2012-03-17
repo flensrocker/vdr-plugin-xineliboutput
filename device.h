@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.62 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: device.h,v 1.63 2012-03-17 20:14:41 phintuka Exp $
  *
  */
 
@@ -59,6 +59,7 @@ class cXinelibDevice : public cDevice
   // device start/stop (from cPlugin)
 
   public:
+    bool InitDevice(void);
     bool StartDevice(void);
     void StopDevice(void);
 
