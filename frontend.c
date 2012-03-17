@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.98 2012-03-17 19:59:04 phintuka Exp $
+ * $Id: frontend.c,v 1.99 2012-03-17 20:19:27 phintuka Exp $
  *
  */
 
@@ -235,9 +235,11 @@ void cXinelibThread::InfoHandler(const char *info)
   free(pmap);
 }
 
-cXinelibThread::cXinelibThread(const char *Description) : cThread(Description)
+cXinelibThread::cXinelibThread(cXinelibDevice *Dev, const char *Description) : cThread(Description)
 {
   TRACEF("cXinelibThread::cXinelibThread");
+
+  m_Dev = Dev;
 
   m_Volume = 255;
   m_bReady = false;

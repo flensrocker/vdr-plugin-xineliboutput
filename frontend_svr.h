@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.h,v 1.31 2012-03-13 07:58:15 phintuka Exp $
+ * $Id: frontend_svr.h,v 1.32 2012-03-17 20:19:27 phintuka Exp $
  *
  */
 
@@ -24,6 +24,7 @@ class cUdpScheduler;
 class cStcFuture;
 class cCmdFutures;
 class cConnState;
+class cXinelibDevice;
 
 #include "tools/cxsocket.h"
 
@@ -31,7 +32,7 @@ class cXinelibServer : public cXinelibThread
 {
 
   public:
-    cXinelibServer(int listen_port);
+    cXinelibServer(cXinelibDevice *Dev, int listen_port);
     virtual ~cXinelibServer();
 
   protected:

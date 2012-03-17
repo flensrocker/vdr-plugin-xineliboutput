@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.105 2012-03-17 20:06:29 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.106 2012-03-17 20:19:27 phintuka Exp $
  *
  */
 
@@ -116,8 +116,8 @@ enum {
 #define DATA_NOPOLL(dt)    ((dt) & (dtHttp | dtRtspMux))
 #define DATA_NOCONTROL(dt) ((dt) & (dtHttp | dtRtspMux))
 
-cXinelibServer::cXinelibServer(int listen_port) :
-  cXinelibThread("Remote decoder/display server (cXinelibServer)")
+cXinelibServer::cXinelibServer(cXinelibDevice *Dev, int listen_port) :
+  cXinelibThread(Dev, "Remote decoder/display server (cXinelibServer)")
 {
   int i;
   for(i=0; i<MAXCLIENTS; i++) {
@@ -239,7 +239,7 @@ void cXinelibServer::CloseConnection(int cli)
       delete m_State[cli];
       m_State[cli] = NULL;
     }
-    cXinelibDevice::Instance().ForcePrimaryDevice(false);
+    m_Dev->ForcePrimaryDevice(false);
   }
 }
 
@@ -1087,7 +1087,7 @@ void cXinelibServer::Handle_Control_DATA(int cli, const char *arg)
     m_Writer[cli]->Put(sidVdr, 0, m_Header, m_HeaderLength);
 
   /* not anymore control connection, so dec primary device reference counter */
-  cXinelibDevice::Instance().ForcePrimaryDevice(false);
+  m_Dev->ForcePrimaryDevice(false);
 }
 
 void cXinelibServer::Handle_Control_RTP(int cli, const char *arg)
@@ -1198,7 +1198,7 @@ void cXinelibServer::Handle_Control_CONFIG(int cli)
 
   if(m_bPlayingFile && *m_FileName) {
     Unlock();
-    int pos = cXinelibDevice::Instance().PlayFileCtrl("GETPOS");
+    int pos = m_Dev->PlayFileCtrl("GETPOS");
     Lock();
     if(m_bPlayingFile && *m_FileName) {
       fd_control[cli].printf("PLAYFILE %d %s %s\r\n",
@@ -1782,7 +1782,7 @@ void cXinelibServer::Handle_ClientConnected(int fd)
   fd_control[cli].set_handle(fd);
   fd_control[cli].set_buffers(KILOBYTE(128), KILOBYTE(128));
 
-  if (!cXinelibDevice::Instance().ForcePrimaryDevice(true)) {
+  if (!m_Dev->ForcePrimaryDevice(true)) {
     const char *msg = "Not primary device.\r\n";
     ssize_t len = strlen(msg);
     LOGMSG("Dropping client: xineliboutput is not the primary device !");

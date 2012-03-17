@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.56 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: frontend_local.c,v 1.57 2012-03-17 20:19:27 phintuka Exp $
  *
  */
 
@@ -72,8 +72,8 @@ extern "C" {
 
 //----------------------------- cXinelibLocal --------------------------------
 
-cXinelibLocal::cXinelibLocal(const char *frontend_name) :
-  cXinelibThread("Local decoder/display (cXinelibThread)"), m_feLock(true)
+cXinelibLocal::cXinelibLocal(cXinelibDevice *Dev, const char *frontend_name) :
+  cXinelibThread(Dev, "Local decoder/display (cXinelibThread)"), m_feLock(true)
 {
   fe = NULL;
   h_fe_lib = NULL;

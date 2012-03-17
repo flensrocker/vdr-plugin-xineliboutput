@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.h,v 1.10 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: frontend_local.h,v 1.11 2012-03-17 20:19:27 phintuka Exp $
  *
  */
 
@@ -19,11 +19,13 @@ extern "C" {
   typedef struct frontend_s frontend_t;
 }
 
+class cXinelibDevice;
+
 class cXinelibLocal : public cXinelibThread
 {
 
   public:
-    cXinelibLocal(const char *frontend_name);
+    cXinelibLocal(cXinelibDevice *Dev, const char *frontend_name);
     virtual ~cXinelibLocal();
 
   protected:
