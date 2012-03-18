@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.51 2012-03-18 19:00:22 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.52 2012-03-18 19:17:07 phintuka Exp $
  *
  */
 
@@ -205,7 +205,10 @@ cOsdObject *cPluginXinelibOutput::MainMenuAction(void)
   // Perform the action when selected from the main VDR menu.
   TRACEF("cPluginXinelibOutput::MainMenuAction");
 
-  if(xc.main_menu_mode == CloseOsd) {
+  if (!m_Dev) {
+    return NULL;
+  }
+  if (xc.main_menu_mode == CloseOsd) {
     xc.main_menu_mode = ShowMenu;
     return NULL;
   }
@@ -216,10 +219,10 @@ cOsdObject *cPluginXinelibOutput::MainMenuAction(void)
     return tmp;
   }
 
-  if(xc.hide_main_menu)
+  if (xc.hide_main_menu)
     return NULL;
 
-  return new cMenuXinelib();
+  return new cMenuXinelib(m_Dev);
 }
 
 cMenuSetupPage *cPluginXinelibOutput::SetupMenu(void)

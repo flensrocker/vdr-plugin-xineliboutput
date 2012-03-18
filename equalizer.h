@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: equalizer.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: equalizer.h,v 1.2 2012-03-18 19:17:07 phintuka Exp $
  *
  */
 
@@ -14,16 +14,20 @@
 #include <vdr/config.h>
 #include <vdr/osdbase.h>
 
+class cXinelibDevice;
+
 class cEqualizer : public cOsdObject 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     int *m_Values;
     int m_Current;
 
     cOsd *m_Osd;
 
   public:
-    cEqualizer();
+    cEqualizer(cXinelibDevice *Dev);
     virtual ~cEqualizer();
 
     virtual void Show();

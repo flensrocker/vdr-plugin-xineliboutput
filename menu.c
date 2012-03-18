@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.93 2012-03-15 23:48:07 rofafor Exp $
+ * $Id: menu.c,v 1.94 2012-03-18 19:17:07 phintuka Exp $
  *
  */
 
@@ -122,6 +122,8 @@ eOSState cMenuBluray::ProcessKey(eKeys Key)
 class cMenuBrowseFiles : public cOsdMenu
 {
   protected:
+    cXinelibDevice *m_Dev;
+
     const eMainMenuMode m_Mode;
     bool          m_OnlyQueue;
     cString       m_CurrentDir;
@@ -139,7 +141,7 @@ class cMenuBrowseFiles : public cOsdMenu
     char            *GetLastDir(void);
 
   public:
-    cMenuBrowseFiles(eMainMenuMode mode = ShowFiles, bool OnlyQueue=false);
+    cMenuBrowseFiles(cXinelibDevice *Dev, eMainMenuMode mode = ShowFiles, bool OnlyQueue=false);
     ~cMenuBrowseFiles();
 
     virtual eOSState ProcessKey(eKeys Key);
@@ -166,13 +168,14 @@ static cString LastDir(const char *dir)
   return cString(NULL);
 }
 
-cMenuBrowseFiles::cMenuBrowseFiles(eMainMenuMode mode, bool OnlyQueue) :
+cMenuBrowseFiles::cMenuBrowseFiles(cXinelibDevice *Dev, eMainMenuMode mode, bool OnlyQueue) :
     cOsdMenu( ( mode==ShowImages ? tr("Images") :
                 mode==ShowMusic ? (!OnlyQueue ? tr("Play music") : tr("Add to playlist")) :
                 /*mode==ShowFiles ?*/ tr("Play file")),
               2, 4),
     m_Mode(mode)
 {
+  m_Dev = Dev;
   m_OnlyQueue  = OnlyQueue;
 
   m_ConfigLastDir = GetLastDir();
@@ -571,15 +574,16 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 time_t cMenuXinelib::g_LastHotkeyTime = 0;
 eKeys  cMenuXinelib::g_LastHotkey = kNone;
 
-cMenuXinelib::cMenuXinelib()
+cMenuXinelib::cMenuXinelib(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
   compression = xc.audio_compression;
   autocrop = xc.autocrop;
   overscan = xc.overscan;
 
   hotkey_state = hkInit;
 
-  novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
+  novideo = m_Dev->GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
 
   Add(SeparatorItem(tr("Media")));
   if (xc.media_menu_items & MEDIA_MENU_FILES)
@@ -614,9 +618,9 @@ cMenuXinelib::cMenuXinelib()
   }
 
   switch (xc.main_menu_mode) {
-    case ShowFiles:  AddSubMenu(new cMenuBrowseFiles(ShowFiles)); break;
-    case ShowMusic:  AddSubMenu(new cMenuBrowseFiles(ShowMusic)); break;
-    case ShowImages: AddSubMenu(new cMenuBrowseFiles(ShowImages)); break;
+    case ShowFiles:
+    case ShowMusic:
+    case ShowImages: AddSubMenu(new cMenuBrowseFiles(m_Dev, xc.main_menu_mode)); break;
     default: break;
   }
 
@@ -626,28 +630,28 @@ cMenuXinelib::cMenuXinelib()
 cMenuXinelib::~cMenuXinelib()
 {
   if (xc.audio_compression != compression)
-    cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
-                                                       xc.audio_compression, xc.audio_equalizer,
-                                                       xc.audio_surround, xc.speaker_type);
+    m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
+                                   xc.audio_compression, xc.audio_equalizer,
+                                   xc.audio_surround, xc.speaker_type);
 
   if (xc.overscan != overscan)
-    cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
-                                              xc.noise_reduction, xc.contrast, xc.overscan,
-                                              xc.vo_aspect_ratio);
+    m_Dev->ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                          xc.noise_reduction, xc.contrast, xc.overscan,
+                          xc.vo_aspect_ratio);
 
   if (xc.autocrop != autocrop)
-    cXinelibDevice::Instance().ConfigurePostprocessing("autocrop",
-                                                       xc.autocrop ? true : false,
-                                                       xc.AutocropOptions());
+    m_Dev->ConfigurePostprocessing("autocrop",
+                                   xc.autocrop ? true : false,
+                                   xc.AutocropOptions());
 
-  int dev_novideo = cXinelibDevice::Instance().GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
+  int dev_novideo = m_Dev->GetPlayMode() == pmAudioOnlyBlack ? 1 : 0;
   if (dev_novideo != novideo)
-    cXinelibDevice::Instance().SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
+    m_Dev->SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
 }
 
-cOsdMenu *cMenuXinelib::CreateMenuBrowseFiles(eMainMenuMode mode, bool Queue)
+cOsdMenu *cMenuXinelib::CreateMenuBrowseFiles(cXinelibDevice *Dev, eMainMenuMode mode, bool Queue)
 {
-  return new cMenuBrowseFiles(mode, true);
+  return new cMenuBrowseFiles(Dev, mode, true);
 }
 
 eOSState cMenuXinelib::ProcessKey(eKeys Key)
@@ -673,13 +677,13 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 
   switch (state) {
     case osUser1:
-      AddSubMenu(new cMenuBrowseFiles(ShowFiles));
+      AddSubMenu(new cMenuBrowseFiles(m_Dev, ShowFiles));
       return osUnknown;
     case osUser2:
-      AddSubMenu(new cMenuBrowseFiles(ShowMusic));
+      AddSubMenu(new cMenuBrowseFiles(m_Dev, ShowMusic));
       return osUnknown;
     case osUser3:
-      AddSubMenu(new cMenuBrowseFiles(ShowImages));
+      AddSubMenu(new cMenuBrowseFiles(m_Dev, ShowImages));
       return osContinue;
     case osUser4:
       cPlayerFactory::Launch("dvd:/");
@@ -692,7 +696,7 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       return osEnd;
     case osUser7:
       if (!xc.pending_menu_action) {
-        xc.pending_menu_action = new cEqualizer();
+        xc.pending_menu_action = new cEqualizer(m_Dev);
         return osPlugin;
       }
       return osContinue;
@@ -703,20 +707,20 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
 
   if (Key == kLeft || Key == kRight || ISNUMBERKEY(Key)) {
     if (item == audio_ctrl_compress)
-      cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
-                                                         compression, xc.audio_equalizer,
-                                                         xc.audio_surround, xc.speaker_type);
+      m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
+                                     compression, xc.audio_equalizer,
+                                     xc.audio_surround, xc.speaker_type);
     else if (item == ctrl_overscan)
-      cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
-                                                xc.noise_reduction, xc.contrast, overscan,
-                                                xc.vo_aspect_ratio);
+      m_Dev->ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                            xc.noise_reduction, xc.contrast, overscan,
+                            xc.vo_aspect_ratio);
   }
   if (Key == kLeft || Key == kRight) {
     if (item == ctrl_autocrop)
-      cXinelibDevice::Instance().ConfigurePostprocessing("autocrop", autocrop?true:false,
-                                                         xc.AutocropOptions());
+      m_Dev->ConfigurePostprocessing("autocrop", autocrop?true:false,
+                                     xc.AutocropOptions());
     else if (item == ctrl_novideo)
-      cXinelibDevice::Instance().SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
+      m_Dev->SetPlayMode(novideo ? pmAudioOnlyBlack : pmNone);
   }
 
   return state;
@@ -777,7 +781,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
           if (local_frontend >= FRONTEND_count)
             local_frontend = 0;
           strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));
-          cXinelibDevice::Instance().ConfigureWindow(
+          m_Dev->ConfigureWindow(
               xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline,
               xc.display_aspect, xc.scale_video);
         }
@@ -791,9 +795,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* auto, 4:3, 16:9, ... */
       if (!OnlyInfo) {
         xc.display_aspect = (xc.display_aspect < ASPECT_count-1) ? xc.display_aspect+1 : 0;
-        cXinelibDevice::Instance().ConfigureWindow(xc.fullscreen, xc.width, xc.height,
-                                                   xc.modeswitch, xc.modeline, xc.display_aspect,
-                                                   xc.scale_video);
+        m_Dev->ConfigureWindow(xc.fullscreen, xc.width, xc.height,
+                               xc.modeswitch, xc.modeline, xc.display_aspect,
+                               xc.scale_video);
       }
       Message = cString::sprintf("%s %s %s", tr("Aspect ratio"),
                                  OnlyInfo ? ":" : "->",
@@ -804,9 +808,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* auto, square, 4:3, anamorphic or DVB */
       if (!OnlyInfo) {
         xc.vo_aspect_ratio = (xc.vo_aspect_ratio < VO_ASPECT_count-1) ? xc.vo_aspect_ratio + 1 : 0;
-        cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
-                                                  xc.noise_reduction, xc.contrast, xc.overscan,
-                                                  xc.vo_aspect_ratio);
+        m_Dev->ConfigureVideo(xc.hue, xc.saturation, xc.brightness, xc.sharpness,
+                              xc.noise_reduction, xc.contrast, xc.overscan,
+                              xc.vo_aspect_ratio);
       }
       Message = cString::sprintf("%s %s %s", tr("Video aspect ratio"),
                                  OnlyInfo ? ":" : "->",
@@ -824,9 +828,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
         } else {
           xc.autocrop = 0;
         }
-        cXinelibDevice::Instance().ConfigurePostprocessing("autocrop",
-                                                           xc.autocrop ? true : false,
-                                                           xc.AutocropOptions());
+        m_Dev->ConfigurePostprocessing("autocrop",
+                                       xc.autocrop ? true : false,
+                                       xc.AutocropOptions());
       }
 
       Message = cString::sprintf("%s %s %s", tr("Crop letterbox 4:3 to 16:9"),
@@ -844,9 +848,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
             strcpy(xc.deinterlace_method, "none");
           else
             strcpy(xc.deinterlace_method, "tvtime");
-          cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
-                                                             compression, xc.audio_equalizer,
-                                                             xc.audio_surround, xc.speaker_type);
+          m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
+                                         compression, xc.audio_equalizer,
+                                         xc.audio_surround, xc.speaker_type);
         }
         Message = cString::sprintf("%s %s %s", tr("Deinterlacing"),
                                    OnlyInfo ? ":" : "->",
@@ -858,8 +862,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* off, on */
       if (!OnlyInfo) {
         xc.audio_upmix = xc.audio_upmix ? 0 : 1;
-        cXinelibDevice::Instance().ConfigurePostprocessing(
-                  "upmix", xc.audio_upmix ? true : false, NULL);
+        m_Dev->ConfigurePostprocessing("upmix", xc.audio_upmix ? true : false, NULL);
       }
       Message = cString::sprintf("%s %s %s",
                                  tr("Upmix stereo to 5.1"),
@@ -871,7 +874,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* off, on */
       if (!OnlyInfo) {
         xc.audio_surround = xc.audio_surround ? 0 : 1;
-        cXinelibDevice::Instance().ConfigurePostprocessing(
+        m_Dev->ConfigurePostprocessing(
             xc.deinterlace_method, xc.audio_delay, xc.audio_compression,
             xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
       }
@@ -909,9 +912,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* audio delay up */
       if (!OnlyInfo) {
         xc.audio_delay++;
-        cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
-                                                           xc.audio_compression, xc.audio_equalizer,
-                                                           xc.audio_surround, xc.speaker_type);
+        m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
+                                       xc.audio_compression, xc.audio_equalizer,
+                                       xc.audio_surround, xc.speaker_type);
       }
       Message = cString::sprintf("%s %s %d %s", tr("Delay"),
                                  OnlyInfo ? ":" : "->",
@@ -922,9 +925,9 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       /* audio delay up */
       if (!OnlyInfo) {
         xc.audio_delay--;
-        cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
-                                                           xc.audio_compression, xc.audio_equalizer,
-                                                           xc.audio_surround, xc.speaker_type);
+        m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay,
+                                       xc.audio_compression, xc.audio_equalizer,
+                                       xc.audio_surround, xc.speaker_type);
       }
       Message = cString::sprintf("%s %s %d %s", tr("Delay"),
                                  OnlyInfo ? ":" : "->",

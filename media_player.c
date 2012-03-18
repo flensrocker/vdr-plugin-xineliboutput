@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.90 2012-01-16 11:57:53 phintuka Exp $
+ * $Id: media_player.c,v 1.91 2012-03-18 19:17:07 phintuka Exp $
  *
  */
 
@@ -396,7 +396,7 @@ eOSState cPlaylistMenu::ProcessKey(eKeys Key)
 	            SetHelpButtons();
 	            return osContinue;
       case kGreen:  
-                    return AddSubMenu(cMenuXinelib::CreateMenuBrowseFiles(ShowMusic));
+                    return AddSubMenu(cMenuXinelib::CreateMenuBrowseFiles(&(cXinelibDevice::Instance()),ShowMusic));
       case kYellow: if(m_Playlist.Count() > 1) {
 	              eOSState result = osContinue;
 	              cPlaylistItem *i = m_Playlist.Current();

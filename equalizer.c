@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: equalizer.c,v 1.7 2011-10-30 16:54:26 phintuka Exp $
+ * $Id: equalizer.c,v 1.8 2012-03-18 19:17:07 phintuka Exp $
  *
  */
 
@@ -14,8 +14,9 @@
 #include "device.h"
 #include "equalizer.h"
 
-cEqualizer::cEqualizer() : cOsdObject()
+cEqualizer::cEqualizer(cXinelibDevice *Dev) : cOsdObject()
 {
+  m_Dev = Dev;
   m_Values = new int[AUDIO_EQ_count];
   memcpy(m_Values, xc.audio_equalizer, sizeof(xc.audio_equalizer));
   m_Osd = NULL;
@@ -66,14 +67,14 @@ eOSState cEqualizer::ProcessKey(eKeys key)
 	if(m_Values[m_Current] < ADJUST_MIN)
 	  m_Values[m_Current] = ADJUST_MIN;
 	DrawBar(m_Current,true);
-	cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, m_Values, xc.audio_surround, xc.speaker_type);
+	m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, m_Values, xc.audio_surround, xc.speaker_type);
 	break;
       case kUp:
 	m_Values[m_Current] += ADJUST_STEP;
 	if(m_Values[m_Current] > ADJUST_MAX)
 	  m_Values[m_Current] = ADJUST_MAX;
 	DrawBar(m_Current,true);
-	cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, m_Values, xc.audio_surround, xc.speaker_type);
+	m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, m_Values, xc.audio_surround, xc.speaker_type);
 	break;
       case kLeft: 
 	if(m_Current>0) {
@@ -90,7 +91,7 @@ eOSState cEqualizer::ProcessKey(eKeys key)
 	}
 	break;
       case kBack:
-        cXinelibDevice::Instance().ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
+        m_Dev->ConfigurePostprocessing(xc.deinterlace_method, xc.audio_delay, xc.audio_compression, xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 	return osEnd;
       case kOk:
         memcpy(xc.audio_equalizer, m_Values, sizeof(xc.audio_equalizer));
