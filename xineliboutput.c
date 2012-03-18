@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.50 2012-03-17 20:14:41 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.51 2012-03-18 19:00:22 phintuka Exp $
  *
  */
 
@@ -51,6 +51,7 @@ class cPluginXinelibOutput : public cPlugin
 {
   private:
     // Add any member variables or functions you may need here.
+    cXinelibDevice *m_Dev;
 
   public:
     cPluginXinelibOutput(void);
@@ -85,6 +86,8 @@ cPluginXinelibOutput::cPluginXinelibOutput(void)
   // Initialize any member variables here.
   // DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
+
+  m_Dev = &(cXinelibDevice::Instance());
 }
 
 cPluginXinelibOutput::~cPluginXinelibOutput()
@@ -168,27 +171,33 @@ bool cPluginXinelibOutput::Initialize(void)
   // Initialize any background activities the plugin shall perform.
   TRACEF("cPluginXinelibOutput::Initialize");
 
-  return cXinelibDevice::Instance().InitDevice();
+  return m_Dev ? m_Dev->InitDevice() : false;
 }
 
 bool cPluginXinelibOutput::Start(void)
 {
   // Start any background activities the plugin shall perform.
   TRACEF("cPluginXinelibOutput::Start");
-  return cXinelibDevice::Instance().StartDevice();
+  return m_Dev ? m_Dev->StartDevice() : false;
 }
 
 void cPluginXinelibOutput::MainThreadHook(void)
 {
   TRACEF("cPluginXinelibOutput::MainThreadHook");
-  return cXinelibDevice::Instance().MainThreadHook();
+
+  if (m_Dev) {
+    m_Dev->MainThreadHook();
+  }
 }
 
 void cPluginXinelibOutput::Stop(void)
 {
   // Start any background activities the plugin shall perform.
   TRACEF("cPluginXinelibOutput::Stop");
-  return cXinelibDevice::Instance().StopDevice();
+
+  if (m_Dev) {
+    m_Dev->StopDevice();
+  }
 }
 
 cOsdObject *cPluginXinelibOutput::MainMenuAction(void)
