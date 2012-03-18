@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.106 2012-03-17 20:19:27 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.107 2012-03-18 12:22:25 phintuka Exp $
  *
  */
 
@@ -28,6 +28,7 @@
 #include <vdr/config.h>
 #include <vdr/tools.h>
 #include <vdr/plugin.h>
+#include <vdr/device.h>
 
 #include "logdefs.h"
 #include "config.h"
