@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.h,v 1.1 2006-06-03 09:50:54 phintuka Exp $
+ * $Id: setup_menu.h,v 1.2 2012-03-19 09:53:14 phintuka Exp $
  *
  */
 
@@ -13,14 +13,18 @@
 
 #include <vdr/menuitems.h>
 
+class cXinelibDevice;
+
 class cMenuSetupXinelib : public cMenuSetupPage {
 
   protected:
+    cXinelibDevice *m_Dev;
+
     void Set(void);
     virtual void Store(void) {};
- 
+
   public:
-    cMenuSetupXinelib(void);
+    cMenuSetupXinelib(cXinelibDevice *Dev);
     virtual eOSState ProcessKey(eKeys Key);
 };
 

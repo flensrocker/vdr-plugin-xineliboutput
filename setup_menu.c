@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.87 2012-03-19 09:50:33 phintuka Exp $
+ * $Id: setup_menu.c,v 1.88 2012-03-19 09:53:14 phintuka Exp $
  *
  */
 
@@ -106,6 +106,8 @@ static int INDEX_TO_CONTROL(int ind)
 class cMenuSetupAudio : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     config_t newconfig;
     int visualization;
     int goom_width, goom_height, goom_fps;
@@ -123,14 +125,15 @@ class cMenuSetupAudio : public cMenuSetupPage
     void Set(void);
   
   public:
-    cMenuSetupAudio(void);
+    cMenuSetupAudio(cXinelibDevice *Dev);
     ~cMenuSetupAudio(void);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupAudio::cMenuSetupAudio(void) 
+cMenuSetupAudio::cMenuSetupAudio(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
   memcpy(&newconfig, &xc, sizeof(config_t));
 
   visualization = strstra(xc.audio_visualization, 
@@ -153,14 +156,12 @@ cMenuSetupAudio::cMenuSetupAudio(void)
 
 cMenuSetupAudio::~cMenuSetupAudio(void) 
 {
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-        xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
-	xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-        "upmix", xc.audio_upmix ? true : false, NULL);
+  m_Dev->ConfigurePostprocessing(
+        xc.deinterlace_method, xc.audio_delay, xc.audio_compression,
+        xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
+  m_Dev->ConfigurePostprocessing("upmix", xc.audio_upmix ? true : false, NULL);
 #ifdef ENABLE_TEST_POSTPLUGINS
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-        "headphone", xc.headphone ? true : false, NULL);
+  m_Dev->ConfigurePostprocessing("headphone", xc.headphone ? true : false, NULL);
 #endif
 }
 
@@ -231,19 +232,19 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
     return state;
 
   if(item == audio_ctrl_delay || item == audio_ctrl_compression) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-	  xc.deinterlace_method, newconfig.audio_delay, 
-	  newconfig.audio_compression, newconfig.audio_equalizer,
-	  newconfig.audio_surround, newconfig.speaker_type);
+    m_Dev->ConfigurePostprocessing(
+          xc.deinterlace_method, newconfig.audio_delay,
+          newconfig.audio_compression, newconfig.audio_equalizer,
+          newconfig.audio_surround, newconfig.speaker_type);
   }
   else if(item == audio_ctrl_vis) {
     Set();
   }
   else if(item == audio_ctrl_surround) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-          xc.deinterlace_method, newconfig.audio_delay, 
-	  newconfig.audio_compression, newconfig.audio_equalizer,
-	  newconfig.audio_surround, newconfig.speaker_type);
+    m_Dev->ConfigurePostprocessing(
+          xc.deinterlace_method, newconfig.audio_delay,
+          newconfig.audio_compression, newconfig.audio_equalizer,
+          newconfig.audio_surround, newconfig.speaker_type);
     if(newconfig.audio_surround && newconfig.audio_upmix) {
       newconfig.audio_upmix = 0;
       Set();
@@ -255,7 +256,7 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
     cRemote::Put(kMute);
   }
   else if(item == audio_ctrl_upmix) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
+    m_Dev->ConfigurePostprocessing(
 	  "upmix", newconfig.audio_upmix ? true : false, NULL);
     if(newconfig.audio_upmix && newconfig.audio_surround) {
       newconfig.audio_surround = 0;
@@ -264,7 +265,7 @@ eOSState cMenuSetupAudio::ProcessKey(eKeys Key)
   }
 #ifdef ENABLE_TEST_POSTPLUGINS
   else if(item == audio_ctrl_headphone) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
+    m_Dev->ConfigurePostprocessing(
 	  "headphone", newconfig.headphone ? true : false, NULL);
   }
 #endif
@@ -304,6 +305,7 @@ void cMenuSetupAudio::Store(void)
 class cMenuSetupAudioEq : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
     config_t newconfig;
   
   protected:
@@ -311,21 +313,22 @@ class cMenuSetupAudioEq : public cMenuSetupPage
     void Set(void);
   
   public:
-    cMenuSetupAudioEq(void);
+    cMenuSetupAudioEq(cXinelibDevice *Dev);
     ~cMenuSetupAudioEq(void);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupAudioEq::cMenuSetupAudioEq(void) 
+cMenuSetupAudioEq::cMenuSetupAudioEq(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
   memcpy(&newconfig, &xc, sizeof(config_t));
   Set();
 }
 
 cMenuSetupAudioEq::~cMenuSetupAudioEq(void) 
 {
-  cXinelibDevice::Instance().ConfigurePostprocessing(
+  m_Dev->ConfigurePostprocessing(
         xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
 	xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 }
@@ -354,7 +357,7 @@ eOSState cMenuSetupAudioEq::ProcessKey(eKeys Key)
   Key = NORMALKEY(Key);
 
   if(Key == kLeft || Key == kRight) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
+    m_Dev->ConfigurePostprocessing(
 	xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
 	newconfig.audio_equalizer, xc.audio_surround, xc.speaker_type);
   }
@@ -481,6 +484,8 @@ struct tvtime_s {
 class cMenuSetupVideo : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     config_t newconfig;
 
     cOsdItem *ctrl_autocrop;
@@ -525,14 +530,16 @@ class cMenuSetupVideo : public cMenuSetupPage
     void Set(void);
   
   public:
-    cMenuSetupVideo(void);
+    cMenuSetupVideo(cXinelibDevice *Dev);
     ~cMenuSetupVideo(void);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupVideo::cMenuSetupVideo(void)
+cMenuSetupVideo::cMenuSetupVideo(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
+
   memcpy(&newconfig, &xc, sizeof(config_t));
 
   newconfig.hue        = CONTROL_TO_INDEX(newconfig.hue);
@@ -551,21 +558,16 @@ cMenuSetupVideo::cMenuSetupVideo(void)
 
 cMenuSetupVideo::~cMenuSetupVideo(void)
 {
-  cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, 
-					    xc.brightness, xc.sharpness,
-					    xc.noise_reduction, xc.contrast,
-					    xc.overscan, xc.vo_aspect_ratio);
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-       "autocrop", xc.autocrop ? true : false, xc.AutocropOptions());
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-       "swscale", xc.swscale ? true : false, xc.SwScaleOptions());
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-       "pp", xc.ffmpeg_pp ? true : false, xc.FfmpegPpOptions());
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-       "unsharp", xc.unsharp ? true : false, xc.UnsharpOptions());
-  cXinelibDevice::Instance().ConfigurePostprocessing(
-       "denoise3d", xc.denoise3d ? true : false, xc.Denoise3dOptions());
-  cXinelibDevice::Instance().ConfigurePostprocessing(
+  m_Dev->ConfigureVideo(xc.hue, xc.saturation,
+                        xc.brightness, xc.sharpness,
+                        xc.noise_reduction, xc.contrast,
+                        xc.overscan, xc.vo_aspect_ratio);
+  m_Dev->ConfigurePostprocessing("autocrop",  !!xc.autocrop,  xc.AutocropOptions());
+  m_Dev->ConfigurePostprocessing("swscale",   !!xc.swscale,   xc.SwScaleOptions());
+  m_Dev->ConfigurePostprocessing("pp",        !!xc.ffmpeg_pp, xc.FfmpegPpOptions());
+  m_Dev->ConfigurePostprocessing("unsharp",   !!xc.unsharp,   xc.UnsharpOptions());
+  m_Dev->ConfigurePostprocessing("denoise3d", !!xc.denoise3d, xc.Denoise3dOptions());
+  m_Dev->ConfigurePostprocessing(
         xc.deinterlace_method, xc.audio_delay, xc.audio_compression,
         xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 }
@@ -796,21 +798,21 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
      item == ctrl_contrast || item == ctrl_brightness ||
      item == ctrl_overscan || item == ctrl_vo_aspect_ratio)
 #ifdef INTEGER_CONFIG_VIDEO_CONTROLS
-    cXinelibDevice::Instance().ConfigureVideo(newconfig.hue, 
-					      newconfig.saturation,
-					      newconfig.brightness, 
-					      newconfig.sharpness, 
-					      newconfig.noise_reduction, 
-					      newconfig.contrast,
-					      newconfig.overscan,
-                                              newconfig.vo_aspect_ratio);
+    m_Dev->ConfigureVideo(newconfig.hue,
+                          newconfig.saturation,
+                          newconfig.brightness,
+                          newconfig.sharpness,
+                          newconfig.noise_reduction,
+                          newconfig.contrast,
+                          newconfig.overscan,
+                          newconfig.vo_aspect_ratio);
 #else
-    cXinelibDevice::Instance().ConfigureVideo(
-       INDEX_TO_CONTROL(newconfig.hue), 
+    m_Dev->ConfigureVideo(
+       INDEX_TO_CONTROL(newconfig.hue),
        INDEX_TO_CONTROL(newconfig.saturation),
-       INDEX_TO_CONTROL(newconfig.brightness), 
-       INDEX_TO_CONTROL(newconfig.sharpness), 
-       INDEX_TO_CONTROL(newconfig.noise_reduction), 
+       INDEX_TO_CONTROL(newconfig.brightness),
+       INDEX_TO_CONTROL(newconfig.sharpness),
+       INDEX_TO_CONTROL(newconfig.noise_reduction),
        INDEX_TO_CONTROL(newconfig.contrast),
        newconfig.overscan, newconfig.vo_aspect_ratio);
 #endif
@@ -829,9 +831,7 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
                   || item == ctrl_autocrop_use_avards_analysis
                   || item == ctrl_autocrop_overscan_compensate
                   || item == ctrl_autocrop_bar_tone_tolerance) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-	 "autocrop", newconfig.autocrop ? true : false, 
-	 newconfig.AutocropOptions());
+    m_Dev->ConfigurePostprocessing("autocrop", !!newconfig.autocrop, newconfig.AutocropOptions());
     Set();
   }
   else if(item == ctrl_swscale || 
@@ -839,27 +839,19 @@ eOSState cMenuSetupVideo::ProcessKey(eKeys Key)
 	  item == ctrl_swscale_aspect ||
 	  item == ctrl_swscale_width ||
 	  item == ctrl_swscale_height) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-         "swscale", newconfig.swscale ? true : false, 
-	 newconfig.SwScaleOptions());
+    m_Dev->ConfigurePostprocessing("swscale", !!newconfig.swscale, newconfig.SwScaleOptions());
     Set();
   }
   else if(item == ctrl_pp) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-	 "pp", newconfig.ffmpeg_pp ? true : false, 
-	 newconfig.FfmpegPpOptions());
+    m_Dev->ConfigurePostprocessing("pp", !!newconfig.ffmpeg_pp, newconfig.FfmpegPpOptions());
     Set();
   }
   else if(item == ctrl_unsharp) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-         "unsharp", newconfig.unsharp ? true : false, 
-         newconfig.UnsharpOptions());
+    m_Dev->ConfigurePostprocessing("unsharp", !!newconfig.unsharp, newconfig.UnsharpOptions());
     Set();
   } 
   else if(item == ctrl_denoise3d) {
-    cXinelibDevice::Instance().ConfigurePostprocessing(
-         "denoise3d", newconfig.denoise3d ? true : false, 
-         newconfig.Denoise3dOptions());
+    m_Dev->ConfigurePostprocessing("denoise3d", !!newconfig.denoise3d, newconfig.Denoise3dOptions());
     Set();
   } 
   else if(item == ctrl_deinterlace) {
@@ -953,6 +945,8 @@ void cMenuSetupVideo::Store(void)
 class cMenuSetupOSD : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     config_t newconfig;
 
     int orig_alpha_correction;
@@ -971,14 +965,15 @@ class cMenuSetupOSD : public cMenuSetupPage
     void Set(void);
 
   public:
-    cMenuSetupOSD(void);
+    cMenuSetupOSD(cXinelibDevice *Dev);
     ~cMenuSetupOSD();
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupOSD::cMenuSetupOSD(void)
+cMenuSetupOSD::cMenuSetupOSD(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
   memcpy(&newconfig, &xc, sizeof(config_t));
   orig_alpha_correction     = xc.alpha_correction;
   orig_alpha_correction_abs = xc.alpha_correction_abs;
@@ -1105,7 +1100,7 @@ void cMenuSetupOSD::Store(void)
   newconfig.extsub_size --;
   if(newconfig.extsub_size != xc.extsub_size) {
     cString tmp = cString::sprintf("EXTSUBSIZE %d", newconfig.extsub_size);
-    cXinelibDevice::Instance().PlayFileCtrl(tmp);
+    m_Dev->PlayFileCtrl(tmp);
   }
 
   memcpy(&xc, &newconfig, sizeof(config_t));
@@ -1145,6 +1140,8 @@ void cMenuSetupOSD::Store(void)
 class cMenuSetupDecoder : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     config_t newconfig;
 
     int pes_buffers_ind;
@@ -1157,14 +1154,17 @@ class cMenuSetupDecoder : public cMenuSetupPage
     void Set(void);
   
   public:
-    cMenuSetupDecoder(void);
+    cMenuSetupDecoder(cXinelibDevice *Dev);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupDecoder::cMenuSetupDecoder(void)
+cMenuSetupDecoder::cMenuSetupDecoder(cXinelibDevice *Dev)
 {
   int i;
+
+  m_Dev = Dev;
+
   memcpy(&newconfig, &xc, sizeof(config_t));
 
   pes_buffers_ind = PES_BUFFERS_CUSTOM;
@@ -1237,7 +1237,7 @@ void cMenuSetupDecoder::Store(void)
 #endif
 
   if(xc.pes_buffers != old_buffers)
-    cXinelibDevice::Instance().ConfigureDecoder(xc.pes_buffers);
+    m_Dev->ConfigureDecoder(xc.pes_buffers);
   Setup.Save();
 }
 
@@ -1247,6 +1247,8 @@ void cMenuSetupDecoder::Store(void)
 class cMenuSetupLocal : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     config_t newconfig;
 
     int local_frontend;
@@ -1272,14 +1274,16 @@ class cMenuSetupLocal : public cMenuSetupPage
     void Set(void);
   
   public:
-    cMenuSetupLocal(void);
+    cMenuSetupLocal(cXinelibDevice *Dev);
     ~cMenuSetupLocal(void);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupLocal::cMenuSetupLocal(void)
+cMenuSetupLocal::cMenuSetupLocal(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
+
   SetPlugin(cPluginManager::GetPlugin(PLUGIN_NAME_I18N));
 
   memcpy(&newconfig, &xc, sizeof(config_t));
@@ -1299,10 +1303,10 @@ cMenuSetupLocal::cMenuSetupLocal(void)
 
 cMenuSetupLocal::~cMenuSetupLocal(void)
 {
-  cXinelibDevice::Instance().ConfigureWindow(
+  m_Dev->ConfigureWindow(
        xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
        xc.display_aspect, xc.scale_video);
-  cXinelibDevice::Instance().ConfigurePostprocessing(
+  m_Dev->ConfigurePostprocessing(
        xc.deinterlace_method, xc.audio_delay, xc.audio_compression, 
        xc.audio_equalizer, xc.audio_surround, xc.speaker_type);
 }
@@ -1412,7 +1416,7 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
   eOSState state = cMenuSetupPage::ProcessKey(Key);
 
   if(state == osUser1)
-    return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupDecoder);
+    return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupDecoder(m_Dev));
 
   Key = NORMALKEY(Key);
 
@@ -1442,7 +1446,7 @@ eOSState cMenuSetupLocal::ProcessKey(eKeys Key)
       Set();
   }
   else if(item == ctrl_aspect || item == ctrl_scale || item == ctrl_interlace_order)
-    cXinelibDevice::Instance().ConfigureWindow(
+    m_Dev->ConfigureWindow(
 	xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline, 
 	newconfig.display_aspect, newconfig.scale_video);
   else if(item == ctrl_local_fe && local_frontend != prev_frontend) {
@@ -1511,6 +1515,8 @@ void cMenuSetupLocal::Store(void)
 class cMenuSetupRemote : public cMenuSetupPage 
 {
   private:
+    cXinelibDevice *m_Dev;
+
     config_t newconfig;
 
     cOsdItem *ctrl_remote_mode;
@@ -1526,13 +1532,14 @@ class cMenuSetupRemote : public cMenuSetupPage
     void Set(void);
   
   public:
-    cMenuSetupRemote(void);
+    cMenuSetupRemote(cXinelibDevice *Dev);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuSetupRemote::cMenuSetupRemote(void)
+cMenuSetupRemote::cMenuSetupRemote(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
   memcpy(&newconfig, &xc, sizeof(config_t));
   Set();
 }
@@ -1687,7 +1694,7 @@ void cMenuSetupRemote::Store(void)
   SetupStore("Remote.AllowHttp", xc.remote_use_http);
   SetupStore("Remote.AllowHttpCtrl", xc.remote_use_http_ctrl);
 
-  cXinelibDevice::Instance().Listen(xc.remote_mode, xc.listen_port);
+  m_Dev->Listen(xc.remote_mode, xc.listen_port);
   Setup.Save();
 }
 
@@ -1812,10 +1819,11 @@ void cMenuSetupMediaPlayer::Store(void)
 class cTestGrayscale : public cOsdObject 
 {
   private:
+    cXinelibDevice *m_Dev;
     cOsd *m_Osd;
 
   public:
-    cTestGrayscale() { m_Osd = NULL; }
+    cTestGrayscale(cXinelibDevice *Dev) { m_Dev = Dev; m_Osd = NULL; }
     virtual ~cTestGrayscale() { delete m_Osd; }
 
     virtual void Show();
@@ -1881,7 +1889,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	br -= 0xffff/1024;
 	sprintf(s, "b %d", br);
 	m_Osd->DrawText(400, 100, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
+        m_Dev->ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;	
       case kUp:
@@ -1890,7 +1898,7 @@ eOSState cTestGrayscale::ProcessKey(eKeys key)
 	co -= 0xffff/1024;
 	sprintf(s, "c %d", co);
 	m_Osd->DrawText(400, 130, s, 0xff000000, 0xffffffff, cFont::GetFont(fontSml));
-	cXinelibDevice::Instance().ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
+        m_Dev->ConfigureVideo(xc.hue, xc.saturation, br, xc.sharpness, xc.noise_reduction, co, xc.overscan, xc.vo_aspect_ratio);
 	m_Osd->Flush();
 	return osContinue;
       default:; // all other keys - do nothing.
@@ -1985,17 +1993,20 @@ eOSState cTestBitmap::ProcessKey(eKeys key)
 class cMenuTestImages : public cMenuSetupPage {
 
   protected:
+    cXinelibDevice *m_Dev;
+
     void Set(void);
     virtual void Store(void) {};
  
   public:
-    cMenuTestImages();
+    cMenuTestImages(cXinelibDevice *Dev);
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuTestImages::cMenuTestImages() 
+cMenuTestImages::cMenuTestImages(cXinelibDevice *Dev)
 { 
+  m_Dev = Dev;
   Set();
 }
 
@@ -2025,7 +2036,7 @@ eOSState cMenuTestImages::ProcessKey(eKeys Key)
   switch (state) {
     case osUser1:
       if(cRemote::CallPlugin("xineliboutput"))
-        xc.pending_menu_action = new cTestGrayscale();
+        xc.pending_menu_action = new cTestGrayscale(m_Dev);
       return osEnd;
     case osUser2:
       if(cRemote::CallPlugin("xineliboutput"))
@@ -2043,8 +2054,9 @@ eOSState cMenuTestImages::ProcessKey(eKeys Key)
 
 //--- cMenuSetupXinelib ------------------------------------------------------
 
-cMenuSetupXinelib::cMenuSetupXinelib(void)
+cMenuSetupXinelib::cMenuSetupXinelib(cXinelibDevice *Dev)
 {
+  m_Dev = Dev;
   XinelibOutputSetupMenu::controls[0] = tr("Off");
   Set();
 }
@@ -2073,21 +2085,21 @@ eOSState cMenuSetupXinelib::ProcessKey(eKeys Key)
 
   switch (state) {
     case osUser1: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupAudio);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupAudio(m_Dev));
     case osUser2: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupAudioEq);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupAudioEq(m_Dev));
     case osUser3: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupVideo);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupVideo(m_Dev));
     case osUser4: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupOSD);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupOSD(m_Dev));
     case osUser5: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupMediaPlayer);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupMediaPlayer());
     case osUser6: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupLocal);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupLocal(m_Dev));
     case osUser7: 
-      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupRemote);
+      return AddSubMenu(new XinelibOutputSetupMenu::cMenuSetupRemote(m_Dev));
     case osUser8: 
-      return AddSubMenu(new cMenuTestImages);
+      return AddSubMenu(new cMenuTestImages(m_Dev));
 
     default: ;
   }

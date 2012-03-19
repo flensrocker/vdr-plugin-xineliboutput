@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.52 2012-03-18 19:17:07 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.53 2012-03-19 09:53:14 phintuka Exp $
  *
  */
 
@@ -229,7 +229,8 @@ cMenuSetupPage *cPluginXinelibOutput::SetupMenu(void)
 {
   // Return a setup menu in case the plugin supports one.
   TRACEF("cPluginXinelibOutput::SetupMenu");
-  return new cMenuSetupXinelib();
+
+  return m_Dev ? new cMenuSetupXinelib(m_Dev) : NULL;
 }
 
 bool cPluginXinelibOutput::SetupParse(const char *Name, const char *Value)
