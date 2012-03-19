@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.h,v 1.10 2012-03-19 11:21:33 phintuka Exp $
+ * $Id: menu.h,v 1.11 2012-03-19 11:29:14 phintuka Exp $
  *
  */
 
@@ -27,8 +27,7 @@ class cMenuXinelib : public cMenuSetupPage
 
     // Hotkeys
     enum { hkInit, hkSeen, hkNone } hotkey_state;
-    static time_t g_LastHotkeyTime;
-    static eKeys  g_LastHotkey;
+
     virtual eOSState ProcessHotkey(eKeys Key);
 
     cOsdItem *audio_ctrl_compress;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.113 2012-03-17 19:40:48 phintuka Exp $
+ * $Id: config.c,v 1.114 2012-03-19 11:29:14 phintuka Exp $
  *
  */
 
@@ -714,6 +714,7 @@ config_t::config_t() {
   media_enable_delete = 0;
 
   main_menu_mode = ShowMenu;
+  last_hotkey = -1;//kNone;
   force_primary_device = 0;
 };
 

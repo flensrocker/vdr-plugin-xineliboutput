@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.88 2012-03-17 19:46:23 phintuka Exp $
+ * $Id: config.h,v 1.89 2012-03-19 11:29:14 phintuka Exp $
  *
  */
 
@@ -267,6 +267,8 @@ class config_t {
     // OSD state
     eMainMenuMode  main_menu_mode;      // used internally to open right sub-menu
     cOsdObject    *pending_menu_action; // used to replace current OSD with another type of OSD object
+    time_t         last_hotkey_time;
+    int/*eKeys*/   last_hotkey;
 
     // local frontend settings
     char local_frontend[64];

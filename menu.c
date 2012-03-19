@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.95 2012-03-19 11:07:52 phintuka Exp $
+ * $Id: menu.c,v 1.96 2012-03-19 11:29:14 phintuka Exp $
  *
  */
 
@@ -574,9 +574,6 @@ eOSState cMenuBrowseFiles::ProcessKey(eKeys Key)
 
 #include "tools/display_message.h"
 
-time_t cMenuXinelib::g_LastHotkeyTime = 0;
-eKeys  cMenuXinelib::g_LastHotkey = kNone;
-
 cMenuXinelib::cMenuXinelib(cXinelibDevice *Dev)
 {
   m_Dev = Dev;
@@ -741,7 +738,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
   eOSState NewState = osEnd;
   cString  Message;
   time_t   now      = time(NULL);
-  bool     OnlyInfo = ((g_LastHotkeyTime < now-3) || g_LastHotkey != Key);
+  bool     OnlyInfo = ((xc.last_hotkey_time < now-3) || xc.last_hotkey != Key);
 
   switch (Key) {
     case HOTKEY_DVD:
@@ -949,8 +946,8 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
       xc.pending_menu_action = new cDisplayMessage(Message);
   }
 
-  g_LastHotkeyTime = now;
-  g_LastHotkey = Key;
+  xc.last_hotkey_time = now;
+  xc.last_hotkey = Key;
 
   return NewState;
 }
