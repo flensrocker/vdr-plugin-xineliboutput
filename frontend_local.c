@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.58 2012-03-18 12:22:25 phintuka Exp $
+ * $Id: frontend_local.c,v 1.59 2012-03-19 11:51:22 phintuka Exp $
  *
  */
 
@@ -51,7 +51,7 @@ class cRwLockBlock
 //----------------- keyboard control handler (C callback) --------------------
 
 extern "C" {
-  static void keypress_handler(const char *keymap, const char *key)
+  static void keypress_handler(void *h, const char *keymap, const char *key)
   {
     if(!strncmp("INFO ", keymap, 5)) {
       
@@ -342,12 +342,14 @@ void cXinelibLocal::Action(void)
       Cancel(-1);
     } else {
       LOGDBG("cXinelibLocal::Action - fe created");
+      curr_fe->fe_message_cb = keypress_handler;
+      curr_fe->fe_message_h  = this;
       if(!curr_fe->fe_display_open(curr_fe,
                                    xc.xpos, xc.ypos, xc.width, xc.height, xc.fullscreen,
                                    xc.hud_osd,
                                    xc.opengl,
                                    xc.modeswitch, xc.modeline, xc.display_aspect,
-                                   keypress_handler, 0/*no_x_kbd*/, 0/*gui_hotkeys*/,
+                                   0/*no_x_kbd*/, 0/*gui_hotkeys*/,
                                    xc.video_port,
                                    xc.scale_video,
                                    NULL,

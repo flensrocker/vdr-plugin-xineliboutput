@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.203 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.204 2012-03-19 11:51:21 phintuka Exp $
  *
  */
 
@@ -384,7 +384,7 @@ static void update_window_title(sxfe_t *this)
 {
   XLockDisplay(this->display);
 
-  if (!this->x.keypress) { /* handler is set only in local mode */
+  if (!this->fe.fe_message_cb) { /* handler is set only in local mode */
     char *name = NULL;
     if (XFetchName(this->display, this->window[0], &name) && name) {
       char *newname = NULL;
@@ -1502,7 +1502,7 @@ static void create_windows(sxfe_t *this)
   }
 
   /* Window name */
-  const char *initial_title = (!this->x.keypress) ? "Connecting to VDR ..." : "Local VDR";
+  const char *initial_title = (!this->fe.fe_message_cb) ? "Connecting to VDR ..." : "Local VDR";
   XStoreName(this->display, this->window[0], initial_title);
   XStoreName(this->display, this->window[1], initial_title);
 
@@ -2238,7 +2238,7 @@ static int sxfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
                              int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
-                             fe_keypress_f keyfunc, int no_x_kbd, int gui_hotkeys,
+                             int no_x_kbd, int gui_hotkeys,
                              const char *video_port, int scale_video,
                              const char *aspect_controller, int window_id)
 {
@@ -2247,15 +2247,15 @@ static int sxfe_display_open(frontend_t *this_gen,
   if(this->display)
     this->fe.fe_display_close(this_gen);
 
-  pthread_mutex_init(&this->video_win_mutex, NULL);
-
-  if(keyfunc) {
-    this->x.keypress = keyfunc;
-    this->x.keypress("XKeySym", ""); /* triggers learning mode */
-  }
-
   LOGDBG("sxfe_display_open(width=%d, height=%d, fullscreen=%d, display=%s)",
          width, height, fullscreen, video_port);
+
+  pthread_mutex_init(&this->video_win_mutex, NULL);
+
+  if(this->fe.fe_message_cb) {
+    /* trigger key learning mode */
+    this->fe.fe_message_cb(this->fe.fe_message_h, "XKeySym", "");
+  }
 
 #if defined(HAVE_XRENDER) || defined(HAVE_OPENGL)
   this->osd_width  = OSD_DEF_WIDTH;
@@ -2626,7 +2626,7 @@ static void XKeyEvent_handler(sxfe_t *this, XKeyEvent *kev)
           fe_event = "POWER_OFF";
         break;
       case XK_Escape:
-        if (!this->x.keypress) /* ESC exits only in remote mode */
+        if (!this->fe.fe_message_cb) /* ESC exits only in remote mode */
           fe_event = "QUIT";
         break;
       default:;

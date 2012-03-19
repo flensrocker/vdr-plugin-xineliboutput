@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.28 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.29 2012-03-19 11:53:04 phintuka Exp $
  *
  */
 
@@ -16,8 +16,6 @@ extern "C" {
 #endif
 
 #define FE_VERSION_STR  XINELIBOUTPUT_VERSION /*"1.0.0pre1"*/
-
-typedef void (*fe_keypress_f)(const char *keymap, const char *name);
 
 typedef struct frontend_config_s frontend_config_t;
 typedef struct frontend_s frontend_t;
@@ -80,7 +78,7 @@ struct frontend_s {
                          int winwidth, int winheight,
                          int fullscreen, int hud, int opengl,
                          int modeswitch, const char *modeline,
-                         int aspect, fe_keypress_f keypresshandler,
+                         int aspect,
                          int no_x_kbd, int gui_hotkeys,
                          const char *video_port,
                          int scale_video,
@@ -124,11 +122,18 @@ struct frontend_s {
   char *(*grab)(frontend_t*, int *size, int jpeg, int quality,
                 int width, int height);
 
-  /* events from frontend -> xine/vdr */
+  /* frontend services: events from frontend -> xine/vdr */
   int  (*send_event)(frontend_t *fe, const char *data);
   int  (*send_input_event)(frontend_t *fe,
                            const char *map, const char *key,
                            int repeat, int release);
+
+  /* Control messages frontend -> VDR (local mode)
+   * frontend should fill following pointers
+   */
+  void               *fe_message_h;
+  void              (*fe_message_cb)(void *, const char *keymap, const char *name);
+
 #if 0
   frontend_config_t config;
 #endif

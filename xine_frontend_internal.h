@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_internal.h,v 1.10 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: xine_frontend_internal.h,v 1.11 2012-03-19 11:51:21 phintuka Exp $
  *
  */
 
@@ -40,9 +40,6 @@ typedef struct fe_s {
 
   /* if set before xine_init(), will be called by video driver wrapper for each frame */
   void   (*frame_draw_cb)(void *, vo_frame_t *);
-
-  /* vdr callbacks */
-  fe_keypress_f       keypress;
 
   /* xine stuff */
   xine_t             *xine;

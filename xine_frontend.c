@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.125 2012-03-13 12:53:41 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.126 2012-03-19 11:51:21 phintuka Exp $
  *
  */
 
@@ -1153,8 +1153,8 @@ static void input_event_cb(frontend_t *this_gen, const char *keymap, const char 
 {
   fe_t *this = (fe_t*)this_gen;
 
-  if (this->keypress) {
-    this->keypress(keymap, key);
+  if (this->fe.fe_message_cb) {
+    this->fe.fe_message_cb(this->fe.fe_message_h, keymap, key);
   }
 }
 
@@ -1173,7 +1173,7 @@ static int fe_xine_play(frontend_t *this_gen)
   if(!find_input_plugin(this))
     return -1;
 
-  this->input_plugin->f.xine_input_event = this->keypress ? input_event_cb : NULL;
+  this->input_plugin->f.xine_input_event = this->fe.fe_message_cb ? input_event_cb : NULL;
   this->input_plugin->f.fe_control = fe_control;
   this->input_plugin->f.fe_handle  = this_gen;
 
@@ -1376,8 +1376,8 @@ static int fe_send_input_event(frontend_t *this_gen, const char *map,
     this->shutdown_time = time(NULL) + this->shutdown_timeout;
 
   /* local mode: --> vdr callback */
-  if(this->keypress) {
-    this->keypress(map, key);
+  if (this->fe.fe_message_cb) {
+    this->fe.fe_message_cb(this->fe.fe_message_h, map, key);
     return FE_OK;
   }
 
@@ -1444,8 +1444,8 @@ static int fe_send_event(frontend_t *this_gen, const char *data)
     LOGDBG("Event: %s", data);
 
     /* local mode: --> vdr callback */
-    if (this->keypress) {
-      this->keypress(data, NULL);
+    if (this->fe.fe_message_cb) {
+      this->fe.fe_message_cb(this->fe.fe_message_h, data, NULL);
       return FE_OK;
     }
 
