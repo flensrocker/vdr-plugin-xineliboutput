@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.91 2012-03-18 19:17:07 phintuka Exp $
+ * $Id: media_player.c,v 1.92 2012-03-19 11:07:52 phintuka Exp $
  *
  */
 
@@ -318,6 +318,7 @@ class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
 
   protected:
 
+    cXinelibDevice *m_Dev;
     cPlaylist& m_Playlist;
     bool       m_NeedsUpdate;
     bool&      m_RandomPlay;
@@ -325,7 +326,7 @@ class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
 
   public:
 
-    cPlaylistMenu(cPlaylist &Playlist, bool& RandomPlay);
+    cPlaylistMenu(cXinelibDevice *Dev, cPlaylist &Playlist, bool& RandomPlay);
     virtual ~cPlaylistMenu();
 
     void Set(bool setCurrentPlaying = false);
@@ -339,12 +340,13 @@ class cPlaylistMenu : public cOsdMenu, cPlaylistChangeNotify
     virtual void PlaylistChanged(const cPlaylistItem *item);
 };
 
-cPlaylistMenu::cPlaylistMenu(cPlaylist &Playlist, bool& RandomPlay) : 
+cPlaylistMenu::cPlaylistMenu(cXinelibDevice *Dev, cPlaylist &Playlist, bool& RandomPlay) :
      cOsdMenu(tr("Playlist")),
      m_Playlist(Playlist),
      m_RandomPlay(RandomPlay),
      m_IC("UTF-8", cCharSetConv::SystemCharacterTable())
 {
+  m_Dev = Dev;
   m_Marked = -1;
   SetTitle(cString::sprintf("%s: %s", tr("Playlist"), m_IC.Convert(*Playlist.Name())));
   Playlist.Listen(this);
@@ -396,7 +398,7 @@ eOSState cPlaylistMenu::ProcessKey(eKeys Key)
 	            SetHelpButtons();
 	            return osContinue;
       case kGreen:  
-                    return AddSubMenu(cMenuXinelib::CreateMenuBrowseFiles(&(cXinelibDevice::Instance()),ShowMusic));
+                    return AddSubMenu(cMenuXinelib::CreateMenuBrowseFiles(m_Dev, ShowMusic));
       case kYellow: if(m_Playlist.Count() > 1) {
 	              eOSState result = osContinue;
 	              cPlaylistItem *i = m_Playlist.Current();
@@ -485,10 +487,12 @@ class cXinelibPlayerControl : public cControl
   private:
     static cMutex m_Lock;
 
-    static cXinelibPlayer *OpenPlayer(const char *File, bool Queue = false, const char *SubFile = NULL);
+    static cXinelibPlayer *OpenPlayer(cXinelibDevice *Dev, const char *File, bool Queue = false, const char *SubFile = NULL);
 
  protected:
     static cXinelibPlayer *m_Player;
+
+    cXinelibDevice     *m_Dev;
 
     cSkinDisplayReplay *m_DisplayReplay;
     cPlaylistMenu      *m_PlaylistMenu;
@@ -508,7 +512,7 @@ class cXinelibPlayerControl : public cControl
     void MsgReplaying(const char *Title, const char *File);
 
   public:
-    cXinelibPlayerControl(eMainMenuMode Mode, const char *File, const char *SubFile = NULL);
+    cXinelibPlayerControl(cXinelibDevice *Dev, eMainMenuMode Mode, const char *File, const char *SubFile = NULL);
     virtual ~cXinelibPlayerControl();
 
     virtual void Show(void);
@@ -518,15 +522,16 @@ class cXinelibPlayerControl : public cControl
 
     static void Close(void);
     static bool IsOpen(void) { return m_Player != NULL; };
-    static void Queue(const char *File);
+    static void Queue(cXinelibDevice *Dev, const char *File);
 };
 
 cXinelibPlayer *cXinelibPlayerControl::m_Player = NULL;
 cMutex cXinelibPlayerControl::m_Lock;
 
-cXinelibPlayerControl::cXinelibPlayerControl(eMainMenuMode Mode, const char *File, const char *SubFile) :
-  cControl(OpenPlayer(File, false, SubFile))
+cXinelibPlayerControl::cXinelibPlayerControl(cXinelibDevice *Dev, eMainMenuMode Mode, const char *File, const char *SubFile) :
+    cControl(OpenPlayer(Dev, File, false, SubFile))
 {
+  m_Dev = Dev;
   m_DisplayReplay = NULL;
   m_PlaylistMenu = NULL;
   m_ShowModeOnly = true;
@@ -570,7 +575,7 @@ void cXinelibPlayerControl::MsgReplaying(const char *Title, const char *File)
     cStatus::MsgReplaying(this, Title, File, true);
 }
 
-void cXinelibPlayerControl::Queue(const char *File)
+void cXinelibPlayerControl::Queue(cXinelibDevice *Dev, const char *File)
 {
   if(!File)
     return;
@@ -580,8 +585,8 @@ void cXinelibPlayerControl::Queue(const char *File)
   LOGMSG("cXinelibPlayerControl::Queue(%s)", File);
 
   if(!m_Player) {
-    OpenPlayer(File, true);
-    cControl::Launch(new cXinelibPlayerControl(ShowMusic, NULL));
+    OpenPlayer(Dev, File, true);
+    cControl::Launch(new cXinelibPlayerControl(Dev, ShowMusic, NULL));
   } else {
     size_t len = strlen(File);
     if(len && File[len-1] == '/')
@@ -599,11 +604,11 @@ void cXinelibPlayerControl::Queue(const char *File)
 
 }
 
-cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(const char *File, bool Queue, const char *SubFile)
+cXinelibPlayer *cXinelibPlayerControl::OpenPlayer(cXinelibDevice *Dev, const char *File, bool Queue, const char *SubFile)
 {
   m_Lock.Lock();
   if(!m_Player)
-    m_Player = new cXinelibPlayer(&(cXinelibDevice::Instance()), File, Queue, SubFile);
+    m_Player = new cXinelibPlayer(Dev, File, Queue, SubFile);
   m_Lock.Unlock();
   return m_Player;
 }
@@ -731,7 +736,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
       // replay menu
       case kRed:    if(m_Player->Playlist().Count() > 1) {
                       Hide();
-                      m_PlaylistMenu = new cPlaylistMenu(m_Player->Playlist(), m_RandomPlay);
+                      m_PlaylistMenu = new cPlaylistMenu(m_Dev, m_Player->Playlist(), m_RandomPlay);
                       m_AutoShowStart = 0;
                     } else {
                       m_Player->Control("SEEK 0");    break;
@@ -772,7 +777,7 @@ eOSState cXinelibPlayerControl::ProcessKey(eKeys Key)
   if ( m_Mode == ShowMusic ) {
     switch(Key) {
       case kRed:    Hide();
-                    m_PlaylistMenu = new cPlaylistMenu(m_Player->Playlist(), m_RandomPlay);
+                    m_PlaylistMenu = new cPlaylistMenu(m_Dev, m_Player->Playlist(), m_RandomPlay);
                     m_AutoShowStart = 0;
                     break;
       case kNext:
@@ -970,8 +975,8 @@ class cXinelibDvdPlayerControl : public cXinelibPlayerControl
     void      CloseDvdMenu(void);
 
   public:
-    cXinelibDvdPlayerControl(const char *File) :
-      cXinelibPlayerControl(ShowFiles, File), m_DvdMenu(NULL)
+    cXinelibDvdPlayerControl(cXinelibDevice *Dev, const char *File) :
+      cXinelibPlayerControl(Dev, ShowFiles, File), m_DvdMenu(NULL)
       {}
     virtual ~cXinelibDvdPlayerControl();
 
@@ -1231,7 +1236,7 @@ class cXinelibBdPlayerControl : public cXinelibPlayerControl
     void     CloseBdMenu(void);
 
   public:
-    cXinelibBdPlayerControl(const char *File);
+    cXinelibBdPlayerControl(cXinelibDevice *Dev, const char *File);
     virtual ~cXinelibBdPlayerControl();
 
     virtual void Show(void);
@@ -1239,8 +1244,8 @@ class cXinelibBdPlayerControl : public cXinelibPlayerControl
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cXinelibBdPlayerControl::cXinelibBdPlayerControl(const char *File) :
-    cXinelibPlayerControl(ShowFiles, File), m_BdMenu(NULL)
+cXinelibBdPlayerControl::cXinelibBdPlayerControl(cXinelibDevice *Dev, const char *File) :
+  cXinelibPlayerControl(Dev, ShowFiles, File), m_BdMenu(NULL)
 {
 }
 
@@ -1521,14 +1526,14 @@ class cXinelibImagesControl : public cControl
     int m_LastShowTime;
     bool m_ShowModeOnly;
 
-    static cXinelibImagePlayer *OpenPlayer(const char *File);
+    static cXinelibImagePlayer *OpenPlayer(cXinelibDevice *Dev, const char *File);
 
   protected:
     void Seek(int Rel);
     void Delete(void);
 
   public:
-    cXinelibImagesControl(cPlaylist *Playlist);
+    cXinelibImagesControl(cXinelibDevice *Dev, cPlaylist *Playlist);
     virtual ~cXinelibImagesControl();
 
     virtual void Show(void);
@@ -1544,8 +1549,8 @@ class cXinelibImagesControl : public cControl
 cXinelibImagePlayer *cXinelibImagesControl::m_Player = NULL;
 cMutex cXinelibImagesControl::m_Lock;
 
-cXinelibImagesControl::cXinelibImagesControl(cPlaylist *Playlist) :
-  cControl(OpenPlayer(Playlist->Current()->Filename))
+cXinelibImagesControl::cXinelibImagesControl(cXinelibDevice *Dev, cPlaylist *Playlist) :
+  cControl(OpenPlayer(Dev, Playlist->Current()->Filename))
 {
   m_DisplayReplay = NULL;
   m_Playlist = Playlist;
@@ -1567,11 +1572,11 @@ cXinelibImagesControl::~cXinelibImagesControl()
   delete m_Playlist;
 }
 
-cXinelibImagePlayer *cXinelibImagesControl::OpenPlayer(const char *File)
+cXinelibImagePlayer *cXinelibImagesControl::OpenPlayer(cXinelibDevice *Dev, const char *File)
 {
   m_Lock.Lock();
   if(!m_Player)
-    m_Player = new cXinelibImagePlayer(&(cXinelibDevice::Instance()), File);
+    m_Player = new cXinelibImagePlayer(Dev, File);
   m_Lock.Unlock();
   return m_Player;
 }
@@ -1736,7 +1741,7 @@ cControl *CreateControl(cXinelibDevice *Dev,
 {
 
   if (PlayMode == pmVideoOnly) {
-    return new cXinelibImagesControl(Playlist);
+    return new cXinelibImagesControl(Dev, Playlist);
   }
 
   LOGMSG("cPlayerFactory::Create(cPlaylist*) not implemented for PlayMode %d !",
@@ -1754,25 +1759,25 @@ cControl *CreateControl(cXinelibDevice *Dev,
   // Special mrls
 
   if (!strncmp(Mrl, "dvd:/", 5))
-    return new cXinelibDvdPlayerControl(Mrl);
+    return new cXinelibDvdPlayerControl(Dev, Mrl);
   if (!strncmp(Mrl, "bluray:/", 8))
-    return new cXinelibBdPlayerControl(Mrl);
+    return new cXinelibBdPlayerControl(Dev, Mrl);
   if (!strncmp(Mrl, "bd:/", 4))
-    return new cXinelibBdPlayerControl(Mrl);
+    return new cXinelibBdPlayerControl(Dev, Mrl);
   if (!strncmp(Mrl, "cdda:/", 6))
-    return new cXinelibPlayerControl(ShowMusic, Mrl);
+    return new cXinelibPlayerControl(Dev, ShowMusic, Mrl);
 
   if (xc.IsDvdImage(Mrl))
-    return new cXinelibDvdPlayerControl(Mrl);
+    return new cXinelibDvdPlayerControl(Dev, Mrl);
 
   // Playmode
 
   if (PlayMode == pmAudioOnly)
-    return new cXinelibPlayerControl(ShowMusic, Mrl);
+    return new cXinelibPlayerControl(Dev, ShowMusic, Mrl);
   if (PlayMode == pmAudioVideo)
-    return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
+    return new cXinelibPlayerControl(Dev, ShowFiles, Mrl, SubFile);
   if (PlayMode == pmVideoOnly) {
-    return new cXinelibImagesControl(CreatePlaylist(Mrl));
+    return new cXinelibImagesControl(Dev, CreatePlaylist(Mrl));
   }
 
   // guess from playlist content
@@ -1784,35 +1789,35 @@ cControl *CreateControl(cXinelibDevice *Dev,
       return NULL;
 
     if (xc.IsAudioFile(Playlist.First()->Filename))
-      return new cXinelibPlayerControl(ShowMusic, Mrl);
+      return new cXinelibPlayerControl(Dev, ShowMusic, Mrl);
 
     if (xc.IsImageFile(Playlist.First()->Filename)) {
-      return new cXinelibImagesControl(CreatePlaylist(Mrl));
+      return new cXinelibImagesControl(Dev, CreatePlaylist(Mrl));
     }
 
-    return new cXinelibPlayerControl(ShowFiles, Mrl);
+    return new cXinelibPlayerControl(Dev, ShowFiles, Mrl);
   }
 
   // guess from file type
 
   if (xc.IsAudioFile(Mrl))
-    return new cXinelibPlayerControl(ShowMusic, Mrl);
+    return new cXinelibPlayerControl(Dev, ShowMusic, Mrl);
 
   if (xc.IsVideoFile(Mrl))
-    return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
+    return new cXinelibPlayerControl(Dev, ShowFiles, Mrl, SubFile);
 
   if (xc.IsImageFile(Mrl)) {
-    return new cXinelibImagesControl(CreatePlaylist(Mrl));
+    return new cXinelibImagesControl(Dev, CreatePlaylist(Mrl));
   }
 
   // default
 
-  return new cXinelibPlayerControl(ShowFiles, Mrl, SubFile);
+  return new cXinelibPlayerControl(Dev, ShowFiles, Mrl, SubFile);
 }
 
-void cPlayerFactory::Queue(const char *Mrl)
+void cPlayerFactory::Queue(cXinelibDevice *Dev, const char *Mrl)
 {
-  cXinelibPlayerControl::Queue(Mrl);
+  cXinelibPlayerControl::Queue(Dev, Mrl);
 }
 
 bool cPlayerFactory::IsOpen(void)
@@ -1820,12 +1825,12 @@ bool cPlayerFactory::IsOpen(void)
   return cXinelibPlayerControl::IsOpen();
 }
 
-bool cPlayerFactory::Launch(ePlayMode PlayMode,
+bool cPlayerFactory::Launch(cXinelibDevice *Dev,
+                            ePlayMode PlayMode,
                             const char *Mrl,
                             const char *SubFile,
                             bool BackToMenu)
 {
-  cXinelibDevice *Dev     = &(cXinelibDevice::Instance());
   cControl       *Control = CreateControl(Dev, PlayMode, Mrl, SubFile, BackToMenu);
 
   if (!Control) {
@@ -1839,11 +1844,11 @@ bool cPlayerFactory::Launch(ePlayMode PlayMode,
   return true;
 }
 
-bool cPlayerFactory::Launch(ePlayMode PlayMode,
+bool cPlayerFactory::Launch(cXinelibDevice *Dev,
+                            ePlayMode PlayMode,
                             cPlaylist *Playlist,
                             bool BackToMenu)
 {
-  cXinelibDevice *Dev     = &(cXinelibDevice::Instance());
   cControl       *Control = CreateControl(Dev, PlayMode, Playlist, BackToMenu);
 
   if (!Control) {

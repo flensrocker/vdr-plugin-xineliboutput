@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.h,v 1.23 2010-12-19 14:46:24 phintuka Exp $
+ * $Id: media_player.h,v 1.24 2012-03-19 11:07:52 phintuka Exp $
  *
  */
 
@@ -12,6 +12,7 @@
 #define __XINELIB_PLAYER_H
 
 class cPlaylist;
+class cXinelibDevice;
 
 class cPlayerFactory
 {
@@ -20,14 +21,14 @@ class cPlayerFactory
     // interact with current player
 
     static bool IsOpen(void);
-    static void Queue (const char *Mrl);
+    static void Queue (cXinelibDevice *Dev, const char *Mrl);
 
     // launch new media player
 
-    static bool Launch(const char *Mrl, const char *SubFile = NULL) { return Launch(pmNone, Mrl, SubFile); };
+    static bool Launch(cXinelibDevice *Dev, const char *Mrl, const char *SubFile = NULL) { return Launch(Dev, pmNone, Mrl, SubFile); };
 
-    static bool Launch(ePlayMode PlayMode, const char *Mrl, const char *SubFile = NULL, bool BackToMenu = false);
-    static bool Launch(ePlayMode PlayMode, cPlaylist *Playlist, bool BackToMenu = false);
+    static bool Launch(cXinelibDevice *Dev, ePlayMode PlayMode, const char *Mrl, const char *SubFile = NULL, bool BackToMenu = false);
+    static bool Launch(cXinelibDevice *Dev, ePlayMode PlayMode, cPlaylist *Playlist, bool BackToMenu = false);
 };
 
 #endif // __XINELIB_PLAYER_H

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.94 2012-03-18 19:17:07 phintuka Exp $
+ * $Id: menu.c,v 1.95 2012-03-19 11:07:52 phintuka Exp $
  *
  */
 
@@ -78,18 +78,21 @@ static bool BlurayMenuSupported(const cString& Path)
 class cMenuBluray : public cOsdMenu
 {
   private:
+    cXinelibDevice *m_Dev;
+
     cString m_Path;
 
   public:
-    cMenuBluray(const char *Path);
+    cMenuBluray(cXinelibDevice *Dev, const char *Path);
 
     virtual ~cMenuBluray() {};
 
     virtual eOSState ProcessKey(eKeys Key);
 };
 
-cMenuBluray::cMenuBluray(const char *Path) : cOsdMenu("BluRay")
+cMenuBluray::cMenuBluray(cXinelibDevice *Dev, const char *Path) : cOsdMenu("BluRay")
 {
+  m_Dev = Dev;
   m_Path = Path;
   Add(new cOsdItem(tr("Play movie title"), osUser1));
   Add(new cOsdItem(tr("Play disc"),        osUser2));
@@ -101,12 +104,12 @@ eOSState cMenuBluray::ProcessKey(eKeys Key)
   eOSState state = cOsdMenu::ProcessKey(Key);
   switch (state) {
     case osUser1:
-      cPlayerFactory::Launch(pmAudioVideo,
+      cPlayerFactory::Launch(m_Dev, pmAudioVideo,
                              cPlaylist::BuildMrl("bluray", *m_Path),
                              NULL, true);
       return osEnd;
     case osUser2:
-      cPlayerFactory::Launch(pmAudioVideo,
+      cPlayerFactory::Launch(m_Dev, pmAudioVideo,
                              cPlaylist::BuildMrl("bd", *m_Path),
                              NULL, true);
       return osEnd;
@@ -341,7 +344,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
 
     if (!ForceOpen && GetCurrent()->IsDvd()) {
       /* play dvd */
-      cPlayerFactory::Launch(pmAudioVideo,
+      cPlayerFactory::Launch(m_Dev, pmAudioVideo,
                              cPlaylist::BuildMrl("dvd", *m_CurrentDir, "/", GetCurrent()->Name()),
                              NULL, true);
       return osEnd;
@@ -349,11 +352,11 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
     if (!ForceOpen && GetCurrent()->IsBluRay()) {
       cString bd_path = cString::sprintf("%s/%s/", *m_CurrentDir, GetCurrent()->Name());
       if (BlurayMenuSupported(bd_path)) {
-        AddSubMenu(new cMenuBluray(bd_path));
+        AddSubMenu(new cMenuBluray(m_Dev, bd_path));
         return osContinue;
       }
       /* play BluRay disc/image */
-      cPlayerFactory::Launch(pmAudioVideo,
+      cPlayerFactory::Launch(m_Dev, pmAudioVideo,
                              cPlaylist::BuildMrl("bluray", *m_CurrentDir, "/", GetCurrent()->Name(), "/"),
                              NULL, true);
       return osEnd;
@@ -372,9 +375,9 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
         if (!Queue || !cPlayerFactory::IsOpen())
           cControl::Shutdown();
         if (Queue)
-          cPlayerFactory::Queue(f);
+          cPlayerFactory::Queue(m_Dev, f);
         else
-          cPlayerFactory::Launch(m_Mode == ShowFiles ? pmAudioVideo : pmAudioOnly, f, NULL, true);
+          cPlayerFactory::Launch(m_Dev, m_Mode == ShowFiles ? pmAudioVideo : pmAudioOnly, f, NULL, true);
         return Queue ? osContinue : osEnd;
 
       } else {
@@ -407,19 +410,19 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
       if (!Queue || !cPlayerFactory::IsOpen())
         cControl::Shutdown();
       if (Queue)
-        cPlayerFactory::Queue(f);
+        cPlayerFactory::Queue(m_Dev, f);
       if (!cPlayerFactory::IsOpen()) {
         if (Rewind)
           unlink(cString::sprintf("%s.resume", *f));
 
         if (GetCurrent()->IsBluRay()) {
-          AddSubMenu(new cMenuBluray(f));
+          AddSubMenu(new cMenuBluray(m_Dev, f));
           return osContinue;
         }
         if (GetCurrent()->IsDvd())
-          cPlayerFactory::Launch(pmAudioVideo, cPlaylist::BuildMrl("dvd", f), NULL, true);
+          cPlayerFactory::Launch(m_Dev, pmAudioVideo, cPlaylist::BuildMrl("dvd", f), NULL, true);
         else
-          cPlayerFactory::Launch(m_Mode == ShowFiles ? pmAudioVideo : pmAudioOnly,
+          cPlayerFactory::Launch(m_Dev, m_Mode == ShowFiles ? pmAudioVideo : pmAudioOnly,
                                  f, GetCurrent()->SubFile(), true);
       }
       if (Queue)
@@ -433,7 +436,7 @@ eOSState cMenuBrowseFiles::Open(bool ForceOpen, bool Queue, bool Rewind)
         if (it == Get(Current()))
           Playlist->SetCurrent(Playlist->Last());
       }
-      cPlayerFactory::Launch(pmVideoOnly, Playlist, true);
+      cPlayerFactory::Launch(m_Dev, pmVideoOnly, Playlist, true);
     }
     return osEnd;
   }
@@ -686,13 +689,13 @@ eOSState cMenuXinelib::ProcessKey(eKeys Key)
       AddSubMenu(new cMenuBrowseFiles(m_Dev, ShowImages));
       return osContinue;
     case osUser4:
-      cPlayerFactory::Launch("dvd:/");
+      cPlayerFactory::Launch(m_Dev, "dvd:/");
       return osEnd;
     case osUser5:
-      AddSubMenu(new cMenuBluray(NULL));
+      AddSubMenu(new cMenuBluray(m_Dev, NULL));
       return osContinue;
     case osUser6:
-      cPlayerFactory::Launch("cdda:/");
+      cPlayerFactory::Launch(m_Dev, "cdda:/");
       return osEnd;
     case osUser7:
       if (!xc.pending_menu_action) {
@@ -742,11 +745,11 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
 
   switch (Key) {
     case HOTKEY_DVD:
-      cPlayerFactory::Launch("dvd:/");
+      cPlayerFactory::Launch(m_Dev, "dvd:/");
       break;
 
     case HOTKEY_DVD_TRACK1:
-      cPlayerFactory::Launch("dvd:/1");
+      cPlayerFactory::Launch(m_Dev, "dvd:/1");
       break;
 
     case HOTKEY_LOCAL_FE:
@@ -897,7 +900,7 @@ eOSState cMenuXinelib::ProcessHotkey(eKeys Key)
                 Message = tr("Default playlist not found");
               } else {
                 LOGDBG("Replaying default playlist: %s", *file);
-                cPlayerFactory::Launch(buffer);
+                cPlayerFactory::Launch(m_Dev, buffer);
               }
             } else {
               Message = tr("Default playlist is not symlink");

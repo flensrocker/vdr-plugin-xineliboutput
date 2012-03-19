@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.53 2012-03-19 09:53:14 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.54 2012-03-19 11:07:52 phintuka Exp $
  *
  */
 
@@ -247,7 +247,7 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
     if(!strcmp(Id, "MediaPlayer-1.0")) {
       if(CData && *CData) {
         LOGMSG("Service(%s, %s)", Id, CData);
-        cPlayerFactory::Launch(pmAudioVideo, CData);
+        cPlayerFactory::Launch(m_Dev, pmAudioVideo, CData);
         return true;
       }
       LOGMSG("Service(%s) -> true", Id);
@@ -257,7 +257,7 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
     else if(!strcmp(Id, "MusicPlayer-1.0")) {
       if(CData && *CData) {
         LOGMSG("Service(%s, %s)", Id, CData);
-        cPlayerFactory::Launch(pmAudioOnly, CData);
+        cPlayerFactory::Launch(m_Dev, pmAudioOnly, CData);
         return true;
       }
       LOGMSG("Service(%s) -> true", Id);
@@ -267,7 +267,7 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
     else if(!strcmp(Id, "DvdPlayer-1.0")) {
       if(Data && *CData) {
         LOGMSG("Service(%s, %s)", Id, CData);
-        cPlayerFactory::Launch(pmNone, CData);
+        cPlayerFactory::Launch(m_Dev, pmNone, CData);
         return true;
       }
       LOGMSG("Service(%s) -> true", Id);
@@ -277,7 +277,7 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
     else if(!strcmp(Id, "ImagePlayer-1.0")) {
       if(CData && *CData) {
         LOGMSG("Service(%s, %s)", Id, CData);
-        cPlayerFactory::Launch(pmVideoOnly, CData);
+        cPlayerFactory::Launch(m_Dev, pmVideoOnly, CData);
         return true;
       }
       LOGMSG("Service(%s) -> true", Id);
@@ -290,7 +290,7 @@ bool cPluginXinelibOutput::Service(const char *Id, void *Data)
         int local_frontend = strstra(CData, xc.s_frontends, -1);
         if (local_frontend >= 0 && local_frontend < FRONTEND_count && strcmp(CData, xc.local_frontend)) {
           strn0cpy(xc.local_frontend, xc.s_frontends[local_frontend], sizeof(xc.local_frontend));
-          cXinelibDevice::Instance().ConfigureWindow(
+          m_Dev->ConfigureWindow(
                xc.fullscreen, xc.width, xc.height, xc.modeswitch, xc.modeline,
                xc.display_aspect, xc.scale_video);
         }
@@ -329,7 +329,7 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
   if(strcasecmp(Command, "PMDA") == 0) {
     if(*Option) {
       LOGMSG("SVDRP(%s, %s)", Command, Option);
-      cPlayerFactory::Launch(pmAudioVideo, Option);
+      cPlayerFactory::Launch(m_Dev, pmAudioVideo, Option);
       return cString("Playing video file");
     } else {
       ReplyCode = 550; // Requested action not taken
@@ -340,9 +340,9 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
   else if(strcasecmp(Command, "PDVD") == 0) {
     if(*Option) {
       LOGMSG("SVDRP(%s, %s)", Command, Option);
-      cPlayerFactory::Launch(pmNone, Option);
+      cPlayerFactory::Launch(m_Dev, pmNone, Option);
     } else {
-      cPlayerFactory::Launch(pmNone, "dvd:/");
+      cPlayerFactory::Launch(m_Dev, pmNone, "dvd:/");
     }
     return cString("Playing DVD disc");
   }
@@ -350,7 +350,7 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
   else if(strcasecmp(Command, "PMSC") == 0) {
     if(*Option) {
       LOGMSG("SVDRP(%s, %s)", Command, Option);
-      cPlayerFactory::Launch(pmAudioOnly, Option);
+      cPlayerFactory::Launch(m_Dev, pmAudioOnly, Option);
       return cString("Playing music file");
     } else {
       ReplyCode = 550; // Requested action not taken
@@ -361,7 +361,7 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
   else if(strcasecmp(Command, "PIMG") == 0) {
     if(*Option) {
       LOGMSG("SVDRP(%s, %s)", Command, Option);
-      cPlayerFactory::Launch(pmVideoOnly, Option);
+      cPlayerFactory::Launch(m_Dev, pmVideoOnly, Option);
       return cString("Showing image file");
     } else {
       ReplyCode = 550; // Requested action not taken
@@ -372,7 +372,7 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
   else if(strcasecmp(Command, "QMSC") == 0) {
     if(*Option) {
       LOGMSG("SVDRP(%s, %s)", Command, Option);
-      cPlayerFactory::Queue(Option);
+      cPlayerFactory::Queue(m_Dev, Option);
       return cString("Queueing music file");
     } else {
       ReplyCode = 550; // Requested action not taken
