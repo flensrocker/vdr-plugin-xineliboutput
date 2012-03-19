@@ -4,14 +4,12 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.h,v 1.9 2012-03-18 19:17:07 phintuka Exp $
+ * $Id: menu.h,v 1.10 2012-03-19 11:21:33 phintuka Exp $
  *
  */
 
 #ifndef __XINELIB_MENU_H
 #define __XINELIB_MENU_H
-
-#include "features.h"
 
 #include <vdr/menuitems.h>
 
@@ -33,9 +31,6 @@ class cMenuXinelib : public cMenuSetupPage
     static eKeys  g_LastHotkey;
     virtual eOSState ProcessHotkey(eKeys Key);
 
-#ifdef HAVE_XV_FIELD_ORDER
-    cOsdItem *video_ctrl_interlace_order;
-#endif
     cOsdItem *audio_ctrl_compress;
 
     cOsdItem *ctrl_autocrop;
