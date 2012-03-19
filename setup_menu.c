@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: setup_menu.c,v 1.86 2012-03-13 13:05:14 phintuka Exp $
+ * $Id: setup_menu.c,v 1.87 2012-03-19 09:50:33 phintuka Exp $
  *
  */
 
@@ -36,13 +36,13 @@ namespace XinelibOutputSetupMenu {
 
 //--- Setup Menu -------------------------------------------------------------
 
-const char *ModeLineChars = 
+const char ModeLineChars[] =
   " 0123456789+-hvsync.";
-const char *DriverNameChars = 
+const char DriverNameChars[] =
   " abcdefghijklmnopqrstuvwxyz0123456789-.,#~:;";
-const char *OptionsChars = 
+const char OptionsChars[] =
   "=.,abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const char *LangNameChars = 
+const char LangNameChars[] =
   "abcdefghijklmnopqrstuvwxyz";
 
 const char *controls[] =
