@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.59 2012-03-19 11:51:22 phintuka Exp $
+ * $Id: frontend_local.c,v 1.60 2012-03-19 11:57:18 phintuka Exp $
  *
  */
 
@@ -51,21 +51,26 @@ class cRwLockBlock
 //----------------- keyboard control handler (C callback) --------------------
 
 extern "C" {
-  static void keypress_handler(void *h, const char *keymap, const char *key)
+  static void keypress_handler(void *handle, const char *keymap, const char *key)
   {
-    if(!strncmp("INFO ", keymap, 5)) {
-      
-      cXinelibThread::InfoHandler(keymap+5);
+    if (!handle) {
+      LOGMSG("keypress_handler(): missing handle");
+      return;
+    }
 
-    } else if(!xc.use_x_keyboard || !key) {
+    cXinelibThread *t = (cXinelibThread *)handle;
+
+    if (!strncmp("INFO ", keymap, 5)) {
+      t->InfoHandler(keymap+5);
+
+    } else if (!xc.use_x_keyboard || !key) {
 
       /* Only X11 key events came this way in local mode.
 	 Keyboard is handled by vdr. */
       LOGMSG("keypress_handler(%s): X11 Keyboard disabled in config", key);
 
     } else {
-
-      cXinelibThread::KeypressHandler(keymap, key, false, false);
+      t->KeypressHandler(keymap, key, false, false);
 
     }
   }

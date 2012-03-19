@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.h,v 1.44 2012-03-17 20:19:27 phintuka Exp $
+ * $Id: frontend.h,v 1.45 2012-03-19 11:57:18 phintuka Exp $
  *
  */
 
@@ -106,9 +106,9 @@ class cXinelibThread : public cThread, public cListObject
 			     int SizeX, int SizeY) { return NULL; }
 
     // Control from frontend
-    static void KeypressHandler(const char *keymap, const char *key, 
-				bool repeat, bool release);
-    static void InfoHandler(const char *info);
+    void KeypressHandler(const char *keymap, const char *key,
+                         bool repeat, bool release);
+    void InfoHandler(const char *info);
 
   //
   // Configuration

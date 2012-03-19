@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend.c,v 1.100 2012-03-18 12:19:15 phintuka Exp $
+ * $Id: frontend.c,v 1.101 2012-03-19 11:57:18 phintuka Exp $
  *
  */
 
@@ -142,22 +142,22 @@ void cXinelibThread::InfoHandler(const char *info)
 	char *lang = map;
 	while(*map && *map != ' ') map++;
 	if(*map == ' ') { *map = 0; map++; };
-	cXinelibDevice::Instance().SetAvailableTrack(ttSubtitle, id, id+1, iso639_1_to_iso639_2(lang) ?: *cString::sprintf("%03d", id+1));
+	m_Dev->SetAvailableTrack(ttSubtitle, id, id+1, iso639_1_to_iso639_2(lang) ?: *cString::sprintf("%03d", id+1));
 	if (Current)
 	  CurrentTrack = id;
       }
     }
     if (CurrentTrack == ttXSubtitleAuto)
-      cXinelibDevice::Instance().EnsureSubtitleTrack();
+      m_Dev->EnsureSubtitleTrack();
     else if (CurrentTrack == ttXSubtitleNone)
-      cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttNone, true);
+      m_Dev->SetCurrentSubtitleTrack(ttNone, true);
     else
-      cXinelibDevice::Instance().SetCurrentSubtitleTrack(eTrackType(CurrentTrack+ttSubtitleFirst), true);
+      m_Dev->SetCurrentSubtitleTrack(eTrackType(CurrentTrack+ttSubtitleFirst), true);
   }
 
   else if(!strncmp(info, "TRACKMAP AUDIO", 14)) {
     map += 14;
-    cXinelibDevice::Instance().ClrAvailableTracks();
+    m_Dev->ClrAvailableTracks();
     while(*map) {
       bool Current = false;
       while(*map == ' ') map++;
@@ -171,9 +171,9 @@ void cXinelibThread::InfoHandler(const char *info)
       char *lang = map;
       while(*map && *map != ' ') map++;
       if(*map == ' ') { *map = 0; map++; };
-      cXinelibDevice::Instance().SetAvailableTrack(ttDolby, id, ttDolby+id, iso639_1_to_iso639_2(lang) ?: *cString::sprintf("%03d", id+1));
+      m_Dev->SetAvailableTrack(ttDolby, id, ttDolby+id, iso639_1_to_iso639_2(lang) ?: *cString::sprintf("%03d", id+1));
       if(Current)
-	cXinelibDevice::Instance().SetCurrentAudioTrack((eTrackType)(ttDolby+id));
+	m_Dev->SetCurrentAudioTrack((eTrackType)(ttDolby+id));
     }
   }
 
@@ -192,13 +192,13 @@ void cXinelibThread::InfoHandler(const char *info)
       *end = 0;
 
       if(!strcmp(map, "title"))
-	cXinelibDevice::Instance().SetMetaInfo(miTitle, next);
+	m_Dev->SetMetaInfo(miTitle, next);
       if(!strcmp(map, "tracknumber"))
-        cXinelibDevice::Instance().SetMetaInfo(miTracknumber, next);
+        m_Dev->SetMetaInfo(miTracknumber, next);
       if(!strcmp(map, "album"))
-	cXinelibDevice::Instance().SetMetaInfo(miAlbum, next);
+	m_Dev->SetMetaInfo(miAlbum, next);
       if(!strcmp(map, "artist"))
-	cXinelibDevice::Instance().SetMetaInfo(miArtist, next);
+	m_Dev->SetMetaInfo(miArtist, next);
       map = end+1;
     }
   }
@@ -206,21 +206,21 @@ void cXinelibThread::InfoHandler(const char *info)
   else if(!strncmp(info, "DVDBUTTONS ", 11)) {
     map += 11;
     while(*map == ' ') map++;
-    cXinelibDevice::Instance().SetMetaInfo(miDvdButtons, map);
+    m_Dev->SetMetaInfo(miDvdButtons, map);
   }
 
   else if(!strncmp(info, "TITLE ", 6)) {
     map += 6;
     while(*map == ' ') map++;
-    cXinelibDevice::Instance().SetMetaInfo(miTitle, map);
+    m_Dev->SetMetaInfo(miTitle, map);
   }
 
   else if(!strncmp(info, "DVDTITLE ", 9)) {
     map += 9;
     while(*map == ' ') map++;
-    cXinelibDevice::Instance().SetMetaInfo(miDvdTitleNo, map);
+    m_Dev->SetMetaInfo(miDvdTitleNo, map);
     if (*map == '0')  // DVD Menu, set spu track to 0
-      cXinelibDevice::Instance().SetCurrentSubtitleTrack(ttSubtitleFirst);
+      m_Dev->SetCurrentSubtitleTrack(ttSubtitleFirst);
   }
 
   else if (!strncmp(info, "WINDOW ", 7)) {
