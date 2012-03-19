@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.89 2012-03-19 11:29:14 phintuka Exp $
+ * $Id: config.h,v 1.90 2012-03-19 11:38:43 phintuka Exp $
  *
  */
 
@@ -464,15 +464,18 @@ class config_t {
     cString UnsharpOptions(void);
     cString Denoise3dOptions(void);
 
+#if 0
     template<typename T> bool IsOptionHidden(T & option)
       { return hidden_options[(int)((long int)&option - (long int)this)];};
     template<typename T> bool IsOptionReadOnly(T & option)
       { return readonly_options[(int)((long int)&option - (long int)this)];};
+#endif
 
   protected:
     bool ProcessArg(const char *Name, const char *Value);
     static cString m_ProcessedArgs;
 
+#if 0
     static uint8_t *hidden_options;
     static uint8_t *readonly_options;
 
@@ -480,6 +483,7 @@ class config_t {
       { hidden_options[(int)((long int)&option - (long int)this)] = 1;};
     template<typename T> void ReadOnlyOption(T & option)
       { readonly_options[(int)((long int)&option - (long int)this)] = 1;};
+#endif
 };
 
 // Global instance

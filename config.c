@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.114 2012-03-19 11:29:14 phintuka Exp $
+ * $Id: config.c,v 1.115 2012-03-19 11:38:43 phintuka Exp $
  *
  */
 
@@ -718,10 +718,12 @@ config_t::config_t() {
   force_primary_device = 0;
 };
 
+#if 0
 static uint8_t g_hidden_options[sizeof(config_t)] = {0};
 static uint8_t g_readonly_options[sizeof(config_t)] = {0};
 uint8_t *config_t::hidden_options   = &g_hidden_options[0];
 uint8_t *config_t::readonly_options = &g_readonly_options[0];
+#endif
 
 cString config_t::m_ProcessedArgs;
 bool config_t::ProcessArg(const char *Name, const char *Value)
