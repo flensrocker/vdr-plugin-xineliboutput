@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: adjustable_scr.c,v 1.2 2008-12-14 01:21:20 phintuka Exp $
+ * $Id: adjustable_scr.c,v 1.3 2012-03-20 07:58:23 phintuka Exp $
  *
  */
 
@@ -59,8 +59,6 @@ struct scr_impl_s {
   double           speed_tuning;
 
   pthread_mutex_t  lock;
-
-  struct timeval   last_time;
 };
 
 /* Only call set_pivot when already mutex locked ! */
@@ -82,11 +80,6 @@ static void set_pivot (scr_impl_t *this)
   this->cur_time.tv_sec=tv.tv_sec;
   this->cur_time.tv_usec=tv.tv_usec;
   this->cur_pts=pts;
-
-  this->last_time.tv_sec  = tv.tv_sec;
-  this->last_time.tv_usec = tv.tv_usec;
-
-  return ;
 }
 
 /*
@@ -127,9 +120,6 @@ static void scr_adjust (scr_plugin_t *scr, int64_t vpts)
   this->cur_time.tv_usec=tv.tv_usec;
   this->cur_pts = vpts;
 
-  this->last_time.tv_sec  = tv.tv_sec;
-  this->last_time.tv_usec = tv.tv_usec;
-
   pthread_mutex_unlock (&this->lock);
 }
 
@@ -141,9 +131,6 @@ static void scr_start (scr_plugin_t *scr, int64_t start_vpts)
 
   xine_monotonic_clock(&this->cur_time, NULL);
   this->cur_pts = start_vpts;
-
-  this->last_time.tv_sec  = this->cur_time.tv_sec;
-  this->last_time.tv_usec = this->cur_time.tv_usec;
 
   pthread_mutex_unlock (&this->lock);
 
@@ -165,9 +152,6 @@ static int64_t scr_get_current (scr_plugin_t *scr)
   pts_calc += (tv.tv_usec - this->cur_time.tv_usec) * this->speed_factor / 1e6;
 
   pts = this->cur_pts + pts_calc;
-
-  this->last_time.tv_sec  = tv.tv_sec;
-  this->last_time.tv_usec = tv.tv_usec;
 
   pthread_mutex_unlock (&this->lock);
 
