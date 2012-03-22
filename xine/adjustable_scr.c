@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: adjustable_scr.c,v 1.3 2012-03-20 07:58:23 phintuka Exp $
+ * $Id: adjustable_scr.c,v 1.4 2012-03-22 11:30:02 phintuka Exp $
  *
  */
 
@@ -12,6 +12,12 @@
 #include <xine/xine_internal.h>
 #include <xine/xineutils.h>
 #include <xine/metronom.h>
+
+#include "../tools/time_ms.h"
+
+#define LOG_MODULENAME "[scr      ] "
+#define SysLogLevel    iSysLogLevel
+#include "../logdefs.h"
 
 #include "adjustable_scr.h"
 
@@ -58,6 +64,9 @@ struct scr_impl_s {
   double           speed_factor;
   double           speed_tuning;
 
+  int              buffering; /* clock is freezed while buffering */
+  uint64_t         buffering_start_time;
+
   pthread_mutex_t  lock;
 };
 
@@ -67,6 +76,11 @@ static void set_pivot (scr_impl_t *this)
   struct   timeval tv;
   int64_t pts;
   double   pts_calc;
+
+  if (this->buffering) {
+    xine_monotonic_clock(&this->cur_time, NULL);
+    return;
+  }
 
   xine_monotonic_clock(&tv,NULL);
 
@@ -144,14 +158,22 @@ static int64_t scr_get_current (scr_plugin_t *scr)
   struct   timeval tv;
   int64_t pts;
   double   pts_calc;
+
   pthread_mutex_lock (&this->lock);
+
+  pts = this->cur_pts;
+
+  if (this->buffering) {
+    pthread_mutex_unlock (&this->lock);
+    return pts;
+  }
 
   xine_monotonic_clock(&tv,NULL);
 
   pts_calc = (tv.tv_sec  - this->cur_time.tv_sec) * this->speed_factor;
   pts_calc += (tv.tv_usec - this->cur_time.tv_usec) * this->speed_factor / 1e6;
 
-  pts = this->cur_pts + pts_calc;
+  pts += pts_calc;
 
   pthread_mutex_unlock (&this->lock);
 
@@ -228,6 +250,34 @@ static void adjustable_scr_jump (adjustable_scr_t *scr, int pts)
 }
 
 /*
+ *
+ */
+static void adjustable_scr_set_buffering (adjustable_scr_t *scr, int buffering)
+{
+  scr_impl_t *this = (scr_impl_t*) scr;
+
+  pthread_mutex_lock (&this->lock);
+
+  if (buffering) {
+    if (!this->buffering) {
+      set_pivot( this );
+      this->buffering = 1;
+      this->buffering_start_time = time_ms();
+      LOGMSG("start buffering at %"PRId64, this->cur_pts);
+    }
+  } else {
+    if (this->buffering) {
+      set_pivot( this );
+      this->buffering = 0;
+      LOGMSG("stop buffering at %"PRId64" (buffering took %"PRIu64" ms)",
+	     this->cur_pts, elapsed(this->buffering_start_time));
+    }
+  }
+
+  pthread_mutex_unlock (&this->lock);
+}
+
+/*
  * dispose()
  *
  * - unregister, stop and free resources
@@ -267,6 +317,7 @@ adjustable_scr_t* adjustable_scr_start (xine_t *xine)
   this->ascr.set_speed_tuning = adjustable_scr_speed_tuning;
   this->ascr.set_speed_base   = adjustable_scr_speed_base;
   this->ascr.jump             = adjustable_scr_jump;
+  this->ascr.set_buffering    = adjustable_scr_set_buffering;
   this->ascr.dispose          = adjustable_scr_dispose;
 
   /* initialize */

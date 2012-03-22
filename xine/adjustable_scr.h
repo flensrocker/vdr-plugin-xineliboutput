@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: adjustable_scr.h,v 1.1 2008-12-03 22:50:04 phintuka Exp $
+ * $Id: adjustable_scr.h,v 1.2 2012-03-22 11:30:02 phintuka Exp $
  *
  */
 
@@ -27,6 +27,8 @@ struct adjustable_scr_s {
   void (*set_speed_tuning)(adjustable_scr_t *this, double factor);
   void (*set_speed_base)  (adjustable_scr_t *this, int hz);
   void (*jump)            (adjustable_scr_t *this, int pts);
+
+  void (*set_buffering)   (adjustable_scr_t *this, int on);
 
   void (*dispose)         (adjustable_scr_t *this);
 };
