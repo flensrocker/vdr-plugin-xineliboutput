@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.357 2012-03-22 11:30:01 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.358 2012-03-22 12:03:37 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.357 2012-03-22 11:30:01 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.358 2012-03-22 12:03:37 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -4810,6 +4810,28 @@ static buf_element_t *preprocess_buf(vdr_input_plugin_t *this, buf_element_t *bu
     pthread_mutex_unlock (&this->stream->first_frame_lock);
 
     memset(&this->scr_buf, 0, sizeof(this->scr_buf));
+
+    this->scr->got_pcr(this->scr, -1);
+  }
+
+  /* live mode clock sync input */
+  if (this->live_mode || (this->fd_control >= 0 && !this->fixed_scr)) {
+    int64_t pcr = -1;
+
+    if (DATA_IS_TS(buf->content) &&
+	ts_get_pcr_n(buf->content, buf->size / TS_SIZE, &pcr) &&
+	pcr >= 0) {
+
+      this->scr->got_pcr(this->scr, pcr);
+    }
+
+    /* PES stream has no PCR, use audio pts for vdr-1.6.0 compability */
+    if (IS_AUDIO_PACKET(buf->content)) {
+      pcr = pes_get_pts(buf->content, buf->size);
+      if (pcr > 0) {
+        this->scr->got_pcr(this->scr, pcr);
+      }
+    }
   }
 
   pthread_mutex_unlock(&this->lock);
