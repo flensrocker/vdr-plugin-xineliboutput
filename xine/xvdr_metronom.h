@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.8 2011-10-25 06:36:04 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.9 2012-03-22 12:18:51 phintuka Exp $
  *
  */
 
@@ -12,10 +12,11 @@
 #define XVDR_METRONOM_H
 
 
-#define XVDR_METRONOM_LAST_VO_PTS  0x1001
-#define XVDR_METRONOM_TRICK_SPEED  0x1002
-#define XVDR_METRONOM_STILL_MODE   0x1003
-#define XVDR_METRONOM_ID           0x1004
+#define XVDR_METRONOM_OPTION_BASE  0x1001
+#define XVDR_METRONOM_LAST_VO_PTS  (XVDR_METRONOM_OPTION_BASE)
+#define XVDR_METRONOM_TRICK_SPEED  (XVDR_METRONOM_OPTION_BASE + 1)
+#define XVDR_METRONOM_STILL_MODE   (XVDR_METRONOM_OPTION_BASE + 2)
+#define XVDR_METRONOM_ID           (XVDR_METRONOM_OPTION_BASE + 3)
 
 
 typedef struct xvdr_metronom_s xvdr_metronom_t;
