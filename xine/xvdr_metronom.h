@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.9 2012-03-22 12:18:51 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.10 2012-03-23 18:36:29 phintuka Exp $
  *
  */
 
@@ -31,9 +31,6 @@ struct xvdr_metronom_s {
                        void *);
   void (*reset_frames)(xvdr_metronom_t *);
   void (*dispose)     (xvdr_metronom_t *);
-
-  void (*set_trickspeed)(xvdr_metronom_t *, int);
-  void (*set_still_mode)(xvdr_metronom_t *, int);
 
   void (*wire)          (xvdr_metronom_t *);
   void (*unwire)        (xvdr_metronom_t *);

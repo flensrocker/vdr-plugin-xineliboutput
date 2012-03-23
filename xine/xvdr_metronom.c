@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.17 2012-03-07 07:56:02 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.18 2012-03-23 18:36:29 phintuka Exp $
  *
  */
 
@@ -109,6 +109,16 @@ static void set_option(metronom_t *metronom, int option, int64_t value)
     return;
   }
 
+  if (option == XVDR_METRONOM_TRICK_SPEED) {
+    this->trickspeed = value;
+    return;
+  }
+
+  if (option == XVDR_METRONOM_STILL_MODE) {
+    this->still_mode = value;
+    return;
+  }
+
   this->orig_metronom->set_option(this->orig_metronom, option, value);
 }
 
@@ -177,16 +187,6 @@ static void xvdr_metronom_reset_frames(xvdr_metronom_t *this)
   this->video_frames = this->audio_frames = 0;
 }
 
-static void xvdr_metronom_set_trickspeed(xvdr_metronom_t *this, int trickspeed)
-{
-  this->trickspeed = trickspeed;
-}
-
-static void xvdr_metronom_set_still_mode(xvdr_metronom_t *this, int still_mode)
-{
-  this->still_mode = still_mode;
-}
-
 static void xvdr_metronom_wire(xvdr_metronom_t *this)
 {
   if (!this->stream) {
@@ -244,8 +244,6 @@ xvdr_metronom_t *xvdr_metronom_init(xine_stream_t *stream)
 
   this->set_cb         = xvdr_metronom_set_cb;
   this->reset_frames   = xvdr_metronom_reset_frames;
-  this->set_trickspeed = xvdr_metronom_set_trickspeed;
-  this->set_still_mode = xvdr_metronom_set_still_mode;
   this->wire           = xvdr_metronom_wire;
   this->unwire         = xvdr_metronom_unwire;
   this->dispose        = xvdr_metronom_dispose;
