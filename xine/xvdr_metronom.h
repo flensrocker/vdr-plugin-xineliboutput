@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.10 2012-03-23 18:36:29 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.11 2012-03-23 18:43:27 phintuka Exp $
  *
  */
 
@@ -26,18 +26,10 @@ struct xvdr_metronom_s {
   metronom_t     metronom;
 
   /* management interface */
-  void (*set_cb)      (xvdr_metronom_t *,
-                       void (*cb) (void *, uint, uint),
-                       void *);
-  void (*reset_frames)(xvdr_metronom_t *);
   void (*dispose)     (xvdr_metronom_t *);
 
   void (*wire)          (xvdr_metronom_t *);
   void (*unwire)        (xvdr_metronom_t *);
-
-  /* accumulated frame data */
-  volatile uint video_frames;
-  volatile uint audio_frames;
 
   /* private data */
 
@@ -46,10 +38,6 @@ struct xvdr_metronom_s {
   /* original metronom */
   metronom_t    *orig_metronom;
   xine_stream_t *stream;
-
-  /* callback */
-  void *handle;
-  void (*frame_decoded)(void *handle, uint video_count, uint audio_count);
 
   int     trickspeed;    /* current trick speed */
   int     still_mode;

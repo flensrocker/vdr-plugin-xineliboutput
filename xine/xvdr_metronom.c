@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.18 2012-03-23 18:36:29 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.19 2012-03-23 18:43:27 phintuka Exp $
  *
  */
 
@@ -36,11 +36,6 @@ static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
   warnings = 0;
 #endif
 
-  this->video_frames++;
-
-  if (this->frame_decoded)
-    this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
-
   if (this->still_mode) {
     LOGVERBOSE("Still frame, type %d", frame->picture_coding_type);
     frame->pts       = 0;
@@ -59,11 +54,6 @@ static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
 static int64_t got_audio_samples(metronom_t *metronom, int64_t pts, int nsamples)
 {
   xvdr_metronom_t *this = (xvdr_metronom_t *)metronom;
-
-  this->audio_frames++;
-
-  if (this->frame_decoded)
-    this->frame_decoded(this->handle, this->video_frames, this->audio_frames);
 
   return this->orig_metronom->got_audio_samples (this->orig_metronom, pts, nsamples);
 }
@@ -174,19 +164,6 @@ static void metronom_exit(metronom_t *metronom)
  * xvdr_metronom_t
  */
 
-static void xvdr_metronom_set_cb(xvdr_metronom_t *this,
-                                 void (*cb)(void*, uint, uint),
-                                 void *handle)
-{
-  this->handle = handle;
-  this->frame_decoded = cb;
-}
-
-static void xvdr_metronom_reset_frames(xvdr_metronom_t *this)
-{
-  this->video_frames = this->audio_frames = 0;
-}
-
 static void xvdr_metronom_wire(xvdr_metronom_t *this)
 {
   if (!this->stream) {
@@ -242,8 +219,6 @@ xvdr_metronom_t *xvdr_metronom_init(xine_stream_t *stream)
   this->stream        = stream;
   this->orig_metronom = stream->metronom;
 
-  this->set_cb         = xvdr_metronom_set_cb;
-  this->reset_frames   = xvdr_metronom_reset_frames;
   this->wire           = xvdr_metronom_wire;
   this->unwire         = xvdr_metronom_unwire;
   this->dispose        = xvdr_metronom_dispose;
