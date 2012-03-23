@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.c,v 1.19 2012-03-23 18:43:27 phintuka Exp $
+ * $Id: xvdr_metronom.c,v 1.20 2012-03-23 18:47:38 phintuka Exp $
  *
  */
 
@@ -92,9 +92,9 @@ static void set_option(metronom_t *metronom, int option, int64_t value)
 
   if (option == XVDR_METRONOM_LAST_VO_PTS) {
     if (value > 0) {
-      pthread_mutex_lock(&this->pts_mutex);
+      pthread_mutex_lock(&this->mutex);
       this->last_vo_pts = value;
-      pthread_mutex_unlock(&this->pts_mutex);
+      pthread_mutex_unlock(&this->mutex);
     }
     return;
   }
@@ -118,9 +118,9 @@ static int64_t get_option(metronom_t *metronom, int option)
 
   if (option == XVDR_METRONOM_LAST_VO_PTS) {
     int64_t pts;
-    pthread_mutex_lock(&this->pts_mutex);
+    pthread_mutex_lock(&this->mutex);
     pts = this->last_vo_pts;
-    pthread_mutex_unlock(&this->pts_mutex);
+    pthread_mutex_unlock(&this->mutex);
     return pts;
   }
   if (option == XVDR_METRONOM_TRICK_SPEED) {
@@ -198,7 +198,7 @@ static void xvdr_metronom_dispose(xvdr_metronom_t *this)
 {
   xvdr_metronom_unwire(this);
 
-  pthread_mutex_destroy(&this->pts_mutex);
+  pthread_mutex_destroy(&this->mutex);
 
   free(this);
 }
@@ -235,7 +235,7 @@ xvdr_metronom_t *xvdr_metronom_init(xine_stream_t *stream)
 
   this->metronom.exit = metronom_exit;
 
-  pthread_mutex_init(&this->pts_mutex, NULL);
+  pthread_mutex_init(&this->mutex, NULL);
 
   xvdr_metronom_wire(this);
 
