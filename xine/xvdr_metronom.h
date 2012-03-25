@@ -4,13 +4,18 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.12 2012-03-23 18:47:38 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.13 2012-03-25 18:41:53 phintuka Exp $
  *
  */
 
 #ifndef XVDR_METRONOM_H
 #define XVDR_METRONOM_H
 
+#include <xine/metronom.h>
+
+#ifdef METRONOM_INTERNAL
+#  error METRONOM_INTERNAL defined, struct xvdr_metronom_s size will be incorrect
+#endif
 
 #define XVDR_METRONOM_OPTION_BASE  0x1001
 #define XVDR_METRONOM_LAST_VO_PTS  (XVDR_METRONOM_OPTION_BASE)
