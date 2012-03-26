@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xvdr_metronom.h,v 1.13 2012-03-25 18:41:53 phintuka Exp $
+ * $Id: xvdr_metronom.h,v 1.14 2012-03-26 18:49:34 phintuka Exp $
  *
  */
 
@@ -23,8 +23,13 @@
 #define XVDR_METRONOM_STILL_MODE   (XVDR_METRONOM_OPTION_BASE + 2)
 #define XVDR_METRONOM_ID           (XVDR_METRONOM_OPTION_BASE + 3)
 
+#define XVDR_METRONOM_LIVE_BUFFERING   (XVDR_METRONOM_OPTION_BASE + 4)
+#define XVDR_METRONOM_STREAM_START     (XVDR_METRONOM_OPTION_BASE + 5)
+
 
 typedef struct xvdr_metronom_s xvdr_metronom_t;
+
+struct adjustable_scr_s;
 
 struct xvdr_metronom_s {
   /* xine-lib metronom interface */
@@ -35,6 +40,9 @@ struct xvdr_metronom_s {
 
   void (*wire)          (xvdr_metronom_t *);
   void (*unwire)        (xvdr_metronom_t *);
+
+  /* master SCR for buffering control */
+  struct adjustable_scr_s *scr;
 
   /* private data */
 
@@ -48,6 +56,16 @@ struct xvdr_metronom_s {
   int     still_mode;
   int64_t last_vo_pts;   /* last displayed video frame PTS */
   int     wired;         /* true if currently wired to stream */
+
+  /* initial buffering in live mode */
+  uint8_t  buffering;      /* buffering active */
+  uint8_t  live_buffering; /* live buffering enabled */
+  uint8_t  stream_start;
+  int64_t  vid_pts;        /* last seen video pts */
+  int64_t  aud_pts;        /* last seen audio pts */
+  int64_t  disc_pts;       /* reported discontinuity pts */
+  uint64_t buffering_start_time;
+  uint64_t first_frame_seen_time;
 
   pthread_mutex_t mutex;
 #endif
