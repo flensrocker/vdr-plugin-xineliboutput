@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.360 2012-03-27 12:01:49 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.361 2012-03-27 12:02:50 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.360 2012-03-27 12:01:49 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.361 2012-03-27 12:02:50 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -5259,7 +5259,7 @@ static int vdr_plugin_open(input_plugin_t *this_gen)
   e = this->class->xine->config->lookup_entry(this->class->xine->config,
                                               "engine.buffers.audio_num_buffers");
   if (e && e->num_value < 500) {
-    LOGMSG("WARNING: xine-engine setting \"engine.buffers.audio_num_buffers\":%d is"
+    LOGMSG("WARNING: xine-engine setting \"engine.buffers.audio_num_buffers\":%d is "
            "too low for HD-playback! Please use values between 500-1000!", e->num_value);
   }
 
