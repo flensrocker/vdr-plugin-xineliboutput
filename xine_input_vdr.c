@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.359 2012-03-23 18:36:28 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.360 2012-03-27 12:01:49 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.359 2012-03-23 18:36:28 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.360 2012-03-27 12:01:49 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -6003,6 +6003,15 @@ static const char *vdr_class_get_identifier (input_class_t *this_gen)
 }
 #endif
 
+#if XINE_VERSION_CODE >= 10200
+static const char * const *vdr_plugin_get_autoplay_list(input_class_t *this_gen, int *num_files) 
+{
+  vdr_input_class_t *this = (vdr_input_class_t *)this_gen;
+  *num_files = 1;
+
+  return (const char * const *)this->mrls;
+}
+#else
 static char **vdr_plugin_get_autoplay_list(input_class_t *this_gen, int *num_files) 
 {
   vdr_input_class_t *this = (vdr_input_class_t *)this_gen;
@@ -6010,6 +6019,7 @@ static char **vdr_plugin_get_autoplay_list(input_class_t *this_gen, int *num_fil
 
   return this->mrls;
 }
+#endif
 
 static void vdr_class_dispose (input_class_t *this_gen) 
 {
