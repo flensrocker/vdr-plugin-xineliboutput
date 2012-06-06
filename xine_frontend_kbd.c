@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_kbd.c,v 1.2 2011-11-13 09:51:44 phintuka Exp $
+ * $Id: xine_frontend_kbd.c,v 1.3 2012-06-06 07:38:06 phintuka Exp $
  *
  */
 
@@ -154,11 +154,15 @@ static uint64_t read_key_seq(void)
 
 static void kbd_receiver_thread_cleanup(void *arg)
 {
-  int status;
+  if (isatty(STDIN_FILENO)) {
   tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+  }
+  if (isatty(STDOUT_FILENO)) {
+  int status;
   status = system("setterm -cursor on");
   if (status < 0)
     LOGMSG("system(\"setterm -cursor on\") failed\n");
+  }
   LOGMSG("Keyboard thread terminated");
 }
 
@@ -167,15 +171,18 @@ static void *kbd_receiver_thread(void *fe_gen)
   frontend_t *fe = (frontend_t*)fe_gen;
   uint64_t code = 0;
   char str[64];
-  int status;
 
+  if (isatty(STDOUT_FILENO)) {
+  int status;
   status = system("setterm -cursor off");
   if (status < 0)
     LOGMSG("system(\"setterm -cursor off\") failed\n");
   status = system("setterm -blank off");
   if (status < 0)
     LOGMSG("system(\"setterm -blank off\") failed\n");
+  }
 
+  if (isatty(STDIN_FILENO)) {
   /* Set stdin to deliver keypresses without buffering whole lines */
   tcgetattr(STDIN_FILENO, &saved_tm);
   if (tcgetattr(STDIN_FILENO, &tm) == 0) {
@@ -184,6 +191,7 @@ static void *kbd_receiver_thread(void *fe_gen)
     tm.c_cc[VMIN] = 0;
     tm.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &tm);
+  }
   }
 
   pthread_cleanup_push(kbd_receiver_thread_cleanup, NULL);
