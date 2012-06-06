@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_kbd.c,v 1.3 2012-06-06 07:38:06 phintuka Exp $
+ * $Id: xine_frontend_kbd.c,v 1.4 2012-06-06 07:39:56 phintuka Exp $
  *
  */
 
@@ -155,13 +155,13 @@ static uint64_t read_key_seq(void)
 static void kbd_receiver_thread_cleanup(void *arg)
 {
   if (isatty(STDIN_FILENO)) {
-  tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
+    tcsetattr(STDIN_FILENO, TCSANOW, &saved_tm);
   }
   if (isatty(STDOUT_FILENO)) {
-  int status;
-  status = system("setterm -cursor on");
-  if (status < 0)
-    LOGMSG("system(\"setterm -cursor on\") failed\n");
+    int status;
+    status = system("setterm -cursor on");
+    if (status < 0)
+      LOGMSG("system(\"setterm -cursor on\") failed\n");
   }
   LOGMSG("Keyboard thread terminated");
 }
@@ -173,25 +173,25 @@ static void *kbd_receiver_thread(void *fe_gen)
   char str[64];
 
   if (isatty(STDOUT_FILENO)) {
-  int status;
-  status = system("setterm -cursor off");
-  if (status < 0)
-    LOGMSG("system(\"setterm -cursor off\") failed\n");
-  status = system("setterm -blank off");
-  if (status < 0)
-    LOGMSG("system(\"setterm -blank off\") failed\n");
+    int status;
+    status = system("setterm -cursor off");
+    if (status < 0)
+      LOGMSG("system(\"setterm -cursor off\") failed\n");
+    status = system("setterm -blank off");
+    if (status < 0)
+      LOGMSG("system(\"setterm -blank off\") failed\n");
   }
 
   if (isatty(STDIN_FILENO)) {
-  /* Set stdin to deliver keypresses without buffering whole lines */
-  tcgetattr(STDIN_FILENO, &saved_tm);
-  if (tcgetattr(STDIN_FILENO, &tm) == 0) {
-    tm.c_iflag = 0;
-    tm.c_lflag &= ~(ICANON | ECHO);
-    tm.c_cc[VMIN] = 0;
-    tm.c_cc[VTIME] = 0;
-    tcsetattr(STDIN_FILENO, TCSANOW, &tm);
-  }
+    /* Set stdin to deliver keypresses without buffering whole lines */
+    tcgetattr(STDIN_FILENO, &saved_tm);
+    if (tcgetattr(STDIN_FILENO, &tm) == 0) {
+      tm.c_iflag = 0;
+      tm.c_lflag &= ~(ICANON | ECHO);
+      tm.c_cc[VMIN] = 0;
+      tm.c_cc[VTIME] = 0;
+      tcsetattr(STDIN_FILENO, TCSANOW, &tm);
+    }
   }
 
   pthread_cleanup_push(kbd_receiver_thread_cleanup, NULL);
