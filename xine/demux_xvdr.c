@@ -63,7 +63,7 @@ static const char log_module_demux_xvdr[] = "[demux_vdr] ";
  * constants
  */
 
-#define WRAP_THRESHOLD     270000  /* 3 sec */
+#define WRAP_THRESHOLD     360000  /* 4 sec */
 #define PTS_AUDIO 0
 #define PTS_VIDEO 1
 
