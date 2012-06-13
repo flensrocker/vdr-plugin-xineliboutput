@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.55 2012-03-24 09:25:53 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.56 2012-06-13 07:32:24 phintuka Exp $
  *
  */
 
@@ -135,7 +135,7 @@ const char cmdLineHelp[] =
 #endif
 #ifdef HAVE_OPENGL
 "                           opengl  Use OpenGL instead of compositing\n"
-"   -O       --opengl       Use OpenGL for video and Head Up Display OSD\n"
+"  -O        --opengl       Use OpenGL for video and Head Up Display OSD\n"
 #endif
 "  -w        --width=x      Window width\n"
 "  -h        --height=x     Window width\n"
