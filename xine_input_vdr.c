@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.362 2012-05-11 07:37:27 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.363 2012-07-18 11:55:33 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.362 2012-05-11 07:37:27 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.363 2012-07-18 11:55:33 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3696,6 +3696,10 @@ static void slave_track_maps_changed(vdr_input_plugin_t *this)
     if (xine_get_audio_lang(this->slave.stream, i, lang)) {
       cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32, 
 		      "%s%d:%s ", i==current?"*":"", i, trim_str(lang));
+      n++;
+    } else if (i < this->slave.stream->audio_track_map_entries) {
+      cnt += snprintf(tracks+cnt, sizeof(tracks)-cnt-32,
+                      "%s%d:%d ", i==current?"*":"", i, i);
       n++;
     }
   tracks[sizeof(tracks)-1] = 0;
