@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.40 2012-01-30 11:24:38 phintuka Exp $
+# * $Id: configure,v 1.41 2012-07-29 08:55:00 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -467,6 +467,7 @@ echo "CXX = $CXX">>$makefile
 echo "CFLAGS_XINE += $CFLAGS_XINE">>$makefile
 echo "CFLAGS_VDR  += $CFLAGS_VDR">>$makefile
 echo "CFLAGS_X11  += $CFLAGS_X11">>$makefile
+echo "CFLAGS_AVUTIL += $CFLAGS_AVUTIL">>$makefile
 echo "LIBS_XINE   += $LIBS_XINE">>$makefile
 echo "LIBS_JPEG   += $LIBS_JPEG">>$makefile
 echo "LIBS_AVUTIL += $LIBS_AVUTIL">>$makefile
