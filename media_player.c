@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.93 2012-08-29 19:23:15 phintuka Exp $
+ * $Id: media_player.c,v 1.94 2012-08-29 19:25:14 phintuka Exp $
  *
  */
 
@@ -207,7 +207,8 @@ bool cXinelibPlayer::UpdateMetaInfo(bool Force)
              *Playlist().Current()->Tracknumber ?: "-", tr ?: "-",
              *Playlist().Current()->Title       ?: "-", ti ?: "-");
 
-    m_Playlist.Current()->Title = ti;
+    if (ti && ti[0])
+      m_Playlist.Current()->Title = ti;
     if (tr && tr[0])
       m_Playlist.Current()->Tracknumber = tr;
     if (al && al[0])
