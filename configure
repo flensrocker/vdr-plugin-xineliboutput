@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.41 2012-07-29 08:55:00 phintuka Exp $
+# * $Id: configure,v 1.42 2012-08-30 06:44:20 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -30,7 +30,7 @@ toupper(){
 
 die(){
   log "$@"
-  exit -1
+  exit 1
 }
 
 log(){
