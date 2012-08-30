@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.17 2012-08-30 08:33:02 phintuka Exp $
+ * $Id: ts2es.c,v 1.18 2012-08-30 08:35:20 phintuka Exp $
  *
  */
 
@@ -28,10 +28,10 @@ struct ts2es_s {
   uint32_t       xine_buf_type;
 
   buf_element_t *buf;
-  int            first_pusi_seen;
-  int            video;
-  int            pes_error;
   int            pes_len;  /* PES payload length left */
+  uint8_t        first_pusi_seen;
+  uint8_t        video;
+  uint8_t        pes_error;
 };
 
 
