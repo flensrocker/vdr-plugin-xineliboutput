@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: pes.c,v 1.10 2009-07-01 09:31:17 phintuka Exp $
+ * $Id: pes.c,v 1.11 2012-08-30 08:36:39 phintuka Exp $
  *
  */
 
@@ -18,6 +18,16 @@
 
 #include "pes.h"
 
+static int64_t parse_timestamp(const uint8_t *buf)
+{
+  int64_t ts;
+  ts  = ((int64_t)( buf[0] & 0x0E)) << 29 ;
+  ts |=  (int64_t)( buf[1]         << 22 );
+  ts |=  (int64_t)((buf[2] & 0xFE) << 14 );
+  ts |=  (int64_t)( buf[3]         <<  7 );
+  ts |=  (int64_t)((buf[4] & 0xFE) >>  1 );
+  return ts;
+}
 
 int64_t pes_get_pts(const uint8_t *buf, int len)
 {
@@ -30,13 +40,7 @@ int64_t pes_get_pts(const uint8_t *buf, int len)
       return NO_PTS;
 
     if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
-      int64_t pts;
-      pts  = ((int64_t)(buf[ 9] & 0x0E)) << 29 ;
-      pts |= ((int64_t) buf[10])         << 22 ;
-      pts |= ((int64_t)(buf[11] & 0xFE)) << 14 ;
-      pts |= ((int64_t) buf[12])         <<  7 ;
-      pts |= ((int64_t)(buf[13] & 0xFE)) >>  1 ;
-      return pts;
+      return parse_timestamp(buf + 9);
     }
   }
   return NO_PTS;
@@ -52,13 +56,7 @@ int64_t pes_get_dts(const uint8_t *buf, int len)
       return NO_PTS;
 
     if (len > 18 && (buf[7] & 0x40)) { /* dts avail */
-      int64_t dts;
-      dts  = ((int64_t)( buf[14] & 0x0E)) << 29 ;
-      dts |=  (int64_t)( buf[15]         << 22 );
-      dts |=  (int64_t)((buf[16] & 0xFE) << 14 );
-      dts |=  (int64_t)( buf[17]         <<  7 );
-      dts |=  (int64_t)((buf[18] & 0xFE) >>  1 );
-      return dts;
+      return parse_timestamp(buf + 14);
     }
   }
   return NO_PTS;
