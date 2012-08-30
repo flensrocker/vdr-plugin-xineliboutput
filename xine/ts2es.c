@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.15 2012-01-16 13:26:14 phintuka Exp $
+ * $Id: ts2es.c,v 1.16 2012-08-30 08:25:47 phintuka Exp $
  *
  */
 
@@ -47,6 +47,13 @@ static void ts2es_parse_pes(ts2es_t *this)
   uint    hdr_len = PES_HEADER_LEN(this->buf->content);
   uint8_t pes_pid = this->buf->content[3];
   uint    pes_len = (this->buf->content[4] << 8) | this->buf->content[5];
+
+  /* Check if header is complete */
+  if (this->buf->size < 9 || this->buf->size < hdr_len) {
+    LOGMSG("ts2es: PES header not in first TS fragment");
+    this->pes_error = 1;
+    return;
+  }
 
   /* parse PTS */
   this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
