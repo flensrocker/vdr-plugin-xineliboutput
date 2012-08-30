@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.16 2012-08-30 08:25:47 phintuka Exp $
+ * $Id: ts2es.c,v 1.17 2012-08-30 08:33:02 phintuka Exp $
  *
  */
 
@@ -31,6 +31,7 @@ struct ts2es_s {
   int            first_pusi_seen;
   int            video;
   int            pes_error;
+  int            pes_len;  /* PES payload length left */
 };
 
 
@@ -46,7 +47,6 @@ static void ts2es_parse_pes(ts2es_t *this)
   /* parse PES header */
   uint    hdr_len = PES_HEADER_LEN(this->buf->content);
   uint8_t pes_pid = this->buf->content[3];
-  uint    pes_len = (this->buf->content[4] << 8) | this->buf->content[5];
 
   /* Check if header is complete */
   if (this->buf->size < 9 || this->buf->size < hdr_len) {
@@ -55,9 +55,17 @@ static void ts2es_parse_pes(ts2es_t *this)
     return;
   }
 
+  /* Check if PES packet size is known */
+  this->pes_len = (this->buf->content[4] << 8) | this->buf->content[5];
+  if (this->pes_len > hdr_len + 6) {
+    this->pes_len += 6;
+  } else {
+    this->pes_len = 0;
+  }
+
   /* parse PTS */
   this->buf->pts = pes_get_pts(this->buf->content, this->buf->size);
-  if (this->buf->pts <= 0)
+  if (this->buf->pts < 0)
     this->buf->pts = 0;
 
   /* parse DTS */
@@ -134,7 +142,9 @@ static void ts2es_parse_pes(ts2es_t *this)
     if (this->buf->content[0] != 0x20 ||
         this->buf->content[1] != 0x00)
       LOGMSG("ts2es: DVB SPU, invalid PES substream header");
-    this->buf->decoder_info[2] = pes_len - hdr_len - 3 + 9;
+    if (this->pes_len > hdr_len) {
+      this->buf->decoder_info[2] = this->pes_len - hdr_len;
+    }
     return;
   }
 }
@@ -217,6 +227,17 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
   /* parse PES header */
   if (pusi) {
     ts2es_parse_pes(this);
+  }
+
+  /* check if PES packet is complete */
+  if (this->pes_len > 0) {
+    if (this->pes_len <= bytes) {
+      result = this->buf;
+      this->buf = NULL;
+      this->pes_error = 1; /* to drop rest of data */
+    } else {
+      this->pes_len -= bytes;
+    }
   }
 
   return result;
