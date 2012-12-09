@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.121 2012-03-17 20:19:27 phintuka Exp $
+ * $Id: device.c,v 1.122 2012-12-09 21:37:53 rofafor Exp $
  *
  */
 
@@ -1159,8 +1159,11 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
   if (TsHasPayload(Data) && TsPayloadOffset(Data) < TS_SIZE) {
 
     int Pid = TsPid(Data);
+#if VDRVERSNUM < 10733
     if (Pid == 0 || Pid == PatPmtParser()->PmtPid()) {
-
+#else
+    if (Pid == PATPID || PatPmtParser()->IsPmtPid(Pid)) {
+#endif
       if (m_server)
         m_server->SetHeader(Data, Result, Pid == 0);
 
