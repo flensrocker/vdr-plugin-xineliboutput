@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.c,v 1.4 2010-02-02 22:42:09 phintuka Exp $
+ * $Id: mpeg.c,v 1.5 2012-12-31 16:42:45 phintuka Exp $
  *
  */
 
@@ -29,6 +29,17 @@ int mpeg2_get_picture_type(const uint8_t *buf, int len)
       return (buf[i + 5] >> 3) & 0x07;
 
   return NO_PICTURE;
+}
+
+int mpeg2_is_sequence_header(const uint8_t *buf, int len)
+{
+  int i;
+  for (i = 0; i < len-6; i++) {
+    if (IS_SC_SEQUENCE(buf + i)) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 int mpeg2_get_video_size(const uint8_t *buf, int len, video_size_t *size)

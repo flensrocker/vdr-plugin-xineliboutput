@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: mpeg.h,v 1.8 2010-02-03 13:49:39 phintuka Exp $
+ * $Id: mpeg.h,v 1.9 2012-12-31 16:42:45 phintuka Exp $
  *
  */
 
@@ -58,6 +58,10 @@ int mpeg2_get_picture_type(const uint8_t *buf, int len);
  */
 int mpeg2_get_video_size(const uint8_t *buf, int len, video_size_t *size);
 
+/*
+ * 
+ */
+int mpeg2_is_sequence_header(const uint8_t *buf, int len);
 
 #ifdef __cplusplus
 } /* extern "C" { */
