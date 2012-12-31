@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.29 2011-11-13 09:45:01 phintuka Exp $
+ * $Id: ts.c,v 1.30 2012-12-31 16:44:27 phintuka Exp $
  *
  */
 
@@ -319,6 +319,11 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
       LOGMSG("parse_pmt: unsupported PMT (%d sections)", last_section_number);
       return 0;
     }
+  }
+
+  if (!pmt->pmt) {
+    LOGMSG("parse_pmt: dropping PMT packet without PUSI");
+    return 0;
   }
 
   if (!pusi) {
