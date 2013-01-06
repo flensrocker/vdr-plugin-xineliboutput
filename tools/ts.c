@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.32 2013-01-06 21:21:08 phintuka Exp $
+ * $Id: ts.c,v 1.33 2013-01-06 21:23:43 phintuka Exp $
  *
  */
 
@@ -273,6 +273,8 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
   int      count;
   uint8_t  len;
   uint     offset = 0;
+  uint32_t program_info_format_identifier = 0;
+  uint8_t  hdmv_pmt = 0;
 
   /*
    * A new section should start with the payload unit start
@@ -381,6 +383,17 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
   /* ES definitions start here */
   program_info_length = ((pmt->pmt[10] << 8) | pmt->pmt[11]) & 0x0fff;
 
+  ts_get_reg_desc(&program_info_format_identifier,
+                  &pmt->pmt[12], program_info_length);
+  if (program_info_format_identifier) {
+    if ((program_info_format_identifier == (('H' << 24) | ('D' << 16) | ('M' << 8) | 'V'))) {
+      LOGMSG("PMT program info has tag 0x05 (format_identifier), content HDMV (0x%x)\n", program_info_format_identifier);
+      hdmv_pmt = 1;
+    } else {
+      LOGMSG("PMT program info has tag 0x05 (format_identifier), content 0x%x\n", program_info_format_identifier);
+    }
+  }
+
   stream = &pmt->pmt[12] + program_info_length;
   coded_length = 13 + program_info_length;
   if (coded_length > section_length) {
@@ -474,6 +487,31 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
           }
         }
         break;
+
+      case HDMV_SPU_90_BITMAP & 0xff:
+      case HDMV_SPU_91_INTERACTIVE & 0xff:
+      case HDMV_SPU_92_TEXT & 0xff:
+        if (hdmv_pmt)
+          break; // ignore BluRay PG/IG/TextST streams
+        /* fall thru */
+      case HDMV_AUDIO_80_PCM & 0xff:
+      case HDMV_AUDIO_82_DTS & 0xff:
+      case HDMV_AUDIO_83_TRUEHD & 0xff:
+      case HDMV_AUDIO_84_EAC3 & 0xff:
+      case HDMV_AUDIO_85_DTS_HRA & 0xff:
+      case HDMV_AUDIO_86_DTS_HD_MA & 0xff:
+        if (hdmv_pmt) {
+          if ((pmt->audio_tracks_count < TS_MAX_AUDIO_TRACKS)) {
+            if (find_audio_track(pmt, pid) < 0) {
+              pmt->audio_tracks[pmt->audio_tracks_count].pid  = pid;
+              pmt->audio_tracks[pmt->audio_tracks_count].type = (ts_stream_type)(stream[0] | STREAM_HDMV);
+              pmt->audio_tracks_count++;
+              break;
+            }
+          }
+          break;
+        }
+        /* fall thru */
 
       default:
 

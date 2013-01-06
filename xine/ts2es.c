@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.19 2013-01-06 21:20:11 phintuka Exp $
+ * $Id: ts2es.c,v 1.20 2013-01-06 21:23:44 phintuka Exp $
  *
  */
 
@@ -80,6 +80,17 @@ static void ts2es_parse_pes(ts2es_t *this)
   this->buf->size    -= hdr_len;
 
   /* parse substream header */
+
+  if (this->stream_type == HDMV_AUDIO_80_PCM) {
+
+    this->buf->decoder_flags  |= BUF_FLAG_SPECIAL;
+    this->buf->decoder_info[1] = BUF_SPECIAL_LPCM_CONFIG;
+    this->buf->decoder_info[2] = (this->buf->content[3] << 24) | (this->buf->content[2] << 16) |
+                                 (this->buf->content[1] << 8)  |  this->buf->content[0];
+    this->buf->content += 4;
+    this->buf->size    -= 4;
+    return;
+  }
 
   if (pes_pid != PRIVATE_STREAM1)
     return;
@@ -317,18 +328,27 @@ ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type, uint st
 
     /* RAW AC3 */
     case STREAM_AUDIO_AC3:
+    case HDMV_AUDIO_83_TRUEHD:
       data->xine_buf_type = BUF_AUDIO_A52;
       break;
 
     /* EAC3 (xine-lib > 1.1.18.1) */
 #ifdef BUF_AUDIO_EAC3
     case STREAM_AUDIO_EAC3:
+    case HDMV_AUDIO_84_EAC3:
       data->xine_buf_type = BUF_AUDIO_EAC3;
       break;
 #endif
 
+    case HDMV_AUDIO_80_PCM:
+      data->xine_type = BUF_AUDIO_LPCM_BE;
+      break;
+
     /* DTS (PES stream 0xbd) */
-    case  STREAM_AUDIO_DTS:
+    case STREAM_AUDIO_DTS:
+    case HDMV_AUDIO_82_DTS:
+    case HDMV_AUDIO_85_DTS_HRA:
+    case HDMV_AUDIO_86_DTS_HD_MA:
       data->xine_buf_type = BUF_AUDIO_DTS;
       break;
 
