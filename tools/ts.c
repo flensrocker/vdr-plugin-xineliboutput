@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.31 2013-01-06 21:20:11 phintuka Exp $
+ * $Id: ts.c,v 1.32 2013-01-06 21:21:08 phintuka Exp $
  *
  */
 
@@ -205,7 +205,7 @@ static void ts_get_reg_desc(uint32_t *dest, const uint8_t *data, int length)
     }
     d += 2 + d[1];
   }
-  LOGPMT("pare_pmt: found no format id");
+  LOGPMT("parse_pmt: found no format id");
   *dest = 0;
 }
 
