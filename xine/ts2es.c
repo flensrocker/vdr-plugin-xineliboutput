@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.20 2013-01-06 21:23:44 phintuka Exp $
+ * $Id: ts2es.c,v 1.21 2013-01-06 21:32:13 phintuka Exp $
  *
  */
 
@@ -341,7 +341,7 @@ ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type, uint st
 #endif
 
     case HDMV_AUDIO_80_PCM:
-      data->xine_type = BUF_AUDIO_LPCM_BE;
+      data->xine_buf_type = BUF_AUDIO_LPCM_BE;
       break;
 
     /* DTS (PES stream 0xbd) */
