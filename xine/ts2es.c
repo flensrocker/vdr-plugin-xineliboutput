@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.18 2012-08-30 08:35:20 phintuka Exp $
+ * $Id: ts2es.c,v 1.19 2013-01-06 21:20:11 phintuka Exp $
  *
  */
 
@@ -285,6 +285,9 @@ ts2es_t *ts2es_init(fifo_buffer_t *dst_fifo, ts_stream_type stream_type, uint st
       break;
     case ISO_14496_PART10_VIDEO:
       data->xine_buf_type = BUF_VIDEO_H264;
+      break;
+    case STREAM_VIDEO_VC1:
+      data->xine_buf_type = BUF_VIDEO_VC1;
       break;
 
     /* AUDIO (PES streams 0xc0...0xdf) */

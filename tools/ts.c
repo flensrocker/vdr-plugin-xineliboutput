@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts.c,v 1.30 2012-12-31 16:44:27 phintuka Exp $
+ * $Id: ts.c,v 1.31 2013-01-06 21:20:11 phintuka Exp $
  *
  */
 
@@ -409,6 +409,7 @@ int ts_parse_pmt (pmt_data_t *pmt, uint program_no, const uint8_t *pkt)
       case ISO_13818_VIDEO:
       case ISO_14496_PART2_VIDEO:
       case ISO_14496_PART10_VIDEO:
+      case STREAM_VIDEO_VC1:
         LOGPMT("parse_pmt: video pid 0x%.4x type %2.2x", pid, stream[0]);
         if (pmt->video_pid == INVALID_PID) {
           pmt->video_pid  = pid;
