@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.24 2013-01-15 20:33:29 phintuka Exp $
+ * $Id: osd_manager.c,v 1.25 2013-01-15 20:45:19 phintuka Exp $
  *
  */
 
@@ -667,6 +667,7 @@ static int exec_osd_set_argb(osd_manager_impl_t *this, osd_command_t *cmd)
 
   /* this should trigger blending at output resolution (after scaling video frame) ... */
   //ov_overlay.unscaled = 1;
+  ov_overlay.unscaled = cmd->flags & OSDFLAG_UNSCALED ? 1 : 0;
 
   /* allocate buffer */
   if (!osd->argb_buffer) {
