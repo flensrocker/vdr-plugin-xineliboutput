@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.h,v 1.1 2008-12-06 16:17:18 phintuka Exp $
+ * $Id: osd_manager.h,v 1.2 2013-01-15 20:33:29 phintuka Exp $
  *
  */
 
@@ -28,6 +28,8 @@ struct osd_manager_s {
   void (*dispose)(osd_manager_t *, xine_stream_t *);
 
   void (*video_size_changed)(osd_manager_t *, xine_stream_t *, int width, int height);
+
+  int  (*argb_supported)(xine_stream_t *);
 };
 
 osd_manager_t *init_osd_manager(void);

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.23 2011-03-07 12:36:39 phintuka Exp $
+ * $Id: osd_manager.c,v 1.24 2013-01-15 20:33:29 phintuka Exp $
  *
  */
 
@@ -46,6 +46,11 @@ typedef struct {
   uint16_t      video_window_h;
 
   int64_t       last_changed_vpts;
+
+#ifdef VO_CAP_ARGB_LAYER_OVERLAY
+  argb_layer_t *argb_layer;
+  uint32_t     *argb_buffer;
+#endif
 } osd_data_t;
 
 typedef struct osd_manager_impl_s {
@@ -66,6 +71,50 @@ typedef struct osd_manager_impl_s {
 } osd_manager_impl_t;
 
 /************************************* Tools ************************************/
+
+/*
+ * argb layer (originally copied from xine - why aren't these functions exported ?)
+ */
+
+#ifdef VO_CAP_ARGB_LAYER_OVERLAY
+static argb_layer_t *argb_layer_create() {
+
+  argb_layer_t *argb_layer = (argb_layer_t *)calloc(1, sizeof (argb_layer_t));
+
+  pthread_mutex_init(&argb_layer->mutex, NULL);
+
+  return argb_layer;
+}
+
+static void argb_layer_destroy(argb_layer_t *argb_layer) {
+
+  pthread_mutex_destroy(&argb_layer->mutex);
+  free(argb_layer);
+}
+
+static void set_argb_layer(argb_layer_t **dst, argb_layer_t *src) {
+
+  if (src) {
+    pthread_mutex_lock(&src->mutex);
+    ++src->ref_count;
+    pthread_mutex_unlock(&src->mutex);
+  }
+
+  if (*dst) {
+    int free_argb_layer;
+
+    pthread_mutex_lock(&(*dst)->mutex);
+    free_argb_layer = (0 == --(*dst)->ref_count);
+    pthread_mutex_unlock(&(*dst)->mutex);
+
+    if (free_argb_layer)
+      argb_layer_destroy(*dst);
+  }
+
+  *dst = src;
+}
+#endif /* VO_CAP_ARGB_LAYER_OVERLAY */
+
 
 /*
  * acquire_ticket()
@@ -258,6 +307,12 @@ static int exec_osd_size(osd_manager_impl_t *this, osd_command_t *cmd)
 
   acquire_ticket(this);
 
+#ifdef VO_CAP_ARGB_LAYER_OVERLAY
+  set_argb_layer(&osd->argb_layer, NULL);
+  free(osd->argb_buffer);
+  osd->argb_buffer = NULL;
+#endif
+
   xine_video_port_t *video_out = this->stream->video_out;
 
   this->vo_scaling = !!(video_out->get_capabilities(video_out) & VO_XCAP_OSDSCALING);
@@ -347,6 +402,12 @@ static int exec_osd_close(osd_manager_impl_t *this, osd_command_t *cmd)
   osd->extent_width  = 720;
   osd->extent_height = 576;
   osd->last_changed_vpts = 0;
+
+#ifdef VO_CAP_ARGB_LAYER_OVERLAY
+  set_argb_layer(&osd->argb_layer, NULL);
+  free(osd->argb_buffer);
+  osd->argb_buffer = NULL;
+#endif
 
   return CONTROL_OK;
 }
@@ -537,8 +598,138 @@ static int exec_osd_set_lut8(osd_manager_impl_t *this, osd_command_t *cmd)
 
 static int exec_osd_set_argb(osd_manager_impl_t *this, osd_command_t *cmd)
 {
-  LOGMSG("OSD_Set_ARGB not implemented");
+#ifdef VO_CAP_ARGB_LAYER_OVERLAY
+  video_overlay_manager_t *ovl_manager = get_ovl_manager(this);
+  video_overlay_event_t    ov_event    = {0};
+  vo_overlay_t             ov_overlay  = {0};
+  osd_data_t              *osd         = &this->osd[cmd->wnd];
+  int                      handle      = osd->handle;
+
+  if (!ovl_manager)
+    return CONTROL_PARAM_ERROR;
+
+  if (!this->mgr.argb_supported(this->stream)) {
+    LOGMSG("ARGB overlay not supported by video driver");
+    return CONTROL_PARAM_ERROR;
+  }
+
+  if (osd->extent_width < 32 || osd->extent_height < 32) {
+    LOGMSG("ARGB overlay: incorrect extent");
+    return CONTROL_PARAM_ERROR;
+  }
+
+  this->stream->video_out->enable_ovl(this->stream->video_out, 1);
+
+  /* get / allocate OSD handle */
+  if (handle < 0) {
+    handle = ovl_manager->get_handle(ovl_manager,0);
+    osd->handle            = handle;
+    osd->extent_width      = osd->extent_width  ?: 720;
+    osd->extent_height     = osd->extent_height ?: 576;
+    osd->last_changed_vpts = 0;
+  }
+
+  /* fill SHOW event */
+  ov_event.event_type         = OVERLAY_EVENT_SHOW;
+  ov_event.vpts               = osd_exec_vpts(this, cmd);
+  ov_event.object.handle      = handle;
+  ov_event.object.overlay     = &ov_overlay;
+  ov_event.object.object_type = 1; /* menu */
+
+  /* ARGB overlays are not cached for re-scaling */
+  clear_osdcmd(&osd->cmd);
+
+  /* fill ov_overlay */
+  ov_overlay.x      = 0;
+  ov_overlay.y      = 0;
+  ov_overlay.width  = osd->extent_width;
+  ov_overlay.height = osd->extent_height;
+
+  /* tag this overlay */
+  ov_overlay.hili_rgb_clut = VDR_OSD_MAGIC;
+
+  /* fill extra data */
+  const vdr_osd_extradata_t extra_data = {
+    extent_width:  osd->extent_width,
+    extent_height: osd->extent_height,
+    layer:         cmd->layer,
+    scaling:       cmd->scaling
+  };
+  memcpy(ov_overlay.hili_color, &extra_data, sizeof(extra_data));
+
+  /* xine-lib 1.2 extensions */
+  ov_overlay.extent_width        = osd->extent_width;
+  ov_overlay.extent_height       = osd->extent_height;
+  ov_overlay.video_window_x      = osd->video_window_x ?: -1;
+  ov_overlay.video_window_y      = osd->video_window_y ?: -1;
+  ov_overlay.video_window_width  = osd->video_window_w ?: -1;
+  ov_overlay.video_window_height = osd->video_window_h ?: -1;
+
+  /* this should trigger blending at output resolution (after scaling video frame) ... */
+  //ov_overlay.unscaled = 1;
+
+  /* allocate buffer */
+  if (!osd->argb_buffer) {
+    osd->argb_buffer = calloc(sizeof(uint32_t), osd->extent_width * osd->extent_height);
+  }
+  if (!osd->argb_layer) {
+    set_argb_layer(&osd->argb_layer, argb_layer_create());
+    osd->argb_layer->buffer = osd->argb_buffer;
+  }
+
+  /* copy changed data to buffer */
+  /* TODO: do we need double-buffering or locking to prevent tearing ? */
+
+  uint32_t *src = (uint32_t*)cmd->raw_data;
+  uint32_t* dst = osd->argb_buffer;
+  int stride = cmd->w;
+  int lines = cmd->h;
+
+  /* clip */
+  if (cmd->x + cmd->w > osd->extent_width) {
+    stride = osd->extent_width - cmd->x;
+    if (stride < 0) stride = 0;
+    LOGMSG("ARGB overlay: incorrect extent, cropping right side");
+  }
+  if (cmd->y + cmd->h > osd->extent_height) {
+    lines = osd->extent_height - cmd->y;
+    LOGMSG("ARGB overlay: incorrect extent, cropping bottom");
+  }
+
+  /* blend */
+  dst += cmd->y * osd->extent_width + cmd->x;
+  for (; lines > 0; lines--) {
+    memcpy(dst, src, stride * sizeof(uint32_t));
+    src += cmd->w;
+    dst += osd->extent_width;
+  }
+
+  /* set dirty area. not used in opengl2 driver ... */
+  osd->argb_layer->x1 = cmd->x;
+  osd->argb_layer->x2 = cmd->x + cmd->w - 1;
+  osd->argb_layer->y1 = cmd->y;
+  osd->argb_layer->y2 = cmd->y + cmd->h - 1;
+
+  /* set buffer (ref-counted) */
+  set_argb_layer(&ov_overlay.argb_layer, osd->argb_layer);
+
+  /* send event to overlay manager */
+  while (ovl_manager->add_event(ovl_manager, (void *)&ov_event) < 0) {
+    LOGMSG("OSD_Set_ARGB(%d): overlay manager queue full !", cmd->wnd);
+    ovl_manager->flush_events(ovl_manager);
+  }
+
+  /* release buffer (ref-counted) */
+  set_argb_layer(&ov_overlay.argb_layer, NULL);
+
+  osd->last_changed_vpts = ov_event.vpts ?: xine_get_current_vpts(this->stream);
+
+  return CONTROL_OK;
+
+#else /* VO_CAP_ARGB_LAYER_OVERLAY */
+  LOGMSG("OSD_Set_ARGB: plugin was build without ARGB support");
   return CONTROL_PARAM_ERROR;
+#endif
 }
 
 /*
@@ -743,6 +934,16 @@ static void video_size_changed(osd_manager_t *this_gen, xine_stream_t *stream, i
   pthread_mutex_unlock(&this->lock);
 }
 
+static int argb_supported(xine_stream_t *stream)
+{
+#ifdef VO_CAP_ARGB_LAYER_OVERLAY
+  xine_video_port_t *video_out = stream->video_out;
+  return !!(video_out->get_capabilities(video_out) & VO_CAP_ARGB_LAYER_OVERLAY);
+#else
+  return 0;
+#endif
+}
+
 /*
  * osd_manager_dispose()
  */
@@ -787,6 +988,7 @@ osd_manager_t *init_osd_manager(void)
   this->mgr.command            = exec_osd_command;
   this->mgr.dispose            = osd_manager_dispose;
   this->mgr.video_size_changed = video_size_changed;
+  this->mgr.argb_supported     = argb_supported;
 
   pthread_mutex_init(&this->lock, NULL);
 

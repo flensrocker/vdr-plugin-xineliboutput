@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.363 2012-07-18 11:55:33 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.364 2013-01-15 20:33:29 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.363 2012-07-18 11:55:33 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.364 2013-01-15 20:33:29 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -3601,6 +3601,11 @@ static void *vdr_control_thread(void *this_gen)
     xine_usec_sleep(50*1000);
     counter--;
   } 
+
+  if (this->osd_manager && this->osd_manager->argb_supported(this->stream)) {
+    LOGMSG("ARGB OSD supported by video driver");
+    puts_vdr(this, "INFO ARGBOSD\r\n");
+  }
 
   write_control(this, "CONFIG\r\n");
   
