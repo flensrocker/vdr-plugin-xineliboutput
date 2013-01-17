@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.26 2013-01-17 20:55:22 phintuka Exp $
+ * $Id: osd_manager.c,v 1.27 2013-01-17 21:05:16 phintuka Exp $
  *
  */
 
@@ -676,6 +676,10 @@ static int exec_osd_set_argb(osd_manager_impl_t *this, osd_command_t *cmd)
   if (!osd->argb_layer) {
     set_argb_layer(&osd->argb_layer, argb_layer_create());
     osd->argb_layer->buffer = osd->argb_buffer;
+    osd->argb_layer->x1 = 0;
+    osd->argb_layer->x2 = osd->extent_width - 1;
+    osd->argb_layer->y1 = 0;
+    osd->argb_layer->y2 = osd->extent_height - 1;
   }
 
   /* copy changed data to buffer */
