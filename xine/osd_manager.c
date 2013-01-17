@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.25 2013-01-15 20:45:19 phintuka Exp $
+ * $Id: osd_manager.c,v 1.26 2013-01-17 20:55:22 phintuka Exp $
  *
  */
 
@@ -706,10 +706,23 @@ static int exec_osd_set_argb(osd_manager_impl_t *this, osd_command_t *cmd)
   }
 
   /* set dirty area. not used in opengl2 driver ... */
+#if 0
+  /* this can't work... There's no way to know if driver has
+     copied the dirty area to display. So dirty area can never be
+     shrinked, just expanded ... */
   osd->argb_layer->x1 = cmd->x;
   osd->argb_layer->x2 = cmd->x + cmd->w - 1;
   osd->argb_layer->y1 = cmd->y;
   osd->argb_layer->y2 = cmd->y + cmd->h - 1;
+#else
+  /* argb layer update area accumulation */
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define MAX(a,b) ((a)>(b)?(a):(b))
+  osd->argb_layer->x1 = MIN( osd->argb_layer->x1, cmd->x );
+  osd->argb_layer->x2 = MAX( osd->argb_layer->x2, cmd->x + cmd->w );
+  osd->argb_layer->y1 = MIN( osd->argb_layer->y1, cmd->y );
+  osd->argb_layer->y2 = MAX( osd->argb_layer->y2, cmd->y + cmd->h );
+#endif
 
   /* set buffer (ref-counted) */
   set_argb_layer(&ov_overlay.argb_layer, osd->argb_layer);
