@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_local.c,v 1.60 2012-03-19 11:57:18 phintuka Exp $
+ * $Id: frontend_local.c,v 1.61 2013-08-18 07:58:29 phintuka Exp $
  *
  */
 
@@ -354,7 +354,7 @@ void cXinelibLocal::Action(void)
                                    xc.hud_osd,
                                    xc.opengl,
                                    xc.modeswitch, xc.modeline, xc.display_aspect,
-                                   0/*no_x_kbd*/, 0/*gui_hotkeys*/,
+                                   0/*no_x_kbd*/, 0/*gui_hotkeys*/, 0/*touchscreen*/,
                                    xc.video_port,
                                    xc.scale_video,
                                    NULL,

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.103 2012-03-19 11:51:21 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.104 2013-08-18 07:58:29 phintuka Exp $
  *
  */
 
@@ -152,6 +152,7 @@ static const char help_str[] =
     "   -x, --noxkbd                  Disable X11 keyboard input\n"
 #endif
     "   -o, --hotkeys                 Enable frontend GUI hotkeys\n"
+    "   -U, --touch                   Enable touch screen remote controller\n"
     "   -p, --shutdown=MIN[:CMD]      Shutdown after MIN minutes of inactivity\n"
     "                                 Use CMD to perform shutdown (default: /sbin/shutdown)\n"
     "   -T, --terminal=dev            Controlling TTY\n"
@@ -166,7 +167,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:p:vsxlkobSRtur";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:p:vsxlkoObSRtuUr";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -204,6 +205,7 @@ static const struct option long_options[] = {
   { "nokbd",   no_argument,  NULL, 'k' },
   { "noxkbd",  no_argument,  NULL, 'x' },
   { "hotkeys", no_argument,  NULL, 'o' },
+  { "touch",   no_argument,  NULL, 'U' },
   { "daemon",  no_argument,  NULL, 'b' },
   { "slave",   no_argument,  NULL, 'S' },
 
@@ -225,6 +227,7 @@ int main(int argc, char *argv[])
   int scale_video = 1, aspect = 1, modeswitch = 0;
   int daemon_mode = 0, nokbd = 0, noxkbd = 0, slave_mode = 0;
   int repeat_emu = 0;
+  int touchscreen = 0;
   int window_id = WINDOW_ID_NONE;
   int xmajor, xminor, xsub;
   int c;
@@ -434,6 +437,13 @@ int main(int argc, char *argv[])
                      "          LIRC PowerOff    -> power off\n"
                      "          LIRC Quit        -> exit\n");
               break;
+    case 'U': touchscreen = 1;
+              PRINTF("Touchscreen input enabled\n");
+              PRINTF("Display is divided to 4x3 buttons:\n");
+              PRINTF("  Menu   Up     Back   Ok  \n");
+              PRINTF("  Left   Down   Right      \n");
+              PRINTF("  Red    Green  Yellow Blue\n");
+              break;
     case 'b': nokbd = daemon_mode = 1;
               PRINTF("Keyboard input disabled\n");
               break;
@@ -550,7 +560,7 @@ int main(int argc, char *argv[])
 
   /* Initialize display */
   if (!fe->fe_display_open(fe, xpos, ypos, width, height, fullscreen, hud, opengl, modeswitch,
-                           "", aspect, noxkbd, gui_hotkeys,
+                           "", aspect, noxkbd, gui_hotkeys, touchscreen,
                            video_port, scale_video,
                            aspect_controller, window_id)) {
     fprintf(stderr, "Error opening display\n");

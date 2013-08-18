@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.204 2012-03-19 11:51:21 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.205 2013-08-18 07:58:29 phintuka Exp $
  *
  */
 
@@ -121,6 +121,9 @@ typedef struct sxfe_s {
 #endif
   Time     prev_click_time; /* time of previous mouse button click (grab double clicks) */
   int      mousecursor_timeout;
+#ifdef HAVE_MCE_DBUS_NAMES
+  int      mce_blank_prevent_timer;
+#endif
 #ifdef HAVE_XDPMS
   BOOL     dpms_state;
 #endif
@@ -159,6 +162,7 @@ typedef struct sxfe_s {
   uint8_t  dragging : 1;
   uint8_t  gui_hotkeys : 1;
   uint8_t  no_x_kbd : 1;
+  uint8_t  touchscreen : 1;
 
   /* OSD Video Window */
   pthread_mutex_t video_win_mutex;
@@ -2238,7 +2242,7 @@ static int sxfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
                              int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
-                             int no_x_kbd, int gui_hotkeys,
+                             int no_x_kbd, int gui_hotkeys, int touchscreen,
                              const char *video_port, int scale_video,
                              const char *aspect_controller, int window_id)
 {
@@ -2321,8 +2325,9 @@ static int sxfe_display_open(frontend_t *this_gen,
 
   this->xinerama_screen = -1;
 
-  this->gui_hotkeys = gui_hotkeys;
-  this->no_x_kbd    = no_x_kbd ? 1 : 0;
+  this->gui_hotkeys = !!gui_hotkeys;
+  this->no_x_kbd    = !!no_x_kbd;
+  this->touchscreen = !!touchscreen;
 
   /*
    * init x11 stuff
@@ -2787,6 +2792,22 @@ static void XButtonEvent_handler(sxfe_t *this, XButtonEvent *bev)
 {
   switch(bev->button) {
     case Button1:
+
+      if (this->touchscreen) {
+        int x = bev->x * 4 / this->x.width;
+        int y = bev->y * 3 / this->x.height;
+        static const char * const map[3][4] = {
+          {"Menu", "Up", "Back", "Ok"},
+          {"Left", "Down", "Right", "Ok"},
+          {"Red", "Green", "Yellow", "Blue"}};
+        if (map[y][x]) {
+          char tmp[128];
+          sprintf(tmp, "KEY %s", map[y][x]);
+          this->x.fe.send_event((frontend_t*)this, tmp);
+        }
+        return;
+      }
+
       /* Double-click toggles between fullscreen and windowed mode */
       if(bev->time - this->prev_click_time < DOUBLECLICK_TIME) {
         /* Toggle fullscreen */
@@ -2860,6 +2881,16 @@ static int sxfe_run(frontend_t *this_gen)
     if (this->mousecursor_timeout > 0) {
       poll_time = time_ms();
     }
+
+#ifdef HAVE_MCE_DBUS_NAMES
+# ifdef HAVE_DBUS_GLIB_1
+    /* Disable MCE screensaver */
+    if (++this->mce_blank_prevent_timer > 100) {
+      gnome_screensaver_control(0);
+      this->mce_blank_prevent_timer = 0;
+    }
+# endif
+#endif
 
     if (poll(&pfd, 1, poll_timeout) < 1 || !(pfd.revents & POLLIN)) {
 

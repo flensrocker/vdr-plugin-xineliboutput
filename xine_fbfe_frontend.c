@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_fbfe_frontend.c,v 1.50 2012-03-19 11:51:22 phintuka Exp $
+ * $Id: xine_fbfe_frontend.c,v 1.51 2013-08-18 07:58:29 phintuka Exp $
  *
  */
 
@@ -120,7 +120,7 @@ static int fbfe_display_open(frontend_t *this_gen,
                              int xpos, int ypos,
                              int width, int height, int fullscreen, int hud, int opengl,
                              int modeswitch, const char *modeline, int aspect,
-                             int no_x_kbd, int gui_hotkeys,
+                             int no_x_kbd, int gui_hotkeys, int touchscreen,
                              const char *video_port, int scale_video,
                              const char *aspect_controller, int window_id)
 {
