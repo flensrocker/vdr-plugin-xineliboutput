@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.14 2013-01-16 13:25:44 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.15 2013-08-19 08:20:30 phintuka Exp $
  *
  */
 
@@ -146,6 +146,18 @@ static osd_data_t *osd_data_init(vo_overlay_t *ovl, osd_data_t *next,
   data->ovl.y       = (ovl->y * factor_y) >> 16;
   data->ovl.width   = x2 - data->ovl.x - 1;
   data->ovl.height  = y2 - data->ovl.y - 1;
+
+#ifdef VO_CAP_VIDEO_WINDOW_OVERLAY
+  if (ovl->video_window_x      >= 0 &&
+      ovl->video_window_y      >= 0 &&
+      ovl->video_window_width  >  0 &&
+      ovl->video_window_height >  0) {
+    data->ovl.video_window_x      = (ovl->video_window_x      * factor_x) >> 16;
+    data->ovl.video_window_y      = (ovl->video_window_y      * factor_y) >> 16;
+    data->ovl.video_window_width  = (ovl->video_window_width  * factor_x) >> 16;
+    data->ovl.video_window_height = (ovl->video_window_height * factor_y) >> 16;
+  }
+#endif
 
   data->ovl.rle     = (rle_elem_t*)
     rle_scale_nearest((struct xine_rle_elem_s*)ovl->rle, &num_rle,
