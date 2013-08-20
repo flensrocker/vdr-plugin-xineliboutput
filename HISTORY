@@ -1,8 +1,9 @@
 VDR Plugin 'xineliboutput' Revision History
 -------------------------------------------
 
-????-??-??: Version 1.1.0
+2013-08-20: Version 1.1.0
 
+- Added simple touchscreen remote controller to vdr-sxfe
 - Added XShape support for HUD OSD: opaque HUD OSD when no compositing manager
   (Thanks to grueni75)
 - Added support for background image streams (display images or videos while playing music)
