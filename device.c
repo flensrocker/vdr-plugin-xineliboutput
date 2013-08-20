@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.124 2013-08-20 09:13:06 phintuka Exp $
+ * $Id: device.c,v 1.125 2013-08-20 09:33:43 phintuka Exp $
  *
  */
 
@@ -1437,6 +1437,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
               Data, Length, VIDEO_STREAM, isH264,
               &mand<bool>, true);
     }
+  }
 
   TsBufferFlush();
 
