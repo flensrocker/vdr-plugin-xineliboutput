@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.56 2012-06-13 07:32:24 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.57 2013-08-20 09:05:38 phintuka Exp $
  *
  */
 
@@ -93,7 +93,10 @@ cPluginXinelibOutput::cPluginXinelibOutput(void)
 cPluginXinelibOutput::~cPluginXinelibOutput()
 {
   // Clean up after yourself!
-  cXinelibDevice::Dispose();
+
+  if (m_Dev) {
+    cXinelibDevice::Dispose();
+  }
 }
 
 
@@ -115,9 +118,9 @@ const char cmdLineHelp[] =
 "                           Supported values:\n"
 "                           for sxfe: auto, x11, xshm, xv, xvmc, xxmc,\n"
 #ifdef HAVE_VDPAU
-                                     "vdpau, "
+"                                     vdpau, "
 #endif
-"                                     vidix, sdl, opengl, none\n"
+"                                     vaapi, vidix, sdl, opengl, none\n"
 "                           for fbfe: auto, fb, DirectFB, vidixfb,\n"
 "                                     sdl, dxr3, aadxr3, none\n"
 #if 0
@@ -144,6 +147,9 @@ const char cmdLineHelp[] =
 "                           (or framebuffer device name)\n"
 "  -W ID     --wid=ID       Use existing X11 window\n"
 "                           Special ID for root window: --wid=root\n"
+#ifdef HAVE_XRANDR
+"  -m        --modeswitch   Enable video mode switching\n"
+#endif
 "  -P NAME   --post=NAME    Use xine post plugin NAME\n"
 "                           format: pluginname[:arg=val[,arg=val]][,...]\n"
 "                           example: \n"
