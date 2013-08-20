@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.122 2012-12-09 21:37:53 rofafor Exp $
+ * $Id: device.c,v 1.123 2013-08-20 09:12:21 phintuka Exp $
  *
  */
 
@@ -781,7 +781,6 @@ void cXinelibDevice::TrickSpeed(int Speed)
         m_TrickSpeedMode |= trs_I_frames | trs_Backward | trs_NoAudio;
 
         ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed, true);
-        ForEach(m_clients, &cXinelibThread::Sync);
 
       } else {
 
@@ -824,6 +823,8 @@ void cXinelibDevice::TrickSpeed(int Speed)
 
       ForEach(m_clients, &cXinelibThread::TrickSpeed, -1);
     }
+
+    ForEach(m_clients, &cXinelibThread::Sync);
   }
 }
 
