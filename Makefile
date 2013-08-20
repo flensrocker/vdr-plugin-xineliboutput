@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.110 2012-07-29 08:55:00 phintuka Exp $
+# $Id: Makefile,v 1.111 2013-08-20 10:25:58 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -85,24 +85,18 @@ VDRINCDIR ?= $(VDRDIR)/include
 ###
 
 ifeq ($(ARCH_APPLE_DARWIN), yes)
-    VDRVERSION = $(shell sed -ne '/define VDRVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
     APIVERSION = $(shell sed -ne '/define APIVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
 else
-    VDRVERSION = $(shell sed -ne '/define VDRVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
     APIVERSION = $(shell sed -ne '/define APIVERSION/ { s/^.*"\(.*\)".*$$/\1/; p }' $(VDRDIR)/config.h)
 endif
 
 VDR_TREE = no
-ifeq ($(strip $(VDRVERSION)),)
+ifeq ($(strip $(APIVERSION)),)
     $(warning ********************************************************)
     $(warning VDR not detected ! VDR plugins will not be compiled.    )
     $(warning ********************************************************)
     CONFIGURE_OPTS += --disable-vdr
 else
-    ifeq ($(strip $(APIVERSION)),)
-        $(warning VDR APIVERSION missing, using VDRVERSION $(VDRVERSION) )
-        APIVERSION = $(VDRVERSION)
-    endif
     CONFIGURE_OPTS += --add-cflags=-I$(VDRDIR)
 
     ifeq ($(VDRDIR), ../../..)
