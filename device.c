@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.123 2013-08-20 09:12:21 phintuka Exp $
+ * $Id: device.c,v 1.124 2013-08-20 09:13:06 phintuka Exp $
  *
  */
 
@@ -1388,6 +1388,8 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
     skipped = 0;
   }
 
+  // Data type
+
   bool isPes   = DATA_IS_PES(Data) && ((Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
   bool isH264  = isPes && pes_is_frame_h264(Data, Length);
@@ -1412,7 +1414,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   m_TrickSpeed = -1; // to make Poll work ...
   m_SkipAudio = 1;   // enables audio and pts stripping
 
-  for(i=0; i<STILLPICTURE_REPEAT_COUNT; i++)
+  for (i = 0; i < STILLPICTURE_REPEAT_COUNT; i++) {
     if(isMpeg1) {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg1_PES, Data, Length, 
 	      &mmin<int>, Length);
@@ -1447,7 +1449,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 
   ForEach(m_clients, &cXinelibThread::Flush, 60, &mand<bool>, true);
 
-  m_TrickSpeed = 0;
+  m_TrickSpeed = 0;  // --> Play() triggers TrickSpeed change and resets still mode
   m_SkipAudio = 0;
 }
 
