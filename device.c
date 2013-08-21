@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.126 2013-08-21 09:14:36 phintuka Exp $
+ * $Id: device.c,v 1.127 2013-08-21 09:40:22 phintuka Exp $
  *
  */
 
@@ -1516,6 +1516,19 @@ bool cXinelibDevice::SupportsTrueColorOSD(void)
   }
 
   return m_server && (m_server->SupportsTrueColorOSD() == 1);
+}
+
+cRect cXinelibDevice::CanScaleVideo(const cRect &Rect, int Alignment)
+{
+  return Rect;
+}
+
+void cXinelibDevice::ScaleVideo(const cRect &Rect)
+{
+  if (m_VideoWindow != Rect) {
+    m_VideoWindow = Rect;
+    cXinelibOsdProvider::RefreshOsd();
+  }
 }
 
 //

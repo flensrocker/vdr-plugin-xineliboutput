@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.49 2013-08-21 09:14:36 phintuka Exp $
+ * $Id: osd.c,v 1.50 2013-08-21 09:40:22 phintuka Exp $
  *
  */
 
@@ -505,6 +505,11 @@ void cXinelibOsd::Flush(void)
 
   if(!m_IsVisible)
     return;
+
+  const cRect& videoWindow = m_Device->GetVideoWindow();
+  if (videoWindow != cRect::Null) {
+    CmdVideoWindow(videoWindow.X(), videoWindow.Y(), videoWindow.Width(), videoWindow.Height());
+  }
 
   if (IsTrueColor()) {
 

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.64 2013-08-21 09:14:36 phintuka Exp $
+ * $Id: device.h,v 1.65 2013-08-21 09:40:22 phintuka Exp $
  *
  */
 
@@ -90,6 +90,7 @@ class cXinelibDevice : public cDevice
     virtual bool HasDecoder(void) const { return true; };
     virtual bool CanReplay(void) const { return true; };
     virtual bool HasIBPTrickSpeed(void) { return xc.ibp_trickspeed; }
+    virtual cRect CanScaleVideo(const cRect &Rect, int Alignment = taCenter);
 
     bool SupportsTrueColorOSD(void);
 
@@ -99,10 +100,13 @@ class cXinelibDevice : public cDevice
     ePlayMode m_PlayMode;
     int       m_TrickSpeed;
     int       m_TrickSpeedMode;
+    cRect     m_VideoWindow;
 
   public:
     virtual bool SetPlayMode(ePlayMode PlayMode);
     ePlayMode GetPlayMode(void) const { return m_PlayMode; };
+
+    const cRect& GetVideoWindow(void) { return m_VideoWindow; }
 
   protected:
     virtual void    Clear(void);
@@ -111,6 +115,7 @@ class cXinelibDevice : public cDevice
     virtual void    Freeze(void);
     virtual bool    Flush(int TimeoutMs = 0);
     virtual int64_t GetSTC(void);
+    virtual void    ScaleVideo(const cRect &Rect = cRect::Null);
 
   // Video format facilities
 
