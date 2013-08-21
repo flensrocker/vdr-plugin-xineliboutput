@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.48 2011-03-20 23:04:47 phintuka Exp $
+ * $Id: osd.c,v 1.49 2013-08-21 09:14:36 phintuka Exp $
  *
  */
 
@@ -310,8 +310,7 @@ void cXinelibOsd::SetCmdFlags(osd_command_t& cmd)
 
   cmd.scaling = xc.osd_scaling;
 
-  if ((VDRVERSNUM < 10717 && m_Layer == OSD_LEVEL_SUBTITLES) ||
-      (                      m_Layer == OSD_LEVEL_TTXTSUBS))
+  if (m_Layer == OSD_LEVEL_TTXTSUBS)
     cmd.scaling = xc.osd_spu_scaling;
 }
 
@@ -434,10 +433,7 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
     return oeTooManyAreas;
   }
 
-#if VDRVERSNUM >= 10708
-  if (xc.osd_spu_scaling &&
-      ((VDRVERSNUM < 10717 && m_Layer == OSD_LEVEL_SUBTITLES) ||
-       (                      m_Layer == OSD_LEVEL_TTXTSUBS))) {
+  if (xc.osd_spu_scaling && m_Layer == OSD_LEVEL_TTXTSUBS) {
     m_ExtentWidth  = 720;
     m_ExtentHeight = 576;
   } else {
@@ -447,22 +443,6 @@ eOsdError cXinelibOsd::SetAreas(const tArea *Areas, int NumAreas)
     m_ExtentWidth  = W;
     m_ExtentHeight = H;
   }
-
-#else
-
-  // Detect full OSD area size
-  if(Left() + Width() > 720 || Top() + Height() > 576) {
-    m_ExtentWidth  = Setup.OSDWidth  + 2 * Setup.OSDLeft;
-    m_ExtentHeight = Setup.OSDHeight + 2 * Setup.OSDTop;
-    LOGDBG("Detected HD OSD, size > %dx%d, using setup values %dx%d",
-           2*Left() + Width(), 2*Top() + Height(),
-           m_ExtentWidth, m_ExtentHeight);
-  } else {
-    m_ExtentWidth  = 720;
-    m_ExtentHeight = 576;
-  }
-
-#endif
 
   CmdSize(m_ExtentWidth, m_ExtentHeight);
 
@@ -526,12 +506,6 @@ void cXinelibOsd::Flush(void)
   if(!m_IsVisible)
     return;
 
-#ifdef YAEPGHDVERSNUM
-  if (vidWin.bpp)
-    CmdVideoWindow(vidWin.x1, vidWin.y1, vidWin.Width(), vidWin.Height());
-#endif
-
-#if VDRVERSNUM >= 10717
   if (IsTrueColor()) {
 
     LOCK_PIXMAPS;
@@ -545,13 +519,10 @@ void cXinelibOsd::Flush(void)
 
     return;
   }
-#endif
 
   int SendDone = 0, XOffset = 0, YOffset = 0;
 
-  if (!xc.osd_spu_scaling &&
-      ((VDRVERSNUM < 10717 && m_Layer == OSD_LEVEL_SUBTITLES) ||
-       (                      m_Layer == OSD_LEVEL_TTXTSUBS))) {
+  if (!xc.osd_spu_scaling && m_Layer == OSD_LEVEL_TTXTSUBS) {
     double Aspect;
     int    W, H;
     m_Device->GetOsdSize(W, H, Aspect);

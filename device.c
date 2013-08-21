@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.c,v 1.125 2013-08-20 09:33:43 phintuka Exp $
+ * $Id: device.c,v 1.126 2013-08-21 09:14:36 phintuka Exp $
  *
  */
 
@@ -47,10 +47,6 @@
 #define LOCAL_INIT_TIMEOUT        20  // seconds
 #define SERVER_INIT_TIMEOUT       5   // seconds
 
-#if (VDRVERSNUM > 10700) && (VDRVERSNUM < 10711)
-# error VDR versions 1.7.1 ... 1.7.10 are not supported !
-#endif
-
 #ifdef LOG_TRICKSPEED
 #  define LOGTRICKSPEED(x...) LOGMSG("trs: " x)
 #else
@@ -77,12 +73,8 @@ class cXinelibStatusMonitor : public cStatus
     };
 
   protected:
-#if VDRVERSNUM < 10726
-    virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
-#else
     virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber, bool LiveView);
-#endif
-    virtual void Replaying(const cControl *Control, const char *Name, 
+    virtual void Replaying(const cControl *Control, const char *Name,
 			   const char *FileName, bool On);
 
     cXinelibDevice& m_Device;
@@ -115,12 +107,8 @@ class cXinelibStatusMonitor : public cStatus
 #endif
 };
 
-void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device, 
-#if VDRVERSNUM < 10726
-					  int ChannelNumber) 
-#else
-					  int ChannelNumber, bool LiveView) 
-#endif
+void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device,
+					  int ChannelNumber, bool LiveView)
 {
   TRACEF("cXinelibStatusMonitor::ChannelSwitch");
   TRACK_TIME(200);
@@ -208,10 +196,6 @@ cXinelibDevice::cXinelibDevice()
   m_liveMode    = true;
   m_TrickSpeed  = -1;
   m_TrickSpeedMode = 0;
-#if VDRVERSNUM < 10705
-  m_TrickSpeedPts = 0;
-  m_TrickSpeedDelay = 0;
-#endif
   m_SkipAudio   = false;
   m_PlayingFile = pmNone;
   m_StreamStart = true;
@@ -691,12 +675,7 @@ bool cXinelibDevice::SetPlayMode(ePlayMode PlayMode)
 #define trs_IPB_frames 0x01  // stream has all frame types
 #define trs_I_frames   0x02  // stream has only I-frames
 #define trs_NoAudio    0x08  // no audio in trick speed mode
-#if VDRVERSNUM < 10705
-#define trs_PTS_recalc 0x10  // PTS must be re-calculated
-#define trs_PTS_check  0x20  // detect in PlayVideo if PTS must be recalculated
-#else
 #define trs_Backward   0x40  // palying backwards -- same as regen pts ???
-#endif
 
 void cXinelibDevice::TrickSpeed(int Speed) 
 {
@@ -707,10 +686,6 @@ void cXinelibDevice::TrickSpeed(int Speed)
     LOGTRICKSPEED("TrickSpeed changed from %d to %d [%d]", m_TrickSpeed, Speed, RealSpeed);
 
     m_TrickSpeed = Speed;
-#if VDRVERSNUM < 10705
-    m_TrickSpeedPts = 0;
-    m_TrickSpeedDelay = 0;
-#endif
 
     //  Possible transitions:
     //     fast <-> play
@@ -741,16 +716,8 @@ void cXinelibDevice::TrickSpeed(int Speed)
       //  ForEach(m_clients, &cXinelibThread::Clear);
       //}
 
-#if VDRVERSNUM < 10705
-      // only I-frames, backwards, pts must be re-generated
-      m_TrickSpeedMode = trs_I_frames | trs_PTS_recalc | trs_NoAudio;
-
-      // change decoder and UDP/RTP scheduler clock rates
-      ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed);
-#else
       m_TrickSpeedMode = trs_I_frames | trs_Backward | trs_NoAudio;
       ForEach(m_clients, &cXinelibThread::TrickSpeed, RealSpeed, true);
-#endif
     }
 
     else if(Speed == 6 || Speed == 3 || Speed == 1) {
@@ -766,17 +733,6 @@ void cXinelibDevice::TrickSpeed(int Speed)
 	LOGTRICKSPEED("    Trick speed limited to %dx speed", RealSpeed);
       }
 
-#if VDRVERSNUM < 10705
-      /* only I-frames, backwards, pts must be re-generated if playing backwards */
-      m_TrickSpeedMode |= trs_PTS_check;
-
-      /* backward/forward state is unknown until first PTS is seen 
-	 so, clear() must be done in PlayVideo. */
-      /* previous trick speed state is not overwritten yet ... ! */
-
-      // change decoder and UDP/RTP scheduler clock rates
-      ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed);
-#else
       if (m_StreamStart || (m_TrickSpeedMode & trs_Backward)) {
         m_TrickSpeedMode |= trs_I_frames | trs_Backward | trs_NoAudio;
 
@@ -788,7 +744,6 @@ void cXinelibDevice::TrickSpeed(int Speed)
 
         ForEach(m_clients, &cXinelibThread::TrickSpeed, -RealSpeed);
       }
-#endif
     }
 
     else if(Speed==-1 || Speed == 0) {
@@ -960,124 +915,6 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
 // Data stream handling
 //
 
-int cXinelibDevice::PlayTrickSpeed(const uchar *buf, int length) 
-{
-#if VDRVERSNUM < 10705
-  if(abs(m_TrickSpeed) > 1 && (m_TrickSpeedMode & trs_I_frames)) {
-    uint8_t PictureType = pes_get_picture_type(buf, length);
-#ifdef LOG_TRICKSPEED
-      if(PictureType != NO_PICTURE && PES_HAS_PTS(buf)) {
-	int64_t pts = pes_get_pts(buf, length);
-	LOGMSG("    TrickSpeed: frame %s pts %"PRId64, picture_type_str[PictureType], pts);
-      }
-#endif
-
-#if 1
-    // limit I-frame rate
-    if(PictureType == I_FRAME) {
-      static int64_t t0 = 0;
-      int64_t t1 = cTimeMs::Now();
-      if((t1 - t0) < 1000) {
-	int fdelay = 40*12; // = 480 ms, time of one GOP in normal speed
-	switch(m_TrickSpeed) {
-	  case  6: /*   2x ff  */ fdelay /= min( 2, xc.max_trickspeed); break;
-	  case  3: /*   4x ff  */ fdelay /= min( 4, xc.max_trickspeed); break;
-	  case  1: /*  12x ff  */ fdelay /= min(12, xc.max_trickspeed); break;
-	  case 63: /* 1/6x rew */ fdelay *= 6; break;
-	  case 48: /* 1/4x rew */ fdelay *= 4; break;
-	  case 24: /* 1/2x rew */ fdelay *= 2; break;
-	  default: break;
-	}
-	/* wait if data is coming in too fast */
-	if(fdelay - (t1-t0) >= 40) {
-	  m_TrickSpeedDelay = 40;
-	  return -1;
-	}
-	
-	t0 += fdelay;
-
-	pes_change_pts((uchar*)buf, length, INT64_C(0));
-      } else {
-	t0 = t1;
-      }
-    }
-#endif
-  }
-
-  //
-  // detecting trick speed mode ?
-  //
-  if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_check) && IS_VIDEO_PACKET(buf)) {
-    int64_t pts;
-    if (PES_HAS_PTS(buf) && (pts = pes_get_pts(buf, length)) > 0) {
-      uint8_t PictureType = pes_get_picture_type(buf, length);
-      if(PictureType != I_FRAME && PictureType != NO_PICTURE) {
-	// --> must be fast worward with IBP frames.
-	// --> PTS check does not work (frames are sent in decoder order) ! */
-	m_TrickSpeedPts = pts - 1;
-	LOGTRICKSPEED("    Detected fast forward mode, using IBP frames");
-      }
-      if(m_TrickSpeedPts == 0) {
-	m_TrickSpeedMode |= trs_NoAudio;
-	m_TrickSpeedPts = pts;
-	LOGTRICKSPEED("    Seen video pts = %"PRId64, pts);
-      } else {
-	if(pts < m_TrickSpeedPts) {
-	  /* -> playing fast backwards */
-	  LOGTRICKSPEED("    Detected fast backward mode. last %"PRId64" now %"PRId64, 
-			m_TrickSpeedPts, pts);
-	  //if(!(m_TrickSpeedMode & trs_PTS_recalc))
-	  //  ForEach(m_clients, &cXinelibThread::Clear);
-	  m_TrickSpeedMode = trs_I_frames | trs_PTS_recalc | trs_NoAudio;	  
-	} else {
-	  LOGTRICKSPEED("    Detected fast forward mode");
-          if(xc.ibp_trickspeed)
-            m_TrickSpeedMode = trs_IPB_frames;
-          else
-            m_TrickSpeedMode = trs_I_frames;
-	}
-      }
-    }
-  }
-
-  //
-  // Trick speed mode with PTS re-calc
-  //
-  if( m_TrickSpeed > 0 && (m_TrickSpeedMode & trs_PTS_recalc) && 
-      IS_VIDEO_PACKET(buf) && PES_HAS_PTS(buf)) {
-    int64_t pts = pes_get_pts(buf, length);
-    if (pts > 0) {
-      
-      /* m_TrickSpeedPts could be 0 in case of slow backwards */
-      if(m_TrickSpeedPts == 0)
-	m_TrickSpeedPts = pts;
-
-      LOGTRICKSPEED("    pts %"PRId64" -> %"PRId64" (diff %"PRId64")  %"PRId64"", pts, 
-		    m_TrickSpeedPts + 40*12*90, m_TrickSpeedPts + 40*12*90 - pts,
-		    (m_TrickSpeedPts + 40*12*90)^0x80000000);
-      pts = m_TrickSpeedPts = m_TrickSpeedPts + 40*12*90; /* 12 frames * 40ms -> pts units */
-      pts ^= 0x80000000; /* discontinuity (when mode changes) forces re-syncing of all clocks */
-      pes_change_pts((uchar*)buf, length, pts);
-    }
-  }
-
-#if 1
-  else if (m_TrickSpeedMode & trs_I_frames) {
-    if (IS_VIDEO_PACKET(buf) && PES_HAS_PTS(buf)) {
-      int64_t pts = pes_get_pts(buf, length);
-      if (pts > 0) {
-	pts ^= 0x80000000; /* discontinuity (when mode changes) forces re-syncing of all clocks */
-	pes_change_pts((uchar*)buf, length, pts);
-      }
-    }
-  }
-#endif
-
-#endif /* VDRVERSNUM < 10705 */
-
-  return 0;
-}
-
 int cXinelibDevice::PlayAny(const uchar *buf, int length) 
 {
   TRACEF("cXinelibDevice::PlayAny");
@@ -1117,8 +954,6 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   }
 
   if(m_TrickSpeed > 0) {
-    if(PlayTrickSpeed(buf, length) < 0)
-      return 0; /* wait if data is coming in too fast */
   } else if(m_SkipAudio) {
     /* needed for still images when moving cutting marks */
     if (DATA_IS_PES(buf))
@@ -1127,20 +962,19 @@ int cXinelibDevice::PlayAny(const uchar *buf, int length)
   m_FreeBufs --;
 
   if(m_local) {
-    length = (isMpeg1 ? m_local->Play_Mpeg1_PES(buf,length) : 
+    length = (isMpeg1 ? m_local->Play_Mpeg1_PES(buf,length) :
                         m_local->Play(buf, length));
-  } 
+  }
   if(m_server && length > 0) {
-    int length2 = isMpeg1 ? m_server->Play_Mpeg1_PES(buf, length) : 
+    int length2 = isMpeg1 ? m_server->Play_Mpeg1_PES(buf, length) :
                             m_server->Play(buf, length);
     if(!m_local)
       return length2;
   }
-  
+
   return length;
 }
 
-#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
 /*
  * hook to PlayTs() to get PAT and PMT
  */
@@ -1160,11 +994,7 @@ int cXinelibDevice::PlayTs(const uchar *Data, int Length, bool VideoOnly)
   if (TsHasPayload(Data) && TsPayloadOffset(Data) < TS_SIZE) {
 
     int Pid = TsPid(Data);
-#if VDRVERSNUM < 10733
-    if (Pid == 0 || Pid == PatPmtParser()->PmtPid()) {
-#else
     if (Pid == PATPID || PatPmtParser()->IsPmtPid(Pid)) {
-#endif
       if (m_server)
         m_server->SetHeader(Data, Result, Pid == 0);
 
@@ -1284,7 +1114,6 @@ int cXinelibDevice::PlayTsVideo(const uchar *Data, int Length)
 
   return PlayTsAny(Data, Length);
 }
-#endif // VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
 
 bool cXinelibDevice::AcceptVideoPacket(const uchar *Data, int Length)
 {
@@ -1393,9 +1222,7 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
   bool isPes   = DATA_IS_PES(Data) && ((Data[3] & 0xF0) == 0xE0);
   bool isMpeg1 = isPes && ((Data[6] & 0xC0) != 0x80);
   bool isH264  = isPes && pes_is_frame_h264(Data, Length);
-#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
   bool isTs    = DATA_IS_TS(Data);
-#endif
 
   int i;
 
@@ -1420,7 +1247,6 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
 	      &mmin<int>, Length);
     } else if(isPes) {
       /*cDevice::*/PlayPes(Data, Length, m_SkipAudio);
-#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
     } else if(isTs) {
       int written = 0, total = (Length/TS_SIZE)*TS_SIZE;
       while (written < total) {
@@ -1431,7 +1257,6 @@ void cXinelibDevice::StillPicture(const uchar *Data, int Length)
           cCondWait::SleepMs(5);
       }
       TsBufferFlush();
-#endif
     } else {
       ForEach(m_clients, &cXinelibThread::Play_Mpeg2_ES,
               Data, Length, VIDEO_STREAM, isH264,
@@ -1491,15 +1316,6 @@ bool cXinelibDevice::Poll(cPoller &Poller, int TimeoutMs)
     //return Poller.Poll(0);
     return true;
   }
-
-#if VDRVERSNUM < 10705
-  if(m_TrickSpeed > 1 && m_TrickSpeedDelay > 20) {
-    LOGTRICKSPEED("    Poll: m_TrickSpeedDelay=%d.", m_TrickSpeedDelay);
-    cCondWait::SleepMs(20);
-    m_TrickSpeedDelay -= 20;
-    return false;
-  }
-#endif
 
   if(m_FreeBufs < 1) {
     int result = DEFAULT_POLL_SIZE;
@@ -1631,7 +1447,6 @@ eVideoSystem cXinelibDevice::GetVideoSystem(void)
   return cDevice::GetVideoSystem();
 }
 
-#if VDRVERSNUM >= 10708
 void cXinelibDevice::GetVideoSize(int &Width, int &Height, double &VideoAspect)
 {
   Width  = m_VideoSize->width;
@@ -1642,7 +1457,6 @@ void cXinelibDevice::GetVideoSize(int &Width, int &Height, double &VideoAspect)
     VideoAspect *= (double)Width / (double)Height;
   }
 }
-#endif
 
 void cXinelibDevice::GetOsdSize(int &Width, int &Height, double &PixelAspect)
 {

@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.59 2013-08-20 12:12:24 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.60 2013-08-21 09:14:36 phintuka Exp $
  *
  */
 
@@ -37,8 +37,8 @@
 #include "menu.h"
 #include "media_player.h"
 
-#if defined(APIVERSNUM) && (APIVERSNUM < 10600)
-# error VDR API versions < 1.6.0 are not supported !
+#if defined(APIVERSNUM) && (APIVERSNUM < 10733)
+# error VDR API versions < 1.7.33 are not supported !
 #endif
 
 //---------------------------------plugin-------------------------------------

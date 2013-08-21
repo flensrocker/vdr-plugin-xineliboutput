@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.63 2012-03-17 20:14:41 phintuka Exp $
+ * $Id: device.h,v 1.64 2013-08-21 09:14:36 phintuka Exp $
  *
  */
 
@@ -99,10 +99,6 @@ class cXinelibDevice : public cDevice
     ePlayMode m_PlayMode;
     int       m_TrickSpeed;
     int       m_TrickSpeedMode;
-#if VDRVERSNUM < 10705
-    int64_t   m_TrickSpeedPts;
-    int       m_TrickSpeedDelay;
-#endif
 
   public:
     virtual bool SetPlayMode(ePlayMode PlayMode);
@@ -125,9 +121,7 @@ class cXinelibDevice : public cDevice
 
     struct video_size_s *m_VideoSize;
     struct ts_state_s   *m_tssVideoSize;
-#if VDRVERSNUM >= 10708
     virtual void GetVideoSize(int &Width, int &Height, double &VideoAspect);
-#endif
     virtual void GetOsdSize(int &Width, int &Height, double &PixelAspect);
 
   // Track facilities
@@ -237,7 +231,6 @@ class cXinelibDevice : public cDevice
     int  m_FreeBufs;
 
     int PlayAny(const uchar *Data, int Length);
-    int PlayTrickSpeed(const uchar *buf, int length);
 
     bool AcceptVideoPacket(const uchar *Data, int Length);
     bool AcceptAudioPacket(const uchar *Data, int Length);
@@ -253,7 +246,6 @@ class cXinelibDevice : public cDevice
     virtual int  PlayAudio(const uchar *Data, int Length, uchar Id);
     virtual int  PlaySubtitle(const uchar *Data, int Length);
 
-#if VDRVERSNUM >= 10701 || defined(TSPLAY_PATCH_VERSION)
     // join multiple TS packets to xineliboutput transport packet
     cMutex        m_TsBufLock;
     uint8_t       m_TsBuf[4096];
@@ -269,10 +261,6 @@ class cXinelibDevice : public cDevice
     virtual int PlayTsAudio(const uchar *Data, int Length);
     virtual int PlayTsSubtitle(const uchar *Data, int Length);
     virtual int PlayTs(const uchar *Data, int Length, bool VideoOnly = false);
-#else
-    void        TsBufferClear(void) {}
-    void        TsBufferFlush(void) {}
-#endif
 
   // Picture-In-Picture
 
