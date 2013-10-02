@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.27 2013-01-17 21:05:16 phintuka Exp $
+ * $Id: osd_manager.c,v 1.28 2013-10-02 08:05:42 phintuka Exp $
  *
  */
 
@@ -723,9 +723,9 @@ static int exec_osd_set_argb(osd_manager_impl_t *this, osd_command_t *cmd)
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
   osd->argb_layer->x1 = MIN( osd->argb_layer->x1, cmd->x );
-  osd->argb_layer->x2 = MAX( osd->argb_layer->x2, cmd->x + cmd->w );
+  osd->argb_layer->x2 = MAX( osd->argb_layer->x2, cmd->x + cmd->w - 1);
   osd->argb_layer->y1 = MIN( osd->argb_layer->y1, cmd->y );
-  osd->argb_layer->y2 = MAX( osd->argb_layer->y2, cmd->y + cmd->h );
+  osd->argb_layer->y2 = MAX( osd->argb_layer->y2, cmd->y + cmd->h - 1);
 #endif
 
   /* set buffer (ref-counted) */
