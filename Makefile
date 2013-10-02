@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.112 2013-08-20 12:20:59 phintuka Exp $
+# $Id: Makefile,v 1.113 2013-10-02 07:27:38 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -388,31 +388,31 @@ $(XINEPOSTAUDIOCHANNEL): xine_post_audiochannel.o
 
 install: all
 ifeq ($(XINELIBOUTPUT_XINEPLUGIN), yes)
-	@mkdir -p $(DESTDIR)/$(XINEPLUGINDIR)/post
-	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
-	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
-	@$(INSTALL) -m 0644 $(XINEINPUTVDR) $(DESTDIR)/$(XINEPLUGINDIR)/$(XINEINPUTVDR)
-	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-	@$(INSTALL) -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
-	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
-	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
-	@$(INSTALL) -m 0644 $(XINEPOSTSWSCALE) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
-	@echo Installing $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-	@-rm -rf $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
-	@$(INSTALL) -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)/$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@mkdir -p $(DESTDIR)$(XINEPLUGINDIR)/post
+	@echo Installing $(DESTDIR)$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@-rm -rf $(DESTDIR)$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@$(INSTALL) -m 0644 $(XINEINPUTVDR) $(DESTDIR)$(XINEPLUGINDIR)/$(XINEINPUTVDR)
+	@echo Installing $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@-rm -rf $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@$(INSTALL) -m 0644 $(XINEPOSTAUTOCROP) $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTAUTOCROP)
+	@echo Installing $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
+	@-rm -rf $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
+	@$(INSTALL) -m 0644 $(XINEPOSTSWSCALE) $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTSWSCALE)
+	@echo Installing $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@-rm -rf $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
+	@$(INSTALL) -m 0644 $(XINEPOSTAUDIOCHANNEL) $(DESTDIR)$(XINEPLUGINDIR)/post/$(XINEPOSTAUDIOCHANNEL)
 endif
 ifeq ($(XINELIBOUTPUT_FB), yes)
-	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-fbfe
-	@mkdir -p $(DESTDIR)/$(BINDIR)
-	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-fbfe
-	@$(INSTALL) -m 0755 vdr-fbfe $(DESTDIR)/$(BINDIR)/vdr-fbfe
+	@echo Installing $(DESTDIR)$(BINDIR)/vdr-fbfe
+	@mkdir -p $(DESTDIR)$(BINDIR)
+	@-rm -rf $(DESTDIR)$(BINDIR)/vdr-fbfe
+	@$(INSTALL) -m 0755 vdr-fbfe $(DESTDIR)$(BINDIR)/vdr-fbfe
 endif
 ifeq ($(XINELIBOUTPUT_X11), yes)
-	@echo Installing $(DESTDIR)/$(BINDIR)/vdr-sxfe
-	@mkdir -p $(DESTDIR)/$(BINDIR)
-	@-rm -rf $(DESTDIR)/$(BINDIR)/vdr-sxfe
-	@$(INSTALL) -m 0755 vdr-sxfe $(DESTDIR)/$(BINDIR)/vdr-sxfe
+	@echo Installing $(DESTDIR)$(BINDIR)/vdr-sxfe
+	@mkdir -p $(DESTDIR)$(BINDIR)
+	@-rm -rf $(DESTDIR)$(BINDIR)/vdr-sxfe
+	@$(INSTALL) -m 0755 vdr-sxfe $(DESTDIR)$(BINDIR)/vdr-sxfe
 endif
 
 dist: $(I18Npo) clean
