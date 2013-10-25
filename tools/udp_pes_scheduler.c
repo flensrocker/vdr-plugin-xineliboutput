@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: udp_pes_scheduler.c,v 1.56 2011-02-28 13:15:08 phintuka Exp $
+ * $Id: udp_pes_scheduler.c,v 1.57 2013-10-25 17:22:38 rofafor Exp $
  *
  */
 
@@ -635,7 +635,12 @@ void cUdpScheduler::Send_SAP(bool Announce)
 #if 1
   /* store copy of SDP data */
   if(m_fd_sap < 0) {
-    cString fname = AddDirectory(VideoDirectory,
+    cString fname = AddDirectory(
+#if defined(APIVERSNUM) && (APIVERSNUM < 20102)
+				 VideoDirectory,
+#else
+				 cVideoDirectory::Name(),
+#endif
 				 cString::sprintf("xineliboutput@%s.sdp",
 						  ip));
     FILE *fp = fopen(fname, "w");

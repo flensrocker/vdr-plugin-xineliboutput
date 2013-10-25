@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: menu.c,v 1.96 2012-03-19 11:29:14 phintuka Exp $
+ * $Id: menu.c,v 1.97 2013-10-25 17:22:38 rofafor Exp $
  *
  */
 
@@ -220,7 +220,11 @@ void cMenuBrowseFiles::Set(void)
   }
 
   if (m_CurrentDir[0] != '/') {
+#if defined(APIVERSNUM) && (APIVERSNUM < 20102)
     m_CurrentDir = VideoDirectory;
+#else
+    m_CurrentDir = cVideoDirectory::Name();
+#endif
   }
 
   // find deepest accessible directory from path
