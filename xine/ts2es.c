@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: ts2es.c,v 1.22 2013-01-07 08:52:16 phintuka Exp $
+ * $Id: ts2es.c,v 1.23 2013-10-28 11:43:43 phintuka Exp $
  *
  */
 
@@ -187,15 +187,19 @@ buf_element_t *ts2es_put(ts2es_t *this, uint8_t *data, fifo_buffer_t *src_fifo)
 
   /* handle new payload unit */
   if (pusi) {
-    this->first_pusi_seen = 1;
 
+    if (this->first_pusi_seen && !this->buf) {
+      this->buf = this->fifo->buffer_pool_alloc(this->fifo);
+      this->buf->type = this->xine_buf_type;
+    }
     if (this->buf) {
-
       this->buf->decoder_flags |= BUF_FLAG_FRAME_END;
 
       result = this->buf;
       this->buf = NULL;
     }
+
+    this->first_pusi_seen = 1;
   }
 
   /* split large packets */
