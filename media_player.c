@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: media_player.c,v 1.94 2012-08-29 19:25:14 phintuka Exp $
+ * $Id: media_player.c,v 1.95 2013-10-28 09:14:47 phintuka Exp $
  *
  */
 
@@ -96,7 +96,7 @@ class cXinelibPlayer : public cPlayer
 cXinelibPlayer::cXinelibPlayer(cXinelibDevice *Dev, const char *File, bool Queue, const char *SubFile)
 {
   m_ResumeFile = NULL;
-  m_UseResumeFile = true;
+  m_UseResumeFile = xc.media_enable_resume;
   m_Error = false;
   m_Speed = 1;
   m_Dev = Dev;
@@ -547,7 +547,7 @@ cXinelibPlayerControl::cXinelibPlayerControl(cXinelibDevice *Dev, eMainMenuMode 
   number = 0;
   lastTime.Set();
 
-  m_Player->UseResumeFile( (Mode==ShowFiles) );
+  m_Player->UseResumeFile( (Mode==ShowFiles) && xc.media_enable_resume);
 
   MsgReplaying(*m_Player->Playlist().Current()->Title, *m_Player->File());
 }

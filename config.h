@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.h,v 1.90 2012-03-19 11:38:43 phintuka Exp $
+ * $Id: config.h,v 1.91 2013-10-28 09:14:47 phintuka Exp $
  *
  */
 
@@ -354,6 +354,7 @@ class config_t {
     int  dvd_arrow_keys_control_playback;
     uint media_menu_items;         // enabled items in media player menu (bitmask)
     int  media_enable_delete;      // enable Delete in file browser
+    int  media_enable_resume;
 
     // deinterlacing post plugin
     char deinterlace_method[32];

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.116 2013-10-25 17:22:37 rofafor Exp $
+ * $Id: config.c,v 1.117 2013-10-28 09:14:47 phintuka Exp $
  *
  */
 
@@ -718,6 +718,7 @@ config_t::config_t() {
   dvd_arrow_keys_control_playback = 1;
   media_menu_items = ~0;
   media_enable_delete = 0;
+  media_enable_resume = 1;
 
   main_menu_mode = ShowMenu;
   last_hotkey = -1;//kNone;
@@ -1037,6 +1038,7 @@ bool config_t::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Media.DVD.ArrowKeysControlPlayback")) dvd_arrow_keys_control_playback = atoi(Value);
   else if (!strcasecmp(Name, "Media.MenuItems"))         media_menu_items = atoi(Value);
   else if (!strcasecmp(Name, "Media.EnableDelete"))      media_enable_delete = atoi(Value);
+  else if (!strcasecmp(Name, "Media.EnableResume"))      media_enable_resume = atoi(Value);
 
   else if (!strcasecmp(Name, "Playlist.Tracknumber")) playlist_tracknumber = atoi(Value);
   else if (!strcasecmp(Name, "Playlist.Artist"))      playlist_artist = atoi(Value);
