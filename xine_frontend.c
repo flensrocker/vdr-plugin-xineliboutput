@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.c,v 1.126 2012-03-19 11:51:21 phintuka Exp $
+ * $Id: xine_frontend.c,v 1.127 2013-10-28 07:45:50 phintuka Exp $
  *
  */
 
@@ -1224,8 +1224,6 @@ static void fe_xine_close(frontend_t *this_gen)
       return;
 
     fe_xine_stop(this_gen);
-
-    fe_post_unload(this);
 
     xine_close(this->stream);
     if(this->postplugins->pip_stream) 
