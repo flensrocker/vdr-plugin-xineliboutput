@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: config.c,v 1.117 2013-10-28 09:14:47 phintuka Exp $
+ * $Id: config.c,v 1.118 2013-10-28 15:31:45 rofafor Exp $
  *
  */
 
@@ -703,15 +703,12 @@ config_t::config_t() {
   ff_h264_skip_loop_filter     = FF_H264_SKIP_LOOPFILTER_auto;
 
   strn0cpy(media_root_dir,    "/",            sizeof(media_root_dir));
-#if defined(APIVERSNUM) && (APIVERSNUM < 20102)
+#if defined(APIVERSNUM) && (APIVERSNUM >= 20102)
+  const char *VideoDirectory = cVideoDirectory::Name() ? cVideoDirectory::Name() : VIDEODIR;
+#endif
   strn0cpy(browse_files_dir,  VideoDirectory, sizeof(browse_files_dir));
   strn0cpy(browse_music_dir,  VideoDirectory, sizeof(browse_music_dir));
   strn0cpy(browse_images_dir, VideoDirectory, sizeof(browse_images_dir));
-#else
-  strn0cpy(browse_files_dir,  cVideoDirectory::Name(), sizeof(browse_files_dir));
-  strn0cpy(browse_music_dir,  cVideoDirectory::Name(), sizeof(browse_music_dir));
-  strn0cpy(browse_images_dir, cVideoDirectory::Name(), sizeof(browse_images_dir));
-#endif
   show_hidden_files = 0;
   cache_implicit_playlists = 1;
   enable_id3_scanner = 1;
