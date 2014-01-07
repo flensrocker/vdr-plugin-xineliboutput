@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2012-03-13 13:13+0200\n"
+"POT-Creation-Date: 2013-10-29 10:29+0200\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Arthur Konovalov\n"
 "Language-Team: Estonian <vdr@linuxtv.org>\n"
@@ -705,6 +705,9 @@ msgid "Show hidden files"
 msgstr ""
 
 msgid "Allow removing files"
+msgstr ""
+
+msgid "Remember last playback position"
 msgstr ""
 
 msgid "Media Player"

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: device.h,v 1.65 2013-08-21 09:40:22 phintuka Exp $
+ * $Id: device.h,v 1.66 2014-01-07 16:03:54 rofafor Exp $
  *
  */
 
@@ -111,6 +111,7 @@ class cXinelibDevice : public cDevice
   protected:
     virtual void    Clear(void);
     virtual void    Play(void);
+    virtual void    TrickSpeed(int Speed, bool Forward) { TrickSpeed(Speed); }
     virtual void    TrickSpeed(int Speed);
     virtual void    Freeze(void);
     virtual bool    Flush(int TimeoutMs = 0);
