@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.205 2013-08-18 07:58:29 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.206 2014-01-13 09:01:02 phintuka Exp $
  *
  */
 
@@ -36,6 +36,9 @@
 #endif
 #ifdef HAVE_XINERAMA
 #  include <X11/extensions/Xinerama.h>
+#endif
+#ifdef HAVE_XRANDR
+#  include <X11/extensions/Xrandr.h>
 #endif
 
 #ifdef HAVE_OPENGL
@@ -2564,6 +2567,90 @@ static void sxfe_toggle_fullscreen(fe_t *this_gen, int fullscreen)
   this->fullscreen_state_forced = !force;
 }
 
+static unsigned char *sxfe_display_edid(fe_t *this_gen, int *size)
+{
+  sxfe_t *this = (sxfe_t*)this_gen;
+  unsigned char *edid = NULL;
+
+#ifdef HAVE_XRANDR
+
+  XLockDisplay(this->display);
+
+  do {
+    if (!this->display)
+      break;
+
+    int event_base, error_base;
+    int major, minor;
+    if (!XRRQueryExtension(this->display, &event_base, &error_base) ||
+        !XRRQueryVersion(this->display, &major, &minor)) {
+      LOGMSG("edid: RandR extension missing");
+      break;
+    }
+    if (major < 1 || (major == 1 && minor < 2)) {
+      LOGMSG("edid: RandR extension < 1.2");
+      break;
+    }
+
+    XRRScreenResources *res;
+    res = XRRGetScreenResourcesCurrent(this->display, this->root_window);
+    if (!res) {
+      LOGMSG("edid: failed getting screen resources");
+      break;
+    }
+
+    int o;
+    for (o = 0; o < res->noutput && !edid; o++) {
+      XRROutputInfo *output_info = XRRGetOutputInfo(this->display, res, res->outputs[o]);
+      if (!output_info) {
+        LOGMSG("edid: failed getting output %d information", o);
+        continue;
+      }
+      if (output_info->connection != RR_Connected) {
+        LOGDBG("edid: output %s not connected", output_info->name);
+        continue;
+      }
+      LOGDBG("edid: checking connected output %s", output_info->name);
+
+      int nprop, j;
+      Atom *props = XRRListOutputProperties(this->display, res->outputs[o], &nprop);
+      for (j = 0; j < nprop && !edid; j++) {
+        char *atom_name = XGetAtomName(this->display, props[j]);
+
+        if (!strcmp(atom_name, "EDID")) {
+
+          unsigned char *prop;
+          int actual_format;
+          unsigned long nitems, bytes_after;
+          Atom actual_type;
+          XRRGetOutputProperty(this->display, res->outputs[o], props[j],
+                               0, 100, False, False,
+                               AnyPropertyType,
+                               &actual_type, &actual_format,
+                               &nitems, &bytes_after, &prop);
+          if (actual_format == 8 && actual_type == XA_INTEGER) {
+            LOGDBG("edid: Found EDID, %d bytes", nitems);
+            *size = nitems;
+            edid = malloc(*size);
+            memcpy(edid, prop, *size);
+            break;
+          }
+        }
+      }
+    }
+  } while (0);
+
+  XUnlockDisplay(this->display);
+
+  if (!edid) {
+    LOGMSG("no EDID found");
+  }
+#endif /* HAVE_XRANDR */
+
+  return edid;
+}
+
+
 /*
  *   X event loop
  */
@@ -3099,6 +3186,7 @@ static frontend_t *sxfe_get_frontend(void)
 
   this->fe.fe_display_open   = sxfe_display_open;
   this->fe.fe_display_config = sxfe_display_config;
+  this->fe.fe_display_edid   = sxfe_display_edid;
   this->fe.fe_display_close  = sxfe_display_close;
 
   this->fe.fe_run       = sxfe_run;

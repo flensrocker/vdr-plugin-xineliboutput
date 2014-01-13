@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend.h,v 1.30 2013-08-19 08:50:19 phintuka Exp $
+ * $Id: xine_frontend.h,v 1.31 2014-01-13 09:01:03 phintuka Exp $
  *
  */
 
@@ -89,6 +89,7 @@ struct frontend_s {
                             int fullscreen,
                             int modeswitch, const char *modeline,
                             int aspect, int scale_video);
+  unsigned char * (*fe_display_edid)(frontend_t *, int *size);
   void (*fe_display_close)(frontend_t*);
 
   /* Xine engine */
