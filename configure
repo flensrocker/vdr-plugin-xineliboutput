@@ -7,7 +7,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# * $Id: configure,v 1.44 2014-01-13 09:01:03 phintuka Exp $
+# * $Id: configure,v 1.45 2014-01-14 08:21:33 phintuka Exp $
 #
 
 PKG_CONFIG="pkg-config"
@@ -241,6 +241,7 @@ FEATURES="
   i18n
   libcap
   libbluray
+  libcec
   mce-dbus-names
 "
 
@@ -268,6 +269,7 @@ show_help(){
   echo
   echo "  --disable-libextractor disable libextractor support (media file metainfo) [no]"
   echo "  --disable-libbluray    disable libbluray support (BluRay metainfo) [no]"
+  echo "  --disable-libcec       disable libcec support (HDMI-CEC remote control) [no]"
   echo "  --disable-libjpeg      disable libjpeg support [no]"
   echo "  --disable-dbus-glib-1  disable dbus-glib support [no]"
   echo "  --disable-xshm         disable XShm support [no]"
@@ -332,7 +334,7 @@ done
 #
 
 check_deps(){
-  disabled libxine && disable x11 fb libavutil libjpeg
+  disabled libxine && disable x11 fb libavutil libjpeg libcec
   disabled x11     && disable dbus-glib-1 xshm xrandr xrender xshape opengl xdpms xinerama vdpau
   disabled vdr     && disable libextractor libcap libbluray
   disabled dlfcn   && disable opengl
@@ -372,6 +374,7 @@ if enabled libxine; then
   test_library   JPEG    libjpeg      "jpeglib.h"              "-ljpeg"      "jpeg_create_compress(0)"
   test_library   X11     x11          "X11/X.h"                "-lX11"       "XInitThreads()"
   test_library   PTHREAD pthread      "pthread.h"              "-lpthread"   "pthread_create(0,0,0,0)"
+  test_library   CEC     libcec       "libcec/cecc.h"          "-lcec"       "cec_initialize(0)"
   if enabled x11; then
     test_library X11  xext         "X11/extensions/Xext.h"     "-lXext"      ""
     test_library X11  xshm         "X11/extensions/XShm.h"     "-lXext"      "XShmQueryExtension(0)"
@@ -479,4 +482,4 @@ echo "LIBS_AVUTIL += $LIBS_AVUTIL">>$makefile
 echo "LIBS_PTHREAD += $LIBS_PTHREAD">>$makefile
 echo "LIBS_VDR    += $LIBS_VDR">>$makefile
 echo "LIBS_X11    += $LIBS_X11">>$makefile
-
+echo "LIBS_CEC    += $LIBS_CEC">>$makefile

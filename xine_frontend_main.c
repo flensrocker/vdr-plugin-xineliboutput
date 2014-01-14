@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_main.c,v 1.104 2013-08-18 07:58:29 phintuka Exp $
+ * $Id: xine_frontend_main.c,v 1.105 2014-01-14 08:21:33 phintuka Exp $
  *
  */
 
@@ -27,6 +27,7 @@
 #include "xine_input_vdr_mrl.h"
 #include "xine_frontend.h"
 #include "tools/vdrdiscovery.h"
+#include "xine_frontend_cec.h"
 #include "xine_frontend_lirc.h"
 #include "xine_frontend_kbd.h"
 
@@ -143,6 +144,12 @@ static const char help_str[] =
     "                                 --post=upmix;tvtime:enabled=1,cheap_mode=1\n"
     "   -L, --lirc[=devicename]       Use lirc input device\n"
     "                                 Optional lirc socket name can be given\n"
+#ifdef HAVE_LIBCEC
+    "   -E, --nocec                   Disable HDMI-CEC input device\n"
+    "   -e, --cec[=port[,type]]       Use HDMI-CEC input device\n"
+    "                                 port: HDMI port number\n"
+    "                                 type: 0 for TV, 5 for AVR\n"
+#endif
     "   -C, --config=file             Use config file (default: ~/.xine/config_xineliboutput).\n"
     "   -v, --verbose                 Verbose debug output\n"
     "   -s, --silent                  Silent mode (report only errors)\n"
@@ -167,7 +174,7 @@ static const char help_str[] =
     "                                 are tried in following order:\n"
     "                                 local pipe, rtp, udp, tcp\n\n";
 
-static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:p:vsxlkoObSRtuUr";
+static const char short_options[] = "HA:V:d:W:a:fg:Dw:h:B:nP:L:C:T:p:vsxlkoOeEbSRtuUr";
 
 static const struct option long_options[] = {
   { "help",       no_argument,       NULL, 'H' },
@@ -195,6 +202,10 @@ static const struct option long_options[] = {
   { "noscaling",  no_argument,       NULL, 'n' },
   { "post",       required_argument, NULL, 'P' },
   { "lirc",       optional_argument, NULL, 'L' },
+#ifdef HAVE_LIBCEC
+  { "nocec",      optional_argument, NULL, 'E' },
+  { "cec",        optional_argument, NULL, 'e' },
+#endif
   { "config",     required_argument, NULL, 'C' },
   { "terminal",   required_argument, NULL, 'T' },
   { "shutdown",   required_argument, NULL, 'p' },
@@ -238,6 +249,7 @@ int main(int argc, char *argv[])
   char *audio_driver = NULL;
   char *static_post_plugins = NULL;
   char *lirc_dev = NULL;
+  int   cec_hdmi_port = 0, cec_dev_type = 0;
   char *p;
   const char *audio_device = NULL;
   const char *video_port = NULL;
@@ -411,6 +423,17 @@ int main(int argc, char *argv[])
               }
               PRINTF("LIRC device:  %s%s\n", lirc_dev,
                      repeat_emu?", emulating key repeat":"");
+              break;
+    case 'E': cec_hdmi_port = -1;
+              break;
+    case 'e': cec_hdmi_port = 0;
+#ifdef HAVE_LIBCEC
+              if (optarg)
+                sscanf(optarg, "%d,%d", &cec_hdmi_port, &cec_dev_type);
+              PRINTF("HDMI-CEC enabled. Connected to HDMI port %d (type %d)\n", cec_hdmi_port, cec_dev_type);
+#else
+              EXIT("HDMI-CEC support not compiled in\n");
+#endif
               break;
     case 'v': SysLogLevel = (SysLogLevel<SYSLOGLEVEL_DEBUG) ? SYSLOGLEVEL_DEBUG : SysLogLevel+1;
               PRINTF("Verbose mode\n");
@@ -625,6 +648,8 @@ int main(int argc, char *argv[])
       /* Start LIRC forwarding */
       lirc_start(fe, lirc_dev, repeat_emu);
 
+      cec_start(fe, cec_hdmi_port, cec_dev_type);
+
       /* Start keyboard listener thread */
       if (!nokbd) {
         PRINTF("\n\nPress Esc to exit\n\n");
@@ -658,6 +683,7 @@ int main(int argc, char *argv[])
 
   /* stop input threads */
   lirc_stop();
+  cec_stop();
   if (!nokbd)
     kbd_stop();
 

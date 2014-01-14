@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.117 2014-01-07 16:06:39 rofafor Exp $
+# $Id: Makefile,v 1.118 2014-01-14 08:21:33 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -211,8 +211,10 @@ OBJS_FE_SO = xine_frontend.o logdefs.o \
              xine/post.o xine/vo_hook.o xine/vo_osdscaler.o xine/vo_osdreorder.o xine/vo_lastpts.o \
              xine/vo_frameoutput.o \
              tools/rle.o
-OBJS_FE    = $(OBJS_FE_SO) tools/vdrdiscovery.o xine_frontend_main.o xine_frontend_lirc.o xine_frontend_kbd.o
-
+OBJS_FE    = $(OBJS_FE_SO) \
+             xine_frontend_main.o \
+             xine_frontend_lirc.o xine_frontend_kbd.o xine_frontend_cec.o \
+             tools/vdrdiscovery.o
 OBJS_SXFE_SO = xine_sxfe_frontend.o $(OBJS_FE_SO)
 OBJS_SXFE    = xine_sxfe_frontend.o $(OBJS_FE)
 OBJS_FBFE_SO = xine_fbfe_frontend.o $(OBJS_FE_SO)
@@ -356,7 +358,7 @@ ifeq ($(VDR_TREE), yes)
 	$(INSTALL) $@ $(LIBDIR)/
 endif
 $(VDRSXFE): $(OBJS_SXFE)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_SXFE) $(LIBS_X11) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_CEC) $(LIBS_PTHREAD) -o $@
 
 #
 # vdr-fbfe
@@ -368,7 +370,7 @@ ifeq ($(VDR_TREE), yes)
 	$(INSTALL) $@ $(LIBDIR)/
 endif
 $(VDRFBFE): $(OBJS_FBFE)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_PTHREAD) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_FBFE) $(LIBS_XINE) $(LIBS_JPEG) $(LIBS_CEC) $(LIBS_PTHREAD) -o $@
 
 #
 # xine plugins
