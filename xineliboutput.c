@@ -21,7 +21,7 @@
  *
  * xineliboutput.c: VDR Plugin interface
  *
- * $Id: xineliboutput.c,v 1.60 2013-08-21 09:14:36 phintuka Exp $
+ * $Id: xineliboutput.c,v 1.61 2014-01-31 08:58:30 rofafor Exp $
  *
  */
 
@@ -47,11 +47,12 @@ static const char *VERSION        = "2.0.0-cvs";
 static const char *DESCRIPTION    = trNOOP("X11/xine-lib output plugin");
 static const char *MAINMENUENTRY  = trNOOP("Media Player");
 
-class cPluginXinelibOutput : public cPlugin 
+class cPluginXinelibOutput : public cPlugin
 {
   private:
     // Add any member variables or functions you may need here.
     cXinelibDevice *m_Dev;
+    int             m_MakePrimary;
 
   public:
     cPluginXinelibOutput(void);
@@ -88,6 +89,7 @@ cPluginXinelibOutput::cPluginXinelibOutput(void)
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
 
   m_Dev = NULL;
+  m_MakePrimary = 0;
 }
 
 cPluginXinelibOutput::~cPluginXinelibOutput()
@@ -193,6 +195,12 @@ bool cPluginXinelibOutput::Start(void)
 void cPluginXinelibOutput::MainThreadHook(void)
 {
   TRACEF("cPluginXinelibOutput::MainThreadHook");
+
+  if (m_MakePrimary) {
+     LOGDBG("Switching primary device to %d", m_MakePrimary);
+     cDevice::SetPrimaryDevice(m_MakePrimary);
+     m_MakePrimary = 0;
+     }
 
   if (m_Dev) {
     m_Dev->MainThreadHook();
@@ -328,6 +336,9 @@ const char **cPluginXinelibOutput::SVDRPHelpPages(void)
     "    Queue music file to playlist.",
     "LFRO <frontend>\n"
     "    Start/stop local frontend. <frontend> can be none, sxfe or fbfe.",
+    "PRIM <n>\n"
+    "    Make <n> the primary device. If <n> is missing,\n"
+    "    xineliboutput will become the primary device.",
     NULL
     };
   return HelpPages;
@@ -398,6 +409,20 @@ cString cPluginXinelibOutput::SVDRPCommand(const char *Command, const char *Opti
       ReplyCode = 550; // Requested action not taken
       return cString("Local frontend name missing");
     }
+  }
+
+  else if(strcasecmp(Command, "PRIM") == 0) {
+    int primary = 0;
+    if(*Option) {
+      LOGMSG("SVDRP(%s, %s)", Command, Option);
+      primary = strtol(Option, NULL, 0);
+    } else {
+      LOGMSG("SVDRP(%s)", Command);
+    }
+    if(!primary && m_Dev)
+        primary = m_Dev->DeviceNumber() + 1;
+    m_MakePrimary = primary;
+    return cString::sprintf("Switching primary device to %d", primary);
   }
 
   return NULL;
