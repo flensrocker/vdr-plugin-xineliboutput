@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_cec.c,v 1.2 2014-04-29 10:03:18 phintuka Exp $
+ * $Id: xine_frontend_cec.c,v 1.3 2014-04-29 10:21:18 phintuka Exp $
  *
  */
 
@@ -232,6 +232,16 @@ static int cec_command_cb(void *this_gen, const cec_command command)
   return 1;
 }
 
+ICECCallbacks callbacks = {
+  .CBCecKeyPress             = cec_keypress_cb,
+  .CBCecCommand              = cec_command_cb,
+  .CBCecLogMessage           = cec_log_cb,
+  .CBCecAlert                = cec_alert_cb,
+  .CBCecConfigurationChanged = cec_config_changed_cb,
+  .CBCecSourceActivated      = cec_source_activated_cb,
+  .CBCecMenuStateChanged     = cec_menu_state_changed_cb,
+};
+
 /*
  * configuration
  */
@@ -338,15 +348,6 @@ static int detect_hdmi_address(frontend_t *fe_gen)
 static int libcec_init(void *fe_gen)
 {
   libcec_configuration config;
-  ICECCallbacks callbacks = {
-    .CBCecKeyPress             = cec_keypress_cb,
-    .CBCecCommand              = cec_command_cb,
-    .CBCecLogMessage           = cec_log_cb,
-    .CBCecAlert                = cec_alert_cb,
-    .CBCecConfigurationChanged = cec_config_changed_cb,
-    .CBCecSourceActivated      = cec_source_activated_cb,
-    .CBCecMenuStateChanged     = cec_menu_state_changed_cb,
-  };
 
   libcec_config_clear(&config);
 
