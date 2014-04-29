@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_cec.c,v 1.1 2014-01-14 08:21:33 phintuka Exp $
+ * $Id: xine_frontend_cec.c,v 1.2 2014-04-29 10:03:18 phintuka Exp $
  *
  */
 
@@ -383,7 +383,7 @@ static int libcec_init(void *fe_gen)
 static int libcec_open(void)
 {
   cec_adapter devices[10];
-  int count = cec_find_adapters(devices, 0, NULL);
+  int count = cec_find_adapters(devices, 10, NULL);
   if (count < 1) {
     LOGMSG("No HDMI-CEC adapters found");
     return 0;
