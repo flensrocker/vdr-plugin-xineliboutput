@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.118 2014-01-14 08:21:33 phintuka Exp $
+# $Id: Makefile,v 1.119 2014-06-17 11:22:15 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -274,7 +274,7 @@ vdrlogo_720x576.c: mpg2c vdrlogo_720x576.mpg
 	@./mpg2c vdrlogo vdrlogo_720x576.mpg vdrlogo_720x576.c
 
 # C code (xine plugins and frontends)
-$(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)):
+$(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)): %.o: %.c
 	$(CC) $(CFLAGS) -c $(DEFINES) $(INCLUDES) $(CFLAGS_X11) $(CFLAGS_AVUTIL) $(OPTFLAGS) -o $@ $<
 
 ### Internationalization (I18N):
