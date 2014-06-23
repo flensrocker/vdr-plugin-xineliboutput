@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.10 2012-01-24 11:23:10 phintuka Exp $
+ * $Id: rle.c,v 1.11 2014-06-23 12:14:15 phintuka Exp $
  *
  */
 
@@ -26,13 +26,13 @@
  * rle_compress()
  *
  */
-uint rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint h)
+uint rle_compress(osd_rle_elem_t **rle_data, const uint8_t *data, uint w, uint h)
 {
-  xine_rle_elem_t rle, *rle_p = 0, *rle_base;
+  osd_rle_elem_t rle, *rle_p = 0, *rle_base;
   uint x, y, num_rle = 0, rle_size = 8128;
   const uint8_t *c;
 
-  rle_p = (xine_rle_elem_t*)malloc(4*rle_size);
+  rle_p = (osd_rle_elem_t*)malloc(4*rle_size);
   rle_base = rle_p;
 
   for (y = 0; y < h; y++) {
@@ -44,7 +44,7 @@ uint rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint 
         if (rle.len) {
           if ( (num_rle + h-y+1) > rle_size ) {
             rle_size *= 2;
-            rle_base = (xine_rle_elem_t*)realloc( rle_base, 4*rle_size );
+            rle_base = (osd_rle_elem_t*)realloc( rle_base, 4*rle_size );
             rle_p = rle_base + num_rle;
           }
           *rle_p++ = rle;
@@ -66,8 +66,8 @@ uint rle_compress(xine_rle_elem_t **rle_data, const uint8_t *data, uint w, uint 
 
 uint rle_compress_net(uint8_t **rle_data, uint *elems, const uint8_t *data, uint w, uint h)
 {
-  *elems = rle_compress((xine_rle_elem_t**)rle_data, data, w, h);
-  return rle_recompress_net(*rle_data, *(xine_rle_elem_t **)rle_data, *elems);
+  *elems = rle_compress((osd_rle_elem_t**)rle_data, data, w, h);
+  return rle_recompress_net(*rle_data, *(osd_rle_elem_t **)rle_data, *elems);
 }
 
 /*
@@ -75,7 +75,7 @@ uint rle_compress_net(uint8_t **rle_data, uint *elems, const uint8_t *data, uint
  *
  * recompress RLE-compressed OSD using variable sized RLE codewords
 */
-uint rle_recompress_net(uint8_t *raw, xine_rle_elem_t *data, uint elems)
+uint rle_recompress_net(uint8_t *raw, osd_rle_elem_t *data, uint elems)
 {
   uint8_t *raw0 = raw;
   uint i;
@@ -101,7 +101,7 @@ uint rle_recompress_net(uint8_t *raw, xine_rle_elem_t *data, uint elems)
  * - Simple nearest-neighbour scaling for RLE-compressed image
  * - fast scaling in compressed form without decompression
  */
-xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elems,
+osd_rle_elem_t *rle_scale_nearest(const osd_rle_elem_t *old_rle, int *rle_elems,
                                    uint w, uint h, uint new_w, uint new_h)
 {
   #define FACTORBASE      0x100
@@ -115,8 +115,8 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
   uint factor_y = FACTORBASE*new_h/old_h;
   uint rle_size = MAX(8128, *rle_elems * new_h/h ); /* guess ... */
   uint num_rle  = 0;
-  xine_rle_elem_t *new_rle = (xine_rle_elem_t*)malloc(sizeof(xine_rle_elem_t)*rle_size);
-  xine_rle_elem_t *new_rle_start = new_rle;
+  osd_rle_elem_t *new_rle = (osd_rle_elem_t*)malloc(sizeof(osd_rle_elem_t)*rle_size);
+  osd_rle_elem_t *new_rle_start = new_rle;
 
   /* we assume rle elements are breaked at end of line */
   while (old_y < old_h) {
@@ -145,7 +145,7 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
 
         if ( (num_rle + 1) >= rle_size ) {
           rle_size *= 2;
-          new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
+          new_rle_start = (osd_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
           new_rle = new_rle_start + num_rle;
         }
       }
@@ -164,11 +164,11 @@ xine_rle_elem_t *rle_scale_nearest(const xine_rle_elem_t *old_rle, int *rle_elem
         dup = new_h - new_y - 1;
 
       while (dup-- && (new_y+1<new_h)) {
-        xine_rle_elem_t *prevline;
+        osd_rle_elem_t *prevline;
         uint n;
         if ( (num_rle + elems_current_line + 1) >= rle_size ) {
           rle_size *= 2;
-          new_rle_start = (xine_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
+          new_rle_start = (osd_rle_elem_t*)realloc( new_rle_start, 4*rle_size);
           new_rle = new_rle_start + num_rle;
         }
 
@@ -295,12 +295,12 @@ size_t rle_compress_hdmv(uint8_t **rle_data, const uint8_t *data, uint w, uint h
 }
 
 
-int rle_uncompress_hdmv(xine_rle_elem_t **data,
+int rle_uncompress_hdmv(osd_rle_elem_t **data,
                         uint w, uint h,
                         const uint8_t *rle_data, uint num_rle, size_t rle_size)
 {
   uint rle_count = 0, x = 0, y = 0;
-  xine_rle_elem_t *rlep = calloc(2*num_rle, sizeof(xine_rle_elem_t));
+  osd_rle_elem_t *rlep = calloc(2*num_rle, sizeof(osd_rle_elem_t));
   const uint8_t *end = rle_data + rle_size;
 
   *data = rlep;
@@ -371,7 +371,7 @@ int rle_uncompress_hdmv(xine_rle_elem_t **data,
 
 void rle_uncompress_lut8(uint8_t *dst,
                          uint w, uint h, uint stride,
-                         const struct xine_rle_elem_s *rle_data, uint num_rle)
+                         const struct osd_rle_elem_s *rle_data, uint num_rle)
 {
   uint i, pixelcounter = 0;
   uint idx = 0, line = 0;
@@ -395,7 +395,7 @@ void rle_uncompress_lut8(uint8_t *dst,
   }
 }
 
-void rle_palette_to_argb(uint32_t *argb, const struct xine_clut_s *palette, uint entries)
+void rle_palette_to_argb(uint32_t *argb, const struct osd_clut_s *palette, uint entries)
 {
   uint i;
   for (i = 0; i < entries; i++) {
@@ -406,7 +406,7 @@ void rle_palette_to_argb(uint32_t *argb, const struct xine_clut_s *palette, uint
   }
 }
 
-void rle_palette_to_rgba(uint32_t *rgba, const struct xine_clut_s *palette, uint entries)
+void rle_palette_to_rgba(uint32_t *rgba, const struct osd_clut_s *palette, uint entries)
 {
   uint i;
   for (i = 0; i < entries; i++) {
@@ -419,7 +419,7 @@ void rle_palette_to_rgba(uint32_t *rgba, const struct xine_clut_s *palette, uint
 
 static void rle_uncompress_u32(uint32_t *dst,
                                uint w, uint h, uint stride,
-                               const struct xine_rle_elem_s *rle_data, uint num_rle,
+                               const struct osd_rle_elem_s *rle_data, uint num_rle,
                                uint32_t *lut)
 {
   uint i, pixelcounter = 0;
@@ -446,8 +446,8 @@ static void rle_uncompress_u32(uint32_t *dst,
 
 void rle_uncompress_argb(uint32_t *dst,
                          uint w, uint h, uint stride,
-                         const struct xine_rle_elem_s *rle_data, uint num_rle,
-                         const struct xine_clut_s *palette, uint palette_entries)
+                         const struct osd_rle_elem_s *rle_data, uint num_rle,
+                         const struct osd_clut_s *palette, uint palette_entries)
 {
   uint32_t lut[256] = {0};
 
@@ -461,8 +461,8 @@ void rle_uncompress_argb(uint32_t *dst,
 
 void rle_uncompress_rgba(uint32_t *dst,
                          uint w, uint h, uint stride,
-                         const struct xine_rle_elem_s *rle_data, uint num_rle,
-                         const struct xine_clut_s *palette, uint palette_entries)
+                         const struct osd_rle_elem_s *rle_data, uint num_rle,
+                         const struct osd_clut_s *palette, uint palette_entries)
 {
   uint32_t lut[256] = {0};
 

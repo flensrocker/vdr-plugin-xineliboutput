@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_osd_command.h,v 1.17 2011-03-05 13:52:43 phintuka Exp $
+ * $Id: xine_osd_command.h,v 1.18 2014-06-23 12:14:15 phintuka Exp $
  *
  */
 
@@ -47,7 +47,7 @@ typedef enum  {
 
 #define OSDFLAG_TOP_LAYER       0x10 /* window is part of top layer OSD */
 
-typedef struct xine_clut_s {
+typedef struct osd_clut_s {
   union {
     uint8_t cb  /*: 8*/;
     uint8_t g;
@@ -61,12 +61,12 @@ typedef struct xine_clut_s {
     uint8_t r;
   };
   uint8_t alpha /*: 8*/;
-} PACKED xine_clut_t; /* from xine, alphablend.h */
+} PACKED osd_clut_t; /* from xine, alphablend.h */
 
-typedef struct xine_rle_elem_s {
+typedef struct osd_rle_elem_s {
   uint16_t len;
   uint16_t color;
-} PACKED xine_rle_elem_t; /* from xine */
+} PACKED osd_rle_elem_t; /* from xine */
 
 typedef struct osd_rect_s {
   uint16_t x1;
@@ -94,13 +94,13 @@ typedef struct osd_command_s {
   uint32_t datalen;   /* size of image data, in bytes */
   uint32_t num_rle;
   union {
-    xine_rle_elem_t *data; /* RLE compressed image */
+    osd_rle_elem_t  *data; /* RLE compressed image */
     uint8_t         *raw_data;
     uint64_t         dummy01;
   };
   uint32_t colors;         /* palette size */
   union {
-    xine_clut_t     *palette;  /* palette (YCrCb) */
+    osd_clut_t      *palette;  /* palette (YCrCb) */
     uint64_t         dummy02;
   };
 
@@ -154,7 +154,6 @@ typedef struct osd_command_s {
 #else
 #  error __BYTE_ORDER undefined !
 #endif
-
 
 #if defined __cplusplus
 }

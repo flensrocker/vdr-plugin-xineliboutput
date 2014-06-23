@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.364 2013-01-15 20:33:29 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.365 2014-06-23 12:14:15 phintuka Exp $
  *
  */
 
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.364 2013-01-15 20:33:29 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.365 2014-06-23 12:14:15 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel
@@ -1928,9 +1928,9 @@ static input_plugin_t *fifo_class_get_instance (input_class_t *class_gen,
 
 /******************************** OSD ************************************/
 
-static xine_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
+static osd_rle_elem_t *uncompress_osd_net(uint8_t *raw, int elems, int datalen)
 {
-  xine_rle_elem_t *data = (xine_rle_elem_t*)malloc(elems*sizeof(xine_rle_elem_t));
+  osd_rle_elem_t *data = (osd_rle_elem_t *)malloc(elems * sizeof(osd_rle_elem_t));
   int i;
 
   /*
@@ -2772,7 +2772,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
   /* read palette */
   if (osdcmd.palette && osdcmd.colors>0) {
-    ssize_t bytes = sizeof(xine_clut_t)*(osdcmd.colors);
+    ssize_t bytes = sizeof(osd_clut_t) * osdcmd.colors;
     osdcmd.palette = malloc(bytes);
     if (read_control(this, (unsigned char *)osdcmd.palette, bytes) != bytes) {
       LOGMSG("control: error reading OSDCMD palette");
@@ -2784,7 +2784,7 @@ static int handle_control_osdcmd(vdr_input_plugin_t *this)
 
   /* read (RLE) data */
   if (err == CONTROL_OK && osdcmd.data && osdcmd.datalen>0) {
-    osdcmd.data = (xine_rle_elem_t*)malloc(osdcmd.datalen);
+    osdcmd.data = (osd_rle_elem_t *)malloc(osdcmd.datalen);
     if(read_control(this, (unsigned char *)osdcmd.data, osdcmd.datalen)
        != (ssize_t)osdcmd.datalen) {
       LOGMSG("control: error reading OSDCMD bitmap");

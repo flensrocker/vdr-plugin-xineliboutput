@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.50 2013-08-21 09:40:22 phintuka Exp $
+ * $Id: osd.c,v 1.51 2014-06-23 12:14:15 phintuka Exp $
  *
  */
 
@@ -36,7 +36,7 @@ static inline int saturate(int x, int min, int max)
   return x < min ? min : (x > max ? max : x);
 }
 
-static inline void prepare_palette(xine_clut_t *clut, const unsigned int *palette, int colors, bool top, bool rgb)
+static inline void prepare_palette(osd_clut_t *clut, const unsigned int *palette, int colors, bool top, bool rgb)
 {
   if (colors) {
     int c;
@@ -251,7 +251,7 @@ void cXinelibOsd::CmdPalette(int Wnd, int Colors, unsigned int *Palette)
   TRACEF("cXinelibOsd::CmdPalette");
 
   if (m_Device) {
-    xine_clut_t   clut[Colors];
+    osd_clut_t    clut[Colors];
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd     = OSD_SetPalette;
@@ -353,7 +353,7 @@ void cXinelibOsd::CmdLut8(int Wnd, int X0, int Y0,
 
   if (m_Device) {
 
-    xine_clut_t   clut[Colors];
+    osd_clut_t    clut[Colors];
     osd_command_t osdcmd = {0};
 
     osdcmd.cmd   = OSD_Set_LUT8;

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: vo_osdscaler.c,v 1.15 2013-08-19 08:20:30 phintuka Exp $
+ * $Id: vo_osdscaler.c,v 1.16 2014-06-23 12:14:16 phintuka Exp $
  *
  */
 
@@ -25,7 +25,7 @@
 /*#define LOGOSD(x...) LOGMSG(x)*/
 #define LOGOSD(x...)
 
-typedef rle_elem_t xine_rle_elem_t;
+typedef rle_elem_t osd_rle_elem_t;
 
 #include "../tools/rle.h"
 
@@ -160,7 +160,7 @@ static osd_data_t *osd_data_init(vo_overlay_t *ovl, osd_data_t *next,
 #endif
 
   data->ovl.rle     = (rle_elem_t*)
-    rle_scale_nearest((struct xine_rle_elem_s*)ovl->rle, &num_rle,
+    rle_scale_nearest((struct osd_rle_elem_s*)ovl->rle, &num_rle,
                       ovl->width, ovl->height,
                       data->ovl.width, data->ovl.height);
   data->ovl.num_rle = num_rle;

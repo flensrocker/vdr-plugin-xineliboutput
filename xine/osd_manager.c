@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.28 2013-10-02 08:05:42 phintuka Exp $
+ * $Id: osd_manager.c,v 1.29 2014-06-23 12:14:15 phintuka Exp $
  *
  */
 
@@ -156,7 +156,7 @@ video_overlay_manager_t *get_ovl_manager(osd_manager_impl_t *this)
 
 #define saturate(x,min,max) ( (x)<(min) ? (min) : (x)>(max) ? (max) : (x))
 
-static void palette_argb_to_ayuv(xine_clut_t *clut, int colors)
+static void palette_argb_to_ayuv(osd_clut_t *clut, int colors)
 {
   if (clut && colors>0) {
     int c;
@@ -244,10 +244,10 @@ static void osdcmd_scale(osd_manager_impl_t *this, osd_command_t *cmd,
   osd->cmd.datalen = cmd->datalen;
 
   /* scale */
-  int rle_elems = cmd->datalen / sizeof(xine_rle_elem_t);
+  int rle_elems = cmd->datalen / sizeof(osd_rle_elem_t);
   cmd->data = rle_scale_nearest(cmd->data, &rle_elems, cmd->w, cmd->h,
                                 new_w, new_h);
-  cmd->datalen = rle_elems * sizeof(xine_rle_elem_t);
+  cmd->datalen = rle_elems * sizeof(osd_rle_elem_t);
 
   cmd->x = new_x;
   cmd->y = new_y;
@@ -472,7 +472,7 @@ static int exec_osd_set_rle(osd_manager_impl_t *this, osd_command_t *cmd)
       palette_argb_to_ayuv(cmd->palette, cmd->colors);
     cmd->flags |= OSDFLAG_YUV_CLUT;
 
-    osd->cmd.palette = malloc(sizeof(xine_clut_t)*cmd->colors);
+    osd->cmd.palette = malloc(sizeof(osd_clut_t)*cmd->colors);
     memcpy(osd->cmd.palette, cmd->palette, 4*cmd->colors);
     osd->cmd.flags |= OSDFLAG_YUV_CLUT;
   }
@@ -777,8 +777,8 @@ static int exec_osd_set_palette(osd_manager_impl_t *this, osd_command_t *cmd)
   /* replace palette */
   tmp.cmd      = OSD_Set_RLE;
   free(tmp.palette);
-  tmp.palette  = malloc(cmd->colors*sizeof(xine_rle_elem_t));
-  memcpy(tmp.palette, cmd->palette, cmd->colors*sizeof(xine_rle_elem_t));
+  tmp.palette  = malloc(cmd->colors * sizeof(osd_rle_elem_t));
+  memcpy(tmp.palette, cmd->palette, cmd->colors * sizeof(osd_rle_elem_t));
   tmp.colors   = cmd->colors;
   tmp.pts      = cmd->pts;
   tmp.delay_ms = cmd->delay_ms;
