@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: frontend_svr.c,v 1.108 2014-06-23 12:14:15 phintuka Exp $
+ * $Id: frontend_svr.c,v 1.109 2014-06-23 12:20:28 phintuka Exp $
  *
  */
 
@@ -34,8 +34,8 @@
 #include "config.h"
 
 #include "xine_input_vdr_net.h"   // stream header(s)
-#include "xine_osd_command.h"     // osd commands
 
+#include "tools/osd_command.h"     // osd commands
 #include "tools/cxsocket.h"
 #include "tools/future.h"
 #include "tools/backgroundwriter.h"

@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.207 2014-01-14 08:34:27 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.208 2014-06-23 12:20:28 phintuka Exp $
  *
  */
 
@@ -56,13 +56,13 @@
 #define LOG_MODULENAME "[vdr-sxfe]  "
 #include "logdefs.h"
 
-#include "xine_osd_command.h"
 #include "xine_frontend_internal.h"
 
 #ifdef HAVE_DBUS_GLIB_1
 #  include "tools/gnome_screensaver.h"
 #endif
 
+#include "tools/osd_command.h"
 #include "tools/rle.h"
 #include "tools/time_ms.h"
 

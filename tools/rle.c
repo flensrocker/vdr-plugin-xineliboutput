@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: rle.c,v 1.11 2014-06-23 12:14:15 phintuka Exp $
+ * $Id: rle.c,v 1.12 2014-06-23 12:20:28 phintuka Exp $
  *
  */
 
@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #endif
 
-#include "../xine_osd_command.h"
+#include "osd_command.h"
 
 #include "rle.h"
 

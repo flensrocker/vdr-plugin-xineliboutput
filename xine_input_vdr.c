@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_input_vdr.c,v 1.365 2014-06-23 12:14:15 phintuka Exp $
+ * $Id: xine_input_vdr.c,v 1.366 2014-06-23 12:20:28 phintuka Exp $
  *
  */
 
@@ -67,8 +67,8 @@
 
 #include "xine_input_vdr.h"
 #include "xine_input_vdr_net.h"
-#include "xine_osd_command.h"
 
+#include "tools/osd_command.h"
 #include "tools/mpeg.h"
 #include "tools/pes.h"
 #include "tools/ts.h"
@@ -136,7 +136,7 @@ typedef struct {
 #  include <linux/unistd.h> /* syscall(__NR_gettid) */
 #endif
 
-static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.365 2014-06-23 12:14:15 phintuka Exp $";
+static const char module_revision[] = "$Id: xine_input_vdr.c,v 1.366 2014-06-23 12:20:28 phintuka Exp $";
 static const char log_module_input_vdr[] = "[input_vdr] ";
 #define LOG_MODULENAME log_module_input_vdr
 #define SysLogLevel    iSysLogLevel

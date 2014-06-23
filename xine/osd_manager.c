@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd_manager.c,v 1.29 2014-06-23 12:14:15 phintuka Exp $
+ * $Id: osd_manager.c,v 1.30 2014-06-23 12:20:28 phintuka Exp $
  *
  */
 
@@ -15,9 +15,9 @@
 #include <xine/xine_internal.h>
 #include <xine/video_out.h>
 
-#include "../xine_osd_command.h"
 #include "../xine_input_vdr.h"
 
+#include "../tools/osd_command.h"
 #include "../tools/rle.h"
 
 #include "vo_props.h"
