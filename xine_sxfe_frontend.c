@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_sxfe_frontend.c,v 1.208 2014-06-23 12:20:28 phintuka Exp $
+ * $Id: xine_sxfe_frontend.c,v 1.209 2014-07-01 19:17:14 phintuka Exp $
  *
  */
 
@@ -2786,14 +2786,20 @@ static void XConfigureEvent_handler(sxfe_t *this, XConfigureEvent *cev)
 
   /* update video window size */
   if (this->x.width != cev->width || this->x.height != cev->height) {
-    LOGDBG("Video window size changed from %dx%d to %dx%d", this->x.width, this->x.height, cev->width, cev->height);
-    this->x.width  = cev->width;
-    this->x.height = cev->height;
 
-    /* inform VDR about new size */
-    char str[128];
-    snprintf(str, sizeof(str), "INFO WINDOW %dx%d", this->x.width, this->x.height);
-    this->x.fe.send_event((frontend_t*)this, str);
+    if ( ( this->fullscreen && this->window[1] == cev->window) ||
+         (!this->fullscreen && this->window[0] == cev->window)) {
+
+      LOGDBG("Video window size changed from %dx%d to %dx%d", this->x.width, this->x.height, cev->width, cev->height);
+
+      this->x.width  = cev->width;
+      this->x.height = cev->height;
+
+      /* inform VDR about new size */
+      char str[128];
+      snprintf(str, sizeof(str), "INFO WINDOW %dx%d", this->x.width, this->x.height);
+      this->x.fe.send_event((frontend_t*)this, str);
+    }
   }
 
   if(this->window[0] == cev->window && this->check_move) {
