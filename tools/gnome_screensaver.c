@@ -159,7 +159,9 @@ void gnome_screensaver_control(int enable)
   DBusGProxy *proxy;
   gboolean ret;
 
+#if !GLIB_CHECK_VERSION(2,35,0)
   g_type_init();
+#endif
 
 #ifdef HAVE_MCE_DBUS_NAMES
   error = NULL;
