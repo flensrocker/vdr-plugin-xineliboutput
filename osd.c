@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.53 2015-02-20 16:01:04 phintuka Exp $
+ * $Id: osd.c,v 1.54 2015-02-20 16:04:16 phintuka Exp $
  *
  */
 
@@ -515,12 +515,16 @@ void cXinelibOsd::Flush(void)
   if (IsTrueColor()) {
 
     LOCK_PIXMAPS;
-    while (cPixmapMemory *pm = RenderPixmaps()) {
+    while (cPixmapMemory *pm = dynamic_cast<cPixmapMemory*>(RenderPixmaps())) {
       int w = pm->ViewPort().Width();
       int h = pm->ViewPort().Height();
       int d = w * sizeof(tColor);
       CmdArgb(Left() + pm->ViewPort().X(), Top() + pm->ViewPort().Y(), w, h, pm->Data(), h * d);
+#if VDRVERSNUM >= 20200
+      DestroyPixmap(pm);
+#else
       delete pm;
+#endif
     }
 
     return;
