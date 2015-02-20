@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: osd.c,v 1.52 2014-06-23 12:20:28 phintuka Exp $
+ * $Id: osd.c,v 1.53 2015-02-20 16:01:04 phintuka Exp $
  *
  */
 
@@ -544,7 +544,7 @@ void cXinelibOsd::Flush(void)
       int NumColors;
       const tColor *Colors = Bitmap->Colors(NumColors);
       if (Colors) {
-	osd_rect_t DirtyArea = {x1:x1, y1:y1, x2:x2, y2:y2};
+	osd_rect_t DirtyArea = {x1:(uint16_t)x1, y1:(uint16_t)y1, x2:(uint16_t)x2, y2:(uint16_t)y2};
         CmdLut8(i,
                 Left() + Bitmap->X0() + XOffset, Top() + Bitmap->Y0() + YOffset,
                 Bitmap->Width(), Bitmap->Height(),
