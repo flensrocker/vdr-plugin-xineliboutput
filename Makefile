@@ -4,7 +4,7 @@
 # See the main source file 'xineliboutput.c' for copyright information and
 # how to reach the author.
 #
-# $Id: Makefile,v 1.119 2014-06-17 11:22:15 phintuka Exp $
+# $Id: Makefile,v 1.120 2015-04-22 08:23:48 phintuka Exp $
 #
 
 # The official name of this plugin.
@@ -279,6 +279,7 @@ $(sort $(OBJS_SXFE) $(OBJS_FBFE) $(OBJS_XINE)): %.o: %.c
 
 ### Internationalization (I18N):
 PODIR     = po
+ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
 I18Npo    = $(wildcard $(PODIR)/*.po)
 I18Nmo    = $(addsuffix .mo, $(foreach file, $(I18Npo), $(basename $(file))))
 I18Nmsgs  = $(addprefix $(DESTDIR)$(LOCDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
@@ -295,7 +296,6 @@ $(I18Npot): $(wildcard *.c)
 	@touch $@
 
 $(I18Nmsgs): $(DESTDIR)$(LOCDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
-ifeq ($(XINELIBOUTPUT_VDRPLUGIN), yes)
 	@echo Installing $^
 	install -D -m644 $< $@
 endif
