@@ -4,7 +4,7 @@
  * See the main source file 'xineliboutput.c' for copyright information and
  * how to reach the author.
  *
- * $Id: xine_frontend_cec.c,v 1.3 2014-04-29 10:21:18 phintuka Exp $
+ * $Id: xine_frontend_cec.c,v 1.4 2015-04-22 07:35:15 phintuka Exp $
  *
  */
 
@@ -272,7 +272,12 @@ static void libcec_config_clear(libcec_configuration *p)
   p->bMonitorOnly = 0;
   p->cecVersion = CEC_DEFAULT_SETTING_CEC_VERSION;
   p->adapterType = ADAPTERTYPE_UNKNOWN;
+
+#ifdef CEC_DOUBLE_TAP_TIMEOUT_50_MS
+  p->iDoubleTapTimeout50Ms = CEC_DOUBLE_TAP_TIMEOUT_50_MS;
+#else
   p->iDoubleTapTimeoutMs = CEC_DOUBLE_TAP_TIMEOUT_MS;
+#endif
   p->comboKey = CEC_USER_CONTROL_CODE_STOP;
   p->iComboKeyTimeoutMs = CEC_DEFAULT_COMBO_TIMEOUT_MS;
 
