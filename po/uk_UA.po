@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2013-10-29 10:29+0200\n"
+"POT-Creation-Date: 2015-04-22 11:16+0300\n"
 "PO-Revision-Date: 2012-11-29 13:34+0100\n"
 "Last-Translator: Yarema aka Knedlyk <yupadmin@gmail.com>\n"
 "Language-Team: Ukrainian <vdr@linuxtv.org>\n"
@@ -16,234 +16,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\\n\n"
-
-msgid "custom"
-msgstr "користувача"
-
-msgid "tiny"
-msgstr "дуже малий"
-
-msgid "small"
-msgstr "малий"
-
-msgid "medium"
-msgstr "середній"
-
-msgid "large"
-msgstr "великий"
-
-msgid "huge"
-msgstr "дуже великий"
-
-msgid "automatic"
-msgstr "автоматично"
-
-msgid "default"
-msgstr "типово"
-
-msgid "Pan&Scan"
-msgstr "Pan&Scan"
-
-msgid "CenterCutOut"
-msgstr "ОбрізатиПоБоках"
-
-msgid "square"
-msgstr "квадрат"
-
-msgid "anamorphic"
-msgstr "спотворення"
-
-msgid "DVB"
-msgstr "DVB"
-
-msgid "off"
-msgstr "викл"
-
-msgid "no audio"
-msgstr "немає аудіо"
-
-msgid "no video"
-msgstr "немає відео"
-
-msgid "Off"
-msgstr "Виключити"
-
-msgid "Goom"
-msgstr "Goom"
-
-msgid "Oscilloscope"
-msgstr "Oscilloscope"
-
-msgid "FFT Scope"
-msgstr "FFT Scope"
-
-msgid "FFT Graph"
-msgstr "FFT Graph"
-
-msgid "Image"
-msgstr "Малюнок"
-
-msgid "Mono 1.0"
-msgstr "Моно 1.0"
-
-msgid "Stereo 2.0"
-msgstr "Стерео 2.0"
-
-msgid "Headphones 2.0"
-msgstr "Навушники 2.0"
-
-msgid "Stereo 2.1"
-msgstr "Стерео 2.1"
-
-msgid "Surround 3.0"
-msgstr "Surround 3.0"
-
-msgid "Surround 4.0"
-msgstr "Surround 4.0"
-
-msgid "Surround 4.1"
-msgstr "Surround 4.1"
-
-msgid "Surround 5.0"
-msgstr "Surround 5.0"
-
-msgid "Surround 5.1"
-msgstr "Surround 5.1"
-
-msgid "Surround 6.0"
-msgstr "Surround 6.0"
-
-msgid "Surround 6.1"
-msgstr "Surround 6.1"
-
-msgid "Surround 7.1"
-msgstr "Surround 7.1"
-
-msgid "Pass Through"
-msgstr "Pass Through"
-
-msgid "very large"
-msgstr "дуже великий"
-
-msgid "Software"
-msgstr "Програмне"
-
-msgid "Hardware"
-msgstr "Апаратне"
-
-msgid "no"
-msgstr "ні"
-
-msgid "grayscale"
-msgstr "відтінки сірого"
-
-msgid "transparent"
-msgstr "прозорий"
-
-msgid "transparent grayscale"
-msgstr "прозорі відтінки сірого"
-
-msgid "yes"
-msgstr "так"
-
-msgid "nearest"
-msgstr "найближчий"
-
-msgid "bilinear"
-msgstr "білінійний"
-
-msgid "LUT8"
-msgstr "LUT8"
-
-msgid "TrueColor"
-msgstr "TrueColor"
-
-msgid "video stream"
-msgstr "відеопотік"
-
-msgid "none"
-msgstr "немає"
-
-msgid "nonref"
-msgstr "nonref"
-
-msgid "bidir"
-msgstr "bidir"
-
-msgid "nonkey"
-msgstr "безклавішний"
-
-msgid "all"
-msgstr "все"
-
-msgid "Frontend initialization failed"
-msgstr "Ініціалізація фронтенду не вдалася"
-
-msgid "Server initialization failed"
-msgstr "Ініціалізація сервера не вдалася"
-
-msgid "Playlist"
-msgstr "Список програвання"
-
-msgid "Button$Random"
-msgstr "Випадково"
-
-msgid "Button$Normal"
-msgstr "Нормально"
-
-msgid "Button$Add files"
-msgstr "Додати файли"
-
-msgid "Button$Remove"
-msgstr "Видалити"
-
-msgid "Button$Mark"
-msgstr "Позначка"
-
-msgid "Queued to playlist"
-msgstr "Додано до списку програвання"
-
-msgid "Random play"
-msgstr "Випадкове програвання"
-
-msgid "Normal play"
-msgstr "Нормальне програвання"
-
-msgid "DVD Menu"
-msgstr "Меню DVD"
-
-msgid "Exit DVD menu"
-msgstr "Вийти з меню DVD"
-
-msgid "DVD Root menu"
-msgstr "Корінне меню DVD"
-
-msgid "DVD Title menu"
-msgstr "Меню заголовків DVD"
-
-msgid "DVD SPU menu"
-msgstr "Меню DVD SPU"
-
-msgid "DVD Audio menu"
-msgstr "Меню DVD аудіо"
-
-msgid "Close menu"
-msgstr "Закрити меню"
-
-msgid "BluRay Top menu"
-msgstr "Меню BluRay"
-
-msgid "Toggle Pop-Up menu"
-msgstr "Включити вигулькне меню"
-
-msgid "Next title"
-msgstr "Наступний заголовок"
-
-msgid "Previous title"
-msgstr "Попередній заголовок"
-
-msgid "Delete image ?"
-msgstr "Видалити зображення?"
 
 msgid "Play movie title"
 msgstr "Програвати кінострічку"
@@ -293,6 +65,9 @@ msgstr "Змінити зображення з 4:3 до 16:9"
 msgid "Overscan (crop image borders)"
 msgstr "Пересканувати (обрізати границі зображення)"
 
+msgid "Off"
+msgstr "Виключити"
+
 msgid "Audio settings"
 msgstr "Налаштування аудіо"
 
@@ -310,6 +85,9 @@ msgstr "Пропорція"
 
 msgid "Video aspect ratio"
 msgstr "Пропорція відео"
+
+msgid "automatic"
+msgstr "автоматично"
 
 msgid "On"
 msgstr "Вкл"
@@ -348,6 +126,12 @@ msgstr "Аудіо"
 msgid "Volume control"
 msgstr "Регулятор гучності"
 
+msgid "Hardware"
+msgstr "Апаратне"
+
+msgid "Software"
+msgstr "Програмне"
+
 msgid "Mix to headphones"
 msgstr "Міксувати до навушників"
 
@@ -377,6 +161,9 @@ msgstr "Аудіо еквалайзер"
 
 msgid "Use Video-Out Driver"
 msgstr "Викор. вихідний відео-драйвер"
+
+msgid "none"
+msgstr "немає"
 
 msgid "vector"
 msgstr "вектор"
@@ -728,6 +515,219 @@ msgstr "Тестові зображення"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib output плагін"
+
+msgid "Frontend initialization failed"
+msgstr "Ініціалізація фронтенду не вдалася"
+
+msgid "Server initialization failed"
+msgstr "Ініціалізація сервера не вдалася"
+
+msgid "Playlist"
+msgstr "Список програвання"
+
+msgid "Button$Random"
+msgstr "Випадково"
+
+msgid "Button$Normal"
+msgstr "Нормально"
+
+msgid "Button$Add files"
+msgstr "Додати файли"
+
+msgid "Button$Remove"
+msgstr "Видалити"
+
+msgid "Button$Mark"
+msgstr "Позначка"
+
+msgid "Queued to playlist"
+msgstr "Додано до списку програвання"
+
+msgid "Random play"
+msgstr "Випадкове програвання"
+
+msgid "Normal play"
+msgstr "Нормальне програвання"
+
+msgid "DVD Menu"
+msgstr "Меню DVD"
+
+msgid "Exit DVD menu"
+msgstr "Вийти з меню DVD"
+
+msgid "DVD Root menu"
+msgstr "Корінне меню DVD"
+
+msgid "DVD Title menu"
+msgstr "Меню заголовків DVD"
+
+msgid "DVD SPU menu"
+msgstr "Меню DVD SPU"
+
+msgid "DVD Audio menu"
+msgstr "Меню DVD аудіо"
+
+msgid "Close menu"
+msgstr "Закрити меню"
+
+msgid "BluRay Top menu"
+msgstr "Меню BluRay"
+
+msgid "Toggle Pop-Up menu"
+msgstr "Включити вигулькне меню"
+
+msgid "Next title"
+msgstr "Наступний заголовок"
+
+msgid "Previous title"
+msgstr "Попередній заголовок"
+
+msgid "Delete image ?"
+msgstr "Видалити зображення?"
+
+msgid "custom"
+msgstr "користувача"
+
+msgid "tiny"
+msgstr "дуже малий"
+
+msgid "small"
+msgstr "малий"
+
+msgid "medium"
+msgstr "середній"
+
+msgid "large"
+msgstr "великий"
+
+msgid "huge"
+msgstr "дуже великий"
+
+msgid "default"
+msgstr "типово"
+
+msgid "Pan&Scan"
+msgstr "Pan&Scan"
+
+msgid "CenterCutOut"
+msgstr "ОбрізатиПоБоках"
+
+msgid "square"
+msgstr "квадрат"
+
+msgid "anamorphic"
+msgstr "спотворення"
+
+msgid "DVB"
+msgstr "DVB"
+
+msgid "off"
+msgstr "викл"
+
+msgid "no audio"
+msgstr "немає аудіо"
+
+msgid "no video"
+msgstr "немає відео"
+
+msgid "Goom"
+msgstr "Goom"
+
+msgid "Oscilloscope"
+msgstr "Oscilloscope"
+
+msgid "FFT Scope"
+msgstr "FFT Scope"
+
+msgid "FFT Graph"
+msgstr "FFT Graph"
+
+msgid "Image"
+msgstr "Малюнок"
+
+msgid "Mono 1.0"
+msgstr "Моно 1.0"
+
+msgid "Stereo 2.0"
+msgstr "Стерео 2.0"
+
+msgid "Headphones 2.0"
+msgstr "Навушники 2.0"
+
+msgid "Stereo 2.1"
+msgstr "Стерео 2.1"
+
+msgid "Surround 3.0"
+msgstr "Surround 3.0"
+
+msgid "Surround 4.0"
+msgstr "Surround 4.0"
+
+msgid "Surround 4.1"
+msgstr "Surround 4.1"
+
+msgid "Surround 5.0"
+msgstr "Surround 5.0"
+
+msgid "Surround 5.1"
+msgstr "Surround 5.1"
+
+msgid "Surround 6.0"
+msgstr "Surround 6.0"
+
+msgid "Surround 6.1"
+msgstr "Surround 6.1"
+
+msgid "Surround 7.1"
+msgstr "Surround 7.1"
+
+msgid "Pass Through"
+msgstr "Pass Through"
+
+msgid "very large"
+msgstr "дуже великий"
+
+msgid "no"
+msgstr "ні"
+
+msgid "grayscale"
+msgstr "відтінки сірого"
+
+msgid "transparent"
+msgstr "прозорий"
+
+msgid "transparent grayscale"
+msgstr "прозорі відтінки сірого"
+
+msgid "yes"
+msgstr "так"
+
+msgid "nearest"
+msgstr "найближчий"
+
+msgid "bilinear"
+msgstr "білінійний"
+
+msgid "LUT8"
+msgstr "LUT8"
+
+msgid "TrueColor"
+msgstr "TrueColor"
+
+msgid "video stream"
+msgstr "відеопотік"
+
+msgid "nonref"
+msgstr "nonref"
+
+msgid "bidir"
+msgstr "bidir"
+
+msgid "nonkey"
+msgstr "безклавішний"
+
+msgid "all"
+msgstr "все"
 
 #~ msgid "normal"
 #~ msgstr "нормально"

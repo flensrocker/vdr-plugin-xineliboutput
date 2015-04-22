@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2013-10-29 10:29+0200\n"
+"POT-Creation-Date: 2015-04-22 11:16+0300\n"
 "PO-Revision-Date: 2008-03-20 23:57+0100\n"
 "Last-Translator: Maya <maja373@gmail.com>\n"
 "Language-Team: Czech <vdr@linuxtv.org>\n"
@@ -16,234 +16,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Poedit-Language: Czech\n"
 "X-Poedit-Country: CZECH REPUBLIC\n"
-
-msgid "custom"
-msgstr "uživatelský"
-
-msgid "tiny"
-msgstr "nejmenší"
-
-msgid "small"
-msgstr "malý"
-
-msgid "medium"
-msgstr "střední"
-
-msgid "large"
-msgstr "velký"
-
-msgid "huge"
-msgstr "největší"
-
-msgid "automatic"
-msgstr "automaticky"
-
-msgid "default"
-msgstr "výchozí"
-
-msgid "Pan&Scan"
-msgstr "Pan&Scan"
-
-msgid "CenterCutOut"
-msgstr ""
-
-msgid "square"
-msgstr "čtvercový"
-
-msgid "anamorphic"
-msgstr "anamorfní"
-
-msgid "DVB"
-msgstr "DVB"
-
-msgid "off"
-msgstr "vypnuto"
-
-msgid "no audio"
-msgstr "bez zvuku"
-
-msgid "no video"
-msgstr "bez obrazu"
-
-msgid "Off"
-msgstr "vypnuto"
-
-msgid "Goom"
-msgstr "Soutěska"
-
-msgid "Oscilloscope"
-msgstr "Osciloskop"
-
-msgid "FFT Scope"
-msgstr "FFT spektrum"
-
-msgid "FFT Graph"
-msgstr "FFT graf"
-
-msgid "Image"
-msgstr ""
-
-msgid "Mono 1.0"
-msgstr "Mono 1.0"
-
-msgid "Stereo 2.0"
-msgstr "Stereo 2.0"
-
-msgid "Headphones 2.0"
-msgstr "Sluchátka 2.0"
-
-msgid "Stereo 2.1"
-msgstr "Stereo 2.1"
-
-msgid "Surround 3.0"
-msgstr "Surround 3.0"
-
-msgid "Surround 4.0"
-msgstr "Surround 4.0"
-
-msgid "Surround 4.1"
-msgstr "Surround 4.1"
-
-msgid "Surround 5.0"
-msgstr "Surround 5.0"
-
-msgid "Surround 5.1"
-msgstr "Surround 5.1"
-
-msgid "Surround 6.0"
-msgstr "Surround 6.0"
-
-msgid "Surround 6.1"
-msgstr "Surround 6.1"
-
-msgid "Surround 7.1"
-msgstr "Surround 7.1"
-
-msgid "Pass Through"
-msgstr "Průchozí"
-
-msgid "very large"
-msgstr "velmi velký"
-
-msgid "Software"
-msgstr "softwarové"
-
-msgid "Hardware"
-msgstr "hardwarové"
-
-msgid "no"
-msgstr "ne"
-
-msgid "grayscale"
-msgstr "odstíny šedi"
-
-msgid "transparent"
-msgstr "průhledný"
-
-msgid "transparent grayscale"
-msgstr ""
-
-msgid "yes"
-msgstr "ano"
-
-msgid "nearest"
-msgstr ""
-
-msgid "bilinear"
-msgstr ""
-
-msgid "LUT8"
-msgstr ""
-
-msgid "TrueColor"
-msgstr ""
-
-msgid "video stream"
-msgstr ""
-
-msgid "none"
-msgstr ""
-
-msgid "nonref"
-msgstr ""
-
-msgid "bidir"
-msgstr ""
-
-msgid "nonkey"
-msgstr ""
-
-msgid "all"
-msgstr ""
-
-msgid "Frontend initialization failed"
-msgstr "Inicializace rozhraní selhala"
-
-msgid "Server initialization failed"
-msgstr "Inicializace serveru selhala"
-
-msgid "Playlist"
-msgstr "Seznam stop"
-
-msgid "Button$Random"
-msgstr "Náhodné"
-
-msgid "Button$Normal"
-msgstr "Normální"
-
-msgid "Button$Add files"
-msgstr "Přidat soubory"
-
-msgid "Button$Remove"
-msgstr "Odstranit"
-
-msgid "Button$Mark"
-msgstr ""
-
-msgid "Queued to playlist"
-msgstr "Přidáno do seznamu stop"
-
-msgid "Random play"
-msgstr "Náhodné přehrávání"
-
-msgid "Normal play"
-msgstr "Normální přehrávání"
-
-msgid "DVD Menu"
-msgstr ""
-
-msgid "Exit DVD menu"
-msgstr ""
-
-msgid "DVD Root menu"
-msgstr ""
-
-msgid "DVD Title menu"
-msgstr ""
-
-msgid "DVD SPU menu"
-msgstr ""
-
-msgid "DVD Audio menu"
-msgstr ""
-
-msgid "Close menu"
-msgstr ""
-
-msgid "BluRay Top menu"
-msgstr ""
-
-msgid "Toggle Pop-Up menu"
-msgstr ""
-
-msgid "Next title"
-msgstr ""
-
-msgid "Previous title"
-msgstr ""
-
-msgid "Delete image ?"
-msgstr "Smazat obrázek ?"
 
 msgid "Play movie title"
 msgstr ""
@@ -293,6 +65,9 @@ msgstr "Oříznout letterbox 4:3 na 16:9"
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (ořez okrajů obrazu)"
 
+msgid "Off"
+msgstr "vypnuto"
+
 msgid "Audio settings"
 msgstr "Nastavení zvuku"
 
@@ -310,6 +85,9 @@ msgstr "Poměr stran"
 
 msgid "Video aspect ratio"
 msgstr "Poměr stran obrazu"
+
+msgid "automatic"
+msgstr "automaticky"
 
 msgid "On"
 msgstr "zapnuto"
@@ -348,6 +126,12 @@ msgstr "Zvuk"
 msgid "Volume control"
 msgstr "Ovládání hlasitosti"
 
+msgid "Hardware"
+msgstr "hardwarové"
+
+msgid "Software"
+msgstr "softwarové"
+
 msgid "Mix to headphones"
 msgstr ""
 
@@ -376,6 +160,9 @@ msgid "Audio Equalizer"
 msgstr "Korekce zvuku"
 
 msgid "Use Video-Out Driver"
+msgstr ""
+
+msgid "none"
 msgstr ""
 
 msgid "vector"
@@ -728,6 +515,219 @@ msgstr "Zkušební obrazce"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib výstupní plugin"
+
+msgid "Frontend initialization failed"
+msgstr "Inicializace rozhraní selhala"
+
+msgid "Server initialization failed"
+msgstr "Inicializace serveru selhala"
+
+msgid "Playlist"
+msgstr "Seznam stop"
+
+msgid "Button$Random"
+msgstr "Náhodné"
+
+msgid "Button$Normal"
+msgstr "Normální"
+
+msgid "Button$Add files"
+msgstr "Přidat soubory"
+
+msgid "Button$Remove"
+msgstr "Odstranit"
+
+msgid "Button$Mark"
+msgstr ""
+
+msgid "Queued to playlist"
+msgstr "Přidáno do seznamu stop"
+
+msgid "Random play"
+msgstr "Náhodné přehrávání"
+
+msgid "Normal play"
+msgstr "Normální přehrávání"
+
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
+msgid "BluRay Top menu"
+msgstr ""
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
+msgid "Delete image ?"
+msgstr "Smazat obrázek ?"
+
+msgid "custom"
+msgstr "uživatelský"
+
+msgid "tiny"
+msgstr "nejmenší"
+
+msgid "small"
+msgstr "malý"
+
+msgid "medium"
+msgstr "střední"
+
+msgid "large"
+msgstr "velký"
+
+msgid "huge"
+msgstr "největší"
+
+msgid "default"
+msgstr "výchozí"
+
+msgid "Pan&Scan"
+msgstr "Pan&Scan"
+
+msgid "CenterCutOut"
+msgstr ""
+
+msgid "square"
+msgstr "čtvercový"
+
+msgid "anamorphic"
+msgstr "anamorfní"
+
+msgid "DVB"
+msgstr "DVB"
+
+msgid "off"
+msgstr "vypnuto"
+
+msgid "no audio"
+msgstr "bez zvuku"
+
+msgid "no video"
+msgstr "bez obrazu"
+
+msgid "Goom"
+msgstr "Soutěska"
+
+msgid "Oscilloscope"
+msgstr "Osciloskop"
+
+msgid "FFT Scope"
+msgstr "FFT spektrum"
+
+msgid "FFT Graph"
+msgstr "FFT graf"
+
+msgid "Image"
+msgstr ""
+
+msgid "Mono 1.0"
+msgstr "Mono 1.0"
+
+msgid "Stereo 2.0"
+msgstr "Stereo 2.0"
+
+msgid "Headphones 2.0"
+msgstr "Sluchátka 2.0"
+
+msgid "Stereo 2.1"
+msgstr "Stereo 2.1"
+
+msgid "Surround 3.0"
+msgstr "Surround 3.0"
+
+msgid "Surround 4.0"
+msgstr "Surround 4.0"
+
+msgid "Surround 4.1"
+msgstr "Surround 4.1"
+
+msgid "Surround 5.0"
+msgstr "Surround 5.0"
+
+msgid "Surround 5.1"
+msgstr "Surround 5.1"
+
+msgid "Surround 6.0"
+msgstr "Surround 6.0"
+
+msgid "Surround 6.1"
+msgstr "Surround 6.1"
+
+msgid "Surround 7.1"
+msgstr "Surround 7.1"
+
+msgid "Pass Through"
+msgstr "Průchozí"
+
+msgid "very large"
+msgstr "velmi velký"
+
+msgid "no"
+msgstr "ne"
+
+msgid "grayscale"
+msgstr "odstíny šedi"
+
+msgid "transparent"
+msgstr "průhledný"
+
+msgid "transparent grayscale"
+msgstr ""
+
+msgid "yes"
+msgstr "ano"
+
+msgid "nearest"
+msgstr ""
+
+msgid "bilinear"
+msgstr ""
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
+
+msgid "video stream"
+msgstr ""
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
+msgstr ""
 
 #~ msgid "normal"
 #~ msgstr "normální"

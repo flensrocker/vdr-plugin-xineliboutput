@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2013-10-29 10:29+0200\n"
+"POT-Creation-Date: 2015-04-22 11:16+0300\n"
 "PO-Revision-Date: 2008-10-06 11:19+0200\n"
 "Last-Translator: Rolf Ahrenberg\n"
 "Language-Team: Finnish <vdr@linuxtv.org>\n"
@@ -16,234 +16,6 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-msgid "custom"
-msgstr "oma"
-
-msgid "tiny"
-msgstr "olematon"
-
-msgid "small"
-msgstr "pieni"
-
-msgid "medium"
-msgstr "keskikokoinen"
-
-msgid "large"
-msgstr "suuri"
-
-msgid "huge"
-msgstr "valtava"
-
-msgid "automatic"
-msgstr "automaattinen"
-
-msgid "default"
-msgstr "oletus"
-
-msgid "Pan&Scan"
-msgstr "Pan&Scan"
-
-msgid "CenterCutOut"
-msgstr "CenterCutOut"
-
-msgid "square"
-msgstr "neliö"
-
-msgid "anamorphic"
-msgstr "anamorfinen"
-
-msgid "DVB"
-msgstr "DVB"
-
-msgid "off"
-msgstr "ei käytössä"
-
-msgid "no audio"
-msgstr "ei ääntä"
-
-msgid "no video"
-msgstr "ei kuvaa"
-
-msgid "Off"
-msgstr "ei käytössä"
-
-msgid "Goom"
-msgstr "Goom"
-
-msgid "Oscilloscope"
-msgstr "oskilloskooppi"
-
-msgid "FFT Scope"
-msgstr "spektri"
-
-msgid "FFT Graph"
-msgstr "spektrogrammi"
-
-msgid "Image"
-msgstr "Kuva"
-
-msgid "Mono 1.0"
-msgstr "Mono 1.0"
-
-msgid "Stereo 2.0"
-msgstr "Stereo 2.0"
-
-msgid "Headphones 2.0"
-msgstr "Kuulokkeet 2.0"
-
-msgid "Stereo 2.1"
-msgstr "Stereo 2.1"
-
-msgid "Surround 3.0"
-msgstr "Surround 3.0"
-
-msgid "Surround 4.0"
-msgstr "Surround 4.0"
-
-msgid "Surround 4.1"
-msgstr "Surround 4.1"
-
-msgid "Surround 5.0"
-msgstr "Surround 5.0"
-
-msgid "Surround 5.1"
-msgstr "Surround 5.1"
-
-msgid "Surround 6.0"
-msgstr "Surround 6.0"
-
-msgid "Surround 6.1"
-msgstr "Surround 6.1"
-
-msgid "Surround 7.1"
-msgstr "Surround 7.1"
-
-msgid "Pass Through"
-msgstr "läpivienti"
-
-msgid "very large"
-msgstr "erittäin suuri"
-
-msgid "Software"
-msgstr "ohjelmallisesti"
-
-msgid "Hardware"
-msgstr "laitteistolla"
-
-msgid "no"
-msgstr "ei"
-
-msgid "grayscale"
-msgstr "harmaasävy"
-
-msgid "transparent"
-msgstr "läpinäkyvä"
-
-msgid "transparent grayscale"
-msgstr "läpinäkyvä harmaasävy"
-
-msgid "yes"
-msgstr "kyllä"
-
-msgid "nearest"
-msgstr "lähin"
-
-msgid "bilinear"
-msgstr "bilineaarinen"
-
-msgid "LUT8"
-msgstr "LUT8"
-
-msgid "TrueColor"
-msgstr "TrueColor"
-
-msgid "video stream"
-msgstr "videolähete"
-
-msgid "none"
-msgstr "ei"
-
-msgid "nonref"
-msgstr "ei referoituja"
-
-msgid "bidir"
-msgstr "vain B-ruudut"
-
-msgid "nonkey"
-msgstr "ei avainruutuja"
-
-msgid "all"
-msgstr "kaikki"
-
-msgid "Frontend initialization failed"
-msgstr "Näyttölaitteen alustus epäonnistui"
-
-msgid "Server initialization failed"
-msgstr "Palvelimen käynnistys epäonnistui"
-
-msgid "Playlist"
-msgstr "Soittolista"
-
-msgid "Button$Random"
-msgstr "Satunnaistoisto"
-
-msgid "Button$Normal"
-msgstr "Normaali toisto"
-
-msgid "Button$Add files"
-msgstr "Lisää"
-
-msgid "Button$Remove"
-msgstr "Poista"
-
-msgid "Button$Mark"
-msgstr "Merkitse"
-
-msgid "Queued to playlist"
-msgstr "Lisätty soittolistalle"
-
-msgid "Random play"
-msgstr "Satunnaistoisto"
-
-msgid "Normal play"
-msgstr "Normaali toisto"
-
-msgid "DVD Menu"
-msgstr "DVD-valikot"
-
-msgid "Exit DVD menu"
-msgstr "Sulje DVD:n valikko"
-
-msgid "DVD Root menu"
-msgstr "DVD:n päävalikko"
-
-msgid "DVD Title menu"
-msgstr "DVD:n ohjelmavalikko"
-
-msgid "DVD SPU menu"
-msgstr "DVD:n tekstitysvalikko"
-
-msgid "DVD Audio menu"
-msgstr "DVD:n äänivalikko"
-
-msgid "Close menu"
-msgstr "Sulje valikko"
-
-msgid "BluRay Top menu"
-msgstr "BluRay-levyn päävalikko"
-
-msgid "Toggle Pop-Up menu"
-msgstr ""
-
-msgid "Next title"
-msgstr ""
-
-msgid "Previous title"
-msgstr ""
-
-msgid "Delete image ?"
-msgstr "Poistetaanko kuva ?"
 
 msgid "Play movie title"
 msgstr "Toista elokuva"
@@ -293,6 +65,9 @@ msgstr "Leikkaa 4:3-letterbox 16:9:ksi"
 msgid "Overscan (crop image borders)"
 msgstr "Leikkaa kuvan reunoja (overscan)"
 
+msgid "Off"
+msgstr "ei käytössä"
+
 msgid "Audio settings"
 msgstr "Ääniasetukset"
 
@@ -310,6 +85,9 @@ msgstr "Kuvasuhde"
 
 msgid "Video aspect ratio"
 msgstr "Videon kuvasuhde"
+
+msgid "automatic"
+msgstr "automaattinen"
 
 msgid "On"
 msgstr "Käytössä"
@@ -348,6 +126,12 @@ msgstr "Ääni"
 msgid "Volume control"
 msgstr "Äänenvoimakkuuden säätö"
 
+msgid "Hardware"
+msgstr "laitteistolla"
+
+msgid "Software"
+msgstr "ohjelmallisesti"
+
 msgid "Mix to headphones"
 msgstr "Miksaa kuulokkeille"
 
@@ -377,6 +161,9 @@ msgstr "Taajuuskorjain"
 
 msgid "Use Video-Out Driver"
 msgstr "videoajuri"
+
+msgid "none"
+msgstr "ei"
 
 msgid "vector"
 msgstr "vektoroitu"
@@ -728,6 +515,219 @@ msgstr "Testikuvat"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib näyttölaite"
+
+msgid "Frontend initialization failed"
+msgstr "Näyttölaitteen alustus epäonnistui"
+
+msgid "Server initialization failed"
+msgstr "Palvelimen käynnistys epäonnistui"
+
+msgid "Playlist"
+msgstr "Soittolista"
+
+msgid "Button$Random"
+msgstr "Satunnaistoisto"
+
+msgid "Button$Normal"
+msgstr "Normaali toisto"
+
+msgid "Button$Add files"
+msgstr "Lisää"
+
+msgid "Button$Remove"
+msgstr "Poista"
+
+msgid "Button$Mark"
+msgstr "Merkitse"
+
+msgid "Queued to playlist"
+msgstr "Lisätty soittolistalle"
+
+msgid "Random play"
+msgstr "Satunnaistoisto"
+
+msgid "Normal play"
+msgstr "Normaali toisto"
+
+msgid "DVD Menu"
+msgstr "DVD-valikot"
+
+msgid "Exit DVD menu"
+msgstr "Sulje DVD:n valikko"
+
+msgid "DVD Root menu"
+msgstr "DVD:n päävalikko"
+
+msgid "DVD Title menu"
+msgstr "DVD:n ohjelmavalikko"
+
+msgid "DVD SPU menu"
+msgstr "DVD:n tekstitysvalikko"
+
+msgid "DVD Audio menu"
+msgstr "DVD:n äänivalikko"
+
+msgid "Close menu"
+msgstr "Sulje valikko"
+
+msgid "BluRay Top menu"
+msgstr "BluRay-levyn päävalikko"
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
+msgid "Delete image ?"
+msgstr "Poistetaanko kuva ?"
+
+msgid "custom"
+msgstr "oma"
+
+msgid "tiny"
+msgstr "olematon"
+
+msgid "small"
+msgstr "pieni"
+
+msgid "medium"
+msgstr "keskikokoinen"
+
+msgid "large"
+msgstr "suuri"
+
+msgid "huge"
+msgstr "valtava"
+
+msgid "default"
+msgstr "oletus"
+
+msgid "Pan&Scan"
+msgstr "Pan&Scan"
+
+msgid "CenterCutOut"
+msgstr "CenterCutOut"
+
+msgid "square"
+msgstr "neliö"
+
+msgid "anamorphic"
+msgstr "anamorfinen"
+
+msgid "DVB"
+msgstr "DVB"
+
+msgid "off"
+msgstr "ei käytössä"
+
+msgid "no audio"
+msgstr "ei ääntä"
+
+msgid "no video"
+msgstr "ei kuvaa"
+
+msgid "Goom"
+msgstr "Goom"
+
+msgid "Oscilloscope"
+msgstr "oskilloskooppi"
+
+msgid "FFT Scope"
+msgstr "spektri"
+
+msgid "FFT Graph"
+msgstr "spektrogrammi"
+
+msgid "Image"
+msgstr "Kuva"
+
+msgid "Mono 1.0"
+msgstr "Mono 1.0"
+
+msgid "Stereo 2.0"
+msgstr "Stereo 2.0"
+
+msgid "Headphones 2.0"
+msgstr "Kuulokkeet 2.0"
+
+msgid "Stereo 2.1"
+msgstr "Stereo 2.1"
+
+msgid "Surround 3.0"
+msgstr "Surround 3.0"
+
+msgid "Surround 4.0"
+msgstr "Surround 4.0"
+
+msgid "Surround 4.1"
+msgstr "Surround 4.1"
+
+msgid "Surround 5.0"
+msgstr "Surround 5.0"
+
+msgid "Surround 5.1"
+msgstr "Surround 5.1"
+
+msgid "Surround 6.0"
+msgstr "Surround 6.0"
+
+msgid "Surround 6.1"
+msgstr "Surround 6.1"
+
+msgid "Surround 7.1"
+msgstr "Surround 7.1"
+
+msgid "Pass Through"
+msgstr "läpivienti"
+
+msgid "very large"
+msgstr "erittäin suuri"
+
+msgid "no"
+msgstr "ei"
+
+msgid "grayscale"
+msgstr "harmaasävy"
+
+msgid "transparent"
+msgstr "läpinäkyvä"
+
+msgid "transparent grayscale"
+msgstr "läpinäkyvä harmaasävy"
+
+msgid "yes"
+msgstr "kyllä"
+
+msgid "nearest"
+msgstr "lähin"
+
+msgid "bilinear"
+msgstr "bilineaarinen"
+
+msgid "LUT8"
+msgstr "LUT8"
+
+msgid "TrueColor"
+msgstr "TrueColor"
+
+msgid "video stream"
+msgstr "videolähete"
+
+msgid "nonref"
+msgstr "ei referoituja"
+
+msgid "bidir"
+msgstr "vain B-ruudut"
+
+msgid "nonkey"
+msgstr "ei avainruutuja"
+
+msgid "all"
+msgstr "kaikki"
 
 #~ msgid "normal"
 #~ msgstr "normaali"

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2013-10-29 10:29+0200\n"
+"POT-Creation-Date: 2015-04-22 11:16+0300\n"
 "PO-Revision-Date: 2009-09-21 23:32+0800\n"
 "Last-Translator: NanFeng <nfgx@21cn.com>\n"
 "Language-Team: Chinese (simplified) <vdr@linuxtv.org>\n"
@@ -15,234 +15,6 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-msgid "custom"
-msgstr "自定义"
-
-msgid "tiny"
-msgstr "微小"
-
-msgid "small"
-msgstr "小"
-
-msgid "medium"
-msgstr "中"
-
-msgid "large"
-msgstr "大"
-
-msgid "huge"
-msgstr "巨大"
-
-msgid "automatic"
-msgstr "自动"
-
-msgid "default"
-msgstr "默认"
-
-msgid "Pan&Scan"
-msgstr "全景扫描"
-
-msgid "CenterCutOut"
-msgstr "CenterCutOut"
-
-msgid "square"
-msgstr "广场"
-
-msgid "anamorphic"
-msgstr "变形"
-
-msgid "DVB"
-msgstr "DVB"
-
-msgid "off"
-msgstr "关"
-
-msgid "no audio"
-msgstr "没有音频"
-
-msgid "no video"
-msgstr "没有视频"
-
-msgid "Off"
-msgstr "关"
-
-msgid "Goom"
-msgstr "Goom"
-
-msgid "Oscilloscope"
-msgstr "示波器"
-
-msgid "FFT Scope"
-msgstr "FFT的范围"
-
-msgid "FFT Graph"
-msgstr "FFT 图像"
-
-msgid "Image"
-msgstr ""
-
-msgid "Mono 1.0"
-msgstr "单声道 1.0"
-
-msgid "Stereo 2.0"
-msgstr "立体声2.0"
-
-msgid "Headphones 2.0"
-msgstr "耳机2.0"
-
-msgid "Stereo 2.1"
-msgstr "立体声2.1"
-
-msgid "Surround 3.0"
-msgstr "环绕声3.0"
-
-msgid "Surround 4.0"
-msgstr "环绕声4.0"
-
-msgid "Surround 4.1"
-msgstr "环绕声4.1"
-
-msgid "Surround 5.0"
-msgstr "环绕声5.0"
-
-msgid "Surround 5.1"
-msgstr "环绕声5.1"
-
-msgid "Surround 6.0"
-msgstr "环绕声6.0"
-
-msgid "Surround 6.1"
-msgstr "环绕声6.1"
-
-msgid "Surround 7.1"
-msgstr "环绕声7.1"
-
-msgid "Pass Through"
-msgstr "通过"
-
-msgid "very large"
-msgstr "非常大"
-
-msgid "Software"
-msgstr "软件"
-
-msgid "Hardware"
-msgstr "硬件"
-
-msgid "no"
-msgstr "否"
-
-msgid "grayscale"
-msgstr "灰度"
-
-msgid "transparent"
-msgstr "透明"
-
-msgid "transparent grayscale"
-msgstr "透明灰度"
-
-msgid "yes"
-msgstr "是"
-
-msgid "nearest"
-msgstr "最近"
-
-msgid "bilinear"
-msgstr "双线性"
-
-msgid "LUT8"
-msgstr ""
-
-msgid "TrueColor"
-msgstr ""
-
-msgid "video stream"
-msgstr ""
-
-msgid "none"
-msgstr "无"
-
-msgid "nonref"
-msgstr "nonref"
-
-msgid "bidir"
-msgstr "双向口"
-
-msgid "nonkey"
-msgstr "nonkey"
-
-msgid "all"
-msgstr "所有"
-
-msgid "Frontend initialization failed"
-msgstr "前端初始化失败"
-
-msgid "Server initialization failed"
-msgstr "服务器初始化失败"
-
-msgid "Playlist"
-msgstr "播放列表"
-
-msgid "Button$Random"
-msgstr "按钮$随机"
-
-msgid "Button$Normal"
-msgstr "按钮$正常"
-
-msgid "Button$Add files"
-msgstr "按钮$添加文件"
-
-msgid "Button$Remove"
-msgstr "按钮$删除"
-
-msgid "Button$Mark"
-msgstr ""
-
-msgid "Queued to playlist"
-msgstr "选择队列到播放列表"
-
-msgid "Random play"
-msgstr "随机播放"
-
-msgid "Normal play"
-msgstr "正常播放"
-
-msgid "DVD Menu"
-msgstr ""
-
-msgid "Exit DVD menu"
-msgstr ""
-
-msgid "DVD Root menu"
-msgstr ""
-
-msgid "DVD Title menu"
-msgstr ""
-
-msgid "DVD SPU menu"
-msgstr ""
-
-msgid "DVD Audio menu"
-msgstr ""
-
-msgid "Close menu"
-msgstr ""
-
-msgid "BluRay Top menu"
-msgstr ""
-
-msgid "Toggle Pop-Up menu"
-msgstr ""
-
-msgid "Next title"
-msgstr ""
-
-msgid "Previous title"
-msgstr ""
-
-msgid "Delete image ?"
-msgstr "是否删除图片?"
 
 msgid "Play movie title"
 msgstr ""
@@ -292,6 +64,9 @@ msgstr "选择4:3或者16:9"
 msgid "Overscan (crop image borders)"
 msgstr "过扫描(去掉图像边框)"
 
+msgid "Off"
+msgstr "关"
+
 msgid "Audio settings"
 msgstr "音频设置"
 
@@ -309,6 +84,9 @@ msgstr "画面比例"
 
 msgid "Video aspect ratio"
 msgstr "视频宽高比"
+
+msgid "automatic"
+msgstr "自动"
 
 msgid "On"
 msgstr "开"
@@ -347,6 +125,12 @@ msgstr "音频"
 msgid "Volume control"
 msgstr "音量控制"
 
+msgid "Hardware"
+msgstr "硬件"
+
+msgid "Software"
+msgstr "软件"
+
 msgid "Mix to headphones"
 msgstr "组合，以耳机"
 
@@ -376,6 +160,9 @@ msgstr "音频均衡器"
 
 msgid "Use Video-Out Driver"
 msgstr "使用视频输出驱动器"
+
+msgid "none"
+msgstr "无"
 
 msgid "vector"
 msgstr "载体"
@@ -727,6 +514,219 @@ msgstr "测试图像"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib 视频输出插件 by NFVDR-HD"
+
+msgid "Frontend initialization failed"
+msgstr "前端初始化失败"
+
+msgid "Server initialization failed"
+msgstr "服务器初始化失败"
+
+msgid "Playlist"
+msgstr "播放列表"
+
+msgid "Button$Random"
+msgstr "按钮$随机"
+
+msgid "Button$Normal"
+msgstr "按钮$正常"
+
+msgid "Button$Add files"
+msgstr "按钮$添加文件"
+
+msgid "Button$Remove"
+msgstr "按钮$删除"
+
+msgid "Button$Mark"
+msgstr ""
+
+msgid "Queued to playlist"
+msgstr "选择队列到播放列表"
+
+msgid "Random play"
+msgstr "随机播放"
+
+msgid "Normal play"
+msgstr "正常播放"
+
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
+msgid "BluRay Top menu"
+msgstr ""
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
+msgid "Delete image ?"
+msgstr "是否删除图片?"
+
+msgid "custom"
+msgstr "自定义"
+
+msgid "tiny"
+msgstr "微小"
+
+msgid "small"
+msgstr "小"
+
+msgid "medium"
+msgstr "中"
+
+msgid "large"
+msgstr "大"
+
+msgid "huge"
+msgstr "巨大"
+
+msgid "default"
+msgstr "默认"
+
+msgid "Pan&Scan"
+msgstr "全景扫描"
+
+msgid "CenterCutOut"
+msgstr "CenterCutOut"
+
+msgid "square"
+msgstr "广场"
+
+msgid "anamorphic"
+msgstr "变形"
+
+msgid "DVB"
+msgstr "DVB"
+
+msgid "off"
+msgstr "关"
+
+msgid "no audio"
+msgstr "没有音频"
+
+msgid "no video"
+msgstr "没有视频"
+
+msgid "Goom"
+msgstr "Goom"
+
+msgid "Oscilloscope"
+msgstr "示波器"
+
+msgid "FFT Scope"
+msgstr "FFT的范围"
+
+msgid "FFT Graph"
+msgstr "FFT 图像"
+
+msgid "Image"
+msgstr ""
+
+msgid "Mono 1.0"
+msgstr "单声道 1.0"
+
+msgid "Stereo 2.0"
+msgstr "立体声2.0"
+
+msgid "Headphones 2.0"
+msgstr "耳机2.0"
+
+msgid "Stereo 2.1"
+msgstr "立体声2.1"
+
+msgid "Surround 3.0"
+msgstr "环绕声3.0"
+
+msgid "Surround 4.0"
+msgstr "环绕声4.0"
+
+msgid "Surround 4.1"
+msgstr "环绕声4.1"
+
+msgid "Surround 5.0"
+msgstr "环绕声5.0"
+
+msgid "Surround 5.1"
+msgstr "环绕声5.1"
+
+msgid "Surround 6.0"
+msgstr "环绕声6.0"
+
+msgid "Surround 6.1"
+msgstr "环绕声6.1"
+
+msgid "Surround 7.1"
+msgstr "环绕声7.1"
+
+msgid "Pass Through"
+msgstr "通过"
+
+msgid "very large"
+msgstr "非常大"
+
+msgid "no"
+msgstr "否"
+
+msgid "grayscale"
+msgstr "灰度"
+
+msgid "transparent"
+msgstr "透明"
+
+msgid "transparent grayscale"
+msgstr "透明灰度"
+
+msgid "yes"
+msgstr "是"
+
+msgid "nearest"
+msgstr "最近"
+
+msgid "bilinear"
+msgstr "双线性"
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
+
+msgid "video stream"
+msgstr ""
+
+msgid "nonref"
+msgstr "nonref"
+
+msgid "bidir"
+msgstr "双向口"
+
+msgid "nonkey"
+msgstr "nonkey"
+
+msgid "all"
+msgstr "所有"
 
 #~ msgid "normal"
 #~ msgstr "正常"

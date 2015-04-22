@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2013-10-29 10:29+0200\n"
+"POT-Creation-Date: 2015-04-22 11:16+0300\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Udo Richter\n"
 "Language-Team: German <vdr@linuxtv.org>\n"
@@ -15,234 +15,6 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-msgid "custom"
-msgstr "Benutzerdefiniert"
-
-msgid "tiny"
-msgstr "Winzig"
-
-msgid "small"
-msgstr "Klein"
-
-msgid "medium"
-msgstr "Mittel"
-
-msgid "large"
-msgstr "Groß"
-
-msgid "huge"
-msgstr "Riesig"
-
-msgid "automatic"
-msgstr "Automatik"
-
-msgid "default"
-msgstr "Standard"
-
-msgid "Pan&Scan"
-msgstr "Pan&Scan"
-
-msgid "CenterCutOut"
-msgstr "CenterCutOut"
-
-msgid "square"
-msgstr ""
-
-msgid "anamorphic"
-msgstr ""
-
-msgid "DVB"
-msgstr ""
-
-msgid "off"
-msgstr "Aus"
-
-msgid "no audio"
-msgstr "Kein Audio"
-
-msgid "no video"
-msgstr "Kein Video"
-
-msgid "Off"
-msgstr "Aus"
-
-msgid "Goom"
-msgstr "Goom"
-
-msgid "Oscilloscope"
-msgstr "Oszilloskop"
-
-msgid "FFT Scope"
-msgstr "FFT Spektrum"
-
-msgid "FFT Graph"
-msgstr "FFT Graph"
-
-msgid "Image"
-msgstr "Bilder"
-
-msgid "Mono 1.0"
-msgstr ""
-
-msgid "Stereo 2.0"
-msgstr ""
-
-msgid "Headphones 2.0"
-msgstr "Kopfhörer 2.0"
-
-msgid "Stereo 2.1"
-msgstr ""
-
-msgid "Surround 3.0"
-msgstr ""
-
-msgid "Surround 4.0"
-msgstr ""
-
-msgid "Surround 4.1"
-msgstr ""
-
-msgid "Surround 5.0"
-msgstr ""
-
-msgid "Surround 5.1"
-msgstr ""
-
-msgid "Surround 6.0"
-msgstr ""
-
-msgid "Surround 6.1"
-msgstr ""
-
-msgid "Surround 7.1"
-msgstr ""
-
-msgid "Pass Through"
-msgstr ""
-
-msgid "very large"
-msgstr ""
-
-msgid "Software"
-msgstr ""
-
-msgid "Hardware"
-msgstr ""
-
-msgid "no"
-msgstr "nein"
-
-msgid "grayscale"
-msgstr ""
-
-msgid "transparent"
-msgstr ""
-
-msgid "transparent grayscale"
-msgstr ""
-
-msgid "yes"
-msgstr "ja"
-
-msgid "nearest"
-msgstr ""
-
-msgid "bilinear"
-msgstr ""
-
-msgid "LUT8"
-msgstr ""
-
-msgid "TrueColor"
-msgstr ""
-
-msgid "video stream"
-msgstr ""
-
-msgid "none"
-msgstr ""
-
-msgid "nonref"
-msgstr ""
-
-msgid "bidir"
-msgstr ""
-
-msgid "nonkey"
-msgstr ""
-
-msgid "all"
-msgstr "alle"
-
-msgid "Frontend initialization failed"
-msgstr "Initialisierung des Frontends fehlgeschlagen"
-
-msgid "Server initialization failed"
-msgstr "Initialisierung des Servers fehlgeschlagen"
-
-msgid "Playlist"
-msgstr "Wiedergabeliste"
-
-msgid "Button$Random"
-msgstr "Zufall"
-
-msgid "Button$Normal"
-msgstr "Normal"
-
-msgid "Button$Add files"
-msgstr "Füge Dateien hinzu"
-
-msgid "Button$Remove"
-msgstr "Entferne"
-
-msgid "Button$Mark"
-msgstr "Markieren"
-
-msgid "Queued to playlist"
-msgstr "Hänge an Wiedergabeliste an"
-
-msgid "Random play"
-msgstr "Zufallswiedergabe"
-
-msgid "Normal play"
-msgstr "Normale Wiedergabe"
-
-msgid "DVD Menu"
-msgstr "DVD Menü"
-
-msgid "Exit DVD menu"
-msgstr "DVD Menü verlassen"
-
-msgid "DVD Root menu"
-msgstr "DVD Hauptmenü"
-
-msgid "DVD Title menu"
-msgstr "DVD Titelmenü"
-
-msgid "DVD SPU menu"
-msgstr "DVD SPU Menü"
-
-msgid "DVD Audio menu"
-msgstr "DVD Audiomenü"
-
-msgid "Close menu"
-msgstr "Menü schließen"
-
-msgid "BluRay Top menu"
-msgstr ""
-
-msgid "Toggle Pop-Up menu"
-msgstr ""
-
-msgid "Next title"
-msgstr ""
-
-msgid "Previous title"
-msgstr ""
-
-msgid "Delete image ?"
-msgstr "Bild löschen?"
 
 msgid "Play movie title"
 msgstr ""
@@ -292,6 +64,9 @@ msgstr "Schneide letterbox 4:3 zu 16:9"
 msgid "Overscan (crop image borders)"
 msgstr "Overscan (Bildränder abschneiden)"
 
+msgid "Off"
+msgstr "Aus"
+
 msgid "Audio settings"
 msgstr "Audio-Einstellungen"
 
@@ -309,6 +84,9 @@ msgstr "Seitenverhältnis"
 
 msgid "Video aspect ratio"
 msgstr "Video Seitenverhältnis"
+
+msgid "automatic"
+msgstr "Automatik"
 
 msgid "On"
 msgstr "an"
@@ -347,6 +125,12 @@ msgstr "Audio"
 msgid "Volume control"
 msgstr ""
 
+msgid "Hardware"
+msgstr ""
+
+msgid "Software"
+msgstr ""
+
 msgid "Mix to headphones"
 msgstr ""
 
@@ -375,6 +159,9 @@ msgid "Audio Equalizer"
 msgstr "Audio Equalizer"
 
 msgid "Use Video-Out Driver"
+msgstr ""
+
+msgid "none"
 msgstr ""
 
 msgid "vector"
@@ -727,6 +514,219 @@ msgstr "Testbilder"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib Ausgabe-Plugin"
+
+msgid "Frontend initialization failed"
+msgstr "Initialisierung des Frontends fehlgeschlagen"
+
+msgid "Server initialization failed"
+msgstr "Initialisierung des Servers fehlgeschlagen"
+
+msgid "Playlist"
+msgstr "Wiedergabeliste"
+
+msgid "Button$Random"
+msgstr "Zufall"
+
+msgid "Button$Normal"
+msgstr "Normal"
+
+msgid "Button$Add files"
+msgstr "Füge Dateien hinzu"
+
+msgid "Button$Remove"
+msgstr "Entferne"
+
+msgid "Button$Mark"
+msgstr "Markieren"
+
+msgid "Queued to playlist"
+msgstr "Hänge an Wiedergabeliste an"
+
+msgid "Random play"
+msgstr "Zufallswiedergabe"
+
+msgid "Normal play"
+msgstr "Normale Wiedergabe"
+
+msgid "DVD Menu"
+msgstr "DVD Menü"
+
+msgid "Exit DVD menu"
+msgstr "DVD Menü verlassen"
+
+msgid "DVD Root menu"
+msgstr "DVD Hauptmenü"
+
+msgid "DVD Title menu"
+msgstr "DVD Titelmenü"
+
+msgid "DVD SPU menu"
+msgstr "DVD SPU Menü"
+
+msgid "DVD Audio menu"
+msgstr "DVD Audiomenü"
+
+msgid "Close menu"
+msgstr "Menü schließen"
+
+msgid "BluRay Top menu"
+msgstr ""
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
+msgid "Delete image ?"
+msgstr "Bild löschen?"
+
+msgid "custom"
+msgstr "Benutzerdefiniert"
+
+msgid "tiny"
+msgstr "Winzig"
+
+msgid "small"
+msgstr "Klein"
+
+msgid "medium"
+msgstr "Mittel"
+
+msgid "large"
+msgstr "Groß"
+
+msgid "huge"
+msgstr "Riesig"
+
+msgid "default"
+msgstr "Standard"
+
+msgid "Pan&Scan"
+msgstr "Pan&Scan"
+
+msgid "CenterCutOut"
+msgstr "CenterCutOut"
+
+msgid "square"
+msgstr ""
+
+msgid "anamorphic"
+msgstr ""
+
+msgid "DVB"
+msgstr ""
+
+msgid "off"
+msgstr "Aus"
+
+msgid "no audio"
+msgstr "Kein Audio"
+
+msgid "no video"
+msgstr "Kein Video"
+
+msgid "Goom"
+msgstr "Goom"
+
+msgid "Oscilloscope"
+msgstr "Oszilloskop"
+
+msgid "FFT Scope"
+msgstr "FFT Spektrum"
+
+msgid "FFT Graph"
+msgstr "FFT Graph"
+
+msgid "Image"
+msgstr "Bilder"
+
+msgid "Mono 1.0"
+msgstr ""
+
+msgid "Stereo 2.0"
+msgstr ""
+
+msgid "Headphones 2.0"
+msgstr "Kopfhörer 2.0"
+
+msgid "Stereo 2.1"
+msgstr ""
+
+msgid "Surround 3.0"
+msgstr ""
+
+msgid "Surround 4.0"
+msgstr ""
+
+msgid "Surround 4.1"
+msgstr ""
+
+msgid "Surround 5.0"
+msgstr ""
+
+msgid "Surround 5.1"
+msgstr ""
+
+msgid "Surround 6.0"
+msgstr ""
+
+msgid "Surround 6.1"
+msgstr ""
+
+msgid "Surround 7.1"
+msgstr ""
+
+msgid "Pass Through"
+msgstr ""
+
+msgid "very large"
+msgstr ""
+
+msgid "no"
+msgstr "nein"
+
+msgid "grayscale"
+msgstr ""
+
+msgid "transparent"
+msgstr ""
+
+msgid "transparent grayscale"
+msgstr ""
+
+msgid "yes"
+msgstr "ja"
+
+msgid "nearest"
+msgstr ""
+
+msgid "bilinear"
+msgstr ""
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
+
+msgid "video stream"
+msgstr ""
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
+msgstr "alle"
 
 #~ msgid "normal"
 #~ msgstr "Normal"

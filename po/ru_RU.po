@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xineliboutput 1.1.0\n"
 "Report-Msgid-Bugs-To: <phintuka@users.sourceforge.net>\n"
-"POT-Creation-Date: 2013-10-29 10:29+0200\n"
+"POT-Creation-Date: 2015-04-22 11:16+0300\n"
 "PO-Revision-Date: 2007-11-23 10:17+0200\n"
 "Last-Translator: Vladimir Monchenko\n"
 "Language-Team: Russian <vdr@linuxtv.org>\n"
@@ -15,234 +15,6 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-msgid "custom"
-msgstr "Пользователь"
-
-msgid "tiny"
-msgstr "Очень маленький"
-
-msgid "small"
-msgstr "Маленький"
-
-msgid "medium"
-msgstr "Средний"
-
-msgid "large"
-msgstr "Большой"
-
-msgid "huge"
-msgstr "Очень больной"
-
-msgid "automatic"
-msgstr "Автоматически"
-
-msgid "default"
-msgstr "По умолчанию"
-
-msgid "Pan&Scan"
-msgstr "Pan&Scan"
-
-msgid "CenterCutOut"
-msgstr ""
-
-msgid "square"
-msgstr ""
-
-msgid "anamorphic"
-msgstr ""
-
-msgid "DVB"
-msgstr ""
-
-msgid "off"
-msgstr "Выкл."
-
-msgid "no audio"
-msgstr "Нет аудио"
-
-msgid "no video"
-msgstr "Нет видео"
-
-msgid "Off"
-msgstr ""
-
-msgid "Goom"
-msgstr ""
-
-msgid "Oscilloscope"
-msgstr ""
-
-msgid "FFT Scope"
-msgstr ""
-
-msgid "FFT Graph"
-msgstr ""
-
-msgid "Image"
-msgstr ""
-
-msgid "Mono 1.0"
-msgstr ""
-
-msgid "Stereo 2.0"
-msgstr ""
-
-msgid "Headphones 2.0"
-msgstr ""
-
-msgid "Stereo 2.1"
-msgstr ""
-
-msgid "Surround 3.0"
-msgstr ""
-
-msgid "Surround 4.0"
-msgstr ""
-
-msgid "Surround 4.1"
-msgstr ""
-
-msgid "Surround 5.0"
-msgstr ""
-
-msgid "Surround 5.1"
-msgstr ""
-
-msgid "Surround 6.0"
-msgstr ""
-
-msgid "Surround 6.1"
-msgstr ""
-
-msgid "Surround 7.1"
-msgstr ""
-
-msgid "Pass Through"
-msgstr ""
-
-msgid "very large"
-msgstr ""
-
-msgid "Software"
-msgstr ""
-
-msgid "Hardware"
-msgstr ""
-
-msgid "no"
-msgstr ""
-
-msgid "grayscale"
-msgstr ""
-
-msgid "transparent"
-msgstr ""
-
-msgid "transparent grayscale"
-msgstr ""
-
-msgid "yes"
-msgstr ""
-
-msgid "nearest"
-msgstr ""
-
-msgid "bilinear"
-msgstr ""
-
-msgid "LUT8"
-msgstr ""
-
-msgid "TrueColor"
-msgstr ""
-
-msgid "video stream"
-msgstr ""
-
-msgid "none"
-msgstr ""
-
-msgid "nonref"
-msgstr ""
-
-msgid "bidir"
-msgstr ""
-
-msgid "nonkey"
-msgstr ""
-
-msgid "all"
-msgstr ""
-
-msgid "Frontend initialization failed"
-msgstr ""
-
-msgid "Server initialization failed"
-msgstr ""
-
-msgid "Playlist"
-msgstr ""
-
-msgid "Button$Random"
-msgstr ""
-
-msgid "Button$Normal"
-msgstr ""
-
-msgid "Button$Add files"
-msgstr ""
-
-msgid "Button$Remove"
-msgstr ""
-
-msgid "Button$Mark"
-msgstr ""
-
-msgid "Queued to playlist"
-msgstr ""
-
-msgid "Random play"
-msgstr ""
-
-msgid "Normal play"
-msgstr ""
-
-msgid "DVD Menu"
-msgstr ""
-
-msgid "Exit DVD menu"
-msgstr ""
-
-msgid "DVD Root menu"
-msgstr ""
-
-msgid "DVD Title menu"
-msgstr ""
-
-msgid "DVD SPU menu"
-msgstr ""
-
-msgid "DVD Audio menu"
-msgstr ""
-
-msgid "Close menu"
-msgstr ""
-
-msgid "BluRay Top menu"
-msgstr ""
-
-msgid "Toggle Pop-Up menu"
-msgstr ""
-
-msgid "Next title"
-msgstr ""
-
-msgid "Previous title"
-msgstr ""
-
-msgid "Delete image ?"
-msgstr "Удалить картинку ?"
 
 msgid "Play movie title"
 msgstr ""
@@ -292,6 +64,9 @@ msgstr ""
 msgid "Overscan (crop image borders)"
 msgstr ""
 
+msgid "Off"
+msgstr ""
+
 msgid "Audio settings"
 msgstr ""
 
@@ -309,6 +84,9 @@ msgstr ""
 
 msgid "Video aspect ratio"
 msgstr ""
+
+msgid "automatic"
+msgstr "Автоматически"
 
 msgid "On"
 msgstr ""
@@ -347,6 +125,12 @@ msgstr "Аудио"
 msgid "Volume control"
 msgstr ""
 
+msgid "Hardware"
+msgstr ""
+
+msgid "Software"
+msgstr ""
+
 msgid "Mix to headphones"
 msgstr ""
 
@@ -375,6 +159,9 @@ msgid "Audio Equalizer"
 msgstr "Аудио эквалайзер"
 
 msgid "Use Video-Out Driver"
+msgstr ""
+
+msgid "none"
 msgstr ""
 
 msgid "vector"
@@ -727,6 +514,219 @@ msgstr "Тестовые изображения"
 
 msgid "X11/xine-lib output plugin"
 msgstr "X11/xine-lib видео модуль"
+
+msgid "Frontend initialization failed"
+msgstr ""
+
+msgid "Server initialization failed"
+msgstr ""
+
+msgid "Playlist"
+msgstr ""
+
+msgid "Button$Random"
+msgstr ""
+
+msgid "Button$Normal"
+msgstr ""
+
+msgid "Button$Add files"
+msgstr ""
+
+msgid "Button$Remove"
+msgstr ""
+
+msgid "Button$Mark"
+msgstr ""
+
+msgid "Queued to playlist"
+msgstr ""
+
+msgid "Random play"
+msgstr ""
+
+msgid "Normal play"
+msgstr ""
+
+msgid "DVD Menu"
+msgstr ""
+
+msgid "Exit DVD menu"
+msgstr ""
+
+msgid "DVD Root menu"
+msgstr ""
+
+msgid "DVD Title menu"
+msgstr ""
+
+msgid "DVD SPU menu"
+msgstr ""
+
+msgid "DVD Audio menu"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
+msgid "BluRay Top menu"
+msgstr ""
+
+msgid "Toggle Pop-Up menu"
+msgstr ""
+
+msgid "Next title"
+msgstr ""
+
+msgid "Previous title"
+msgstr ""
+
+msgid "Delete image ?"
+msgstr "Удалить картинку ?"
+
+msgid "custom"
+msgstr "Пользователь"
+
+msgid "tiny"
+msgstr "Очень маленький"
+
+msgid "small"
+msgstr "Маленький"
+
+msgid "medium"
+msgstr "Средний"
+
+msgid "large"
+msgstr "Большой"
+
+msgid "huge"
+msgstr "Очень больной"
+
+msgid "default"
+msgstr "По умолчанию"
+
+msgid "Pan&Scan"
+msgstr "Pan&Scan"
+
+msgid "CenterCutOut"
+msgstr ""
+
+msgid "square"
+msgstr ""
+
+msgid "anamorphic"
+msgstr ""
+
+msgid "DVB"
+msgstr ""
+
+msgid "off"
+msgstr "Выкл."
+
+msgid "no audio"
+msgstr "Нет аудио"
+
+msgid "no video"
+msgstr "Нет видео"
+
+msgid "Goom"
+msgstr ""
+
+msgid "Oscilloscope"
+msgstr ""
+
+msgid "FFT Scope"
+msgstr ""
+
+msgid "FFT Graph"
+msgstr ""
+
+msgid "Image"
+msgstr ""
+
+msgid "Mono 1.0"
+msgstr ""
+
+msgid "Stereo 2.0"
+msgstr ""
+
+msgid "Headphones 2.0"
+msgstr ""
+
+msgid "Stereo 2.1"
+msgstr ""
+
+msgid "Surround 3.0"
+msgstr ""
+
+msgid "Surround 4.0"
+msgstr ""
+
+msgid "Surround 4.1"
+msgstr ""
+
+msgid "Surround 5.0"
+msgstr ""
+
+msgid "Surround 5.1"
+msgstr ""
+
+msgid "Surround 6.0"
+msgstr ""
+
+msgid "Surround 6.1"
+msgstr ""
+
+msgid "Surround 7.1"
+msgstr ""
+
+msgid "Pass Through"
+msgstr ""
+
+msgid "very large"
+msgstr ""
+
+msgid "no"
+msgstr ""
+
+msgid "grayscale"
+msgstr ""
+
+msgid "transparent"
+msgstr ""
+
+msgid "transparent grayscale"
+msgstr ""
+
+msgid "yes"
+msgstr ""
+
+msgid "nearest"
+msgstr ""
+
+msgid "bilinear"
+msgstr ""
+
+msgid "LUT8"
+msgstr ""
+
+msgid "TrueColor"
+msgstr ""
+
+msgid "video stream"
+msgstr ""
+
+msgid "nonref"
+msgstr ""
+
+msgid "bidir"
+msgstr ""
+
+msgid "nonkey"
+msgstr ""
+
+msgid "all"
+msgstr ""
 
 #~ msgid "normal"
 #~ msgstr "Нормальный"
