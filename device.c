@@ -118,7 +118,13 @@ void cXinelibStatusMonitor::ChannelSwitch(const cDevice *Device,
 #ifdef DEBUG_SWITCHING_TIME
       switchtimeOn = cTimeMs::Now();
 #endif
-      m_Device.SetTvMode(Channels.GetByNumber(ChannelNumber));
+#if VDRVERSNUM > 20300
+      LOCK_CHANNELS_READ;
+      const cChannels *vdrchannels = Channels;
+#else
+      cChannels *vdrchannels = &Channels;
+#endif
+      m_Device.SetTvMode(vdrchannels->GetByNumber(ChannelNumber));
       TRACE("cXinelibStatusMonitor: Set to TvMode");
     }
   } else {
@@ -385,7 +391,13 @@ void cXinelibDevice::ForcePrimaryDeviceImpl(bool On)
 	  xc.main_menu_mode = CloseOsd; /* will be executed in future by vdr main thread */
 	  cRemote::CallPlugin("xineliboutput");
 	}
-	cChannel *channel = Channels.GetByNumber(CurrentChannel());
+#if VDRVERSNUM > 20300
+        LOCK_CHANNELS_READ;
+        const cChannels *vdrchannels = Channels;
+#else
+        cChannels *vdrchannels = &Channels;
+#endif
+	const cChannel *channel = vdrchannels->GetByNumber(CurrentChannel());
 	cDevice::SetPrimaryDevice(m_OriginalPrimaryDevice);
 	PrimaryDevice()->SwitchChannel(channel, true);
 	m_OriginalPrimaryDevice = 0;
@@ -584,7 +596,7 @@ void cXinelibDevice::StopOutput(void)
   ForEach(m_clients, &cXinelibThread::SetNoVideo, false);
 }
 
-void cXinelibDevice::SetTvMode(cChannel *Channel)
+void cXinelibDevice::SetTvMode(const cChannel *Channel)
 {
   TRACEF("cXinelibDevice::SetTvMode");
   TRACK_TIME(250);
@@ -903,8 +915,15 @@ bool cXinelibDevice::PlayFile(const char *FileName, int Position,
       result = m_local->PlayFile(NULL, 0, 0, pmNone, TimeoutMs);
     if(!m_liveMode)
       SetReplayMode();
-    else
-      SetTvMode(Channels.GetByNumber(cDevice::CurrentChannel()));
+    else {
+#if VDRVERSNUM > 20300
+      LOCK_CHANNELS_READ;
+      const cChannels *vdrchannels = Channels;
+#else
+      cChannels *vdrchannels = &Channels;
+#endif
+      SetTvMode(vdrchannels->GetByNumber(cDevice::CurrentChannel()));
+    }
     m_PlayingFile = pmNone;
   }
 
@@ -1441,11 +1460,13 @@ void cXinelibDevice::SetVideoDisplayFormat(eVideoDisplayFormat VideoDisplayForma
 #endif
 }
 
+#if VDRVERSNUM < 20300
 eVideoSystem cXinelibDevice::GetVideoSystem(void)
 {
   TRACEF("cXinelibDevice::GetVideoSystem");
   return cDevice::GetVideoSystem();
 }
+#endif
 
 void cXinelibDevice::GetVideoSize(int &Width, int &Height, double &VideoAspect)
 {

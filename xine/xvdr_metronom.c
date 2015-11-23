@@ -134,7 +134,8 @@ static void got_video_frame(metronom_t *metronom, vo_frame_t *frame)
 
   pthread_mutex_unlock(&this->mutex);
 
-  this->orig_metronom->got_video_frame (this->orig_metronom, frame);
+  if (this->orig_metronom)
+    this->orig_metronom->got_video_frame (this->orig_metronom, frame);
 
   frame->pts = pts;
 }
